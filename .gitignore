@@ -1,0 +1,7 @@
+*.csv
+*.xlsx
+*.png
+
+.ipynb_checkpoints/
+__pycache__/
+.idea/
