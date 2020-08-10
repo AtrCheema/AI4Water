@@ -3,6 +3,7 @@ import seaborn as sns
 import numpy as np
 
 
+
 def _plot(*args, **kwargs):
     plt.close('all')
     plt.plot(*args, **kwargs)

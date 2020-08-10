@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from main import Model
+from main import TCNModel
 
 
 def make_model(lstm_units,
@@ -17,6 +17,18 @@ def make_model(lstm_units,
                enc_lstm2=20):
 
     nn_config = dict()
+
+    nbeats_options = {
+        'backcast_length': lookback,
+        'forecast_length': 1,
+        'stack_types': ('generic', 'generic'),
+        'nb_blocks_per_stack': 2,
+        'thetas_dim': (4, 4),
+        'share_weights_in_stack': True,
+        'hidden_layer_units': lstm_units
+    }
+    nn_config['nbeats_options'] = nbeats_options
+
     nn_config['enc_config'] = {'n_h': enc_lstm1,  # length of hidden state m
                                'n_s': enc_lstm1,  # length of hidden state m
                                'm': enc_lstm2  # length of hidden state m
@@ -39,9 +51,9 @@ def make_model(lstm_units,
     nn_config['lr'] = lr
     nn_config['optimizer'] = 'adam'
     nn_config['loss'] = 'mse'
-    nn_config['epochs'] = 100
+    nn_config['epochs'] = 10
 
-    nn_config['subsequences'] = 100  # used for cnn_lst structure
+    nn_config['subsequences'] = 3  # used for cnn_lst structure
 
     nn_config['lstm_config'] = {'lstm_units': lstm_units,
                                 'lstm_act': lstm_act,
@@ -58,46 +70,21 @@ def make_model(lstm_units,
     data_config['batch_size'] = batch_size
     data_config['val_size'] = 0.2
     data_config['CACHEDATA'] = True
-    data_config['data_path'] = os.path.join(os.getcwd(), 'nk_data.csv')
-    df = pd.read_csv('nk_data.csv')
-    # cols = list(df.columns)
-    # cols.remove('NDX')
-    # cols = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps', 'rel_hum']
-
-    data_config['inputs'] = ['cum oprtv time', '1st yoib ablyag', '2nd nongchog ablyag', '2nd nongchogsu yolyang', 'ondo']
-    data_config['outputs'] = ['FLUX SFX']
-
-    # total_intervals = (
-    #     (0, 146,),
-    #     (145, 386,),
-    #     (385, 628,),
-    #     (625, 821,),
-    #     (821, 1110),
-    #     (1110, 1447))
-
-    _model = Model(data_config=data_config,
-                   nn_config=nn_config,
-                   # intervals=total_intervals
-                   )
-
-    _model.build_nn(method='simple_lstm')  # 'lstm_cnn', 'simple_lstm', 'dual_attention', 'input_attention'
-
-    idx = np.arange(1600)
-    tr_idx, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
-    history = _model.train_nn(indices=list(tr_idx))
-
-    return _model, tr_idx, test_idx
+    data_config['data_path'] = os.path.join(os.getcwd(), 'data.csv')
 
 
-model, tr_idx, test_idx = make_model(lstm_units=64,
-                             dropout=0.4,
-                             rec_dropout=0.5,
-                             lstm_act='relu',
-                             batch_size=8,
-                             lookback=20,
-                             lr=8.95e-5)
+    data_config['inputs'] = ['tmin', 'tmax', 'slr', 'WTEMP(C)', 'FLOW_OUTcms', 'SED_OUTtons', 'NO3_OUTkg']
+    data_config['outputs'] = ['obs_chla']
+
+    total_intervals = (
+        (0, 146,),
+        (145, 386,),
+        (385, 628,),
+        (625, 821,),
+        (821, 1110),
+        (1110, 1447))
 
 
-y, obs = model.predict()
 
+    return data_config, nn_config, total_intervals
 
