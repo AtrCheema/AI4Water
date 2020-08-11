@@ -6,11 +6,12 @@ import pandas as pd
 from TSErrors import FindErrors
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+import os
 
-from global_variables import keras, tf
+from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path
-from global_variables import LOSSES, ACTIVATIONS
-from layer_definition import MyTranspose, MyDot
+from models.global_variables import LOSSES, ACTIVATIONS
+from models.layer_definition import MyTranspose, MyDot
 
 KModel = keras.models.Model
 layers = keras.layers
@@ -19,8 +20,6 @@ tf.compat.v1.disable_eager_execution()
 
 
 class AttributeNotSetYet:
-    """ a class which will just make sure that attributes are set at its childs class level and not here.
-    It's purpose is just to avoid cluttering of __init__ method of its child classes. """
     def __init__(self, func_name):
         self.data = WeakKeyDictionary()
         self.func_name = func_name
@@ -32,6 +31,8 @@ class AttributeNotSetYet:
         self.name = name
 
 class AttributeStore(object):
+    """ a class which will just make sure that attributes are set at its childs class level and not here.
+    It's purpose is just to avoid cluttering of __init__ method of its child classes. """
     k_model = AttributeNotSetYet("Build and compile the model first")
     method = None
     ins = None
@@ -250,7 +251,7 @@ class Model(AttributeStore):
         for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
             print(er, getattr(errors, er)())
 
-        plot_results(true, predicted, name=name)
+        plot_results(true, predicted, name=os.path.join(self.path, name))
         return
 
     def build_nn(self):

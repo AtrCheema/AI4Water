@@ -6,5 +6,5 @@
 __pycache__/
 .idea/
 
-models/
+results/
 data/
