@@ -1,10 +1,10 @@
 import numpy as np
-from keras import backend as K
-from keras.layers import Concatenate
-from keras.layers import Input, Dense, Lambda, Subtract, Add, Reshape
-from keras.models import Model
-# from keras.optimizers import Adam
 
+from .global_variables import keras
+K = keras.backend
+Concatenate, Add, Reshape = keras.layers.Concatenate, keras.layers.Add, keras.layers.Reshape
+Input, Dense, Lambda, Subtract = keras.layers.Input, keras.layers.Dense, keras.layers.Lambda, keras.layers.Subtract
+Model = keras.models.Model
 
 class NBeatsNet:
     GENERIC_BLOCK = 'generic'

@@ -4,7 +4,10 @@ from skopt import gp_minimize
 from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
+from main import Model
 from run_model import make_model
 
 
@@ -28,13 +31,32 @@ dimensions = [dim_batch_size, dim_lookback, dim_learning_rate,
               # dim_lstm_units, dim_act_f, dim_dropout,
               dim_lstm1_units, dim_lstm2_units]
 
+def objective_fn(**kwargs):
+    data_config, nn_config, total_intervals = make_model(**kwargs)
+
+    df = pd.read_csv('data/nk_data.csv')
+
+    model = Model(data_config=data_config,
+                  nn_config=nn_config,
+                  data=df,
+                  # intervals=total_intervals
+                  )
+
+
+    model.build_nn()
+
+    idx = np.arange(720)
+    tr_idx, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
+
+    history = model.train_nn(indices=list(tr_idx))
+    return np.min(history['val_loss'])
 
 @use_named_args(dimensions=dimensions)
 def fitness(batch_size, lookback, lr,  # lstm_units, act_f, dropout
             lstm1_units, lstm2_units
             ):
 
-    mse = make_model(lstm_units=32,
+    mse = objective_fn(lstm_units=32,
                        dropout=0.4,
                        rec_dropout=0.4,
                        lstm_act='relu',
@@ -44,7 +66,7 @@ def fitness(batch_size, lookback, lr,  # lstm_units, act_f, dropout
                        enc_lstm1=lstm1_units,
                        enc_lstm2=lstm2_units)
 
-    error = mse  # np.min(model.k_model.history.history['val_loss'])
+    error = mse
 
     msg = """\nwith lstm1_units {}, lstm2_units {}, batch_size {} lookback {} lr {} val loss is {}
           """.format(lstm1_units, lstm2_units, batch_size, lookback, lr, error)

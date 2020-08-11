@@ -91,7 +91,7 @@ def plot_train_test_pred(y, obs, tr_idx, test_idx):
 def maybe_create_path(prefix=None, path=None):
     if path is None:
         save_dir = dateandtime_now()
-        model_dir = os.path.join(os.getcwd(), "models")
+        model_dir = os.path.join(os.getcwd(), "results")
 
         if prefix:
             model_dir = os.path.join(model_dir, prefix)

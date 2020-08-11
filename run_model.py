@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from pt_main import IMVLSTMModel
+from models import Model
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -107,14 +107,14 @@ if __name__=="__main__":
 
     df = pd.read_csv('data/nk_data.csv')
 
-    model = IMVLSTMModel(data_config=data_config,
+    model = Model(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   # intervals=total_intervals
                   )
 
 
-    model.build_nn()  # 'lstm_cnn', 'simple_lstm', 'dual_attention', 'input_attention'
+    model.build_nn()
 
     idx = np.arange(720)
     tr_idx, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
