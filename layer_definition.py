@@ -1,17 +1,10 @@
 #! -*- coding: utf-8 -*-
 
 
-# from tensorflow.keras.engine.topology import Layer
+from global_variables import keras
 
 
-from tensorflow import keras
-# import keras
-
-K = keras.backend
-Layer = keras.layers.Layer
-
-
-class MyDot(Layer):  # The parameters are (inputs, output_dim) only change the last dimension of the input
+class MyDot(keras.layers.Layer):  # The parameters are (inputs, output_dim) only change the last dimension of the input
     def __init__(self, output_dim, **kwargs):
         self.output_dim = output_dim
         super(MyDot, self).__init__(**kwargs)
@@ -26,14 +19,14 @@ class MyDot(Layer):  # The parameters are (inputs, output_dim) only change the l
         super(MyDot, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
-        print('Mydot:', K.dot(inputs, self.kernel))
-        return K.dot(inputs, self.kernel)
+        print('Mydot:', keras.backend.dot(inputs, self.kernel))
+        return keras.backend.dot(inputs, self.kernel)
 
     def compute_output_shape(self, input_shape):
         return input_shape[0], input_shape[1], self.output_dim
 
 
-class MyTranspose(Layer):  # The parameters are (inputs, axis) to change the dimension
+class MyTranspose(keras.layers.Layer):  # The parameters are (inputs, axis) to change the dimension
     def __init__(self, axis, **kwargs):
         self.axis = axis
         super(MyTranspose, self).__init__(**kwargs)
@@ -42,7 +35,7 @@ class MyTranspose(Layer):  # The parameters are (inputs, axis) to change the dim
         super(MyTranspose, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
-        return K.permute_dimensions(inputs, pattern=self.axis)
+        return keras.backend.permute_dimensions(inputs, pattern=self.axis)
 
     def compute_output_shape(self, input_shape):
         return input_shape[self.axis[0]], input_shape[self.axis[1]], input_shape[self.axis[2]]

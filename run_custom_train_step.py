@@ -1,8 +1,7 @@
 from run_model import make_model
 from main import Model
 import pandas as pd
-from tensorflow import keras
-import tensorflow as tf
+from global_variables import keras, tf
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -38,7 +37,7 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                              lookback=15,
                              lr=8.95e-5)
 
-df = pd.read_csv('data.csv', index_col='date')
+df = pd.read_csv('nk_data.csv')
 
 model = Model(data_config=data_config,
                   nn_config=nn_config,

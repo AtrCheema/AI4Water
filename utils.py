@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-
+import os
+import datetime
 
 
 def _plot(*args, **kwargs):
@@ -86,3 +87,40 @@ def plot_train_test_pred(y, obs, tr_idx, test_idx):
     axis.legend(loc="best", fontsize=18, markerscale=4)
 
     plt.show()
+
+def maybe_create_path(prefix=None, path=None):
+    if path is None:
+        save_dir = dateandtime_now()
+        model_dir = os.path.join(os.getcwd(), "models")
+
+        if prefix:
+            model_dir = os.path.join(model_dir, prefix)
+
+        save_dir = os.path.join(model_dir, save_dir)
+    else:
+        save_dir = path
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    return save_dir
+
+def dateandtime_now():
+    jetzt = datetime.datetime.now()
+    jahre = str(jetzt.year)
+    month = str(jetzt.month)
+    if len(month) < 2:
+        month = '0' + month
+    tag = str(jetzt.day)
+    if len(tag) < 2:
+        tag = '0' + tag
+    datum = jahre + month + tag
+
+    stunde = str(jetzt.hour)
+    if len(stunde) < 2:
+        stunde = '0' + stunde
+    minute = str(jetzt.minute)
+    if len(minute) < 2:
+        minute = '0' + minute
+
+    return datum + '_' + stunde + str(minute)

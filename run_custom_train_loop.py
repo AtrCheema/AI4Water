@@ -1,8 +1,7 @@
 from run_model import make_model
 from main import Model
 import pandas as pd
-from tensorflow import keras
-import tensorflow as tf
+from global_variables import keras, tf
 import numpy as np
 from sklearn.model_selection import train_test_split
 
