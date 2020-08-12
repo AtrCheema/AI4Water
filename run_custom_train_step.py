@@ -1,7 +1,8 @@
 from run_model import make_model
-from main import Model
+from models import Model
+from models.global_variables import keras, tf
+
 import pandas as pd
-from global_variables import keras, tf
 import numpy as np
 from sklearn.model_selection import train_test_split
 
@@ -37,7 +38,7 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                              lookback=15,
                              lr=8.95e-5)
 
-df = pd.read_csv('nk_data.csv')
+df = pd.read_csv('data/all_data_30min.csv')
 
 model = Model(data_config=data_config,
                   nn_config=nn_config,
@@ -47,11 +48,8 @@ model = Model(data_config=data_config,
 
 model.KModel = CustomModel
 
-model.build_nn()  # 'lstm_cnn', 'simple_lstm', 'dual_attention', 'input_attention'
+model.build_nn()
 
-idx = np.arange(720)
-tr_idx, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
-
-history = model.train_nn(indices=list(tr_idx))
+history = model.train_nn(indices='random')
 
 # y, obs = model.predict()

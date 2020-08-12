@@ -1,4 +1,4 @@
-import tf_losses as tf_losses
+#
 
 try:
     from tensorflow import keras
@@ -31,10 +31,16 @@ ACTIVATIONS = {'LeakyRelu': lambda name='leaky_relu': keras.layers.LeakyReLU(nam
                }
 
 
-LOSSES = {
-    'mse': keras.losses.mse,
-    'mae': keras.losses.mae,
-    'mape': keras.losses.MeanAbsolutePercentageError,
-    'male': keras.losses.MeanSquaredLogarithmicError,
-    'nse': tf_losses.tf_nse,
-}
+if tf is not None:
+    import tf_losses as tf_losses
+    LOSSES = {
+        'mse': keras.losses.mse,
+        'mae': keras.losses.mae,
+        'mape': keras.losses.MeanAbsolutePercentageError,
+        'male': keras.losses.MeanSquaredLogarithmicError,
+        'nse': tf_losses.tf_nse,
+    }
+else:
+    LOSSES = {
+        'mse': torch.nn.MSELoss
+    }

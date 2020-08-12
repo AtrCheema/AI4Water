@@ -1,8 +1,6 @@
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
 
-from models import Model
+from models import DualAttentionModel
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -68,14 +66,15 @@ def make_model(**kwargs):
     _data_config['batch_size'] = 32
     _data_config['val_fraction'] = 0.2
     _data_config['CACHEDATA'] = True
+    _data_config['ignore_nans'] = False
 
 
 
     # data_config['inputs'] = ['tmin', 'tmax', 'slr', 'WTEMP(C)', 'FLOW_OUTcms', 'SED_OUTtons', 'NO3_OUTkg']
     # data_config['outputs'] = ['obs_chla']
-    _data_config['inputs'] = ['cum oprtv time', '1st yoib ablyag', '2nd nongchog ablyag', '2nd nongchogsu yolyang',
-                             'ondo']
-    _data_config['outputs'] = ['FLUX SFX']
+    _data_config['inputs'] = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
+                              'rel_hum']
+    _data_config['outputs'] = ['blaTEM_coppml']
 
     for key, val in kwargs.items():
         if key in _data_config:
@@ -107,7 +106,7 @@ if __name__=="__main__":
 
     df = pd.read_csv('data/nk_data.csv')
 
-    model = Model(data_config=data_config,
+    model = DualAttentionModel(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   # intervals=total_intervals
@@ -116,7 +115,6 @@ if __name__=="__main__":
 
     model.build_nn()
 
-    idx = np.arange(720)
-    tr_idx, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
+    history = model.train_nn(indices='random')
 
-    history = model.train_nn(indices=list(tr_idx))
+    y, obs = model.predict()

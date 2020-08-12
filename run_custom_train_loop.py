@@ -1,11 +1,22 @@
 from run_model import make_model
 from main import Model
+from models.global_variables import keras, tf
 import pandas as pd
-from global_variables import keras, tf
-import numpy as np
-from sklearn.model_selection import train_test_split
+
 
 class CustomModel(Model):
+
+    def build_nn(self):
+
+        inputs = keras.layers.Input(shape=(self.lookback, self.ins))
+
+        lstm_activations = self.add_LSTM(inputs, self.nn_config['lstm_config'])
+
+        predictions = keras.layers.Dense(self.outs, activation=tf.nn.elu)(lstm_activations)
+
+        self.k_model = self.compile(inputs, predictions)
+
+        return
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
@@ -16,7 +27,7 @@ class CustomModel(Model):
         # Prepare the training dataset.
         batch_size = self.data_config['batch_size']
 
-        setattr(self, 'train_indices', indices)
+        indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
@@ -30,7 +41,7 @@ class CustomModel(Model):
             print("\nStart of epoch %d" % (epoch,))
 
             # Iterate over the batches of the dataset.
-            for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
+            for step, (x_batch_train, full_outputs) in enumerate(train_dataset):
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass, which enables autodifferentiation.
@@ -40,10 +51,13 @@ class CustomModel(Model):
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
+                    mask = tf.greater(tf.reshape(full_outputs, (-1,)), 0.0)  # (batch_size,)
+                    y_obj = full_outputs[mask]  # (vals_present, 1)
                     logits = self.k_model(x_batch_train, training=True)  # Logits for this minibatch
 
+                    logits_obj = logits[mask]
                     # Compute the loss value for this minibatch.
-                    loss_value = keras.backend.mean(loss_fn(y_batch_train, logits))
+                    loss_value = keras.backend.mean(loss_fn(y_obj, logits_obj))
 
                 # Use the gradient tape to automatically retrieve
                 # the gradients of the trainable variables with respect to the loss.
@@ -69,9 +83,11 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                              lstm_act='relu',
                              batch_size=32,
                              lookback=15,
-                             lr=8.95e-5)
+                             lr=8.95e-5,
+                             ignore_nans=True,
+                                                     epochs=20)
 
-df = pd.read_csv('data.csv', index_col='date')
+df = pd.read_csv('data/all_data_30min.csv')
 
 model = CustomModel(data_config=data_config,
                   nn_config=nn_config,
@@ -79,9 +95,8 @@ model = CustomModel(data_config=data_config,
                   # intervals=total_intervals
                   )
 
-model.build_nn()  # 'lstm_cnn', 'simple_lstm', 'dual_attention', 'input_attention'
+model.build_nn()
 
-idx = np.arange(720)
-tr_idx, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
+history = model.train_nn(indices='random', tensorboard=True)
 
-history = model.train_nn(indices=list(tr_idx))
+# y, obs = model.predict()

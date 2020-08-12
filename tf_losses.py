@@ -1,4 +1,4 @@
-import tensorflow as tf
+from models.global_variables import tf
 
 
 def tf_nse(true, pred, name='NSE'):

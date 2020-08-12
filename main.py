@@ -7,16 +7,18 @@ from TSErrors import FindErrors
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import os
+from sklearn.model_selection import train_test_split
 
 from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path
 from models.global_variables import LOSSES, ACTIVATIONS
-from models.layer_definition import MyTranspose, MyDot
+#
 
 KModel = keras.models.Model
 layers = keras.layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
+# tf.enable_eager_execution()
 
 
 class AttributeNotSetYet:
@@ -138,6 +140,7 @@ class Model(AttributeStore):
         if self.intervals is None:
 
             df = df[start:ende]
+            df.columns = self.data_config['inputs'] + self.data_config['outputs']
 
             x, y, label = self.get_data(df,
                                         len(self.data_config['inputs']),
@@ -152,6 +155,9 @@ class Model(AttributeStore):
             xs, ys, labels = [], [], []
             for st, en in self.intervals:
                 df1 = df[st:en]
+
+                df.columns = self.data_config['inputs'] + self.data_config['outputs']
+
                 if df1.shape[0] > 0:
                     x, y, label = self.get_data(df1, len(self.data_config['inputs']), len(self.data_config['outputs']))
                     xs.append(x)
@@ -204,9 +210,27 @@ class Model(AttributeStore):
         history = self.k_model.history
         return history
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def get_indices(self, indices=None):
+        if isinstance(indices, str) and indices.upper() == 'RANDOM':
+            if self.data_config['ignore_nans']:
+                tot_obs = self.data.shape[0]
+            else:
+                if self.outs == 1:
+                    tot_obs = self.data.shape[0] - int(self.data[self.data_config['outputs']].isna().sum())
+                else:
+                    raise ValueError
+            idx = np.arange(tot_obs - self.lookback)
+            train_indices, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
+            setattr(self, 'test_indices', list(test_idx))
+            indices = list(train_indices)
 
         setattr(self, 'train_indices', indices)
+
+        return indices
+
+    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+
+        indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
@@ -271,27 +295,36 @@ class Model(AttributeStore):
 
     def add_LSTM(self, inputs, config, seq=False):
 
+        if 'name' in config:
+            name = config['name']
+        else:
+            name = 'lstm_lyr'
+
         lstm_lyr = layers.LSTM(config['lstm_units'],
                                # input_shape=(self.lookback, self.ins),
                                dropout=config['dropout'],
                                recurrent_dropout=config['rec_dropout'],
                                return_sequences=seq,
-                               name='lstm_lyr')(inputs)
+                               name=name)(inputs)
 
         lstm_activations = ACTIVATIONS[config['lstm_act']](name='lstm_act')(lstm_lyr)
 
         return lstm_activations
 
-    def add_1dCNN(self, inputs, cnn):
+    def add_1dCNN(self, inputs, config: dict):
 
-        cnn_layer = layers.Conv1D(filters=cnn['filters'],
-                                  kernel_size=cnn['kernel_size'],
+        if 'name' in config:
+            name = config['name']
+        else:
+            name = 'cnn_lyr'
+        cnn_layer = layers.Conv1D(filters=config['filters'],
+                                  kernel_size=config['kernel_size'],
                                   # activation=cnn['activation'],
-                                  name='cnn_lyr')(inputs)
+                                  name=name)(inputs)
 
-        cnn_activations = ACTIVATIONS[cnn['activation']](name='cnn_act')(cnn_layer)
+        cnn_activations = ACTIVATIONS[config['activation']](name='cnn_act')(cnn_layer)
 
-        max_pool_lyr = layers.MaxPooling1D(pool_size=cnn['max_pool_size'],
+        max_pool_lyr = layers.MaxPooling1D(pool_size=config['max_pool_size'],
                                            name='max_pool_lyr')(cnn_activations)
         flat_lyr = layers.Flatten(name='flat_lyr')(max_pool_lyr)
 
@@ -305,129 +338,6 @@ class Model(AttributeStore):
         k_model.summary()
 
         return k_model
-
-    def _encoder(self, config, lstm2_seq=True):
-
-        self.en_densor_We = layers.Dense(self.lookback, name='enc_We')
-        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, name='encoder_LSTM')
-
-        enc_input = layers.Input(shape=(self.lookback, self.ins), name='enc_input')  # Enter time series data
-        # initialize the first cell state
-        s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state')
-        # initialize the first hidden state
-        h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state')
-
-        enc_attn_out = self.encoder_attention(enc_input, s0, h0)
-        print('encoder attention output:', enc_attn_out)
-        enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input')(enc_attn_out)
-        print('input to encoder LSTM:', enc_lstm_in)
-        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq,
-                                   name='LSTM_after_encoder')(enc_lstm_in)  # h_en_all
-        print('Output from LSTM out: ', enc_lstm_out)
-        return enc_lstm_out, enc_input,  h0, s0
-
-    def one_encoder_attention_step(self, h_prev, s_prev, x, t):
-        """
-        :param h_prev: previous hidden state
-        :param s_prev: previous cell state
-        :param x: (T,n),n is length of input series at time t,T is length of time series
-        :param t: time-step
-        :return: x_t's attention weights,total n numbers,sum these are 1
-        """
-        _concat = layers.Concatenate()([h_prev, s_prev])  # (none,1,2m)
-        result1 = self.en_densor_We(_concat)   # (none,1,T)
-        result1 = layers.RepeatVector(x.shape[2],)(result1)  # (none,n,T)
-        x_temp = MyTranspose(axis=(0, 2, 1))(x)  # X_temp(None,n,T)
-        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t))(x_temp)  # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
-        result3 = layers.Add()([result1, result2])  # (none,n,T)
-        result4 = layers.Activation(activation='tanh')(result3)  # (none,n,T)
-        result5 = MyDot(1)(result4)
-        result5 = MyTranspose(axis=(0, 2, 1), name='eq_8_' + str(t))(result5)  # etk/ equation 8
-        alphas = layers.Activation(activation='softmax', name='eq_9_'+str(t))(result5)  # equation 9
-
-        return alphas
-
-    def encoder_attention(self, _input, _s0, _h0):
-
-        s = _s0
-        _h = _h0
-        print('encoder cell state:', s)
-        # initialize empty list of outputs
-        attention_weight_t = None
-        for t in range(self.lookback):
-            print('encoder input:', _input)
-            _context = self.one_encoder_attention_step(_h, s, _input, t)  # (none,1,n)
-            print('context:', _context)
-            x = layers.Lambda(lambda x: _input[:, t, :])(_input)
-            x = layers.Reshape((1, self.ins))(x)
-            print('x:', x)
-            _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
-            if t != 0:
-                print('attention_weight_:'+str(t), attention_weight_t)
-                # attention_weight_t = layers.Merge(mode='concat', concat_axis=1,
-                #                                    name='attn_weight_'+str(t))([attention_weight_t,
-                #                                                                _context])
-                attention_weight_t = layers.Concatenate(axis=1)([attention_weight_t, _context])
-                print('salam')
-            else:
-                attention_weight_t = _context
-            print('Now attention_weight_:' + str(t), attention_weight_t)
-            print('encoder hidden state:', _h)
-            print('_:', _)
-            print('encoder cell state:', s)
-            print('time-step', t)
-            # break
-
-        # get the driving input series
-        enc_output = layers.Multiply(name='enc_output')([attention_weight_t, _input])  # equation 10 in paper
-        print('output from encoder attention:', enc_output)
-        return enc_output
-
-    def one_decoder_attention_step(self, _h_de_prev, _s_de_prev, _h_en_all, t):
-        """
-        :param _h_de_prev: previous hidden state
-        :param _s_de_prev: previous cell state
-        :param _h_en_all: (None,T,m),n is length of input series at time t,T is length of time series
-        :param t: int, timestep
-        :return: x_t's attention weights,total n numbers,sum these are 1
-        """
-        print('h_en_all:', _h_en_all)
-        # concatenation of the previous hidden state and cell state of the LSTM unit in eq 12
-        _concat = layers.Concatenate(name='eq_12_'+str(t))([_h_de_prev, _s_de_prev])  # (None,1,2p)
-        result1 = self.de_densor_We(_concat)   # (None,1,m)
-        result1 = layers.RepeatVector(self.lookback)(result1)  # (None,T,m)
-        result2 = MyDot(self.nn_config['enc_config']['m'])(_h_en_all)
-        print('result1:', result1)
-        print('result2:', result2)
-        result3 = layers.Add()([result1, result2])  # (None,T,m)
-        result4 = layers.Activation(activation='tanh')(result3)  # (None,T,m)
-        result5 = MyDot(1)(result4)
-
-        beta = layers.Activation(activation='softmax', name='eq_13_'+str(t))(result5)    # equation 13
-        _context = layers.Dot(axes=1, name='eq_14_'+str(t))([beta, _h_en_all])  # (1,m)  # equation 14 in paper
-        return _context
-
-    def decoder_attention(self, _h_en_all, _y, _s0, _h0):
-        s = _s0
-        _h = _h0
-        print('y_prev into decoder: ', _y)
-        for t in range(self.lookback-1):
-            y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)
-            y_prev = layers.Reshape((1, 1))(y_prev)   # (None,1,1)
-            print('\ny_prev at {}'.format(t), y_prev)
-            _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (None,1,20)
-            # concatenation of decoder input and computed context vector  # ??
-            y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
-            print('y_prev1 at {}:'.format(t), y_prev)
-            y_prev = layers.Dense(1, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
-            print('y_prev2 at {}:'.format(t), y_prev)
-            _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??
-            print('decoder hidden state:', _h)
-            print('_:', _)
-            print('decoder cell state:', s)
-
-        _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
-        return _h, _context
 
     def get_data(self, df, ins, outs):
         input_x = []
@@ -447,19 +357,22 @@ class Model(AttributeStore):
         input_y = np.array(input_y).reshape(-1, self.lookback-1, outs)
         label_y = np.array(label_y).reshape(-1, outs)
 
-        if df.isna().sum().values.sum() > 0:
-            if self.method == 'dual_attention':
-                raise ValueError
-            print('input dataframe contain nans')
-            y = df[df.columns[-1]]
-            nan_idx = y.isna()
-            nan_idx_t = nan_idx[self.lookback - 1:]
-            non_nan_idx = ~nan_idx_t.values
-            label_y = label_y[non_nan_idx]
-            input_x = input_x[non_nan_idx]
-            input_y = input_y[non_nan_idx]
+        if int(df[self.data_config['outputs']].isna().sum()) > 0:
+            if self.data_config['ignore_nans']:
+                print("\n{} Ignoring NANs in predictions {}\n".format(10*'*', 10*'*'))
+            else:
+                if self.method == 'dual_attention' or self.outs > 1:
+                    raise ValueError
+                print('\n{} input dataframe contain nans  {}\n'.format(10*'*', 10*'*'))
+                y = df[df.columns[-1]]
+                nan_idx = y.isna()
+                nan_idx_t = nan_idx[self.lookback - 1:]
+                non_nan_idx = ~nan_idx_t.values
+                label_y = label_y[non_nan_idx]
+                input_x = input_x[non_nan_idx]
+                input_y = input_y[non_nan_idx]
 
-            assert np.isnan(label_y).sum() < 1, "label still contains nans"
+                assert np.isnan(label_y).sum() < 1, "label still contains nans"
 
         assert input_x.shape[0] == input_y.shape[0] == label_y.shape[0], "shapes are not same"
 

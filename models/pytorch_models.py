@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import os
 
 from .global_variables import torch
-nn = torch.nn
-DataLoader = torch.utils.data.DataLoader
-TensorDataset = torch.utils.data.TensorDataset
+# nn = torch.nn
+# DataLoader = torch.utils.data.DataLoader
+# TensorDataset = torch.utils.data.TensorDataset
 
 from .HARHN import HARHN
 from .imv_networks import IMVTensorLSTM
@@ -39,7 +39,7 @@ class HARHNModel(Model):
 
         self.epoch_scheduler = torch.optim.lr_scheduler.StepLR(self.opt, 20, gamma=0.9)
 
-        self.loss = nn.MSELoss()
+        self.loss = torch.nn.MSELoss()
 
         return
 
@@ -77,9 +77,9 @@ class HARHNModel(Model):
         target_train_t = to_torch_tensor(target_train)
         target_val_t = to_torch_tensor(target_val)
 
-        data_train_loader = DataLoader(TensorDataset(x_train_t, y_his_train_t, target_train_t), shuffle=True,
+        data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, y_his_train_t, target_train_t), shuffle=True,
                                        batch_size=self.data_config['batch_size'])
-        data_val_loader = DataLoader(TensorDataset(x_val_t, y_his_val_t, target_val_t), shuffle=False,
+        data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, y_his_val_t, target_val_t), shuffle=False,
                                      batch_size=self.data_config['batch_size'])
 
         min_val_loss = self.nn_config['HARHN_config']['min_val_loss']
@@ -151,7 +151,7 @@ class HARHNModel(Model):
         y_his_test_t = to_torch_tensor(y_his_test)
         target_test_t = to_torch_tensor(target_test)
 
-        data_test_loader = DataLoader(TensorDataset(x_test_t, y_his_test_t, target_test_t), shuffle=False,
+        data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, y_his_test_t, target_test_t), shuffle=False,
                                       batch_size=self.data_config['batch_size'])
 
         self.pt_model.load_state_dict(torch.load(self.saved_model))
@@ -209,7 +209,7 @@ class IMVLSTMModel(HARHNModel):
 
         self.epoch_scheduler = torch.optim.lr_scheduler.StepLR(self.opt, 20, gamma=0.9)
 
-        self.loss = nn.MSELoss()
+        self.loss = torch.nn.MSELoss()
 
         return
 
@@ -236,9 +236,9 @@ class IMVLSTMModel(HARHNModel):
         x_val_t = to_torch_tensor(x_val)
         target_val_t = to_torch_tensor(target_val)
 
-        data_train_loader = DataLoader(TensorDataset(x_train_t, target_train_t),
+        data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, target_train_t),
                                        shuffle=True, batch_size=self.data_config['batch_size'])
-        data_val_loader = DataLoader(TensorDataset(x_val_t, target_val_t),
+        data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, target_val_t),
                                      shuffle=False, batch_size=self.data_config['batch_size'])
 
         min_val_loss = self.nn_config['min_val_loss']
@@ -308,7 +308,7 @@ class IMVLSTMModel(HARHNModel):
         x_test_t = to_torch_tensor(x_test)
         target_test_t = to_torch_tensor(target_test)
 
-        data_test_loader = DataLoader(TensorDataset(x_test_t, target_test_t),
+        data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, target_test_t),
                                       shuffle=False, batch_size=self.data_config['batch_size'])
 
         with torch.no_grad():

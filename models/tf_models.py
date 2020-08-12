@@ -5,6 +5,7 @@ import numpy as np
 
 from main import Model
 from .global_variables import keras, tcn, ACTIVATIONS
+from models.layer_definition import MyTranspose, MyDot
 
 from .nbeats_keras import NBeatsNet
 from utils import plot_loss
@@ -138,6 +139,129 @@ class DualAttentionModel(Model):
 
         super(DualAttentionModel, self).__init__(**kwargs)
 
+    def _encoder(self, config, lstm2_seq=True):
+
+        self.en_densor_We = layers.Dense(self.lookback, name='enc_We')
+        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, name='encoder_LSTM')
+
+        enc_input = layers.Input(shape=(self.lookback, self.ins), name='enc_input')  # Enter time series data
+        # initialize the first cell state
+        s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state')
+        # initialize the first hidden state
+        h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state')
+
+        enc_attn_out = self.encoder_attention(enc_input, s0, h0)
+        print('encoder attention output:', enc_attn_out)
+        enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input')(enc_attn_out)
+        print('input to encoder LSTM:', enc_lstm_in)
+        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq,
+                                   name='LSTM_after_encoder')(enc_lstm_in)  # h_en_all
+        print('Output from LSTM out: ', enc_lstm_out)
+        return enc_lstm_out, enc_input,  h0, s0
+
+    def one_encoder_attention_step(self, h_prev, s_prev, x, t):
+        """
+        :param h_prev: previous hidden state
+        :param s_prev: previous cell state
+        :param x: (T,n),n is length of input series at time t,T is length of time series
+        :param t: time-step
+        :return: x_t's attention weights,total n numbers,sum these are 1
+        """
+        _concat = layers.Concatenate()([h_prev, s_prev])  # (none,1,2m)
+        result1 = self.en_densor_We(_concat)   # (none,1,T)
+        result1 = layers.RepeatVector(x.shape[2],)(result1)  # (none,n,T)
+        x_temp = MyTranspose(axis=(0, 2, 1))(x)  # X_temp(None,n,T)
+        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t))(x_temp)  # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
+        result3 = layers.Add()([result1, result2])  # (none,n,T)
+        result4 = layers.Activation(activation='tanh')(result3)  # (none,n,T)
+        result5 = MyDot(1)(result4)
+        result5 = MyTranspose(axis=(0, 2, 1), name='eq_8_' + str(t))(result5)  # etk/ equation 8
+        alphas = layers.Activation(activation='softmax', name='eq_9_'+str(t))(result5)  # equation 9
+
+        return alphas
+
+    def encoder_attention(self, _input, _s0, _h0):
+
+        s = _s0
+        _h = _h0
+        print('encoder cell state:', s)
+        # initialize empty list of outputs
+        attention_weight_t = None
+        for t in range(self.lookback):
+            print('encoder input:', _input)
+            _context = self.one_encoder_attention_step(_h, s, _input, t)  # (none,1,n)
+            print('context:', _context)
+            x = layers.Lambda(lambda x: _input[:, t, :])(_input)
+            x = layers.Reshape((1, self.ins))(x)
+            print('x:', x)
+            _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
+            if t != 0:
+                print('attention_weight_:'+str(t), attention_weight_t)
+                # attention_weight_t = layers.Merge(mode='concat', concat_axis=1,
+                #                                    name='attn_weight_'+str(t))([attention_weight_t,
+                #                                                                _context])
+                attention_weight_t = layers.Concatenate(axis=1)([attention_weight_t, _context])
+                print('salam')
+            else:
+                attention_weight_t = _context
+            print('Now attention_weight_:' + str(t), attention_weight_t)
+            print('encoder hidden state:', _h)
+            print('_:', _)
+            print('encoder cell state:', s)
+            print('time-step', t)
+            # break
+
+        # get the driving input series
+        enc_output = layers.Multiply(name='enc_output')([attention_weight_t, _input])  # equation 10 in paper
+        print('output from encoder attention:', enc_output)
+        return enc_output
+
+    def one_decoder_attention_step(self, _h_de_prev, _s_de_prev, _h_en_all, t):
+        """
+        :param _h_de_prev: previous hidden state
+        :param _s_de_prev: previous cell state
+        :param _h_en_all: (None,T,m),n is length of input series at time t,T is length of time series
+        :param t: int, timestep
+        :return: x_t's attention weights,total n numbers,sum these are 1
+        """
+        print('h_en_all:', _h_en_all)
+        # concatenation of the previous hidden state and cell state of the LSTM unit in eq 12
+        _concat = layers.Concatenate(name='eq_12_'+str(t))([_h_de_prev, _s_de_prev])  # (None,1,2p)
+        result1 = self.de_densor_We(_concat)   # (None,1,m)
+        result1 = layers.RepeatVector(self.lookback)(result1)  # (None,T,m)
+        result2 = MyDot(self.nn_config['enc_config']['m'])(_h_en_all)
+        print('result1:', result1)
+        print('result2:', result2)
+        result3 = layers.Add()([result1, result2])  # (None,T,m)
+        result4 = layers.Activation(activation='tanh')(result3)  # (None,T,m)
+        result5 = MyDot(1)(result4)
+
+        beta = layers.Activation(activation='softmax', name='eq_13_'+str(t))(result5)    # equation 13
+        _context = layers.Dot(axes=1, name='eq_14_'+str(t))([beta, _h_en_all])  # (1,m)  # equation 14 in paper
+        return _context
+
+    def decoder_attention(self, _h_en_all, _y, _s0, _h0):
+        s = _s0
+        _h = _h0
+        print('y_prev into decoder: ', _y)
+        for t in range(self.lookback-1):
+            y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)
+            y_prev = layers.Reshape((1, 1))(y_prev)   # (None,1,1)
+            print('\ny_prev at {}'.format(t), y_prev)
+            _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (None,1,20)
+            # concatenation of decoder input and computed context vector  # ??
+            y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
+            print('y_prev1 at {}:'.format(t), y_prev)
+            y_prev = layers.Dense(1, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
+            print('y_prev2 at {}:'.format(t), y_prev)
+            _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??
+            print('decoder hidden state:', _h)
+            print('_:', _)
+            print('decoder cell state:', s)
+
+        _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
+        return _h, _context
+
     def build_nn(self):
 
         dec_config = self.nn_config['dec_config']
@@ -175,7 +299,7 @@ class DualAttentionModel(Model):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        setattr(self, 'train_indices', indices)
+        indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
@@ -274,7 +398,7 @@ class LSTMAutoEncoder(Model):
         return
 
 
-class InputAttentionModel(Model):
+class InputAttentionModel(DualAttentionModel):
 
     def build_nn(self):
 
@@ -327,7 +451,7 @@ class InputAttentionModel(Model):
         return predicted, test_label
 
 
-class OutputAttentionModel(Model):
+class OutputAttentionModel(DualAttentionModel):
 
     def build_nn(self):
 
