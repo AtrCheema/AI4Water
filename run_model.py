@@ -1,6 +1,6 @@
 import pandas as pd
 
-from models import LSTMCNNModel
+from models import InputAttentionModel
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -41,7 +41,7 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 20
+    _nn_config['epochs'] = 40
     _nn_config['min_val_loss'] = 9999
     _nn_config['patience'] = 15
 
@@ -97,15 +97,15 @@ if __name__=="__main__":
 
     data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                          dropout=0.4,
-                                                         rec_dropout=0.5,
+                                                         rec_dropout=0.3,
                                                          lstm_act='relu',
                                                          batch_size=16,
                                                          lookback=15,
-                                                         lr=8.95e-4)
+                                                         lr=0.001)
 
     df = pd.read_csv('data/data.csv')
 
-    model = LSTMCNNModel(data_config=data_config,
+    model = InputAttentionModel(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   # intervals=total_intervals

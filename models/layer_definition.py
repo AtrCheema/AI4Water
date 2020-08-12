@@ -19,7 +19,6 @@ class MyDot(keras.layers.Layer):  # The parameters are (inputs, output_dim) only
         super(MyDot, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
-        print('Mydot:', keras.backend.dot(inputs, self.kernel))
         return keras.backend.dot(inputs, self.kernel)
 
     def compute_output_shape(self, input_shape):

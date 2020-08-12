@@ -18,7 +18,7 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 
@@ -443,23 +443,25 @@ class Model(AttributeStore):
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
-    def plot_activations(self, save=None, **kwargs):
+    def plot_activations(self, save: bool=False, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         activations = self.activations(**kwargs)
 
         for lyr_name, activation in activations.items():
             if np.ndim(activation) == 2 and activation.shape[1] > 1:
-                self._imshow(activation, lyr_name + " Activations", save)
+                self._imshow(activation, lyr_name + " Activations", save, os.path.join(self.path, lyr_name))
+            elif np.ndim(activation) == 3:
+                self._imshow_3d(activation, lyr_name, save=save)
             else:
                 print("ignoring activations for {} because it has shape {}".format(lyr_name, activation.shape))
 
-    def plot_weight_grads(self, save=None, **kwargs):
+    def plot_weight_grads(self, save: bool=False, **kwargs):
         """ plots gradient of all trainable weights"""
 
         gradients = self.gradients_of_weights(**kwargs)
         for lyr_name, gradient in gradients.items():
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                self._imshow(gradient, lyr_name + " Weight Gradients", save)
+                self._imshow(gradient, lyr_name + " Weight Gradients", save,  os.path.join(self.path, lyr_name))
             elif len(gradient) and np.ndim(gradient) < 3:
                 plt.plot(gradient)
                 plt.title(lyr_name + " Weight Gradients")
@@ -467,13 +469,13 @@ class Model(AttributeStore):
             else:
                 print("ignoring weight gradients for {} because it has shape {}".format(lyr_name, gradient.shape))
 
-    def plot_act_grads(self, save=None, **kwargs):
+    def plot_act_grads(self, save: bool=None, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         gradients = self.gradients_of_activations(**kwargs)
 
         for lyr_name, gradient in gradients.items():
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                self._imshow(gradient, lyr_name + " Activation Gradients", save)
+                self._imshow(gradient, lyr_name + " Activation Gradients", save, os.path.join(self.path, lyr_name))
             else:
                 print("ignoring activation gradients for {} because it has shape {}".format(lyr_name, gradient.shape))
 
@@ -569,9 +571,10 @@ class Model(AttributeStore):
             ax2.plot(obs, label='Observed')
             ax2.legend()
 
-            ax3.imshow(activation[:, :, idx].transpose())
+            im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto')
             ax3.set_ylabel('lookback')
             ax3.set_xlabel('samples')
+            fig.colorbar(im)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             if name is not None:
                 plt.savefig(name + str(idx), dpi=400, bbox_inches='tight')
@@ -583,11 +586,12 @@ class Model(AttributeStore):
         fig, axis = plt.subplots()
         fig.set_figheight(8)
         # for idx, ax in enumerate(axis):
-        axis.imshow(activations[sample, :, :].transpose())
+        im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
         axis.set_xlabel('lookback')
         axis.set_ylabel('inputs')
         print(self.data_config['inputs'])
         axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
+        fig.colorbar(im)
         if name is not None:
             plt.savefig(name + '_' + str(sample), dpi=400, bbox_inches='tight')
         plt.show()
@@ -633,15 +637,23 @@ class Model(AttributeStore):
 
         return x, y, target
 
-    def _imshow(self, img, label, save=None):
+    def _imshow(self, img, label, save=False, fname=None):
         plt.close('all')
-        plt.imshow(img)
+        plt.imshow(img, aspect='auto')
         plt.colorbar()
         plt.title(label)
-        if save is not None:
-            plt.savefig(os.path.join(self.path, save))
-        plt.show()
+        if save:
+            plt.savefig(os.path.join(self.path, fname))
+        else:
+            plt.show()
 
+    def _imshow_3d(self, activation, lyr_name, save=False):
+        act_2d = []
+        for i in range(activation.shape[0]):
+            act_2d.append(activation[i, :])
+        activation_2d = np.vstack(act_2d)
+        self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
+                     save, os.path.join(self.path, lyr_name))
 
 
 def unison_shuffled_copies(a, b, c):

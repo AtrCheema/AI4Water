@@ -200,7 +200,8 @@ class DualAttentionModel(Model):
                 # attention_weight_t = layers.Merge(mode='concat', concat_axis=1,
                 #                                    name='attn_weight_'+str(t))([attention_weight_t,
                 #                                                                _context])
-                attention_weight_t = layers.Concatenate(axis=1)([attention_weight_t, _context])
+                attention_weight_t = layers.Concatenate(axis=1,
+                                                        name='attn_weight_'+str(t))([attention_weight_t, _context])
                 print('salam')
             else:
                 attention_weight_t = _context
@@ -417,7 +418,7 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
-    def train_nn(self, st=0, en=None, indices=None, tensorboard=None):
+    def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
         indices = self.get_indices(indices)
 
@@ -428,7 +429,7 @@ class InputAttentionModel(DualAttentionModel):
         s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
         h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
 
-        history = self.fit([train_x, s0_train, h0_train], train_label, callbacks=tensorboard)
+        history = self.fit([train_x, s0_train, h0_train], train_label, **callbacks)
         plot_loss(history)
 
         return history
