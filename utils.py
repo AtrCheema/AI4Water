@@ -21,6 +21,8 @@ def plot_results(true, predicted, name=None):
     axis.plot(true, '-', label='True')
     axis.plot(predicted, '-', label='predicted')
     axis.legend(loc="best", fontsize=22, markerscale=4)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
 
     if name is not None:
         plt.savefig(name, dpi=300, bbox_inches='tight')

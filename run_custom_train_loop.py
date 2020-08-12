@@ -1,22 +1,10 @@
 from run_model import make_model
-from main import Model
+from models import Model
 from models.global_variables import keras, tf
 import pandas as pd
 
 
 class CustomModel(Model):
-
-    def build_nn(self):
-
-        inputs = keras.layers.Input(shape=(self.lookback, self.ins))
-
-        lstm_activations = self.add_LSTM(inputs, self.nn_config['lstm_config'])
-
-        predictions = keras.layers.Dense(self.outs, activation=tf.nn.elu)(lstm_activations)
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
@@ -53,6 +41,9 @@ class CustomModel(Model):
                     # on the GradientTape.
                     mask = tf.greater(tf.reshape(full_outputs, (-1,)), 0.0)  # (batch_size,)
                     y_obj = full_outputs[mask]  # (vals_present, 1)
+
+                    if y_obj.shape[0] < 1:  # no observations present for this batch so skip this
+                        continue
                     logits = self.k_model(x_batch_train, training=True)  # Logits for this minibatch
 
                     logits_obj = logits[mask]
@@ -62,6 +53,9 @@ class CustomModel(Model):
                 # Use the gradient tape to automatically retrieve
                 # the gradients of the trainable variables with respect to the loss.
                 grads = tape.gradient(loss_value, self.k_model.trainable_weights)
+
+                # grads = [tf.clip_by_norm(g, 1.0) for g in grads]
+                grads = [tf.clip_by_value(g, -1.0, 1.0) for g in grads]
 
                 # Run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
@@ -77,17 +71,24 @@ class CustomModel(Model):
         return loss_value
 
 
-data_config, nn_config, total_intervals = make_model(lstm_units=64,
-                             dropout=0.4,
-                             rec_dropout=0.5,
-                             lstm_act='relu',
-                             batch_size=32,
-                             lookback=15,
-                             lr=8.95e-5,
-                             ignore_nans=True,
-                                                     epochs=20)
+# input features in data_frame
+input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps', 'rel_hum']
+# column in dataframe to bse used as output/target
+outputs =  ['blaTEM_coppml']
 
-df = pd.read_csv('data/all_data_30min.csv')
+data_config, nn_config, total_intervals = make_model(lstm_units=64,
+                                                     dropout=0.4,
+                                                     rec_dropout=0.5,
+                                                     lstm_act='relu',
+                                                     batch_size=12,
+                                                     lookback=15,
+                                                     lr=8.95e-5,
+                                                     ignore_nans=False,
+                                                     inputs = input_features,
+                                                     outputs = outputs,
+                                                     epochs=50)
+
+df = pd.read_csv('data/all_data_30min.csv')  # must be 2d dataframe
 
 model = CustomModel(data_config=data_config,
                   nn_config=nn_config,
@@ -99,4 +100,5 @@ model.build_nn()
 
 history = model.train_nn(indices='random', tensorboard=True)
 
-# y, obs = model.predict()
+test_pred, test_obs = model.predict(indices=model.test_indices)
+train_pred, train_obs = model.predict(indices=model.train_indices)

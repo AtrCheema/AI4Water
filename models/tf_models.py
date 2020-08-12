@@ -64,7 +64,7 @@ class LSTMCNNModel(Model):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        setattr(self, 'train_indices', indices)
+        indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
@@ -376,6 +376,8 @@ class LSTMAutoEncoder(Model):
         setattr(self, 'method', 'lstm_autoencoder')
 
         # define encoder
+        enc_config = self.nn_config['enc_config']
+
         inputs = layers.Input(shape=(self.lookback, self.ins))
         encoder = layers.LSTM(100, activation='relu')(inputs)
         # define predict decoder
@@ -417,7 +419,7 @@ class InputAttentionModel(DualAttentionModel):
 
     def train_nn(self, st=0, en=None, indices=None, tensorboard=None):
 
-        setattr(self, 'train_indices', indices)
+        indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from models import DualAttentionModel
+from models import LSTMCNNModel
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -41,7 +41,7 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 10
+    _nn_config['epochs'] = 20
     _nn_config['min_val_loss'] = 9999
     _nn_config['patience'] = 15
 
@@ -64,17 +64,16 @@ def make_model(**kwargs):
     _data_config = dict()
     _data_config['lookback'] = 15
     _data_config['batch_size'] = 32
-    _data_config['val_fraction'] = 0.2
+    _data_config['val_fraction'] = 0.3  # fraction of data to be used for validation
     _data_config['CACHEDATA'] = True
-    _data_config['ignore_nans'] = False
+    _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
 
 
 
-    # data_config['inputs'] = ['tmin', 'tmax', 'slr', 'WTEMP(C)', 'FLOW_OUTcms', 'SED_OUTtons', 'NO3_OUTkg']
-    # data_config['outputs'] = ['obs_chla']
-    _data_config['inputs'] = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
-                              'rel_hum']
-    _data_config['outputs'] = ['blaTEM_coppml']
+    # input features in data_frame
+    _data_config['inputs'] = ['tmin', 'tmax', 'slr', 'WTEMP(C)',   'FLOW_OUTcms', 'SED_OUTtons', 'NO3_OUTkg']
+    # column in dataframe to bse used as output/target
+    _data_config['outputs'] = ['obs_chla']
 
     for key, val in kwargs.items():
         if key in _data_config:
@@ -100,13 +99,13 @@ if __name__=="__main__":
                                                          dropout=0.4,
                                                          rec_dropout=0.5,
                                                          lstm_act='relu',
-                                                         batch_size=32,
+                                                         batch_size=16,
                                                          lookback=15,
-                                                         lr=8.95e-5)
+                                                         lr=8.95e-4)
 
-    df = pd.read_csv('data/nk_data.csv')
+    df = pd.read_csv('data/data.csv')
 
-    model = DualAttentionModel(data_config=data_config,
+    model = LSTMCNNModel(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   # intervals=total_intervals

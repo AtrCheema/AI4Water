@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import os
 from sklearn.model_selection import train_test_split
+import keract
 
 from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path
@@ -100,6 +101,13 @@ class Model(AttributeStore):
     @KModel.setter
     def KModel(self, x):
         self._k_model = x
+
+    @property
+    def layer_names(self):
+        _all_layers = []
+        for layer in self.k_model.layers:
+            _all_layers.append(layer.name)
+        return _all_layers
 
     def fetch_data(self, start: int, ende=None,
                    shuffle: bool = True,
@@ -220,7 +228,7 @@ class Model(AttributeStore):
                 else:
                     raise ValueError
             idx = np.arange(tot_obs - self.lookback)
-            train_indices, test_idx = train_test_split(idx, test_size=0.5, random_state=313)
+            train_indices, test_idx = train_test_split(idx, test_size=self.data_config['val_fraction'], random_state=313)
             setattr(self, 'test_indices', list(test_idx))
             indices = list(train_indices)
 
@@ -271,6 +279,12 @@ class Model(AttributeStore):
         return predicted, test_label
 
     def process_results(self, true, predicted, name=None):
+
+        if np.isnan(true).sum() > 0:
+            mask = np.invert(np.isnan(true.reshape(-1,)))
+            true = true[mask]
+            predicted = predicted[mask]
+
         errors = FindErrors(true, predicted)
         for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
             print(er, getattr(errors, er)())
@@ -300,14 +314,14 @@ class Model(AttributeStore):
         else:
             name = 'lstm_lyr'
 
-        lstm_lyr = layers.LSTM(config['lstm_units'],
+        lstm_layer = layers.LSTM(config['lstm_units'],
                                # input_shape=(self.lookback, self.ins),
                                dropout=config['dropout'],
                                recurrent_dropout=config['rec_dropout'],
                                return_sequences=seq,
                                name=name)(inputs)
 
-        lstm_activations = ACTIVATIONS[config['lstm_act']](name='lstm_act')(lstm_lyr)
+        lstm_activations = ACTIVATIONS[config['lstm_act']](name='lstm_act')(lstm_layer)
 
         return lstm_activations
 
@@ -363,7 +377,7 @@ class Model(AttributeStore):
             else:
                 if self.method == 'dual_attention' or self.outs > 1:
                     raise ValueError
-                print('\n{} input dataframe contain nans  {}\n'.format(10*'*', 10*'*'))
+                print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
                 y = df[df.columns[-1]]
                 nan_idx = y.isna()
                 nan_idx_t = nan_idx[self.lookback - 1:]
@@ -377,6 +391,99 @@ class Model(AttributeStore):
         assert input_x.shape[0] == input_y.shape[0] == label_y.shape[0], "shapes are not same"
 
         return input_x, input_y, label_y
+
+    def activations(self, st=0, en=None, indices=None):
+
+        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False,
+                                                     cache_data=False,
+                                                     indices=indices)
+
+        activations = keract.get_activations(self.k_model, test_x, auto_compile=True)
+        return activations
+
+    def display_activations(self, layer_name: str=None, st=0, en=None, indices=None, **kwargs):
+        # not working currently
+        activations = self.activations(st=st, en=en, indices=indices)
+        if layer_name is None:
+            activations = activations
+        else:
+            activations = activations[layer_name]
+
+        keract.display_activations(activations=activations,**kwargs)
+
+    def gradients_of_weights(self, st=0, en=None, indices=None) -> dict:
+        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False,
+                                                     cache_data=False,
+                                                     indices=indices)
+        return keract.get_gradients_of_trainable_weights(self.k_model, test_x, test_label)
+
+    def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
+        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False,
+                                                     cache_data=False,
+                                                     indices=indices)
+
+        return keract.get_gradients_of_activations(self.k_model, test_x, test_label, layer_names=layer_name)
+
+    def trainable_weights(self):
+        """ returns all trainable weights as arrays in a dictionary"""
+        weights = {}
+        for weight in self.k_model.trainable_weights:
+           weights[weight.name] = weight.numpy()
+        return weights
+
+    def plot_weights(self, save=None):
+        weights = self.trainable_weights()
+        for _name, weight in weights.items():
+            if np.ndim(weight) == 2 and weight.shape[1] > 1:
+                self._imshow(weight, _name + " Weights", save)
+            elif len(weight) > 1 and np.ndim(weight) < 3:
+                plt.plot(weight)
+                plt.title( _name + " Weights")
+                plt.show()
+            else:
+                print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
+
+    def plot_activations(self, save=None, **kwargs):
+        """ plots activations of intermediate layers except input and output"""
+        activations = self.activations(**kwargs)
+
+        for lyr_name, activation in activations.items():
+            if np.ndim(activation) == 2 and activation.shape[1] > 1:
+                self._imshow(activation, lyr_name + " Activations", save)
+            else:
+                print("ignoring activations for {} because it has shape {}".format(lyr_name, activation.shape))
+
+    def plot_weight_grads(self, save=None, **kwargs):
+        """ plots gradient of all trainable weights"""
+
+        gradients = self.gradients_of_weights(**kwargs)
+        for lyr_name, gradient in gradients.items():
+            if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
+                self._imshow(gradient, lyr_name + " Weight Gradients", save)
+            elif len(gradient) and np.ndim(gradient) < 3:
+                plt.plot(gradient)
+                plt.title(lyr_name + " Weight Gradients")
+                plt.show()
+            else:
+                print("ignoring weight gradients for {} because it has shape {}".format(lyr_name, gradient.shape))
+
+    def plot_act_grads(self, save=None, **kwargs):
+        """ plots activations of intermediate layers except input and output"""
+        gradients = self.gradients_of_activations(**kwargs)
+
+        for lyr_name, gradient in gradients.items():
+            if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
+                self._imshow(gradient, lyr_name + " Activation Gradients", save)
+            else:
+                print("ignoring activation gradients for {} because it has shape {}".format(lyr_name, gradient.shape))
+
+    def view_model(self, **kwargs):
+        """ shows all activations, weights and gradients of the keras model."""
+        self.plot_act_grads(**kwargs)
+        self.plot_weight_grads(**kwargs)
+        self.plot_activations(**kwargs)
+        self.plot_weights()
+        return
 
     def get_activations(self, st, en, lyr_name='attn_weight_8'):
         """
@@ -403,9 +510,9 @@ class Model(AttributeStore):
             activations = intermediate_model.predict([test_x, test_y, s0_test, h0_test, s_de0_test, h_de0_test],
                                                      batch_size=bs,
                                                      verbose=1)
-        elif self.method in ['lstm_cnn', 'simple_lstm', 'cnn_lstm', 'lstm_autoencoder']:
+        elif self.method.upper() in ['LSTM_CNN', 'SIMPLE_LSTM', 'CNN_LSTM', 'LSTM_AUTOENCODER']:
 
-            if self.method == 'cnn_lstm':
+            if self.method == 'CNN_LSTM':
                 subseq = self.nn_config['subsequences']
                 examples = test_x.shape[0]
                 timesteps = self.lookback // subseq
@@ -526,6 +633,14 @@ class Model(AttributeStore):
 
         return x, y, target
 
+    def _imshow(self, img, label, save=None):
+        plt.close('all')
+        plt.imshow(img)
+        plt.colorbar()
+        plt.title(label)
+        if save is not None:
+            plt.savefig(os.path.join(self.path, save))
+        plt.show()
 
 
 
