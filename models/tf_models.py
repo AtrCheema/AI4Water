@@ -89,6 +89,17 @@ class CNNLSTMModel(Model):
 
         super(CNNLSTMModel, self).__init__(**kwargs)
 
+    def run_paras(self, **kwargs):
+
+        test_x, train_y, train_label = self.fetch_data(**kwargs)
+
+        subseq = self.nn_config['subsequences']
+        examples = test_x.shape[0]
+        timesteps = self.lookback // subseq
+        test_x = test_x.reshape(examples, subseq, timesteps, self.ins)
+
+        return test_x, train_label
+
     def build_nn(self):
         """
         Here we sub-divide each sample into further subsequences. The CNN model will interpret each sub-sequence
@@ -419,18 +430,21 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
+    def run_paras(self, **kwargs):
+        train_x, train_y, train_label = self.fetch_data(**kwargs)
+
+        s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
+        h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+        return [train_x, s0_train, h0_train], train_label
+
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
         indices = self.get_indices(indices)
 
-        train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
-                                                        indices=indices)
+        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
-        s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+        history = self.fit(inputs, outputs, **callbacks)
 
-        history = self.fit([train_x, s0_train, h0_train], train_label, **callbacks)
         plot_loss(history)
 
         return history
@@ -439,7 +453,7 @@ class InputAttentionModel(DualAttentionModel):
 
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(st=st, en=ende, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 

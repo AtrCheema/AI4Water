@@ -45,6 +45,7 @@ class AttributeStore(object):
     auto_enc_composite = None
     de_LSTM_cell = None
     de_densor_We = None
+    run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
 
 
 class Model(AttributeStore):
@@ -109,7 +110,7 @@ class Model(AttributeStore):
             _all_layers.append(layer.name)
         return _all_layers
 
-    def fetch_data(self, start: int, ende=None,
+    def fetch_data(self, st: int, en=None,
                    shuffle: bool = True,
                    cache_data=True,
                    noise: int = 0,
@@ -117,7 +118,7 @@ class Model(AttributeStore):
 
         if indices is not None:
             assert isinstance(indices, list), "indices must be list"
-            if ende is not None or start != 0:
+            if en is not None or st != 0:
                 raise ValueError
 
         df = self.data
@@ -142,12 +143,12 @@ class Model(AttributeStore):
         data = scaler.fit_transform(df)
         df = pd.DataFrame(data)
 
-        if ende is None:
-            ende = df.shape[0]
+        if en is None:
+            en = df.shape[0]
 
         if self.intervals is None:
 
-            df = df[start:ende]
+            df = df[st:en]
             df.columns = self.data_config['inputs'] + self.data_config['outputs']
 
             x, y, label = self.get_data(df,
@@ -161,8 +162,8 @@ class Model(AttributeStore):
                 label = label[indices]
         else:
             xs, ys, labels = [], [], []
-            for st, en in self.intervals:
-                df1 = df[st:en]
+            for _st, _en in self.intervals:
+                df1 = df[_st:_en]
 
                 df.columns = self.data_config['inputs'] + self.data_config['outputs']
                 df1.columns = self.data_config['inputs'] + self.data_config['outputs']
@@ -174,9 +175,9 @@ class Model(AttributeStore):
                     labels.append(label)
 
             if indices is None:
-                x = np.vstack(xs)[start:ende]
-                y = np.vstack(ys)[start:ende]
-                label = np.vstack(labels)[start:ende]
+                x = np.vstack(xs)[st:en]
+                y = np.vstack(ys)[st:en]
+                label = np.vstack(labels)[st:en]
             else:
                 x = np.vstack(xs)[indices]
                 y = np.vstack(ys)[indices]
@@ -237,47 +238,37 @@ class Model(AttributeStore):
 
         return indices
 
+    def run_paras(self, **kwargs):
+
+        train_x, train_y, train_label = self.fetch_data(**kwargs)
+        return train_x, train_label
+
+
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
         indices = self.get_indices(indices)
 
-        train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
-                                                        indices=indices)
+        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
-        if self.method == 'CNN_LSTM':
-            subseq = self.nn_config['subsequences']
-            examples = train_x.shape[0]
-            timesteps = self.lookback // subseq
-            train_x = train_x.reshape(examples, subseq, timesteps, self.ins)
-
-        history = self.fit(train_x, train_label, **callbacks)
+        history = self.fit(inputs, outputs, **callbacks)
 
         plot_loss(history)
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None):
+    def predict(self, st=0, en=None, indices=None):
 
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=ende, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
+        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
-        if self.method == 'CNN_LSTM':
-            subseq = self.nn_config['subsequences']
-            examples = test_x.shape[0]
-            timesteps = self.lookback // subseq
-            test_x = test_x.reshape(examples, subseq, timesteps, self.ins)
-
-        predicted = self.k_model.predict(x=test_x,
-                                         batch_size=test_x.shape[0],
+        predicted = self.k_model.predict(x=inputs,
+                                         batch_size=self.data_config['batch_size'],
                                          verbose=1)
 
-        self.process_results(test_label, predicted, str(st) + '_' + str(ende))
+        self.process_results(outputs, predicted, str(st) + '_' + str(en))
 
-        return predicted, test_label
+        return predicted, outputs
 
     def process_results(self, true, predicted, name=None):
 
@@ -393,18 +384,16 @@ class Model(AttributeStore):
 
         return input_x, input_y, label_y
 
-    def activations(self, st=0, en=None, indices=None):
+    def activations(self,layer_names=None, **kwargs):
+        # if layer names are not specified, this will get get activations of allparameters
+        inputs, outputs = self.run_paras(**kwargs)
 
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
-
-        activations = keract.get_activations(self.k_model, test_x, auto_compile=True)
+        activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
         return activations
 
     def display_activations(self, layer_name: str=None, st=0, en=None, indices=None, **kwargs):
-        # not working currently
-        activations = self.activations(st=st, en=en, indices=indices)
+        # not working currently because it requres the shape of activations to be (1, output_h, output_w, num_filters)
+        activations = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
         if layer_name is None:
             activations = activations
         else:
@@ -413,13 +402,13 @@ class Model(AttributeStore):
         keract.display_activations(activations=activations,**kwargs)
 
     def gradients_of_weights(self, st=0, en=None, indices=None) -> dict:
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(st=st, en=en, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
         return keract.get_gradients_of_trainable_weights(self.k_model, test_x, test_label)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(st=st, en=en, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 
@@ -445,7 +434,8 @@ class Model(AttributeStore):
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
     def plot_activations(self, save: bool=False, **kwargs):
-        """ plots activations of intermediate layers except input and output"""
+        """ plots activations of intermediate layers except input and output.
+        If called without any arguments then it will plot activations of all layers."""
         activations = self.activations(**kwargs)
 
         for lyr_name, activation in activations.items():
@@ -488,47 +478,6 @@ class Model(AttributeStore):
         self.plot_weights()
         return
 
-    def get_activations(self, st, en, lyr_name='attn_weight_8'):
-        """
-        lyr_name: attn_weight_8, 'enc_lstm_input' or any other valid layer name
-        """
-
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=en, shuffle=False)
-
-        s0_test = h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
-
-        bs = test_x.shape[0]  # self.data_config['batch_size']
-
-        intermediate_model = KModel(
-            inputs=self.k_model.inputs,
-            outputs=self.k_model.get_layer(name=lyr_name).output)
-
-        if self.method == 'input_attention':
-
-            activations = intermediate_model.predict([test_x, s0_test, h0_test],
-                                                     batch_size=bs,
-                                                     verbose=1)
-        elif self.method == 'dual_attention':
-            h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
-            activations = intermediate_model.predict([test_x, test_y, s0_test, h0_test, s_de0_test, h_de0_test],
-                                                     batch_size=bs,
-                                                     verbose=1)
-        elif self.method.upper() in ['LSTM_CNN', 'SIMPLE_LSTM', 'CNN_LSTM', 'LSTM_AUTOENCODER']:
-
-            if self.method == 'CNN_LSTM':
-                subseq = self.nn_config['subsequences']
-                examples = test_x.shape[0]
-                timesteps = self.lookback // subseq
-                test_x = test_x.reshape(examples, subseq, timesteps, self.ins)
-
-            activations = intermediate_model.predict(test_x,
-                                                     batch_size=bs,
-                                                     verbose=1)
-        else:
-            raise ValueError
-
-        return activations, test_x
-
     def plot_act_along_lookback(self, activations, sample=0):
 
         activation = activations[sample, :, :]
@@ -546,11 +495,11 @@ class Model(AttributeStore):
         plt.show()
         return
 
-    def plot_act_along_inputs(self, st, en, lyr_name, name=None):
+    def plot_act_along_inputs(self, st, en, layer_name, name=None):
 
         pred, obs = self.predict(st, en)
 
-        activation, data = self.get_activations(st, en, lyr_name)
+        activation, data = self.activations(st=st, en=en, layer_names=layer_name)
 
         data = data[:, 0, :]
 

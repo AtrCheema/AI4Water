@@ -1,6 +1,6 @@
 import pandas as pd
 
-from models import InputAttentionModel
+from models import CNNLSTMModel
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -43,7 +43,7 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 40
+    _nn_config['epochs'] = 4
     _nn_config['min_val_loss'] = 9999
     _nn_config['patience'] = 15
 
@@ -114,7 +114,7 @@ if __name__=="__main__":
 
     df = pd.read_csv('data/all_data_30min.csv')
 
-    model = InputAttentionModel(data_config=data_config,
+    model = CNNLSTMModel(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   intervals=total_intervals
@@ -126,4 +126,4 @@ if __name__=="__main__":
     history = model.train_nn(indices='random')
 
     # y, obs = model.predict()
-    model.activations(0, 1400)
+    acts = model.activations(st=0, en=1400)
