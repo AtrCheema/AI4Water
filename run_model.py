@@ -21,7 +21,9 @@ def make_model(**kwargs):
 
     _nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
                                'n_s': 20,  # length of hidden state m
-                               'm': 20  # length of hidden state m
+                               'm': 20,  # length of hidden state m
+                               'enc_lstm1_act': None,
+                                'enc_lstm2_act': None,
                                }
     _nn_config['dec_config'] = {
         'p': 30,
@@ -71,9 +73,10 @@ def make_model(**kwargs):
 
 
     # input features in data_frame
-    _data_config['inputs'] = ['tmin', 'tmax', 'slr', 'WTEMP(C)',   'FLOW_OUTcms', 'SED_OUTtons', 'NO3_OUTkg']
+    _data_config['inputs'] = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
+                      'rel_hum']
     # column in dataframe to bse used as output/target
-    _data_config['outputs'] = ['obs_chla']
+    _data_config['outputs'] = ['blaTEM_coppml']
 
     for key, val in kwargs.items():
         if key in _data_config:
@@ -94,6 +97,10 @@ def make_model(**kwargs):
     return _data_config, _nn_config, _total_intervals
 
 if __name__=="__main__":
+    input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
+                      'rel_hum']
+    # column in dataframe to bse used as output/target
+    outputs = ['blaTEM_coppml']
 
     data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                          dropout=0.4,
@@ -101,14 +108,16 @@ if __name__=="__main__":
                                                          lstm_act='relu',
                                                          batch_size=16,
                                                          lookback=15,
+                                                         inputs = input_features,
+                                                       outputs = outputs,
                                                          lr=0.001)
 
-    df = pd.read_csv('data/data.csv')
+    df = pd.read_csv('data/all_data_30min.csv')
 
     model = InputAttentionModel(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
-                  # intervals=total_intervals
+                  intervals=total_intervals
                   )
 
 
@@ -116,4 +125,5 @@ if __name__=="__main__":
 
     history = model.train_nn(indices='random')
 
-    y, obs = model.predict()
+    # y, obs = model.predict()
+    model.activations(0, 1400)

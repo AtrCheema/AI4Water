@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import os
 from sklearn.model_selection import train_test_split
-import keract
+import keract_mod as keract
 
 from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path
@@ -165,6 +165,7 @@ class Model(AttributeStore):
                 df1 = df[st:en]
 
                 df.columns = self.data_config['inputs'] + self.data_config['outputs']
+                df1.columns = self.data_config['inputs'] + self.data_config['outputs']
 
                 if df1.shape[0] > 0:
                     x, y, label = self.get_data(df1, len(self.data_config['inputs']), len(self.data_config['outputs']))

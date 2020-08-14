@@ -142,7 +142,8 @@ class DualAttentionModel(Model):
     def _encoder(self, config, lstm2_seq=True):
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We')
-        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, name='encoder_LSTM')
+        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=config['enc_lstm1_act'],
+                                        name='encoder_LSTM')
 
         enc_input = layers.Input(shape=(self.lookback, self.ins), name='enc_input')  # Enter time series data
         # initialize the first cell state
@@ -154,7 +155,7 @@ class DualAttentionModel(Model):
         print('encoder attention output:', enc_attn_out)
         enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input')(enc_attn_out)
         print('input to encoder LSTM:', enc_lstm_in)
-        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq,
+        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=config['enc_lstm2_act'],
                                    name='LSTM_after_encoder')(enc_lstm_in)  # h_en_all
         print('Output from LSTM out: ', enc_lstm_out)
         return enc_lstm_out, enc_input,  h0, s0
