@@ -62,24 +62,6 @@ class LSTMCNNModel(Model):
 
         return
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
-
-        indices = self.get_indices(indices)
-
-        train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
-                                                        indices=indices)
-
-        if self.auto_enc_composite:
-            outputs = [train_x, train_label]
-            history = self.fit(train_x, outputs, **callbacks)
-        else:
-            history = self.fit(train_x, train_label, **callbacks)
-
-        plot_loss(history)
-
-        return history
-
 
 class CNNLSTMModel(Model):
 
@@ -314,7 +296,7 @@ class DualAttentionModel(Model):
 
         indices = self.get_indices(indices)
 
-        train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
+        train_x, train_y, train_label = self.fetch_data(st=st, en=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
@@ -334,7 +316,7 @@ class DualAttentionModel(Model):
 
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(st=st, en=ende, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 
@@ -411,6 +393,29 @@ class LSTMAutoEncoder(Model):
         self.k_model = self.compile(inputs, outputs)
 
         return
+
+    def run_paras(self, **kwargs):
+
+        train_x, train_y, train_label = self.fetch_data(**kwargs)
+
+        if self.auto_enc_composite:
+            outputs = [train_x, train_label]
+        else:
+            outputs = train_label
+
+        return train_x, outputs
+
+    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+
+        indices = self.get_indices(indices)
+
+        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
+
+        history = self.fit(inputs, outputs, **callbacks)
+
+        plot_loss(history)
+
+        return history
 
 
 class InputAttentionModel(DualAttentionModel):
@@ -507,7 +512,7 @@ class OutputAttentionModel(DualAttentionModel):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
+        train_x, train_y, train_label = self.fetch_data(st=st, en=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
@@ -523,7 +528,7 @@ class OutputAttentionModel(DualAttentionModel):
     def predict(self, st=0, ende=None, indices=None):
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(start=st, ende=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(st=st, en=ende, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 

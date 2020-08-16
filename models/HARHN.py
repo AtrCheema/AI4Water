@@ -1,9 +1,8 @@
-# import torch
-# from torch import nn
-from .global_variables import torch
+
 import numpy as np
 import pandas as pd
 
+from .global_variables import torch
 
 class HSGLayer(torch.nn.Module):
     def __init__(self, n_units, init_gates_closed):
@@ -142,6 +141,7 @@ class HARHN(torch.nn.Module):
     def __init__(self, n_conv_layers, lookback, in_feats, target_feats, n_units_enc=32, n_units_dec=32,
                  enc_input_size=32,
                  rec_depth=3,
+                 use_predicted_output=True,
                  out_feats=1, n_filters=32, filter_size=5):
         super(HARHN, self).__init__()
         assert n_conv_layers > 0
@@ -150,6 +150,7 @@ class HARHN(torch.nn.Module):
         self.n_units_dec = n_units_dec
         self.rec_depth = rec_depth
         self.T = lookback
+        self.use_predicted_output = use_predicted_output
         self.convs = torch.nn.ModuleList([ConvBlock(lookback, in_feats, n_filters=n_filters,
                                               filter_size=filter_size) if i == 0 else ConvBlock(lookback, n_filters,
                                                                                                 n_filters=n_filters,
@@ -166,7 +167,9 @@ class HARHN(torch.nn.Module):
         self.W = torch.nn.Linear(n_units_dec, target_feats)
         self.V = torch.nn.Linear(rec_depth * n_units_enc, target_feats)
 
-    def forward(self, x, y):
+    def forward(self, x, y_prev_t):
+        if self.use_predicted_output:
+            y_prev_t = y_prev_t[0:x.shape[0]]
         for conv in range(self.n_convs):
             x = self.convs[conv](x)
         x = self.conv_to_enc(x)
@@ -185,30 +188,22 @@ class HARHN(torch.nn.Module):
                 d_t_k = torch.sum(h_t_k * alpha_t_k, dim=1)
                 d_t.append(d_t_k)
             d_t = torch.cat(d_t, dim=1)
-            y_tilda_t = self.W_tilda(y[:, t, :]) + self.V_tilda(d_t)
-            s, _ = self.RHNDecoder(y_tilda_t, s)
+            if self.use_predicted_output:
+                y_tilda_t, s, y_prev_t = self._last_v2(y_prev_t, d_t, s)
+            else:
+                y_tilda_t, s, _ = self._last_v1(y_prev_t, d_t, s, t)
 
         y_t = self.W(s) + self.V(d_t)
-        return y_t
+        return y_t, y_prev_t
 
+    def _last_v2(self, y_prev_t, d_t, s):
+        y_tilda_t = self.W_tilda(y_prev_t) + self.V_tilda(d_t)
+        s, _ = self.RHNDecoder(y_tilda_t, s)
+        y_prev_t = self.W(s) + self.V(d_t)
+        return y_tilda_t, s, y_prev_t
 
-def prepare_batches(data: pd.DataFrame, timesteps, target):
+    def _last_v1(self, y_prev_t, d_t, s, t):
+        y_tilda_t = self.W_tilda(y_prev_t) + self.V_tilda(d_t)
+        s, _ = self.RHNDecoder(y_tilda_t[:, t, :], s)
 
-    x = np.zeros((len(data), timesteps, data.shape[1] - 1))
-    y = np.zeros((len(data), timesteps, 1))
-
-    for i, name in enumerate(list(data.columns[:-1])):
-        for j in range(timesteps):
-            x[:, j, i] = data[name].shift(timesteps - j - 1).fillna(method="bfill")
-
-    for j in range(timesteps):
-        y[:, j, 0] = data[target].shift(timesteps - j - 1).fillna(method="bfill")
-
-    prediction_horizon = 1
-    target = data[target].shift(-prediction_horizon).fillna(method="ffill").values
-
-    x = x[timesteps:]
-    y = y[timesteps:]
-    target = target[timesteps:]
-
-    return x, y, target
+        return y_tilda_t, s, y_prev_t

@@ -561,11 +561,6 @@ class Model(AttributeStore):
 
     def prepare_batches(self, data: pd.DataFrame, target: str):
 
-        scaler = MinMaxScaler()
-        cols = data.columns
-        data = scaler.fit_transform(data)
-        data = pd.DataFrame(data, columns=cols)
-
         assert self.outs == 1
 
         x = np.zeros((len(data), self.lookback, data.shape[1] - 1))

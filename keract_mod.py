@@ -1,3 +1,5 @@
+# This code is exact copy and past of keract library except few changes from lines 156 to 170 where I added one
+# if else statement
 import json
 import os
 from collections import OrderedDict
@@ -152,19 +154,22 @@ def _get_nodes(module, output_format, nested=False, layer_names=[]):
         node_dict = OrderedDict()
         # print('Layers:', module._layers)
         for m in module._layers:
-            key = n_(m.output, output_format_=output_format, nested=nested)
-            if nested:
-                nodes = _get_nodes(m, output_format,
-                                   nested=nested,
-                                   layer_names=layer_names)
+            if isinstance(m.output, list):
+                pass
             else:
-                if bool(layer_names) and key in layer_names:
-                    nodes = OrderedDict([(key, m.output)])
-                elif not bool(layer_names):
-                    nodes = OrderedDict([(key, m.output)])
+                key = n_(m.output, output_format_=output_format, nested=nested)
+                if nested:
+                    nodes = _get_nodes(m, output_format,
+                                       nested=nested,
+                                       layer_names=layer_names)
                 else:
-                    nodes = OrderedDict()
-            node_dict.update(nodes)
+                    if bool(layer_names) and key in layer_names:
+                        nodes = OrderedDict([(key, m.output)])
+                    elif not bool(layer_names):
+                        nodes = OrderedDict([(key, m.output)])
+                    else:
+                        nodes = OrderedDict()
+                node_dict.update(nodes)
         return node_dict
 
     elif bool(layer_names) and module_name in layer_names:

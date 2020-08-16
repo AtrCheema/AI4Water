@@ -1,6 +1,6 @@
 import pandas as pd
 
-from models import CNNLSTMModel
+from models import HARHNModel
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -43,7 +43,7 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 4
+    _nn_config['epochs'] = 40
     _nn_config['min_val_loss'] = 9999
     _nn_config['patience'] = 15
 
@@ -69,6 +69,7 @@ def make_model(**kwargs):
     _data_config['val_fraction'] = 0.3  # fraction of data to be used for validation
     _data_config['CACHEDATA'] = True
     _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
+    _data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
 
 
 
@@ -114,7 +115,7 @@ if __name__=="__main__":
 
     df = pd.read_csv('data/all_data_30min.csv')
 
-    model = CNNLSTMModel(data_config=data_config,
+    model = HARHNModel(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   intervals=total_intervals
