@@ -235,25 +235,14 @@ class IMVLSTMModel(HARHNModel):
         self.betas = None
         super(IMVLSTMModel, self).__init__(**kwargs)
 
-    def prepare_batches(self, data, target):
-        x = np.zeros((len(data), self.lookback, data.shape[1]))
-
-        for i, name in enumerate(list(data.columns)):
-            # print(name)
-            for j in range(self.lookback):
-                x[:, j, i] = data[name].shift(self.lookback - j - 1).fillna(method="bfill")
-
-        prediction_horizon = 1
-        target = data[target].shift(-prediction_horizon).fillna(method="ffill").values
-
-        x = x[self.lookback:]
-        target = target[self.lookback:]
-
-        return x, target
-
     def build_nn(self):
 
-        self.pt_model = IMVTensorLSTM(self.ins + self.outs, self.outs, self.data_config['batch_size']).cuda()
+        if self.use_predicted_output:
+            ins = self.ins
+        else:
+            ins = self.ins + self.outs
+
+        self.pt_model = IMVTensorLSTM(ins, self.outs, self.data_config['batch_size']).cuda()
 
         self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.nn_config['lr'])
 
@@ -265,8 +254,10 @@ class IMVLSTMModel(HARHNModel):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        x, target = self.prepare_batches(self.data[st:en], self.data_config['outputs'][0])
+        x, y_h, target = self.prepare_batches(self.data[st:en], self.data_config['outputs'][0])
 
+        if not self.use_predicted_output:
+            x = np.dstack([x, y_h])
         x_train, x_val, target_train, target_val = train_test_split(x, target, test_size=self.data_config['val_fraction'])
 
         self.min_max = {
@@ -350,7 +341,10 @@ class IMVLSTMModel(HARHNModel):
     def predict(self, st=0, ende=None, indices=None):
         self.pt_model.load_state_dict(torch.load(self.saved_model))
 
-        x_test, target_test = self.prepare_batches(self.data[st:ende], self.data_config['outputs'][0])
+        x_test, y_h, target_test = self.prepare_batches(self.data[st:ende], self.data_config['outputs'][0])
+
+        if not self.use_predicted_output:
+            x_test = np.dstack([x_test, y_h])
 
         x_test = (x_test - self.min_max['x_min']) / (self.min_max['x_max'] - self.min_max['x_min'])
         target_test = (target_test - self.min_max['target_min']) / (self.min_max['target_max'] - self.min_max['target_min'])
