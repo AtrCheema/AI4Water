@@ -73,7 +73,7 @@ class CNNLSTMModel(Model):
 
     def run_paras(self, **kwargs):
 
-        test_x, train_y, train_label = self.fetch_data(**kwargs)
+        test_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
 
         subseq = self.nn_config['subsequences']
         examples = test_x.shape[0]
@@ -296,7 +296,7 @@ class DualAttentionModel(Model):
 
         indices = self.get_indices(indices)
 
-        train_x, train_y, train_label = self.fetch_data(st=st, en=en, shuffle=True,
+        train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
@@ -316,7 +316,7 @@ class DualAttentionModel(Model):
 
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(st=st, en=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 
@@ -367,20 +367,25 @@ class LSTMAutoEncoder(Model):
         :return:
         """
 
-        setattr(self, 'auto_enc_composite', False)
+        setattr(self, 'composite', self.nn_config['autoenc_config']['composite'])
         setattr(self, 'method', 'lstm_autoencoder')
 
         # define encoder
-        enc_config = self.nn_config['enc_config']
+        config = self.nn_config['autoenc_config']
+
+        enc_config = config['enc_config']
+        dec_config = config['dec_config']
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
-        encoder = layers.LSTM(100, activation='relu')(inputs)
+
+
+        encoder = self.add_LSTM(inputs, enc_config)
+
         # define predict decoder
         decoder1 = layers.RepeatVector(self.lookback-1)(encoder)
-        decoder1 = layers.LSTM(100, activation='relu', return_sequences=False)(decoder1)
+        decoder1 = self.add_LSTM(decoder1, dec_config)
         decoder1 = layers.Dense(1)(decoder1)
-        if method == 'composite':
-            setattr(self, 'auto_enc_composite', True)
+        if self.composite:
             # define reconstruct decoder
             decoder2 = layers.RepeatVector(self.lookback)(encoder)
             decoder2 = layers.LSTM(100, activation='relu', return_sequences=True)(decoder2)
@@ -396,9 +401,9 @@ class LSTMAutoEncoder(Model):
 
     def run_paras(self, **kwargs):
 
-        train_x, train_y, train_label = self.fetch_data(**kwargs)
+        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
 
-        if self.auto_enc_composite:
+        if self.composite:
             outputs = [train_x, train_label]
         else:
             outputs = train_label
@@ -436,7 +441,7 @@ class InputAttentionModel(DualAttentionModel):
         return
 
     def run_paras(self, **kwargs):
-        train_x, train_y, train_label = self.fetch_data(**kwargs)
+        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
 
         s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
         h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
@@ -458,7 +463,7 @@ class InputAttentionModel(DualAttentionModel):
 
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(st=st, en=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 
@@ -512,7 +517,7 @@ class OutputAttentionModel(DualAttentionModel):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        train_x, train_y, train_label = self.fetch_data(st=st, en=en, shuffle=True,
+        train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
@@ -528,7 +533,7 @@ class OutputAttentionModel(DualAttentionModel):
     def predict(self, st=0, ende=None, indices=None):
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(st=st, en=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 

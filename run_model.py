@@ -8,7 +8,22 @@ def make_model(**kwargs):
     """
     _nn_config = dict()
 
-    nbeats_options = {
+    _nn_config['autoenc_config'] = {'enc_config':
+                                        {'lstm_units': 100,
+                                         'act_fn': 'relu',
+                                         'dropout': 0.3,
+                                         'rec_dropout': 0.4,
+                                         'return_sequences': False},
+                                    'dec_config':
+                                        {'lstm_units': 100,
+                                          'act_fn': 'relu',
+                                          'dropout': 0.3,
+                                          'rec_dropout': 0.4,
+                                          'return_sequences': False},
+                                    'composite': False
+                               }
+
+    _nn_config['nbeats_options'] = {
         'backcast_length': 15,
         'forecast_length': 1,
         'stack_types': ('generic', 'generic'),
@@ -17,7 +32,6 @@ def make_model(**kwargs):
         'share_weights_in_stack': True,
         'hidden_layer_units': 64
     }
-    _nn_config['nbeats_options'] = nbeats_options
 
     _nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
                                'n_s': 20,  # length of hidden state m
@@ -50,7 +64,7 @@ def make_model(**kwargs):
     _nn_config['subsequences'] = 3  # used for cnn_lst structure
 
     _nn_config['lstm_config'] = {'lstm_units': 64,
-                                'lstm_act': 'relu',
+                                'act_fn': 'relu',
                                 'dropout': 0.4,
                                 'rec_dropout': 0.5,
                                 }
@@ -70,7 +84,6 @@ def make_model(**kwargs):
     _data_config['CACHEDATA'] = True
     _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
     _data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
-
 
 
     # input features in data_frame
@@ -103,14 +116,10 @@ if __name__=="__main__":
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml']
 
-    data_config, nn_config, total_intervals = make_model(lstm_units=64,
-                                                         dropout=0.4,
-                                                         rec_dropout=0.3,
-                                                         lstm_act='relu',
-                                                         batch_size=16,
+    data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                          lookback=15,
                                                          inputs = input_features,
-                                                       outputs = outputs,
+                                                         outputs = outputs,
                                                          lr=0.001)
 
     df = pd.read_csv('data/all_data_30min.csv')

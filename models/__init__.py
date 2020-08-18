@@ -7,6 +7,7 @@ except AttributeError:
 from .tf_models import CNNModel
 from .tf_models import CNNLSTMModel
 from .tf_models import LSTMCNNModel
+from .tf_models import LSTMAutoEncoder
 from .tf_models import TCNModel
 from .tf_models import InputAttentionModel
 from .tf_models import DualAttentionModel

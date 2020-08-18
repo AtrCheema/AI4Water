@@ -3,6 +3,7 @@ import seaborn as sns
 import numpy as np
 import os
 import datetime
+import json
 
 
 def _plot(*args, **kwargs):
@@ -126,3 +127,20 @@ def dateandtime_now():
         minute = '0' + minute
 
     return datum + '_' + stunde + str(minute)
+
+def save_config_file(path, config=None, errors=None):
+
+    if errors is not None:
+        suffix = dateandtime_now()
+        fpath = path + "/errors" + suffix + ".json"
+        data = errors
+    elif config is not None:
+        fpath = path + "/config.json"
+        data = config
+    else:
+        raise ValueError("")
+
+    with open(fpath, 'w') as fp:
+        json.dump(data, fp, sort_keys=True, indent=4)
+
+    return

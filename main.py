@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 import keract_mod as keract
 
 from models.global_variables import keras, tf
-from utils import plot_results, plot_loss, maybe_create_path
+from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES, ACTIVATIONS
 #
 
@@ -36,7 +36,7 @@ class AttributeNotSetYet:
 class AttributeStore(object):
     """ a class which will just make sure that attributes are set at its childs class level and not here.
     It's purpose is just to avoid cluttering of __init__ method of its child classes. """
-    k_model = AttributeNotSetYet("Build and compile the model first")
+    k_model = AttributeNotSetYet("`build_nn` to build neural network")
     method = None
     ins = None
     outs = None
@@ -45,6 +45,8 @@ class AttributeStore(object):
     auto_enc_composite = None
     de_LSTM_cell = None
     de_densor_We = None
+    test_indices = None
+    train_indices = None
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
 
 
@@ -110,7 +112,7 @@ class Model(AttributeStore):
             _all_layers.append(layer.name)
         return _all_layers
 
-    def fetch_data(self, st: int, en=None,
+    def fetch_data(self, data: pd.DataFrame,  st: int, en=None,
                    shuffle: bool = True,
                    cache_data=True,
                    noise: int = 0,
@@ -121,9 +123,7 @@ class Model(AttributeStore):
             if en is not None or st != 0:
                 raise ValueError
 
-        df = self.data
-
-        setattr(self, 'data_shape', df.shape)
+        df = data
 
         # # add random noise in the data
         if noise > 0:
@@ -208,16 +208,32 @@ class Model(AttributeStore):
 
     def fit(self, inputs, outputs, **callbacks):
 
+        _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
+        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+            filepath=self.path,
+            save_weights_only=True,
+            monitor=_monitor,
+            mode='max',
+            save_best_only=True)
+        _callbacks = [model_checkpoint_callback]
+
+        _callbacks.append(keras.callbacks.EarlyStopping(
+            monitor=_monitor, min_delta=self.nn_config['min_val_loss'],
+            patience=self.nn_config['patience'], verbose=0, mode='auto'
+        ))
+
         if 'tensorboard' in callbacks:
-            log_dir = "./logs/fit/"
-            callbacks = [keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)]
+            _callbacks.append(keras.callbacks.TensorBoard(log_dir=self.path, histogram_freq=1))
         self.k_model.fit(inputs,
                          outputs,
                          epochs=self.nn_config['epochs'],
                          batch_size=self.data_config['batch_size'], validation_split=self.data_config['val_fraction'],
-                         callbacks=callbacks
+                         callbacks=_callbacks
                          )
         history = self.k_model.history
+
+        self.save_config()
+
         return history
 
     def get_indices(self, indices=None):
@@ -240,7 +256,7 @@ class Model(AttributeStore):
 
     def run_paras(self, **kwargs):
 
-        train_x, train_y, train_label = self.fetch_data(**kwargs)
+        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
         return train_x, train_label
 
 
@@ -252,7 +268,7 @@ class Model(AttributeStore):
 
         history = self.fit(inputs, outputs, **callbacks)
 
-        plot_loss(history)
+        plot_loss(history, name=os.path.join(self.path, "loss_curve"))
 
         return history
 
@@ -306,14 +322,15 @@ class Model(AttributeStore):
         else:
             name = 'lstm_lyr'
 
-        lstm_layer = layers.LSTM(config['lstm_units'],
+        lstm_activations = layers.LSTM(config['lstm_units'],
                                # input_shape=(self.lookback, self.ins),
                                dropout=config['dropout'],
                                recurrent_dropout=config['rec_dropout'],
                                return_sequences=seq,
                                name=name)(inputs)
 
-        lstm_activations = ACTIVATIONS[config['lstm_act']](name='lstm_act')(lstm_layer)
+        if config['act_fn'] is not None:
+            lstm_activations = ACTIVATIONS[config['act_fn']](name='lstm_act')(lstm_activations)
 
         return lstm_activations
 
@@ -323,12 +340,13 @@ class Model(AttributeStore):
             name = config['name']
         else:
             name = 'cnn_lyr'
-        cnn_layer = layers.Conv1D(filters=config['filters'],
+        cnn_activations = layers.Conv1D(filters=config['filters'],
                                   kernel_size=config['kernel_size'],
                                   # activation=cnn['activation'],
                                   name=name)(inputs)
 
-        cnn_activations = ACTIVATIONS[config['activation']](name='cnn_act')(cnn_layer)
+        if  config['act_fn'] is not None:
+            cnn_activations = ACTIVATIONS[config['act_fn']](name='cnn_act')(cnn_activations)
 
         max_pool_lyr = layers.MaxPooling1D(pool_size=config['max_pool_size'],
                                            name='max_pool_lyr')(cnn_activations)
@@ -402,13 +420,13 @@ class Model(AttributeStore):
         keract.display_activations(activations=activations,**kwargs)
 
     def gradients_of_weights(self, st=0, en=None, indices=None) -> dict:
-        test_x, test_y, test_label = self.fetch_data(st=st, en=en, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=en, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
         return keract.get_gradients_of_trainable_weights(self.k_model, test_x, test_label)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
-        test_x, test_y, test_label = self.fetch_data(st=st, en=en, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=en, shuffle=False,
                                                      cache_data=False,
                                                      indices=indices)
 
@@ -600,6 +618,22 @@ class Model(AttributeStore):
         self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
                      save, os.path.join(self.path, lyr_name))
 
+    def save_config(self):
+
+        config = dict()
+        config['min_val_loss'] = np.min(
+            self.k_model.history.history['val_loss']) if 'val_loss' in self.k_model.history.history else None
+        config['min_loss'] = np.min(
+            self.k_model.history.history['loss']) if 'val_loss' in self.k_model.history.history else None
+        config['nn_config'] = self.nn_config
+        config['data_config'] = self.data_config
+        config['test_indices'] = self.test_indices
+        config['test_indices'] = self.train_indices
+        config['intervals'] = self.intervals
+        config['method'] = self.method
+
+        save_config_file(config=config, path=self.path)
+        return config
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
