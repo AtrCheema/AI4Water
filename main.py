@@ -320,7 +320,7 @@ class Model(AttributeStore):
         if 'name' in config:
             name = config['name']
         else:
-            name = 'lstm_lyr'
+            name = 'lstm_lyr_' + str(np.random.randint(100))
 
         lstm_activations = layers.LSTM(config['lstm_units'],
                                # input_shape=(self.lookback, self.ins),
@@ -329,8 +329,9 @@ class Model(AttributeStore):
                                return_sequences=seq,
                                name=name)(inputs)
 
-        if config['act_fn'] is not None:
-            lstm_activations = ACTIVATIONS[config['act_fn']](name='lstm_act')(lstm_activations)
+        if  config['act_fn'] is not None:
+            name = 'lstm_act_' + str(np.random.randint(100))
+            lstm_activations = ACTIVATIONS[config['act_fn']](name=name)(lstm_activations)
 
         return lstm_activations
 
@@ -339,14 +340,15 @@ class Model(AttributeStore):
         if 'name' in config:
             name = config['name']
         else:
-            name = 'cnn_lyr'
+            name = 'cnn_lyr_' + str(np.random.randint(100))
         cnn_activations = layers.Conv1D(filters=config['filters'],
                                   kernel_size=config['kernel_size'],
                                   # activation=cnn['activation'],
                                   name=name)(inputs)
 
         if  config['act_fn'] is not None:
-            cnn_activations = ACTIVATIONS[config['act_fn']](name='cnn_act')(cnn_activations)
+            name = 'cnn_act_' + str(np.random.randint(100))
+            cnn_activations = ACTIVATIONS[config['act_fn']](name=name)(cnn_activations)
 
         max_pool_lyr = layers.MaxPooling1D(pool_size=config['max_pool_size'],
                                            name='max_pool_lyr')(cnn_activations)
@@ -627,8 +629,8 @@ class Model(AttributeStore):
             self.k_model.history.history['loss']) if 'val_loss' in self.k_model.history.history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['test_indices'] = self.test_indices
-        config['test_indices'] = self.train_indices
+        config['test_indices'] = np.array(self.test_indices, dtype=int) if self.test_indices is not None else None
+        config['test_indices'] = np.array(self.train_indices, dtype=int) if self.train_indices is not None else None
         config['intervals'] = self.intervals
         config['method'] = self.method
 
