@@ -10,7 +10,7 @@ import os
 from sklearn.model_selection import train_test_split
 import keract_mod as keract
 
-from models.global_variables import keras, tf
+from models.global_variables import keras
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES, ACTIVATIONS
 #
@@ -18,7 +18,7 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 
@@ -383,12 +383,15 @@ class Model(AttributeStore):
         input_y = np.array(input_y).reshape(-1, self.lookback-1, outs)
         label_y = np.array(label_y).reshape(-1, outs)
 
-        if int(df[self.data_config['outputs']].isna().sum()) > 0:
+        nans = df[self.data_config['outputs']].isna().sum()
+        if int(nans.sum()) > 0:
             if self.data_config['ignore_nans']:
                 print("\n{} Ignoring NANs in predictions {}\n".format(10*'*', 10*'*'))
             else:
-                if self.method == 'dual_attention' or self.outs > 1:
+                if self.method == 'dual_attention':
                     raise ValueError
+                if outs> 1:
+                    assert np.all(nans.values == int(nans.sum()/outs)), "output columns contains nan values at different indices"
                 print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
                 y = df[df.columns[-1]]
                 nan_idx = y.isna()

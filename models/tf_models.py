@@ -132,49 +132,49 @@ class DualAttentionModel(Model):
 
         super(DualAttentionModel, self).__init__(**kwargs)
 
-    def _encoder(self, config, lstm2_seq=True):
+    def _encoder(self,enc_inputs, config, lstm2_seq=True, suf:str = '1'):
 
-        self.en_densor_We = layers.Dense(self.lookback, name='enc_We')
+        self.en_densor_We = layers.Dense(self.lookback, name='enc_We'+suf)
         self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=config['enc_lstm1_act'],
-                                        name='encoder_LSTM')
+                                        name='encoder_LSTM'+suf)
 
-        enc_input = layers.Input(shape=(self.lookback, self.ins), name='enc_input')  # Enter time series data
         # initialize the first cell state
-        s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state')
+        s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state'+suf)
         # initialize the first hidden state
-        h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state')
+        h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state'+suf)
 
-        enc_attn_out = self.encoder_attention(enc_input, s0, h0)
+        enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
         print('encoder attention output:', enc_attn_out)
-        enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input')(enc_attn_out)
+        enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input'+suf)(enc_attn_out)
         print('input to encoder LSTM:', enc_lstm_in)
         enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=config['enc_lstm2_act'],
-                                   name='LSTM_after_encoder')(enc_lstm_in)  # h_en_all
+                                   name='LSTM_after_encoder'+suf)(enc_lstm_in)  # h_en_all
         print('Output from LSTM out: ', enc_lstm_out)
-        return enc_lstm_out, enc_input,  h0, s0
+        return enc_lstm_out, h0, s0
 
-    def one_encoder_attention_step(self, h_prev, s_prev, x, t):
+    def one_encoder_attention_step(self, h_prev, s_prev, x, t, suf:str = '1'):
         """
         :param h_prev: previous hidden state
         :param s_prev: previous cell state
         :param x: (T,n),n is length of input series at time t,T is length of time series
         :param t: time-step
+        :param suf: str, Suffix to be attached to names
         :return: x_t's attention weights,total n numbers,sum these are 1
         """
         _concat = layers.Concatenate()([h_prev, s_prev])  # (none,1,2m)
         result1 = self.en_densor_We(_concat)   # (none,1,T)
         result1 = layers.RepeatVector(x.shape[2],)(result1)  # (none,n,T)
         x_temp = MyTranspose(axis=(0, 2, 1))(x)  # X_temp(None,n,T)
-        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t))(x_temp)  # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
+        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t)+suf)(x_temp)  # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
         result3 = layers.Add()([result1, result2])  # (none,n,T)
         result4 = layers.Activation(activation='tanh')(result3)  # (none,n,T)
         result5 = MyDot(1)(result4)
-        result5 = MyTranspose(axis=(0, 2, 1), name='eq_8_' + str(t))(result5)  # etk/ equation 8
-        alphas = layers.Activation(activation='softmax', name='eq_9_'+str(t))(result5)  # equation 9
+        result5 = MyTranspose(axis=(0, 2, 1), name='eq_8_' + str(t)+suf)(result5)  # etk/ equation 8
+        alphas = layers.Activation(activation='softmax', name='eq_9_'+str(t)+suf)(result5)  # equation 9
 
         return alphas
 
-    def encoder_attention(self, _input, _s0, _h0):
+    def encoder_attention(self, _input, _s0, _h0, suf:str = '1'):
 
         s = _s0
         _h = _h0
@@ -183,7 +183,7 @@ class DualAttentionModel(Model):
         attention_weight_t = None
         for t in range(self.lookback):
             print('encoder input:', _input)
-            _context = self.one_encoder_attention_step(_h, s, _input, t)  # (none,1,n)
+            _context = self.one_encoder_attention_step(_h, s, _input, t, suf=suf)  # (none,1,n)
             print('context:', _context)
             x = layers.Lambda(lambda x: _input[:, t, :])(_input)
             x = layers.Reshape((1, self.ins))(x)
@@ -195,7 +195,7 @@ class DualAttentionModel(Model):
                 #                                    name='attn_weight_'+str(t))([attention_weight_t,
                 #                                                                _context])
                 attention_weight_t = layers.Concatenate(axis=1,
-                                                        name='attn_weight_'+str(t))([attention_weight_t, _context])
+                                                        name='attn_weight_'+str(t)+suf)([attention_weight_t, _context])
                 print('salam')
             else:
                 attention_weight_t = _context
@@ -207,7 +207,7 @@ class DualAttentionModel(Model):
             # break
 
         # get the driving input series
-        enc_output = layers.Multiply(name='enc_output')([attention_weight_t, _input])  # equation 10 in paper
+        enc_output = layers.Multiply(name='enc_output'+suf)([attention_weight_t, _input])  # equation 10 in paper
         print('output from encoder attention:', enc_output)
         return enc_output
 
@@ -268,8 +268,9 @@ class DualAttentionModel(Model):
         h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
         s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
         input_y = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
+        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
 
-        enc_lstm_out, enc_input,  h0, s0 = self._encoder(self.nn_config['enc_config'])
+        enc_lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'])
         print('encoder output before reshaping: ', enc_lstm_out)
         # originally the last dimentions was -1 but I put it equal to 'm'
         # eq 11 in paper
@@ -430,7 +431,8 @@ class InputAttentionModel(DualAttentionModel):
         setattr(self, 'method', 'input_attention')
         print('building input attention')
 
-        lstm_out, enc_input, h0, s0 = self._encoder(self.nn_config['enc_config'], lstm2_seq=False)
+        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')
+        lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'], lstm2_seq=False)
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.outs)(act_out)
