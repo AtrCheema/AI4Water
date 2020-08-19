@@ -210,7 +210,7 @@ class Model(AttributeStore):
 
         _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
         model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-            filepath=self.path,
+            filepath=self.path + "\\weights_{epoch:03d}_{val_loss:.4f}.hdf5",
             save_weights_only=True,
             monitor=_monitor,
             mode='max',
@@ -629,8 +629,8 @@ class Model(AttributeStore):
             self.k_model.history.history['loss']) if 'val_loss' in self.k_model.history.history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['test_indices'] = np.array(self.test_indices, dtype=int) if self.test_indices is not None else None
-        config['test_indices'] = np.array(self.train_indices, dtype=int) if self.train_indices is not None else None
+        config['test_indices'] = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
+        config['train_indices'] = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
         config['intervals'] = self.intervals
         config['method'] = self.method
 
