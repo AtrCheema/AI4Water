@@ -132,6 +132,42 @@ class DualAttentionModel(Model):
 
         super(DualAttentionModel, self).__init__(**kwargs)
 
+    def build_nn(self):
+
+        dec_config = self.nn_config['dec_config']
+        enc_config = self.nn_config['enc_config']
+
+        self.de_LSTM_cell = layers.LSTM(dec_config['p'], return_state=True, name='decoder_LSTM')
+        self.de_densor_We = layers.Dense(enc_config['m'])
+
+        h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
+        s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
+        input_y = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
+        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
+
+        enc_lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'])
+        print('encoder output before reshaping: ', enc_lstm_out)
+        # originally the last dimentions was -1 but I put it equal to 'm'
+        # eq 11 in paper
+        enc_out = layers.Reshape((self.lookback, enc_config['m']), name='enc_out_eq_11')(enc_lstm_out)
+        print('output from Encoder LSTM:', enc_out)
+
+        h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
+        h = layers.Reshape((1, dec_config['p']))(h)
+        # concatenation of decoder hidden state and the context vector.
+        last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
+        print('last_concat', last_concat)
+        sec_dim = enc_config['m'] + dec_config['p']  # original it was not defined but in tf-keras we need to define it
+        last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
+        print('reshape:', last_reshape)
+        result = layers.Dense(dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
+        print('result:', result)
+        output = layers.Dense(1)(result)
+
+        self.k_model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
+
+        return
+
     def _encoder(self,enc_inputs, config, lstm2_seq=True, suf:str = '1'):
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We'+suf)
@@ -257,81 +293,16 @@ class DualAttentionModel(Model):
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
-    def build_nn(self):
+    def run_paras(self, **kwargs):
 
-        dec_config = self.nn_config['dec_config']
-        enc_config = self.nn_config['enc_config']
-
-        self.de_LSTM_cell = layers.LSTM(dec_config['p'], return_state=True, name='decoder_LSTM')
-        self.de_densor_We = layers.Dense(enc_config['m'])
-
-        h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
-        s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
-        input_y = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
-        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
-
-        enc_lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'])
-        print('encoder output before reshaping: ', enc_lstm_out)
-        # originally the last dimentions was -1 but I put it equal to 'm'
-        # eq 11 in paper
-        enc_out = layers.Reshape((self.lookback, enc_config['m']), name='enc_out_eq_11')(enc_lstm_out)
-        print('output from Encoder LSTM:', enc_out)
-
-        h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
-        h = layers.Reshape((1, dec_config['p']))(h)
-        # concatenation of decoder hidden state and the context vector.
-        last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
-        print('last_concat', last_concat)
-        sec_dim = enc_config['m'] + dec_config['p']  # original it was not defined but in tf-keras we need to define it
-        last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
-        print('reshape:', last_reshape)
-        result = layers.Dense(dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
-        print('result:', result)
-        output = layers.Dense(1)(result)
-
-        self.k_model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
-
-        return
-
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
-
-        indices = self.get_indices(indices)
-
-        train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
-                                                        indices=indices)
+        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
 
         s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
         h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
 
         h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.nn_config['dec_config']['p']))
 
-        inputs = [train_x, train_y, s0_train, h0_train, s_de0_train, h_de0_train]
-        history = self.fit(inputs, train_label, **callbacks)
-
-        plot_loss(history)
-
-        return history
-
-    def predict(self, st=0, ende=None, indices=None):
-
-        setattr(self, 'predict_indices', indices)
-
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
-
-        h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
-        s0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
-
-        predicted = self.k_model.predict([test_x, test_y, s0_test, h0_test, s_de0_test, h_de0_test],
-                                         batch_size=test_x.shape[0],
-                                         verbose=1)
-
-        self.process_results(test_label, predicted, str(st) + '_' + str(ende))
-
-        return predicted, test_label
+        return [train_x, s0_train, h0_train, h_de0_train, s_de0_train], train_label
 
 
 class TCNModel(Model):
@@ -447,38 +418,8 @@ class InputAttentionModel(DualAttentionModel):
 
         s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
         h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+
         return [train_x, s0_train, h0_train], train_label
-
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
-
-        indices = self.get_indices(indices)
-
-        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
-
-        history = self.fit(inputs, outputs, **callbacks)
-
-        plot_loss(history)
-
-        return history
-
-    def predict(self, st=0, ende=None, indices=None):
-
-        setattr(self, 'predict_indices', indices)
-
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
-
-        h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
-        s0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_s']))
-
-        predicted = self.k_model.predict([test_x, s0_test, h0_test],
-                                         batch_size=test_x.shape[0],
-                                         verbose=1)
-
-        self.process_results(test_label, predicted, str(st) + '_' + str(ende))
-
-        return predicted, test_label
 
 
 class OutputAttentionModel(DualAttentionModel):

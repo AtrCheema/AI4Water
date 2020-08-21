@@ -58,8 +58,8 @@ def make_model(**kwargs):
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
     _nn_config['epochs'] = 40
-    _nn_config['min_val_loss'] = 9999
-    _nn_config['patience'] = 15
+    _nn_config['min_val_loss'] = 0.0001
+    _nn_config['patience'] = 100
 
     _nn_config['subsequences'] = 3  # used for cnn_lst structure
 

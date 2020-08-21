@@ -19,8 +19,9 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
+
 np.random.seed(313)
 tf.random.set_seed(313)
 
@@ -244,6 +245,7 @@ class Model(AttributeStore):
         return history
 
     def get_indices(self, indices=None):
+        # returns only train indices if `indices` is None
         if isinstance(indices, str) and indices.upper() == 'RANDOM':
             if self.data_config['ignore_nans']:
                 tot_obs = self.data.shape[0]
@@ -251,7 +253,11 @@ class Model(AttributeStore):
                 if self.outs == 1:
                     tot_obs = self.data.shape[0] - int(self.data[self.data_config['outputs']].isna().sum())
                 else:
-                    raise ValueError
+                    # data contains nans and target series are > 1, we want to make sure that they have same nan counts
+                    tot_obs = self.data.shape[0] - int(self.data[self.data_config['outputs'][0]].isna().sum())
+                    nans = self.data[self.data_config['outputs']].isna().sum()
+                    assert np.all(nans.values == int(nans.sum() / self.outs))
+
             idx = np.arange(tot_obs - self.lookback)
             train_indices, test_idx = train_test_split(idx, test_size=self.data_config['val_fraction'], random_state=313)
             setattr(self, 'test_indices', list(test_idx))
@@ -281,7 +287,8 @@ class Model(AttributeStore):
 
     def predict(self, st=0, en=None, indices=None):
 
-        setattr(self, 'predict_indices', indices)
+        if not hasattr(self, 'predict_indices'):
+            setattr(self, 'predict_indices', indices)
 
         inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
@@ -289,22 +296,32 @@ class Model(AttributeStore):
                                          batch_size=self.data_config['batch_size'],
                                          verbose=1)
 
+        if not isinstance(outputs, list):
+            outputs = [outputs]
+        if not isinstance(predicted, list):
+            predicted = [predicted]
         self.process_results(outputs, predicted, str(st) + '_' + str(en))
 
         return predicted, outputs
 
-    def process_results(self, true, predicted, name=None):
+    def process_results(self, true:list, predicted:list, name=None):
 
-        if np.isnan(true).sum() > 0:
-            mask = np.invert(np.isnan(true.reshape(-1,)))
-            true = true[mask]
-            predicted = predicted[mask]
+        for out in range(self.outs):
 
-        errors = FindErrors(true, predicted)
-        for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
-            print(er, getattr(errors, er)())
+            t = true[out].reshape(-1,)
+            p = predicted[out].reshape(-1,)
 
-        plot_results(true, predicted, name=os.path.join(self.path, name))
+            if np.isnan(t).sum() > 0:
+                mask = np.invert(np.isnan(t.reshape(-1,)))
+                t = t[mask]
+                p = p[mask]
+
+            errors = FindErrors(t, p)
+            for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
+                print(er, getattr(errors, er)())
+
+            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]))
+
         return
 
     def build_nn(self):
