@@ -8,8 +8,9 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import os
 from sklearn.model_selection import train_test_split
-import keract_mod as keract
+import json
 
+import keract_mod as keract
 from models.global_variables import keras
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES, ACTIVATIONS
@@ -213,7 +214,7 @@ class Model(AttributeStore):
             filepath=self.path + "\\weights_{epoch:03d}_{val_loss:.4f}.hdf5",
             save_weights_only=True,
             monitor=_monitor,
-            mode='max',
+            mode='min',
             save_best_only=True)
         _callbacks = [model_checkpoint_callback]
 
@@ -412,11 +413,11 @@ class Model(AttributeStore):
         inputs, outputs = self.run_paras(**kwargs)
 
         activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
-        return activations
+        return activations, inputs
 
     def display_activations(self, layer_name: str=None, st=0, en=None, indices=None, **kwargs):
         # not working currently because it requres the shape of activations to be (1, output_h, output_w, num_filters)
-        activations = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
+        activations, _ = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
         if layer_name is None:
             activations = activations
         else:
@@ -459,7 +460,7 @@ class Model(AttributeStore):
     def plot_activations(self, save: bool=False, **kwargs):
         """ plots activations of intermediate layers except input and output.
         If called without any arguments then it will plot activations of all layers."""
-        activations = self.activations(**kwargs)
+        activations, _ = self.activations(**kwargs)
 
         for lyr_name, activation in activations.items():
             if np.ndim(activation) == 2 and activation.shape[1] > 1:
@@ -518,12 +519,16 @@ class Model(AttributeStore):
         plt.show()
         return
 
-    def plot_act_along_inputs(self, st, en, layer_name, name=None):
+    def plot_act_along_inputs(self, layer_name:str, name:str=None, **kwargs):
 
-        pred, obs = self.predict(st, en)
+        pred, obs = self.predict(**kwargs)
 
-        activation, data = self.activations(st=st, en=en, layer_names=layer_name)
+        activation, data = self.activations(layer_names=layer_name, **kwargs)
 
+        if isinstance(data, list):
+            data = data[0]
+
+        activation = activation[layer_name]
         data = data[:, 0, :]
 
         assert data.shape[1] == self.ins
@@ -550,12 +555,13 @@ class Model(AttributeStore):
             fig.colorbar(im)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             if name is not None:
-                plt.savefig(name + str(idx), dpi=400, bbox_inches='tight')
-            plt.show()
+                plt.savefig(os.path.join(self.path, name) + str(idx), dpi=400, bbox_inches='tight')
+            else:
+                plt.show()
 
         return
 
-    def plot2d_act_for_a_sample(self, activations, sample=0, name=None):
+    def plot2d_act_for_a_sample(self, activations, sample=0, name:str=None):
         fig, axis = plt.subplots()
         fig.set_figheight(8)
         # for idx, ax in enumerate(axis):
@@ -566,8 +572,9 @@ class Model(AttributeStore):
         axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
         fig.colorbar(im)
         if name is not None:
-            plt.savefig(name + '_' + str(sample), dpi=400, bbox_inches='tight')
-        plt.show()
+            plt.savefig(os.path.join(self.path, name) + '_' + str(sample), dpi=400, bbox_inches='tight')
+        else:
+            plt.show()
         return
 
     def plot1d_act_for_a_sample(self, activations, sample=0, name=None):
@@ -579,8 +586,9 @@ class Model(AttributeStore):
         axis.set_ylabel('activation weight')
         axis.set_title('Activations at different lookbacks for all inputs for sample ' + str(sample))
         if name is not None:
-            plt.savefig(name + '_' + str(sample), dpi=400, bbox_inches='tight')
-        plt.show()
+            plt.savefig(os.path.join(self.path, name) + '_' + str(sample), dpi=400, bbox_inches='tight')
+        else:
+            plt.show()
 
     def prepare_batches(self, data: pd.DataFrame, target: str):
 
@@ -639,6 +647,20 @@ class Model(AttributeStore):
 
         save_config_file(config=config, path=self.path)
         return config
+
+    @classmethod
+    def from_config(cls, config_path:str, data):
+        with open(config_path, 'r') as fp:
+            config = json.load(fp)
+
+        data_config = config['data_config']
+        nn_config = config['nn_config']
+        if 'intervals' in config:
+            intervals = config['intervals']
+        else:
+            intervals = None
+
+        return cls(data_config=data_config, nn_config=nn_config, data=data, intervals=intervals)
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
