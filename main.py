@@ -11,16 +11,18 @@ from sklearn.model_selection import train_test_split
 import json
 
 import keract_mod as keract
-from models.global_variables import keras
+from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES, ACTIVATIONS
-#
+
 
 KModel = keras.models.Model
 layers = keras.layers
 
 # tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
+np.random.seed(313)
+tf.random.set_seed(313)
 
 
 class AttributeNotSetYet:
@@ -234,6 +236,10 @@ class Model(AttributeStore):
         history = self.k_model.history
 
         self.save_config()
+
+        # save all the losses or performance metrics
+        df = pd.DataFrame.from_dict(history.history)
+        df.to_csv(os.path.join(self.path, "losses.csv"))
 
         return history
 
@@ -660,7 +666,23 @@ class Model(AttributeStore):
         else:
             intervals = None
 
-        return cls(data_config=data_config, nn_config=nn_config, data=data, intervals=intervals)
+        cls.from_check_point = True
+
+        # These paras neet to be set here because they are not withing init method
+        cls.test_indices = config["test_indices"]
+        cls.train_indices = config["train_indices"]
+
+        return cls(data_config=data_config,
+                   nn_config=nn_config,
+                   data=data,
+                   intervals=intervals,
+                   path=os.path.dirname(config_path))
+
+    def load_weights(self, w_file:str):
+        # loads the weights of keras model from weight file `w_file`.
+        cpath = os.path.join(self.path, w_file)
+        self.k_model.load_weights(cpath)
+        return
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
