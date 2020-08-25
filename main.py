@@ -568,8 +568,8 @@ class Model(AttributeStore):
             ax1.set_title('activations w.r.t ' + self.data_config['inputs'][idx])
             ax1.set_ylabel(self.data_config['inputs'][idx])
 
-            ax2.plot(pred, label='Prediction')
-            ax2.plot(obs, label='Observed')
+            ax2.plot(pred[0], label='Prediction')
+            ax2.plot(obs[0], label='Observed')
             ax2.legend()
 
             im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto')
