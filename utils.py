@@ -44,18 +44,18 @@ def regplot_using_searborn(true, pred, name):
     plt.show()
 
 
-def plot_loss(history, name=None):
+def plot_loss(history:dict, name=None):
 
-    loss = history.history['loss']
+    loss = history['loss']
 
     epochs = range(1, len(loss) + 1)
 
     fig, axis = plt.subplots()
 
-    axis.plot(epochs, history.history['loss'], color=[0.13778617, 0.06228198, 0.33547859], label='Training loss')
+    axis.plot(epochs, history['loss'], color=[0.13778617, 0.06228198, 0.33547859], label='Training loss')
 
-    if 'val_loss' in history.history:
-        axis.plot(epochs, history.history['val_loss'],
+    if 'val_loss' in history:
+        axis.plot(epochs, history['val_loss'],
                   color=[0.96707953, 0.46268314, 0.45772886], label='Validation loss')
 
     axis.set_xlabel('Epochs')
