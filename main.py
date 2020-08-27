@@ -65,8 +65,8 @@ class Model(AttributeStore):
         self.nn_config = nn_config
         self.intervals = intervals
         self.data = data[data_config['inputs'] + data_config['outputs']]
-        self.ins = len(self.data_config['inputs'])
-        self.outs = len(self.data_config['outputs'])
+        self.in_cols = self.data_config['inputs']
+        self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.nn_config['loss']]
         self.KModel = KModel
         self.path = maybe_create_path(path=path)
@@ -76,20 +76,28 @@ class Model(AttributeStore):
         return self.data_config['lookback']
 
     @property
-    def ins(self):
-        return self._ins
+    def in_cols(self):
+        return self._in_cols
 
-    @ins.setter
-    def ins(self, x):
-        self._ins = x
+    @in_cols.setter
+    def in_cols(self, x:list):
+        self._in_cols = x
+
+    @property
+    def out_cols(self):
+        return self._out_cols
+
+    @out_cols.setter
+    def out_cols(self, x:list):
+        self._out_cols = x
+
+    @property
+    def ins(self):
+        return len(self.in_cols)
 
     @property
     def outs(self):
-        return self._outs
-
-    @outs.setter
-    def outs(self, x):
-        self._outs = x
+        return len(self.out_cols)
 
     @property
     def loss(self):
@@ -133,14 +141,14 @@ class Model(AttributeStore):
         if noise > 0:
             x = pd.DataFrame(np.random.randint(0, 1, (len(df), noise)))
             df = pd.concat([df, x], axis=1)
-            prev_inputs = self.data_config['inputs']
-            self.data_config['inputs'] = prev_inputs + list(x.columns)
+            prev_inputs = self.in_cols
+            self.in_cols = prev_inputs + list(x.columns)
             ys = []
-            for y in self.data_config['outputs']:
+            for y in self.out_cols:
                 ys.append(df.pop(y))
-            df[self.data_config['outputs']] = ys
+            df[self.out_cols] = ys
 
-        cols = self.data_config['inputs'] + self.data_config['outputs']
+        cols = self.in_cols + self.out_cols
         df = df[cols]
 
         scaler = MinMaxScaler()
@@ -153,13 +161,16 @@ class Model(AttributeStore):
         if self.intervals is None:
 
             df = df[st:en]
-            df.columns = self.data_config['inputs'] + self.data_config['outputs']
+            df.columns = self.in_cols + self.out_cols
 
             x, y, label = self.get_data(df,
-                                        len(self.data_config['inputs']),
-                                        len(self.data_config['outputs'])
+                                        len(self.in_cols),
+                                        len(self.out_cols)
                                         )
             if indices is not None:
+                # because the x,y,z have some initial values removed
+                indices = np.subtract(np.array(indices), self.lookback - 1).tolist()
+
                 # if indices are given then this should be done after `get_data` method
                 x = x[indices]
                 y = y[indices]
@@ -169,11 +180,11 @@ class Model(AttributeStore):
             for _st, _en in self.intervals:
                 df1 = df[_st:_en]
 
-                df.columns = self.data_config['inputs'] + self.data_config['outputs']
-                df1.columns = self.data_config['inputs'] + self.data_config['outputs']
+                df.columns = self.in_cols + self.out_cols
+                df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_data(df1, len(self.data_config['inputs']), len(self.data_config['outputs']))
+                    x, y, label = self.get_data(df1, len(self.in_cols), len(self.out_cols))
                     xs.append(x)
                     ys.append(y)
                     labels.append(label)
@@ -251,11 +262,11 @@ class Model(AttributeStore):
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
-                    tot_obs = self.data.shape[0] - int(self.data[self.data_config['outputs']].isna().sum())
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum())
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
-                    tot_obs = self.data.shape[0] - int(self.data[self.data_config['outputs'][0]].isna().sum())
-                    nans = self.data[self.data_config['outputs']].isna().sum()
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
+                    nans = self.data[self.out_cols].isna().sum()
                     assert np.all(nans.values == int(nans.sum() / self.outs))
 
             idx = np.arange(tot_obs - self.lookback)
@@ -269,8 +280,8 @@ class Model(AttributeStore):
 
     def run_paras(self, **kwargs):
 
-        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
-        return train_x, train_label
+        x, y, label = self.fetch_data(self.data, **kwargs)
+        return x, label
 
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
@@ -281,7 +292,7 @@ class Model(AttributeStore):
 
         history = self.fit(inputs, outputs, **callbacks)
 
-        plot_loss(history, name=os.path.join(self.path, "loss_curve"))
+        plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 
         return history
 
@@ -307,6 +318,8 @@ class Model(AttributeStore):
     def process_results(self, true:list, predicted:list, name=None):
 
         for out in range(self.outs):
+
+            print('\nFor {}'.format(out))
 
             t = true[out].reshape(-1,)
             p = predicted[out].reshape(-1,)
@@ -407,7 +420,7 @@ class Model(AttributeStore):
         input_y = np.array(input_y).reshape(-1, self.lookback-1, outs)
         label_y = np.array(label_y).reshape(-1, outs)
 
-        nans = df[self.data_config['outputs']].isna().sum()
+        nans = df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
             if self.data_config['ignore_nans']:
                 print("\n{} Ignoring NANs in predictions {}\n".format(10*'*', 10*'*'))
@@ -532,7 +545,7 @@ class Model(AttributeStore):
 
         fig, axis = plt.subplots()
 
-        for idx, _name in enumerate(self.data_config['inputs']):
+        for idx, _name in enumerate(self.in_cols):
             axis.plot(act_t[idx, :], label=_name)
 
         axis.set_xlabel('Lookback')
@@ -563,19 +576,19 @@ class Model(AttributeStore):
             fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
             fig.set_figheight(10)
 
-            ax1.plot(data[:, idx], label=self.data_config['inputs'][idx])
+            ax1.plot(data[:, idx], label=self.in_cols[idx])
             ax1.legend()
-            ax1.set_title('activations w.r.t ' + self.data_config['inputs'][idx])
-            ax1.set_ylabel(self.data_config['inputs'][idx])
+            ax1.set_title('activations w.r.t ' + self.in_cols[idx])
+            ax1.set_ylabel(self.in_cols[idx])
 
             ax2.plot(pred[0], label='Prediction')
             ax2.plot(obs[0], label='Observed')
             ax2.legend()
 
-            im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto')
+            im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=0, vmax=0.8)
             ax3.set_ylabel('lookback')
             ax3.set_xlabel('samples')
-            fig.colorbar(im)
+            fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             if name is not None:
                 plt.savefig(os.path.join(self.path, name) + str(idx), dpi=400, bbox_inches='tight')
@@ -591,7 +604,7 @@ class Model(AttributeStore):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
         axis.set_xlabel('lookback')
         axis.set_ylabel('inputs')
-        print(self.data_config['inputs'])
+        print(self.in_cols)
         axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
         fig.colorbar(im)
         if name is not None:

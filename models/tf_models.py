@@ -73,14 +73,14 @@ class CNNLSTMModel(Model):
 
     def run_paras(self, **kwargs):
 
-        test_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
+        x, y, labels = self.fetch_data(self.data, **kwargs)
 
         subseq = self.nn_config['subsequences']
-        examples = test_x.shape[0]
+        examples = x.shape[0]
         timesteps = self.lookback // subseq
-        test_x = test_x.reshape(examples, subseq, timesteps, self.ins)
+        x = x.reshape(examples, subseq, timesteps, self.ins)
 
-        return test_x, train_label
+        return x, labels
 
     def build_nn(self):
         """
@@ -295,14 +295,14 @@ class DualAttentionModel(Model):
 
     def run_paras(self, **kwargs):
 
-        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
+        x, y, labels = self.fetch_data(self.data, **kwargs)
 
-        s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+        s0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_s']))
+        h0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_h']))
 
-        h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.nn_config['dec_config']['p']))
+        h_de0 = s_de0 = np.zeros((x.shape[0], self.nn_config['dec_config']['p']))
 
-        return [train_x, s0_train, h0_train, h_de0_train, s_de0_train], train_label
+        return [x, s0, h0, h_de0, s_de0], labels
 
 
 class TCNModel(Model):
@@ -373,14 +373,14 @@ class LSTMAutoEncoder(Model):
 
     def run_paras(self, **kwargs):
 
-        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
+        x, y, labels = self.fetch_data(self.data, **kwargs)
 
         if self.composite:
-            outputs = [train_x, train_label]
+            outputs = [x, labels]
         else:
-            outputs = train_label
+            outputs = labels
 
-        return train_x, outputs
+        return x, outputs
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
@@ -414,12 +414,12 @@ class InputAttentionModel(DualAttentionModel):
         return
 
     def run_paras(self, **kwargs):
-        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
+        x, y, labels = self.fetch_data(self.data, **kwargs)
 
-        s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+        s0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_s']))
+        h0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_h']))
 
-        return [train_x, s0_train, h0_train], train_label
+        return [x, s0, h0], labels
 
 
 class OutputAttentionModel(DualAttentionModel):

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from models import HARHNModel
+from models import Model
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -124,7 +124,7 @@ if __name__=="__main__":
 
     df = pd.read_csv('data/all_data_30min.csv')
 
-    model = HARHNModel(data_config=data_config,
+    model = Model(data_config=data_config,
                   nn_config=nn_config,
                   data=df,
                   intervals=total_intervals

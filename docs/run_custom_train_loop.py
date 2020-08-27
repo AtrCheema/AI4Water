@@ -17,7 +17,7 @@ class CustomModel(Model):
 
         indices = self.get_indices(indices)
 
-        train_x, train_y, train_label = self.fetch_data(start=st, ende=en, shuffle=True,
+        train_x, train_y, train_label = self.fetch_data(data=self.data, st=st, en=en, shuffle=True,
                                                         cache_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
