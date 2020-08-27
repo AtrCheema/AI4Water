@@ -331,22 +331,22 @@ class Model(AttributeStore):
 
     def predict(self, st=0, en=None, indices=None):
 
-        if not hasattr(self, 'predict_indices'):
+        if indices is not None:
             setattr(self, 'predict_indices', indices)
 
-        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
+        inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices)
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
                                          verbose=1)
 
-        if not isinstance(outputs, list):
-            outputs = [outputs]
+        if not isinstance(true_outputs, list):
+            true_outputs = [true_outputs]
         if not isinstance(predicted, list):
             predicted = [predicted]
-        self.process_results(outputs, predicted, str(st) + '_' + str(en))
+        self.process_results(true_outputs, predicted, str(st) + '_' + str(en))
 
-        return predicted, outputs
+        return predicted, true_outputs
 
     def add_LSTM(self, inputs, config, seq=False):
 
@@ -371,23 +371,34 @@ class Model(AttributeStore):
     def add_1dCNN(self, inputs, config: dict):
 
         if 'name' in config:
-            name = config['name']
+            rand_name = config['name']
         else:
-            name = 'cnn_lyr_' + str(np.random.randint(100))
+            rand = str(np.random.randint(100))
+            rand_name = rand
         cnn_activations = layers.Conv1D(filters=config['filters'],
                                   kernel_size=config['kernel_size'],
-                                  # activation=cnn['activation'],
-                                  name=name)(inputs)
+                                  name='cnn_lyr_'+rand_name)(inputs)
 
         if  config['act_fn'] is not None:
-            name = 'cnn_act_' + str(np.random.randint(100))
-            cnn_activations = ACTIVATIONS[config['act_fn']](name=name)(cnn_activations)
+            cnn_activations = ACTIVATIONS[config['act_fn']](name='cnn_act_'+rand_name)(cnn_activations)
 
         max_pool_lyr = layers.MaxPooling1D(pool_size=config['max_pool_size'],
-                                           name='max_pool_lyr')(cnn_activations)
-        flat_lyr = layers.Flatten(name='flat_lyr')(max_pool_lyr)
+                                           name='max_pool_lyr_'+rand_name)(cnn_activations)
+
+        flat_lyr = layers.Flatten(name='flat_lyr_'+rand_name)(max_pool_lyr)
 
         return flat_lyr
+
+    def cnn_model(self, cnn_config:dict, outs:int):
+        """ basic structure of a simple CNN based model"""
+
+        inputs = layers.Input(shape=(self.lookback, self.ins))
+
+        cnn_outputs = self.add_1dCNN(inputs, cnn_config)
+
+        predictions = layers.Dense(outs)(cnn_outputs)
+
+        return inputs, predictions
 
     def simple_lstm(self, lstm:dict, outs:int):
         """ basic structure of a simple LSTM based model"""
@@ -422,12 +433,52 @@ class Model(AttributeStore):
 
         return inputs, predictions
 
+    def lstm_cnn(self, lstm_config:dict, cnn_config:dict, outs:int):
+        """ basic structure of a simple LSTM -> CNN based model"""
+
+        inputs = layers.Input(shape=(self.lookback, self.ins))
+
+        lstm_activations = self.add_LSTM(inputs, lstm_config, seq=True)
+
+        cnn_outputs = self.add_1dCNN(lstm_activations, cnn_config)
+
+        predictions = layers.Dense(outs)(cnn_outputs)
+
+        return inputs, predictions
+
+    def lstm_autoencoder(self, enc_config:dict, dec_config:dict, composite:bool, outs:int):
+        """
+        basic structure of an LSTM autoencoder
+        """
+        inputs = layers.Input(shape=(self.lookback, self.ins))
+
+        # build encoder
+        encoder = self.add_LSTM(inputs, enc_config)
+
+        # define predict decoder
+        decoder1 = layers.RepeatVector(self.lookback-1)(encoder)
+        decoder1 = self.add_LSTM(decoder1, dec_config)
+        decoder1 = layers.Dense(outs)(decoder1)
+        if composite:
+            # define reconstruct decoder
+            decoder2 = layers.RepeatVector(self.lookback)(encoder)
+            decoder2 = layers.LSTM(100, activation='relu', return_sequences=True)(decoder2)
+            decoder2 = layers.TimeDistributed(layers.Dense(self.ins))(decoder2)
+
+            outputs = [decoder1, decoder2]
+        else:
+            outputs = decoder1
+
+        return inputs, outputs
+
     def compile(self, model_inputs, outputs):
 
         k_model = self.KModel(inputs=model_inputs, outputs=outputs)
         adam = keras.optimizers.Adam(lr=self.nn_config['lr'])
         k_model.compile(loss=self.loss, optimizer=adam, metrics=['mse'])
         k_model.summary()
+
+        keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, dpi=300)
 
         return k_model
 

@@ -27,11 +27,7 @@ class CNNModel(Model):
 
         cnn = self.nn_config['cnn_config']
 
-        inputs = layers.Input(shape=(self.lookback, self.ins))
-
-        cnn_outputs = self.add_1dCNN(inputs, cnn)
-
-        predictions = layers.Dense(self.outs)(cnn_outputs)
+        inputs, predictions = self.cnn_model(cnn, self.outs)
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -50,13 +46,7 @@ class LSTMCNNModel(Model):
         lstm = self.nn_config['lstm_config']
         cnn = self.nn_config['cnn_config']
 
-        inputs = layers.Input(shape=(self.lookback, self.ins))
-
-        lstm_activations = self.add_LSTM(inputs, lstm, seq=True)
-
-        cnn_outputs = self.add_1dCNN(lstm_activations, cnn)
-
-        predictions = layers.Dense(self.outs)(cnn_outputs)
+        inputs, predictions = self.lstm_cnn(lstm, cnn, self.outs)
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -331,24 +321,7 @@ class LSTMAutoEncoder(Model):
         enc_config = config['enc_config']
         dec_config = config['dec_config']
 
-        inputs = layers.Input(shape=(self.lookback, self.ins))
-
-
-        encoder = self.add_LSTM(inputs, enc_config)
-
-        # define predict decoder
-        decoder1 = layers.RepeatVector(self.lookback-1)(encoder)
-        decoder1 = self.add_LSTM(decoder1, dec_config)
-        decoder1 = layers.Dense(1)(decoder1)
-        if self.composite:
-            # define reconstruct decoder
-            decoder2 = layers.RepeatVector(self.lookback)(encoder)
-            decoder2 = layers.LSTM(100, activation='relu', return_sequences=True)(decoder2)
-            decoder2 = layers.TimeDistributed(layers.Dense(self.ins))(decoder2)
-
-            outputs = [decoder1, decoder2]
-        else:
-            outputs = decoder1
+        inputs, outputs = self.lstm_autoencoder(enc_config, dec_config, self.composite, self.outs)
 
         self.k_model = self.compile(inputs, outputs)
 
