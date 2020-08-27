@@ -390,6 +390,7 @@ class Model(AttributeStore):
         return flat_lyr
 
     def simple_lstm(self, lstm:dict, outs:int):
+        """ basic structure of a simple LSTM based model"""
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
@@ -677,7 +678,7 @@ class Model(AttributeStore):
 
         return x, y, target
 
-    def _imshow(self, img, label, save=False, fname=None):
+    def _imshow(self, img, label:str='', save=False, fname=None):
         plt.close('all')
         plt.imshow(img, aspect='auto')
         plt.colorbar()

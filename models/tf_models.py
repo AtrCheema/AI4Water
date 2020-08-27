@@ -309,6 +309,12 @@ class TCNModel(Model):
 
 class LSTMAutoEncoder(Model):
 
+    def __init__(self, nn_config, **kwargs):
+        # because composite attribute is used in this Model
+        self.composite = nn_config['autoenc_config']['composite']
+
+        super(LSTMAutoEncoder, self).__init__(nn_config=nn_config, **kwargs)
+
     def build_nn(self, method='prediction'):
         """
 
@@ -317,7 +323,6 @@ class LSTMAutoEncoder(Model):
         :return:
         """
 
-        setattr(self, 'composite', self.nn_config['autoenc_config']['composite'])
         setattr(self, 'method', 'lstm_autoencoder')
 
         # define encoder
@@ -359,18 +364,6 @@ class LSTMAutoEncoder(Model):
             outputs = labels
 
         return x, outputs
-
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
-
-        indices = self.get_indices(indices)
-
-        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
-
-        history = self.fit(inputs, outputs, **callbacks)
-
-        plot_loss(history)
-
-        return history
 
 
 class InputAttentionModel(DualAttentionModel):
