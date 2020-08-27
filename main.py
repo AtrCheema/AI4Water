@@ -19,7 +19,7 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
@@ -284,6 +284,39 @@ class Model(AttributeStore):
         return x, label
 
 
+    def process_results(self, true:list, predicted:list, name=None):
+
+        for out in range(self.outs):
+
+            print('\nFor {}'.format(out))
+
+            t = true[out].reshape(-1,)
+            p = predicted[out].reshape(-1,)
+
+            if np.isnan(t).sum() > 0:
+                mask = np.invert(np.isnan(t.reshape(-1,)))
+                t = t[mask]
+                p = p[mask]
+
+            errors = FindErrors(t, p)
+            for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
+                print(er, getattr(errors, er)())
+
+            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]))
+
+        return
+
+    def build_nn(self):
+        print('building simple lstm model')
+
+        # lstm = self.nn_config['lstm_config']
+
+        inputs, predictions = self.simple_lstm(self.nn_config['lstm_config'], outs=self.outs)
+
+        self.k_model = self.compile(inputs, predictions)
+
+        return
+
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
         indices = self.get_indices(indices)
@@ -314,43 +347,6 @@ class Model(AttributeStore):
         self.process_results(outputs, predicted, str(st) + '_' + str(en))
 
         return predicted, outputs
-
-    def process_results(self, true:list, predicted:list, name=None):
-
-        for out in range(self.outs):
-
-            print('\nFor {}'.format(out))
-
-            t = true[out].reshape(-1,)
-            p = predicted[out].reshape(-1,)
-
-            if np.isnan(t).sum() > 0:
-                mask = np.invert(np.isnan(t.reshape(-1,)))
-                t = t[mask]
-                p = p[mask]
-
-            errors = FindErrors(t, p)
-            for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
-                print(er, getattr(errors, er)())
-
-            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]))
-
-        return
-
-    def build_nn(self):
-        print('building simple lstm model')
-
-        # lstm = self.nn_config['lstm_config']
-
-        inputs = layers.Input(shape=(self.lookback, self.ins))
-
-        lstm_activations = self.add_LSTM(inputs, self.nn_config['lstm_config'])
-
-        predictions = layers.Dense(self.outs)(lstm_activations)
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return
 
     def add_LSTM(self, inputs, config, seq=False):
 
@@ -392,6 +388,38 @@ class Model(AttributeStore):
         flat_lyr = layers.Flatten(name='flat_lyr')(max_pool_lyr)
 
         return flat_lyr
+
+    def simple_lstm(self, lstm:dict, outs:int):
+
+        inputs = layers.Input(shape=(self.lookback, self.ins))
+
+        lstm_activations = self.add_LSTM(inputs, lstm)
+
+        predictions = layers.Dense(outs)(lstm_activations)
+
+        return predictions
+
+    def cnn_lstm(self, cnn:dict,  lstm:dict,  outs:int):
+        """ blue print for developing a CNN-LSTM model
+        """
+        timesteps = self.lookback // self.nn_config['subsequences']
+
+        inputs = layers.Input(shape=(None, timesteps, self.ins))
+
+        cnn_lyr = layers.TimeDistributed(layers.Conv1D(filters=cnn['filters'],
+                                         kernel_size=cnn['kernel_size'],
+                                         padding='same'),
+                                         )(inputs)
+        cnn_activations = layers.TimeDistributed(ACTIVATIONS[cnn['activation']](name='cnn_act'))(cnn_lyr)
+
+        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn['max_pool_size']))(cnn_activations)
+        flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
+
+        lstm_activations = self.add_LSTM(flat_lyr, lstm)
+
+        predictions = layers.Dense(outs)(lstm_activations)
+
+        return inputs, predictions
 
     def compile(self, model_inputs, outputs):
 

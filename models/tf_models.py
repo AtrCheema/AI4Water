@@ -4,7 +4,7 @@ __all__ = ["CNNModel", "CNNLSTMModel", "LSTMCNNModel", "DualAttentionModel", "TC
 import numpy as np
 
 from main import Model
-from .global_variables import keras, tcn, ACTIVATIONS
+from .global_variables import keras, tcn
 from models.layer_definition import MyTranspose, MyDot
 
 from .nbeats_keras import NBeatsNet
@@ -95,29 +95,7 @@ class CNNLSTMModel(Model):
 
         assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
 
-        timesteps = self.lookback // self.nn_config['subsequences']
-
-        inputs = layers.Input(shape=(None, timesteps, self.ins))
-
-        cnn_lyr = layers.TimeDistributed(layers.Conv1D(filters=cnn['filters'],
-                                         kernel_size=cnn['kernel_size'],
-                                         padding='same'),
-                                         )(inputs)
-        cnn_activations = layers.TimeDistributed(ACTIVATIONS[cnn['activation']](name='cnn_act'))(cnn_lyr)
-
-        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn['max_pool_size']))(cnn_activations)
-        flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
-
-        lstm_lyr = layers.LSTM(lstm['lstm_units'],
-                               # input_shape=(self.lookback, self.ins),
-                               dropout=lstm['dropout'],
-                               recurrent_dropout=lstm['rec_dropout'],
-                               name='lstm_lyr')(flat_lyr)
-
-        lstm_activations = ACTIVATIONS[lstm['lstm_act']](name='lstm_act')(lstm_lyr)
-        # lstm_activations = self.add_LSTM(flat_lyr, lstm)
-
-        predictions = layers.Dense(self.outs)(lstm_activations)
+        inputs, predictions = self.cnn_lstm(cnn=cnn, lstm=lstm, outs=self.outs)
 
         self.k_model = self.compile(inputs, predictions)
 
