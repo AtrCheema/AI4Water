@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 import json
 
 import keract_mod as keract
-from models.global_variables import keras, tf
+from models.global_variables import keras, tf, tcn
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES, ACTIVATIONS
 
@@ -242,12 +242,13 @@ class Model(AttributeStore):
         self.k_model.fit(inputs,
                          outputs,
                          epochs=self.nn_config['epochs'],
-                         batch_size=self.data_config['batch_size'], validation_split=self.data_config['val_fraction'],
+                         batch_size=self.data_config['batch_size'],
+                         validation_split=self.data_config['val_fraction'],
                          callbacks=_callbacks
                          )
         history = self.k_model.history
 
-        self.save_config()
+        self.save_config(history.history)
 
         # save all the losses or performance metrics
         df = pd.DataFrame.from_dict(history.history)
@@ -409,7 +410,7 @@ class Model(AttributeStore):
 
         predictions = layers.Dense(outs)(lstm_activations)
 
-        return predictions
+        return inputs, predictions
 
     def cnn_lstm(self, cnn:dict,  lstm:dict,  outs:int):
         """ blue print for developing a CNN-LSTM model
@@ -422,7 +423,7 @@ class Model(AttributeStore):
                                          kernel_size=cnn['kernel_size'],
                                          padding='same'),
                                          )(inputs)
-        cnn_activations = layers.TimeDistributed(ACTIVATIONS[cnn['activation']](name='cnn_act'))(cnn_lyr)
+        cnn_activations = layers.TimeDistributed(ACTIVATIONS[cnn['act_fn']](name='cnn_act'))(cnn_lyr)
 
         max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn['max_pool_size']))(cnn_activations)
         flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
@@ -470,6 +471,19 @@ class Model(AttributeStore):
             outputs = decoder1
 
         return inputs, outputs
+
+    def tcn_model(self, tcn_options:dict, outs:int):
+        """
+        basic tcn model
+        """
+        tcn_options['return_sequences'] = False
+
+        inputs = layers.Input(batch_shape=(None, self.lookback, self.ins))
+
+        tcn_outs = tcn.TCN(**tcn_options)(inputs)  # The TCN layers are here.
+        predictions = layers.Dense(outs)(tcn_outs)
+
+        return inputs,predictions
 
     def compile(self, model_inputs, outputs):
 
@@ -747,13 +761,11 @@ class Model(AttributeStore):
         self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
                      save, os.path.join(self.path, lyr_name))
 
-    def save_config(self):
+    def save_config(self, history:dict):
 
         config = dict()
-        config['min_val_loss'] = np.min(
-            self.k_model.history.history['val_loss']) if 'val_loss' in self.k_model.history.history else None
-        config['min_loss'] = np.min(
-            self.k_model.history.history['loss']) if 'val_loss' in self.k_model.history.history else None
+        config['min_val_loss'] = np.min(history['val_loss']) if 'val_loss' in history else None
+        config['min_loss'] = np.min(history['loss']) if 'val_loss' in history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
         config['test_indices'] = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None

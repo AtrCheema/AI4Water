@@ -23,15 +23,14 @@ def make_model(**kwargs):
                                     'composite': False
                                }
 
-    _nn_config['nbeats_options'] = {
-        'backcast_length': 15,
-        'forecast_length': 1,
-        'stack_types': ('generic', 'generic'),
-        'nb_blocks_per_stack': 2,
-        'thetas_dim': (4, 4),
-        'share_weights_in_stack': True,
-        'hidden_layer_units': 64
-    }
+    _nn_config['nbeats_options'] = {'backcast_length': 15,
+                                    'forecast_length': 1,
+                                    'stack_types': ('generic', 'generic'),
+                                    'nb_blocks_per_stack': 2,
+                                    'thetas_dim': (4, 4),
+                                    'share_weights_in_stack': True,
+                                    'hidden_layer_units': 64
+                                    }
 
     _nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
                                'n_s': 20,  # length of hidden state m
@@ -45,14 +44,13 @@ def make_model(**kwargs):
         'n_sde0': 30
     }
 
-    tcn_options = {'nb_filters': 64,
-                   'kernel_size': 2,
-                   'nb_stacks': 1,
-                   'dilations': [1, 2, 4, 8, 16, 32],
-                   'padding': 'causal',
-                   'use_skip_connections': True,
-                   'dropout_rate': 0.0}
-    _nn_config['tcn_options'] = tcn_options
+    _nn_config['tcn_options'] = {'nb_filters': 64,
+                                 'kernel_size': 2,
+                                 'nb_stacks': 1,
+                                 'dilations': [1, 2, 4, 8, 16, 32],
+                                 'padding': 'causal',
+                                 'use_skip_connections': True,
+                                 'dropout_rate': 0.0}
 
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
@@ -70,7 +68,7 @@ def make_model(**kwargs):
                                 }
     _nn_config['cnn_config'] = {'filters': 64,
                                'kernel_size': 2,
-                               'activation': 'LeakyRelu',
+                               'act_fn': 'LeakyRelu',
                                'max_pool_size': 2}
 
     _nn_config['HARHN_config'] = {'n_conv_lyrs': 3,

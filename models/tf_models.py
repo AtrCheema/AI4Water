@@ -284,12 +284,8 @@ class TCNModel(Model):
         setattr(self, 'method', 'TCN')
 
         tcn_options = self.nn_config['tcn_options']
-        tcn_options['return_sequences'] = False
 
-        inputs = layers.Input(batch_shape=(None, self.lookback, self.ins))
-
-        tcn_outs = tcn.TCN(**tcn_options)(inputs)  # The TCN layers are here.
-        predictions = layers.Dense(1)(tcn_outs)
+        inputs, predictions = self.tcn_model(tcn_options, self.outs)
 
         self.k_model = self.compile(inputs, predictions)
         tcn.tcn_full_summary(self.k_model, expand_residual_blocks=True)
