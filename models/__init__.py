@@ -12,4 +12,5 @@ from .tf_models import TCNModel
 from .tf_models import InputAttentionModel
 from .tf_models import DualAttentionModel
 from .tf_models import NBeatsModel
+from .tf_models import ConvLSTMModel
 from main import Model

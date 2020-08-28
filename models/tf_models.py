@@ -1,5 +1,5 @@
 __all__ = ["CNNModel", "CNNLSTMModel", "LSTMCNNModel", "DualAttentionModel", "TCNModel",
-           "LSTMAutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel"]
+           "LSTMAutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
 
 import numpy as np
 
@@ -54,7 +54,10 @@ class LSTMCNNModel(Model):
 
 
 class CNNLSTMModel(Model):
-
+    """
+    https://link.springer.com/article/10.1007/s00521-020-04867-x
+    https://www.sciencedirect.com/science/article/pii/S0360544219311223
+    """
     def __init__(self, **kwargs):
 
         self.method = 'CNN_LSTM'
@@ -467,3 +470,39 @@ class NBeatsModel(Model):
         self.process_results(label, predicted.reshape(-1,), str(st) + '_' + str(ende))
 
         return predicted, label
+
+
+class ConvLSTMModel(Model):
+    """
+    Original:
+      https://arxiv.org/abs/1506.04214v1
+    implemented after
+      https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/
+    Literature:
+      https://www.sciencedirect.com/science/article/pii/S0957417420305285
+      https://www.nature.com/articles/s41598-019-46850-0
+    """
+    def run_paras(self, **kwargs):
+
+        sub_seq = self.nn_config['subsequences']
+        sub_seq_lens = int(self.lookback / sub_seq)
+
+        x, y, labels = self.fetch_data(self.data, **kwargs)
+
+        x = x.reshape((x.shape[0], sub_seq, 1, sub_seq_lens, self.ins))
+
+        return x, labels
+
+    def build_nn(self):
+        """ this is more like a encoder decoder example"""
+
+        assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
+
+        enc_config = self.nn_config['conv_lstm_config']['enc_config']
+        dec_config = self.nn_config['conv_lstm_config']['dec_config']
+
+        inputs, predictions = self.conv_lstm_model(enc_config, dec_config, self.outs)
+
+        self.k_model = self.compile(inputs, predictions)
+
+        return

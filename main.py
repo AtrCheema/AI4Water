@@ -349,25 +349,38 @@ class Model(AttributeStore):
 
         return predicted, true_outputs
 
-    def add_LSTM(self, inputs, config, seq=False):
+    def add_LSTM(self, inputs, config):
 
-        if 'name' in config:
-            name = config['name']
-        else:
-            name = 'lstm_lyr_' + str(np.random.randint(100))
+        if 'name' not in config:
+            config['name'] = 'lstm_lyr_' + str(np.random.randint(100))
 
-        lstm_activations = layers.LSTM(config['lstm_units'],
-                               # input_shape=(self.lookback, self.ins),
-                               dropout=config['dropout'],
-                               recurrent_dropout=config['rec_dropout'],
-                               return_sequences=seq,
-                               name=name)(inputs)
+        if 'act_fn' in config:
+            config.pop('act_fn')
 
-        if  config['act_fn'] is not None:
+        lstm_activations = layers.LSTM(**config)(inputs)
+
+        if  'act_fn' in config:
             name = 'lstm_act_' + str(np.random.randint(100))
             lstm_activations = ACTIVATIONS[config['act_fn']](name=name)(lstm_activations)
 
         return lstm_activations
+
+    def conv2d_lstm(self, config:dict, inputs):
+
+        if 'name' not in config:
+            config['name'] = 'conv_lstm_' + str(np.random.randint(100))
+
+        if 'act_fn' in config:
+            config.pop('act_fn')
+
+        conv_lstm_outs = keras.layers.ConvLSTM2D(**config)(inputs)
+
+        # this is used if we want to apply activation as a separate layer
+        if  'act_fn' in config:
+            name = 'convlstm_act_' + str(np.random.randint(100))
+            conv_lstm_outs = ACTIVATIONS[config['act_fn']](name=name)(conv_lstm_outs)
+
+        return  keras.layers.Flatten()(conv_lstm_outs)
 
     def add_1dCNN(self, inputs, config: dict):
 
@@ -376,11 +389,14 @@ class Model(AttributeStore):
         else:
             rand = str(np.random.randint(100))
             rand_name = rand
-        cnn_activations = layers.Conv1D(filters=config['filters'],
-                                  kernel_size=config['kernel_size'],
-                                  name='cnn_lyr_'+rand_name)(inputs)
+            config['name'] = rand
 
-        if  config['act_fn'] is not None:
+        if 'act_fn' in config:
+            config.pop('act_fn')
+
+        cnn_activations = layers.Conv1D(**config)(inputs)
+
+        if  'act_fn' in config:
             cnn_activations = ACTIVATIONS[config['act_fn']](name='cnn_act_'+rand_name)(cnn_activations)
 
         max_pool_lyr = layers.MaxPooling1D(pool_size=config['max_pool_size'],
@@ -439,7 +455,9 @@ class Model(AttributeStore):
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
-        lstm_activations = self.add_LSTM(inputs, lstm_config, seq=True)
+        lstm_config['return_sequences'] = True   # forcing it to be True
+
+        lstm_activations = self.add_LSTM(inputs, lstm_config)
 
         cnn_outputs = self.add_1dCNN(lstm_activations, cnn_config)
 
@@ -484,6 +502,25 @@ class Model(AttributeStore):
         predictions = layers.Dense(outs)(tcn_outs)
 
         return inputs,predictions
+
+    def conv_lstm_model(self, enc_config:dict, dec_config:dict, outs:int):
+        """
+         basic structure of a ConvLSTM based encoder decoder model.
+        """
+        sub_seq = self.nn_config['subsequences']
+        sub_seq_lens = int(self.lookback / sub_seq)
+
+        inputs = keras.layers.Input(shape=(sub_seq, 1, sub_seq_lens, self.ins))
+
+        enc_outs = self.conv2d_lstm(enc_config, inputs)
+
+        interm_outs = keras.layers.RepeatVector(self.outs)(enc_outs)
+
+        lstm_outs = self.add_LSTM(interm_outs, dec_config)
+
+        predictions = keras.layers.Dense(outs)(lstm_outs)
+
+        return inputs, predictions
 
     def compile(self, model_inputs, outputs):
 
