@@ -19,6 +19,7 @@ Currently following models are implemented
 | Neural Beats  | `NBeatsModel` | [paper](https://arxiv.org/pdf/1905.10437.pdf) |
 | Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
 | Input Attention  | `InputAttentionModel` | |
+| ConvLSTM | `ConvLSTMModel` | [paper](https://arxiv.org/abs/1506.04214v1) [Code](https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/) |
 
 ## How to use
 

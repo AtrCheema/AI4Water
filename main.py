@@ -51,6 +51,7 @@ class AttributeStore(object):
     de_densor_We = None
     test_indices = None
     train_indices = None
+    scalers = {}
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
 
 
@@ -128,7 +129,21 @@ class Model(AttributeStore):
                    shuffle: bool = True,
                    cache_data=True,
                    noise: int = 0,
-                   indices: list = None):
+                   indices: list = None,
+                   scaler_key:str = '0'):
+        """
+
+        :param data:
+        :param st:
+        :param en:
+        :param shuffle:
+        :param cache_data:
+        :param noise:
+        :param indices:
+        :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
+                   MinMaxScaler object and can be saved with a unique key in memory.
+        :return:
+        """
 
         if indices is not None:
             assert isinstance(indices, list), "indices must be list"
@@ -154,6 +169,8 @@ class Model(AttributeStore):
         scaler = MinMaxScaler()
         data = scaler.fit_transform(df)
         df = pd.DataFrame(data)
+
+        self.scalers['scaler' + scaler_key] = scaler
 
         if en is None:
             en = df.shape[0]
@@ -354,14 +371,17 @@ class Model(AttributeStore):
         if 'name' not in config:
             config['name'] = 'lstm_lyr_' + str(np.random.randint(100))
 
+        act_layer = None
+
         if 'act_fn' in config:
-            config.pop('act_fn')
+            act_layer = config.pop('act_fn')
 
         lstm_activations = layers.LSTM(**config)(inputs)
 
-        if  'act_fn' in config:
+        if  act_layer is not None:
+            assert isinstance(act_layer, str)
             name = 'lstm_act_' + str(np.random.randint(100))
-            lstm_activations = ACTIVATIONS[config['act_fn']](name=name)(lstm_activations)
+            lstm_activations = ACTIVATIONS[act_layer](name=name)(lstm_activations)
 
         return lstm_activations
 
@@ -370,17 +390,21 @@ class Model(AttributeStore):
         if 'name' not in config:
             config['name'] = 'conv_lstm_' + str(np.random.randint(100))
 
+        act_layer = None
+
         if 'act_fn' in config:
-            config.pop('act_fn')
+            act_layer = config.pop('act_fn')
 
         conv_lstm_outs = keras.layers.ConvLSTM2D(**config)(inputs)
 
         # this is used if we want to apply activation as a separate layer
-        if  'act_fn' in config:
+        if  act_layer is not None:
+            assert isinstance(act_layer, str)
             name = 'convlstm_act_' + str(np.random.randint(100))
             conv_lstm_outs = ACTIVATIONS[config['act_fn']](name=name)(conv_lstm_outs)
 
         return  keras.layers.Flatten()(conv_lstm_outs)
+
 
     def add_1dCNN(self, inputs, config: dict):
 
@@ -391,15 +415,20 @@ class Model(AttributeStore):
             rand_name = rand
             config['name'] = rand
 
+        act_layer = None
+
         if 'act_fn' in config:
-            config.pop('act_fn')
+            act_layer = config.pop('act_fn')
+
+        max_pool_size = config.pop('max_pool_size')
 
         cnn_activations = layers.Conv1D(**config)(inputs)
 
-        if  'act_fn' in config:
+        if  act_layer is not None:
+            assert isinstance(act_layer, str)
             cnn_activations = ACTIVATIONS[config['act_fn']](name='cnn_act_'+rand_name)(cnn_activations)
 
-        max_pool_lyr = layers.MaxPooling1D(pool_size=config['max_pool_size'],
+        max_pool_lyr = layers.MaxPooling1D(pool_size=max_pool_size,
                                            name='max_pool_lyr_'+rand_name)(cnn_activations)
 
         flat_lyr = layers.Flatten(name='flat_lyr_'+rand_name)(max_pool_lyr)
@@ -547,9 +576,9 @@ class Model(AttributeStore):
             input_x.append(np.array(x_data))
             input_y.append(np.array(y_data))
             label_y.append(np.array(label_data))
-        input_x = np.array(input_x).reshape(-1, self.lookback, ins)
-        input_y = np.array(input_y).reshape(-1, self.lookback-1, outs)
-        label_y = np.array(label_y).reshape(-1, outs)
+        input_x = np.array(input_x, dtype=np.float32).reshape(-1, self.lookback, ins)
+        input_y = np.array(input_y, dtype=np.float32).reshape(-1, self.lookback-1, outs)
+        label_y = np.array(label_y, dtype=np.float32).reshape(-1, outs)
 
         nans = df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
