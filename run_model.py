@@ -75,9 +75,10 @@ def make_model(**kwargs):
     _nn_config['subsequences'] = 3  # used for cnn_lst structure
 
     _nn_config['lstm_config'] = {'units': 64,  # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv1D
-                                'act_fn': 'relu',
+                                'activation': 'relu',  # activation inside LSTM
                                 'dropout': 0.4,
                                 'recurrent_dropout': 0.5,
+                                 'act_fn': 'relu',  # this will not be activation inside LSTM rather a separate activation layer after LSTM
                                 }
     _nn_config['cnn_config'] = {'filters': 64, # fore options see https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
                                'kernel_size': 2,

@@ -304,6 +304,7 @@ class Model(AttributeStore):
 
     def process_results(self, true:list, predicted:list, name=None):
 
+        errs = dict()
         for out in range(self.outs):
 
             print('\nFor {}'.format(out))
@@ -317,10 +318,11 @@ class Model(AttributeStore):
                 p = p[mask]
 
             errors = FindErrors(t, p)
-            for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
-                print(er, getattr(errors, er)())
+            errs['out'] = errors.calculate_all()
 
             plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]))
+
+        save_config_file(self.path, errors=errs)
 
         return
 
@@ -347,7 +349,7 @@ class Model(AttributeStore):
 
         return history
 
-    def predict(self, st=0, en=None, indices=None):
+    def predict(self, st=0, en=None, indices=None, pref:str='test'):
 
         if indices is not None:
             setattr(self, 'predict_indices', indices)
@@ -362,7 +364,7 @@ class Model(AttributeStore):
             true_outputs = [true_outputs]
         if not isinstance(predicted, list):
             predicted = [predicted]
-        self.process_results(true_outputs, predicted, str(st) + '_' + str(en))
+        self.process_results(true_outputs, predicted, pref)
 
         return predicted, true_outputs
 
@@ -830,8 +832,8 @@ class Model(AttributeStore):
     def save_config(self, history:dict):
 
         config = dict()
-        config['min_val_loss'] = np.min(history['val_loss']) if 'val_loss' in history else None
-        config['min_loss'] = np.min(history['loss']) if 'val_loss' in history else None
+        config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
+        config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
         config['test_indices'] = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
