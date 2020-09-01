@@ -266,14 +266,14 @@ class DualAttentionModel(Model):
 
     def run_paras(self, **kwargs):
 
-        x, y, labels = self.fetch_data(self.data, **kwargs)
+        x, prev_y, labels = self.fetch_data(self.data, **kwargs)
 
         s0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_s']))
         h0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_h']))
 
         h_de0 = s_de0 = np.zeros((x.shape[0], self.nn_config['dec_config']['p']))
 
-        return [x, s0, h0, h_de0, s_de0], labels
+        return [x, prev_y, s0, h0, h_de0, s_de0], labels
 
 
 class TCNModel(Model):
@@ -416,7 +416,7 @@ class OutputAttentionModel(DualAttentionModel):
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None):
+    def predict(self, st=0, ende=None, indices=None, pref:str="test"):
         setattr(self, 'predict_indices', indices)
 
         test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
@@ -429,7 +429,7 @@ class OutputAttentionModel(DualAttentionModel):
                                          batch_size=test_x.shape[0],
                                          verbose=1)
 
-        self.process_results(test_label, predicted, str(st) + '_' + str(ende))
+        self.process_results(test_label, predicted, pref)
 
         return predicted, test_label
 
@@ -459,7 +459,7 @@ class NBeatsModel(Model):
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None):
+    def predict(self, st=0, ende=None, indices=None, pref:str="test"):
 
         exo_x, x, label = self.prepare_batches(data=self.data[st:ende], target=self.data_config['outputs'][0])
 
@@ -467,7 +467,7 @@ class NBeatsModel(Model):
                                          batch_size=exo_x.shape[0],
                                          verbose=1)
 
-        self.process_results(label, predicted.reshape(-1,), str(st) + '_' + str(ende))
+        self.process_results(label, predicted.reshape(-1,), pref)
 
         return predicted, label
 

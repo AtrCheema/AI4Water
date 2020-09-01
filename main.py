@@ -19,7 +19,7 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
@@ -71,6 +71,25 @@ class Model(AttributeStore):
         self.loss = LOSSES[self.nn_config['loss']]
         self.KModel = KModel
         self.path = maybe_create_path(path=path)
+
+    @property
+    def data(self):
+        # so that .data attribute can be customized
+        return self._data
+
+    @data.setter
+    def data(self, x):
+        self._data = x
+
+    @property
+    def intervals(self):
+        # so that itnervals can be set from outside the Model class. A use case can be when we want to implement
+        # intervals during train time but not during test/predict time.
+        return self._intervals
+
+    @intervals.setter
+    def intervals(self, x:list):
+        self._intervals = x
 
     @property
     def lookback(self):
@@ -240,14 +259,15 @@ class Model(AttributeStore):
 
     def fit(self, inputs, outputs, **callbacks):
 
+        _callbacks = list()
+
         _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
-        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+        _callbacks.append(keras.callbacks.ModelCheckpoint(
             filepath=self.path + "\\weights_{epoch:03d}_{val_loss:.4f}.hdf5",
             save_weights_only=True,
             monitor=_monitor,
             mode='min',
-            save_best_only=True)
-        _callbacks = [model_checkpoint_callback]
+            save_best_only=True))
 
         _callbacks.append(keras.callbacks.EarlyStopping(
             monitor=_monitor, min_delta=self.nn_config['min_val_loss'],
@@ -280,7 +300,7 @@ class Model(AttributeStore):
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum())
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - self.data_config['batch_size']
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
@@ -301,13 +321,10 @@ class Model(AttributeStore):
         x, y, label = self.fetch_data(self.data, **kwargs)
         return x, label
 
-
     def process_results(self, true:list, predicted:list, name=None):
 
         errs = dict()
         for out in range(self.outs):
-
-            print('\nFor {}'.format(out))
 
             t = true[out].reshape(-1,)
             p = predicted[out].reshape(-1,)
@@ -364,7 +381,7 @@ class Model(AttributeStore):
             true_outputs = [true_outputs]
         if not isinstance(predicted, list):
             predicted = [predicted]
-        self.process_results(true_outputs, predicted, pref)
+        self.process_results(true_outputs, predicted, pref+'_')
 
         return predicted, true_outputs
 
@@ -560,8 +577,10 @@ class Model(AttributeStore):
         k_model.compile(loss=self.loss, optimizer=adam, metrics=['mse'])
         k_model.summary()
 
-        keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, dpi=300)
-
+        try:
+            keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, dpi=300)
+        except AssertionError:
+            print("dot plot of model could not be plotted")
         return k_model
 
     def get_data(self, df, ins, outs):

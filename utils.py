@@ -132,7 +132,7 @@ def save_config_file(path, config=None, errors=None):
 
     if errors is not None:
         suffix = dateandtime_now()
-        fpath = path + "/errors" + suffix + ".json"
+        fpath = path + "/errors_" + suffix + ".json"
         data = errors
     elif config is not None:
         fpath = path + "/config.json"

@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 from models import Model
 
@@ -98,10 +99,13 @@ def make_model(**kwargs):
     _data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
 
     # input features in data_frame
-    _data_config['inputs'] = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
-                      'rel_hum']
+    dpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    _df = pd.read_csv(os.path.join(dpath, "nasdaq100_padding.csv"))
+    in_cols = list(_df.columns)
+    in_cols.remove("NDX")
+    _data_config['inputs'] = in_cols
     # column in dataframe to bse used as output/target
-    _data_config['outputs'] = ['blaTEM_coppml']
+    _data_config['outputs'] = ["NDX"]
 
     for key, val in kwargs.items():
         if key in _data_config:
@@ -145,4 +149,4 @@ if __name__=="__main__":
     history = model.train_nn(indices='random')
 
     # y, obs = model.predict()
-    # acts = model.activations(st=0, en=1400)
+    # acts, data = model.activations(st=0, en=1400)
