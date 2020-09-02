@@ -10,7 +10,7 @@ from run_model import make_model
 
 df = pd.read_csv("../data/nasdaq100_padding.csv")
 
-df.index = pd.date_range("20110101", periods=len(df), freq='H')
+# df.index = pd.date_range("20110101", periods=len(df), freq='H')
 out = df["NDX"]
 print(out.isna().sum())
 
@@ -41,10 +41,10 @@ model.build_nn()
 
 history = model.train_nn(indices='random')
 
-y, obs = model.predict(indices=model.test_indices)
-tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train')
+y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
+# tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train', use_datetime_index=False)
 
-#model.plot_activations(st=0,save=True)
+model.view_model(st=0,save=True)
 
 # Since we are using DualAttentionModel which requires observations at previous steps, we can not make
 # predictions at steps which are skipped from `intervals`. However, for a model which does not require previous

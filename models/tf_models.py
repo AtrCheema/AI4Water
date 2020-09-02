@@ -416,7 +416,7 @@ class OutputAttentionModel(DualAttentionModel):
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None, pref:str="test"):
+    def predict(self, st=0, ende=None, indices=None, pref:str="test", scaler_key:str='5', use_datetime_index=False):
         setattr(self, 'predict_indices', indices)
 
         test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
@@ -459,9 +459,9 @@ class NBeatsModel(Model):
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None, pref:str="test"):
+    def predict(self, st=0, en=None, indices=None, pref:str="test", scaler_key:str='5', use_datetime_index=False):
 
-        exo_x, x, label = self.prepare_batches(data=self.data[st:ende], target=self.data_config['outputs'][0])
+        exo_x, x, label = self.prepare_batches(data=self.data[st:en], target=self.data_config['outputs'][0])
 
         predicted = self.k_model.predict([x, exo_x],
                                          batch_size=exo_x.shape[0],

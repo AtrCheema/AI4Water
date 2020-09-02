@@ -19,7 +19,7 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
@@ -347,7 +347,7 @@ class Model(AttributeStore):
         x, y, label = self.fetch_data(self.data, **kwargs)
         return [x], label
 
-    def process_results(self, true:list, predicted:list, name=None):
+    def process_results(self, true:list, predicted:list, name=None, **plot_args):
 
         errs = dict()
         for out in range(self.outs):
@@ -364,7 +364,7 @@ class Model(AttributeStore):
             errs['out'] = errors.calculate_all()
 
             plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]),
-                         marker='.', linestyle='')
+                         **plot_args)
 
         save_config_file(self.path, errors=errs)
 
@@ -393,22 +393,26 @@ class Model(AttributeStore):
 
         return history
 
-    def predict(self, st=0, en=None, indices=None, scaler_key:str='5', pref:str='test'):
+    def predict(self, st=0, en=None, indices=None, scaler_key:str='5', pref:str='test',
+                use_datetime_index=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
+
         """
 
         if indices is not None:
             setattr(self, 'predict_indices', indices)
 
         inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
-                                              return_dt_index=True)
+                                              return_dt_index=use_datetime_index)
 
-        # remove the first of first inputs which is datetime index
-        first_input = inputs[0]
-        dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-        first_input1 = first_input[:, :, 1:].astype(np.float32)
-        inputs[0] = first_input1
+        dt_index=None  # default case when datetime_index is not present in input data
+        if use_datetime_index:
+            # remove the first of first inputs which is datetime index
+            first_input = inputs[0]
+            dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
+            first_input1 = first_input[:, :, 1:].astype(np.float32)
+            inputs[0] = first_input1
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
@@ -441,7 +445,7 @@ class Model(AttributeStore):
                               index=dt_index)
             df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
-        self.process_results(true_outputs, predicted, pref+'_')
+        self.process_results(true_outputs, predicted, pref+'_', **plot_args)
 
         return predicted, true_outputs
 
@@ -704,18 +708,17 @@ class Model(AttributeStore):
 
         keract.display_activations(activations=activations,**kwargs)
 
-    def gradients_of_weights(self, st=0, en=None, indices=None) -> dict:
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=en, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
-        return keract.get_gradients_of_trainable_weights(self.k_model, test_x, test_label)
+    def gradients_of_weights(self, **kwargs) -> dict:
+
+        x, y = self.run_paras(**kwargs)
+
+        return keract.get_gradients_of_trainable_weights(self.k_model, x, y)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=en, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
 
-        return keract.get_gradients_of_activations(self.k_model, test_x, test_label, layer_names=layer_name)
+        x, y = self.run_paras(st=st, en=en, indices=indices)
+
+        return keract.get_gradients_of_activations(self.k_model, x, y, layer_names=layer_name)
 
     def trainable_weights(self):
         """ returns all trainable weights as arrays in a dictionary"""
@@ -727,15 +730,16 @@ class Model(AttributeStore):
                 weights[weight.name] = keras.backend.eval(weight)
         return weights
 
-    def plot_weights(self, save=None):
+    def plot_weights(self, save=True):
         weights = self.trainable_weights()
         for _name, weight in weights.items():
+            title = _name + " Weights"
+            fname = _name + '_weights'
+
             if np.ndim(weight) == 2 and weight.shape[1] > 1:
-                self._imshow(weight, _name + " Weights", save)
+                self._imshow(weight, title, save, fname)
             elif len(weight) > 1 and np.ndim(weight) < 3:
-                plt.plot(weight)
-                plt.title( _name + " Weights")
-                plt.show()
+                self.plot1d(weight, title, save, fname)
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
@@ -749,32 +753,63 @@ class Model(AttributeStore):
                 self._imshow(activation, lyr_name + " Activations", save, os.path.join(self.path, lyr_name))
             elif np.ndim(activation) == 3:
                 self._imshow_3d(activation, lyr_name, save=save)
+            elif np.ndim(activation) == 2: # this is now 1d
+                # shape= (?, 1)
+                self.plot1d(activation, label=lyr_name+' Activations', save=save,
+                            fname=os.path.join(self.path, lyr_name+'_activations'))
             else:
-                print("ignoring activations for {} because it has shape {}".format(lyr_name, activation.shape))
+                print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
+                                                                                           np.ndim(activation)))
 
-    def plot_weight_grads(self, save: bool=False, **kwargs):
+    def plot_weight_grads(self, save: bool=True, **kwargs):
         """ plots gradient of all trainable weights"""
 
         gradients = self.gradients_of_weights(**kwargs)
         for lyr_name, gradient in gradients.items():
+
+            title = lyr_name+ "Weight Gradients"
+            fname = os.path.join(self.path, lyr_name+'_weight_grads')
+
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                self._imshow(gradient, lyr_name + " Weight Gradients", save,  os.path.join(self.path, lyr_name))
+                self._imshow(gradient, title, save,  fname)
             elif len(gradient) and np.ndim(gradient) < 3:
-                plt.plot(gradient)
-                plt.title(lyr_name + " Weight Gradients")
-                plt.show()
+                self.plot1d(gradient, title, save, fname)
             else:
-                print("ignoring weight gradients for {} because it has shape {}".format(lyr_name, gradient.shape))
+                print("ignoring weight gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
+                                                                                           np.ndim(gradient)))
 
     def plot_act_grads(self, save: bool=None, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         gradients = self.gradients_of_activations(**kwargs)
 
         for lyr_name, gradient in gradients.items():
-            if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                self._imshow(gradient, lyr_name + " Activation Gradients", save, os.path.join(self.path, lyr_name))
+            fname = os.path.join(self.path, lyr_name + "_activation gradients")
+            title = lyr_name + " Activation Gradients"
+            if np.ndim(gradient) == 2:
+                if gradient.shape[1] > 1:
+                    # (?, ?)
+                    self._imshow(gradient, title, save, fname)
+                elif gradient.shape[1] == 1:
+                    # (? , 1)
+                    self.plot1d(np.squeeze(gradient), title, save, fname)
+
+            elif np.ndim(gradient) == 3 and gradient.shape[1] == 1:
+                if gradient.shape[2] == 1:
+                    # (?, 1, 1)
+                    self.plot1d(np.squeeze(gradient), title, save, fname)
+                else:
+                    # (?, 1, ?)
+                    self._imshow(np.squeeze(gradient), title, save, fname)
+            elif np.ndim(gradient) == 3:
+                if gradient.shape[2] == 1:
+                    # (?, ?, 1)
+                    self._imshow(np.squeeze(gradient), title, save, fname)
+                elif gradient.shape[2] > 1:
+                    # (?, ?, ?)
+                    self._imshow_3d(gradient, lyr_name, save)
             else:
-                print("ignoring activation gradients for {} because it has shape {}".format(lyr_name, gradient.shape))
+                print("ignoring activation gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
+                                                                                               np.ndim(gradient)))
 
     def view_model(self, **kwargs):
         """ shows all activations, weights and gradients of the keras model."""
@@ -895,23 +930,38 @@ class Model(AttributeStore):
 
         return x, y, target
 
-    def _imshow(self, img, label:str='', save=False, fname=None):
+    def _imshow(self, img, label:str='', save=True, fname=None):
+        assert np.ndim(img)==2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
         plt.imshow(img, aspect='auto')
         plt.colorbar()
         plt.title(label)
-        if save:
-            plt.savefig(os.path.join(self.path, fname))
-        else:
-            plt.show()
+        self.save_or_show(save, fname)
 
-    def _imshow_3d(self, activation, lyr_name, save=False):
+    def _imshow_3d(self, activation, lyr_name, save=True):
         act_2d = []
         for i in range(activation.shape[0]):
             act_2d.append(activation[i, :])
         activation_2d = np.vstack(act_2d)
         self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
                      save, os.path.join(self.path, lyr_name))
+
+    def plot1d(self, array, label:str='', save=True, fname=None):
+        plt.close('all')
+        plt.plot(array, '.')
+        plt.title(label)
+        self.save_or_show(save, fname)
+
+
+    def save_or_show(self, save:bool=True, fname=None):
+        if save:
+            assert isinstance(fname, str)
+            if "/" in fname:
+                fname = fname.replace("/", "_")
+            plt.savefig(os.path.join(self.path, fname))
+        else:
+            plt.show()
+
 
     def save_config(self, history:dict):
 

@@ -137,7 +137,6 @@ if __name__=="__main__":
                                                          lr=0.0001)
 
     df = pd.read_csv('data/all_data_30min.csv')
-    df.index = pd.to_datetime(df['Date_Time2'])
 
     model = Model(data_config=data_config,
                   nn_config=nn_config,
@@ -149,5 +148,5 @@ if __name__=="__main__":
 
     history = model.train_nn(indices='random')
 
-    y, obs = model.predict(st=0)
+    y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
     model.view_model(st=0)
