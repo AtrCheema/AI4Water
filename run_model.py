@@ -69,7 +69,7 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 40
+    _nn_config['epochs'] = 4
     _nn_config['min_val_loss'] = 0.0001
     _nn_config['patience'] = 100
 
@@ -137,6 +137,7 @@ if __name__=="__main__":
                                                          lr=0.0001)
 
     df = pd.read_csv('data/all_data_30min.csv')
+    df.index = pd.to_datetime(df['Date_Time2'])
 
     model = Model(data_config=data_config,
                   nn_config=nn_config,
@@ -148,5 +149,5 @@ if __name__=="__main__":
 
     history = model.train_nn(indices='random')
 
-    # y, obs = model.predict()
-    # acts, data = model.activations(st=0, en=1400)
+    y, obs = model.predict(st=0)
+    model.view_model(st=0)

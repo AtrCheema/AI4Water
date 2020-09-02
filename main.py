@@ -19,12 +19,16 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
-tf.random.set_seed(313)
+if int(tf.__version__[0]) == 1:
+    tf.compat.v1.set_random_seed(313)
+elif int(tf.__version__[0]) > 1:
+    tf.random.set_seed(313)
 
+np.set_printoptions(suppress=True) # to suppress scientific notation while printing arrays
 
 class AttributeNotSetYet:
     def __init__(self, func_name):
@@ -149,7 +153,8 @@ class Model(AttributeStore):
                    cache_data=True,
                    noise: int = 0,
                    indices: list = None,
-                   scaler_key:str = '0'):
+                   scaler_key:str = '0',
+                   return_dt_index=False):
         """
 
         :param data:
@@ -161,6 +166,8 @@ class Model(AttributeStore):
         :param indices:
         :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
                    MinMaxScaler object and can be saved with a unique key in memory.
+        :param return_dt_index: if True, first value in returned `x` will be datetime index. This can be used when
+                                fetching data during predict but must be separated before feeding in NN for prediction.
         :return:
         """
 
@@ -170,6 +177,14 @@ class Model(AttributeStore):
                 raise ValueError
 
         df = data
+        if return_dt_index:
+            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type pd.DateTimeIndex.
+            A dummy datetime index can be inserted by using following command:
+            `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
+            If the data file already contains `datetime` column, then use following command
+            `data.index = pd.to_datetime(data['datetime'])`
+            """
+            dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
 
         # # add random noise in the data
         if noise > 0:
@@ -189,7 +204,13 @@ class Model(AttributeStore):
         data = scaler.fit_transform(df)
         df = pd.DataFrame(data)
 
-        self.scalers['scaler' + scaler_key] = scaler
+        if return_dt_index:
+            # pandas will add the 'datetime' column as first column. This columns will only be used to keep
+            # track of indices of train and test data.
+            df.insert(0, 'dt_index', dt_index)
+            self.in_cols = ['dt_index'] + self.in_cols
+
+        self.scalers['scaler_' + scaler_key] = scaler
 
         if en is None:
             en = df.shape[0]
@@ -220,7 +241,9 @@ class Model(AttributeStore):
                 df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_data(df1, len(self.in_cols), len(self.out_cols))
+                    x, y, label = self.get_data(df1,
+                                                len(self.in_cols),
+                                                len(self.out_cols))
                     xs.append(x)
                     ys.append(y)
                     labels.append(label)
@@ -254,6 +277,9 @@ class Model(AttributeStore):
         print('input_X shape:', x.shape)
         print('input_Y shape:', y.shape)
         print('label_Y shape:', label.shape)
+
+        if return_dt_index:
+            self.in_cols.remove("dt_index")
 
         return x, y, label
 
@@ -319,15 +345,15 @@ class Model(AttributeStore):
     def run_paras(self, **kwargs):
 
         x, y, label = self.fetch_data(self.data, **kwargs)
-        return x, label
+        return [x], label
 
     def process_results(self, true:list, predicted:list, name=None):
 
         errs = dict()
         for out in range(self.outs):
 
-            t = true[out].reshape(-1,)
-            p = predicted[out].reshape(-1,)
+            t = true[out]
+            p = predicted[out]
 
             if np.isnan(t).sum() > 0:
                 mask = np.invert(np.isnan(t.reshape(-1,)))
@@ -337,7 +363,8 @@ class Model(AttributeStore):
             errors = FindErrors(t, p)
             errs['out'] = errors.calculate_all()
 
-            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]))
+            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]),
+                         marker='.', linestyle='')
 
         save_config_file(self.path, errors=errs)
 
@@ -366,21 +393,54 @@ class Model(AttributeStore):
 
         return history
 
-    def predict(self, st=0, en=None, indices=None, pref:str='test'):
+    def predict(self, st=0, en=None, indices=None, scaler_key:str='5', pref:str='test'):
+        """
+        scaler_key: if None, the data will not be indexed along date_time index.
+        """
 
         if indices is not None:
             setattr(self, 'predict_indices', indices)
 
-        inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices)
+        inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
+                                              return_dt_index=True)
+
+        # remove the first of first inputs which is datetime index
+        first_input = inputs[0]
+        dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
+        first_input1 = first_input[:, :, 1:].astype(np.float32)
+        inputs[0] = first_input1
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
                                          verbose=1)
 
+        if self.outs == 1:
+            # denormalize the data
+            in_obs = np.hstack([inputs[0][:, -1, :], true_outputs])
+            in_pred = np.hstack([inputs[0][:, -1, :], predicted])
+            scaler = self.scalers['scaler_'+scaler_key]
+            in_obs_den = scaler.inverse_transform(in_obs)
+            in_pred_den = scaler.inverse_transform(in_pred)
+            true_outputs = in_obs_den[:, -self.outs]
+            predicted = in_pred_den[:, -self.outs]
+
         if not isinstance(true_outputs, list):
             true_outputs = [true_outputs]
         if not isinstance(predicted, list):
             predicted = [predicted]
+
+        # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
+        true_outputs = [pd.Series(t_out, index=dt_index).sort_index() for t_out in true_outputs]
+        predicted = [pd.Series(p_out, index=dt_index).sort_index() for p_out in predicted]
+
+        # save the results
+        for idx, out in enumerate(self.out_cols):
+            p = predicted[idx]
+            t = true_outputs[idx]
+            df = pd.DataFrame(np.stack([p, t], axis=1), columns=['true_' + str(out), 'pred_' + str(out)],
+                              index=dt_index)
+            df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
+
         self.process_results(true_outputs, predicted, pref+'_')
 
         return predicted, true_outputs
@@ -597,7 +657,7 @@ class Model(AttributeStore):
             input_x.append(np.array(x_data))
             input_y.append(np.array(y_data))
             label_y.append(np.array(label_data))
-        input_x = np.array(input_x, dtype=np.float32).reshape(-1, self.lookback, ins)
+        input_x = np.array(input_x, dtype=np.float64).reshape(-1, self.lookback, ins)
         input_y = np.array(input_y, dtype=np.float32).reshape(-1, self.lookback-1, outs)
         label_y = np.array(label_y, dtype=np.float32).reshape(-1, outs)
 
@@ -622,6 +682,8 @@ class Model(AttributeStore):
                 assert np.isnan(label_y).sum() < 1, "label still contains nans"
 
         assert input_x.shape[0] == input_y.shape[0] == label_y.shape[0], "shapes are not same"
+
+        assert np.isnan(input_x).sum() == 0, "input still contains nans"
 
         return input_x, input_y, label_y
 
@@ -659,7 +721,10 @@ class Model(AttributeStore):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
         for weight in self.k_model.trainable_weights:
-           weights[weight.name] = weight.numpy()
+            if tf.executing_eagerly():
+               weights[weight.name] = weight.numpy()
+            else:
+                weights[weight.name] = keras.backend.eval(weight)
         return weights
 
     def plot_weights(self, save=None):
@@ -898,3 +963,11 @@ def unison_shuffled_copies(a, b, c):
     assert len(a) == len(b) == len(c)
     p = np.random.permutation(len(a))
     return a[p], b[p], c[p]
+
+def get_index(idx_array, fmt='%Y%m%d%H%M'):
+    """ converts a numpy 1d array into pandas DatetimeIndex type."""
+
+    if not isinstance(idx_array, np.ndarray):
+        raise TypeError
+
+    return pd.to_datetime(idx_array.astype(str), format=fmt)

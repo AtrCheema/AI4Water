@@ -9,11 +9,13 @@ from run_model import make_model
 
 
 df = pd.read_csv("../data/nasdaq100_padding.csv")
+
+df.index = pd.date_range("20110101", periods=len(df), freq='H')
 out = df["NDX"]
 print(out.isna().sum())
 
 # put four chunks of missing intervals
-intervals = [(100, 200), (1000, 2000), (10000, 11000)]
+intervals = [(100, 200), (1000, 8000), (10000, 31000)]
 
 for interval in intervals:
     st,en = interval[0], interval[1]
@@ -25,21 +27,22 @@ print("{} nan values created in NDX column".format(out.isna().sum()))
 # verify the missing values
 print(df[98:108])
 
-data_config, nn_config, _ = make_model(batch_size=16,
+data_config, nn_config, _ = make_model(batch_size=32,
                                                      lookback=5,
                                                      lr=0.0001)
 
 model = DualAttentionModel(data_config=data_config,
                            nn_config=nn_config,
                            data=df,
-                           intervals=[(0, 99), (200, 999), (2000, 9999), (11000, 40561)]
+                           intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40561)]
                            )
 
-# model.build_nn()
+model.build_nn()
 
-#history = model.train_nn(indices='random')
+history = model.train_nn(indices='random')
 
-#y, obs = model.predict(indices=model.test_indices)
+y, obs = model.predict(indices=model.test_indices)
+tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train')
 
 #model.plot_activations(st=0,save=True)
 

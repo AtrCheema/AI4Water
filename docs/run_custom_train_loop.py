@@ -3,6 +3,8 @@ from models import Model
 from models.global_variables import keras, tf
 import pandas as pd
 
+# TODO put code in @tf.function
+# TODO write validation code
 
 class CustomModel(Model):
 
@@ -88,7 +90,9 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                      outputs = outputs,
                                                      epochs=50)
 
-df = pd.read_csv('data/all_data_30min.csv')  # must be 2d dataframe
+df = pd.read_csv('../data/all_data_30min.csv')  # must be 2d dataframe
+
+df.index = pd.date_range("20110101", periods=len(df), freq='H')
 
 model = CustomModel(data_config=data_config,
                   nn_config=nn_config,

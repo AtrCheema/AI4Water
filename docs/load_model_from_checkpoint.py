@@ -26,11 +26,11 @@ history = model.train_nn(indices='random')
 del model
 
 # Load the `Model` from checkpoint, provide the checkpoint
-cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\docs\\results\\20200821_1806\\config.json"
+cpath = "provide exact path of config file"
 model = Model.from_config(cpath, data=df)
 
 model.build_nn()
 
-cpath = "weights_001_0.2073.hdf5"
-model.load_weights(cpath)
+w_file = "file_name.hdf5"
+model.load_weights(w_file)
 x,y  = model.predict(indices=model.test_indices)
