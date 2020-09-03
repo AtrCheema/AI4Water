@@ -1,8 +1,12 @@
 #
 
+maj_version = 0
+min_version = 0
 try:
     from tensorflow import keras
     import tensorflow as tf
+    maj_version = int(tf.__version__[0])
+    min_version = int(tf.__version__[2])
 except ModuleNotFoundError:
     keras = None
     tf = None
@@ -21,14 +25,25 @@ keras = keras
 torch = torch
 tf = tf
 
-ACTIVATIONS = {'LeakyRelu': lambda name='leaky_relu': keras.layers.LeakyReLU(name=name),
+ACTIVATION_LAYERS = {'LEAKYRELU': lambda name='leaky_relu': keras.layers.LeakyReLU(name=name), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
                'PRelu': lambda name='p_relu': keras.layers.PReLU(name=name),  # https://arxiv.org/pdf/1502.01852v1.pdf
-               'relu': lambda name='relu': keras.layers.Activation('relu', name=name),
-               'tanh': lambda name='tanh': keras.layers.Activation('tanh', name=name),
-               'elu': lambda name='elu': keras.layers.ELU(name=name),
+               'RELU': lambda name='relu': keras.layers.Activation('relu', name=name),
+               'TANH': lambda name='tanh': keras.layers.Activation('tanh', name=name),
+               'ELU': lambda name='elu': keras.layers.ELU(name=name),
                'TheresholdRelu': lambda name='threshold_relu': keras.layers.ThresholdedReLU(name=name),
                # 'SRelu': layers.advanced_activations.SReLU()
                }
+
+ACTIVATION_FNS = {
+    'RELU': 'relu', #keras.layers.Activation('relu', name=name),
+    'TANH': 'tanh',
+    'ELU': 'elu',
+    'LEAKYRELU': tf.nn.leaky_relu,
+    'CRELU': tf.nn.crelu,
+    'SELU': tf.nn.selu,  # tf.keras.activations.selu, # https://arxiv.org/pdf/1706.02515.pdf
+    'RELU6': tf.nn.relu6 # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
+
+}
 
 
 if tf is not None:

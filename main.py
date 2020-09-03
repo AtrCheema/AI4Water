@@ -13,13 +13,13 @@ import json
 import keract_mod as keract
 from models.global_variables import keras, tf, tcn
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
-from models.global_variables import LOSSES, ACTIVATIONS
+from models.global_variables import LOSSES, ACTIVATION_LAYERS, ACTIVATION_FNS
 
 
 KModel = keras.models.Model
 layers = keras.layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
@@ -459,12 +459,18 @@ class Model(AttributeStore):
         if 'act_fn' in config:
             act_layer = config.pop('act_fn')
 
+        activation = config['activation']
+        if activation is not None:
+            assert isinstance(activation, str)
+            config['activation'] = ACTIVATION_FNS[activation.upper()]
+
         lstm_activations = layers.LSTM(**config)(inputs)
+        config['activation'] = activation
 
         if  act_layer is not None:
             assert isinstance(act_layer, str)
             name = 'lstm_act_' + str(np.random.randint(100))
-            lstm_activations = ACTIVATIONS[act_layer](name=name)(lstm_activations)
+            lstm_activations = ACTIVATION_LAYERS[act_layer.upper()](name=name)(lstm_activations)
 
         return lstm_activations
 
@@ -484,7 +490,7 @@ class Model(AttributeStore):
         if  act_layer is not None:
             assert isinstance(act_layer, str)
             name = 'convlstm_act_' + str(np.random.randint(100))
-            conv_lstm_outs = ACTIVATIONS[config['act_fn']](name=name)(conv_lstm_outs)
+            conv_lstm_outs = ACTIVATION_LAYERS[config['act_fn']](name=name)(conv_lstm_outs)
 
         return  keras.layers.Flatten()(conv_lstm_outs)
 
@@ -509,7 +515,7 @@ class Model(AttributeStore):
 
         if  act_layer is not None:
             assert isinstance(act_layer, str)
-            cnn_activations = ACTIVATIONS[config['act_fn']](name='cnn_act_'+rand_name)(cnn_activations)
+            cnn_activations = ACTIVATION_LAYERS[config['act_fn']](name='cnn_act_'+rand_name)(cnn_activations)
 
         max_pool_lyr = layers.MaxPooling1D(pool_size=max_pool_size,
                                            name='max_pool_lyr_'+rand_name)(cnn_activations)
@@ -540,20 +546,32 @@ class Model(AttributeStore):
 
         return inputs, predictions
 
-    def cnn_lstm(self, cnn:dict,  lstm:dict,  outs:int):
+    def cnn_lstm(self, cnn_config:dict,  lstm:dict,  outs:int):
         """ blue print for developing a CNN-LSTM model
         """
         timesteps = self.lookback // self.nn_config['subsequences']
 
         inputs = layers.Input(shape=(None, timesteps, self.ins))
 
-        cnn_lyr = layers.TimeDistributed(layers.Conv1D(filters=cnn['filters'],
-                                         kernel_size=cnn['kernel_size'],
+        if 'n_layers' in cnn_config:
+            n_cnns = cnn_config['n_layers']
+            assert len(cnn_config) == n_cnns + 1, "{} cnn configs provided but cnofig says add {}".format(
+                len(cnn_config) - 1, n_cnns)
+            for k, v in cnn_config.items():
+                if k != 'n_layers':
+                    assert isinstance(v, dict), "cnn config must be of type `dict` but {} provided".format(v)
+        else:
+            n_cnns = 1
+
+        for cnn in range(n_cnns):
+            pass
+        cnn_lyr = layers.TimeDistributed(layers.Conv1D(filters=cnn_config['filters'],
+                                         kernel_size=cnn_config['kernel_size'],
                                          padding='same'),
                                          )(inputs)
-        cnn_activations = layers.TimeDistributed(ACTIVATIONS[cnn['act_fn']](name='cnn_act'))(cnn_lyr)
+        cnn_activations = layers.TimeDistributed(ACTIVATION_LAYERS[cnn_config['act_fn']](name='cnn_act'))(cnn_lyr)
 
-        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn['max_pool_size']))(cnn_activations)
+        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn_config['max_pool_size']))(cnn_activations)
         flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
 
         lstm_activations = self.add_LSTM(flat_lyr, lstm)
