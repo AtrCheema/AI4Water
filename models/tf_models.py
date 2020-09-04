@@ -73,7 +73,7 @@ class CNNLSTMModel(Model):
         timesteps = self.lookback // subseq
         x = x.reshape(examples, subseq, timesteps, self.ins)
 
-        return x, labels
+        return [x], labels
 
     def build_nn(self):
         """
@@ -88,7 +88,7 @@ class CNNLSTMModel(Model):
 
         assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
 
-        inputs, predictions = self.cnn_lstm(cnn=cnn, lstm=lstm, outs=self.outs)
+        inputs, predictions = self.cnn_lstm(cnn, lstm, self.outs)
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -335,7 +335,7 @@ class LSTMAutoEncoder(Model):
         else:
             outputs = labels
 
-        return x, outputs
+        return [x], outputs
 
 
 class InputAttentionModel(DualAttentionModel):
@@ -416,7 +416,13 @@ class OutputAttentionModel(DualAttentionModel):
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None, pref:str="test", scaler_key:str='5', use_datetime_index=False):
+    def predict(self, st=0,
+                ende=None,
+                indices=None,
+                pref:str="test",
+                scaler_key:str='5',
+                use_datetime_index=False,
+                **plot_args):
         setattr(self, 'predict_indices', indices)
 
         test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
@@ -429,7 +435,7 @@ class OutputAttentionModel(DualAttentionModel):
                                          batch_size=test_x.shape[0],
                                          verbose=1)
 
-        self.process_results(test_label, predicted, pref)
+        self.process_results(test_label, predicted, pref, **plot_args)
 
         return predicted, test_label
 
@@ -459,7 +465,13 @@ class NBeatsModel(Model):
 
         return history
 
-    def predict(self, st=0, en=None, indices=None, pref:str="test", scaler_key:str='5', use_datetime_index=False):
+    def predict(self, st=0,
+                en=None,
+                indices=None,
+                pref:str="test",
+                scaler_key:str='5',
+                use_datetime_index=False,
+                **plot_args):
 
         exo_x, x, label = self.prepare_batches(data=self.data[st:en], target=self.data_config['outputs'][0])
 
@@ -467,7 +479,7 @@ class NBeatsModel(Model):
                                          batch_size=exo_x.shape[0],
                                          verbose=1)
 
-        self.process_results(label, predicted.reshape(-1,), pref)
+        self.process_results(label, predicted.reshape(-1,), pref, **plot_args)
 
         return predicted, label
 

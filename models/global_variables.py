@@ -41,7 +41,9 @@ ACTIVATION_FNS = {
     'LEAKYRELU': tf.nn.leaky_relu,
     'CRELU': tf.nn.crelu,
     'SELU': tf.nn.selu,  # tf.keras.activations.selu, # https://arxiv.org/pdf/1706.02515.pdf
-    'RELU6': tf.nn.relu6 # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
+    'RELU6': tf.nn.relu6, # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
+    'SOFTMAX': tf.nn.softmax,
+    'SIGMOID': tf.nn.sigmoid,
 
 }
 

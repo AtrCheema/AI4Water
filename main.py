@@ -19,7 +19,7 @@ from models.global_variables import LOSSES, ACTIVATION_LAYERS, ACTIVATION_FNS
 KModel = keras.models.Model
 layers = keras.layers
 
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
@@ -56,6 +56,11 @@ class AttributeStore(object):
     test_indices = None
     train_indices = None
     scalers = {}
+    cnn_counter = 0
+    lstm_counter = 0
+    act_counter = 0
+    time_dist_counter = 0
+    conv2d_lstm_counter = 0
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
 
 
@@ -177,12 +182,14 @@ class Model(AttributeStore):
                 raise ValueError
 
         df = data
+        dt_index=None
         if return_dt_index:
             assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type pd.DateTimeIndex.
             A dummy datetime index can be inserted by using following command:
             `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
             If the data file already contains `datetime` column, then use following command
             `data.index = pd.to_datetime(data['datetime'])`
+            or use set `use_datetime_index` in `predict` method to False.
             """
             dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
 
@@ -280,6 +287,8 @@ class Model(AttributeStore):
 
         if return_dt_index:
             self.in_cols.remove("dt_index")
+        else:
+            x = x.astype(np.float32)
 
         return x, y, label
 
@@ -406,10 +415,10 @@ class Model(AttributeStore):
         inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                               return_dt_index=use_datetime_index)
 
+        first_input = inputs[0]
         dt_index=None  # default case when datetime_index is not present in input data
         if use_datetime_index:
             # remove the first of first inputs which is datetime index
-            first_input = inputs[0]
             dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
             first_input1 = first_input[:, :, 1:].astype(np.float32)
             inputs[0] = first_input1
@@ -420,8 +429,12 @@ class Model(AttributeStore):
 
         if self.outs == 1:
             # denormalize the data
-            in_obs = np.hstack([inputs[0][:, -1, :], true_outputs])
-            in_pred = np.hstack([inputs[0][:, -1, :], predicted])
+            if np.ndim(first_input) > 3:
+                first_input = first_input[:, -1, 0, :]
+            else:
+                first_input = first_input[:, -1, :]
+            in_obs = np.hstack([first_input, true_outputs])
+            in_pred = np.hstack([first_input, predicted])
             scaler = self.scalers['scaler_'+scaler_key]
             in_obs_den = scaler.inverse_transform(in_obs)
             in_pred_den = scaler.inverse_transform(in_pred)
@@ -449,73 +462,73 @@ class Model(AttributeStore):
 
         return predicted, true_outputs
 
-    def add_LSTM(self, inputs, config):
+    def add_lstm(self, inputs, config):
+
+        self.lstm_counter += self.lstm_counter
 
         if 'name' not in config:
-            config['name'] = 'lstm_lyr_' + str(np.random.randint(100))
+            config['name'] = 'lstm_lyr_' + str(self.lstm_counter)
 
-        act_layer = None
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(config)
 
-        if 'act_fn' in config:
-            act_layer = config.pop('act_fn')
-
-        activation = config['activation']
-        if activation is not None:
-            assert isinstance(activation, str)
-            config['activation'] = ACTIVATION_FNS[activation.upper()]
+        config, activation = check_act_fn(config)
 
         lstm_activations = layers.LSTM(**config)(inputs)
         config['activation'] = activation
 
-        if  act_layer is not None:
-            assert isinstance(act_layer, str)
-            name = 'lstm_act_' + str(np.random.randint(100))
-            lstm_activations = ACTIVATION_LAYERS[act_layer.upper()](name=name)(lstm_activations)
+        # apply activation layer if applicable
+        lstm_activations = self.add_act_layer(act_layer, lstm_activations)
 
         return lstm_activations
 
     def conv2d_lstm(self, config:dict, inputs):
-
+        """
+        Adds a CONVLSTM2D layer. It is possible to add activation layer after conv2d layer.
+        """
+        self.conv2d_lstm_counter += self.conv2d_lstm_counter
         if 'name' not in config:
-            config['name'] = 'conv_lstm_' + str(np.random.randint(100))
+            config['name'] = 'conv_lstm_' + str(self.conv2d_lstm_counter)
 
-        act_layer = None
+        # checks whether to apply activation layer at the end or not
+        act_layer = check_act_layer(config)
 
-        if 'act_fn' in config:
-            act_layer = config.pop('act_fn')
+        config, activation = check_act_fn(config)
 
         conv_lstm_outs = keras.layers.ConvLSTM2D(**config)(inputs)
 
-        # this is used if we want to apply activation as a separate layer
-        if  act_layer is not None:
-            assert isinstance(act_layer, str)
-            name = 'convlstm_act_' + str(np.random.randint(100))
-            conv_lstm_outs = ACTIVATION_LAYERS[config['act_fn']](name=name)(conv_lstm_outs)
+        # apply activation layer if applicable
+        conv_lstm_outs = self.add_act_layer(act_layer, conv_lstm_outs)
 
         return  keras.layers.Flatten()(conv_lstm_outs)
 
 
-    def add_1dCNN(self, inputs, config: dict):
-
+    def add_1d_cnn(self, inputs, config: dict):
+        """
+        adds a 1d CNN collowed by an optional activation layer, max pool layer and then flattens the output
+        Fore more options in in `config` file see
+        https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv1D
+        """
+        self.cnn_counter += 1
         if 'name' in config:
             rand_name = config['name']
         else:
-            rand = str(np.random.randint(100))
+            rand = '1dcnn_' + str(self.cnn_counter)
             rand_name = rand
             config['name'] = rand
 
-        act_layer = None
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(config)
 
-        if 'act_fn' in config:
-            act_layer = config.pop('act_fn')
+        config, activation = check_act_fn(config)
 
         max_pool_size = config.pop('max_pool_size')
 
         cnn_activations = layers.Conv1D(**config)(inputs)
+        config['activation'] = activation
 
-        if  act_layer is not None:
-            assert isinstance(act_layer, str)
-            cnn_activations = ACTIVATION_LAYERS[config['act_fn']](name='cnn_act_'+rand_name)(cnn_activations)
+        # apply activation layer if applicable
+        cnn_activations = self.add_act_layer(act_layer, cnn_activations)
 
         max_pool_lyr = layers.MaxPooling1D(pool_size=max_pool_size,
                                            name='max_pool_lyr_'+rand_name)(cnn_activations)
@@ -529,56 +542,128 @@ class Model(AttributeStore):
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
-        cnn_outputs = self.add_1dCNN(inputs, cnn_config)
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(cnn_config)
+
+        cnn_configs = check_cnn_config(cnn_config)
+
+        cnn_outputs = inputs
+        cnn_inputs = inputs
+        for cnn in cnn_configs:
+            cnn_outputs = self.add_1d_cnn(cnn_inputs, cnn)
+            cnn_inputs = cnn_outputs
+
+        # apply activation layer if applicable
+        cnn_outputs = self.add_act_layer(act_layer, cnn_outputs)
 
         predictions = layers.Dense(outs)(cnn_outputs)
 
         return inputs, predictions
 
-    def simple_lstm(self, lstm:dict, outs:int):
+    def simple_lstm(self, lstm_config:dict, outs:int):
         """ basic structure of a simple LSTM based model"""
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
-        lstm_activations = self.add_LSTM(inputs, lstm)
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(lstm_config)
+
+        lstm_configs = check_lstm_config(lstm_config)
+
+        lstm_activations = inputs
+        lstm_inputs = inputs
+        for lstm in lstm_configs:
+            lstm_activations = self.add_lstm(lstm_inputs, lstm)
+            lstm_inputs = lstm_activations
+
+        # apply activation layer if applicable
+        lstm_activations = self.add_act_layer(act_layer, lstm_activations)
 
         predictions = layers.Dense(outs)(lstm_activations)
 
         return inputs, predictions
 
-    def cnn_lstm(self, cnn_config:dict,  lstm:dict,  outs:int):
-        """ blue print for developing a CNN-LSTM model
+    def add_time_dist_cnn(self, cnn_config:dict, inputs):
+
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(cnn_config)
+
+        cnn_config, activation = check_act_fn(cnn_config)
+
+        if 'name' not in cnn_config:
+            self.cnn_counter += 1
+            cnn_config['name'] = 'td_cnn_' + str(self.cnn_counter)
+
+        self.time_dist_counter += 1
+        name = 'time_dist_' + str(self.time_dist_counter)
+
+        cnn_lyr = layers.TimeDistributed(layers.Conv1D(**cnn_config),
+                                         name=name)(inputs)
+        cnn_config['activation'] = activation
+
+        # apply activation layer if applicable
+        cnn_lyr = self.add_act_layer(act_layer, cnn_lyr, True)
+
+        return cnn_lyr
+
+    def cnn_lstm(self, cnn_config:dict,  lstm_config:dict,  outs:int):
+        """ blue print for developing a CNN-LSTM model.
+        :param cnn_config: con contain input arguments for one or more than one cnns, all given as dictionaries
+        :param lstm_config: cna contain input arguments for one or more than one LSTM layers, all given as dictionaries
+        :param outs:
+        It is possible to insert activation layer after each cnn/lstm and/or after whole lstm/cnn block
         """
         timesteps = self.lookback // self.nn_config['subsequences']
 
         inputs = layers.Input(shape=(None, timesteps, self.ins))
 
-        if 'n_layers' in cnn_config:
-            n_cnns = cnn_config['n_layers']
-            assert len(cnn_config) == n_cnns + 1, "{} cnn configs provided but cnofig says add {}".format(
-                len(cnn_config) - 1, n_cnns)
-            for k, v in cnn_config.items():
-                if k != 'n_layers':
-                    assert isinstance(v, dict), "cnn config must be of type `dict` but {} provided".format(v)
-        else:
-            n_cnns = 1
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(cnn_config)
 
-        for cnn in range(n_cnns):
-            pass
-        cnn_lyr = layers.TimeDistributed(layers.Conv1D(filters=cnn_config['filters'],
-                                         kernel_size=cnn_config['kernel_size'],
-                                         padding='same'),
-                                         )(inputs)
-        cnn_activations = layers.TimeDistributed(ACTIVATION_LAYERS[cnn_config['act_fn']](name='cnn_act'))(cnn_lyr)
+        cnn_configs = check_cnn_config(cnn_config)
 
-        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn_config['max_pool_size']))(cnn_activations)
+        cnn_outputs = inputs
+        cnn_inputs = inputs
+        for cnn in cnn_configs:
+            cnn_outputs = self.add_time_dist_cnn(cnn, cnn_inputs)
+            cnn_inputs = cnn_outputs
+
+        # apply activation layer if applicable
+        cnn_outputs = self.add_act_layer(act_layer, cnn_outputs, True)
+
+        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn_config['max_pool_size']))(cnn_outputs)
         flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
 
-        lstm_activations = self.add_LSTM(flat_lyr, lstm)
+        # check whether to apply any activation layer or not.
+        act_layer = check_act_layer(lstm_config)
+
+        lstm_configs = check_lstm_config(lstm_config)
+
+        lstm_activations = flat_lyr
+        lstm_inputs = flat_lyr
+        for lstm in lstm_configs:
+            lstm_activations = self.add_lstm(lstm_inputs, lstm)
+            lstm_inputs = lstm_activations
+
+        # apply activation layer if applicable
+        lstm_activations = self.add_act_layer(act_layer, lstm_activations, True)
 
         predictions = layers.Dense(outs)(lstm_activations)
 
         return inputs, predictions
+
+    def dense_layers(self, out_config:dict, dense_inputs):
+        """ adds one or more dense layers following their configurations in `out_config`.
+        out_config={1:{units=1}}  one dense layer which outputs 1
+        out_config={8: {units=8}, 4: {units=2}, 1: {units=1, use_bias=False}}  adds three dense layers.
+        For more options of a dense layer see https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
+        """
+        dense_outs = None
+        for dense_units, dense_config in out_config.items():
+            dense_outs = layers.Dense(**dense_config)(dense_inputs)
+            dense_inputs = dense_outs
+
+        return dense_outs
 
     def lstm_cnn(self, lstm_config:dict, cnn_config:dict, outs:int):
         """ basic structure of a simple LSTM -> CNN based model"""
@@ -587,9 +672,9 @@ class Model(AttributeStore):
 
         lstm_config['return_sequences'] = True   # forcing it to be True
 
-        lstm_activations = self.add_LSTM(inputs, lstm_config)
+        lstm_activations = self.add_lstm(inputs, lstm_config)
 
-        cnn_outputs = self.add_1dCNN(lstm_activations, cnn_config)
+        cnn_outputs = self.add_1d_cnn(lstm_activations, cnn_config)
 
         predictions = layers.Dense(outs)(cnn_outputs)
 
@@ -602,11 +687,11 @@ class Model(AttributeStore):
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
         # build encoder
-        encoder = self.add_LSTM(inputs, enc_config)
+        encoder = self.add_lstm(inputs, enc_config)
 
         # define predict decoder
         decoder1 = layers.RepeatVector(self.lookback-1)(encoder)
-        decoder1 = self.add_LSTM(decoder1, dec_config)
+        decoder1 = self.add_lstm(decoder1, dec_config)
         decoder1 = layers.Dense(outs)(decoder1)
         if composite:
             # define reconstruct decoder
@@ -646,7 +731,7 @@ class Model(AttributeStore):
 
         interm_outs = keras.layers.RepeatVector(self.outs)(enc_outs)
 
-        lstm_outs = self.add_LSTM(interm_outs, dec_config)
+        lstm_outs = self.add_lstm(interm_outs, dec_config)
 
         predictions = keras.layers.Dense(outs)(lstm_outs)
 
@@ -1026,6 +1111,21 @@ class Model(AttributeStore):
         self.k_model.load_weights(cpath)
         return
 
+    def add_act_layer(self, act_layer, inputs, time_distributed:bool=False):
+        # this is used if we want to apply activation as a separate layer
+
+        outputs = inputs
+        if act_layer is not None:
+            assert isinstance(act_layer, str)
+            self.act_counter += 1
+            name = 'act_' + str(self.act_counter)
+            if time_distributed:
+                outputs = layers.TimeDistributed(ACTIVATION_LAYERS[act_layer.upper()](name=name))(inputs)
+            else:
+                outputs = ACTIVATION_LAYERS[act_layer.upper()](name=name)(inputs)
+
+        return outputs
+
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
     assert len(a) == len(b) == len(c)
@@ -1039,3 +1139,57 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
         raise TypeError
 
     return pd.to_datetime(idx_array.astype(str), format=fmt)
+
+def check_cnn_config(cnn_config:dict)->list:
+    """ checks whether the `cnn_config` dictionary contains configuration for one cnn layer or multiple cnn layers
+    """
+
+    if 'n_layers' in cnn_config:
+        n_cnns = cnn_config['n_layers']
+        assert len(cnn_config) > n_cnns + 1, "{} cnn configs provided but cnofig says add {}".format(
+            len(cnn_config) - 1, n_cnns)
+        cnn_configs = []
+        for k, v in cnn_config.items():
+            if k not in ['n_layers', 'max_pool_size']:
+                assert isinstance(v, dict), "cnn config must be of type `dict` but {} provided".format(v)
+                cnn_configs.append(v)
+    else:
+        cnn_configs = [cnn_config]
+
+    return cnn_configs
+
+
+def check_lstm_config(lstm_config:dict)->list:
+
+    if 'n_layers' in lstm_config:
+        n_lstms = lstm_config['n_layers']
+        assert len(lstm_config) > n_lstms, "{} lstm configs provided but cnofig says add {}".format(
+            len(lstm_config), n_lstms)
+        lstm_configs = []
+        for k, v in lstm_config.items():
+            if k not in ['n_layers']:
+                assert isinstance(v, dict), "cnn config must be of type `dict` but {} provided".format(v)
+                lstm_configs.append(v)
+    else:
+        lstm_configs = [lstm_config]
+
+    return lstm_configs
+
+
+def check_act_layer(config:dict):
+    act_layer = None
+    if 'act_layer' in config:
+        act_layer = config.pop('act_layer')
+    return act_layer
+
+
+def check_act_fn(config:dict):
+    """ it is possible that the config file does not have activation argument or activation is None"""
+    activation = None
+    if 'activation' in config:
+        activation = config['activation']
+    if activation is not None:
+        assert isinstance(activation, str)
+        config['activation'] = ACTIVATION_FNS[activation.upper()]
+
+    return config, activation
