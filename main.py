@@ -61,6 +61,7 @@ class AttributeStore(object):
     act_counter = 0
     time_dist_counter = 0
     conv2d_lstm_counter = 0
+    dense_counter = 0
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
 
 
@@ -335,7 +336,7 @@ class Model(AttributeStore):
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - self.data_config['batch_size']
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) # - self.data_config['batch_size']
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
@@ -380,15 +381,18 @@ class Model(AttributeStore):
         return
 
     def build_nn(self):
-        print('building simple lstm model')
 
-        # lstm = self.nn_config['lstm_config']
+        print('building simple dense layer based model')
 
-        inputs, predictions = self.simple_lstm(self.nn_config['lstm_config'], outs=self.outs)
+        dense_config = self.nn_config['dense_config']
+
+        inputs = keras.layers.Input(shape=(self.ins, ))
+
+        predictions = self.dense_layers(dense_config, inputs)
 
         self.k_model = self.compile(inputs, predictions)
 
-        return
+        return self.k_model
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
@@ -431,8 +435,9 @@ class Model(AttributeStore):
             # denormalize the data
             if np.ndim(first_input) > 3:
                 first_input = first_input[:, -1, 0, :]
-            else:
+            elif np.ndim(first_input) == 3:
                 first_input = first_input[:, -1, :]
+
             in_obs = np.hstack([first_input, true_outputs])
             in_pred = np.hstack([first_input, predicted])
             scaler = self.scalers['scaler_'+scaler_key]
@@ -470,7 +475,7 @@ class Model(AttributeStore):
             config['name'] = 'lstm_lyr_' + str(self.lstm_counter)
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(config)
+        act_layer = check_layer_existence(config)
 
         config, activation = check_act_fn(config)
 
@@ -491,7 +496,7 @@ class Model(AttributeStore):
             config['name'] = 'conv_lstm_' + str(self.conv2d_lstm_counter)
 
         # checks whether to apply activation layer at the end or not
-        act_layer = check_act_layer(config)
+        act_layer = check_layer_existence(config)
 
         config, activation = check_act_fn(config)
 
@@ -518,7 +523,7 @@ class Model(AttributeStore):
             config['name'] = rand
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(config)
+        act_layer = check_layer_existence(config, 'act_layer')
 
         config, activation = check_act_fn(config)
 
@@ -543,7 +548,7 @@ class Model(AttributeStore):
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(cnn_config)
+        act_layer = check_layer_existence(cnn_config, 'act_layer')
 
         cnn_configs = check_cnn_config(cnn_config)
 
@@ -566,7 +571,7 @@ class Model(AttributeStore):
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(lstm_config)
+        act_layer = check_layer_existence(lstm_config, 'act_layer')
 
         lstm_configs = check_lstm_config(lstm_config)
 
@@ -586,7 +591,7 @@ class Model(AttributeStore):
     def add_time_dist_cnn(self, cnn_config:dict, inputs):
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(cnn_config)
+        act_layer = check_layer_existence(cnn_config, 'act_layer')
 
         cnn_config, activation = check_act_fn(cnn_config)
 
@@ -618,7 +623,7 @@ class Model(AttributeStore):
         inputs = layers.Input(shape=(None, timesteps, self.ins))
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(cnn_config)
+        act_layer = check_layer_existence(cnn_config, 'act_layer')
 
         cnn_configs = check_cnn_config(cnn_config)
 
@@ -635,7 +640,7 @@ class Model(AttributeStore):
         flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
 
         # check whether to apply any activation layer or not.
-        act_layer = check_act_layer(lstm_config)
+        act_layer = check_layer_existence(lstm_config, 'act_layer')
 
         lstm_configs = check_lstm_config(lstm_config)
 
@@ -660,7 +665,13 @@ class Model(AttributeStore):
         """
         dense_outs = None
         for dense_units, dense_config in out_config.items():
+            self.dense_counter += 1
+            dense_config['name'] = 'dense_' + str(self.dense_counter)
+            dropout_lyr = check_layer_existence(dense_config, 'dropout_layer')
+            dense_config, activation = check_act_fn(dense_config)
             dense_outs = layers.Dense(**dense_config)(dense_inputs)
+            dense_config['activation'] = activation
+            dense_outs = self.add_dropout_layer(dropout_lyr, dense_outs)
             dense_inputs = dense_outs
 
         return dense_outs
@@ -751,23 +762,16 @@ class Model(AttributeStore):
         return k_model
 
     def get_data(self, df, ins, outs):
-        input_x = []
-        input_y = []
-        label_y = []
 
-        row_length = len(df)
-        column_length = df.columns.size
-        for i in range(row_length - self.lookback+1):
-            x_data = df.iloc[i:i+self.lookback, 0:column_length-outs]
-            y_data = df.iloc[i:i+self.lookback-1, column_length-outs:]
-            label_data = df.iloc[i+self.lookback-1, column_length-outs:]
-            input_x.append(np.array(x_data))
-            input_y.append(np.array(y_data))
-            label_y.append(np.array(label_data))
-        input_x = np.array(input_x, dtype=np.float64).reshape(-1, self.lookback, ins)
-        input_y = np.array(input_y, dtype=np.float32).reshape(-1, self.lookback-1, outs)
-        label_y = np.array(label_y, dtype=np.float32).reshape(-1, outs)
+        input_x, input_y, label_y =  df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
 
+        assert self.lookback == 1, "lookback should be one"
+
+        return self.check_nans(df, input_x, input_y, label_y, outs)
+
+    def check_nans(self, df, input_x, input_y, label_y, outs):
+        """ checks whether anns are present or not and checks shapes of arrays being prepared.
+        """
         nans = df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
             if self.data_config['ignore_nans']:
@@ -1126,6 +1130,14 @@ class Model(AttributeStore):
 
         return outputs
 
+    def add_dropout_layer(self, dropout, inputs):
+        outs = inputs
+        if dropout is not None:
+            assert isinstance(dropout, float)
+            outs = layers.Dropout(dropout)(inputs)
+
+        return outs
+
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
     assert len(a) == len(b) == len(c)
@@ -1176,11 +1188,11 @@ def check_lstm_config(lstm_config:dict)->list:
     return lstm_configs
 
 
-def check_act_layer(config:dict):
-    act_layer = None
-    if 'act_layer' in config:
-        act_layer = config.pop('act_layer')
-    return act_layer
+def check_layer_existence(config:dict, layer_name:str):
+    layer_existence = None
+    if layer_name in config:
+        layer_existence = config.pop(layer_name)
+    return layer_existence
 
 
 def check_act_fn(config:dict):

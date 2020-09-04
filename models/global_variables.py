@@ -56,6 +56,7 @@ if tf is not None:
         'mape': keras.losses.MeanAbsolutePercentageError,
         'male': keras.losses.MeanSquaredLogarithmicError,
         'nse': tf_losses.tf_nse,
+        'kge': tf_losses.tf_kge,
     }
 else:
     LOSSES = {

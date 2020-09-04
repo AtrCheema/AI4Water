@@ -69,7 +69,7 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 4
+    _nn_config['epochs'] = 60
     _nn_config['min_val_loss'] = 0.0001
     _nn_config['patience'] = 100
 
@@ -130,11 +130,18 @@ if __name__=="__main__":
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml']
 
+
     data_config, nn_config, total_intervals = make_model(batch_size=16,
-                                                         lookback=15,
+                                                         lookback=1,
                                                          inputs = input_features,
                                                          outputs = outputs,
                                                          lr=0.0001)
+
+    nn_config['dense_config'] = {32: {'units': 64, 'activation': 'relu', 'dropout_layer': 0.3},
+                                 16: {'units': 32, 'activation': 'relu', 'dropout_layer': 0.3},
+                                 8: {'units': 16, 'activation': 'relu'},
+                                 1: {'units': 1}
+                                 }
 
     df = pd.read_csv('data/all_data_30min.csv')
 
@@ -149,4 +156,4 @@ if __name__=="__main__":
     history = model.train_nn(indices='random')
 
     y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
-    model.view_model(st=0)
+    # model.view_model(st=0)

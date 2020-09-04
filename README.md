@@ -8,7 +8,8 @@ Currently following models are implemented
 
 | Name                          | Name in this repository  | Reference |
 | -------------------------- | ------------- | ---------- |
-| LSTM | `Model` | |
+| MLP  | `Model` | |
+| LSTM | `LSTMModel` | |
 | CNN  | `CNNModel` | |
 | LSTM CNN | `LSTMCNNModel` | |
 | CNN LSTM |  `CNNLSTMModel` | |
