@@ -13,7 +13,7 @@ from nn_tools import NN
 import keract_mod as keract
 from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
-from models.global_variables import LOSSES, ACTIVATION_FNS
+from models.global_variables import LOSSES
 
 
 KModel = keras.models.Model
@@ -812,22 +812,3 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
 
     return pd.to_datetime(idx_array.astype(str), format=fmt)
 
-
-
-def check_layer_existence(config:dict, layer_name:str):
-    layer_existence = None
-    if layer_name in config:
-        layer_existence = config.pop(layer_name)
-    return layer_existence
-
-
-def check_act_fn(config:dict):
-    """ it is possible that the config file does not have activation argument or activation is None"""
-    activation = None
-    if 'activation' in config:
-        activation = config['activation']
-    if activation is not None:
-        assert isinstance(activation, str)
-        config['activation'] = ACTIVATION_FNS[activation.upper()]
-
-    return config, activation
