@@ -388,7 +388,7 @@ class Model(AttributeStore):
 
         inputs = keras.layers.Input(shape=(self.ins, ))
 
-        predictions = self.dense_layers(dense_config, inputs)
+        predictions = self.dense_layers(inputs, dense_config)
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -475,7 +475,7 @@ class Model(AttributeStore):
             config['name'] = 'lstm_lyr_' + str(self.lstm_counter)
 
         # check whether to apply any activation layer or not.
-        act_layer = check_layer_existence(config)
+        act_layer = check_layer_existence(config, 'act_layer')
 
         config, activation = check_act_fn(config)
 
@@ -496,7 +496,7 @@ class Model(AttributeStore):
             config['name'] = 'conv_lstm_' + str(self.conv2d_lstm_counter)
 
         # checks whether to apply activation layer at the end or not
-        act_layer = check_layer_existence(config)
+        act_layer = check_layer_existence(config, 'act_layer')
 
         config, activation = check_act_fn(config)
 
@@ -561,11 +561,11 @@ class Model(AttributeStore):
         # apply activation layer if applicable
         cnn_outputs = self.add_act_layer(act_layer, cnn_outputs)
 
-        predictions = layers.Dense(outs)(cnn_outputs)
+        predictions = self.dense_layers(cnn_outputs, outs)
 
         return inputs, predictions
 
-    def simple_lstm(self, lstm_config:dict, outs:int):
+    def simple_lstm(self, lstm_config:dict, outs):
         """ basic structure of a simple LSTM based model"""
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
@@ -584,7 +584,7 @@ class Model(AttributeStore):
         # apply activation layer if applicable
         lstm_activations = self.add_act_layer(act_layer, lstm_activations)
 
-        predictions = layers.Dense(outs)(lstm_activations)
+        predictions = self.dense_layers(lstm_activations, outs)
 
         return inputs, predictions
 
@@ -611,11 +611,11 @@ class Model(AttributeStore):
 
         return cnn_lyr
 
-    def cnn_lstm(self, cnn_config:dict,  lstm_config:dict,  outs:int):
+    def cnn_lstm(self, cnn_config:dict,  lstm_config:dict,  outs):
         """ blue print for developing a CNN-LSTM model.
         :param cnn_config: con contain input arguments for one or more than one cnns, all given as dictionaries
         :param lstm_config: cna contain input arguments for one or more than one LSTM layers, all given as dictionaries
-        :param outs:
+        :param outs:, `int`, `dict` containing config for multiple dense layers
         It is possible to insert activation layer after each cnn/lstm and/or after whole lstm/cnn block
         """
         timesteps = self.lookback // self.nn_config['subsequences']
@@ -653,16 +653,18 @@ class Model(AttributeStore):
         # apply activation layer if applicable
         lstm_activations = self.add_act_layer(act_layer, lstm_activations, True)
 
-        predictions = layers.Dense(outs)(lstm_activations)
+        predictions = self.dense_layers(lstm_activations, outs)
 
         return inputs, predictions
 
-    def dense_layers(self, out_config:dict, dense_inputs):
+    def dense_layers(self, dense_inputs, out_config):
         """ adds one or more dense layers following their configurations in `out_config`.
+        out_config, can be `int`, list or dictionary.
         out_config={1:{units=1}}  one dense layer which outputs 1
         out_config={8: {units=8}, 4: {units=2}, 1: {units=1, use_bias=False}}  adds three dense layers.
         For more options of a dense layer see https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
         """
+        out_config = self.check_dense_config(out_config)
         dense_outs = None
         for dense_units, dense_config in out_config.items():
             self.dense_counter += 1
@@ -1137,6 +1139,28 @@ class Model(AttributeStore):
             outs = layers.Dropout(dropout)(inputs)
 
         return outs
+
+    def check_dense_config(self, config)->dict:
+        """ possible values of config are
+        1
+        [1,2,3]
+        {1: {activation='tanh'}, 2: {activatio: 'relu'}, 2: {activation: 'leakyrelu'}
+        """
+        if isinstance(config, int):
+            out_config = {config, {'units': config}}
+        elif isinstance(config, list):
+            out_config = {}
+            for i in config:
+                if isinstance(i, int):
+                    out_config[i] = {'units':i}
+                else:
+                    raise TypeError("config for each dense layer must be dictionary within one dictionary not list of dictionaries")
+        elif isinstance(config, dict):
+            out_config =  config
+        else:
+            raise TypeError("Unknown configuration for dense layer")
+
+        return out_config
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
