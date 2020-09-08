@@ -330,12 +330,13 @@ class Model(NN):
             p = predicted[out]
 
             if np.isnan(t).sum() > 0:
-                mask = np.invert(np.isnan(t.reshape(-1,)))
+                mask = np.invert(np.isnan(t))
                 t = t[mask]
                 p = p[mask]
 
             errors = FindErrors(t, p)
-            errs['out'] = errors.calculate_all()
+            errs['out_errors'] = errors.calculate_all()
+            errs['out_stats'] = errors.stats()
 
             plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]),
                          **plot_args)
@@ -384,7 +385,7 @@ class Model(NN):
                                               return_dt_index=use_datetime_index)
 
         first_input = inputs[0]
-        dt_index=None  # default case when datetime_index is not present in input data
+        dt_index=np.arange(len(first_input))  # default case when datetime_index is not present in input data
         if use_datetime_index:
             # remove the first of first inputs which is datetime index
             dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
@@ -416,8 +417,8 @@ class Model(NN):
             predicted = [predicted]
 
         # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
-        true_outputs = [pd.Series(t_out, index=dt_index).sort_index() for t_out in true_outputs]
-        predicted = [pd.Series(p_out, index=dt_index).sort_index() for p_out in predicted]
+        true_outputs = [pd.Series(t_out.reshape(-1,), index=dt_index).sort_index() for t_out in true_outputs]
+        predicted = [pd.Series(p_out.reshape(-1,), index=dt_index).sort_index() for p_out in predicted]
 
         # save the results
         for idx, out in enumerate(self.out_cols):

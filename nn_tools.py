@@ -368,7 +368,7 @@ class NN(AttributeStore):
         {1: {activation='tanh'}, 2: {activatio: 'relu'}, 2: {activation: 'leakyrelu'}
         """
         if isinstance(config, int):
-            out_config = {config, {'units': config}}
+            out_config = {config: {'units': config}}
         elif isinstance(config, list):
             out_config = {}
             for i in config:
