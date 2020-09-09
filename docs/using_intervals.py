@@ -28,8 +28,8 @@ print("{} nan values created in NDX column".format(out.isna().sum()))
 print(df[98:108])
 
 data_config, nn_config, _ = make_model(batch_size=32,
-                                                     lookback=5,
-                                                     lr=0.0001)
+                                       lookback=5,
+                                       lr=0.0001)
 
 model = DualAttentionModel(data_config=data_config,
                            nn_config=nn_config,
@@ -44,7 +44,7 @@ history = model.train_nn(indices='random')
 y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
 # tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train', use_datetime_index=False)
 
-model.view_model(st=0,save=True)
+model.view_model(st=0, save=True)
 
 # Since we are using DualAttentionModel which requires observations at previous steps, we can not make
 # predictions at steps which are skipped from `intervals`. However, for a model which does not require previous

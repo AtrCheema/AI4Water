@@ -6,6 +6,7 @@ Concatenate, Add, Reshape = keras.layers.Concatenate, keras.layers.Add, keras.la
 Input, Dense, Lambda, Subtract = keras.layers.Input, keras.layers.Dense, keras.layers.Lambda, keras.layers.Subtract
 Model = keras.models.Model
 
+
 class NBeatsNet:
     GENERIC_BLOCK = 'generic'
     TREND_BLOCK = 'trend'

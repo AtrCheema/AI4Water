@@ -147,10 +147,12 @@ class HARHNModel(Model):
         target_train_t = to_torch_tensor(target_train)
         target_val_t = to_torch_tensor(target_val)
 
-        data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, y_his_train_t, target_train_t), shuffle=True,
-                                       batch_size=self.data_config['batch_size'])
-        data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, y_his_val_t, target_val_t), shuffle=False,
-                                     batch_size=self.data_config['batch_size'])
+        data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, y_his_train_t,
+                                                                                       target_train_t), shuffle=True,
+                                                        batch_size=self.data_config['batch_size'])
+        data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, y_his_val_t,
+                                                                                     target_val_t), shuffle=False,
+                                                      batch_size=self.data_config['batch_size'])
 
         min_val_loss = self.nn_config['min_val_loss']
         counter = 0
@@ -208,8 +210,9 @@ class HARHNModel(Model):
         y_his_test_t = to_torch_tensor(y_his_test)
         target_test_t = to_torch_tensor(target_test)
 
-        data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, y_his_test_t, target_test_t), shuffle=False,
-                                      batch_size=self.data_config['batch_size'])
+        data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, y_his_test_t,
+                                                                                      target_test_t), shuffle=False,
+                                                       batch_size=self.data_config['batch_size'])
 
         self.pt_model.load_state_dict(torch.load(self.saved_model))
 
@@ -227,6 +230,7 @@ class HARHNModel(Model):
         self.process_results(true, preds, 'validation_')
 
         return
+
 
 class IMVLSTMModel(HARHNModel):
 
@@ -278,9 +282,9 @@ class IMVLSTMModel(HARHNModel):
         target_val_t = to_torch_tensor(target_val)
 
         data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, target_train_t),
-                                       shuffle=True, batch_size=self.data_config['batch_size'])
+                                                        shuffle=True, batch_size=self.data_config['batch_size'])
         data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, target_val_t),
-                                     shuffle=False, batch_size=self.data_config['batch_size'])
+                                                      shuffle=False, batch_size=self.data_config['batch_size'])
 
         min_val_loss = self.nn_config['min_val_loss']
         counter = 0
@@ -353,7 +357,7 @@ class IMVLSTMModel(HARHNModel):
         target_test_t = to_torch_tensor(target_test)
 
         data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, target_test_t),
-                                      shuffle=False, batch_size=self.data_config['batch_size'])
+                                                       shuffle=False, batch_size=self.data_config['batch_size'])
 
         with torch.no_grad():
             mse_val = 0
@@ -407,7 +411,7 @@ class IMVLSTMModel(HARHNModel):
         for i in range(len(all_cols)):
             for j in range(self.lookback):
                 _ = ax.text(j, i, round(alphas[i, j], 3),
-                               ha="center", va="center", color="w")
+                            ha="center", va="center", color="w")
         ax.set_title("Importance of features and timesteps")
 
         plt.show()
@@ -416,6 +420,7 @@ class IMVLSTMModel(HARHNModel):
         plt.title("Feature importance")
         plt.bar(range(self.ins + self.outs), betas)
         plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90)
+
 
 def to_torch_tensor(array):
     return torch.Tensor(array)

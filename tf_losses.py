@@ -9,6 +9,7 @@ def reset_graph(seed=313):
     tf.compat.v1.set_random_seed(seed)  # tf.random.set_seed(seed)  #
     np.random.seed(seed)
 
+
 def tf_nse(true, _pred, name='NSE'):
     """ Nash-Sutcliff efficiency to be used as loss function. It is subtracted from one before being returned"""
     neum = tf.reduce_sum(tf.square(tf.subtract(_pred, true)))
@@ -29,12 +30,14 @@ def corr_coeff(true, predicted):
     r_den = tf.math.reduce_std(xm) * tf.math.reduce_std(ym)
     return r_num / r_den
 
+
 def tf_kge(true, predicted):
     """ Kling Gupta efficiency. It is not being subtracted from 1.0 so that it can be used as loss"""
     tf_cc = corr_coeff(true, predicted)
     tf_alpha = tf.math.reduce_std(predicted) / tf.math.reduce_std(true)
     tf_beta = K.sum(predicted) / K.sum(true)
     return K.sqrt(K.square(tf_cc - 1.0) + K.square(tf_alpha - 1.0) + K.square(tf_beta - 1.0))
+
 
 def tf_r2(true, predicted):
     """
@@ -45,6 +48,7 @@ def tf_r2(true, predicted):
     r = corr_coeff(true, predicted)
     return r ** 2
 
+
 def tf_r2_mod(true, predicted):
     """
     https://www.kaggle.com/c/mercedes-benz-greener-manufacturing/discussion/34019
@@ -54,6 +58,7 @@ def tf_r2_mod(true, predicted):
     ss_res = K.sum(K.square(true - predicted))
     ss_tot = K.sum(K.square(true - K.mean(true)))
     return ss_res / (ss_tot + K.epsilon())
+
 
 def tf_nse_beta(true, predicted, name='nse_beta'):
     """
@@ -74,6 +79,7 @@ def tf_nse_alpha(true, predicted, name='nse_alpha'):
     const = tf.constant(1.0, dtype=tf.float32)
     nse_alpha = K.std(predicted) / K.std(true)
     return tf.subtract(const, nse_alpha, name=name + '_LOSS')
+
 
 if __name__ == "__main__":
     reset_graph()

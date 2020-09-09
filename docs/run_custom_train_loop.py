@@ -6,6 +6,7 @@ import pandas as pd
 # TODO put code in @tf.function
 # TODO write validation code
 
+
 class CustomModel(Model):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
@@ -25,7 +26,6 @@ class CustomModel(Model):
 
         train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_label))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-
 
         for epoch in range(self.nn_config['epochs']):
             print("\nStart of epoch %d" % (epoch,))
@@ -76,7 +76,7 @@ class CustomModel(Model):
 # input features in data_frame
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps', 'rel_hum']
 # column in dataframe to bse used as output/target
-outputs =  ['blaTEM_coppml']
+outputs = ['blaTEM_coppml']
 
 data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                      dropout=0.4,
@@ -86,8 +86,8 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                      lookback=15,
                                                      lr=8.95e-5,
                                                      ignore_nans=False,
-                                                     inputs = input_features,
-                                                     outputs = outputs,
+                                                     inputs=input_features,
+                                                     outputs=outputs,
                                                      epochs=50)
 
 df = pd.read_csv('../data/all_data_30min.csv')  # must be 2d dataframe
@@ -95,10 +95,9 @@ df = pd.read_csv('../data/all_data_30min.csv')  # must be 2d dataframe
 df.index = pd.date_range("20110101", periods=len(df), freq='H')
 
 model = CustomModel(data_config=data_config,
-                  nn_config=nn_config,
-                  data=df,
-                  # intervals=total_intervals
-                  )
+                    nn_config=nn_config,
+                    data=df
+                    )
 
 model.build_nn()
 

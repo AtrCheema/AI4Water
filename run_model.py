@@ -3,39 +3,40 @@ import os
 
 from models import Model
 
+
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
     model can be overwritten by providing their name either for nn_config or for data_config.
     """
     _nn_config = dict()
 
-    _nn_config['conv_lstm_config'] = {'enc_config': # for more options see https://www.tensorflow.org/api_docs/python/tf/keras/layers/ConvLSTM2D#expandable-1
-                                          {'filters': 64,
-                                           'kernel_size': (1,3),
-                                           'activation': 'relu'},
+    _nn_config['conv_lstm_config'] = {'enc_config':  # for more options see https://www.tensorflow.org/api_docs/python/tf/keras/layers/ConvLSTM2D#expandable-1
+                                      {'filters': 64,
+                                       'kernel_size': (1, 3),
+                                       'activation': 'relu'},
                                       'dec_config': # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
-                                          {'units': 128,
-                                          'activation': 'relu',
-                                          'dropout': 0.3,
-                                          'recurrent_dropout': 0.4,
-                                          'return_sequences': False
-                                           }
+                                      {'units': 128,
+                                       'activation': 'relu',
+                                       'dropout': 0.3,
+                                       'recurrent_dropout': 0.4,
+                                       'return_sequences': False
+                                       }
     }
 
     _nn_config['autoenc_config'] = {'enc_config':
+                                    {'units': 100,
+                                     'act_layer': 'relu',
+                                     'dropout': 0.3,
+                                     'recurrent_dropout': 0.4,
+                                     'return_sequences': False},
+                                    'dec_config':
                                         {'units': 100,
                                          'act_layer': 'relu',
                                          'dropout': 0.3,
                                          'recurrent_dropout': 0.4,
                                          'return_sequences': False},
-                                    'dec_config':
-                                        {'units': 100,
-                                          'act_layer': 'relu',
-                                          'dropout': 0.3,
-                                          'recurrent_dropout': 0.4,
-                                          'return_sequences': False},
                                     'composite': False
-                               }
+                                    }
 
     _nn_config['nbeats_options'] = {'backcast_length': 15,
                                     'forecast_length': 1,
@@ -47,11 +48,11 @@ def make_model(**kwargs):
                                     }
 
     _nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
-                               'n_s': 20,  # length of hidden state m
-                               'm': 20,  # length of hidden state m
-                               'enc_lstm1_act': None,
+                                'n_s': 20,  # length of hidden state m
+                                'm': 20,  # length of hidden state m
+                                'enc_lstm1_act': None,
                                 'enc_lstm2_act': None,
-                               }
+                                }
     _nn_config['dec_config'] = {
         'p': 30,
         'n_hde0': 30,
@@ -76,15 +77,15 @@ def make_model(**kwargs):
     _nn_config['subsequences'] = 3  # used for cnn_lst structure
 
     _nn_config['lstm_config'] = {'units': 64,  # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
-                                'activation': 'relu',  # activation inside LSTM
-                                'dropout': 0.4,
-                                'recurrent_dropout': 0.5,
+                                 'activation': 'relu',  # activation inside LSTM
+                                 'dropout': 0.4,
+                                 'recurrent_dropout': 0.5,
                                  'act_layer': 'relu',  # this will not be activation inside LSTM rather a separate activation layer after LSTM
-                                }
+                                 }
     _nn_config['cnn_config'] = {'filters': 64, # fore options see https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv1D
-                               'kernel_size': 2,
-                               'act_layer': 'LeakyRelu',
-                               'max_pool_size': 2}
+                                'kernel_size': 2,
+                                'act_layer': 'LeakyRelu',
+                                'max_pool_size': 2}
 
     _nn_config['HARHN_config'] = {'n_conv_lyrs': 3,
                                   'enc_units': 64,
@@ -124,17 +125,16 @@ def make_model(**kwargs):
     return _data_config, _nn_config, _total_intervals
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
                       'rel_hum']
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml']
 
-
     data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                          lookback=1,
-                                                         inputs = input_features,
-                                                         outputs = outputs,
+                                                         inputs=input_features,
+                                                         outputs=outputs,
                                                          lr=0.0001)
 
     nn_config['dense_config'] = {32: {'units': 64, 'activation': 'relu', 'dropout_layer': 0.3},

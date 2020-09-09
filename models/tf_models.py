@@ -24,7 +24,7 @@ class LSTMModel(Model):
         super(LSTMModel, self).__init__(**kwargs)
 
     def get_data(self, df, ins, outs):
-        #TODO make this method work for MLP/Model's get_data as well so that we don't have to overwrite it
+        # TODO make this method work for MLP/Model's get_data as well so that we don't have to overwrite it
         input_x = []
         input_y = []
         label_y = []
@@ -54,6 +54,7 @@ class LSTMModel(Model):
         self.k_model = self.compile(inputs, predictions)
 
         return
+
 
 class CNNModel(LSTMModel):
 
@@ -181,7 +182,7 @@ class DualAttentionModel(LSTMModel):
 
         return
 
-    def _encoder(self,enc_inputs, config, lstm2_seq=True, suf:str = '1'):
+    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1'):
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We_'+suf)
         self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=config['enc_lstm1_act'],
@@ -201,7 +202,7 @@ class DualAttentionModel(LSTMModel):
         print('Output from LSTM out: ', enc_lstm_out)
         return enc_lstm_out, h0, s0
 
-    def one_encoder_attention_step(self, h_prev, s_prev, x, t, suf:str = '1'):
+    def one_encoder_attention_step(self, h_prev, s_prev, x, t, suf: str = '1'):
         """
         :param h_prev: previous hidden state
         :param s_prev: previous cell state
@@ -223,7 +224,7 @@ class DualAttentionModel(LSTMModel):
 
         return alphas
 
-    def encoder_attention(self, _input, _s0, _h0, suf:str = '1'):
+    def encoder_attention(self, _input, _s0, _h0, suf: str = '1'):
 
         s = _s0
         _h = _h0
@@ -244,7 +245,8 @@ class DualAttentionModel(LSTMModel):
                 #                                    name='attn_weight_'+str(t))([attention_weight_t,
                 #                                                                _context])
                 attention_weight_t = layers.Concatenate(axis=1,
-                                                        name='attn_weight_'+str(t)+'_'+suf)([attention_weight_t, _context])
+                                                        name='attn_weight_'+str(t)+'_'+suf)([attention_weight_t,
+                                                                                             _context])
                 print('salam')
             else:
                 attention_weight_t = _context
@@ -461,8 +463,8 @@ class OutputAttentionModel(DualAttentionModel):
     def predict(self, st=0,
                 ende=None,
                 indices=None,
-                pref:str="test",
-                scaler_key:str='5',
+                pref: str = "test",
+                scaler_key: str = '5',
                 use_datetime_index=False,
                 **plot_args):
         setattr(self, 'predict_indices', indices)
@@ -510,8 +512,8 @@ class NBeatsModel(LSTMModel):
     def predict(self, st=0,
                 en=None,
                 indices=None,
-                pref:str="test",
-                scaler_key:str='5',
+                pref: str = "test",
+                scaler_key: str = '5',
                 use_datetime_index=False,
                 **plot_args):
 

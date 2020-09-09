@@ -1,11 +1,10 @@
 from skopt.space import Real, Categorical, Integer
 from skopt.utils import use_named_args
 from skopt import gp_minimize
-from skopt.plots import plot_evaluations, plot_objective, plot_convergence
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from utils import skopt_plots
 from models import Model
 from run_model import make_model
 
@@ -20,10 +19,11 @@ dim_lstm_units = Categorical(categories=[16, 32, 64, 128], name='lstm_units')
 dim_act1_f = Categorical(categories=['relu', 'tanh', 'elu', 'LeakyRelu', 'none'], name='lstm1_act')
 dim_act2_f = Categorical(categories=['relu', 'tanh', 'elu', 'LeakyRelu', 'none'], name='lstm2_act')
 
-default_values = [12, 10, 0.00001, 32, 'none', 'none' ]
+default_values = [12, 10, 0.00001, 32, 'none', 'none']
 
 dimensions = [dim_batch_size, dim_lookback, dim_learning_rate,
               dim_lstm_units, dim_act1_f, dim_act2_f]
+
 
 def objective_fn(**kwargs):
 
@@ -37,11 +37,11 @@ def objective_fn(**kwargs):
                   intervals=total_intervals
                   )
 
-
     model.build_nn()
 
     history = model.train_nn(indices='random')
     return np.min(history.history['val_loss'])
+
 
 @use_named_args(dimensions=dimensions)
 def fitness(batch_size, lookback, lr,
@@ -56,14 +56,14 @@ def fitness(batch_size, lookback, lr,
     enc_config = {'n_h': lstm_units,  # length of hidden state m
                   'n_s': lstm_units,  # length of hidden state m
                   'm': lstm_units,  # length of hidden state m
-     'enc_lstm1_act': lstm1_act,
-     'enc_lstm2_act': lstm2_act,
-     }
+                  'enc_lstm1_act': lstm1_act,
+                  'enc_lstm2_act': lstm2_act,
+                  }
 
     error = objective_fn(batch_size=batch_size,
-                       lookback=lookback,
-                       lr=lr,
-                       enc_config=enc_config,
+                         lookback=lookback,
+                         lr=lr,
+                         enc_config=enc_config,
                          epochs=10)
 
     msg = """\nwith lstm_units {}, lstm1_act {}, lstm2_act {}, batch_size {} lookback {} lr {} val loss is {}
@@ -83,15 +83,4 @@ search_result = gp_minimize(func=fitness,
                             x0=default_values,
                             random_state=10)
 
-_ = plot_evaluations(search_result)
-plt.savefig('evaluations', dpi=400, bbox_inches='tight')
-plt.show()
-
-_ = plot_objective(search_result)
-plt.savefig('objective', dpi=400, bbox_inches='tight')
-plt.show()
-
-
-_ = plot_convergence(search_result)
-plt.savefig('convergence', dpi=400, bbox_inches='tight')
-plt.show()
+skopt_plots(search_result)

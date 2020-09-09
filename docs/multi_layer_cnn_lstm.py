@@ -19,25 +19,25 @@ data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      lr=0.0001)
 
 nn_config['cnn_config'] = {'n_layers': 3,
-                            'cnn_0': {
-                                'filters': 64,
-                                'kernel_size': 2,
-                                'act_layer': 'LeakyRelu'
+                           'cnn_0': {
+                            'filters': 64,
+                            'kernel_size': 2,
+                            'act_layer': 'LeakyRelu'
                             },
-                            'cnn_1': {
-                                'filters': 32,
-                                'kernel_size': 2,
-                                'act_layer': 'LeakyRelu'
+                           'cnn_1': {
+                            'filters': 32,
+                            'kernel_size': 2,
+                            'act_layer': 'LeakyRelu'
                             },
-                            'cnn_2': {
-                                'filters': 16,
-                                'kernel_size': 2,
-                                'act_layer': 'LeakyRelu'
+                           'cnn_2': {
+                            'filters': 16,
+                            'kernel_size': 2,
+                            'act_layer': 'LeakyRelu'
                             },
-                            'max_pool_size': 2}
+                           'max_pool_size': 2}
 
 nn_config['lstm_config'] = {'n_layers': 2,
-                            'lstm_1': { # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
+                            'lstm_1': {  # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
                                 'units': 64,
                                 'activation': 'relu',  # activation inside LSTM
                                 'dropout': 0.4,

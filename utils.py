@@ -7,6 +7,7 @@ import json
 
 plt.rcParams["font.family"] = "Times New Roman"
 
+
 def _plot(*args, **kwargs):
     plt.close('all')
     plt.plot(*args, **kwargs)
@@ -53,7 +54,7 @@ def regplot_using_searborn(true, pred, name):
     plt.show()
 
 
-def plot_loss(history:dict, name=None):
+def plot_loss(history: dict, name=None):
 
     loss = history['loss']
 
@@ -100,6 +101,7 @@ def plot_train_test_pred(y, obs, tr_idx, test_idx):
 
     plt.show()
 
+
 def maybe_create_path(prefix=None, path=None):
     if path is None:
         save_dir = dateandtime_now()
@@ -116,6 +118,7 @@ def maybe_create_path(prefix=None, path=None):
         os.makedirs(save_dir)
 
     return save_dir
+
 
 def dateandtime_now():
     jetzt = datetime.datetime.now()
@@ -137,6 +140,7 @@ def dateandtime_now():
 
     return datum + '_' + stunde + str(minute)
 
+
 def save_config_file(path, config=None, errors=None):
 
     if errors is not None:
@@ -153,3 +157,20 @@ def save_config_file(path, config=None, errors=None):
         json.dump(data, fp, sort_keys=True, indent=4)
 
     return
+
+
+def skopt_plots(search_result):
+
+    from skopt.plots import plot_evaluations, plot_objective, plot_convergence
+
+    _ = plot_evaluations(search_result)
+    plt.savefig('evaluations', dpi=400, bbox_inches='tight')
+    plt.show()
+
+    _ = plot_objective(search_result)
+    plt.savefig('objective', dpi=400, bbox_inches='tight')
+    plt.show()
+
+    _ = plot_convergence(search_result)
+    plt.savefig('convergence', dpi=400, bbox_inches='tight')
+    plt.show()

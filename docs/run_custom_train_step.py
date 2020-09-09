@@ -3,8 +3,7 @@ from models import Model
 from models.global_variables import keras, tf
 
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
+
 
 class CustomModel(keras.Model):
     def train_step(self, data):
@@ -31,20 +30,19 @@ class CustomModel(keras.Model):
 
 
 data_config, nn_config, total_intervals = make_model(lstm_units=64,
-                             dropout=0.4,
-                             rec_dropout=0.5,
-                             lstm_act='relu',
-                             batch_size=32,
-                             lookback=15,
-                             lr=8.95e-5)
+                                                     dropout=0.4,
+                                                     rec_dropout=0.5,
+                                                     lstm_act='relu',
+                                                     batch_size=32,
+                                                     lookback=15,
+                                                     lr=8.95e-5)
 
 df = pd.read_csv('data/all_data_30min.csv')
 
 model = Model(data_config=data_config,
-                  nn_config=nn_config,
-                  data=df,
-                  # intervals=total_intervals
-                  )
+              nn_config=nn_config,
+              data=df
+              )
 
 model.KModel = CustomModel
 

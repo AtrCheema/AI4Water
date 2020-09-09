@@ -28,8 +28,7 @@ if int(tf.__version__[0]) == 1:
 elif int(tf.__version__[0]) > 1:
     tf.random.set_seed(313)
 
-np.set_printoptions(suppress=True) # to suppress scientific notation while printing arrays
-
+np.set_printoptions(suppress=True)  # to suppress scientific notation while printing arrays
 
 
 class Model(NN):
@@ -38,7 +37,7 @@ class Model(NN):
                  nn_config: dict,
                  data: pd.DataFrame,
                  intervals=None,
-                 path: str=None):
+                 path: str = None):
 
         super(Model, self).__init__(data_config, nn_config)
 
@@ -66,7 +65,7 @@ class Model(NN):
         return self._intervals
 
     @intervals.setter
-    def intervals(self, x:list):
+    def intervals(self, x: list):
         self._intervals = x
 
     @property
@@ -74,7 +73,7 @@ class Model(NN):
         return self._in_cols
 
     @in_cols.setter
-    def in_cols(self, x:list):
+    def in_cols(self, x: list):
         self._in_cols = x
 
     @property
@@ -82,7 +81,7 @@ class Model(NN):
         return self._out_cols
 
     @out_cols.setter
-    def out_cols(self, x:list):
+    def out_cols(self, x: list):
         self._out_cols = x
 
     @property
@@ -123,7 +122,7 @@ class Model(NN):
                    cache_data=True,
                    noise: int = 0,
                    indices: list = None,
-                   scaler_key:str = '0',
+                   scaler_key: str = '0',
                    return_dt_index=False):
         """
 
@@ -147,10 +146,10 @@ class Model(NN):
                 raise ValueError
 
         df = data
-        dt_index=None
+        dt_index = None
         if return_dt_index:
-            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type pd.DateTimeIndex.
-            A dummy datetime index can be inserted by using following command:
+            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
+             pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
             `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
             If the data file already contains `datetime` column, then use following command
             `data.index = pd.to_datetime(data['datetime'])`
@@ -300,7 +299,7 @@ class Model(NN):
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) # - self.data_config['batch_size']
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum())  # self.data_config['bs']
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
@@ -321,7 +320,7 @@ class Model(NN):
         x, y, label = self.fetch_data(self.data, **kwargs)
         return [x], label
 
-    def process_results(self, true:list, predicted:list, name=None, **plot_args):
+    def process_results(self, true: list, predicted: list, name=None, **plot_args):
 
         errs = dict()
         for out in range(self.outs):
@@ -371,7 +370,7 @@ class Model(NN):
 
         return history
 
-    def predict(self, st=0, en=None, indices=None, scaler_key:str='5', pref:str='test',
+    def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
@@ -385,7 +384,7 @@ class Model(NN):
                                               return_dt_index=use_datetime_index)
 
         first_input = inputs[0]
-        dt_index=np.arange(len(first_input))  # default case when datetime_index is not present in input data
+        dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
         if use_datetime_index:
             # remove the first of first inputs which is datetime index
             dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
@@ -447,7 +446,7 @@ class Model(NN):
 
     def get_data(self, df, ins, outs):
 
-        input_x, input_y, label_y =  df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
+        input_x, input_y, label_y = df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
 
         assert self.lookback == 1, "lookback should be one"
 
@@ -463,8 +462,9 @@ class Model(NN):
             else:
                 if self.method == 'dual_attention':
                     raise ValueError
-                if outs> 1:
-                    assert np.all(nans.values == int(nans.sum()/outs)), "output columns contains nan values at different indices"
+                if outs > 1:
+                    assert np.all(nans.values == int(nans.sum()/outs)), """output columns contains nan values at
+                     different indices"""
                 print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
                 y = df[df.columns[-1]]
                 nan_idx = y.isna()
@@ -482,14 +482,14 @@ class Model(NN):
 
         return input_x, input_y, label_y
 
-    def activations(self,layer_names=None, **kwargs):
+    def activations(self, layer_names=None, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
         inputs, outputs = self.run_paras(**kwargs)
 
         activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
         return activations, inputs
 
-    def display_activations(self, layer_name: str=None, st=0, en=None, indices=None, **kwargs):
+    def display_activations(self, layer_name: str = None, st=0, en=None, indices=None, **kwargs):
         # not working currently because it requres the shape of activations to be (1, output_h, output_w, num_filters)
         activations, _ = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
         if layer_name is None:
@@ -497,7 +497,7 @@ class Model(NN):
         else:
             activations = activations[layer_name]
 
-        keract.display_activations(activations=activations,**kwargs)
+        keract.display_activations(activations=activations, **kwargs)
 
     def gradients_of_weights(self, **kwargs) -> dict:
 
@@ -516,7 +516,7 @@ class Model(NN):
         weights = {}
         for weight in self.k_model.trainable_weights:
             if tf.executing_eagerly():
-               weights[weight.name] = weight.numpy()
+                weights[weight.name] = weight.numpy()
             else:
                 weights[weight.name] = keras.backend.eval(weight)
         return weights
@@ -534,7 +534,7 @@ class Model(NN):
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
-    def plot_activations(self, save: bool=False, **kwargs):
+    def plot_activations(self, save: bool = False, **kwargs):
         """ plots activations of intermediate layers except input and output.
         If called without any arguments then it will plot activations of all layers."""
         activations, _ = self.activations(**kwargs)
@@ -544,21 +544,21 @@ class Model(NN):
                 self._imshow(activation, lyr_name + " Activations", save, os.path.join(self.path, lyr_name))
             elif np.ndim(activation) == 3:
                 self._imshow_3d(activation, lyr_name, save=save)
-            elif np.ndim(activation) == 2: # this is now 1d
+            elif np.ndim(activation) == 2:  # this is now 1d
                 # shape= (?, 1)
                 self.plot1d(activation, label=lyr_name+' Activations', save=save,
                             fname=os.path.join(self.path, lyr_name+'_activations'))
             else:
                 print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
-                                                                                           np.ndim(activation)))
+                                                                                       np.ndim(activation)))
 
-    def plot_weight_grads(self, save: bool=True, **kwargs):
+    def plot_weight_grads(self, save: bool = True, **kwargs):
         """ plots gradient of all trainable weights"""
 
         gradients = self.gradients_of_weights(**kwargs)
         for lyr_name, gradient in gradients.items():
 
-            title = lyr_name+ "Weight Gradients"
+            title = lyr_name + "Weight Gradients"
             fname = os.path.join(self.path, lyr_name+'_weight_grads')
 
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
@@ -569,7 +569,7 @@ class Model(NN):
                 print("ignoring weight gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
                                                                                            np.ndim(gradient)))
 
-    def plot_act_grads(self, save: bool=None, **kwargs):
+    def plot_act_grads(self, save: bool = None, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         gradients = self.gradients_of_activations(**kwargs)
 
@@ -627,7 +627,7 @@ class Model(NN):
         plt.show()
         return
 
-    def plot_act_along_inputs(self, layer_name:str, name:str=None, **kwargs):
+    def plot_act_along_inputs(self, layer_name: str, name: str = None, **kwargs):
 
         pred, obs = self.predict(**kwargs)
 
@@ -669,7 +669,7 @@ class Model(NN):
 
         return
 
-    def plot2d_act_for_a_sample(self, activations, sample=0, name:str=None):
+    def plot2d_act_for_a_sample(self, activations, sample=0, name: str = None):
         fig, axis = plt.subplots()
         fig.set_figheight(8)
         # for idx, ax in enumerate(axis):
@@ -721,8 +721,8 @@ class Model(NN):
 
         return x, y, target
 
-    def _imshow(self, img, label:str='', save=True, fname=None):
-        assert np.ndim(img)==2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
+    def _imshow(self, img, label: str = '', save=True, fname=None):
+        assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
         plt.imshow(img, aspect='auto')
         plt.colorbar()
@@ -737,14 +737,13 @@ class Model(NN):
         self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
                      save, os.path.join(self.path, lyr_name))
 
-    def plot1d(self, array, label:str='', save=True, fname=None):
+    def plot1d(self, array, label: str = '', save=True, fname=None):
         plt.close('all')
         plt.plot(array, '.')
         plt.title(label)
         self.save_or_show(save, fname)
 
-
-    def save_or_show(self, save:bool=True, fname=None):
+    def save_or_show(self, save: bool = True, fname=None):
         if save:
             assert isinstance(fname, str)
             if "/" in fname:
@@ -753,16 +752,18 @@ class Model(NN):
         else:
             plt.show()
 
+    def save_config(self, history: dict):
 
-    def save_config(self, history:dict):
+        test_indices = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
+        train_indices = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
 
         config = dict()
         config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
         config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['test_indices'] = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
-        config['train_indices'] = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
+        config['test_indices'] = test_indices
+        config['train_indices'] = train_indices
         config['intervals'] = self.intervals
         config['method'] = self.method
 
@@ -770,7 +771,7 @@ class Model(NN):
         return config
 
     @classmethod
-    def from_config(cls, config_path:str, data):
+    def from_config(cls, config_path: str, data):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
@@ -793,17 +794,19 @@ class Model(NN):
                    intervals=intervals,
                    path=os.path.dirname(config_path))
 
-    def load_weights(self, w_file:str):
+    def load_weights(self, w_file: str):
         # loads the weights of keras model from weight file `w_file`.
         cpath = os.path.join(self.path, w_file)
         self.k_model.load_weights(cpath)
         return
+
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
     assert len(a) == len(b) == len(c)
     p = np.random.permutation(len(a))
     return a[p], b[p], c[p]
+
 
 def get_index(idx_array, fmt='%Y%m%d%H%M'):
     """ converts a numpy 1d array into pandas DatetimeIndex type."""
@@ -812,4 +815,3 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
         raise TypeError
 
     return pd.to_datetime(idx_array.astype(str), format=fmt)
-

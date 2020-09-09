@@ -14,9 +14,9 @@ cwd = os.getcwd()
 df = pd.read_csv(os.path.join(os.path.dirname(cwd), "data\\all_data_30min.csv"))
 
 model = Model(data_config=data_config,
-                   nn_config=nn_config,
-                   data=df,
-                   )
+              nn_config=nn_config,
+              data=df,
+              )
 
 model.build_nn()
 
@@ -33,4 +33,4 @@ model.build_nn()
 
 w_file = "file_name.hdf5"
 model.load_weights(w_file)
-x,y  = model.predict(indices=model.test_indices)
+x, y = model.predict(indices=model.test_indices)
