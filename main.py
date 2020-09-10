@@ -397,8 +397,10 @@ class Model(NN):
 
         if self.outs == 1:
             # denormalize the data
-            if np.ndim(first_input) > 3:
+            if np.ndim(first_input) == 4:
                 first_input = first_input[:, -1, 0, :]
+            elif np.ndim(first_input) == 5:
+                first_input = first_input[:, -1, 0, -1, :]
             elif np.ndim(first_input) == 3:
                 first_input = first_input[:, -1, :]
 
@@ -448,7 +450,7 @@ class Model(NN):
 
         input_x, input_y, label_y = df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
 
-        assert self.lookback == 1, "lookback should be one"
+        assert self.lookback == 1, "lookback should be one, but it is {}".format(self.lookback)
 
         return self.check_nans(df, input_x, input_y, label_y, outs)
 

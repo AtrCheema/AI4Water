@@ -17,6 +17,7 @@ class AttributeNotSetYet:
     def __set_name__(self, owner, name):
         self.name = name
 
+
 class AttributeStore(object):
     """ a class which will just make sure that attributes are set at its childs class level and not here.
     It's purpose is just to avoid cluttering of __init__ method of its child classes. """
@@ -43,11 +44,11 @@ class AttributeStore(object):
 
 class NN(AttributeStore):
 
-    def __init__(self, data_config:dict,
-                 nn_config:dict
+    def __init__(self, data_config: dict,
+                 nn_config: dict
                  ):
         self.data_config = data_config
-        self.nn_config=  nn_config
+        self.nn_config = nn_config
 
         super(NN, self).__init__()
 
@@ -55,7 +56,7 @@ class NN(AttributeStore):
     def lookback(self):
         return self.data_config['lookback']
 
-    def conv_lstm_model(self, enc_config:dict, dec_config:dict, outs:int):
+    def conv_lstm_model(self, enc_config: dict, dec_config: dict, outs: int):
         """
          basic structure of a ConvLSTM based encoder decoder model.
         """
@@ -94,7 +95,7 @@ class NN(AttributeStore):
 
         return lstm_activations
 
-    def conv2d_lstm(self, config:dict, inputs):
+    def conv2d_lstm(self, config: dict, inputs):
         """
         Adds a CONVLSTM2D layer. It is possible to add activation layer after conv2d layer.
         """
@@ -112,8 +113,7 @@ class NN(AttributeStore):
         # apply activation layer if applicable
         conv_lstm_outs = self.add_act_layer(act_layer, conv_lstm_outs)
 
-        return  keras.layers.Flatten()(conv_lstm_outs)
-
+        return keras.layers.Flatten()(conv_lstm_outs)
 
     def add_1d_cnn(self, inputs, config: dict):
         """
@@ -149,7 +149,7 @@ class NN(AttributeStore):
 
         return flat_lyr
 
-    def cnn_model(self, cnn_config:dict, outs:int):
+    def cnn_model(self, cnn_config: dict, outs: int):
         """ basic structure of a simple CNN based model"""
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
@@ -172,7 +172,7 @@ class NN(AttributeStore):
 
         return inputs, predictions
 
-    def simple_lstm(self, lstm_config:dict, outs):
+    def simple_lstm(self, lstm_config: dict, outs):
         """ basic structure of a simple LSTM based model"""
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
@@ -195,7 +195,7 @@ class NN(AttributeStore):
 
         return inputs, predictions
 
-    def add_time_dist_cnn(self, cnn_config:dict, inputs):
+    def add_time_dist_cnn(self, cnn_config: dict, inputs):
 
         # check whether to apply any activation layer or not.
         act_layer = check_layer_existence(cnn_config, 'act_layer')
@@ -218,7 +218,7 @@ class NN(AttributeStore):
 
         return cnn_lyr
 
-    def cnn_lstm(self, cnn_config:dict,  lstm_config:dict,  outs):
+    def cnn_lstm(self, cnn_config: dict,  lstm_config: dict,  outs):
         """ blue print for developing a CNN-LSTM model.
         :param cnn_config: con contain input arguments for one or more than one cnns, all given as dictionaries
         :param lstm_config: cna contain input arguments for one or more than one LSTM layers, all given as dictionaries
@@ -237,13 +237,14 @@ class NN(AttributeStore):
         cnn_outputs = inputs
         cnn_inputs = inputs
         for cnn in cnn_configs:
+            max_pool_size = cnn_config.pop('max_pool_size')
             cnn_outputs = self.add_time_dist_cnn(cnn, cnn_inputs)
             cnn_inputs = cnn_outputs
 
         # apply activation layer if applicable
         cnn_outputs = self.add_act_layer(act_layer, cnn_outputs, True)
 
-        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=cnn_config['max_pool_size']))(cnn_outputs)
+        max_pool_lyr = layers.TimeDistributed(layers.MaxPooling1D(pool_size=max_pool_size))(cnn_outputs)
         flat_lyr = layers.TimeDistributed(layers.Flatten())(max_pool_lyr)
 
         # check whether to apply any activation layer or not.
@@ -285,7 +286,7 @@ class NN(AttributeStore):
 
         return dense_outs
 
-    def lstm_cnn(self, lstm_config:dict, cnn_config:dict, outs:int):
+    def lstm_cnn(self, lstm_config: dict, cnn_config: dict, outs: int):
         """ basic structure of a simple LSTM -> CNN based model"""
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
@@ -300,7 +301,7 @@ class NN(AttributeStore):
 
         return inputs, predictions
 
-    def lstm_autoencoder(self, enc_config:dict, dec_config:dict, composite:bool, outs:int):
+    def lstm_autoencoder(self, enc_config: dict, dec_config: dict, composite: bool, outs: int):
         """
         basic structure of an LSTM autoencoder
         """
@@ -325,7 +326,7 @@ class NN(AttributeStore):
 
         return inputs, outputs
 
-    def tcn_model(self, tcn_options:dict, outs:int):
+    def tcn_model(self, tcn_options: dict, outs: int):
         """
         basic tcn model
         """
@@ -336,7 +337,7 @@ class NN(AttributeStore):
         tcn_outs = tcn.TCN(**tcn_options)(inputs)  # The TCN layers are here.
         predictions = layers.Dense(outs)(tcn_outs)
 
-        return inputs,predictions
+        return inputs, predictions
 
     def add_dropout_layer(self, dropout, inputs):
         outs = inputs
@@ -346,7 +347,7 @@ class NN(AttributeStore):
 
         return outs
 
-    def add_act_layer(self, act_layer, inputs, time_distributed:bool=False):
+    def add_act_layer(self, act_layer, inputs, time_distributed: bool = False):
         # this is used if we want to apply activation as a separate layer
 
         outputs = inputs
@@ -361,7 +362,7 @@ class NN(AttributeStore):
 
         return outputs
 
-    def check_dense_config(self, config)->dict:
+    def check_dense_config(self, config) -> dict:
         """ possible values of config are
         1
         [1,2,3]
@@ -373,19 +374,19 @@ class NN(AttributeStore):
             out_config = {}
             for i in config:
                 if isinstance(i, int):
-                    out_config[i] = {'units':i}
+                    out_config[i] = {'units': i}
                 else:
-                    raise TypeError("config for each dense layer must be dictionary within one dictionary not list of dictionaries")
+                    raise TypeError("""config for each dense layer must be dictionary within one dictionary not list of
+                     dictionaries""")
         elif isinstance(config, dict):
-            out_config =  config
+            out_config = config
         else:
             raise TypeError("Unknown configuration for dense layer")
 
         return out_config
 
 
-
-def check_lstm_config(lstm_config:dict)->list:
+def check_lstm_config(lstm_config: dict) -> list:
 
     if 'n_layers' in lstm_config:
         n_lstms = lstm_config['n_layers']
@@ -402,14 +403,14 @@ def check_lstm_config(lstm_config:dict)->list:
     return lstm_configs
 
 
-def check_layer_existence(config:dict, layer_name:str):
+def check_layer_existence(config: dict, layer_name: str):
     layer_existence = None
     if layer_name in config:
         layer_existence = config.pop(layer_name)
     return layer_existence
 
 
-def check_act_fn(config:dict):
+def check_act_fn(config: dict):
     """ it is possible that the config file does not have activation argument or activation is None"""
     activation = None
     if 'activation' in config:
@@ -420,7 +421,8 @@ def check_act_fn(config:dict):
 
     return config, activation
 
-def check_cnn_config(cnn_config:dict)->list:
+
+def check_cnn_config(cnn_config: dict) -> list:
     """ checks whether the `cnn_config` dictionary contains configuration for one cnn layer or multiple cnn layers
     """
 

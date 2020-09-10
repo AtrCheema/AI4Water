@@ -108,6 +108,8 @@ def make_model(**kwargs):
     # column in dataframe to bse used as output/target
     _data_config['outputs'] = ["NDX"]
 
+    _nn_config['dense_config'] = {1: {'units':1}}
+
     for key, val in kwargs.items():
         if key in _data_config:
             _data_config[key] = val

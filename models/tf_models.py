@@ -77,7 +77,7 @@ class CNNModel(LSTMModel):
         return self.k_model
 
 
-class LSTMCNNModel(Model):
+class LSTMCNNModel(LSTMModel):
     def __init__(self, **kwargs):
 
         self.method = 'LSTM_CNN'
@@ -129,7 +129,8 @@ class CNNLSTMModel(LSTMModel):
         lstm = self.nn_config['lstm_config']
         cnn = self.nn_config['cnn_config']
 
-        assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
+        assert self.lookback % self.nn_config['subsequences'] == int(0), """lookback must be multiple of subsequences.
+        Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
 
         inputs, predictions = self.cnn_lstm(cnn, lstm, self.outs)
 
@@ -528,7 +529,7 @@ class NBeatsModel(LSTMModel):
         return predicted, label
 
 
-class ConvLSTMModel(Model):
+class ConvLSTMModel(LSTMModel):
     """
     Original:
       https://arxiv.org/abs/1506.04214v1
@@ -547,7 +548,7 @@ class ConvLSTMModel(Model):
 
         x = x.reshape((x.shape[0], sub_seq, 1, sub_seq_lens, self.ins))
 
-        return x, labels
+        return [x], labels
 
     def build_nn(self):
         """ this is more like a encoder decoder example"""
