@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from models import DualAttentionModel
-from run_model import make_model
+from utils import make_model
 
 
 df = pd.read_csv("../data/nasdaq100_padding.csv")

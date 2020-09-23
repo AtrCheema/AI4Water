@@ -1,6 +1,7 @@
-from run_model import make_model
+from utils import make_model
 from models import LSTMModel
 from models.global_variables import keras, tf
+
 import pandas as pd
 
 # TODO put code in @tf.function

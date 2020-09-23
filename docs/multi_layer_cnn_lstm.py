@@ -2,7 +2,7 @@
 # We build a CNN->LSTM model consisting of 3 CNN layers followed by max pooling and then feeding its output
 # to two LSTM layers.
 
-from run_model import make_model
+from utils import make_model
 from models import CNNLSTMModel
 
 import pandas as pd

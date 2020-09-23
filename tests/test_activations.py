@@ -1,7 +1,7 @@
 # this file tests that given activations are working both as layers as well as activation functions withing a layer
 
 from models import Model
-from run_model import make_model
+from utils import make_model
 
 import pandas as pd
 

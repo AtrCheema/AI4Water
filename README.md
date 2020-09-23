@@ -31,7 +31,7 @@ can be used as shown below
 ```python
 import pandas as pd 
 from models import InputAttentionModel  # import any of the above model
-from run_model import make_model  # helper function to make inputs for model
+from utils import make_model  # helper function to make inputs for model
 
 data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      lookback=15,
@@ -64,7 +64,7 @@ dictionary themselves. To find out what input arguments can be used, check docum
 ### multi-layer perceptron
 
 ```python
-from run_model import make_model
+from utils import make_model
 from models import Model
 
 import pandas as pd
@@ -92,12 +92,12 @@ _model = Model(data_config=data_config,
 
 _model.build_nn()
 ```
-![MLP based model](imgs/mlp.png "Title")
+# ![MLP based model](imgs/mlp.png "Title")
 
 
 ### LSTM based model
 ```python
-from run_model import make_model
+from utils import make_model
 from models import LSTMModel
 import pandas as pd
 

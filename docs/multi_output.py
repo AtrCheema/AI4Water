@@ -5,7 +5,7 @@ import os
 
 from models import InputAttentionModel
 from models.global_variables import keras
-from run_model import make_model
+from utils import make_model
 
 
 class MultiSite(InputAttentionModel):

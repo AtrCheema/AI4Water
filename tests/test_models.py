@@ -1,6 +1,6 @@
 import pandas as pd
 
-from run_model import make_model
+from utils import make_model
 from models import Model, LSTMModel, CNNLSTMModel, ConvLSTMModel, InputAttentionModel
 from models import DualAttentionModel, AutoEncoder
 

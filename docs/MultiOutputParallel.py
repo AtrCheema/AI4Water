@@ -8,7 +8,7 @@
 from models import LSTMModel
 from models.global_variables import keras, tf
 from utils import check_min_loss, plot_loss
-from run_model import make_model
+from utils import make_model
 from docs import LSTM_CONFIG, TCN_CONFIG, ConvLSTM_CONFIG, LSTMAutoEnc_Config
 
 from tensorflow.python.keras.engine import training_utils
