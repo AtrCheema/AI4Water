@@ -12,49 +12,36 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 # column in dataframe to bse used as output/target
 outputs = ['blaTEM_coppml']
 
+layers = {
+    "TimeDistributed_0": {},
+    'conv1d_0': {'filters': 64, 'kernel_size': 2},
+    'LeakyRelu_0': {},
+    "TimeDistributed_1": {},
+    'conv1d_1': {'filters': 32, 'kernel_size': 2},
+    'elu_1': {},
+    "TimeDistributed_2": {},
+    'conv1d_2': {'filters': 16, 'kernel_size': 2},
+    'tanh_2': {},
+    "TimeDistributed_3": {},
+    "maxpool1d": {'pool_size': 2},
+    "TimeDistributed_4": {},
+    'flatten': {},
+    'lstm_0':   {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+               'name': 'lstm_0'},
+    'Relu_1': {},
+    'lstm_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
+    'sigmoid_2': {},
+    'Dense': {'units': 1}
+}
+
 data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      lookback=15,
                                                      inputs=input_features,
                                                      outputs=outputs,
+                                                     layers=layers,
                                                      lr=0.0001)
 
-nn_config['cnn_config'] = {'n_layers': 3,
-                           'cnn_0': {
-                            'filters': 64,
-                            'kernel_size': 2,
-                            'act_layer': 'LeakyRelu'
-                            },
-                           'cnn_1': {
-                            'filters': 32,
-                            'kernel_size': 2,
-                            'act_layer': 'LeakyRelu'
-                            },
-                           'cnn_2': {
-                            'filters': 16,
-                            'kernel_size': 2,
-                            'act_layer': 'LeakyRelu'
-                            },
-                           'max_pool_size': 2}
 
-nn_config['lstm_config'] = {'n_layers': 2,
-                            'lstm_1': {  # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
-                                'units': 64,
-                                'activation': 'relu',  # activation inside LSTM
-                                'dropout': 0.4,
-                                'recurrent_dropout': 0.5,
-                                'act_layer': 'relu',
-                                'return_sequences': True,  # since multiple LSTMs, all must return sequences except last
-                                'name': 'lstm_1'
-                            },
-                            'lstm_2': {
-                                'units': 32,
-                                'activation': 'relu',  # activation inside LSTM
-                                'dropout': 0.4,
-                                'recurrent_dropout': 0.5,
-                                'act_layer': 'relu',
-                                'name': 'lstm_2'
-                            }
-                            }
 
 df = pd.read_csv('../data/all_data_30min.csv')
 

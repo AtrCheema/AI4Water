@@ -141,20 +141,25 @@ def dateandtime_now():
     return datum + '_' + stunde + str(minute)
 
 
-def save_config_file(path, config=None, errors=None):
+def save_config_file(path, config=None, errors=None, indices=None, name=''):
 
+    sort_keys = True
     if errors is not None:
         suffix = dateandtime_now()
-        fpath = path + "/errors_" + suffix + ".json"
+        fpath = path + "/errors_" + name +  suffix + ".json"
         data = errors
     elif config is not None:
         fpath = path + "/config.json"
         data = config
+        sort_keys = False
+    elif indices is not None:
+        fpath = path + "/indices.json"
+        data = indices
     else:
         raise ValueError("")
 
     with open(fpath, 'w') as fp:
-        json.dump(data, fp, sort_keys=True, indent=4)
+        json.dump(data, fp, sort_keys=sort_keys, indent=4)
 
     return
 
@@ -174,3 +179,24 @@ def skopt_plots(search_result):
     _ = plot_convergence(search_result)
     plt.savefig('convergence', dpi=400, bbox_inches='tight')
     plt.show()
+
+
+def check_min_loss(epoch_losses, _epoch, _msg:str, _save_fg:bool, to_save=None):
+    epoch_loss_array = epoch_losses[:-1]
+
+    current_epoch_loss = epoch_losses[-1] # np.mean(batch_loss_array)
+
+    if len(epoch_loss_array) > 0:
+        min_loss = np.min(epoch_loss_array)
+    else:
+        min_loss = current_epoch_loss
+
+    if np.less(current_epoch_loss, min_loss):
+        _msg = _msg + "    {:10.5f} ".format(current_epoch_loss)
+
+        if to_save is not None:
+            _save_fg = True
+    else:
+        _msg = _msg + "              "
+
+    return _msg, _save_fg

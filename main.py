@@ -11,7 +11,7 @@ import json
 
 from nn_tools import NN
 import keract_mod as keract
-from models.global_variables import keras, tf
+from models.global_variables import keras, tf, tcn
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES
 
@@ -19,7 +19,7 @@ from models.global_variables import LOSSES
 KModel = keras.models.Model
 layers = keras.layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
 
 np.random.seed(313)
@@ -35,14 +35,14 @@ class Model(NN):
 
     def __init__(self, data_config: dict,
                  nn_config: dict,
-                 data: pd.DataFrame,
+                 data,
                  intervals=None,
                  path: str = None):
 
         super(Model, self).__init__(data_config, nn_config)
 
         self.intervals = intervals
-        self.data = data[data_config['inputs'] + data_config['outputs']]
+        self.data = data
         self.in_cols = self.data_config['inputs']
         self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.nn_config['loss']]
@@ -56,7 +56,11 @@ class Model(NN):
 
     @data.setter
     def data(self, x):
-        self._data = x
+        if isinstance(x, pd.DataFrame):
+            _data = x[self.data_config['inputs'] + self.data_config['outputs']]
+        else:
+            _data = x
+        self._data = _data
 
     @property
     def intervals(self):
@@ -256,7 +260,7 @@ class Model(NN):
 
         return x, y, label
 
-    def fit(self, inputs, outputs, **callbacks):
+    def fit(self, inputs, outputs, validation_data=None, **callbacks):
 
         _callbacks = list()
 
@@ -280,6 +284,7 @@ class Model(NN):
                          epochs=self.nn_config['epochs'],
                          batch_size=self.data_config['batch_size'],
                          validation_split=self.data_config['val_fraction'],
+                         validation_data=validation_data,
                          callbacks=_callbacks
                          )
         history = self.k_model.history
@@ -299,7 +304,8 @@ class Model(NN):
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum())  # self.data_config['bs']
+                    more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - more
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
@@ -307,7 +313,7 @@ class Model(NN):
                     assert np.all(nans.values == int(nans.sum() / self.outs))
 
             idx = np.arange(tot_obs - self.lookback)
-            train_indices, test_idx = train_test_split(idx, test_size=self.data_config['val_fraction'], random_state=313)
+            train_indices, test_idx = train_test_split(idx, test_size=self.data_config['test_fraction'], random_state=313)
             setattr(self, 'test_indices', list(test_idx))
             indices = list(train_indices)
 
@@ -325,6 +331,7 @@ class Model(NN):
         errs = dict()
         for out in range(self.outs):
 
+            out_name = self.data_config['outputs'][out]
             t = true[out]
             p = predicted[out]
 
@@ -334,29 +341,34 @@ class Model(NN):
                 p = p[mask]
 
             errors = FindErrors(t, p)
-            errs['out_errors'] = errors.calculate_all()
-            errs['out_stats'] = errors.stats()
+            errs[ out_name + '_errors'] = errors.calculate_all()
+            errs[ out_name + '_stats'] = errors.stats()
 
-            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]),
+            plot_results(t, p, name=os.path.join(self.path, name + out_name),
                          **plot_args)
 
-        save_config_file(self.path, errors=errs)
+        save_config_file(self.path, errors=errs, name=name)
 
         return
 
     def build_nn(self):
 
-        print('building simple dense layer based model')
-
-        dense_config = self.nn_config['dense_config']
+        print('building {} layer based model'.format(self.method))
 
         inputs = keras.layers.Input(shape=(self.ins, ))
 
-        predictions = self.dense_layers(inputs, dense_config)
+        predictions = self.add_layers(inputs, self.nn_config['layers'])
 
         self.k_model = self.compile(inputs, predictions)
 
-        return self.k_model
+        if 'tcn' in self.nn_config['layers']:
+            tcn.tcn_full_summary(self.k_model, expand_residual_blocks=True)
+
+        return
+
+    def get_val_data(self):
+        """ This method can be overwritten in child classes. """
+        return None
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
@@ -364,7 +376,9 @@ class Model(NN):
 
         inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
-        history = self.fit(inputs, outputs, **callbacks)
+        val_data = self.get_val_data()
+
+        history = self.fit(inputs, outputs, validation_data=val_data, **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 
@@ -388,29 +402,14 @@ class Model(NN):
         if use_datetime_index:
             # remove the first of first inputs which is datetime index
             dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-            first_input1 = first_input[:, :, 1:].astype(np.float32)
-            inputs[0] = first_input1
+            first_input = first_input[:, :, 1:].astype(np.float32)
+            inputs[0] = first_input
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
                                          verbose=1)
 
-        if self.outs == 1:
-            # denormalize the data
-            if np.ndim(first_input) == 4:
-                first_input = first_input[:, -1, 0, :]
-            elif np.ndim(first_input) == 5:
-                first_input = first_input[:, -1, 0, -1, :]
-            elif np.ndim(first_input) == 3:
-                first_input = first_input[:, -1, :]
-
-            in_obs = np.hstack([first_input, true_outputs])
-            in_pred = np.hstack([first_input, predicted])
-            scaler = self.scalers['scaler_'+scaler_key]
-            in_obs_den = scaler.inverse_transform(in_obs)
-            in_pred_den = scaler.inverse_transform(in_pred)
-            true_outputs = in_obs_den[:, -self.outs]
-            predicted = in_pred_den[:, -self.outs]
+        predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
         if not isinstance(true_outputs, list):
             true_outputs = [true_outputs]
@@ -425,11 +424,41 @@ class Model(NN):
         for idx, out in enumerate(self.out_cols):
             p = predicted[idx]
             t = true_outputs[idx]
-            df = pd.DataFrame(np.stack([p, t], axis=1), columns=['true_' + str(out), 'pred_' + str(out)],
-                              index=dt_index)
+            df = pd.concat([t, p], axis=1)
+            df.columns = ['true_' + str(out), 'pred_' + str(out)]
             df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
         self.process_results(true_outputs, predicted, pref+'_', **plot_args)
+
+        return predicted, true_outputs
+
+    def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
+
+        if self.outs == 1:
+            # denormalize the data
+            if np.ndim(first_input) == 4:
+                first_input = first_input[:, -1, 0, :]
+            elif np.ndim(first_input) == 5:
+                first_input = first_input[:, -1, 0, -1, :]
+            elif np.ndim(first_input) == 3:
+                first_input = first_input[:, -1, :]
+        else:
+            if np.ndim(first_input) == 3:
+                first_input = first_input[:, -1, :]
+                true_outputs = np.stack(true_outputs, axis=1).reshape(-1, self.outs)
+                predicted = np.stack(predicted, axis=1).reshape(-1, self.outs)
+
+        in_obs = np.hstack([first_input, true_outputs])
+        in_pred = np.hstack([first_input, predicted])
+        scaler = self.scalers['scaler_'+scaler_key]
+        in_obs_den = scaler.inverse_transform(in_obs)
+        in_pred_den = scaler.inverse_transform(in_pred)
+        true_outputs = in_obs_den[:, -self.outs:]
+        predicted = in_pred_den[:, -self.outs:]
+
+        if self.outs > 1:
+            true_outputs = [true_outputs[:, i] for i in range(self.outs)]
+            predicted = [predicted[:, i] for i in range(self.outs)]
 
         return predicted, true_outputs
 
@@ -631,7 +660,7 @@ class Model(NN):
 
     def plot_act_along_inputs(self, layer_name: str, name: str = None, **kwargs):
 
-        pred, obs = self.predict(**kwargs)
+        predictions, observations = self.predict(**kwargs)
 
         activation, data = self.activations(layer_names=layer_name, **kwargs)
 
@@ -645,31 +674,37 @@ class Model(NN):
 
         plt.close('all')
 
-        for idx in range(self.ins):
+        for out in range(self.outs):
+            pred = predictions[out]
+            obs = observations[out]
+            out_name = self.out_cols[out]
 
-            fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
-            fig.set_figheight(10)
+            for idx in range(self.ins):
 
-            ax1.plot(data[:, idx], label=self.in_cols[idx])
-            ax1.legend()
-            ax1.set_title('activations w.r.t ' + self.in_cols[idx])
-            ax1.set_ylabel(self.in_cols[idx])
+                fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
+                fig.set_figheight(10)
 
-            ax2.plot(pred[0], label='Prediction')
-            ax2.plot(obs[0], label='Observed')
-            ax2.legend()
+                ax1.plot(data[:, idx], label=self.in_cols[idx])
+                ax1.legend()
+                ax1.set_title('activations w.r.t ' + self.in_cols[idx])
+                ax1.set_ylabel(self.in_cols[idx])
 
-            im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=0, vmax=0.8)
-            ax3.set_ylabel('lookback')
-            ax3.set_xlabel('samples')
-            fig.colorbar(im, orientation='horizontal', pad=0.2)
-            plt.subplots_adjust(wspace=0.005, hspace=0.005)
-            if name is not None:
-                plt.savefig(os.path.join(self.path, name) + str(idx), dpi=400, bbox_inches='tight')
-            else:
-                plt.show()
+                ax2.plot(pred.values, label='Prediction')
+                ax2.plot(obs.values, '.', label='Observed')
+                ax2.legend()
 
-        return
+                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=0, vmax=0.8)
+                ax3.set_ylabel('lookback')
+                ax3.set_xlabel('samples')
+                fig.colorbar(im, orientation='horizontal', pad=0.2)
+                plt.subplots_adjust(wspace=0.005, hspace=0.005)
+                if name is not None:
+                    name = out_name + '_' + name
+                    plt.savefig(os.path.join(self.path, name) + str(idx), dpi=400, bbox_inches='tight')
+                else:
+                    plt.show()
+
+            return
 
     def plot2d_act_for_a_sample(self, activations, sample=0, name: str = None):
         fig, axis = plt.subplots()
@@ -759,13 +794,14 @@ class Model(NN):
         test_indices = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
         train_indices = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
 
+        save_config_file(indices={'test_indices': test_indices,
+                                 'train_indices': train_indices}, path=self.path)
+
         config = dict()
         config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
         config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['test_indices'] = test_indices
-        config['train_indices'] = train_indices
         config['intervals'] = self.intervals
         config['method'] = self.method
 
@@ -777,6 +813,10 @@ class Model(NN):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
+        idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
+        with open(idx_file, 'r') as fp:
+            indices = json.load(fp)
+
         data_config = config['data_config']
         nn_config = config['nn_config']
         if 'intervals' in config:
@@ -787,8 +827,8 @@ class Model(NN):
         cls.from_check_point = True
 
         # These paras neet to be set here because they are not withing init method
-        cls.test_indices = config["test_indices"]
-        cls.train_indices = config["train_indices"]
+        cls.test_indices = indices["test_indices"]
+        cls.train_indices = indices["train_indices"]
 
         return cls(data_config=data_config,
                    nn_config=nn_config,
@@ -800,6 +840,7 @@ class Model(NN):
         # loads the weights of keras model from weight file `w_file`.
         cpath = os.path.join(self.path, w_file)
         self.k_model.load_weights(cpath)
+        print("{} Successfully loaded weights {}".format('*'*10, '*'*10))
         return
 
 

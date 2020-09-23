@@ -54,10 +54,11 @@ if __name__ == "__main__":
                                                          inputs=input_features,
                                                          outputs=outputs,
                                                          lr=0.0001,
-                                                         epochs=200)
+                                                         epochs=20)
 
     cwd = os.getcwd()
     df = pd.read_csv(os.path.join(os.path.dirname(cwd), "data\\all_data_30min.csv"))
+    df.index = pd.to_datetime(df['Date_Time2'])
 
     model = MultiSite(data_config=data_config,
                       nn_config=nn_config,

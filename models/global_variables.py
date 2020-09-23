@@ -1,4 +1,4 @@
-__all__ = ["tf", "keras", "torch", "ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "tcn"]
+__all__ = ["tf", "keras", "torch", "ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "tcn", "LAYERS"]
 
 maj_version = 0
 min_version = 0
@@ -25,13 +25,36 @@ keras = keras
 torch = torch
 tf = tf
 
-ACTIVATION_LAYERS = {'LEAKYRELU': lambda name='leaky_relu': keras.layers.LeakyReLU(name=name), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
-               'PRelu': lambda name='p_relu': keras.layers.PReLU(name=name),  # https://arxiv.org/pdf/1502.01852v1.pdf
-               'RELU': lambda name='relu': keras.layers.Activation('relu', name=name),
-               'TANH': lambda name='tanh': keras.layers.Activation('tanh', name=name),
-               'ELU': lambda name='elu': keras.layers.ELU(name=name),
-               'TheresholdRelu': lambda name='threshold_relu': keras.layers.ThresholdedReLU(name=name),
-               # 'SRelu': layers.advanced_activations.SReLU()
+LAYERS = {
+    "DENSE": keras.layers.Dense,
+    "CONV1D": keras.layers.Conv1D,
+    "LSTM": keras.layers.LSTM,
+    "GRU": keras.layers.GRU,
+    "MAXPOOL1D": keras.layers.MaxPool1D,
+    "AVERAGEPOOL1D": keras.layers.AveragePooling1D,
+    "FLATTEN": keras.layers.Flatten,
+    "TIMEDISTRIBUTED": keras.layers.TimeDistributed,
+    "DROPOUT": keras.layers.Dropout,
+    "REPEATVECTOR": keras.layers.RepeatVector,
+    "CONVLSTM2D": keras.layers.ConvLSTM2D,
+    "TCN": tcn.TCN if tcn is not None else None,
+}
+
+ACTIVATION_LAYERS = {
+    'LEAKYRELU': keras.layers.LeakyReLU(), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
+    'PRELU': keras.layers.PReLU(),  # https://arxiv.org/pdf/1502.01852v1.pdf
+    'RELU': keras.layers.Activation('relu'),
+    'TANH': keras.layers.Activation('tanh'),
+    'ELU': keras.layers.ELU(),
+    'THRESHOLDRELU': keras.layers.ThresholdedReLU(),
+    'SELU': keras.layers.Activation("selu"),
+    'SIGMOID': keras.layers.Activation('sigmoid'),
+    'HARDSIGMOID': keras.layers.Activation('hard_sigmoid'),
+    'CRELU': keras.layers.Activation(tf.nn.crelu),
+    'RELU6': keras.layers.Activation(tf.nn.relu6),
+    'SOFTMAX': keras.layers.Activation(tf.nn.softmax),
+    'SOFTPLUS': keras.layers.Activation(tf.nn.softplus),
+    'SOFTSIGN': keras.layers.Activation(tf.nn.softsign)
                }
 
 ACTIVATION_FNS = {
@@ -44,6 +67,7 @@ ACTIVATION_FNS = {
     'RELU6': tf.nn.relu6,  # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
     'SOFTMAX': tf.nn.softmax,
     'SIGMOID': tf.nn.sigmoid,
+    "HARDSIGMOID": 'hard_sigmoid'
 
 }
 

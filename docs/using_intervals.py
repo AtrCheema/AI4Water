@@ -44,7 +44,7 @@ history = model.train_nn(indices='random')
 y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
 # tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train', use_datetime_index=False)
 
-model.view_model(st=0, save=True)
+model.view_model(st=0, save=True)  # takes a lot of time to save all plots
 
 # Since we are using DualAttentionModel which requires observations at previous steps, we can not make
 # predictions at steps which are skipped from `intervals`. However, for a model which does not require previous

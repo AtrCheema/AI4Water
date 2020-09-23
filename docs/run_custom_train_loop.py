@@ -1,5 +1,5 @@
 from run_model import make_model
-from models import Model
+from models import LSTMModel
 from models.global_variables import keras, tf
 import pandas as pd
 
@@ -7,7 +7,7 @@ import pandas as pd
 # TODO write validation code
 
 
-class CustomModel(Model):
+class CustomModel(LSTMModel):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
@@ -78,17 +78,20 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 # column in dataframe to bse used as output/target
 outputs = ['blaTEM_coppml']
 
-data_config, nn_config, total_intervals = make_model(lstm_units=64,
-                                                     dropout=0.4,
-                                                     rec_dropout=0.5,
-                                                     lstm_act='relu',
+layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
+          "LSTM_1": {'units': 32},
+          "Dropout": {'rate': 0.3},
+          "Dense": {'units': 1}
+          }
+
+data_config, nn_config, total_intervals = make_model(layers = layers,
                                                      batch_size=12,
                                                      lookback=15,
                                                      lr=8.95e-5,
                                                      ignore_nans=False,
                                                      inputs=input_features,
                                                      outputs=outputs,
-                                                     epochs=50)
+                                                     epochs=10)
 
 df = pd.read_csv('../data/all_data_30min.csv')  # must be 2d dataframe
 

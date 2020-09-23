@@ -1,10 +1,10 @@
-__all__ = ["CNNModel", "CNNLSTMModel", "LSTMCNNModel", "DualAttentionModel", "TCNModel", "LSTMModel",
-           "LSTMAutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
+__all__ = ["CNNLSTMModel", "DualAttentionModel", "LSTMModel",
+           "AutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
 
 import numpy as np
 
 from main import Model
-from .global_variables import keras, tcn
+from .global_variables import keras
 from models.layer_definition import MyTranspose, MyDot
 
 from .nbeats_keras import NBeatsNet
@@ -47,49 +47,9 @@ class LSTMModel(Model):
     def build_nn(self):
         print('building simple lstm model')
 
-        # lstm = self.nn_config['lstm_config']
+        inputs = layers.Input(shape=(self.lookback, self.ins))
 
-        inputs, predictions = self.simple_lstm(self.nn_config['lstm_config'], outs=self.outs)
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return
-
-
-class CNNModel(LSTMModel):
-
-    def __init__(self, **kwargs):
-
-        self.method = 'simple_CNN'
-
-        super(CNNModel, self).__init__(**kwargs)
-
-    def build_nn(self):
-
-        print('building simple cnn model')
-
-        cnn = self.nn_config['cnn_config']
-
-        inputs, predictions = self.cnn_model(cnn, self.outs)
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return self.k_model
-
-
-class LSTMCNNModel(LSTMModel):
-    def __init__(self, **kwargs):
-
-        self.method = 'LSTM_CNN'
-
-        super(LSTMCNNModel, self).__init__(**kwargs)
-
-    def build_nn(self):
-
-        lstm = self.nn_config['lstm_config']
-        cnn = self.nn_config['cnn_config']
-
-        inputs, predictions = self.lstm_cnn(lstm, cnn, self.outs)
+        predictions = self.add_layers(inputs, self.nn_config['layers'])
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -126,13 +86,10 @@ class CNNLSTMModel(LSTMModel):
         """
         print("building cnn -> lstm model")
 
-        lstm = self.nn_config['lstm_config']
-        cnn = self.nn_config['cnn_config']
-
         assert self.lookback % self.nn_config['subsequences'] == int(0), """lookback must be multiple of subsequences.
         Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
 
-        inputs, predictions = self.cnn_lstm(cnn, lstm, self.outs)
+        inputs, predictions = self.cnn_lstm()
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -321,33 +278,13 @@ class DualAttentionModel(LSTMModel):
         return [x, prev_y, s0, h0, h_de0, s_de0], labels
 
 
-class TCNModel(LSTMModel):
-
-    def build_nn(self):
-        """ temporal convolution networks
-        https://github.com/philipperemy/keras-tcn
-        TCN can also be used as a keras layer.
-        """
-
-        setattr(self, 'method', 'TCN')
-
-        tcn_options = self.nn_config['tcn_options']
-
-        inputs, predictions = self.tcn_model(tcn_options, self.outs)
-
-        self.k_model = self.compile(inputs, predictions)
-        tcn.tcn_full_summary(self.k_model, expand_residual_blocks=True)
-
-        return
-
-
-class LSTMAutoEncoder(LSTMModel):
+class AutoEncoder(LSTMModel):
 
     def __init__(self, nn_config, **kwargs):
         # because composite attribute is used in this Model
-        self.composite = nn_config['autoenc_config']['composite']
+        self.composite = nn_config['composite']
 
-        super(LSTMAutoEncoder, self).__init__(nn_config=nn_config, **kwargs)
+        super(AutoEncoder, self).__init__(nn_config=nn_config, **kwargs)
 
     def build_nn(self, method='prediction'):
         """
@@ -357,15 +294,9 @@ class LSTMAutoEncoder(LSTMModel):
         :return:
         """
 
-        setattr(self, 'method', 'lstm_autoencoder')
+        setattr(self, 'method', 'autoencoder')
 
-        # define encoder
-        config = self.nn_config['autoenc_config']
-
-        enc_config = config['enc_config']
-        dec_config = config['dec_config']
-
-        inputs, outputs = self.lstm_autoencoder(enc_config, dec_config, self.composite, self.outs)
+        inputs, outputs = self.lstm_autoencoder()
 
         self.k_model = self.compile(inputs, outputs)
 
@@ -555,10 +486,7 @@ class ConvLSTMModel(LSTMModel):
 
         assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
 
-        enc_config = self.nn_config['conv_lstm_config']['enc_config']
-        dec_config = self.nn_config['conv_lstm_config']['dec_config']
-
-        inputs, predictions = self.conv_lstm_model(enc_config, dec_config, self.outs)
+        inputs, predictions = self.conv_lstm_model()
 
         self.k_model = self.compile(inputs, predictions)
 
