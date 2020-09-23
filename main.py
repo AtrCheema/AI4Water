@@ -413,8 +413,12 @@ class Model(NN):
         dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
         if use_datetime_index:
             # remove the first of first inputs which is datetime index
-            dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-            first_input = first_input[:, :, 1:].astype(np.float32)
+            if np.ndim(first_input) == 2:
+                dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
+                first_input = first_input[:, 1:]
+            else:
+                dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
+                first_input = first_input[:, :, 1:].astype(np.float32)
             inputs[0] = first_input
 
         predicted = self.k_model.predict(x=inputs,
@@ -423,26 +427,108 @@ class Model(NN):
 
         predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
-        if not isinstance(true_outputs, list):
-            true_outputs = [true_outputs]
-        if not isinstance(predicted, list):
-            predicted = [predicted]
+        if self.quantiles is None:
+            if not isinstance(true_outputs, list):
+                true_outputs = [true_outputs]
+            if not isinstance(predicted, list):
+                predicted = [predicted]
 
-        # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
-        true_outputs = [pd.Series(t_out.reshape(-1,), index=dt_index).sort_index() for t_out in true_outputs]
-        predicted = [pd.Series(p_out.reshape(-1,), index=dt_index).sort_index() for p_out in predicted]
+            # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
+            true_outputs = [pd.Series(t_out.reshape(-1,), index=dt_index).sort_index() for t_out in true_outputs]
+            predicted = [pd.Series(p_out.reshape(-1,), index=dt_index).sort_index() for p_out in predicted]
 
-        # save the results
-        for idx, out in enumerate(self.out_cols):
-            p = predicted[idx]
-            t = true_outputs[idx]
-            df = pd.concat([t, p], axis=1)
-            df.columns = ['true_' + str(out), 'pred_' + str(out)]
-            df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
+            # save the results
+            for idx, out in enumerate(self.out_cols):
+                p = predicted[idx]
+                t = true_outputs[idx]
+                df = pd.concat([t, p], axis=1)
+                df.columns = ['true_' + str(out), 'pred_' + str(out)]
+                df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
-        self.process_results(true_outputs, predicted, pref+'_', **plot_args)
+            self.process_results(true_outputs, predicted, pref+'_', **plot_args)
 
-        return predicted, true_outputs
+            return true_outputs, predicted
+
+        else:
+            assert self.outs == 1
+            self.plot_quantiles1(true_outputs, predicted)
+            self.plot_quantiles2(true_outputs, predicted)
+            self.plot_all_qs(true_outputs, predicted)
+
+            return true_outputs, predicted
+
+    def plot_quantile(self, true_outputs, predicted,  min_q:int, max_q, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        st, en = 0, true_outputs.shape[0]
+        q_name = "{:.1f}_{:.1f}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100)
+
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+        plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
+                         color='g', edgecolor=None, label=q_name + ' %')
+        plt.legend(loc="best")
+        if save:
+            plt.savefig(os.path.join(self.path, "q_" + q_name + ".png"))
+        else:
+            plt.show()
+
+    def plot_all_qs(self, true_outputs, predicted, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        st, en = 0, true_outputs.shape[0]
+
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+
+        for idx, q in enumerate(self.quantiles):
+            q_name = "{:.1f}".format(self.quantiles[idx] * 100)
+            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
+
+        plt.legend(loc="best")
+        if save:
+            plt.savefig(os.path.join(self.path, "all_quantiles.png"))
+        else:
+            plt.show()
+        return
+
+    def plot_quantiles1(self, true_outputs, predicted, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        st, en = 0, true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
+
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, -q], alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            if save:
+                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
+            else:
+                plt.show()
+        return
+
+    def plot_quantiles2(self, true_outputs, predicted, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        st, en = 0, true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[q+1] * 100)
+
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q+1], alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            if save:
+                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
+            else:
+                plt.show()
+        return
 
     def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
 
@@ -454,6 +540,8 @@ class Model(NN):
                 first_input = first_input[:, -1, 0, -1, :]
             elif np.ndim(first_input) == 3:
                 first_input = first_input[:, -1, :]
+            elif np.ndim(first_input) == 2:
+                first_input = first_input[:, :]
         else:
             if np.ndim(first_input) == 3:
                 first_input = first_input[:, -1, :]

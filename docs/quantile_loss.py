@@ -1,0 +1,69 @@
+# This file shows how to predict uncertainty by using quantile loss.
+# In this problem, instead of predicted actual observation, we predict quantiles
+# The loss value function is customized. We use pinball loss. https://www.lokad.com/pinball-loss-function-definition
+# Inspired from https://www.kaggle.com/ulrich07/quantile-regression-with-keras
+
+import numpy as np
+import pandas as pd
+
+from models import Model
+from utils import make_model
+from models.global_variables import tf, keras
+
+
+class QuantileModel(Model):
+
+    def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
+
+        return predicted, true_outputs
+
+def qloss(y_true, y_pred):
+    # Pinball loss for multiple quantiles
+    qs =quantiles
+    q = tf.constant(np.array([qs]), dtype=tf.float32)
+    e = y_true - y_pred
+    v = tf.maximum(q * e, (q - 1) * e)
+    return keras.backend.mean(v)
+
+# Define a dummy dataset consisting of 6 time-series.
+rows = 2000
+cols = 6
+data = np.arange(int(rows*cols)).reshape(-1,rows).transpose()
+data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
+                    index=pd.date_range('20110101', periods=len(data), freq='H'))
+
+# Define Model
+layers = {'Dense_0': {'units': 64, 'activation': 'relu'},
+          'Dropout_0': {'rate': 0.3},
+          'Dense_1': {'units': 32, 'activation': 'relu'},
+          'Dropout_1': {'rate': 0.3},
+          'Dense_2': {'units': 16, 'activation': 'relu'},
+          'Dense_3': {'units': 9}}
+
+data_config, nn_config, _ = make_model(inputs = ['input_' + str(i) for i in range(cols-1)],
+                                       outputs=['input_' + str(cols-1) ],
+                                       lookback=1,
+                                       layers=layers,
+                                       epochs=100)
+
+# Define Quantiles
+quantiles = [0.005, 0.025, 0.165, 0.250, 0.500, 0.750, 0.835, 0.975, 0.995]
+
+# Initiate Model
+model = QuantileModel(data_config, nn_config, data)
+
+# Assign loss for the model
+model.loss = qloss
+# the quantiles must also be assigned to the model for post-processing purpose
+model.quantiles = quantiles
+
+# Build the NN
+model.build_nn()
+
+# Train the model on first 1500 examples/points, 0.2% of which will be used for validation
+model.train_nn(st=0, en=1500)
+
+# make predictions on a chunk of test data, which was retained while training
+true_y, pred_y = model.predict(st=1500, en=1700)
+
+model.plot_quantile(true_y, pred_y, 3, 5)
