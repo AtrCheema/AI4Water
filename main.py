@@ -12,7 +12,7 @@ import json
 from nn_tools import NN
 import keract_mod as keract
 from models.global_variables import keras, tf, tcn
-from utils import plot_results, plot_loss, maybe_create_path, save_config_file
+from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
 from models.global_variables import LOSSES
 
 
@@ -368,9 +368,15 @@ class Model(NN):
 
     def get_val_data(self):
         """ This method can be overwritten in child classes. """
-        return None
+        if self.nn_config['val_data'] == 'USE_DATA':
+            val_data = NotImplementedError
+        else:
+            val_data = None
+        return val_data
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
+
+        self.training = True
 
         indices = self.get_indices(indices)
 
@@ -381,6 +387,8 @@ class Model(NN):
         history = self.fit(inputs, outputs, validation_data=val_data, **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
+
+        self.training = False
 
         return history
 
@@ -849,12 +857,3 @@ def unison_shuffled_copies(a, b, c):
     assert len(a) == len(b) == len(c)
     p = np.random.permutation(len(a))
     return a[p], b[p], c[p]
-
-
-def get_index(idx_array, fmt='%Y%m%d%H%M'):
-    """ converts a numpy 1d array into pandas DatetimeIndex type."""
-
-    if not isinstance(idx_array, np.ndarray):
-        raise TypeError
-
-    return pd.to_datetime(idx_array.astype(str), format=fmt)

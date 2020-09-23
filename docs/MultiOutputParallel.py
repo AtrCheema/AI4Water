@@ -30,8 +30,6 @@ class MultiOutputParallel(LSTMModel):
         super(MultiOutputParallel, self).__init__(**kwargs)
         self.tr_outs = [True for _ in range(self.outs)]
         self.val_outs = [True for _ in range(self.outs)]
-        self.nn_config['tr_outs'] = self.tr_outs
-        self.nn_config['val_outs'] = self.val_outs
 
     def run_paras(self, **kwargs):
 
@@ -54,6 +52,9 @@ class MultiOutputParallel(LSTMModel):
         return x_data, y_data
 
     def build_nn(self):
+
+        self.nn_config['tr_outs'] = self.tr_outs
+        self.nn_config['val_outs'] = self.val_outs
 
         inputs = []
         predictions = []

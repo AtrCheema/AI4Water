@@ -280,3 +280,11 @@ def make_model(**kwargs):
         (1110, 1447))
 
     return _data_config, _nn_config, _total_intervals
+
+def get_index(idx_array, fmt='%Y%m%d%H%M'):
+    """ converts a numpy 1d array into pandas DatetimeIndex type."""
+
+    if not isinstance(idx_array, np.ndarray):
+        raise TypeError
+
+    return pd.to_datetime(idx_array.astype(str), format=fmt)
