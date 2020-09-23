@@ -34,10 +34,10 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                      rec_dropout=0.5,
                                                      lstm_act='relu',
                                                      batch_size=32,
-                                                     lookback=15,
+                                                     lookback=1,
                                                      lr=8.95e-5)
 
-df = pd.read_csv('data/all_data_30min.csv')
+df = pd.read_csv('../data/nasdaq100_padding.csv')
 
 model = Model(data_config=data_config,
               nn_config=nn_config,

@@ -185,7 +185,7 @@ def skopt_plots(search_result):
 def check_min_loss(epoch_losses, _epoch, _msg:str, _save_fg:bool, to_save=None):
     epoch_loss_array = epoch_losses[:-1]
 
-    current_epoch_loss = epoch_losses[-1] # np.mean(batch_loss_array)
+    current_epoch_loss = epoch_losses[-1]
 
     if len(epoch_loss_array) > 0:
         min_loss = np.min(epoch_loss_array)
@@ -203,10 +203,17 @@ def check_min_loss(epoch_losses, _epoch, _msg:str, _save_fg:bool, to_save=None):
     return _msg, _save_fg
 
 
-
 def make_model(**kwargs):
-    """ This functions fills the default arguments needed to run all the models. The input parameters for each
-    model can be overwritten by providing their name either for nn_config or for data_config.
+    """
+    This functions fills the default arguments needed to run all the models. All the input arguments can be overwritten
+    by providing their name.
+    :return
+      nn_config: `dict`, contais parameters to build and train the neural network such as `layers`
+      data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
+      intervals:  `tuple` tuple of tuples whiere each tuple consits of two integers, marking the start and end of
+                   interval. An interval here means chunk/rows from the input file/dataframe to be skipped when
+                   when preparing data/batches for NN. This happens when we have for example some missing values at some
+                   time in our data. For further usage see `docs/using_intervals`.
     """
     _nn_config = dict()
 
@@ -249,6 +256,7 @@ def make_model(**kwargs):
     _data_config['lookback'] = 15
     _data_config['batch_size'] = 32
     _data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
+    _data_config['val_data'] = None # If this is not string and not None, this will overwite `val_fraction`
     _data_config['test_fraction'] = 0.2
     _data_config['CACHEDATA'] = True
     _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored

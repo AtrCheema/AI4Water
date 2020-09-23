@@ -368,10 +368,14 @@ class Model(NN):
 
     def get_val_data(self):
         """ This method can be overwritten in child classes. """
-        if self.nn_config['val_data'] == 'USE_DATA':
-            val_data = NotImplementedError
-        else:
-            val_data = None
+        val_data = None
+        if self.data_config['val_data'] is not None:
+            if isinstance(self.data_config['val_data'], str):
+                val_data = NotImplementedError("Define the method `get_val_data` in your model class.")
+            else:
+                # `val_data` might have been provided (then use it as it is) or it is None
+                val_data = self.data_config['val_data']
+
         return val_data
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
@@ -487,7 +491,8 @@ class Model(NN):
 
         input_x, input_y, label_y = df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
 
-        assert self.lookback == 1, "lookback should be one, but it is {}".format(self.lookback)
+        assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
+        """.format(self.lookback)
 
         return self.check_nans(df, input_x, input_y, label_y, outs)
 

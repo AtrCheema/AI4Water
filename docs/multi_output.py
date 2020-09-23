@@ -1,4 +1,8 @@
-# This file shows how to build a naive model for multiple-outputs
+# This file shows how to build a naive model for multiple-outputs. Following assumptions are made
+# All outputs are modelled by a separate parallel NN(InputAttention in this case).
+# All outputs are different and their losses are summed to be used as final loss for back-propagation.
+# Each of the parallel NN receives same input.
+
 import pandas as pd
 import numpy as np
 import os
@@ -9,16 +13,19 @@ from utils import make_model
 
 
 class MultiSite(InputAttentionModel):
+    """ This is only for two outputs currently. """
 
     def run_paras(self, **kwargs):
         train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
 
-        s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+        inputs = [train_x]
+        for out in range(self.outs):
+            s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
+            h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
 
-        s2_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h2_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
-        return [train_x, s0_train, h0_train, s2_train, h2_train], [train_label[:,0], train_label[:,1]]
+            inputs = inputs + [s0_train, h0_train]
+
+        return inputs, [train_label[:, 0], train_label[:, 1]]
 
     def build_nn(self):
 
@@ -30,9 +37,8 @@ class MultiSite(InputAttentionModel):
         inputs = [enc_input]
 
         for out in range(self.outs):
-
             lstm_out1, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'], lstm2_seq=False, suf=str(out))
-            act_out = keras.layers.LeakyReLU(name='leaky_relu_'+str(out))(lstm_out1)
+            act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]
 
@@ -66,12 +72,13 @@ if __name__ == "__main__":
                       intervals=total_intervals
                       )
 
-    def loss(x, _y):
 
+    def loss(x, _y):
         mse1 = keras.losses.MSE(x[0], _y[0])
         mse2 = keras.losses.MSE(x[1], _y[1])
 
         return mse1 + mse2
+
 
     model.loss = loss
 
