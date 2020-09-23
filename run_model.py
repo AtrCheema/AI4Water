@@ -10,42 +10,13 @@ def make_model(**kwargs):
     """
     _nn_config = dict()
 
-    _nn_config['conv_lstm_config'] = {'enc_config':  # for more options see https://www.tensorflow.org/api_docs/python/tf/keras/layers/ConvLSTM2D#expandable-1
-                                      {'filters': 64,
-                                       'kernel_size': (1, 3),
-                                       'activation': 'relu'},
-                                      'dec_config': # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
-                                      {'units': 128,
-                                       'activation': 'relu',
-                                       'dropout': 0.3,
-                                       'recurrent_dropout': 0.4,
-                                       'return_sequences': False
-                                       }
-    }
-
-    _nn_config['autoenc_config'] = {'enc_config':
-                                    {'units': 100,
-                                     'act_layer': 'relu',
-                                     'dropout': 0.3,
-                                     'recurrent_dropout': 0.4,
-                                     'return_sequences': False},
-                                    'dec_config':
-                                        {'units': 100,
-                                         'act_layer': 'relu',
-                                         'dropout': 0.3,
-                                         'recurrent_dropout': 0.4,
-                                         'return_sequences': False},
-                                    'composite': False
-                                    }
-
-    _nn_config['nbeats_options'] = {'backcast_length': 15,
-                                    'forecast_length': 1,
-                                    'stack_types': ('generic', 'generic'),
-                                    'nb_blocks_per_stack': 2,
-                                    'thetas_dim': (4, 4),
-                                    'share_weights_in_stack': True,
-                                    'hidden_layer_units': 64
-                                    }
+    _nn_config['layers'] = {"Dense_0": {'units': 64, 'activation': 'relu'},
+                                 "Dropout_0": {'rate': 0.3},
+                                 "Dense_1": {'units': 32, 'activation': 'relu'},
+                                 "Dropout_1": {'rate': 0.3},
+                                 "Dense_2": {'units': 16, 'activation': 'relu'},
+                                 "Dense_3": {'units': 1}
+                                 }
 
     _nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
                                 'n_s': 20,  # length of hidden state m
@@ -59,33 +30,16 @@ def make_model(**kwargs):
         'n_sde0': 30
     }
 
-    _nn_config['tcn_options'] = {'nb_filters': 64,
-                                 'kernel_size': 2,
-                                 'nb_stacks': 1,
-                                 'dilations': [1, 2, 4, 8, 16, 32],
-                                 'padding': 'causal',
-                                 'use_skip_connections': True,
-                                 'dropout_rate': 0.0}
+    _nn_config['composite'] = False  # for auto-encoders
 
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 60
+    _nn_config['epochs'] = 14
     _nn_config['min_val_loss'] = 0.0001
     _nn_config['patience'] = 100
 
     _nn_config['subsequences'] = 3  # used for cnn_lst structure
-
-    _nn_config['lstm_config'] = {'units': 64,  # for more options https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
-                                 'activation': 'relu',  # activation inside LSTM
-                                 'dropout': 0.4,
-                                 'recurrent_dropout': 0.5,
-                                 'act_layer': 'relu',  # this will not be activation inside LSTM rather a separate activation layer after LSTM
-                                 }
-    _nn_config['cnn_config'] = {'filters': 64, # fore options see https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv1D
-                                'kernel_size': 2,
-                                'act_layer': 'LeakyRelu',
-                                'max_pool_size': 2}
 
     _nn_config['HARHN_config'] = {'n_conv_lyrs': 3,
                                   'enc_units': 64,
@@ -94,7 +48,8 @@ def make_model(**kwargs):
     _data_config = dict()
     _data_config['lookback'] = 15
     _data_config['batch_size'] = 32
-    _data_config['val_fraction'] = 0.3  # fraction of data to be used for validation
+    _data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
+    _data_config['test_fraction'] = 0.2
     _data_config['CACHEDATA'] = True
     _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
     _data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
@@ -139,12 +94,6 @@ if __name__ == "__main__":
                                                          outputs=outputs,
                                                          lr=0.0001)
 
-    nn_config['dense_config'] = {32: {'units': 64, 'activation': 'relu', 'dropout_layer': 0.3},
-                                 16: {'units': 32, 'activation': 'relu', 'dropout_layer': 0.3},
-                                 8: {'units': 16, 'activation': 'relu'},
-                                 1: {'units': 1}
-                                 }
-
     df = pd.read_csv('data/all_data_30min.csv')
 
     model = Model(data_config=data_config,
@@ -157,5 +106,5 @@ if __name__ == "__main__":
 
     history = model.train_nn(indices='random')
 
-    y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
+    # y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
     # model.view_model(st=0)

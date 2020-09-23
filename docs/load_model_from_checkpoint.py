@@ -3,15 +3,13 @@
 
 import pandas as pd
 
-import os
 from run_model import make_model
 from models import Model
 
 
-data_config, nn_config, total_intervals = make_model()
+data_config, nn_config, total_intervals = make_model(lookback=1)
 
-cwd = os.getcwd()
-df = pd.read_csv(os.path.join(os.path.dirname(cwd), "data\\all_data_30min.csv"))
+df = pd.read_csv('../data/nasdaq100_padding.csv')
 
 model = Model(data_config=data_config,
               nn_config=nn_config,
@@ -26,11 +24,11 @@ history = model.train_nn(indices='random')
 del model
 
 # Load the `Model` from checkpoint, provide the checkpoint
-cpath = "provide exact path of config file"
+cpath = "provide complete path of config file"
 model = Model.from_config(cpath, data=df)
 
 model.build_nn()
 
 w_file = "file_name.hdf5"
 model.load_weights(w_file)
-x, y = model.predict(indices=model.test_indices)
+x, y = model.predict(indices=model.test_indices, use_datetime_index=False)
