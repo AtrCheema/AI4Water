@@ -118,7 +118,15 @@ def maybe_create_path(prefix=None, path=None):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    return save_dir
+    act_dir = os.path.join(save_dir, 'activations')
+    if not os.path.exists(act_dir):
+        os.makedirs(act_dir)
+
+    weigth_dir = os.path.join(save_dir, 'weights')
+    if not os.path.exists(weigth_dir):
+        os.makedirs(weigth_dir)
+
+    return save_dir, act_dir, weigth_dir
 
 
 def dateandtime_now():

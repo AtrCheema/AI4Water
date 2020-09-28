@@ -148,7 +148,9 @@ def _get_nodes(module, output_format, nested=False, layer_names=[]):
     has_layers = hasattr(module, '_layers') and bool(module._layers)
     assert is_model_or_layer, 'Not a model or layer!'
 
-    module_name = n_(module.output, output_format_=output_format, nested=nested)
+    # For cases when module/model predicts a list of tensors, just use first tensor from that list.
+    module_name = n_(module.output[0] if isinstance(module.output, list) else module.output,
+                     output_format_=output_format, nested=nested)
 
     if has_layers:
         node_dict = OrderedDict()

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import os
 from sklearn.model_selection import train_test_split
 import json
+import h5py
 
 from nn_tools import NN
 import keract_mod as keract
@@ -47,7 +48,7 @@ class Model(NN):
         self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.nn_config['loss']]
         self.KModel = KModel
-        self.path = maybe_create_path(path=path)
+        self.path, self.act_path, self.w_path = maybe_create_path(path=path)
 
     @property
     def data(self):
@@ -123,7 +124,7 @@ class Model(NN):
 
     def fetch_data(self, data: pd.DataFrame,  st: int, en=None,
                    shuffle: bool = True,
-                   cache_data=True,
+                   write_data=True,
                    noise: int = 0,
                    indices: list = None,
                    scaler_key: str = '0',
@@ -134,7 +135,7 @@ class Model(NN):
         :param st:
         :param en:
         :param shuffle:
-        :param cache_data:
+        :param write_data: writes the created batches/generated data in h5 file. The filename will be data_scaler_key.h5
         :param noise:
         :param indices:
         :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
@@ -232,20 +233,6 @@ class Model(NN):
                 y = np.vstack(ys)[indices]
                 label = np.vstack(labels)[indices]
 
-        # data_path = self.data_config['data_path']
-        # cache_path = os.path.join(os.path.dirname(data_path), 'cache')
-        #
-        # if cache_data and os.path.isdir(cache_path) is False:
-        #     os.mkdir(cache_path)
-        # fname = os.path.join(cache_path, 'nasdaq_T{}.h5'.format(self.lookback))
-        # if os.path.exists(fname) and cache_data:
-        #     input_x, input_y, label_y = read_cache(fname)
-        #     print('load %s successfully' % fname)
-        # else:
-        #     input_x, input_y, label_y = get_data(data_path, self.lookback, st, en)
-        #     if cache_data:
-        #         write_cache(fname, input_x, input_y, label_y)
-
         if shuffle:
             x, y, label = unison_shuffled_copies(x, y, label)
 
@@ -258,6 +245,9 @@ class Model(NN):
         else:
             x = x.astype(np.float32)
 
+        if write_data:
+            self.write_cache('data_' + scaler_key, x, y, label)
+
         return x, y, label
 
     def fit(self, inputs, outputs, validation_data=None, **callbacks):
@@ -266,7 +256,7 @@ class Model(NN):
 
         _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
         _callbacks.append(keras.callbacks.ModelCheckpoint(
-            filepath=self.path + "\\weights_{epoch:03d}_{val_loss:.4f}.hdf5",
+            filepath=self.w_path + "\\weights_{epoch:03d}_{val_loss:.4f}.hdf5",
             save_weights_only=True,
             monitor=_monitor,
             mode='min',
@@ -759,7 +749,7 @@ class Model(NN):
         plt.show()
         return
 
-    def plot_act_along_inputs(self, layer_name: str, name: str = None, **kwargs):
+    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
 
         predictions, observations = self.predict(**kwargs)
 
@@ -794,14 +784,14 @@ class Model(NN):
                 ax2.plot(obs.values, '.', label='Observed')
                 ax2.legend()
 
-                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=0, vmax=0.8)
+                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
                 ax3.set_ylabel('lookback')
                 ax3.set_xlabel('samples')
                 fig.colorbar(im, orientation='horizontal', pad=0.2)
                 plt.subplots_adjust(wspace=0.005, hspace=0.005)
                 if name is not None:
-                    name = out_name + '_' + name
-                    plt.savefig(os.path.join(self.path, name) + str(idx), dpi=400, bbox_inches='tight')
+                    _name = out_name + '_' + name
+                    plt.savefig(os.path.join(self.act_path, _name) + self.in_cols[idx], dpi=400, bbox_inches='tight')
                 else:
                     plt.show()
 
@@ -939,10 +929,18 @@ class Model(NN):
 
     def load_weights(self, w_file: str):
         # loads the weights of keras model from weight file `w_file`.
-        cpath = os.path.join(self.path, w_file)
+        cpath = os.path.join(self.w_path, w_file)
         self.k_model.load_weights(cpath)
         print("{} Successfully loaded weights {}".format('*'*10, '*'*10))
         return
+
+    def write_cache(self, _fname, input_x, input_y, label_y):
+        fname = os.path.join(self.path, _fname)
+        h5 = h5py.File(fname, 'w')
+        h5.create_dataset('input_X', data=input_x)
+        h5.create_dataset('input_Y', data=input_y)
+        h5.create_dataset('label_Y', data=label_y)
+        h5.close()
 
 
 def unison_shuffled_copies(a, b, c):

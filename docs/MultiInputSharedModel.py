@@ -143,8 +143,6 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                       data = [df_1, df_3, df_8 # , df_12
                               ]
                       )
-        _model.build_nn()
-
     return _model
 
 
@@ -167,6 +165,7 @@ if __name__ == "__main__":
     #                                               epochs=300,
     #                                               ignore_nans=False,
     #                                               )
+    # model.build_nn()
     # model.train_nn(st=0, en=5500)
     # model.predict()
 
