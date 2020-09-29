@@ -51,12 +51,17 @@ class NN(AttributeStore):
                  ):
         self.data_config = data_config
         self.nn_config = nn_config
+        self.lookback = self.data_config['lookback']
 
         super(NN, self).__init__()
 
     @property
     def lookback(self):
-        return self.data_config['lookback']
+        return self._lookback
+
+    @lookback.setter
+    def lookback(self, x):
+        self._lookback = x
 
     def conv_lstm_model(self):
         """

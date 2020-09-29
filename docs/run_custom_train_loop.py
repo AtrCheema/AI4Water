@@ -22,7 +22,7 @@ class CustomModel(LSTMModel):
         indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(data=self.data, st=st, en=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
+                                                        write_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
         train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_label))

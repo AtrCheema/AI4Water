@@ -60,7 +60,7 @@ def plot_loss(history: dict, name=None):
     loss = history['loss']
 
     epochs = range(1, len(loss) + 1)
-
+    plt.style.use('ggplot')
     fig, axis = plt.subplots()
 
     axis.plot(epochs, history['loss'], color=[0.13778617, 0.06228198, 0.33547859], label='Training loss')

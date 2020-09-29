@@ -319,9 +319,8 @@ class Model(NN):
     def process_results(self, true: list, predicted: list, name=None, **plot_args):
 
         errs = dict()
-        for out in range(self.outs):
+        for out, out_name in enumerate(self.out_cols):
 
-            out_name = self.data_config['outputs'][out]
             t = true[out]
             p = predicted[out]
 
@@ -596,11 +595,11 @@ class Model(NN):
                 input_x = input_x[non_nan_idx]
                 input_y = input_y[non_nan_idx]
 
-                assert np.isnan(label_y).sum() < 1, "label still contains nans"
+                assert np.isnan(label_y).sum() < 1, "label still contains {} nans".format(np.isnan(label_y).sum())
 
         assert input_x.shape[0] == input_y.shape[0] == label_y.shape[0], "shapes are not same"
 
-        assert np.isnan(input_x).sum() == 0, "input still contains nans"
+        assert np.isnan(input_x).sum() == 0, "input still contains {} nans".format(np.isnan(input_x).sum())
 
         return input_x, input_y, label_y
 

@@ -26,6 +26,7 @@ torch = torch
 tf = tf
 
 LAYERS = {
+    "INPUT": keras.layers.Input,
     "DENSE": keras.layers.Dense,
     "CONV1D": keras.layers.Conv1D,
     "LSTM": keras.layers.LSTM,
@@ -38,6 +39,7 @@ LAYERS = {
     "REPEATVECTOR": keras.layers.RepeatVector,
     "CONVLSTM2D": keras.layers.ConvLSTM2D,
     "TCN": tcn.TCN if tcn is not None else None,
+    "CONCAT": keras.layers.Concatenate
 }
 
 ACTIVATION_LAYERS = {

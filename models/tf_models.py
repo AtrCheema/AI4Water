@@ -380,7 +380,7 @@ class OutputAttentionModel(DualAttentionModel):
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
         train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
+                                                        write_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
         h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.nn_config['dec_config']['p']))
@@ -402,7 +402,7 @@ class OutputAttentionModel(DualAttentionModel):
         setattr(self, 'predict_indices', indices)
 
         test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
-                                                     cache_data=False,
+                                                     write_data=False,
                                                      indices=indices)
 
         h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
