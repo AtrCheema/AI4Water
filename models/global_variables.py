@@ -7,6 +7,7 @@ try:
     import tensorflow as tf
     maj_version = int(tf.__version__[0])
     min_version = int(tf.__version__[2])
+    from .attention_layers import AttentionRaffel, SelfAttention, BahdanauAttention, HierarchicalAttention
 except ModuleNotFoundError:
     keras = None
     tf = None
@@ -39,7 +40,12 @@ LAYERS = {
     "REPEATVECTOR": keras.layers.RepeatVector,
     "CONVLSTM2D": keras.layers.ConvLSTM2D,
     "TCN": tcn.TCN if tcn is not None else None,
-    "CONCAT": keras.layers.Concatenate
+    "CONCAT": keras.layers.Concatenate,
+    "RESHAPE": keras.layers.Reshape,
+    "ATTENTIONRAFFEL": AttentionRaffel,
+    "SELFATTENTION": SelfAttention,
+    "BAHDANAUATTENTION": BahdanauAttention,
+    "HIERARCHICALATTENTION": HierarchicalAttention
 }
 
 ACTIVATION_LAYERS = {

@@ -38,100 +38,138 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
     return _model
 
 
-layers = {"Dense_0": {'units': 64, 'activation': 'relu'},
-          "Dropout_0": {'rate': 0.3},
-          "Dense_1": {'units': 32, 'activation': 'relu'},
-          "Dropout_1": {'rate': 0.3},
-          "Dense_2": {'units': 16, 'activation': 'relu'},
-          "Dense_3": {'units': 1}
+layers = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
+          "Dropout_0": {'config': {'rate': 0.3}},
+          "Dense_1": {'config': {'units': 32, 'activation': 'relu'}},
+          "Dropout_1": {'config': {'rate': 0.3}},
+          "Dense_2": {'config': {'units': 16, 'activation': 'relu'}},
+          "Dense_3": {'config': {'units': 1}}
           }
 
 model = make_and_run(Model, lookback=1, _layers=layers)
 
 ##
 # LSTM based model
-layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
-          "LSTM_1": {'units': 32},
-          "Dropout": {'rate': 0.3},
-          "Dense": {'units': 1}
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "LSTM_1": {'config': {'units': 32}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense": {'config': {'units': 1, 'name': 'output'}}
+          }
+make_and_run(LSTMModel, layers)
+
+
+##
+# LSTM  + Raffel Attention
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "LSTM_1": {'config': {'units': 32, 'return_sequences': True}},
+          "AttentionRaffel": {'config': {'step_dim': 12}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense": {'config': {'units': 1, 'name': 'output'}}
+          }
+make_and_run(LSTMModel, layers)
+
+##
+# LSTM + SelfAttention model
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "SelfAttention": {'config': {}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense": {'config': {'units': 1, 'name': 'output'}}
+          }
+make_and_run(LSTMModel, layers)
+
+
+##
+# LSTM + HierarchicalAttention model
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "HierarchicalAttention": {'config': {}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
 make_and_run(LSTMModel, layers)
 
 ##
 # CNN based model
-layers = {"Conv1D_9": {'filters': 64, 'kernel_size': 2},
-          "dropout": {'rate': 0.3},
-          "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-          "maxpool1d": {'pool_size': 2},
-          'flatten': {},
-          'leakyrelu': {},
-          "Dense": {'units': 1}
+layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
+          "dropout": {'config': {'rate': 0.3}},
+          "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
+          "maxpool1d": {'config': {'pool_size': 2}},
+          'flatten': {'config': {}},
+          'leakyrelu': {'config': {}},
+          "Dense": {'config': {'units': 1}}
           }
 make_and_run(LSTMModel, layers)
 
 ##
 # LSTMCNNModel based model
-layers = {"LSTM": {'units': 64, 'return_sequences': True},
-          "Conv1D_0": {'filters': 64, 'kernel_size': 2},
-          "dropout": {'rate': 0.3},
-          "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-          "maxpool1d": {'pool_size': 2},
-          'flatten': {},
-          'leakyrelu': {},
-          "Dense": {'units': 1}
+layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
+          "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
+          "dropout": {'config': {'rate': 0.3}},
+          "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
+          "maxpool1d": {'config': {'pool_size': 2}},
+          'flatten': {'config': {}},
+          'leakyrelu': {'config': {}},
+          "Dense": {'config': {'units': 1}}
           }
 make_and_run(LSTMModel, layers)
 
 ##
 # ConvLSTMModel based model
-layers = {'convlstm2d': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
-          'flatten': {},
-          'repeatvector': {'n': 1},
-          'lstm':   {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 },
-          'Dense': {'units': 1}
+ins = 8
+lookback = 12
+sub_seq = 3
+sub_seq_lens = int(lookback / sub_seq)
+layers = {'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
+          'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'}},
+          'flatten': {'config': {}},
+          'repeatvector': {'config': {'n': 1}},
+          'lstm':   {'config': {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 }},
+          'Dense': {'config': {'units': 1}}
           }
-make_and_run(ConvLSTMModel, layers)
+make_and_run(ConvLSTMModel, layers, subsequences=sub_seq, lookback=lookback)
 
 
 ##
 # CNNLSTM based model
-layers = {"TimeDistributed_0": {},
-          "Conv1D_0": {'filters': 64, 'kernel_size': 2},
-          "leakyrelu": {},
-          "TimeDistributed_1": {},
-          "maxpool1d": {'pool_size': 2},
-          "TimeDistributed_2": {},
-          'flatten': {},
-          'lstm':   {'units': 64,   'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5 },
-          'Dense': {'units': 1}
+subsequences = 3
+timesteps = lookback // subsequences
+layers = {'Input' : {'config': {'shape':(None, timesteps, ins)}},
+          "TimeDistributed_0": {'config': {}},
+          "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
+          "leakyrelu": {'config': {}},
+          "TimeDistributed_1": {'config': {}},
+          "maxpool1d": {'config': {'pool_size': 2}},
+          "TimeDistributed_2": {'config': {}},
+          'flatten': {'config': {}},
+          'lstm':   {'config': {'units': 64,   'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5 }},
+          'Dense': {'config': {'units': 1}}
                }
-make_and_run(CNNLSTMModel, layers)
+make_and_run(CNNLSTMModel, layers, subsequences=subsequences)
 
 
 ##
 # LSTM auto-encoder
 layers = {
-    'lstm_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
-    "leakyrelu_0": {},
-    'RepeatVector': {'n': 11},
-    'lstm_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
-    "relu_1": {},
-    'Dense': {'units': 1}
+    'lstm_0': {'config': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4}},
+    "leakyrelu_0": {'config': {}},
+    'RepeatVector': {'config': {'n': 11}},
+    'lstm_1': {'config': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4}},
+    "relu_1": {'config': {}},
+    'Dense': {'config': {'units': 1}}
 }
-make_and_run(AutoEncoder, layers, lookback=12)
+make_and_run(LSTMModel, layers, lookback=12)
 
 
 ##
 # TCN based model auto-encoder
-layers = {"tcn": {'nb_filters': 64,
+layers = {"tcn":  {'config': {'nb_filters': 64,
                   'kernel_size': 2,
                   'nb_stacks': 1,
                   'dilations': [1, 2, 4, 8, 16, 32],
                   'padding': 'causal',
                   'use_skip_connections': True,
                   'return_sequences': False,
-                  'dropout_rate': 0.0},
-          'Dense': {'units': 1}
+                  'dropout_rate': 0.0}},
+          'Dense':  {'config': {'units': 1}}
           }
 make_and_run(LSTMModel, layers)
 

@@ -9,11 +9,11 @@ data_config, nn_config, _ = make_model()
 
 layers = {}
 
-for act in ['PRELU', "RELU", "TANH", "ELU", "LEAKYRELU", "THRESHOLDRELU", "SELU", 'sigmoid', 'hardsigmoid', 'crelu',
+for lyr in ['PRELU', "RELU", "TANH", "ELU", "LEAKYRELU", "THRESHOLDRELU", "SELU", 'sigmoid', 'hardsigmoid', 'crelu',
             'relu6', 'softmax', 'softplus', 'softsign']:
-    layers[act] = {}
+    layers[lyr] = {'config': {}}
 
-layers["Dense"] = {'units': 1}
+layers["Dense"] = {'config': {'units': 1}}
 
 nn_config['layers'] = layers
 nn_config['epochs'] = 2
@@ -31,7 +31,7 @@ layers = {}
 for idx, act_fn in enumerate(['tanh', 'relu', 'elu', 'leakyrelu', 'crelu', 'selu', 'relu6', 'sigmoid',
                               'hardsigmoid']):
 
-    layers["Dense_" + str(idx)] = {'units': 1, 'activation': act_fn}
+    layers["Dense_" + str(idx)] = {'config': {'units': 1, 'activation': act_fn}}
 
 
 nn_config['layers'] = layers

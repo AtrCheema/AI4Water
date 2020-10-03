@@ -344,9 +344,7 @@ class Model(NN):
 
         print('building {} layer based model'.format(self.method))
 
-        inputs = keras.layers.Input(shape=(self.ins, ))
-
-        predictions = self.add_layers(inputs, self.nn_config['layers'])
+        inputs, predictions = self.add_layers(None, self.nn_config['layers'])
 
         self.k_model = self.compile(inputs, predictions)
 

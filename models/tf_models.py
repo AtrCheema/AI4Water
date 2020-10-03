@@ -44,17 +44,6 @@ class LSTMModel(Model):
 
         return self.check_nans(df, input_x, input_y, label_y, outs)
 
-    def build_nn(self):
-        print('building simple lstm model')
-
-        inputs = layers.Input(shape=(self.lookback, self.ins))
-
-        predictions = self.add_layers(inputs, self.nn_config['layers'])
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return
-
 
 class CNNLSTMModel(LSTMModel):
     """
@@ -67,6 +56,9 @@ class CNNLSTMModel(LSTMModel):
 
         super(CNNLSTMModel, self).__init__(**kwargs)
 
+        assert self.lookback % self.nn_config['subsequences'] == int(0), """lookback must be multiple of subsequences.
+        Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
+
     def run_paras(self, **kwargs):
 
         x, y, labels = self.fetch_data(self.data, **kwargs)
@@ -77,23 +69,6 @@ class CNNLSTMModel(LSTMModel):
         x = x.reshape(examples, subseq, timesteps, self.ins)
 
         return [x], labels
-
-    def build_nn(self):
-        """
-        Here we sub-divide each sample into further subsequences. The CNN model will interpret each sub-sequence
-        and the LSTM will piece together the interpretations from the subsequences.
-        https://machinelearningmastery.com/how-to-get-started-with-deep-learning-for-time-series-forecasting-7-day-mini-course/
-        """
-        print("building cnn -> lstm model")
-
-        assert self.lookback % self.nn_config['subsequences'] == int(0), """lookback must be multiple of subsequences.
-        Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
-
-        inputs, predictions = self.cnn_lstm()
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return
 
 
 class DualAttentionModel(LSTMModel):
@@ -286,21 +261,6 @@ class AutoEncoder(LSTMModel):
 
         super(AutoEncoder, self).__init__(nn_config=nn_config, **kwargs)
 
-    def build_nn(self, method='prediction'):
-        """
-
-        :param method: str, if 'composite', then autoencoder is trained to reproduce inputs and
-                       predictions at the same time.
-        :return:
-        """
-
-        setattr(self, 'method', 'autoencoder')
-
-        inputs, outputs = self.lstm_autoencoder()
-
-        self.k_model = self.compile(inputs, outputs)
-
-        return
 
     def run_paras(self, **kwargs):
 
@@ -469,7 +429,12 @@ class ConvLSTMModel(LSTMModel):
     Literature:
       https://www.sciencedirect.com/science/article/pii/S0957417420305285
       https://www.nature.com/articles/s41598-019-46850-0
+      this is more like a encoder decoder example
     """
+    def __init__(self, **kwargs):
+        super(ConvLSTMModel, self).__init__(**kwargs)
+        assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
+
     def run_paras(self, **kwargs):
 
         sub_seq = self.nn_config['subsequences']
@@ -480,14 +445,3 @@ class ConvLSTMModel(LSTMModel):
         x = x.reshape((x.shape[0], sub_seq, 1, sub_seq_lens, self.ins))
 
         return [x], labels
-
-    def build_nn(self):
-        """ this is more like a encoder decoder example"""
-
-        assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
-
-        inputs, predictions = self.conv_lstm_model()
-
-        self.k_model = self.compile(inputs, predictions)
-
-        return

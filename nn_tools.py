@@ -63,86 +63,120 @@ class NN(AttributeStore):
     def lookback(self, x):
         self._lookback = x
 
-    def conv_lstm_model(self):
-        """
-         basic structure of a ConvLSTM based encoder decoder model.
-        """
-        sub_seq = self.nn_config['subsequences']
-        sub_seq_lens = int(self.lookback / sub_seq)
-
-        inputs = keras.layers.Input(shape=(sub_seq, 1, sub_seq_lens, self.ins))
-
-        predictions = self.add_layers(inputs, self.nn_config['layers'])
-
-        return inputs, predictions
-
-    def cnn_lstm(self):
-        """ blue print for developing a CNN-LSTM model.
-        """
-        timesteps = self.lookback // self.nn_config['subsequences']
-
-        inputs = layers.Input(shape=(None, timesteps, self.ins))
-
-        predictions = self.add_layers(inputs, self.nn_config['layers'])
-
-        return inputs, predictions
-
-    def lstm_autoencoder(self):
-        """
-        basic structure of an LSTM autoencoder
-        """
-        inputs = layers.Input(shape=(self.lookback, self.ins))
-
-        outputs = self.add_layers(inputs, self.nn_config['layers'])
-
-        return inputs, outputs
 
     def add_layers(self, inputs, layers_config):
-
-        layer_inputs = inputs
-        layer_outputs = inputs
+        """
+        Every layer must contain initializing arguments as `config` dictionary and calling arguments as `inputs`
+        dictionary. If `inputs` dictionay is missing for a layer, it will be supposed that either this is an Input layer
+        or it uses previous outputs as inputs.
+        The `config` dictionary for every layer must contain `name` key and its value must be `str` type.
+        """
+        lyr_cache = {}
         td_layer = None
+        first_layer = True
+
         for lyr, lyr_args in layers_config.items():
-            lyr = get_layer_name(lyr)
-            if lyr.upper() in ACTIVATION_LAYERS:
-                layer_outputs = ACTIVATION_LAYERS[lyr.upper()](layer_inputs)
-            elif lyr.upper() in LAYERS:
-                if lyr.upper() == 'TIMEDISTRIBUTED':
-                    td_layer = LAYERS[lyr.upper()]
-                    continue
 
-                lyr_args, activation = check_act_fn(lyr_args)
-                if td_layer is not None:
-                    layer_outputs = td_layer(LAYERS[lyr.upper()](**lyr_args))(layer_inputs)
-                    td_layer = None
+            lyr_config, lyr_inputs = lyr_args['config'], lyr_args['inputs'] if 'inputs' in lyr_args else None
+
+            lyr_name, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
+
+            # may be user has defined layers without input layer, in this case add Input layer as first layer
+            if first_layer:
+                if lyr_name.upper() != "INPUT":
+                    # for simple dense layer based models, lookback will not be used
+                    def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
+                    layer_outputs = LAYERS["INPUT"](shape=def_shape)
+                    # first layer is built so next iterations will not be for first layer
+                    first_layer = False
+                    # put the first layer in memory to be used for model compilation
+                    lyr_cache["INPUT"] = layer_outputs
+                    # add th layer which the user had specified as first layer
+
+            if lyr_inputs is None:
+                if lyr_name.upper() == "INPUT":
+                    # it is an Input layer, hence should not be called
+                    layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)
                 else:
-                    layer_outputs = LAYERS[lyr.upper()](**lyr_args)(layer_inputs)
-                    if activation is not None:  # put the string back to dictionary to be saved in config file
-                        lyr_args['activation'] = activation
+                    # it is executable and uses previous outputs as inputs
+                    if lyr_name.upper() in ACTIVATION_LAYERS:
+                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](layer_outputs)
+                    elif lyr_name.upper() == 'TIMEDISTRIBUTED':
+                        td_layer = LAYERS[lyr_name.upper()]
+                        continue
+                    else:
+                        if td_layer is not None:
+                            layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
+                            td_layer = None
+                        else:
+                            layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs)
             else:
-                raise ValueError("unknown layer {}".format(lyr))
+                # it is an executable
+                if lyr_name.upper() in ACTIVATION_LAYERS:
+                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](get_call_args(lyr_inputs, lyr_cache))
+                elif lyr_name.upper() == 'TIMEDISTRIBUTED':
+                    td_layer = LAYERS[lyr_name.upper()]
+                    continue
+                else:
+                    if td_layer is not None:
+                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_args))(get_call_args(lyr_inputs, lyr_cache))
+                        td_layer = None
+                    else:
+                        layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(get_call_args(lyr_inputs, lyr_cache))
 
-            layer_inputs = layer_outputs
+            if activation is not None:  # put the string back to dictionary to be saved in config file
+                lyr_config['activation'] = activation
 
-        return layer_outputs
-
-
-def check_act_fn(config: dict):
-    """ it is possible that the config file does not have activation argument or activation is None"""
-    activation = None
-    if 'activation' in config:
-        activation = config['activation']
-    if activation is not None:
-        assert isinstance(activation, str)
-        config['activation'] = ACTIVATION_FNS[activation.upper()]
-
-    return config, activation
+            lyr_cache[lyr_config['name']] = layer_outputs
+            first_layer = False
 
 
-def get_layer_name(lyr:str)->str:
+        inputs = []
+        for k,v in lyr_cache.items():
+            if 'INPUT' in k.upper():
+                inputs.append(v)
 
-    layer_name = lyr.split('_')[0]
-    if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
-        raise ValueError("unknown layer {}".format(lyr))
+        return inputs, layer_outputs
 
-    return layer_name
+
+    def check_lyr_config(self,lyr_name:str, config:dict):
+
+        if 'name' not in config:
+            config['name'] = lyr_name
+
+        config, activation = self.check_act_fn(config)
+
+        # get keras/tensorflow layer compatible layer name
+        lyr_name = self.get_layer_name(lyr_name)
+
+        return lyr_name, config, activation
+
+    def check_act_fn(self, config: dict):
+        """ it is possible that the config file does not have activation argument or activation is None"""
+        activation = None
+        if 'activation' in config:
+            activation = config['activation']
+        if activation is not None:
+            assert isinstance(activation, str)
+            config['activation'] = ACTIVATION_FNS[activation.upper()]
+
+        return config, activation
+
+
+    def get_layer_name(self, lyr:str)->str:
+
+        layer_name = lyr.split('_')[0]
+        if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
+            raise ValueError("unknown layer {}".format(lyr))
+
+        return layer_name
+
+def get_call_args(lyr_inputs, lyr_cache):
+    if isinstance(lyr_inputs, list):
+        call_args = []
+        for lyr_ins in lyr_inputs:
+            call_args.append(lyr_cache[lyr_ins])
+    else:
+        call_args = lyr_cache[lyr_inputs]
+
+    return call_args
