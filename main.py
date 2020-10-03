@@ -11,23 +11,20 @@ import json
 import h5py
 
 from nn_tools import NN
-import keract_mod as keract
 from models.global_variables import keras, tf, tcn
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
 from models.global_variables import LOSSES
 
 
-KModel = keras.models.Model
-layers = keras.layers
-
-# tf.compat.v1.disable_eager_execution()
-# tf.enable_eager_execution()
-
 np.random.seed(313)
-if int(tf.__version__[0]) == 1:
-    tf.compat.v1.set_random_seed(313)
-elif int(tf.__version__[0]) > 1:
-    tf.random.set_seed(313)
+if tf is not None:
+    # tf.compat.v1.disable_eager_execution()
+    # tf.enable_eager_execution()
+    import keract_mod as keract
+    if int(tf.__version__[0]) == 1:
+        tf.compat.v1.set_random_seed(313)
+    elif int(tf.__version__[0]) > 1:
+        tf.random.set_seed(313)
 
 np.set_printoptions(suppress=True)  # to suppress scientific notation while printing arrays
 
@@ -47,7 +44,7 @@ class Model(NN):
         self.in_cols = self.data_config['inputs']
         self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.nn_config['loss']]
-        self.KModel = KModel
+        self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path)
 
     @property
@@ -319,6 +316,7 @@ class Model(NN):
     def process_results(self, true: list, predicted: list, name=None, **plot_args):
 
         errs = dict()
+        out_name = ''
         for out, out_name in enumerate(self.out_cols):
 
             t = true[out]
@@ -336,7 +334,7 @@ class Model(NN):
             plot_results(t, p, name=os.path.join(self.path, name + out_name),
                          **plot_args)
 
-        save_config_file(self.path, errors=errs, name=name)
+        save_config_file(self.path, errors=errs, name=name + '_' + out_name)
 
         return
 

@@ -1,9 +1,6 @@
-from models.global_variables import keras, ACTIVATION_FNS, ACTIVATION_LAYERS, LAYERS
+from models.global_variables import ACTIVATION_FNS, ACTIVATION_LAYERS, LAYERS
 
 from weakref import WeakKeyDictionary
-
-
-layers = keras.layers
 
 
 class AttributeNotSetYet:
@@ -62,7 +59,6 @@ class NN(AttributeStore):
     @lookback.setter
     def lookback(self, x):
         self._lookback = x
-
 
     def add_layers(self, inputs, layers_config):
         """
@@ -130,14 +126,12 @@ class NN(AttributeStore):
             lyr_cache[lyr_config['name']] = layer_outputs
             first_layer = False
 
-
         inputs = []
         for k,v in lyr_cache.items():
             if 'INPUT' in k.upper():
                 inputs.append(v)
 
         return inputs, layer_outputs
-
 
     def check_lyr_config(self,lyr_name:str, config:dict):
 
@@ -161,7 +155,6 @@ class NN(AttributeStore):
             config['activation'] = ACTIVATION_FNS[activation.upper()]
 
         return config, activation
-
 
     def get_layer_name(self, lyr:str)->str:
 
