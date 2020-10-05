@@ -92,15 +92,21 @@ class MultiInputSharedModel(LSTMModel):
 
             predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
-            true_outputs = pd.Series(true_outputs.reshape(-1,), index=dt_index).sort_index()
-            predicted = pd.Series(predicted.reshape(-1, ), index=dt_index).sort_index()
+            if self.quantiles is None:
+                true_outputs = pd.Series(true_outputs.reshape(-1,), index=dt_index).sort_index()
+                predicted = pd.Series(predicted.reshape(-1, ), index=dt_index).sort_index()
 
-            df = pd.concat([true_outputs, predicted], axis=1)
-            df.columns = ['true_' + str(out), 'pred_' + str(out)]
-            df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
+                df = pd.concat([true_outputs, predicted], axis=1)
+                df.columns = ['true_' + str(out), 'pred_' + str(out)]
+                df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
-            self.out_cols = [out]
-            self.process_results([true_outputs], [predicted], pref + '_', **plot_args)
+                self.out_cols = [out]
+                self.process_results([true_outputs], [predicted], pref + '_', **plot_args)
+
+            else:
+                self.plot_quantiles1(true_outputs, predicted)
+                self.plot_quantiles2(true_outputs, predicted)
+                self.plot_all_qs(true_outputs, predicted)
 
         return predicted, true_outputs
 

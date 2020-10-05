@@ -79,10 +79,10 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 # column in dataframe to bse used as output/target
 outputs = ['blaTEM_coppml']
 
-layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
-          "LSTM_1": {'units': 32},
-          "Dropout": {'rate': 0.3},
-          "Dense": {'units': 1}
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "LSTM_1": {'config':  {'units': 32}},
+          "Dropout": {'config':  {'rate': 0.3}},
+          "Dense": {'config':  {'units': 1}}
           }
 
 data_config, nn_config, total_intervals = make_model(layers = layers,

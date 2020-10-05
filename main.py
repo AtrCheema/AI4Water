@@ -233,6 +233,8 @@ class Model(NN):
         if shuffle:
             x, y, label = unison_shuffled_copies(x, y, label)
 
+        x = self.conform_shape(x)
+
         print('input_X shape:', x.shape)
         print('input_Y shape:', y.shape)
         print('label_Y shape:', label.shape)
@@ -246,6 +248,30 @@ class Model(NN):
             self.write_cache('data_' + scaler_key, x, y, label)
 
         return x, y, label
+
+    def conform_shape(self, x):
+        """
+    makes sure that the shape of x corresponds to first layer of NN. This comes handy if the first
+    layer is CNN in CNNLSTM case or first layer is Conv2DLSTM or LSTM or a dense layer. No change in shape
+    will be performed when more than one `Input` layers exist.
+        """
+        input_layers = 0
+        for lyr_name in self.layers.keys():
+            if "INPUT" in lyr_name.upper():
+                input_layers += 1
+
+        if input_layers > 1:
+            return x
+        elif input_layers == 1:
+            shape = []
+            for d in list(self.layers.values())[0].shape:
+                if d is None:
+                    d = -1
+                shape.append(d)
+            shape = tuple(shape)
+            return x.reshape(shape)
+        else:
+            raise ValueError(" {} Input layers found".format(input_layers))
 
     def fit(self, inputs, outputs, validation_data=None, **callbacks):
 
@@ -895,6 +921,8 @@ class Model(NN):
         config['data_config'] = self.data_config
         config['intervals'] = self.intervals
         config['method'] = self.method
+        config['quantiles'] = self.quantiles
+        config['loss'] = self.k_model.loss.__name__ if self.k_model is not None else None
 
         save_config_file(config=config, path=self.path)
         return config

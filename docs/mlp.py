@@ -6,9 +6,6 @@ import pandas as pd
 from utils import make_model
 from models import Model
 
-
-
-
 if __name__ == "__main__":
     input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
                       'rel_hum']

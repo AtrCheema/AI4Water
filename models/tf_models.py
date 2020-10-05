@@ -47,6 +47,7 @@ class LSTMModel(Model):
 
 class CNNLSTMModel(LSTMModel):
     """
+    This class is deprecated. Use LSTMModel class instead.
     https://link.springer.com/article/10.1007/s00521-020-04867-x
     https://www.sciencedirect.com/science/article/pii/S0360544219311223
     """
@@ -58,17 +59,6 @@ class CNNLSTMModel(LSTMModel):
 
         assert self.lookback % self.nn_config['subsequences'] == int(0), """lookback must be multiple of subsequences.
         Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
-
-    def run_paras(self, **kwargs):
-
-        x, y, labels = self.fetch_data(self.data, **kwargs)
-
-        subseq = self.nn_config['subsequences']
-        examples = x.shape[0]
-        timesteps = self.lookback // subseq
-        x = x.reshape(examples, subseq, timesteps, self.ins)
-
-        return [x], labels
 
 
 class DualAttentionModel(LSTMModel):
@@ -422,6 +412,7 @@ class NBeatsModel(LSTMModel):
 
 class ConvLSTMModel(LSTMModel):
     """
+    This class is deprecated. Use LSTMModel class instead.
     Original:
       https://arxiv.org/abs/1506.04214v1
     implemented after
@@ -434,14 +425,3 @@ class ConvLSTMModel(LSTMModel):
     def __init__(self, **kwargs):
         super(ConvLSTMModel, self).__init__(**kwargs)
         assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
-
-    def run_paras(self, **kwargs):
-
-        sub_seq = self.nn_config['subsequences']
-        sub_seq_lens = int(self.lookback / sub_seq)
-
-        x, y, labels = self.fetch_data(self.data, **kwargs)
-
-        x = x.reshape((x.shape[0], sub_seq, 1, sub_seq_lens, self.ins))
-
-        return [x], labels

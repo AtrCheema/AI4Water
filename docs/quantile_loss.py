@@ -33,12 +33,12 @@ data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
                     index=pd.date_range('20110101', periods=len(data), freq='H'))
 
 # Define Model
-layers = {'Dense_0': {'units': 64, 'activation': 'relu'},
-          'Dropout_0': {'rate': 0.3},
-          'Dense_1': {'units': 32, 'activation': 'relu'},
-          'Dropout_1': {'rate': 0.3},
-          'Dense_2': {'units': 16, 'activation': 'relu'},
-          'Dense_3': {'units': 9}}
+layers = {'Dense_0': {'config':  {'units': 64, 'activation': 'relu'}},
+          'Dropout_0': {'config':  {'rate': 0.3}},
+          'Dense_1': {'config':  {'units': 32, 'activation': 'relu'}},
+          'Dropout_1': {'config':  {'rate': 0.3}},
+          'Dense_2': {'config':  {'units': 16, 'activation': 'relu'}},
+          'Dense_3': {'config':  {'units': 9}}}
 
 data_config, nn_config, _ = make_model(inputs = ['input_' + str(i) for i in range(cols-1)],
                                        outputs=['input_' + str(cols-1) ],

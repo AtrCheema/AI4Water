@@ -3,7 +3,7 @@
 # to two LSTM layers.
 
 from utils import make_model
-from models import CNNLSTMModel
+from models import LSTMModel
 
 import pandas as pd
 
@@ -13,25 +13,25 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 outputs = ['blaTEM_coppml']
 
 layers = {
-    "TimeDistributed_0": {},
-    'conv1d_0': {'filters': 64, 'kernel_size': 2},
-    'LeakyRelu_0': {},
-    "TimeDistributed_1": {},
-    'conv1d_1': {'filters': 32, 'kernel_size': 2},
-    'elu_1': {},
-    "TimeDistributed_2": {},
-    'conv1d_2': {'filters': 16, 'kernel_size': 2},
-    'tanh_2': {},
-    "TimeDistributed_3": {},
-    "maxpool1d": {'pool_size': 2},
-    "TimeDistributed_4": {},
-    'flatten': {},
-    'lstm_0':   {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
-               'name': 'lstm_0'},
-    'Relu_1': {},
-    'lstm_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
-    'sigmoid_2': {},
-    'Dense': {'units': 1}
+    "TimeDistributed_0": {'config': {}},
+    'conv1d_0': {'config':  {'filters': 64, 'kernel_size': 2}},
+    'LeakyRelu_0': {'config':  {}},
+    "TimeDistributed_1": {'config':  {}},
+    'conv1d_1': {'config':  {'filters': 32, 'kernel_size': 2}},
+    'elu_1': {'config':  {}},
+    "TimeDistributed_2": {'config':  {}},
+    'conv1d_2': {'config':  {'filters': 16, 'kernel_size': 2}},
+    'tanh_2': {'config':  {}},
+    "TimeDistributed_3": {'config':  {}},
+    "maxpool1d": {'config':  {'pool_size': 2}},
+    "TimeDistributed_4": {'config':  {}},
+    'flatten': {'config':  {}},
+    'lstm_0': {'config':    {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+               'name': 'lstm_0'}},
+    'Relu_1': {'config':  {}},
+    'lstm_1': {'config':    {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'}},
+    'sigmoid_2': {'config':  {}},
+    'Dense': {'config':  {'units': 1}}
 }
 
 data_config, nn_config, total_intervals = make_model(batch_size=16,
@@ -45,7 +45,7 @@ data_config, nn_config, total_intervals = make_model(batch_size=16,
 
 df = pd.read_csv('../data/all_data_30min.csv')
 
-model = CNNLSTMModel(data_config=data_config,
+model = LSTMModel(data_config=data_config,
                      nn_config=nn_config,
                      data=df,
                      intervals=total_intervals

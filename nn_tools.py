@@ -39,6 +39,7 @@ class AttributeStore(object):
     conv2d_lstm_counter = 0
     dense_counter = 0
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
+    layers = None
 
 
 class NN(AttributeStore):
@@ -130,7 +131,7 @@ class NN(AttributeStore):
         for k,v in lyr_cache.items():
             if 'INPUT' in k.upper():
                 inputs.append(v)
-
+        setattr(self, 'layers', lyr_cache)
         return inputs, layer_outputs
 
     def check_lyr_config(self,lyr_name:str, config:dict):

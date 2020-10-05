@@ -1,8 +1,8 @@
 import pandas as pd
 
 from utils import make_model
-from models import Model, LSTMModel, CNNLSTMModel, ConvLSTMModel, InputAttentionModel
-from models import DualAttentionModel, AutoEncoder
+from models import Model, LSTMModel, InputAttentionModel
+from models import DualAttentionModel
 
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
@@ -115,9 +115,9 @@ make_and_run(LSTMModel, layers)
 ##
 # ConvLSTMModel based model
 ins = 8
-lookback = 12
+_lookback = 12
 sub_seq = 3
-sub_seq_lens = int(lookback / sub_seq)
+sub_seq_lens = int(_lookback / sub_seq)
 layers = {'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
           'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'}},
           'flatten': {'config': {}},
@@ -125,14 +125,14 @@ layers = {'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
           'lstm':   {'config': {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 }},
           'Dense': {'config': {'units': 1}}
           }
-make_and_run(ConvLSTMModel, layers, subsequences=sub_seq, lookback=lookback)
+make_and_run(LSTMModel, layers, subsequences=sub_seq, lookback=_lookback)
 
 
 ##
 # CNNLSTM based model
 subsequences = 3
-timesteps = lookback // subsequences
-layers = {'Input' : {'config': {'shape':(None, timesteps, ins)}},
+timesteps = _lookback // subsequences
+layers = {'Input' : {'config': {'shape':(subsequences, timesteps, ins)}},
           "TimeDistributed_0": {'config': {}},
           "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
           "leakyrelu": {'config': {}},
@@ -143,7 +143,7 @@ layers = {'Input' : {'config': {'shape':(None, timesteps, ins)}},
           'lstm':   {'config': {'units': 64,   'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5 }},
           'Dense': {'config': {'units': 1}}
                }
-make_and_run(CNNLSTMModel, layers, subsequences=subsequences)
+make_and_run(LSTMModel, layers, subsequences=subsequences)
 
 
 ##

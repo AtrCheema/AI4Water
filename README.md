@@ -14,8 +14,8 @@ Currently following models are implemented
 | LSTM | `LSTMModel` | |
 | CNN  | * |  |
 | LSTM CNN | * | * |
-| CNN LSTM |  `CNNLSTMModel` |  |
-| Autoencoder  | `AutoEncoder` |  |
+| CNN LSTM |  * |  |
+| Autoencoder  | * |  |
 | Temporal Convolutional Networks (TCN)  | * | [paper](https://www.nature.com/articles/s41598-020-65070-5) [code](https://github.com/philipperemy/keras-tcn) |
 | Iterpretable Multivariate LSTM (IMV-LSTM)  | `IMVLSTMModel` | [paper](https://arxiv.org/pdf/1905.12034.pdf) [code](https://github.com/KurochkinAlexey/IMV_LSTM) |
 | HARHN  | `HARHNModel` | [paper](https://arxiv.org/abs/1806.00685) [code](https://github.com/KurochkinAlexey/Hierarchical-Attention-Based-Recurrent-Highway-Networks-for-Time-Series-Prediction)|
@@ -43,7 +43,6 @@ model = InputAttentionModel(data_config=data_config,
               data=df,
               intervals=total_intervals
               )
-
 
 model.build_nn()
 
