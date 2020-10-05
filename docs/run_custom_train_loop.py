@@ -1,5 +1,5 @@
 from utils import make_model
-from models import LSTMModel
+from models import Model
 from models.global_variables import keras, tf
 
 import pandas as pd
@@ -8,7 +8,7 @@ import pandas as pd
 # TODO write validation code
 
 
-class CustomModel(LSTMModel):
+class CustomModel(Model):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.

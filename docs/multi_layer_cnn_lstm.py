@@ -3,13 +3,13 @@
 # to two LSTM layers.
 
 from utils import make_model
-from models import LSTMModel
+from models import Model
 
 import pandas as pd
 
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
                   'rel_hum']
-# column in dataframe to bse used as output/target
+# column in dataframe to be used as output/target
 outputs = ['blaTEM_coppml']
 
 layers = {
@@ -41,11 +41,9 @@ data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      layers=layers,
                                                      lr=0.0001)
 
-
-
 df = pd.read_csv('../data/all_data_30min.csv')
 
-model = LSTMModel(data_config=data_config,
+model = Model(data_config=data_config,
                      nn_config=nn_config,
                      data=df,
                      intervals=total_intervals

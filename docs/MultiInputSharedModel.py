@@ -9,13 +9,13 @@ import numpy as np
 import os
 
 from utils import plot_loss, get_index, make_model
-from models import LSTMModel
+from models import Model
 from models.global_variables import keras
 
 layers = keras.layers
 
 
-class MultiInputSharedModel(LSTMModel):
+class MultiInputSharedModel(Model):
 
     def test_paras(self, data, **kwargs):
         x, _, labels = self.fetch_data(data=data, **kwargs)

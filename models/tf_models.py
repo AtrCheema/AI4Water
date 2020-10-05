@@ -1,4 +1,4 @@
-__all__ = ["CNNLSTMModel", "DualAttentionModel", "LSTMModel",
+__all__ = ["CNNLSTMModel", "DualAttentionModel",
            "AutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
 
 import numpy as np
@@ -13,41 +13,10 @@ layers = keras.layers
 KModel = keras.models.Model
 
 
-class LSTMModel(Model):
+
+class CNNLSTMModel(Model):
     """
-    Most of the models inherit from it because of its get_data method.
-    """
-    def __init__(self, **kwargs):
-
-        self.method = 'LSTM'
-
-        super(LSTMModel, self).__init__(**kwargs)
-
-    def get_data(self, df, ins, outs):
-        # TODO make this method work for MLP/Model's get_data as well so that we don't have to overwrite it
-        input_x = []
-        input_y = []
-        label_y = []
-
-        row_length = len(df)
-        column_length = df.columns.size
-        for i in range(row_length - self.lookback+1):
-            x_data = df.iloc[i:i+self.lookback, 0:column_length-outs]
-            y_data = df.iloc[i:i+self.lookback-1, column_length-outs:]
-            label_data = df.iloc[i+self.lookback-1, column_length-outs:]
-            input_x.append(np.array(x_data))
-            input_y.append(np.array(y_data))
-            label_y.append(np.array(label_data))
-        input_x = np.array(input_x, dtype=np.float64).reshape(-1, self.lookback, ins)
-        input_y = np.array(input_y, dtype=np.float32).reshape(-1, self.lookback-1, outs)
-        label_y = np.array(label_y, dtype=np.float32).reshape(-1, outs)
-
-        return self.check_nans(df, input_x, input_y, label_y, outs)
-
-
-class CNNLSTMModel(LSTMModel):
-    """
-    This class is deprecated. Use LSTMModel class instead.
+    This class is deprecated. Use Model class instead.
     https://link.springer.com/article/10.1007/s00521-020-04867-x
     https://www.sciencedirect.com/science/article/pii/S0360544219311223
     """
@@ -61,7 +30,7 @@ class CNNLSTMModel(LSTMModel):
         Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
 
 
-class DualAttentionModel(LSTMModel):
+class DualAttentionModel(Model):
 
     def __init__(self, **kwargs):
 
@@ -243,7 +212,7 @@ class DualAttentionModel(LSTMModel):
         return [x, prev_y, s0, h0, h_de0, s_de0], labels
 
 
-class AutoEncoder(LSTMModel):
+class AutoEncoder(Model):
 
     def __init__(self, nn_config, **kwargs):
         # because composite attribute is used in this Model
@@ -366,7 +335,7 @@ class OutputAttentionModel(DualAttentionModel):
         return predicted, test_label
 
 
-class NBeatsModel(LSTMModel):
+class NBeatsModel(Model):
     """
     original paper https://arxiv.org/pdf/1905.10437.pdf which is implemented by https://github.com/philipperemy/n-beats
     must be used with normalization
@@ -410,9 +379,9 @@ class NBeatsModel(LSTMModel):
         return predicted, label
 
 
-class ConvLSTMModel(LSTMModel):
+class ConvLSTMModel(Model):
     """
-    This class is deprecated. Use LSTMModel class instead.
+    This class is deprecated. Use Model class instead.
     Original:
       https://arxiv.org/abs/1506.04214v1
     implemented after

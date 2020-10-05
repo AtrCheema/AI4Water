@@ -256,22 +256,29 @@ class Model(NN):
     will be performed when more than one `Input` layers exist.
         """
         input_layers = 0
-        for lyr_name in self.layers.keys():
+        for lyr_name in self.layer_names:
             if "INPUT" in lyr_name.upper():
                 input_layers += 1
 
         if input_layers > 1:
             return x
         elif input_layers == 1:
-            shape = []
-            for d in list(self.layers.values())[0].shape:
-                if d is None:
-                    d = -1
-                shape.append(d)
-            shape = tuple(shape)
-            return x.reshape(shape)
+
+            first_layer_shape = self.first_layer_shape()
+            return x.reshape(first_layer_shape)
+
         else:
             raise ValueError(" {} Input layers found".format(input_layers))
+
+    def first_layer_shape(self) -> tuple:
+
+        shape = []
+        for d in self.k_model.layers[0].input.shape:
+            if d is None:
+                d = -1
+            shape.append(d)
+        shape = tuple(shape)
+        return shape
 
     def fit(self, inputs, outputs, validation_data=None, **callbacks):
 
@@ -589,10 +596,31 @@ class Model(NN):
 
     def get_data(self, df, ins, outs):
 
-        input_x, input_y, label_y = df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
+        if len(self.first_layer_shape()) == 2:
+            # for case when there is not lookback, i.e first layer is dense layer and takes 2D input
+            input_x, input_y, label_y = df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values,  df.iloc[:, -outs:].values
 
-        assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
-        """.format(self.lookback)
+            assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
+            """.format(self.lookback)
+
+        else:
+            # Provide lookback/history/seq length in input data
+            input_x = []
+            input_y = []
+            label_y = []
+
+            row_length = len(df)
+            column_length = df.columns.size
+            for i in range(row_length - self.lookback + 1):
+                x_data = df.iloc[i:i + self.lookback, 0:column_length - outs]
+                y_data = df.iloc[i:i + self.lookback - 1, column_length - outs:]
+                label_data = df.iloc[i + self.lookback - 1, column_length - outs:]
+                input_x.append(np.array(x_data))
+                input_y.append(np.array(y_data))
+                label_y.append(np.array(label_data))
+            input_x = np.array(input_x, dtype=np.float64).reshape(-1, self.lookback, ins)
+            input_y = np.array(input_y, dtype=np.float32).reshape(-1, self.lookback - 1, outs)
+            label_y = np.array(label_y, dtype=np.float32).reshape(-1, outs)
 
         return self.check_nans(df, input_x, input_y, label_y, outs)
 

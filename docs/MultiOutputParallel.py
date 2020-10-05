@@ -5,7 +5,7 @@
 # The target/observations for each of the parallell NN is not present concurrently. This means the different target values are present at different time stamps.
 # The number of inputs and outputs to and from each NN are equal (but not same)
 
-from models import LSTMModel
+from models import Model
 from models.global_variables import keras, tf
 from utils import check_min_loss, plot_loss
 from utils import make_model
@@ -20,7 +20,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 
 
-class MultiOutputParallel(LSTMModel):
+class MultiOutputParallel(Model):
     """
     This structure makes parallel NNs for multiple outputs. Each of the parallel NNs are independent from
     each other during forward propagation.

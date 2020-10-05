@@ -1,8 +1,7 @@
 import pandas as pd
 
 from utils import make_model
-from models import Model, LSTMModel, InputAttentionModel
-from models import DualAttentionModel
+from models import Model, InputAttentionModel, DualAttentionModel
 
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
@@ -55,7 +54,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 
 ##
@@ -66,7 +65,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 ##
 # LSTM + SelfAttention model
@@ -75,7 +74,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 
 ##
@@ -85,7 +84,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 ##
 # CNN based model
@@ -97,7 +96,7 @@ layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
           'leakyrelu': {'config': {}},
           "Dense": {'config': {'units': 1}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 ##
 # LSTMCNNModel based model
@@ -110,7 +109,7 @@ layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
           'leakyrelu': {'config': {}},
           "Dense": {'config': {'units': 1}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 ##
 # ConvLSTMModel based model
@@ -125,7 +124,7 @@ layers = {'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
           'lstm':   {'config': {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 }},
           'Dense': {'config': {'units': 1}}
           }
-make_and_run(LSTMModel, layers, subsequences=sub_seq, lookback=_lookback)
+make_and_run(Model, layers, subsequences=sub_seq, lookback=_lookback)
 
 
 ##
@@ -143,7 +142,7 @@ layers = {'Input' : {'config': {'shape':(subsequences, timesteps, ins)}},
           'lstm':   {'config': {'units': 64,   'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5 }},
           'Dense': {'config': {'units': 1}}
                }
-make_and_run(LSTMModel, layers, subsequences=subsequences)
+make_and_run(Model, layers, subsequences=subsequences)
 
 
 ##
@@ -156,7 +155,7 @@ layers = {
     "relu_1": {'config': {}},
     'Dense': {'config': {'units': 1}}
 }
-make_and_run(LSTMModel, layers, lookback=12)
+make_and_run(Model, layers, lookback=12)
 
 
 ##
@@ -171,7 +170,7 @@ layers = {"tcn":  {'config': {'nb_filters': 64,
                   'dropout_rate': 0.0}},
           'Dense':  {'config': {'units': 1}}
           }
-make_and_run(LSTMModel, layers)
+make_and_run(Model, layers)
 
 
 ##

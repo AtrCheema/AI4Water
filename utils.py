@@ -173,20 +173,20 @@ def save_config_file(path, config=None, errors=None, indices=None, name=''):
     return
 
 
-def skopt_plots(search_result):
+def skopt_plots(search_result, pref=''):
 
     from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 
     _ = plot_evaluations(search_result)
-    plt.savefig('evaluations', dpi=400, bbox_inches='tight')
+    plt.savefig(pref + '_evaluations', dpi=400, bbox_inches='tight')
     plt.show()
 
     _ = plot_objective(search_result)
-    plt.savefig('objective', dpi=400, bbox_inches='tight')
+    plt.savefig(pref + '_objective', dpi=400, bbox_inches='tight')
     plt.show()
 
     _ = plot_convergence(search_result)
-    plt.savefig('convergence', dpi=400, bbox_inches='tight')
+    plt.savefig(pref + '_convergence', dpi=400, bbox_inches='tight')
     plt.show()
 
 
@@ -223,9 +223,9 @@ def make_model(**kwargs):
                    when preparing data/batches for NN. This happens when we have for example some missing values at some
                    time in our data. For further usage see `docs/using_intervals`.
     """
-    _nn_config = dict()
+    nn_config = dict()
 
-    _nn_config['layers'] = {"Dense_0": {'units': 64, 'activation': 'relu'},
+    nn_config['layers'] = {"Dense_0": {'units': 64, 'activation': 'relu'},
                                  "Dropout_0": {'rate': 0.3},
                                  "Dense_1": {'units': 32, 'activation': 'relu'},
                                  "Dropout_1": {'rate': 0.3},
@@ -233,62 +233,72 @@ def make_model(**kwargs):
                                  "Dense_3": {'units': 1}
                                  }
 
-    _nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
+    nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
                                 'n_s': 20,  # length of hidden state m
                                 'm': 20,  # length of hidden state m
                                 'enc_lstm1_act': None,
                                 'enc_lstm2_act': None,
                                 }
-    _nn_config['dec_config'] = {
+    nn_config['dec_config'] = {
         'p': 30,
         'n_hde0': 30,
         'n_sde0': 30
     }
 
-    _nn_config['composite'] = False  # for auto-encoders
+    nn_config['composite'] = False  # for auto-encoders
 
-    _nn_config['lr'] = 0.0001
-    _nn_config['optimizer'] = 'adam'
-    _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 14
-    _nn_config['min_val_loss'] = 0.0001
-    _nn_config['patience'] = 100
+    nn_config['lr'] = 0.0001
+    nn_config['optimizer'] = 'adam'
+    nn_config['loss'] = 'mse'
+    nn_config['epochs'] = 14
+    nn_config['min_val_loss'] = 0.0001
+    nn_config['patience'] = 100
 
-    _nn_config['subsequences'] = 3  # used for cnn_lst structure
+    nn_config['subsequences'] = 3  # used for cnn_lst structure
 
-    _nn_config['HARHN_config'] = {'n_conv_lyrs': 3,
+    nn_config['HARHN_config'] = {'n_conv_lyrs': 3,
                                   'enc_units': 64,
                                   'dec_units': 64}
 
-    _data_config = dict()
-    _data_config['lookback'] = 15
-    _data_config['batch_size'] = 32
-    _data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
-    _data_config['val_data'] = None # If this is not string and not None, this will overwite `val_fraction`
-    _data_config['steps_per_epoch'] = None
-    _data_config['test_fraction'] = 0.2
-    _data_config['CACHEDATA'] = True
-    _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
-    _data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
+    nn_config['nbeats_options'] = {
+        'backcast_length': 15,
+        'forecast_length': 1,
+        'stack_types': ('generic', 'generic'),
+        'nb_blocks_per_stack': 2,
+        'thetas_dim': (4, 4),
+        'share_weights_in_stack': True,
+        'hidden_layer_units': 62
+    }
+
+    data_config = dict()
+    data_config['lookback'] = 15
+    data_config['batch_size'] = 32
+    data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
+    data_config['val_data'] = None # If this is not string and not None, this will overwite `val_fraction`
+    data_config['steps_per_epoch'] = None
+    data_config['test_fraction'] = 0.2
+    data_config['CACHEDATA'] = True
+    data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
+    data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
 
     # input features in data_frame
     dpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     _df = pd.read_csv(os.path.join(dpath, "nasdaq100_padding.csv"))
     in_cols = list(_df.columns)
     in_cols.remove("NDX")
-    _data_config['inputs'] = in_cols
+    data_config['inputs'] = in_cols
     # column in dataframe to bse used as output/target
-    _data_config['outputs'] = ["NDX"]
+    data_config['outputs'] = ["NDX"]
 
-    _nn_config['dense_config'] = {1: {'units':1}}
+    nn_config['dense_config'] = {1: {'units':1}}
 
     for key, val in kwargs.items():
-        if key in _data_config:
-            _data_config[key] = val
-        if key in _nn_config:
-            _nn_config[key] = val
+        if key in data_config:
+            data_config[key] = val
+        if key in nn_config:
+            nn_config[key] = val
 
-    _total_intervals = (
+    total_intervals = (
         (0, 146,),
         (145, 386,),
         (385, 628,),
@@ -296,7 +306,7 @@ def make_model(**kwargs):
         (821, 1110),
         (1110, 1447))
 
-    return _data_config, _nn_config, _total_intervals
+    return data_config, nn_config, total_intervals
 
 def get_index(idx_array, fmt='%Y%m%d%H%M'):
     """ converts a numpy 1d array into pandas DatetimeIndex type."""
