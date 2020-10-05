@@ -11,9 +11,9 @@ Currently following models are implemented
 | Name                          | Name in this repository  | Reference |
 | -------------------------- | ------------- | ---------- |
 | MLP  | `Model` | |
-| LSTM | `LSTMModel` | |
+| LSTM | ٭ | |
 | CNN  | * |  |
-| LSTM CNN | * | * |
+| LSTM CNN | * |  |
 | CNN LSTM |  * |  |
 | Autoencoder  | * |  |
 | Temporal Convolutional Networks (TCN)  | * | [paper](https://www.nature.com/articles/s41598-020-65070-5) [code](https://github.com/philipperemy/keras-tcn) |
@@ -24,7 +24,7 @@ Currently following models are implemented
 | Input Attention  | `InputAttentionModel` | |
 | ConvLSTM | `ConvLSTMModel` | [paper](https://arxiv.org/abs/1506.04214v1) [Code](https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/) |
 
-* These models can be constructed by stacking layers in a python dictionary as shown later here. The remaining models 
+`*` These models can be constructed by stacking layers in a python dictionary as shown later here. The remaining models 
 can be used as shown below
 ## How to use
 
@@ -97,7 +97,7 @@ _model.build_nn()
 ### LSTM based model
 ```python
 from utils import make_model
-from models import LSTMModel
+from models import Model
 import pandas as pd
 
 layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
@@ -113,7 +113,7 @@ nn_config['layers'] = layers
 
 df = pd.read_csv("data/all_data_30min.csv")
 
-_model = LSTMModel(data_config=data_config,
+_model = Model(data_config=data_config,
               nn_config=nn_config,
               data=df
               )
