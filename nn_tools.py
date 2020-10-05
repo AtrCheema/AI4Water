@@ -115,7 +115,7 @@ class NN(AttributeStore):
                     continue
                 else:
                     if td_layer is not None:
-                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_args))(get_call_args(lyr_inputs, lyr_cache))
+                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(get_call_args(lyr_inputs, lyr_cache))
                         td_layer = None
                     else:
                         layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(get_call_args(lyr_inputs, lyr_cache))

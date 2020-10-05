@@ -265,6 +265,7 @@ def make_model(**kwargs):
     _data_config['batch_size'] = 32
     _data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
     _data_config['val_data'] = None # If this is not string and not None, this will overwite `val_fraction`
+    _data_config['steps_per_epoch'] = None
     _data_config['test_fraction'] = 0.2
     _data_config['CACHEDATA'] = True
     _data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored

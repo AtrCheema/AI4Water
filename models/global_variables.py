@@ -7,7 +7,7 @@ try:
     import tensorflow as tf
     maj_version = int(tf.__version__[0])
     min_version = int(tf.__version__[2])
-    from .attention_layers import AttentionRaffel, SelfAttention, BahdanauAttention, HierarchicalAttention
+    from .attention_layers import AttentionRaffel, SelfAttention, BahdanauAttention, HierarchicalAttention, SeqSelfAttention
 except ModuleNotFoundError:
     keras = None
     tf = None
@@ -46,7 +46,8 @@ if keras is not None:
         "ATTENTIONRAFFEL": AttentionRaffel,
         "SELFATTENTION": SelfAttention,
         "BAHDANAUATTENTION": BahdanauAttention,
-        "HIERARCHICALATTENTION": HierarchicalAttention
+        "HIERARCHICALATTENTION": HierarchicalAttention,
+        "SEQSELFATTENTION": SeqSelfAttention,
     }
 
     ACTIVATION_LAYERS = {

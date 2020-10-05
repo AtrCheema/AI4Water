@@ -119,7 +119,7 @@ class Model(NN):
             _all_layers.append(layer.name)
         return _all_layers
 
-    def fetch_data(self, data: pd.DataFrame,  st: int, en=None,
+    def fetch_data(self, data: pd.DataFrame,  st: int=0, en=None,
                    shuffle: bool = True,
                    write_data=True,
                    noise: int = 0,
@@ -272,7 +272,8 @@ class Model(NN):
                          batch_size=self.data_config['batch_size'],
                          validation_split=self.data_config['val_fraction'],
                          validation_data=validation_data,
-                         callbacks=_callbacks
+                         callbacks=_callbacks,
+                         steps_per_epoch = self.data_config['steps_per_epoch']
                          )
         history = self.k_model.history
 
@@ -729,6 +730,8 @@ class Model(NN):
 
     def plot_act_along_lookback(self, activations, sample=0):
 
+        assert isinstance(activations, np.ndarray)
+
         activation = activations[sample, :, :]
         act_t = activation.transpose()
 
@@ -745,6 +748,8 @@ class Model(NN):
         return
 
     def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
+
+        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(type(layer_name))
 
         predictions, observations = self.predict(**kwargs)
 
