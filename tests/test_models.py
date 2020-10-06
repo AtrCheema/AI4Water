@@ -1,7 +1,7 @@
 import pandas as pd
 
 from utils import make_model
-from models import Model, InputAttentionModel, DualAttentionModel
+from models import Model, InputAttentionModel
 
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
@@ -176,7 +176,3 @@ make_and_run(Model, layers)
 ##
 # InputAttentionModel based model
 make_and_run(InputAttentionModel)
-
-##
-# DualAttentionModel based model
-make_and_run(DualAttentionModel)
