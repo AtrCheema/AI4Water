@@ -18,7 +18,7 @@ from models.global_variables import LOSSES
 
 np.random.seed(313)
 if tf is not None:
-    # tf.compat.v1.disable_eager_execution()
+    tf.compat.v1.disable_eager_execution()
     # tf.enable_eager_execution()
     import keract_mod as keract
     if int(tf.__version__[0]) == 1:
@@ -326,7 +326,7 @@ class Model(NN):
             else:
                 if self.outs == 1:
                     more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - more
+                    tot_obs = self.vals_in_intervals() - more
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
@@ -341,6 +341,17 @@ class Model(NN):
         setattr(self, 'train_indices', indices)
 
         return indices
+
+    def vals_in_intervals(self):
+
+        if self.intervals is not None:
+            interval_length = 0
+            for interval in self.intervals:
+                interval_length += interval[1] - interval[0]
+        else:
+            interval_length = self.data.shape[0]
+
+        return interval_length
 
     def run_paras(self, **kwargs):
 
@@ -585,7 +596,7 @@ class Model(NN):
 
         k_model = self.KModel(inputs=model_inputs, outputs=outputs)
         adam = keras.optimizers.Adam(lr=self.nn_config['lr'])
-        k_model.compile(loss=self.loss, optimizer=adam, metrics=['mse'])
+        k_model.compile(loss=self.loss, optimizer=adam, metrics=self.get_metrics())
         k_model.summary()
 
         try:
@@ -593,6 +604,31 @@ class Model(NN):
         except AssertionError:
             print("dot plot of model could not be plotted")
         return k_model
+
+    def get_metrics(self) -> list:
+        """ returns the performance metrics specified"""
+        _metrics = self.data_config['metrics']
+
+        metrics = None
+        if _metrics is not None:
+            if not isinstance(_metrics, list):
+                assert isinstance(_metrics, str)
+                _metrics = [_metrics]
+
+            from tf_losses import nse, kge, pbias
+
+            METRICS = {'NSE': nse,
+                       'KGE': kge,
+                       'PBIAS': pbias}
+
+            metrics = []
+            for m in _metrics:
+                if m.upper() in METRICS.keys():
+                    metrics.append(METRICS[m.upper()])
+                else:
+                    metrics.append(m)
+
+        return metrics
 
     def get_data(self, df, ins, outs):
 
@@ -638,10 +674,11 @@ class Model(NN):
                     assert np.all(nans.values == int(nans.sum()/outs)), """output columns contains nan values at
                      different indices"""
                 print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
-                y = df[df.columns[-1]]
-                nan_idx = y.isna()
-                nan_idx_t = nan_idx[self.lookback - 1:]
-                non_nan_idx = ~nan_idx_t.values
+                # y = df[df.columns[-1]]
+                nan_idx = np.isnan(label_y) # y.isna()
+                # nan_idx_t = nan_idx[self.lookback - 1:]
+                # non_nan_idx = ~nan_idx_t.values
+                non_nan_idx = ~nan_idx.reshape(-1,)
                 label_y = label_y[non_nan_idx]
                 input_x = input_x[non_nan_idx]
                 input_y = input_y[non_nan_idx]
@@ -880,28 +917,30 @@ class Model(NN):
         else:
             plt.show()
 
-    def prepare_batches(self, data: pd.DataFrame, target: str):
+    def prepare_batches(self, df: pd.DataFrame, ins, outs):
 
         assert self.outs == 1
+        target = self.data_config['outputs'][0]
 
-        x = np.zeros((len(data), self.lookback, data.shape[1] - 1))
-        y = np.zeros((len(data), self.lookback, 1))
+        x = np.zeros((len(df), self.lookback, df.shape[1] - 1))
+        y = np.zeros((len(df), self.lookback, 1))
 
-        for i, name in enumerate(list(data.columns[:-1])):
+        for i, name in enumerate(list(df.columns[:-1])):
             for j in range(self.lookback):
-                x[:, j, i] = data[name].shift(self.lookback - j - 1).fillna(method="bfill")
+                x[:, j, i] = df[name].shift(self.lookback - j - 1).fillna(method="bfill")
 
         for j in range(self.lookback):
-            y[:, j, 0] = data[target].shift(self.lookback - j - 1).fillna(method="bfill")
+            y[:, j, 0] = df[target].shift(self.lookback - j - 1).fillna(method="bfill")
 
         prediction_horizon = 1
-        target = data[target].shift(-prediction_horizon).fillna(method="ffill").values
+        target = df[target].shift(-prediction_horizon).fillna(method="ffill").values
 
-        x = x[self.lookback:]
-        y = y[self.lookback:]
-        target = target[self.lookback:]
+        input_x = x[self.lookback:]
+        input_y = y[self.lookback:]
+        label_y = target[self.lookback:]
 
-        return x, y, target
+        # return x, y, target
+        return self.check_nans(df, input_x, input_y, label_y, outs)
 
     def _imshow(self, img, label: str = '', save=True, fname=None):
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))

@@ -80,6 +80,29 @@ def tf_nse_alpha(true, predicted, name='nse_alpha'):
     nse_alpha = K.std(predicted) / K.std(true)
     return tf.subtract(const, nse_alpha, name=name + '_LOSS')
 
+def pbias(true, predicted):
+
+    _sum = K.sum(tf.subtract(predicted, true))
+    _a = tf.divide(_sum, K.sum(true))
+    return 100.0 * _a
+
+
+def nse(true, _pred, name='NSE'):
+    """ Nash-Sutcliff efficiency to be used as loss function. It is subtracted from one before being returned"""
+    neum = tf.reduce_sum(tf.square(tf.subtract(_pred, true)))
+    denom = tf.reduce_sum(tf.square(tf.subtract(true, tf.math.reduce_mean(true))))
+    const = tf.constant(1.0, dtype=tf.float32)
+    _nse = tf.subtract(const, tf.math.divide(neum, denom), name=name)
+    return 1.0 - tf.subtract(const, _nse, name=name + '_LOSS')
+
+
+def kge(true, predicted):
+    """ Kling Gupta efficiency. It is not being subtracted from 1.0 so that it can be used as loss"""
+    tf_cc = corr_coeff(true, predicted)
+    tf_alpha = tf.math.reduce_std(predicted) / tf.math.reduce_std(true)
+    tf_beta = K.sum(predicted) / K.sum(true)
+    return 1.0 - K.sqrt(K.square(tf_cc - 1.0) + K.square(tf_alpha - 1.0) + K.square(tf_beta - 1.0))
+
 
 if __name__ == "__main__":
     reset_graph()
@@ -98,3 +121,4 @@ if __name__ == "__main__":
     print('r2_mod {:<10.5f} {:<10.5f}'.format(np_errors.r2_mod(), 1.0 - K.eval(tf_r2_mod(t, p))))
     print('nse_beta {:<10.5f} {:<10.5f}'.format(np_errors.nse_beta(), 1.0 - K.eval(tf_nse_beta(t, p))))
     print('nse_alpha {:<10.5f} {:<10.5f}'.format(np_errors.nse_alpha(), 1.0 - K.eval(tf_nse_alpha(t, p))))
+    print('pbias {:<10.5f} {:<10.5f}'.format(np_errors.pbias(), K.eval(pbias(t, p))))
