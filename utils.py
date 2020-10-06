@@ -225,12 +225,13 @@ def make_model(**kwargs):
     """
     nn_config = dict()
 
-    nn_config['layers'] = {"Dense_0": {'units': 64, 'activation': 'relu'},
-                                 "Dropout_0": {'rate': 0.3},
-                                 "Dense_1": {'units': 32, 'activation': 'relu'},
-                                 "Dropout_1": {'rate': 0.3},
-                                 "Dense_2": {'units': 16, 'activation': 'relu'},
-                                 "Dense_3": {'units': 1}
+    nn_config['layers'] = {
+        "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
+        "Dropout_0": {'config':  {'rate': 0.3}},
+        "Dense_1": {'config':  {'units': 32, 'activation': 'relu'}},
+        "Dropout_1": {'config':  {'rate': 0.3}},
+        "Dense_2": {'config':  {'units': 16, 'activation': 'relu'}},
+        "Dense_3": {'config':  {'units': 1}}
                                  }
 
     nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
@@ -261,7 +262,7 @@ def make_model(**kwargs):
                                   'dec_units': 64}
 
     nn_config['nbeats_options'] = {
-        'backcast_length': 15,
+        'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
         'forecast_length': 1,
         'stack_types': ('generic', 'generic'),
         'nb_blocks_per_stack': 2,
@@ -280,6 +281,7 @@ def make_model(**kwargs):
     data_config['CACHEDATA'] = True
     data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
     data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
+    data_config['metrics'] = None  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
 
     # input features in data_frame
     dpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
