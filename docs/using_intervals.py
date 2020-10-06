@@ -34,7 +34,7 @@ data_config, nn_config, _ = make_model(batch_size=32,
 model = DualAttentionModel(data_config=data_config,
                            nn_config=nn_config,
                            data=df,
-                           intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40561)]
+                           intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)]
                            )
 
 model.build_nn()
