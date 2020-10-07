@@ -77,7 +77,8 @@ if keras is not None:
         'RELU6': tf.nn.relu6,  # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
         'SOFTMAX': tf.nn.softmax,
         'SIGMOID': tf.nn.sigmoid,
-        "HARDSIGMOID": 'hard_sigmoid'
+        "HARDSIGMOID": 'hard_sigmoid',
+        "LINEAR": 'linear'
     }
 else:
     LAYERS = None

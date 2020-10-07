@@ -343,7 +343,11 @@ class Model(NN):
         return indices
 
     def vals_in_intervals(self):
-
+        """
+        Supposing that when intervals are present than nans are present only outsite the intervals and No Nans are
+        present within intervals.
+        Not implementing it for the time being when self.outs>1.
+        """
         if self.intervals is not None:
             interval_length = 0
             for interval in self.intervals:
