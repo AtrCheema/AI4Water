@@ -57,23 +57,31 @@ def regplot_using_searborn(true, pred, name):
 
 def plot_loss(history: dict, name=None):
 
-    loss = history['loss']
 
-    epochs = range(1, len(loss) + 1)
+    plt.clf()
+    plt.close('all')
+    fig = plt.figure()
     plt.style.use('ggplot')
-    fig, axis = plt.subplots()
+    i = 1
 
-    axis.plot(epochs, history['loss'], color=[0.13778617, 0.06228198, 0.33547859], label='Training loss')
+    epochs = range(1, len(history['loss']) + 1)
+    axis_cache = {}
 
-    if 'val_loss' in history:
-        axis.plot(epochs, history['val_loss'],
-                  color=[0.96707953, 0.46268314, 0.45772886], label='Validation loss')
+    for key, val in history.items():
 
-    axis.set_xlabel('Epochs')
-    axis.set_ylabel('Loss value')
-    axis.set_yscale('log')
-    plt.title('Loss Curve')
-    plt.legend()
+        m_name = key.split('_')[1] if '_' in key else key
+        k = key.upper()
+
+        if m_name in list(axis_cache.keys()):
+            axis = axis_cache[m_name]
+            axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + key)
+            axis.legend()
+        else:
+            axis = fig.add_subplot(2, 2, i)
+            axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ' + key)
+            axis.legend()
+            axis_cache[key] = axis
+            i += 1
 
     if name is not None:
         plt.savefig(name, dpi=300, bbox_inches='tight')
