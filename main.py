@@ -325,8 +325,14 @@ class Model(NN):
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
+                    # TODO it is being supposed that intervals correspond with Nans. i.e. all values outside intervals
+                    # are NaNs. However this can be wrong when the user just wants to skip some chunks of data even though
+                    # they are not NaNs. In this case, there will be no NaNs and tot_obs will be more than required. In
+                    # such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that creates problems
+                    # when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide (0, 5) instead of
+                    # (2, 4). Is it correct/useful to provide (0, 5)?
                     more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
-                    tot_obs = self.vals_in_intervals() - more
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - more
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
