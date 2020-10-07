@@ -67,6 +67,19 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           }
 make_and_run(Model, layers)
 
+
+##
+# LSTM  + Snail Attention
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "LSTM_1": {'config': {'units': 32, 'return_sequences': True}},
+          "SnailAttention": {'config': {'dims': 32, 'k_size': 32, 'v_size': 32}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense_0": {'config': {'units': 1, 'name': 'output'}},
+          "Flatten": {'config': {}},
+          "Dense": {'config': {'units': 1}}
+          }
+make_and_run(Model, layers)
+
 ##
 # LSTM + SelfAttention model
 layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
