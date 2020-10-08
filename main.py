@@ -119,6 +119,14 @@ class Model(NN):
             _all_layers.append(layer.name)
         return _all_layers
 
+    @property
+    def num_input_layers(self):
+        input_layers = 0
+        for lyr_name in self.layer_names:
+            if "INPUT" in lyr_name.upper():
+                input_layers += 1
+        return input_layers
+
     def fetch_data(self, data: pd.DataFrame,  st: int=0, en=None,
                    shuffle: bool = True,
                    write_data=True,
@@ -255,10 +263,7 @@ class Model(NN):
     layer is CNN in CNNLSTM case or first layer is Conv2DLSTM or LSTM or a dense layer. No change in shape
     will be performed when more than one `Input` layers exist.
         """
-        input_layers = 0
-        for lyr_name in self.layer_names:
-            if "INPUT" in lyr_name.upper():
-                input_layers += 1
+        input_layers = self.num_input_layers
 
         if input_layers > 1:
             return x
@@ -270,8 +275,10 @@ class Model(NN):
         else:
             raise ValueError(" {} Input layers found".format(input_layers))
 
-    def first_layer_shape(self) -> tuple:
+    def first_layer_shape(self):
 
+        if self.num_input_layers>1:
+            return None
         shape = []
         for d in self.k_model.layers[0].input.shape:
             if d is None:
@@ -389,7 +396,7 @@ class Model(NN):
             plot_results(t, p, name=os.path.join(self.path, name + out_name),
                          **plot_args)
 
-        save_config_file(self.path, errors=errs, name=name + '_' + out_name)
+        save_config_file(self.path, errors=errs, name=name + '_' + out_name + '_')
 
         return
 
@@ -685,7 +692,7 @@ class Model(NN):
                      different indices"""
                 print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
                 # y = df[df.columns[-1]]
-                nan_idx = np.isnan(label_y) # y.isna()
+                nan_idx = np.isnan(label_y) if self.outs ==1 else np.isnan(label_y[:, 0]) # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]
                 # non_nan_idx = ~nan_idx_t.values
                 non_nan_idx = ~nan_idx.reshape(-1,)
@@ -1000,12 +1007,13 @@ class Model(NN):
         config['method'] = self.method
         config['quantiles'] = self.quantiles
         config['loss'] = self.k_model.loss.__name__ if self.k_model is not None else None
+        config['params'] = int(self.k_model.count_params())
 
         save_config_file(config=config, path=self.path)
         return config
 
     @classmethod
-    def from_config(cls, config_path: str, data):
+    def from_config(cls, config_path: str, data, use_pretrained_model=True):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
@@ -1026,11 +1034,15 @@ class Model(NN):
         cls.test_indices = indices["test_indices"]
         cls.train_indices = indices["train_indices"]
 
+        if use_pretrained_model:
+            path = os.path.dirname(config_path)
+        else:
+            path = None
         return cls(data_config=data_config,
                    nn_config=nn_config,
                    data=data,
                    intervals=intervals,
-                   path=os.path.dirname(config_path))
+                   path=path)
 
     def load_weights(self, w_file: str):
         # loads the weights of keras model from weight file `w_file`.
