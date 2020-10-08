@@ -60,7 +60,10 @@ if __name__ == "__main__":
                                                          inputs=input_features,
                                                          outputs=outputs,
                                                          lr=0.0001,
-                                                         epochs=20)
+                                                         epochs=20,
+                                                         val_fraction=0.3,  # TODO why less than 0.3 give error here?
+                                                         test_fraction=0.3
+                                                         )
 
     cwd = os.getcwd()
     df = pd.read_csv(os.path.join(os.path.dirname(cwd), "data\\all_data_30min.csv"))
