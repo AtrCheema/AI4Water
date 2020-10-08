@@ -70,11 +70,10 @@ def plot_loss(history: dict, name=None):
     for key, val in history.items():
 
         m_name = key.split('_')[1] if '_' in key else key
-        k = key.upper()
 
         if m_name in list(axis_cache.keys()):
             axis = axis_cache[m_name]
-            axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + key)
+            axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + m_name)
             axis.legend()
         else:
             axis = fig.add_subplot(2, 2, i)
