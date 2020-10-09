@@ -335,7 +335,7 @@ layers ={
               'inputs': "MyConcat"}
 }
 ```
-<img src="imgs/add_call_args.png" width="400" height="500" />
+<img src="imgs/add_call_args.png" width="500" height="600" />
 
 It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional while `config` is mandatory.
 For more examples see `docs`.
