@@ -242,13 +242,13 @@ class MyModel(Model):
         return 
 
 
-layers = {"Input_0": {"config": {"shape": (5, 10), "name": "my_inputs1"}},
+layers = {"Input_0": {"config": {"shape": (5, 10), "name": "cont_inputs"}},
           "lstm_0": {"config": { "units": 62,  "activation": "leakyrelu", "dropout": 0.4,  "recurrent_dropout": 0.4, "return_sequences": False,  "name": "lstm_0"},
-                     "inputs": "my_inputs1"},
+                     "inputs": "cont_inputs"},
 
-          "Input_1": {"config": {"shape": 10, "name": "my_inputs2"}},
+          "Input_1": {"config": {"shape": 10, "name": "disc_inputs"}},
           "Dense_0": {"config": {"units": 64,"activation": "leakyrelu", "name": "Dense_0"},
-                      "inputs": "my_inputs2"},
+                      "inputs": "disc_inputs"},
           "flatten_0": {"config": {"name": "flatten_0" },
                         "inputs": "Dense_0"},
 
