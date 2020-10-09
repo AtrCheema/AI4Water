@@ -12,9 +12,13 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 # column in dataframe to be used as output/target
 outputs = ['blaTEM_coppml']
 
+sub_sequences = 3
+lookback = 15
+time_steps = lookback // sub_sequences
 layers = {
-    "TimeDistributed_0": {'config': {}},
-    'conv1d_0': {'config':  {'filters': 64, 'kernel_size': 2}},
+    "Input": {'config': {'shape': (sub_sequences, time_steps, len(input_features))}},
+    "TimeDistributed_0": {'config': {'name': 'td_for_conv1'}},
+    'conv1d_0': {'config':  {'filters': 64, 'kernel_size': 2, 'name': 'first_conv1d'}},
     'LeakyRelu_0': {'config':  {}},
     "TimeDistributed_1": {'config':  {}},
     'conv1d_1': {'config':  {'filters': 32, 'kernel_size': 2}},
@@ -36,8 +40,9 @@ layers = {
     'Dense': {'config':  {'units': 1}}
 }
 
+
 data_config, nn_config, total_intervals = make_model(batch_size=16,
-                                                     lookback=15,
+                                                     lookback=lookback,
                                                      inputs=input_features,
                                                      outputs=outputs,
                                                      layers=layers,
@@ -54,6 +59,6 @@ model = Model(data_config=data_config,
 model.build_nn()
 
 # This model is built only to showcase how to build multi layer model by manipulating nn_config
-history = model.train_nn(indices='random')
+# history = model.train_nn(indices='random')
 
-y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
+#y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
