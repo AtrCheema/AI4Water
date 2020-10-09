@@ -2,7 +2,8 @@
 # Each output comes from one parallel structure/layer of # NN.
 # Each parallel NN is not connected during forward propagation and each parallel NN receives separate input.
 # The final loss is calculated by adding the loss from each of the parallel NN.
-# The target/observations for each of the parallell NN is not present concurrently. This means the different target values are present at different time stamps.
+# The target/observations for each of the parallell NN is not present concurrently.
+# This means the different target values are present at different time stamps.
 # The number of inputs and outputs to and from each NN are equal (but not same)
 
 from models import Model
@@ -115,7 +116,7 @@ class MultiOutputParallel(Model):
         @tf.function
         def train_step(train__x, complete_y):
 
-            #skip_flag = False
+            # skip_flag = False
             with tf.GradientTape() as taape:
                 _masks = []
                 _y_trues = []
@@ -129,7 +130,7 @@ class MultiOutputParallel(Model):
                 losses = {}
                 for out in range(self.outs):
                     y_obj = _predictions[out][_masks[out]]
-                    #if len(y_obj) < 1:
+                    # if len(y_obj) < 1:
                     #   skip_flag = True
                     losses['_' + str(out)] = keras.backend.mean(loss_fn(_y_trues[out], y_obj))
 
@@ -148,7 +149,7 @@ class MultiOutputParallel(Model):
             # Run one step of gradient descent by updating the value of the variables to minimize the loss.
             optimizer.apply_gradients(zip(grads, self.k_model.trainable_weights))
 
-            return losses#, skip_flag
+            return losses  # , skip_flag
 
         @tf.function
         def val_step(_val_x, complete_y):
@@ -194,7 +195,6 @@ class MultiOutputParallel(Model):
                 for key, loss in tr_losses.items():
                     tr_batch_losses[key].append(loss)
 
-
             # end of one training epoch
             for key, loss in tr_batch_losses.items():
                 tr_epoch_losses[key].append(np.nanmean(loss))
@@ -213,7 +213,7 @@ class MultiOutputParallel(Model):
                     val_batch_losses[key].append(float(loss))
 
             for key, loss in val_batch_losses.items():
-               val_epoch_losses[key].append(np.nanmean(loss))
+                val_epoch_losses[key].append(np.nanmean(loss))
 
             msg = ' '
             save_this_epoch = False
@@ -223,33 +223,33 @@ class MultiOutputParallel(Model):
             msg = msg + "{} ouf of {} minibatches skipped".format(skipped_batches, tr_step)
 
             if save_this_epoch:
-                self.k_model.save_weights(filepath=os.path.join(self.path + "\\weights_{:03d}_{:.4f}.h5".format(epoch,
-                                                                                                               np.nanmean(val_batch_losses['loss']))))
+                self.k_model.save_weights(filepath=os.path.join(self.path + "\\weights_{:03d}_{:.4f}.h5"
+                                                                .format(epoch, np.nanmean(val_batch_losses['loss']))))
             print(epoch, msg)
 
         self.data_config['training_batches'] = int(tr_step)
         self.nn_config['training_time_in_minutes'] = int( (time.time()-start) / 60.0)
-        history = self.at_train_end(skipped_batches, tr_epoch_losses, val_epoch_losses)
+        _history = self.at_train_end(skipped_batches, tr_epoch_losses, val_epoch_losses)
 
         print("Training time: {}".format(time.time()-start))
-        return history
+        return _history
 
-    def at_train_end(self, skipped_batches:int, tr_epoch_losses, val_epoch_losses):
+    def at_train_end(self, skipped_batches: int, tr_epoch_losses, val_epoch_losses):
         # compiles losses and saves them
 
         # lets save the last epoch
         self.k_model.save_weights(filepath=os.path.join(self.path + "\\weights_last_epoch.h5"))
 
-        history = {'loss': tr_epoch_losses['loss'], 'val_loss': val_epoch_losses['loss']}
+        _history = {'loss': tr_epoch_losses['loss'], 'val_loss': val_epoch_losses['loss']}
 
         val_losses = dict()
         for k, v in val_epoch_losses.items():
             val_losses['val_' + k] = v
 
-        plot_loss(history, name=os.path.join(self.path, "loss_curve"))
+        plot_loss(_history, name=os.path.join(self.path, "loss_curve"))
         self.nn_config['skipped_batches'] = skipped_batches
 
-        self.save_config(history)
+        self.save_config(_history)
 
         # collect all losses in one dictionary
         tr_epoch_losses.update(val_losses)
@@ -258,9 +258,9 @@ class MultiOutputParallel(Model):
         df = pd.DataFrame.from_dict(tr_epoch_losses)
         df.to_csv(os.path.join(self.path, "losses.csv"))
 
-        return history
+        return _history
 
-    def denormalize_data(self, first_input, predicted:list, true_outputs:list, scaler_key:str):
+    def denormalize_data(self, first_input, predicted: list, true_outputs: list, scaler_key: str):
 
         if np.ndim(first_input) == 5:
             # for ConvLSTM cases
@@ -282,7 +282,6 @@ class MultiOutputParallel(Model):
             pred_y.append(in_pred_den[:, -1:])
 
         return pred_y, true_y
-
 
 
 class ConvLSTMMultiOutput(MultiOutputParallel):
@@ -376,7 +375,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     lookback = data_config['lookback']
 
     data_config['inputs'] = ['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                              'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3', 'ORGP_INppm']
+                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3', 'ORGP_INppm']
     data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8', 'obs_chla_12']
 
     data_config['val_fraction'] = 0.2
@@ -394,21 +393,25 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     # len(list(set().union(chl_1_nonan_idx.to_list(), chl_3_nonan_idx.to_list(), chl_8_nonan_idx.to_list(), chl_12_nonan_idx.to_list()
     # ))) = 1162
 
-    train_idx_chl_1, test_idx_chl_1 = train_test_split(chl_1_nonan_idx, test_size=data_config['val_fraction'], random_state=313)
-    train_idx_chl_3, test_idx_chl_3 = train_test_split(chl_3_nonan_idx, test_size=data_config['val_fraction'], random_state=313)
-    train_idx_chl_8, test_idx_chl_8 = train_test_split(chl_8_nonan_idx, test_size=data_config['val_fraction'], random_state=313)
-    train_idx_chl_12, test_idx_chl_12 = train_test_split(chl_12_nonan_idx, test_size=data_config['val_fraction'], random_state=313)
+    train_idx_chl_1, test_idx_chl_1 = train_test_split(chl_1_nonan_idx, test_size=data_config['val_fraction'],
+                                                       random_state=313)
+    train_idx_chl_3, test_idx_chl_3 = train_test_split(chl_3_nonan_idx, test_size=data_config['val_fraction'],
+                                                       random_state=313)
+    train_idx_chl_8, test_idx_chl_8 = train_test_split(chl_8_nonan_idx, test_size=data_config['val_fraction'],
+                                                       random_state=313)
+    train_idx_chl_12, test_idx_chl_12 = train_test_split(chl_12_nonan_idx, test_size=data_config['val_fraction'],
+                                                         random_state=313)
 
     _train_idx = list(set().union(train_idx_chl_1.to_list(),
-                           train_idx_chl_3.to_list(),
-                           train_idx_chl_8.to_list(),
-                           train_idx_chl_12.to_list()
-                                 ))  # 863
+                                  train_idx_chl_3.to_list(),
+                                  train_idx_chl_8.to_list(),
+                                  train_idx_chl_12.to_list()
+                                  ))  # 863
     _test_idx = list(set().union(test_idx_chl_1.to_list(),
-                                test_idx_chl_3.to_list(),
-                                test_idx_chl_8.to_list(),
-                                test_idx_chl_12.to_list()
-                                ))   # 406
+                                 test_idx_chl_3.to_list(),
+                                 test_idx_chl_8.to_list(),
+                                 test_idx_chl_12.to_list()
+                                 ))   # 406
 
     df_1.index = pd.to_datetime(df_1['date'])
     df_3.index = pd.to_datetime(df_3['date'])
@@ -417,14 +420,14 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
 
     if from_config:
         _model = input_model.from_config(config_path=config_path,
-                                        data=[df_1, df_3, df_8, df_12])
+                                         data=[df_1, df_3, df_8, df_12])
         _model.build_nn()
         _model.load_weights(weights)
     else:
         _model = input_model(data_config=data_config,
-                      nn_config=nn_config,
-                      data = [df_1, df_3, df_8, df_12]
-                      )
+                             nn_config=nn_config,
+                             data=[df_1, df_3, df_8, df_12]
+                             )
         _model.build_nn()
 
     return _model, _train_idx, _test_idx

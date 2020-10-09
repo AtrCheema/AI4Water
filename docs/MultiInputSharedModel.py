@@ -1,8 +1,8 @@
-# This file shows how to build a multi-output model using different basic models which are available in models dicrectory.
+# This file shows how to build an NN model using different basic models which are available in models dicrectory.
 # The basic assumptions are following
 # A single model is used which receives different inputs and procduces corresponding outputs.
-# Each of the multiple input is present in a separate file which is read in a dataframe and all the dataframes are passed
-# as a list for `data` attribute.
+# Each of the multiple input is present in a separate file which is read in a dataframe and all the dataframes are
+# passed as a list for `data` attribute.
 
 import pandas as pd
 import numpy as np
@@ -49,7 +49,7 @@ class MultiInputSharedModel(Model):
         inputs = layers.Input(shape=(self.lookback, self.ins), name='inputs_')
         predictions = self.add_layers(inputs, self.nn_config['layers'])
 
-        self.k_model = self.compile(inputs, predictions )
+        self.k_model = self.compile(inputs, predictions)
 
         return
 
@@ -64,7 +64,7 @@ class MultiInputSharedModel(Model):
 
         return history.history
 
-    def denormalize_data(self, first_input, predicted:list, true_outputs:list, scaler_key:str):
+    def denormalize_data(self, first_input, predicted: list, true_outputs:list, scaler_key:str):
 
         return predicted, true_outputs[0]
 
@@ -75,7 +75,7 @@ class MultiInputSharedModel(Model):
 
             self.out_cols = [self.data_config['outputs'][idx]]  # because fetch_data depends upon self.outs
             inputs, true_outputs = self.test_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
-                                                  return_dt_index=use_datetime_index, data=self.data[idx])
+                                                   return_dt_index=use_datetime_index, data=self.data[idx])
             self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
 
             first_input = inputs[0]
@@ -111,7 +111,6 @@ class MultiInputSharedModel(Model):
         return predicted, true_outputs
 
 
-
 def make_multi_model(input_model,  from_config=False, config_path=None, weights=None,
                      batch_size=8, lookback=19, lr=1.52e-5, ignore_nans=True, **kwargs):
 
@@ -122,8 +121,8 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                                                          **kwargs)
 
     data_config['inputs'] = ['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                              'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3', 'ORGP_INppm']
-    data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8' # , 'obs_chla_12'
+                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3', 'ORGP_INppm']
+    data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
                               ]
 
     fpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\data"
@@ -139,29 +138,29 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
 
     if from_config:
         _model = input_model.from_config(config_path=config_path,
-                                        data=[df_1, df_3, df_8 #, df_12
-                                              ])
+                                         data=[df_1, df_3, df_8  # , df_12
+                                               ])
         _model.build_nn()
         _model.load_weights(weights)
     else:
         _model = input_model(data_config=data_config,
-                      nn_config=nn_config,
-                      data = [df_1, df_3, df_8 # , df_12
-                              ]
-                      )
+                             nn_config=nn_config,
+                             data=[df_1, df_3, df_8  # , df_12
+                                   ]
+                             )
     return _model
 
 
 if __name__ == "__main__":
 
     _layers = {'lstm_0': {'units': 62,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
-                                       'return_sequences': True, 'return_state': False, 'name': 'lstm_0'},
-              'lstm_1': {'units': 32,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
-                                       'return_sequences': False, 'return_state': False, 'name': 'lstm_1'},
-              'Dense_0': {'units': 16, 'activation': 'leakyrelu'},
-              'Dropout': {'rate': 0.4},
-              'Dense_1': {'units': 1}
-    }
+                                        'return_sequences': True, 'return_state': False, 'name': 'lstm_0'},
+               'lstm_1': {'units': 32,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
+                                        'return_sequences': False, 'return_state': False, 'name': 'lstm_1'},
+               'Dense_0': {'units': 16, 'activation': 'leakyrelu'},
+               'Dropout': {'rate': 0.4},
+               'Dense_1': {'units': 1}
+               }
 
     # model = make_multi_model(MultiOutputSharedWeights,
     #                                               batch_size=4,

@@ -17,18 +17,20 @@ class QuantileModel(Model):
 
         return predicted, true_outputs
 
+
 def qloss(y_true, y_pred):
     # Pinball loss for multiple quantiles
-    qs =quantiles
+    qs = quantiles
     q = tf.constant(np.array([qs]), dtype=tf.float32)
     e = y_true - y_pred
     v = tf.maximum(q * e, (q - 1) * e)
     return keras.backend.mean(v)
 
+
 # Define a dummy dataset consisting of 6 time-series.
 rows = 2000
 cols = 6
-data = np.arange(int(rows*cols)).reshape(-1,rows).transpose()
+data = np.arange(int(rows*cols)).reshape(-1, rows).transpose()
 data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
                     index=pd.date_range('20110101', periods=len(data), freq='H'))
 
@@ -40,8 +42,8 @@ layers = {'Dense_0': {'config':  {'units': 64, 'activation': 'relu'}},
           'Dense_2': {'config':  {'units': 16, 'activation': 'relu'}},
           'Dense_3': {'config':  {'units': 9}}}
 
-data_config, nn_config, _ = make_model(inputs = ['input_' + str(i) for i in range(cols-1)],
-                                       outputs=['input_' + str(cols-1) ],
+data_config, nn_config, _ = make_model(inputs=['input_' + str(i) for i in range(cols-1)],
+                                       outputs=['input_' + str(cols-1)],
                                        lookback=1,
                                        layers=layers,
                                        epochs=100)

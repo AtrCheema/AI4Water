@@ -134,7 +134,7 @@ class NN(AttributeStore):
         setattr(self, 'layers', lyr_cache)
         return inputs, layer_outputs
 
-    def check_lyr_config(self,lyr_name:str, config:dict):
+    def check_lyr_config(self, lyr_name: str, config: dict):
 
         if 'name' not in config:
             config['name'] = lyr_name
@@ -157,13 +157,14 @@ class NN(AttributeStore):
 
         return config, activation
 
-    def get_layer_name(self, lyr:str)->str:
+    def get_layer_name(self, lyr: str) -> str:
 
         layer_name = lyr.split('_')[0]
         if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
             raise ValueError("unknown layer {}".format(lyr))
 
         return layer_name
+
 
 def get_call_args(lyr_inputs, lyr_cache):
     if isinstance(lyr_inputs, list):

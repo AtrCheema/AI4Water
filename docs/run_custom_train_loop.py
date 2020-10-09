@@ -85,7 +85,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config':  {'units': 1}}
           }
 
-data_config, nn_config, total_intervals = make_model(layers = layers,
+data_config, nn_config, total_intervals = make_model(layers=layers,
                                                      batch_size=12,
                                                      lookback=15,
                                                      lr=8.95e-5,

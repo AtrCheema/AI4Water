@@ -120,14 +120,30 @@ class Model(NN):
         return _all_layers
 
     @property
-    def num_input_layers(self):
-        input_layers = 0
-        for lyr_name in self.layer_names:
-            if "INPUT" in lyr_name.upper():
-                input_layers += 1
-        return input_layers
+    def layers_in_shapes(self) -> dict:
+        """ returns the shapes of inputs to all layers"""
+        shapes = {}
 
-    def fetch_data(self, data: pd.DataFrame,  st: int=0, en=None,
+        for lyr in self.k_model.layers:
+            shapes[lyr.name] = lyr.input_shape
+
+        return shapes
+
+    @property
+    def layers_out_shapes(self) -> dict:
+        """ returns shapes of outputs from all layers in model as dictionary"""
+        shapes = {}
+        
+        for lyr in self.k_model.layers:
+            shapes[lyr.name] = lyr.output_shape
+
+        return shapes
+
+    @property
+    def num_input_layers(self) -> int:
+        return len(self.k_model.inputs)
+
+    def fetch_data(self, data: pd.DataFrame,  st: int = 0, en=None,
                    shuffle: bool = True,
                    write_data=True,
                    noise: int = 0,
@@ -277,7 +293,7 @@ class Model(NN):
 
     def first_layer_shape(self):
 
-        if self.num_input_layers>1:
+        if self.num_input_layers > 1:
             return None
         shape = []
         for d in self.k_model.layers[0].input.shape:
@@ -313,7 +329,7 @@ class Model(NN):
                          validation_split=self.data_config['val_fraction'],
                          validation_data=validation_data,
                          callbacks=_callbacks,
-                         steps_per_epoch = self.data_config['steps_per_epoch']
+                         steps_per_epoch=self.data_config['steps_per_epoch']
                          )
         history = self.k_model.history
 
@@ -333,11 +349,11 @@ class Model(NN):
             else:
                 if self.outs == 1:
                     # TODO it is being supposed that intervals correspond with Nans. i.e. all values outside intervals
-                    # are NaNs. However this can be wrong when the user just wants to skip some chunks of data even though
-                    # they are not NaNs. In this case, there will be no NaNs and tot_obs will be more than required. In
-                    # such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that creates problems
-                    # when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide (0, 5) instead of
-                    # (2, 4). Is it correct/useful to provide (0, 5)?
+                    # are NaNs. However this can be wrong when the user just wants to skip some chunks of data even
+                    # though they are not NaNs. In this case, there will be no NaNs and tot_obs will be more than
+                    # required. In such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that
+                    # creates problems when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide
+                    # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
                     more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - more
                 else:
@@ -347,7 +363,8 @@ class Model(NN):
                     assert np.all(nans.values == int(nans.sum() / self.outs))
 
             idx = np.arange(tot_obs - self.lookback)
-            train_indices, test_idx = train_test_split(idx, test_size=self.data_config['test_fraction'], random_state=313)
+            train_indices, test_idx = train_test_split(idx, test_size=self.data_config['test_fraction'],
+                                                       random_state=313)
             setattr(self, 'test_indices', list(test_idx))
             indices = list(train_indices)
 
@@ -390,8 +407,8 @@ class Model(NN):
                 p = p[mask]
 
             errors = FindErrors(t, p)
-            errs[ out_name + '_errors'] = errors.calculate_all()
-            errs[ out_name + '_stats'] = errors.stats()
+            errs[out_name + '_errors'] = errors.calculate_all()
+            errs[out_name + '_stats'] = errors.stats()
 
             plot_results(t, p, name=os.path.join(self.path, name + out_name),
                          **plot_args)
@@ -504,7 +521,7 @@ class Model(NN):
 
             return true_outputs, predicted
 
-    def plot_quantile(self, true_outputs, predicted,  min_q:int, max_q, save=False):
+    def plot_quantile(self, true_outputs, predicted,  min_q: int, max_q, save=False):
         plt.close('all')
         plt.style.use('ggplot')
 
@@ -692,7 +709,7 @@ class Model(NN):
                      different indices"""
                 print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
                 # y = df[df.columns[-1]]
-                nan_idx = np.isnan(label_y) if self.outs ==1 else np.isnan(label_y[:, 0]) # y.isna()
+                nan_idx = np.isnan(label_y) if self.outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]
                 # non_nan_idx = ~nan_idx_t.values
                 non_nan_idx = ~nan_idx.reshape(-1,)
@@ -996,7 +1013,7 @@ class Model(NN):
         train_indices = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
 
         save_config_file(indices={'test_indices': test_indices,
-                                 'train_indices': train_indices}, path=self.path)
+                                  'train_indices': train_indices}, path=self.path)
 
         config = dict()
         config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None

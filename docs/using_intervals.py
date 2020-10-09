@@ -18,7 +18,7 @@ print(out.isna().sum())
 intervals = [(100, 200), (1000, 8000), (10000, 31000)]
 
 for interval in intervals:
-    st,en = interval[0], interval[1]
+    st, en = interval[0], interval[1]
     out[st:en] = np.nan
 
 df["NDX"] = out

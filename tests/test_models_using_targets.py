@@ -6,7 +6,6 @@ import pandas as pd
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
 
-
     data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                          lookback=lookback,
                                                          lr=0.001,
@@ -17,10 +16,10 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
     df = pd.read_csv("../data/nasdaq100_padding.csv")
 
     _model = input_model(data_config=data_config,
-                  nn_config=nn_config,
-                  data=df,
-                  intervals=total_intervals
-                  )
+                         nn_config=nn_config,
+                         data=df,
+                         intervals=total_intervals
+                         )
 
     _model.build_nn()
 
@@ -29,6 +28,7 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
     _ = _model.predict(use_datetime_index=False)
 
     return _model
+
 
 ##
 # NBeats based model

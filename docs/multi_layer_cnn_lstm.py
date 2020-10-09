@@ -26,10 +26,12 @@ layers = {
     "maxpool1d": {'config':  {'pool_size': 2}},
     "TimeDistributed_4": {'config':  {}},
     'flatten': {'config':  {}},
-    'lstm_0': {'config':    {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+    'lstm_0': {'config': {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5,
+                          'return_sequences': True,
                'name': 'lstm_0'}},
     'Relu_1': {'config':  {}},
-    'lstm_1': {'config':    {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'}},
+    'lstm_1': {'config': {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5,
+                          'name': 'lstm_1'}},
     'sigmoid_2': {'config':  {}},
     'Dense': {'config':  {'units': 1}}
 }
@@ -44,10 +46,10 @@ data_config, nn_config, total_intervals = make_model(batch_size=16,
 df = pd.read_csv('../data/all_data_30min.csv')
 
 model = Model(data_config=data_config,
-                     nn_config=nn_config,
-                     data=df,
-                     intervals=total_intervals
-                     )
+              nn_config=nn_config,
+              data=df,
+              intervals=total_intervals
+              )
 
 model.build_nn()
 

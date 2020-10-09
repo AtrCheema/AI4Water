@@ -17,7 +17,6 @@ if __name__ == "__main__":
                                                          inputs=input_features,
                                                          outputs=outputs,
                                                          lr=0.0001)
-
     df = pd.read_csv('../data/all_data_30min.csv')
 
     model = Model(data_config=data_config,
