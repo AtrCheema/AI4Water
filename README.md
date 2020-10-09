@@ -227,7 +227,7 @@ layers = {"tcn": {'config': {'nb_filters': 64,
 
 
 ### Multiple Inputs
-In order to build more complex models, where a list takes more than one inputs, you can specify the `inputs` dictionary
+In order to build more complex models, where a list takes more than one inputs, you can specify the `inputs` key
 for a layer and specify which inputs the layer uses. The `value` of the `inputs` dictionary must be a `list` in this
 case whose members must be the names of the layers which have been defined earlier.
 
@@ -266,6 +266,36 @@ from `Model` class
 
 <img src="imgs/lstm_dense.png" width="500" height="600" />
 
+
+### Multiple Output Layers
+For cases when a layer returns more than one output and we want to use each of those outputs in a separate layer. Such
+models can be built by specifying the outputs from a layer using `outputs` key. The `value` fo the `outputs` key can a
+string or a list specifying the names of of outputs the layer is returning. We can use these names as inputs to any
+other layer later in the model. 
+
+```python
+layers = {
+    "LSTM": {'config': {'units': 64, 'return_sequences': True, 'return_state': True},
+             'outputs': ['junk', 'h_state', 'c_state']},
+
+    "Dense_0": {'config': {'units': 1, 'name': 'MyDense'},
+              'inputs': 'h_state'},
+
+    "Conv1D_1": {'config': {'filters': 64, 'kernel_size': 3, 'name': 'myconv'},
+                'inputs': 'junk'},
+    "MaxPool1D": {'config': {'name': 'MyMaxPool'},
+                'inputs': 'myconv'},
+    "Flatten": {'config': {'name': 'MyFlatten'},
+                'inputs': 'MyMaxPool'},
+
+    "Concat": {'config': {'name': 'MyConcat'},
+            'inputs': ['MyDense', 'MyFlatten']},
+
+    "Dense": {'config': {'units':1},
+              'inputs': "MyConcat"}
+}
+```
+<img src="imgs/multi_output_layer.png" width="400" height="500" />
 
 For more examples see `docs`.
 

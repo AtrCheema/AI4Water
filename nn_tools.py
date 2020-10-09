@@ -74,7 +74,7 @@ class NN(AttributeStore):
 
         for lyr, lyr_args in layers_config.items():
 
-            lyr_config, lyr_inputs = lyr_args['config'], lyr_args['inputs'] if 'inputs' in lyr_args else None
+            lyr_config, lyr_inputs, named_outs = self.deconstruct_lyr_args(lyr_args)
 
             lyr_name, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
@@ -100,6 +100,7 @@ class NN(AttributeStore):
                         layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](layer_outputs)
                     elif lyr_name.upper() == 'TIMEDISTRIBUTED':
                         td_layer = LAYERS[lyr_name.upper()]
+                        lyr_cache[lyr_name] = td_layer
                         continue
                     else:
                         if td_layer is not None:
@@ -113,6 +114,7 @@ class NN(AttributeStore):
                     layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](get_call_args(lyr_inputs, lyr_cache))
                 elif lyr_name.upper() == 'TIMEDISTRIBUTED':
                     td_layer = LAYERS[lyr_name.upper()]
+                    lyr_cache[lyr_name] = td_layer
                     continue
                 else:
                     if td_layer is not None:
@@ -124,7 +126,18 @@ class NN(AttributeStore):
             if activation is not None:  # put the string back to dictionary to be saved in config file
                 lyr_config['activation'] = activation
 
-            lyr_cache[lyr_config['name']] = layer_outputs
+            if named_outs is not None:
+
+                if isinstance(named_outs, list):
+                    # this layer is returning more than one output
+                    assert len(named_outs) == len(layer_outputs), "Layer {} is expected to return {} outputs but it actually returns {}".format(lyr_name, named_outs, layer_outputs)
+                    for idx, out_name in enumerate(named_outs):
+                        self.update_cache(lyr_cache, out_name, layer_outputs[idx])
+                else:
+                    # this layer returns just one output
+                    self.update_cache(lyr_cache, named_outs, layer_outputs)
+
+            self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
             first_layer = False
 
         inputs = []
@@ -133,6 +146,20 @@ class NN(AttributeStore):
                 inputs.append(v)
         setattr(self, 'layers', lyr_cache)
         return inputs, layer_outputs
+
+    def update_cache(self, cache:dict, key, value):
+        if key in cache:
+            raise ValueError("Duplicate input/output name found. The name {} already exists as input/output for another layer"
+                             .format(key))
+        cache[key] = value
+        return
+
+    def deconstruct_lyr_args(self, lyr_args:dict) ->tuple:
+
+        inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None
+        outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
+
+        return lyr_args['config'], inputs, outputs
 
     def check_lyr_config(self, lyr_name: str, config: dict):
 
@@ -170,8 +197,12 @@ def get_call_args(lyr_inputs, lyr_cache):
     if isinstance(lyr_inputs, list):
         call_args = []
         for lyr_ins in lyr_inputs:
+            if lyr_ins not in lyr_cache:
+                raise ValueError("No layer named {} currently exists in the model.".format(lyr_ins))
             call_args.append(lyr_cache[lyr_ins])
     else:
+        if lyr_inputs not in lyr_cache:
+            raise ValueError("No layer named {} currently exists in the model.".format(lyr_inputs))
         call_args = lyr_cache[lyr_inputs]
 
     return call_args
