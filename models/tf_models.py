@@ -15,7 +15,6 @@ layers = keras.layers
 KModel = keras.models.Model
 
 
-
 class CNNLSTMModel(Model):
     """
     This class is deprecated. Use Model class instead.

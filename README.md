@@ -91,7 +91,7 @@ _model = Model(data_config=data_config,
 
 _model.build_nn()
 ```
-# ![MLP based model](imgs/mlp.png "Title")
+<img src="imgs/mlp.png" width="300" height="400" />
 
 
 ### LSTM based model
@@ -120,8 +120,7 @@ _model = Model(data_config=data_config,
 
 _model.build_nn()
 ```
-
-![LSTM based model](imgs/lstm.png "Title")
+<img src="imgs/lstm.png" width="300" height="400" />
 
 ### 1d CNN based model
 If a layer does not receive any input arguments, still an empty dictioanry must be provided.  
@@ -136,8 +135,7 @@ layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
           "Dense": {'config': {'units': 1}}
           }
 ```
-
-![CNN based model](imgs/cnn.png "Title")
+<img src="imgs/cnn.png" width="300" height="400" />
 
 ### LSTM -> CNN based model
 ```python
@@ -151,7 +149,7 @@ layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config': {'units': 1}}
           }
 ```
-![LSTM->CNN based model](imgs/lstm_cnn.png "Title")
+<img src="imgs/lstm_cnn.png" width="300" height="400" />
 
 
 ### ConvLSTM based model
@@ -163,7 +161,7 @@ layers = {'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activ
           'Dense': {'config': {'units': 1}}
           }
 ```
-![ConvLSTM based model](imgs/convlstm.png "Title")
+<img src="imgs/convlstm.png" width="300" height="400" />
 
 
 ### CNN -> LSTM
@@ -193,7 +191,7 @@ layers = {
     'Dense': {'config': {'units': 1}}
 }
 ```
-![CNN -> LSTM model](imgs/cnn_lstm.png "Title")
+<img src="imgs/cnn_lstm.png" width="500" height="600" />
 
 
 ### LSTM based auto-encoder
@@ -207,10 +205,12 @@ layers = {
     'Dense': {'config': {'units': 1}}
 }
 ```
-![LSTM auto-encoder](imgs/lstm_autoenc.png "Title")
+<img src="imgs/lstm_autoenc.png" width="300" height="400" />
 
 
 ### TCN layer
+You can use third party layers such as [`tcn`](https://github.com/philipperemy/keras-tcn) which is currently not supported by Tensorflow. Provided you have 
+installed `tcn`, the layer along with its arguments can be used as following
 ```python
 layers = {"tcn": {'config': {'nb_filters': 64,
                   'kernel_size': 2,
@@ -223,7 +223,48 @@ layers = {"tcn": {'config': {'nb_filters': 64,
           'Dense': {'config': {'units': 1}}
           }
 ```
-![TCN layer](imgs/tcn.png "Title")
+<img src="imgs/tcn.png" width="300" height="300" />
+
+
+### Multiple Inputs
+In order to build more complex models, where a list takes more than one inputs, you can specify the `inputs` dictionary
+for a layer and specify which inputs the layer uses. The `value` of the `inputs` dictionary must be a `list` in this
+case whose members must be the names of the layers which have been defined earlier.
+
+```python
+from models import Model
+class MyModel(Model):
+
+    def run_paras(self, **kwargs) -> (list, list):
+        """ write code which returns x and y where x consits of [(samples, 5, 10), (samples, 10)] and y consits of 
+            list [(samples, 1)]
+         """
+        return 
+
+
+layers = {"Input_0": {"config": {"shape": (5, 10), "name": "my_inputs1"}},
+          "lstm_0": {"config": { "units": 62,  "activation": "leakyrelu", "dropout": 0.4,  "recurrent_dropout": 0.4, "return_sequences": False,  "name": "lstm_0"},
+                     "inputs": "my_inputs1"},
+
+          "Input_1": {"config": {"shape": 10, "name": "my_inputs2"}},
+          "Dense_0": {"config": {"units": 64,"activation": "leakyrelu", "name": "Dense_0"},
+                      "inputs": "my_inputs2"},
+          "flatten_0": {"config": {"name": "flatten_0" },
+                        "inputs": "Dense_0"},
+
+          "Concat": {"config": {"name": "Concat" },
+                     "inputs": ["lstm_0", "flatten_0"]},
+
+          "Dense_1": {"config": {"units": 16, "activation": "leakyrelu", "name": "Dense_1"}},
+          "Dropout": {"config": {"rate": 0.4, "name": "Dropout"}},
+          "Dense_2": {"config": {"units": 1, "name": "Dense_2"}}
+        }
+
+```
+As the above model takes two inputs, we will have to overwrite `run_paras` method in our own class which should inherit
+from `Model` class
+
+<img src="imgs/lstm_dense.png" width="500" height="600" />
 
 
 For more examples see `docs`.
