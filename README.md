@@ -297,6 +297,47 @@ layers = {
 ```
 <img src="imgs/multi_output_layer.png" width="400" height="500" />
 
+
+### Additional call args
+We might be tempted to provide additional call arguments to a layer. For example, in tensorflow's LSTM layer, we can
+provide `initial state` of an LSTM. What if we want to use hidden and cell state of one LSTM as initial state for next
+LSTM. In such cases we can make use of `call_args` as `key`. The value of `call_args` must a dictionary. In this way
+we can provide `keyword` arguments while calling a layer.
+
+```python
+lookback = 5
+input_features = ['temp', 'pressure', 'volume']
+output_features = ['spped']
+layers ={
+    "Input": {'config': {'shape': (lookback, len(input_features)), 'name': "MyInputs"}},
+    "LSTM": {'config': {'units': 64, 'return_sequences': True, 'return_state': True, 'name': 'MyLSTM1'},
+             'inputs': 'MyInputs',
+             'outputs': ['junk', 'h_state', 'c_state']},
+
+    "Dense_0": {'config': {'units': 1, 'name': 'MyDense'},
+              'inputs': 'h_state'},
+
+    "Conv1D_1": {'config': {'filters': 64, 'kernel_size': 3, 'name': 'myconv'},
+                'inputs': 'junk'},
+    "MaxPool1D": {'config': {'name': 'MyMaxPool'},
+                'inputs': 'myconv'},
+    "Flatten": {'config': {'name': 'MyFlatten'},
+                'inputs': 'MyMaxPool'},
+
+    "LSTM_3": {"config": {'units': 64, 'name': 'MyLSTM2'},
+               'inputs': 'MyInputs',
+               'call_args': {'initial_state': ['h_state', 'c_state']}},
+
+    "Concat": {'config': {'name': 'MyConcat'},
+            'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
+
+    "Dense": {'config': {'units':len(output_features)},
+              'inputs': "MyConcat"}
+}
+```
+<img src="imgs/add_call_args.png" width="400" height="500" />
+
+It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional while `config` is mandatory.
 For more examples see `docs`.
 
 ## Disclaimer

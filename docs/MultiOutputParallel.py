@@ -63,7 +63,7 @@ class MultiOutputParallel(Model):
         for out in range(self.outs):
 
             site_inputs = keras.layers.Input(shape=(self.lookback, self.ins))
-            site_predictions = self.add_layers(site_inputs, self.nn_config['layers']['nn_' + str(out)])
+            _, site_predictions = self.add_layers(self.nn_config['layers']['nn_' + str(out)], site_inputs)
 
             inputs.append(site_inputs)
             predictions.append(site_predictions)
@@ -323,7 +323,7 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
             sub_seq_lens = int(self.lookback / sub_seq)
 
             site_inputs = keras.layers.Input(shape=(sub_seq, 1, sub_seq_lens, self.ins))
-            site_predictions = self.add_layers(site_inputs, self.nn_config['layers']['nn_' + str(out)])
+            _, site_predictions = self.add_layers(self.nn_config['layers']['nn_' + str(out)], site_inputs)
 
             inputs.append(site_inputs)
             predictions.append(site_predictions)
@@ -375,12 +375,13 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     lookback = data_config['lookback']
 
     data_config['inputs'] = ['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3', 'ORGP_INppm']
+                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3',# 'ORGP_INppm'
+                             ]
     data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8', 'obs_chla_12']
 
     data_config['val_fraction'] = 0.2
 
-    fpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\data"
+    fpath = os.path.join(os.path.dirname(os.getcwd()), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
     df_8 = pd.read_csv(os.path.join(fpath, 'data_8.csv'))

@@ -217,7 +217,7 @@ class Model(NN):
             df = df[st:en]
             df.columns = self.in_cols + self.out_cols
 
-            x, y, label = self.get_data(df,
+            x, y, label = self.get_batches(df,
                                         len(self.in_cols),
                                         len(self.out_cols)
                                         )
@@ -225,7 +225,7 @@ class Model(NN):
                 # because the x,y,z have some initial values removed
                 indices = np.subtract(np.array(indices), self.lookback - 1).tolist()
 
-                # if indices are given then this should be done after `get_data` method
+                # if indices are given then this should be done after `get_batches` method
                 x = x[indices]
                 y = y[indices]
                 label = label[indices]
@@ -238,7 +238,7 @@ class Model(NN):
                 df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_data(df1,
+                    x, y, label = self.get_batches(df1,
                                                 len(self.in_cols),
                                                 len(self.out_cols))
                     xs.append(x)
@@ -421,7 +421,7 @@ class Model(NN):
 
         print('building {} layer based model'.format(self.method))
 
-        inputs, predictions = self.add_layers(None, self.nn_config['layers'])
+        inputs, predictions = self.add_layers(self.nn_config['layers'])
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -664,7 +664,7 @@ class Model(NN):
 
         return metrics
 
-    def get_data(self, df, ins, outs):
+    def get_batches(self, df, ins, outs):
 
         if len(self.first_layer_shape()) == 2:
             # for case when there is not lookback, i.e first layer is dense layer and takes 2D input

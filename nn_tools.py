@@ -1,4 +1,4 @@
-from models.global_variables import ACTIVATION_FNS, ACTIVATION_LAYERS, LAYERS
+from models.global_variables import ACTIVATION_FNS, ACTIVATION_LAYERS, LAYERS, tf
 
 from weakref import WeakKeyDictionary
 
@@ -61,12 +61,26 @@ class NN(AttributeStore):
     def lookback(self, x):
         self._lookback = x
 
-    def add_layers(self, inputs, layers_config):
+    def add_layers(self, layers_config:dict, inputs=None):
         """
-        Every layer must contain initializing arguments as `config` dictionary and calling arguments as `inputs`
-        dictionary. If `inputs` dictionay is missing for a layer, it will be supposed that either this is an Input layer
-        or it uses previous outputs as inputs.
-        The `config` dictionary for every layer must contain `name` key and its value must be `str` type.
+        @param layers_config: `dict`
+        Every layer must contain initializing arguments as `config` dictionary and calling arguments as `inputs`. If
+        `inputs` key is missing for a layer, it will be supposed that either this is an Input layer or it uses previous
+        outputs as inputs. The `config` dictionary for every layer can contain `name` key and its value must be `str`
+        type. If `name` key  is not provided in the config, the provided layer name will be used as its name e.g in following case
+        layers = {'LSTM': {'config': {'units': 16}}}
+        the name of `LSTM` layer will be `LSTM` while in follwoing case
+        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
+        the name of the lstm will be `MyLSTM`.
+        We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
+        list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
+        We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
+        a list of strings.
+
+        @param inputs: if None, it will be supposed the the `Input` layer either exists in `layers_config` or an Input
+        layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
+        layer and the remaining NN architecture will be built as defined in `layers_config`. This can be handy when we
+        want to use this method several times to build a complex or parallel NN structure.
         """
         lyr_cache = {}
         td_layer = None
@@ -74,13 +88,19 @@ class NN(AttributeStore):
 
         for lyr, lyr_args in layers_config.items():
 
-            lyr_config, lyr_inputs, named_outs = self.deconstruct_lyr_args(lyr_args)
+            lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr_args)
 
             lyr_name, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
             # may be user has defined layers without input layer, in this case add Input layer as first layer
             if first_layer:
-                if lyr_name.upper() != "INPUT":
+                if inputs is not None: # This method was called by providing it inputs.
+                    assert isinstance(inputs, tf.Tensor)
+                    lyr_cache["INPUT"] = inputs
+                    first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
+                    layer_outputs = inputs
+
+                elif lyr_name.upper() != "INPUT":
                     # for simple dense layer based models, lookback will not be used
                     def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
                     layer_outputs = LAYERS["INPUT"](shape=def_shape)
@@ -90,7 +110,8 @@ class NN(AttributeStore):
                     lyr_cache["INPUT"] = layer_outputs
                     # add th layer which the user had specified as first layer
 
-            if lyr_inputs is None:
+            if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
+                # or it uses the previous outputs as inputs
                 if lyr_name.upper() == "INPUT":
                     # it is an Input layer, hence should not be called
                     layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)
@@ -108,20 +129,24 @@ class NN(AttributeStore):
                             td_layer = None
                         else:
                             layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs)
-            else:
+
+            else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                 # it is an executable
                 if lyr_name.upper() in ACTIVATION_LAYERS:
-                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](get_call_args(lyr_inputs, lyr_cache))
+                    call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](call_args, **add_args)
                 elif lyr_name.upper() == 'TIMEDISTRIBUTED':
                     td_layer = LAYERS[lyr_name.upper()]
                     lyr_cache[lyr_name] = td_layer
                     continue
                 else:
                     if td_layer is not None:
-                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(get_call_args(lyr_inputs, lyr_cache))
+                        call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(call_args, **add_args)
                         td_layer = None
                     else:
-                        layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(get_call_args(lyr_inputs, lyr_cache))
+                        call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+                        layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(call_args, **add_args)
 
             if activation is not None:  # put the string back to dictionary to be saved in config file
                 lyr_config['activation'] = activation
@@ -134,7 +159,7 @@ class NN(AttributeStore):
                     for idx, out_name in enumerate(named_outs):
                         self.update_cache(lyr_cache, out_name, layer_outputs[idx])
                 else:
-                    # this layer returns just one output
+                    # this layer returns just one output, TODO, this might be re
                     self.update_cache(lyr_cache, named_outs, layer_outputs)
 
             self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
@@ -158,8 +183,9 @@ class NN(AttributeStore):
 
         inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None
         outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
+        call_args = lyr_args['call_args'] if 'call_args' in lyr_args else None
 
-        return lyr_args['config'], inputs, outputs
+        return lyr_args['config'], inputs, outputs, call_args
 
     def check_lyr_config(self, lyr_name: str, config: dict):
 
@@ -193,16 +219,36 @@ class NN(AttributeStore):
         return layer_name
 
 
-def get_call_args(lyr_inputs, lyr_cache):
+def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
     if isinstance(lyr_inputs, list):
         call_args = []
         for lyr_ins in lyr_inputs:
             if lyr_ins not in lyr_cache:
-                raise ValueError("No layer named {} currently exists in the model.".format(lyr_ins))
+                raise ValueError("No layer named '{}' currently exists in the model which can be fed as input to '{}' layer.".format(lyr_ins, lyr_name))
             call_args.append(lyr_cache[lyr_ins])
     else:
         if lyr_inputs not in lyr_cache:
-            raise ValueError("No layer named {} currently exists in the model.".format(lyr_inputs))
+            raise ValueError("No layer named '{}' currently exists in the model which can be fed as input to '{}' layer.".format(lyr_inputs, lyr_name))
         call_args = lyr_cache[lyr_inputs]
 
-    return call_args
+    additional_args = {}
+    if add_args is not None:
+        assert isinstance(add_args, dict), "call_args to layer '{}' must be provided as dictionary".format(lyr_name)
+        for arg_name, arg_val in add_args.items():
+            if isinstance(arg_val, str):
+                if arg_val not in lyr_cache:
+                    raise NotImplementedError("The value {} for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
+                additional_args[arg_name] = lyr_cache[arg_val]
+
+            elif isinstance(arg_val, list):
+                # the additional argument is a list of tensors, get all of them from lyr_cache
+                add_arg_val_list = []
+                for arg in arg_val:
+                    assert isinstance(arg, str)
+                    add_arg_val_list.append(lyr_cache[arg])
+
+                additional_args[arg_name] = add_arg_val_list
+            else:
+                raise NotImplementedError("The value {} for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
+
+    return call_args, additional_args

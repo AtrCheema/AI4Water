@@ -46,8 +46,7 @@ class MultiInputSharedModel(Model):
 
     def build_nn(self):
 
-        inputs = layers.Input(shape=(self.lookback, self.ins), name='inputs_')
-        predictions = self.add_layers(inputs, self.nn_config['layers'])
+        inputs, predictions = self.add_layers(self.nn_config['layers'])
 
         self.k_model = self.compile(inputs, predictions)
 
@@ -121,11 +120,11 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                                                          **kwargs)
 
     data_config['inputs'] = ['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3', 'ORGP_INppm']
+                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3']
     data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
                               ]
 
-    fpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\data"
+    fpath = os.path.join(os.path.dirname(os.getcwd()), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
     df_8 = pd.read_csv(os.path.join(fpath, 'data_8.csv'))
@@ -153,29 +152,29 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
 
 if __name__ == "__main__":
 
-    _layers = {'lstm_0': {'units': 62,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
-                                        'return_sequences': True, 'return_state': False, 'name': 'lstm_0'},
-               'lstm_1': {'units': 32,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
-                                        'return_sequences': False, 'return_state': False, 'name': 'lstm_1'},
-               'Dense_0': {'units': 16, 'activation': 'leakyrelu'},
-               'Dropout': {'rate': 0.4},
-               'Dense_1': {'units': 1}
+    _layers = {'lstm_0': {'config': {'units': 62,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
+                                        'return_sequences': True, 'return_state': False, 'name': 'lstm_0'}},
+               'lstm_1': {'config':  {'units': 32,  'activation': 'leakyrelu',  'dropout': 0.4, 'recurrent_dropout': 0.4,
+                                        'return_sequences': False, 'return_state': False, 'name': 'lstm_1'}},
+               'Dense_0': {'config':  {'units': 16, 'activation': 'leakyrelu'}},
+               'Dropout': {'config':  {'rate': 0.4}},
+               'Dense_1': {'config':  {'units': 1}}
                }
 
-    # model = make_multi_model(MultiOutputSharedWeights,
-    #                                               batch_size=4,
-    #                                               lookback=3,
-    #                                               lr=0.000216,
-    #                                               layers=_layers,
-    #                                               epochs=300,
-    #                                               ignore_nans=False,
-    #                                               )
-    # model.build_nn()
-    # model.train_nn(st=0, en=5500)
+    model = make_multi_model(MultiInputSharedModel,
+                                                  batch_size=4,
+                                                  lookback=3,
+                                                  lr=0.000216,
+                                                  layers=_layers,
+                                                  epochs=300,
+                                                  ignore_nans=False,
+                                                  )
+    model.build_nn()
+    model.train_nn(st=0, en=5500)
     # model.predict()
 
-    cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction_copy\\results\\lstm_hyper_opt_shared_weights\\20200922_0147\\config.json"
-    w_file = "weights_150_0.0086.hdf5"
-
-    model = make_multi_model(MultiInputSharedModel, from_config=True, config_path=cpath, weights=w_file)
-    model.predict(st=0, en=5500)
+    # cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction_copy\\results\\lstm_hyper_opt_shared_weights\\20200922_0147\\config.json"
+    # w_file = "weights_150_0.0086.hdf5"
+    #
+    # model = make_multi_model(MultiInputSharedModel, from_config=True, config_path=cpath, weights=w_file)
+    # model.predict(st=0, en=5500)
