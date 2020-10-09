@@ -64,6 +64,18 @@ def plot_loss(history: dict, name=None):
     plt.style.use('ggplot')
     i = 1
 
+    sub_plots = {1: (1,1),
+                 2: (1, 1),
+                 3: (1, 2),
+                 4: (1, 2),
+                 5: (1, 3),
+                 6: (1, 3),
+                 7: (2, 2),
+                 8: (2, 2),
+                 9: (3, 2),
+                 10: (3, 2)
+                 }
+
     epochs = range(1, len(history['loss']) + 1)
     axis_cache = {}
 
@@ -76,7 +88,7 @@ def plot_loss(history: dict, name=None):
             axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + m_name)
             axis.legend()
         else:
-            axis = fig.add_subplot(2, 2, i)
+            axis = fig.add_subplot(*sub_plots[len(history)], i)
             axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ' + key)
             axis.legend()
             axis_cache[key] = axis
