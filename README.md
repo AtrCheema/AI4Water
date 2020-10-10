@@ -56,9 +56,9 @@ acts = model.view_model()
 
 We can construct a normal layered model using keras layers by placing the layers in a dictionary. The keys in the
 dictionary must be a keras layer and optionally can have an identifier separated by an underscore `_` in order to 
-differentiate it from other similar layers in the model. The input arguments in the layer must be enclosed in a 
-dictionary themselves. To find out what input arguments can be used, check documentation of corresponding layer in 
-`Tensorflow` docs. 
+differentiate it from other similar layers in the model. The input/initializating arguments in the layer must be
+enclosed in a `config` dictionary within the layer. To find out what input/initializing arguments can be used, check
+documentation of corresponding layer in `Tensorflow` docs. 
 
 ### multi-layer perceptron
 
@@ -123,7 +123,7 @@ _model.build_nn()
 <img src="imgs/lstm.png" width="300" height="400" />
 
 ### 1d CNN based model
-If a layer does not receive any input arguments, still an empty dictioanry must be provided.  
+If a layer does not receive any input arguments for its initialization, still an empty dictioanry must be provided.  
 Activation functions can also be used as a separate layer.
 ```python
 layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
@@ -166,10 +166,14 @@ layers = {'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activ
 
 ### CNN -> LSTM
 If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed by `TimeDistributed` as shown below.
-In following, 3 `Conv1D` layer are enclosed in `TimeDistributed` layer. Similary `Flatten` and `MaxPool1D` are also 
+In following, 3 `Conv1D` layers are enclosed in `TimeDistributed` layer. Similary `Flatten` and `MaxPool1D` are also 
 wrapped in `TimeDistributed` layer.
 ```python
+sub_sequences = 3
+lookback = 15
+time_steps = lookback // sub_sequences
 layers = {
+    "Input": {'config': {'shape': (None, time_steps, 10)}},
     "TimeDistributed_0": {'config': {}},
     'conv1d_0': {'config': {'filters': 64, 'kernel_size': 2}},
     'LeakyRelu_0': {'config': {}},
@@ -191,7 +195,7 @@ layers = {
     'Dense': {'config': {'units': 1}}
 }
 ```
-<img src="imgs/cnn_lstm.png" width="500" height="600" />
+<img src="imgs/cnn_lstm.png" width="600" height="700" />
 
 
 ### LSTM based auto-encoder
@@ -227,9 +231,9 @@ layers = {"tcn": {'config': {'nb_filters': 64,
 
 
 ### Multiple Inputs
-In order to build more complex models, where a list takes more than one inputs, you can specify the `inputs` key
-for a layer and specify which inputs the layer uses. The `value` of the `inputs` dictionary must be a `list` in this
-case whose members must be the names of the layers which have been defined earlier.
+In order to build more complex models, where a layer takes more than one inputs, you can specify the `inputs` key
+for the layer and specify which inputs the layer uses. The `value` of the `inputs` dictionary must be a `list` in this
+case whose members must be the names of the layers which must have been defined earlier.
 
 ```python
 from models import Model
@@ -268,10 +272,10 @@ from `Model` class
 
 
 ### Multiple Output Layers
-For cases when a layer returns more than one output and we want to use each of those outputs in a separate layer. Such
-models can be built by specifying the outputs from a layer using `outputs` key. The `value` fo the `outputs` key can a
-string or a list specifying the names of of outputs the layer is returning. We can use these names as inputs to any
-other layer later in the model. 
+In some cases a layer returns more than one output and we want to use each of those outputs in a separate layer. Such
+models can be built by specifying the outputs from a layer using `outputs` key. The `value` of the `outputs` key can a
+string or a list of strings specifying the names of of outputs, the layer is returning. We can use these names as inputs
+to any other layer later in the model. 
 
 ```python
 layers = {
@@ -299,8 +303,8 @@ layers = {
 
 
 ### Additional call args
-We might be tempted to provide additional call arguments to a layer. For example, in tensorflow's LSTM layer, we can
-provide `initial state` of an LSTM. What if we want to use hidden and cell state of one LSTM as initial state for next
+We might be tempted to provide additional call arguments to a layer. For example, in tensorflow's [LSTM layer](https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM#call_arguments_2), we can
+provide `initial state` of an LSTM. Suppose we want to use hidden and cell state of one LSTM as initial state for next
 LSTM. In such cases we can make use of `call_args` as `key`. The value of `call_args` must a dictionary. In this way
 we can provide `keyword` arguments while calling a layer.
 
@@ -338,6 +342,7 @@ layers ={
 <img src="imgs/add_call_args.png" width="500" height="600" />
 
 It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional while `config` is mandatory.
+
 For more examples see `docs`.
 
 ## Disclaimer

@@ -322,6 +322,11 @@ class Model(NN):
 
         if 'tensorboard' in callbacks:
             _callbacks.append(keras.callbacks.TensorBoard(log_dir=self.path, histogram_freq=1))
+            callbacks.pop('tensorboard')
+
+        for key, val in callbacks.items():
+            _callbacks.append(val)
+
         self.k_model.fit(inputs,
                          outputs,
                          epochs=self.nn_config['epochs'],
@@ -460,6 +465,10 @@ class Model(NN):
 
         return history
 
+    def test_paras(self, **kwargs):
+        """ just providing it so that it can be overwritten in sub-classes."""
+        return self.run_paras(**kwargs)
+
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, **plot_args):
         """
@@ -470,7 +479,7 @@ class Model(NN):
         if indices is not None:
             setattr(self, 'predict_indices', indices)
 
-        inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
+        inputs, true_outputs = self.test_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                               return_dt_index=use_datetime_index)
 
         first_input = inputs[0]
