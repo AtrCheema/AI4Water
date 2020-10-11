@@ -301,6 +301,12 @@ def make_model(**kwargs):
     data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
     data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
     data_config['metrics'] = None  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+    # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches
+    # will be inferred from this Input layer but for cases,  the model takes more than 1 Input, then there can be two
+    # cases, either all the inputs are of same shape or they  are not. In second case, we should overwrite `train_paras`
+    # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
+    # for Dense layer.
+    data_config['batches'] = '3d'
 
     # input features in data_frame
     dpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
