@@ -103,7 +103,7 @@ class NN(AttributeStore):
                 elif lyr_name.upper() != "INPUT":
                     # for simple dense layer based models, lookback will not be used
                     def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
-                    layer_outputs = LAYERS["INPUT"](shape=def_shape)
+                    layer_outputs = get_layer(lyr_name)(shape=def_shape)
                     # first layer is built so next iterations will not be for first layer
                     first_layer = False
                     # put the first layer in memory to be used for model compilation
@@ -114,21 +114,21 @@ class NN(AttributeStore):
                 # or it uses the previous outputs as inputs
                 if lyr_name.upper() == "INPUT":
                     # it is an Input layer, hence should not be called
-                    layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)
+                    layer_outputs = get_layer(lyr_name)(**lyr_config)
                 else:
                     # it is executable and uses previous outputs as inputs
                     if lyr_name.upper() in ACTIVATION_LAYERS:
                         layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](layer_outputs)
                     elif lyr_name.upper() == 'TIMEDISTRIBUTED':
-                        td_layer = LAYERS[lyr_name.upper()]
+                        td_layer = get_layer(lyr_name)
                         lyr_cache[lyr_name] = td_layer
                         continue
                     else:
                         if td_layer is not None:
-                            layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
+                            layer_outputs = td_layer(get_layer(lyr_name)(**lyr_config))(layer_outputs)
                             td_layer = None
                         else:
-                            layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs)
+                            layer_outputs = get_layer(lyr_name)(**lyr_config)(layer_outputs)
 
             else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                 # it is an executable
@@ -136,17 +136,17 @@ class NN(AttributeStore):
                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                     layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](call_args, **add_args)
                 elif lyr_name.upper() == 'TIMEDISTRIBUTED':
-                    td_layer = LAYERS[lyr_name.upper()]
+                    td_layer = get_layer(lyr_name)
                     lyr_cache[lyr_name] = td_layer
                     continue
                 else:
                     if td_layer is not None:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(call_args, **add_args)
+                        layer_outputs = td_layer(get_layer(lyr_name)(**lyr_config))(call_args, **add_args)
                         td_layer = None
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(call_args, **add_args)
+                        layer_outputs = get_layer(lyr_name)(**lyr_config)(call_args, **add_args)
 
             if activation is not None:  # put the string back to dictionary to be saved in config file
                 lyr_config['activation'] = activation
@@ -214,7 +214,8 @@ class NN(AttributeStore):
 
         layer_name = lyr.split('_')[0]
         if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
-            raise ValueError("unknown layer {}".format(lyr))
+            if not hasattr(tf.keras.layers, layer_name):
+                raise ValueError("unknown layer {}".format(lyr))
 
         return layer_name
 
@@ -252,3 +253,12 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
                 raise NotImplementedError("The value {} for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
 
     return call_args, additional_args
+
+def get_layer(lyr_name:str):
+    if hasattr(tf.keras.layers, lyr_name):
+        lyr =  getattr(tf.keras.layers, lyr_name)
+    elif lyr_name.upper() in LAYERS:
+        lyr = LAYERS[lyr_name.upper()]
+    else:
+        raise ValueError(f"The layer name '{lyr_name}' you specified, does not exist")
+    return lyr
