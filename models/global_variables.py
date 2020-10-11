@@ -27,23 +27,23 @@ keras = keras
 torch = torch
 tf = tf
 
+
+def get_keras_layers() ->dict:
+    """ gets all callable attributes of tf.keras.layers and saves them in dictionary with their names all capitalized
+    so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
+    are callable but still not a `layer`, in that case the error will be generated from tensorflow. We are not catching
+    that error right now."""
+    all_lyrs = {}
+    for l in dir(tf.keras.layers):
+        layer = getattr(tf.keras.layers, l)
+        if callable(layer):
+            all_lyrs[l.upper()] = layer
+
+    return all_lyrs
+
 if keras is not None:
     LAYERS = {
-        "INPUT": keras.layers.Input,
-        "DENSE": keras.layers.Dense,
-        "CONV1D": keras.layers.Conv1D,
-        "LSTM": keras.layers.LSTM,
-        "GRU": keras.layers.GRU,
-        "MAXPOOL1D": keras.layers.MaxPool1D,
-        "AVERAGEPOOL1D": keras.layers.AveragePooling1D,
-        "FLATTEN": keras.layers.Flatten,
-        "TIMEDISTRIBUTED": keras.layers.TimeDistributed,
-        "DROPOUT": keras.layers.Dropout,
-        "REPEATVECTOR": keras.layers.RepeatVector,
-        "CONVLSTM2D": keras.layers.ConvLSTM2D,
         "TCN": tcn.TCN if tcn is not None else None,
-        "CONCAT": keras.layers.Concatenate,
-        "RESHAPE": keras.layers.Reshape,
         "ATTENTIONRAFFEL": AttentionRaffel,
         "SELFATTENTION": SelfAttention,
         "BAHDANAUATTENTION": BahdanauAttention,
@@ -51,6 +51,8 @@ if keras is not None:
         "SEQSELFATTENTION": SeqSelfAttention,
         "SNAILATTENTION": SnailAttention,
     }
+
+    LAYERS.update(get_keras_layers())
 
     ACTIVATION_LAYERS = {
         'LEAKYRELU': keras.layers.LeakyReLU(), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
