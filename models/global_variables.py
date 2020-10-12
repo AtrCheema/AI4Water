@@ -7,8 +7,6 @@ try:
     import tensorflow as tf
     maj_version = int(tf.__version__[0])
     min_version = int(tf.__version__[2])
-    from .attention_layers import AttentionRaffel, SelfAttention, BahdanauAttention, HierarchicalAttention, SeqSelfAttention
-    from .attention_layers import SnailAttention
 except ModuleNotFoundError:
     keras = None
     tf = None
@@ -28,15 +26,15 @@ torch = torch
 tf = tf
 
 
-def get_keras(what='losses') ->dict:
-    """ gets all callable attributes of tf.keras.what and saves them in dictionary with their names all capitalized
-    so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
+def get_attributes(aus=tf.keras, what:str='losses') ->dict:
+    """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
+    capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
     are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
     losses, in that case the error will be generated from tensorflow. We are not catching those error right now."""
     all_attrs = {}
-    for l in dir(getattr(tf.keras, what)):
-        attr = getattr(getattr(tf.keras, what), l)
-        if callable(attr):
+    for l in dir(getattr(aus, what)):
+        attr = getattr(getattr(aus, what), l)
+        if callable(attr) and not l.startswith('_'):
             all_attrs[l.upper()] = attr
 
     return all_attrs
@@ -44,15 +42,13 @@ def get_keras(what='losses') ->dict:
 if keras is not None:
     LAYERS = {
         "TCN": tcn.TCN if tcn is not None else None,
-        "ATTENTIONRAFFEL": AttentionRaffel,
-        "SELFATTENTION": SelfAttention,
-        "BAHDANAUATTENTION": BahdanauAttention,
-        "HIERARCHICALATTENTION": HierarchicalAttention,
-        "SEQSELFATTENTION": SeqSelfAttention,
-        "SNAILATTENTION": SnailAttention,
     }
 
-    LAYERS.update(get_keras('layers'))
+    LAYERS.update(get_attributes(what='layers'))
+
+    import models.attention_layers as attns
+
+    LAYERS.update(get_attributes(aus=attns, what='attn_layers'))
 
     ACTIVATION_LAYERS = {
         'LEAKYRELU': keras.layers.LeakyReLU(), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
@@ -85,7 +81,7 @@ if keras is not None:
         "LINEAR": 'linear'
     }
 
-    OPTIMIZERS = get_keras('optimizers')
+    OPTIMIZERS = get_attributes(what='optimizers')
 else:
     LAYERS = None
     ACTIVATION_LAYER = None
@@ -96,14 +92,10 @@ else:
 if tf is not None:
     import tf_losses as tf_losses
     LOSSES = {
-        #'mse': keras.losses.mse,
-        #'mae': keras.losses.mae,
-        #'mape': keras.losses.MeanAbsolutePercentageError,
-        #'male': keras.losses.MeanSquaredLogarithmicError,
         'nse': tf_losses.tf_nse,
         'kge': tf_losses.tf_kge,
     }
-    LOSSES.update(get_keras('losses'))
+    LOSSES.update(get_attributes(what='losses'))
 else:
     LOSSES = {
         'mse': torch.nn.MSELoss

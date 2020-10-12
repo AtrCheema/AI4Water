@@ -25,6 +25,7 @@ if tf is not None:
         tf.compat.v1.set_random_seed(313)
     elif int(tf.__version__[0]) > 1:
         tf.random.set_seed(313)
+    tf.keras.backend.clear_session()
 
 np.set_printoptions(suppress=True)  # to suppress scientific notation while printing arrays
 
@@ -43,7 +44,7 @@ class Model(NN):
         self.data = data
         self.in_cols = self.data_config['inputs']
         self.out_cols = self.data_config['outputs']
-        self.loss = LOSSES[self.nn_config['loss']]
+        self.loss = LOSSES[self.nn_config['loss'].upper()]
         self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path)
 
@@ -303,7 +304,7 @@ class Model(NN):
         shape = tuple(shape)
         return shape
 
-    def fit(self, inputs, outputs, validation_data=None, **callbacks):
+    def fit(self, inputs, outputs, **callbacks):
 
         _callbacks = list()
 
@@ -332,7 +333,7 @@ class Model(NN):
                          epochs=self.nn_config['epochs'],
                          batch_size=self.data_config['batch_size'],
                          validation_split=self.data_config['val_fraction'],
-                         validation_data=validation_data,
+                         validation_data=self.get_val_data(),
                          callbacks=_callbacks,
                          steps_per_epoch=self.data_config['steps_per_epoch']
                          )
@@ -455,9 +456,7 @@ class Model(NN):
 
         inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
-        val_data = self.get_val_data()
-
-        history = self.fit(inputs, outputs, validation_data=val_data, **callbacks)
+        history = self.fit(inputs, outputs, **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 

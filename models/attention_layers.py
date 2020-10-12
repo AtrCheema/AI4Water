@@ -1,5 +1,4 @@
-__all__ = ["AttentionRaffel", "SnailAttention", "SeqSelfAttention", "SelfAttention", "SeqWeightedAttention",
-           "BahdanauAttention", "HierarchicalAttention"]
+__all__ = ["attn_layers"]
 
 from tensorflow.keras import initializers, regularizers, constraints
 from tensorflow.keras.layers import Layer
@@ -839,3 +838,14 @@ class SnailAttention(Layer):
         output_shape = list(input_shape)
         output_shape[-1] += self.v_size
         return tuple(output_shape)
+
+
+class attn_layers(object):
+
+    AttentionRaffel = AttentionRaffel
+    SelfAttention = SelfAttention
+    SeqWeightedAttention = SeqWeightedAttention
+    SnailAttention = SnailAttention
+    SeqWeightedAttention = SeqWeightedAttention
+    BahdanauAttention = BahdanauAttention
+    HierarchicalAttention = HierarchicalAttention
