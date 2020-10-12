@@ -83,7 +83,7 @@ class NN(AttributeStore):
         want to use this method several times to build a complex or parallel NN structure.
         """
         lyr_cache = {}
-        td_layer = None
+        wrp_layer = None  # indicator for wrapper layers
         first_layer = True
 
         for lyr, lyr_args in layers_config.items():
@@ -119,14 +119,14 @@ class NN(AttributeStore):
                     # it is executable and uses previous outputs as inputs
                     if lyr_name.upper() in ACTIVATION_LAYERS:
                         layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](layer_outputs)
-                    elif lyr_name.upper() == 'TIMEDISTRIBUTED':
-                        td_layer = LAYERS[lyr_name.upper()]
-                        lyr_cache[lyr_name] = td_layer
+                    elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+                        wrp_layer = LAYERS[lyr_name.upper()]
+                        lyr_cache[lyr_name] = wrp_layer
                         continue
                     else:
-                        if td_layer is not None:
-                            layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
-                            td_layer = None
+                        if wrp_layer is not None:
+                            layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
+                            wrp_layer = None
                         else:
                             layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs)
 
@@ -135,15 +135,15 @@ class NN(AttributeStore):
                 if lyr_name.upper() in ACTIVATION_LAYERS:
                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                     layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](call_args, **add_args)
-                elif lyr_name.upper() == 'TIMEDISTRIBUTED':
-                    td_layer = LAYERS[lyr_name.upper()]
-                    lyr_cache[lyr_name] = td_layer
+                elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+                    wrp_layer = LAYERS[lyr_name.upper()]
+                    lyr_cache[lyr_name] = wrp_layer
                     continue
                 else:
-                    if td_layer is not None:
+                    if wrp_layer is not None:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = td_layer(LAYERS[lyr_name.upper()](**lyr_config))(call_args, **add_args)
-                        td_layer = None
+                        layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](**lyr_config))(call_args, **add_args)
+                        wrp_layer = None
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                         layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(call_args, **add_args)
@@ -220,6 +220,8 @@ class NN(AttributeStore):
 
 
 def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
+    """ gets the additional call arguments for a layer. It is supposed that the call arguments are actually tensors/layers
+    that have been created so far in the model including input layer. The call_args can be a list of inputs as well."""
     if isinstance(lyr_inputs, list):
         call_args = []
         for lyr_ins in lyr_inputs:
