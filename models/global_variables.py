@@ -1,4 +1,4 @@
-__all__ = ["tf", "keras", "torch", "ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "tcn", "LAYERS"]
+__all__ = ["tf", "keras", "torch", "ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "tcn", "LAYERS", "OPTIMIZERS"]
 
 maj_version = 0
 min_version = 0
@@ -28,18 +28,18 @@ torch = torch
 tf = tf
 
 
-def get_keras_layers() ->dict:
-    """ gets all callable attributes of tf.keras.layers and saves them in dictionary with their names all capitalized
+def get_keras(what='losses') ->dict:
+    """ gets all callable attributes of tf.keras.what and saves them in dictionary with their names all capitalized
     so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
-    are callable but still not a `layer`, in that case the error will be generated from tensorflow. We are not catching
-    that error right now."""
-    all_lyrs = {}
-    for l in dir(tf.keras.layers):
-        layer = getattr(tf.keras.layers, l)
-        if callable(layer):
-            all_lyrs[l.upper()] = layer
+    are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
+    losses, in that case the error will be generated from tensorflow. We are not catching those error right now."""
+    all_attrs = {}
+    for l in dir(getattr(tf.keras, what)):
+        attr = getattr(getattr(tf.keras, what), l)
+        if callable(attr):
+            all_attrs[l.upper()] = attr
 
-    return all_lyrs
+    return all_attrs
 
 if keras is not None:
     LAYERS = {
@@ -52,7 +52,7 @@ if keras is not None:
         "SNAILATTENTION": SnailAttention,
     }
 
-    LAYERS.update(get_keras_layers())
+    LAYERS.update(get_keras('layers'))
 
     ACTIVATION_LAYERS = {
         'LEAKYRELU': keras.layers.LeakyReLU(), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
@@ -84,22 +84,26 @@ if keras is not None:
         "HARDSIGMOID": 'hard_sigmoid',
         "LINEAR": 'linear'
     }
+
+    OPTIMIZERS = get_keras('optimizers')
 else:
     LAYERS = None
     ACTIVATION_LAYER = None
     ACTIVATION_FNS = None
+    OPTIMIZERS = None
 
 
 if tf is not None:
     import tf_losses as tf_losses
     LOSSES = {
-        'mse': keras.losses.mse,
-        'mae': keras.losses.mae,
-        'mape': keras.losses.MeanAbsolutePercentageError,
-        'male': keras.losses.MeanSquaredLogarithmicError,
+        #'mse': keras.losses.mse,
+        #'mae': keras.losses.mae,
+        #'mape': keras.losses.MeanAbsolutePercentageError,
+        #'male': keras.losses.MeanSquaredLogarithmicError,
         'nse': tf_losses.tf_nse,
         'kge': tf_losses.tf_kge,
     }
+    LOSSES.update(get_keras('losses'))
 else:
     LOSSES = {
         'mse': torch.nn.MSELoss

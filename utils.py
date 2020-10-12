@@ -268,7 +268,7 @@ def make_model(**kwargs):
     nn_config['composite'] = False  # for auto-encoders
 
     nn_config['lr'] = 0.0001
-    nn_config['optimizer'] = 'adam'
+    nn_config['optimizer'] = 'adam' # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
     nn_config['loss'] = 'mse'
     nn_config['epochs'] = 14
     nn_config['min_val_loss'] = 0.0001

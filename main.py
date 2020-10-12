@@ -13,7 +13,7 @@ import h5py
 from nn_tools import NN
 from models.global_variables import keras, tf, tcn
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
-from models.global_variables import LOSSES
+from models.global_variables import LOSSES, OPTIMIZERS
 
 
 np.random.seed(313)
@@ -638,8 +638,11 @@ class Model(NN):
     def compile(self, model_inputs, outputs):
 
         k_model = self.KModel(inputs=model_inputs, outputs=outputs)
-        adam = keras.optimizers.Adam(lr=self.nn_config['lr'])
-        k_model.compile(loss=self.loss, optimizer=adam, metrics=self.get_metrics())
+
+        opt_args = self.get_opt_args()
+        optimizer = OPTIMIZERS[self.nn_config['optimizer'].upper()](**opt_args)
+
+        k_model.compile(loss=self.loss, optimizer=optimizer, metrics=self.get_metrics())
         k_model.summary()
 
         try:
@@ -647,6 +650,11 @@ class Model(NN):
         except AssertionError:
             print("dot plot of model could not be plotted")
         return k_model
+
+    def get_opt_args(self):
+        """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
+        in sub-classes"""
+        return {'lr': self.nn_config['lr']}
 
     def get_metrics(self) -> list:
         """ returns the performance metrics specified"""
