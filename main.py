@@ -198,9 +198,11 @@ class Model(NN):
         cols = self.in_cols + self.out_cols
         df = df[cols]
 
-        scaler = MinMaxScaler()
-        data = scaler.fit_transform(df)
-        df = pd.DataFrame(data)
+        scaler = None
+        if self.data_config['normalize']:
+            scaler = MinMaxScaler()
+            data = scaler.fit_transform(df)
+            df = pd.DataFrame(data)
 
         if return_dt_index:
             # pandas will add the 'datetime' column as first column. This columns will only be used to keep
@@ -604,35 +606,38 @@ class Model(NN):
 
     def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
 
-        if self.outs == 1:
-            # denormalize the data
-            if np.ndim(first_input) == 4:
-                first_input = first_input[:, -1, 0, :]
-            elif np.ndim(first_input) == 5:
-                first_input = first_input[:, -1, 0, -1, :]
-            elif np.ndim(first_input) == 3:
-                first_input = first_input[:, -1, :]
-            elif np.ndim(first_input) == 2:
-                first_input = first_input[:, :]
+        if self.data_config['normalize']:
+            if self.outs == 1:
+                # denormalize the data
+                if np.ndim(first_input) == 4:
+                    first_input = first_input[:, -1, 0, :]
+                elif np.ndim(first_input) == 5:
+                    first_input = first_input[:, -1, 0, -1, :]
+                elif np.ndim(first_input) == 3:
+                    first_input = first_input[:, -1, :]
+                elif np.ndim(first_input) == 2:
+                    first_input = first_input[:, :]
+            else:
+                if np.ndim(first_input) == 3:
+                    first_input = first_input[:, -1, :]
+                    true_outputs = np.stack(true_outputs, axis=1).reshape(-1, self.outs)
+                    predicted = np.stack(predicted, axis=1).reshape(-1, self.outs)
+
+            in_obs = np.hstack([first_input, true_outputs])
+            in_pred = np.hstack([first_input, predicted])
+            scaler = self.scalers['scaler_'+scaler_key]
+            in_obs_den = scaler.inverse_transform(in_obs)
+            in_pred_den = scaler.inverse_transform(in_pred)
+            true_outputs = in_obs_den[:, -self.outs:]
+            predicted = in_pred_den[:, -self.outs:]
+
+            if self.outs > 1:
+                true_outputs = [true_outputs[:, i] for i in range(self.outs)]
+                predicted = [predicted[:, i] for i in range(self.outs)]
+
+            return predicted, true_outputs
         else:
-            if np.ndim(first_input) == 3:
-                first_input = first_input[:, -1, :]
-                true_outputs = np.stack(true_outputs, axis=1).reshape(-1, self.outs)
-                predicted = np.stack(predicted, axis=1).reshape(-1, self.outs)
-
-        in_obs = np.hstack([first_input, true_outputs])
-        in_pred = np.hstack([first_input, predicted])
-        scaler = self.scalers['scaler_'+scaler_key]
-        in_obs_den = scaler.inverse_transform(in_obs)
-        in_pred_den = scaler.inverse_transform(in_pred)
-        true_outputs = in_obs_den[:, -self.outs:]
-        predicted = in_pred_den[:, -self.outs:]
-
-        if self.outs > 1:
-            true_outputs = [true_outputs[:, i] for i in range(self.outs)]
-            predicted = [predicted[:, i] for i in range(self.outs)]
-
-        return predicted, true_outputs
+            return predicted, true_outputs
 
     def compile(self, model_inputs, outputs):
 
@@ -1035,10 +1040,14 @@ class Model(NN):
         if save:
             assert isinstance(fname, str)
             if "/" in fname:
-                fname = fname.replace("/", "_")
-            plt.savefig(os.path.join(self.path, fname))
+                fname = fname.replace("/", "__")
+            if ":" in fname:
+                fname = fname.replace(":", "__")
+            fname = os.path.join(self.act_path, fname + ".png")
+            plt.savefig(fname)
         else:
             plt.show()
+        return
 
     def save_config(self, history: dict):
 

@@ -291,6 +291,7 @@ def make_model(**kwargs):
     }
 
     data_config = dict()
+    data_config['normalize'] = True
     data_config['lookback'] = 15
     data_config['batch_size'] = 32
     data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
