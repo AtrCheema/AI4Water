@@ -82,7 +82,7 @@ class MultiInputSharedModel(Model):
             if use_datetime_index:
                 # remove the first of first inputs which is datetime index
                 dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-                first_input = first_input[:, :, 1:].astype(np.float32)
+                first_input = first_input[..., 1:].astype(np.float32)
                 inputs[0] = first_input
 
             predicted = self.k_model.predict(x=inputs,
@@ -111,6 +111,7 @@ class MultiInputSharedModel(Model):
 
 
 def make_multi_model(input_model,  from_config=False, config_path=None, weights=None,
+                     prefix=None,
                      batch_size=8, lookback=19, lr=1.52e-5, ignore_nans=True, **kwargs):
 
     data_config, nn_config, total_intervals = make_model(batch_size=batch_size,
@@ -124,7 +125,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
                               ]
 
-    fpath = os.path.join(os.path.dirname(os.getcwd()), 'data')
+    fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
     df_8 = pd.read_csv(os.path.join(fpath, 'data_8.csv'))
@@ -145,7 +146,8 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
         _model = input_model(data_config=data_config,
                              nn_config=nn_config,
                              data=[df_1, df_3, df_8  # , df_12
-                                   ]
+                                   ],
+                             prefix=prefix
                              )
     return _model
 
