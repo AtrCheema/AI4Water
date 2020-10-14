@@ -397,8 +397,8 @@ class Model(NN):
 
         return interval_length
 
-    def run_paras(self, **kwargs):
-
+    def train_data(self, **kwargs):
+        """ prepare data on which to train the NN"""
         x, y, label = self.fetch_data(self.data, **kwargs)
         return [x], label
 
@@ -440,12 +440,12 @@ class Model(NN):
 
         return
 
-    def get_val_data(self):
+    def val_data(self, **kwargs):
         """ This method can be overwritten in child classes. """
         val_data = None
         if self.data_config['val_data'] is not None:
             if isinstance(self.data_config['val_data'], str):
-                val_data = NotImplementedError("Define the method `get_val_data` in your model class.")
+                val_data = NotImplementedError("Define the method `val_data` in your model class.")
             else:
                 # `val_data` might have been provided (then use it as it is) or it is None
                 val_data = self.data_config['val_data']
@@ -458,9 +458,9 @@ class Model(NN):
 
         indices = self.get_indices(indices)
 
-        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
+        inputs, outputs = self.train_data(st=st, en=en, indices=indices)
 
-        history = self.fit(inputs, outputs, self.get_val_data(), **callbacks)
+        history = self.fit(inputs, outputs, self.val_data(), **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 
@@ -470,7 +470,7 @@ class Model(NN):
 
     def test_paras(self, **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
-        return self.run_paras(**kwargs)
+        return self.train_data(**kwargs)
 
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, **plot_args):
@@ -767,7 +767,7 @@ class Model(NN):
 
     def activations(self, layer_names=None, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
-        inputs, outputs = self.run_paras(**kwargs)
+        inputs, outputs = self.train_data(**kwargs)
 
         activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
         return activations, inputs
@@ -784,13 +784,13 @@ class Model(NN):
 
     def gradients_of_weights(self, **kwargs) -> dict:
 
-        x, y = self.run_paras(**kwargs)
+        x, y = self.train_data(**kwargs)
 
         return keract.get_gradients_of_trainable_weights(self.k_model, x, y)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
 
-        x, y = self.run_paras(st=st, en=en, indices=indices)
+        x, y = self.train_data(st=st, en=en, indices=indices)
 
         return keract.get_gradients_of_activations(self.k_model, x, y, layer_names=layer_name)
 
@@ -806,34 +806,51 @@ class Model(NN):
 
     def plot_weights(self, save=True):
         weights = self.trainable_weights()
+
         for _name, weight in weights.items():
             title = _name + " Weights"
             fname = _name + '_weights'
 
+            rnn_args = None
+            if "LSTM" in title.upper():
+                rnn_args = {'n_gates': 4,
+                            'gate_names_str': "(input, forget, cell, output)"}
+
             if np.ndim(weight) == 2 and weight.shape[1] > 1:
-                self._imshow(weight, title, save, fname)
+
+                self._imshow(weight, title, save, fname, rnn_args=rnn_args)
+
             elif len(weight) > 1 and np.ndim(weight) < 3:
-                self.plot1d(weight, title, save, fname)
+                self.plot1d(weight, title, save, fname, rnn_args=rnn_args)
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
-    def plot_activations(self, save: bool = False, **kwargs):
+    def plot_activations(self, save: bool = True, **kwargs):
         """ plots activations of intermediate layers except input and output.
         If called without any arguments then it will plot activations of all layers."""
         activations, _ = self.activations(**kwargs)
 
         for lyr_name, activation in activations.items():
-            if np.ndim(activation) == 2 and activation.shape[1] > 1:
-                self._imshow(activation, lyr_name + " Activations", save, os.path.join(self.path, lyr_name))
-            elif np.ndim(activation) == 3:
-                self._imshow_3d(activation, lyr_name, save=save)
-            elif np.ndim(activation) == 2:  # this is now 1d
-                # shape= (?, 1)
-                self.plot1d(activation, label=lyr_name+' Activations', save=save,
-                            fname=os.path.join(self.path, lyr_name+'_activations'))
-            else:
-                print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
-                                                                                       np.ndim(activation)))
+            # activation may be tuple e.g if input layer receives more than 1 input
+            if isinstance(activation, np.ndarray):
+                self._plot_activation(activation, lyr_name, save)
+
+            elif isinstance(activation, tuple):
+                for act in activation:
+                    self._plot_activation(act, lyr_name, save)
+
+    def _plot_activation(self, activation, lyr_name, save):
+        if np.ndim(activation) == 2 and activation.shape[1] > 1:
+            self._imshow(activation, lyr_name + " Activations", save, lyr_name)
+        elif np.ndim(activation) == 3:
+            self._imshow_3d(activation, lyr_name, save=save)
+        elif np.ndim(activation) == 2:  # this is now 1d
+            # shape= (?, 1)
+            self.plot1d(activation, label=lyr_name+' Activations', save=save,
+                        fname=lyr_name+'_activations')
+        else:
+            print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
+                                                                                   np.ndim(activation)))
 
     def plot_weight_grads(self, save: bool = True, **kwargs):
         """ plots gradient of all trainable weights"""
@@ -842,22 +859,28 @@ class Model(NN):
         for lyr_name, gradient in gradients.items():
 
             title = lyr_name + "Weight Gradients"
-            fname = os.path.join(self.path, lyr_name+'_weight_grads')
+            fname = lyr_name+'_weight_grads'
+            rnn_args = None
+
+            if "LSTM" in title.upper():
+                rnn_args = {'n_gates': 4,
+                            'gate_names_str': "(input, forget, cell, output)"}
 
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                self._imshow(gradient, title, save,  fname)
+                self._imshow(gradient, title, save,  fname, rnn_args=rnn_args)
+
             elif len(gradient) and np.ndim(gradient) < 3:
-                self.plot1d(gradient, title, save, fname)
+                self.plot1d(gradient, title, save, fname, rnn_args=rnn_args)
             else:
                 print("ignoring weight gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
                                                                                            np.ndim(gradient)))
 
-    def plot_act_grads(self, save: bool = None, **kwargs):
+    def plot_act_grads(self, save: bool = True, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         gradients = self.gradients_of_activations(**kwargs)
 
         for lyr_name, gradient in gradients.items():
-            fname = os.path.join(self.path, lyr_name + "_activation gradients")
+            fname = lyr_name + "_activation gradients"
             title = lyr_name + " Activation Gradients"
             if np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
@@ -1016,10 +1039,25 @@ class Model(NN):
         # return x, y, target
         return self.check_nans(df, input_x, input_y, label_y, outs)
 
-    def _imshow(self, img, label: str = '', save=True, fname=None):
+    def _imshow(self, img, label: str = '', save=True, fname=None, rnn_args=None):
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
+        plt.rcParams.update(plt.rcParamsDefault)
         plt.imshow(img, aspect='auto')
+
+        if rnn_args is not None:
+            assert isinstance(rnn_args, dict)
+
+            rnn_dim = int(img.shape[1] / rnn_args['n_gates'])
+            [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.5, color='k')
+                     for gate_idx in range(1, rnn_args['n_gates'])]
+
+            plt.xlabel(rnn_args['gate_names_str'])
+            if "RECURRENT" in label.upper():
+                plt.ylabel("Hidden Units")
+            else:
+                plt.ylabel("Channel Units")
+
         plt.colorbar()
         plt.title(label)
         self.save_or_show(save, fname)
@@ -1030,12 +1068,21 @@ class Model(NN):
             act_2d.append(activation[i, :])
         activation_2d = np.vstack(act_2d)
         self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
-                     save, os.path.join(self.path, lyr_name))
+                     save, lyr_name)
 
-    def plot1d(self, array, label: str = '', save=True, fname=None):
+    def plot1d(self, array, label: str = '', save=True, fname=None, rnn_args=None):
         plt.close('all')
         plt.plot(array, '.')
         plt.title(label)
+
+        if rnn_args is not None:
+            assert isinstance(rnn_args, dict)
+
+            rnn_dim = int(array.shape[0] / rnn_args['n_gates'])
+            [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.5, color='k')
+                     for gate_idx in range(1, rnn_args['n_gates'])]
+            plt.xlabel(rnn_args['gate_names_str'])
+
         self.save_or_show(save, fname)
 
     def save_or_show(self, save: bool = True, fname=None):

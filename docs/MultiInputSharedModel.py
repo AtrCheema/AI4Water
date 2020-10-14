@@ -21,7 +21,7 @@ class MultiInputSharedModel(Model):
         x, _, labels = self.fetch_data(data=data, **kwargs)
         return [x], [labels]
 
-    def run_paras(self, **kwargs):
+    def train_data(self, **kwargs):
 
         x_data = []
         y_data = []
@@ -34,15 +34,21 @@ class MultiInputSharedModel(Model):
             x_data.append(x)
             y_data.append(labels)
 
-        self.out_cols = [self.data_config['outputs'][-1]]  # because fetch_data depends upon self.outs
-        x, _, labels = self.fetch_data(data=self.data[-1], **kwargs)
-
         self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
 
         x_data = np.vstack(x_data)
         y_data = np.vstack(y_data)
 
-        return (x_data, y_data), (x, labels)
+        return x_data, y_data
+
+    def val_data(self, **kwargs):
+
+        self.out_cols = [self.data_config['outputs'][-1]]  # because fetch_data depends upon self.outs
+        x, _, labels = self.fetch_data(data=self.data[-1], **kwargs)
+
+        self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+
+        return x, labels
 
     def build_nn(self):
 
@@ -54,7 +60,9 @@ class MultiInputSharedModel(Model):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
         self.training = True
-        train_data, val_data = self.run_paras(st=st, en=en, indices=indices)
+        train_data = self.train_data(st=st, en=en, indices=indices)
+
+        val_data = self.val_data(st=st, en=en, indices=indices)
 
         history = self.fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
 
