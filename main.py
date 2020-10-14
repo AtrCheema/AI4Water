@@ -36,6 +36,7 @@ class Model(NN):
                  nn_config: dict,
                  data,
                  intervals=None,
+                 prefix: str = None,
                  path: str = None):
 
         super(Model, self).__init__(data_config, nn_config)
@@ -46,7 +47,7 @@ class Model(NN):
         self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.nn_config['loss'].upper()]
         self.KModel = keras.models.Model if keras is not None else None
-        self.path, self.act_path, self.w_path = maybe_create_path(path=path)
+        self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
 
     @property
     def data(self):
@@ -146,7 +147,7 @@ class Model(NN):
 
     def fetch_data(self, data: pd.DataFrame,  st: int = 0, en=None,
                    shuffle: bool = True,
-                   write_data=True,
+                   write_data=False,
                    noise: int = 0,
                    indices: list = None,
                    scaler_key: str = '0',
@@ -260,7 +261,7 @@ class Model(NN):
         if shuffle:
             x, y, label = unison_shuffled_copies(x, y, label)
 
-        x = self.conform_shape(x)
+        x = self.conform_shape(x, datetime_index=return_dt_index)
 
         print('input_X shape:', x.shape)
         print('input_Y shape:', y.shape)
@@ -276,7 +277,7 @@ class Model(NN):
 
         return x, y, label
 
-    def conform_shape(self, x):
+    def conform_shape(self, x, datetime_index):
         """
     makes sure that the shape of x corresponds to first layer of NN. This comes handy if the first
     layer is CNN in CNNLSTM case or first layer is Conv2DLSTM or LSTM or a dense layer. No change in shape
@@ -289,13 +290,15 @@ class Model(NN):
         elif input_layers == 1:
 
             first_layer_shape = self.first_layer_shape()
-            return x.reshape(first_layer_shape)
+            if datetime_index:
+                first_layer_shape[-1] = first_layer_shape[-1] + 1
+            return x.reshape(tuple(first_layer_shape))
 
         else:
             raise ValueError(" {} Input layers found".format(input_layers))
 
     def first_layer_shape(self):
-
+        """ instead of tuple, returning a list so that it can be moified if needed"""
         if self.num_input_layers > 1:
             return None
         shape = []
@@ -303,10 +306,9 @@ class Model(NN):
             if d is None:
                 d = -1
             shape.append(d)
-        shape = tuple(shape)
         return shape
 
-    def fit(self, inputs, outputs, **callbacks):
+    def fit(self, inputs, outputs, validation_data, **callbacks):
 
         _callbacks = list()
 
@@ -335,7 +337,7 @@ class Model(NN):
                          epochs=self.nn_config['epochs'],
                          batch_size=self.data_config['batch_size'],
                          validation_split=self.data_config['val_fraction'],
-                         validation_data=self.get_val_data(),
+                         validation_data=validation_data,
                          callbacks=_callbacks,
                          steps_per_epoch=self.data_config['steps_per_epoch']
                          )
@@ -458,7 +460,7 @@ class Model(NN):
 
         inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
 
-        history = self.fit(inputs, outputs, **callbacks)
+        history = self.fit(inputs, outputs, self.get_val_data(), **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 
