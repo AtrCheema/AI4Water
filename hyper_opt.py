@@ -2,127 +2,131 @@ from skopt.space import Real, Categorical, Integer
 from skopt.utils import use_named_args
 from skopt import gp_minimize
 import numpy as np
-
+import json
+from collections import OrderedDict
+import os
+from shutil import rmtree, copyfile
 
 from utils import skopt_plots
-from docs.MultiOutputParallel import make_multi_model, LSTMAutoEncMultiOutput
+from docs.MultiInputSharedModel import make_multi_model, MultiInputSharedModel
 
 
-with open('opt_results.txt', 'w') as f:
-    f.write('Hyper OPT Results')
+title = 'tcn_dense_hpo'
+RESULTS = {}
 
-dim_batch_size = Categorical(categories=[4, 8, 12, 24, 32], name='batch_size')
-# dim_lookback = Integer(low=5, high=20, prior='uniform', name='lookback')
-dim_lookback = Categorical(categories=[3, 6, 9, 12, 15], name='lookback')
+dim_batch_size = Categorical(categories=[8, 16, 24, 32], name='batch_size')
+dim_lookback = Integer(low=3, high=12, prior='uniform', name='lookback')
 dim_learning_rate = Real(low=1e-7, high=1e-3, prior='uniform', name='lr')
-# dim_filters0 = Categorical(categories=[16, 32, 64, 128], name='filters0')
-# dim_filters1 = Categorical(categories=[16, 32, 64, 128], name='filters1')
-# dim_filters2 = Categorical(categories=[16, 32, 64, 128], name='filters2')
-# dim_filters3 = Categorical(categories=[16, 32, 64, 128], name='filters3')
-# dim_kernel_size0 = Categorical(categories=[2, 3, 4, 5, 6], name='kernel_size0')
-# dim_kernel_size1 = Categorical(categories=[2, 3, 4, 5, 6], name='kernel_size1')
-# dim_kernel_size2 = Categorical(categories=[2, 3, 4, 5, 6], name='kernel_size2')
-# dim_kernel_size3 = Categorical(categories=[2, 3, 4, 5, 6], name='kernel_size3')
 
-dim_lstm0_units = Categorical(categories=[32, 64, 128], name='lstm0_units')
-dim_lstm1_units = Categorical(categories=[32, 64, 128], name='lstm1_units')
-dim_lstm2_units = Categorical(categories=[32, 64, 128], name='lstm2_units')
-dim_lstm3_units = Categorical(categories=[32, 64, 128], name='lstm3_units')
+dim_lstm1_units = Categorical(categories=[64, 128, 256], name='lstm1_units')
+dim_lstm2_units = Categorical(categories=[64, 128, 256], name='lstm2_units')
+dim_dense_units = Categorical(categories=[32, 64, 128], name='dense_units')
 
-dim_act_fn0 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn0')
-dim_act_fn1 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn1')
-dim_act_fn2 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn2')
-dim_act_fn3 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn3')
+dim_lstm1_act = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='lstm1_act')
+dim_lstm2_act = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='lstm2_act')
+dim_dense_act = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='dense_act')
+dim_out_act = Categorical(categories=['relu', 'none'], name='out_act')
 
-dim_act_fn0_1 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn0_1')
-dim_act_fn1_1 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn1_1')
-dim_act_fn2_1 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn2_1')
-dim_act_fn3_1 = Categorical(categories=['relu', 'leakyrelu', 'elu', 'tanh'], name='act_fn3_1')
-
-default_values = [12, 3, 0.00001,
-                  # 64, 128, 64, 64,
-                  # 2, 3, 4, 5,
-                  'relu', 'leakyrelu', 'elu', 'tanh',
-                  'relu', 'leakyrelu', 'elu', 'tanh',
-                  32, 32, 32, 32
+default_values = [24, 10, 0.0005286,
+                  'tanh', 'tanh', 'relu', 'none',
+                  64, 64, 32,
                   ]
 
 dimensions = [dim_batch_size, dim_lookback, dim_learning_rate,
-              # dim_filters0, dim_filters1, dim_filters2, dim_filters3,
-              # dim_kernel_size0, dim_kernel_size1, dim_kernel_size2, dim_kernel_size3,
-              dim_act_fn0, dim_act_fn1, dim_act_fn2, dim_act_fn3,
-              dim_act_fn0_1, dim_act_fn1_1, dim_act_fn2_1, dim_act_fn3_1,
-              dim_lstm0_units, dim_lstm1_units, dim_lstm2_units, dim_lstm3_units
+              dim_lstm1_act, dim_lstm2_act, dim_dense_act, dim_out_act,
+              dim_lstm1_units, dim_lstm2_units, dim_dense_units
               ]
 
-
 def objective_fn(**kwargs):
+    """ This function will build and train the NN with given parameters. It will return the minimum of validation loss,
+    which we want to minimize using Optimization algorithm.
+    """
+    model = make_multi_model(MultiInputSharedModel,
+                          ignore_nans=False,
+                          metrics=['nse', 'kge', 'pbias'],
+                          prefix=title,
+                          **kwargs)
 
-    model, train_idx, test_idx = make_multi_model(LSTMAutoEncMultiOutput,
-                                                  **kwargs)
-
-    history = model.train_nn(indices=train_idx)
+    model.build_nn()
+    history = model.train_nn(st=0, en=5500)
 
     return model.path, np.min(history['val_loss'])
 
 
+def clear_weigths(_res:dict, opt_dir, keep=3):
+    """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
+    of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
+    od = OrderedDict(sorted(_res.items()))
+
+    idx = 0
+    for k,v in od.items():
+        folder = v['folder']
+        _path = os.path.join(opt_dir, folder)
+        w_path = os.path.join(_path, 'weights')
+
+        if idx > keep-1:
+            if os.path.exists(w_path):
+                rmtree(w_path)
+
+        idx += 1
+
+    # move json file to opt_path
+    json_file = os.path.basename(opt_dir) + ".json"
+    src = os.path.join(os.getcwd(), json_file)
+    if os.path.exists(src):
+        copyfile(src, os.path.join(opt_path, json_file))
+    return
+
 @use_named_args(dimensions=dimensions)
 def fitness(batch_size, lookback, lr,
-            # filters0, filters1, filters2, filters3,
-            # kernel_size0, kernel_size1, kernel_size2, kernel_size3,
-            act_fn0, act_fn1, act_fn2, act_fn3,
-            act_fn0_1, act_fn1_1, act_fn2_1, act_fn3_1,
-            lstm0_units, lstm1_units, lstm2_units, lstm3_units,
+            lstm1_act, lstm2_act, dense_act, out_act,
+            lstm1_units, lstm2_units, dense_units,
             ):
 
+    lookback = int(lookback)
+    if out_act == "none":
+        out_act = None
 
-    autoenc_config = {'nn_0': {'lstm_0': {'units': int(lstm0_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn0: {},
-                               'RepeatVector': {'n': lookback - 1},
-                               'lstm_1': {'units': int(lstm0_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn0_1: {},
-                               'Dense': {'units': 1}
-                               },
-                      'nn_1': {'lstm_0': {'units': int(lstm1_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn1: {},
-                               'RepeatVector': {'n': lookback - 1},
-                               'lstm_1': {'units': int(lstm1_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn1_1: {},
-                               'Dense': {'units': 1}
-                               },
-                      'nn_2': {'lstm_0': {'units': int(lstm2_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn2: {},
-                               'RepeatVector': {'n': lookback -1 },
-                               'lstm_1': {'units': int(lstm2_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn2_1: {},
-                               'Dense': {'units': 1}
-                               },
-                      'nn_3': {'lstm_0': {'units': int(lstm3_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn3: {},
-                               'RepeatVector': {'n': lookback - 1},
-                               'lstm_1': {'units': int(lstm3_units),  'dropout': 0.3, 'recurrent_dropout': 0.4},
-                               act_fn3_1: {},
-                               'Dense': {'units': 1}
-                               }
-                      }
+    autoenc_config = {'lstm_0': {'config': {'units': int(lstm1_units),  'activation': lstm1_act,  'dropout': 0.2, 'recurrent_dropout': 0.4,
+                                        'return_sequences': True, 'return_state': False, 'name': 'lstm_0'}},
+               'lstm_1': {'config':  {'units': int(lstm2_units),  'activation': lstm2_act,  'dropout': 0.2, 'recurrent_dropout': 0.4,
+                                        'return_sequences': False, 'return_state': False, 'name': 'lstm_1'}},
+               'Dense_0': {'config':  {'units': int(dense_units), 'activation': dense_act}},
+               'Dropout': {'config':  {'rate': 0.4}},
+               'Dense_1': {'config':  {'units': 1, "activation": out_act}}
+               }
 
     _path, error = objective_fn(batch_size=int(batch_size),
                          lookback=int(lookback),
                          lr=lr,
                          layers=autoenc_config,
-                         epochs=500)
+                         epochs=10)
 
-    #filters = str([filters0, filters1, filters2, filters3])
-    #kernel_sizes = str([kernel_size0, kernel_size1, kernel_size2, kernel_size3])
-    lstm_units = str([lstm0_units, lstm1_units, lstm2_units, lstm3_units])
-    act_fns = str([act_fn0, act_fn1, act_fn2, act_fn3])
-    act_fns1 = str([act_fn0_1, act_fn1_1, act_fn2_1, act_fn3_1])
-    msg = """\nwith lstm_units {}, act_lyrs1 {}, act_lyrs {},  batch_size {} lookback {} lr {} val loss is {}
-          in folder {}
-          """.format(lstm_units, act_fns1, act_fns,  batch_size, lookback, lr, error, _path.split("\\")[-1])
-    print(msg)
-    with open('opt_results.txt', 'a') as fp:
-        fp.write(msg)
+
+    error = round(error, 7)
+
+    result = {'lstm1_act': lstm1_act,
+              'lstm2_act': lstm2_act,
+              'dense_act': dense_act,
+              'out_act': out_act,
+
+              'lstm1_units': int(lstm1_units),
+              'lstm2_units': int(lstm2_units),
+              'dense_units': int(dense_units),
+
+              'lookback': int(lookback),
+              'lr': float(lr),
+              'batch_size': int(batch_size),
+              'folder': _path.split("\\")[-1],
+              'val_loss': error
+              }
+
+    RESULTS[error] = result
+
+    # instead of appending, writing the new file, so that all the results are saved as one dictionary, which can be
+    # useful if we want to reload the results.
+    with open(title + '.json', 'w') as rfp:
+        json.dump(RESULTS, rfp, sort_keys=True, indent=4)
 
     return error
 
@@ -130,9 +134,21 @@ def fitness(batch_size, lookback, lr,
 search_result = gp_minimize(func=fitness,
                             dimensions=dimensions,
                             acq_func='EI',   # Expected Improvement.
-                            n_calls=80,
+                            n_calls=12,
                             # acq_optimizer='auto',
                             x0=default_values,
                             random_state=2)
 
-skopt_plots(search_result)
+opt_path = os.path.join(os.getcwd(), "results\\" + title)
+
+skopt_plots(search_result, pref=opt_path)
+
+fname = os.path.join(opt_path, 'gp_parameters')
+sr = {}
+for attr in dir(search_result):
+    sr[attr] = str(getattr(search_result, attr))
+
+with open(fname + '.json', 'w') as fp:
+    json.dump(sr, fp, sort_keys=True, indent=4)
+
+clear_weigths(RESULTS, opt_path)

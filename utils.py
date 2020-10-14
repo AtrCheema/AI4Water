@@ -192,20 +192,20 @@ def save_config_file(path, config=None, errors=None, indices=None, name=''):
     return
 
 
-def skopt_plots(search_result, pref=''):
+def skopt_plots(search_result, pref=os.getcwd()):
 
     from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 
     _ = plot_evaluations(search_result)
-    plt.savefig(pref + '_evaluations', dpi=400, bbox_inches='tight')
+    plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
     plt.show()
 
     _ = plot_objective(search_result)
-    plt.savefig(pref + '_objective', dpi=400, bbox_inches='tight')
+    plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
     plt.show()
 
     _ = plot_convergence(search_result)
-    plt.savefig(pref + '_convergence', dpi=400, bbox_inches='tight')
+    plt.savefig(os.path.join(pref , 'convergence'), dpi=400, bbox_inches='tight')
     plt.show()
 
 
