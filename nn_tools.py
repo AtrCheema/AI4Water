@@ -167,7 +167,11 @@ class NN(AttributeStore):
 
         inputs = []
         for k,v in lyr_cache.items():
-            if 'INPUT' in k.upper():
+            # since the model is not build yet and we have access to only output tensors of each list, this is probably
+            # only way that how many inputs were encountered during the run of this method. Each tensor as .op.inputs
+            # attribute, which is empty if a tensor represents output of Input layer.
+            _inputs = getattr(getattr(v, 'op'), 'inputs')
+            if len(_inputs) == 0:
                 inputs.append(v)
         setattr(self, 'layers', lyr_cache)
         return inputs, layer_outputs
@@ -205,7 +209,7 @@ class NN(AttributeStore):
         if 'activation' in config:
             activation = config['activation']
         if activation is not None:
-            assert isinstance(activation, str)
+            assert isinstance(activation, str), f"unknown activation function {activation}"
             config['activation'] = ACTIVATION_FNS[activation.upper()]
 
         return config, activation
