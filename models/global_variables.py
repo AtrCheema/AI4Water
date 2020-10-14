@@ -42,9 +42,15 @@ def get_attributes(aus=tf.keras, what:str='losses') ->dict:
 if keras is not None:
     LAYERS = {
         "TCN": tcn.TCN if tcn is not None else None,
+        # Concatenate and concatenate act differently, so if we want to use Concatenate, then use Concat not Concatenate
+        # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
+        "CONCAT": keras.layers.Concatenate,
     }
 
     LAYERS.update(get_attributes(what='layers'))
+
+    # tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
+    LAYERS["MULTIPLY"] = keras.layers.Multiply
 
     import models.attention_layers as attns
 
