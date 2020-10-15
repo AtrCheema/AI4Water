@@ -17,7 +17,7 @@ layers = keras.layers
 
 class MultiInputSharedModel(Model):
 
-    def test_paras(self, data, **kwargs):
+    def test_data(self, data, **kwargs):
         x, _, labels = self.fetch_data(data=data, **kwargs)
         return [x], [labels]
 
@@ -81,7 +81,7 @@ class MultiInputSharedModel(Model):
         for idx, out in enumerate(out_cols):
 
             self.out_cols = [self.data_config['outputs'][idx]]  # because fetch_data depends upon self.outs
-            inputs, true_outputs = self.test_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
+            inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                                    return_dt_index=use_datetime_index, data=self.data[idx])
             self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
 
