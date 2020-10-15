@@ -168,6 +168,7 @@ layers = {
     "relu_1": {'config': {}},
     'Dense': {'config': {'units': 1}}
 }
+# TODO running this after SelfAttention is failing probably due to one of the commits made btw 10-12 Oct.
 make_and_run(Model, layers, lookback=12)
 
 

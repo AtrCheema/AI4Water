@@ -844,7 +844,7 @@ class attn_layers(object):
 
     AttentionRaffel = AttentionRaffel
     SelfAttention = SelfAttention
-    SeqWeightedAttention = SeqWeightedAttention
+    SeqSelfAttention = SeqSelfAttention
     SnailAttention = SnailAttention
     SeqWeightedAttention = SeqWeightedAttention
     BahdanauAttention = BahdanauAttention

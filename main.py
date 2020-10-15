@@ -477,7 +477,7 @@ class Model(NN):
 
         return history
 
-    def test_paras(self, **kwargs):
+    def test_data(self, **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
         return self.train_data(**kwargs)
 
@@ -491,7 +491,7 @@ class Model(NN):
         if indices is not None:
             setattr(self, 'predict_indices', indices)
 
-        inputs, true_outputs = self.test_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
+        inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                               return_dt_index=use_datetime_index)
 
         first_input = inputs[0]

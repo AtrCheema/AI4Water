@@ -15,7 +15,7 @@ from utils import make_model
 class MultiSite(InputAttentionModel):
     """ This is only for two outputs currently. """
 
-    def run_paras(self, **kwargs):
+    def train_data(self, **kwargs):
         train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
 
         inputs = [train_x]
