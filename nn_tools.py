@@ -168,11 +168,11 @@ class NN(AttributeStore):
         inputs = []
         for k,v in lyr_cache.items():
             # since the model is not build yet and we have access to only output tensors of each list, this is probably
-            # only way that how many inputs were encountered during the run of this method. Each tensor as .op.inputs
-            # attribute, which is empty if a tensor represents output of Input layer.
-            _inputs = getattr(getattr(v, 'op'), 'inputs')
-            if len(_inputs) == 0:
-                inputs.append(v)
+            # the only way to know that how many `Input` layers were encountered during the run of this method. Each
+            # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
+            if k.upper() != "TIMEDISTRIBUTED":
+                if 'INPUT' in k.upper():
+                    inputs.append(v)
         setattr(self, 'layers', lyr_cache)
         return inputs, layer_outputs
 

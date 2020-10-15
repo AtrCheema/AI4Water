@@ -31,13 +31,21 @@ np.set_printoptions(suppress=True)  # to suppress scientific notation while prin
 
 
 class Model(NN):
-
+    """
+    data_config: `dict` contains parameters for data processing, check make_model function in utils for options
+    nn_config: `dict` contains parameters for building NN, check `make_model` function in utils.py for all options
+    intervals: `tuple` of `tuples`, where each sub-tuple determines chunk of data to be used
+    path: `str`, if None, new folder will be created, where all the results of this model will be saved
+    prefix: `str`, prefix to be added to the folder name which contains results of this model
+    verbosity: `int`, determines amount of information to be printed to console.
+    """
     def __init__(self, data_config: dict,
                  nn_config: dict,
                  data,
                  intervals=None,
                  prefix: str = None,
-                 path: str = None):
+                 path: str = None,
+                 verbosity=1):
 
         super(Model, self).__init__(data_config, nn_config)
 
@@ -48,6 +56,7 @@ class Model(NN):
         self.loss = LOSSES[self.nn_config['loss'].upper()]
         self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
+        self.verbosity = verbosity
 
     @property
     def data(self):
