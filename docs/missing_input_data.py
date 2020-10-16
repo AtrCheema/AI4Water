@@ -1,3 +1,4 @@
+# Sometimes we have some missing values in input data.
 # This file shows how to build and set time series prediction problem when we have missing values as a chunk in target
 # data. # We will insert some nan values (as a representative of missing values) in chunks i.e. continuous missing
 # values after certain values. These nan values will then be ignored using the feature `intervals`.
