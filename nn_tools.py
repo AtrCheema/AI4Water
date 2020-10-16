@@ -29,7 +29,6 @@ class AttributeStore(object):
     de_densor_We = None
     test_indices = None
     train_indices = None
-    training = False  # by default the model is not in training mode
     quantiles = None  # when predicted quantiles, this will not be None, and post-processing will be different
     scalers = {}
     cnn_counter = 0

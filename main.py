@@ -463,8 +463,6 @@ class Model(NN):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        self.training = True
-
         indices = self.get_indices(indices)
 
         inputs, outputs = self.train_data(st=st, en=en, indices=indices)
@@ -472,8 +470,6 @@ class Model(NN):
         history = self.fit(inputs, outputs, self.val_data(), **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
-
-        self.training = False
 
         return history
 
@@ -500,10 +496,12 @@ class Model(NN):
             # remove the first of first inputs which is datetime index
             if np.ndim(first_input) == 2:
                 dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
-                first_input = first_input[:, 1:]
-            else:
+            elif np.ndim(first_input) == 3:
                 dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-                first_input = first_input[:, :, 1:].astype(np.float32)
+            elif np.ndim(first_input) == 4:
+                dt_index = get_index(np.array(first_input[:, -1, -1, 0], dtype=np.int64))
+
+            first_input = first_input[..., 1:].astype(np.float32)
             inputs[0] = first_input
 
         predicted = self.k_model.predict(x=inputs,
@@ -542,12 +540,13 @@ class Model(NN):
 
             return true_outputs, predicted
 
-    def plot_quantile(self, true_outputs, predicted,  min_q: int, max_q, save=False):
+    def plot_quantile(self, true_outputs, predicted,  min_q: int, max_q, st=0, en=None, save=False):
         plt.close('all')
         plt.style.use('ggplot')
 
-        st, en = 0, true_outputs.shape[0]
-        q_name = "{:.1f}_{:.1f}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100)
+        if en is None:
+            en = true_outputs.shape[0]
+        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st), str(en))
 
         plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
         plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
@@ -577,11 +576,12 @@ class Model(NN):
             plt.show()
         return
 
-    def plot_quantiles1(self, true_outputs, predicted, save=True):
+    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
         plt.close('all')
         plt.style.use('ggplot')
 
-        st, en = 0, true_outputs.shape[0]
+        if en is None:
+            en = true_outputs.shape[0]
         for q in range(len(self.quantiles) - 1):
             st_q = "{:.1f}".format(self.quantiles[q] * 100)
             en_q = "{:.1f}".format(self.quantiles[-q] * 100)
@@ -596,11 +596,12 @@ class Model(NN):
                 plt.show()
         return
 
-    def plot_quantiles2(self, true_outputs, predicted, save=True):
+    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
         plt.close('all')
         plt.style.use('ggplot')
 
-        st, en = 0, true_outputs.shape[0]
+        if en is None:
+            en = true_outputs.shape[0]
         for q in range(len(self.quantiles) - 1):
             st_q = "{:.1f}".format(self.quantiles[q] * 100)
             en_q = "{:.1f}".format(self.quantiles[q+1] * 100)
@@ -847,9 +848,12 @@ class Model(NN):
             elif isinstance(activation, tuple):
                 for act in activation:
                     self._plot_activation(act, lyr_name, save)
+        return
 
     def _plot_activation(self, activation, lyr_name, save):
-        if np.ndim(activation) == 2 and activation.shape[1] > 1:
+        if "LSTM" in lyr_name and np.ndim(activation) == 3:
+            self.feat_2d(activation, lyr_name, save)
+        elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             self._imshow(activation, lyr_name + " Activations", save, lyr_name)
         elif np.ndim(activation) == 3:
             self._imshow_3d(activation, lyr_name, save=save)
@@ -860,6 +864,7 @@ class Model(NN):
         else:
             print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
                                                                                    np.ndim(activation)))
+        return
 
     def plot_weight_grads(self, save: bool = True, **kwargs):
         """ plots gradient of all trainable weights"""
@@ -891,7 +896,10 @@ class Model(NN):
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_activation gradients"
             title = lyr_name + " Activation Gradients"
-            if np.ndim(gradient) == 2:
+            if "LSTM" in lyr_name and np.ndim(gradient) == 3:
+                self.feat_2d(gradient, lyr_name, save)
+
+            elif np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
                     # (?, ?)
                     self._imshow(gradient, title, save, fname)
@@ -1094,6 +1102,43 @@ class Model(NN):
 
         self.save_or_show(save, fname)
 
+    def feat_2d(self, data, lyr_name, save):
+        in_features = data.shape[0]
+        if in_features <= 64:
+            nrows, ncols = _get_nrows_ncols(None, in_features)
+            self._feat_2d(data, nrows, ncols, lyr_name, save)
+        elif in_features <= 128:
+            for i in range(2):
+                nrows, ncols = _get_nrows_ncols(None, 64)
+                _data = data[0:64, :]
+                self._feat_2d(_data, nrows, ncols, lyr_name + str(i), save)
+
+    def _feat_2d(self, data, nrows, ncols, lyr_name, save):
+        plt.close('all')
+        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, sharex='all')
+
+        idx = 0
+        for i in range(axis.shape[0]):
+            for j in range(axis.shape[1]):
+                ax = axis[i,j]
+
+                d = data[0, :, :]
+                ax.imshow(d, vmin=0.0, vmax=1.0)
+
+                if j>0:
+                    ax.get_yaxis().set_visible(False)
+
+                if i<9:
+                    ax.get_xaxis().set_visible(False)
+
+                ax.tick_params(axis="y", which='major', labelsize=5)
+                ax.tick_params(axis="x", which='major', labelsize=5)
+
+                idx += 1
+
+        plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0.05, hspace=0.0)
+        self.save_or_show(save, fname=lyr_name)
+
     def save_or_show(self, save: bool = True, fname=None):
         if save:
             assert isinstance(fname, str)
@@ -1175,7 +1220,20 @@ class Model(NN):
         h5.create_dataset('input_Y', data=input_y)
         h5.create_dataset('label_Y', data=label_y)
         h5.close()
+        return
 
+
+def _get_nrows_ncols(n_rows, n_subplots):
+    if n_rows is None:
+        n_rows = int(np.sqrt(n_subplots))
+    n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
+    n_rows = int(n_subplots / n_cols)
+
+    while not ((n_subplots / n_cols).is_integer() and
+               (n_subplots / n_rows).is_integer()):
+        n_cols -= 1
+        n_rows = int(n_subplots / n_cols)
+    return n_rows, n_cols
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
