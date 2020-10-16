@@ -851,8 +851,8 @@ class Model(NN):
         return
 
     def _plot_activation(self, activation, lyr_name, save):
-        if "LSTM" in lyr_name and np.ndim(activation) == 3:
-            self.feat_2d(activation, lyr_name, save)
+        if "LSTM" in lyr_name and np.ndim(activation) in (2, 3):
+            self.features_2D(activation, save=save, lyr_name=lyr_name, norm=(-1,1))
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             self._imshow(activation, lyr_name + " Activations", save, lyr_name)
         elif np.ndim(activation) == 3:
@@ -896,8 +896,8 @@ class Model(NN):
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_activation gradients"
             title = lyr_name + " Activation Gradients"
-            if "LSTM" in lyr_name and np.ndim(gradient) == 3:
-                self.feat_2d(gradient, lyr_name, save)
+            if "LSTM" in lyr_name and np.ndim(gradient) in (2, 3):
+                self.features_2D(gradient, lyr_name=lyr_name, save=save)
 
             elif np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
@@ -1102,43 +1102,6 @@ class Model(NN):
 
         self.save_or_show(save, fname)
 
-    def feat_2d(self, data, lyr_name, save):
-        in_features = data.shape[0]
-        if in_features <= 64:
-            nrows, ncols = _get_nrows_ncols(None, in_features)
-            self._feat_2d(data, nrows, ncols, lyr_name, save)
-        elif in_features <= 128:
-            for i in range(2):
-                nrows, ncols = _get_nrows_ncols(None, 64)
-                _data = data[0:64, :]
-                self._feat_2d(_data, nrows, ncols, lyr_name + str(i), save)
-
-    def _feat_2d(self, data, nrows, ncols, lyr_name, save):
-        plt.close('all')
-        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, sharex='all')
-
-        idx = 0
-        for i in range(axis.shape[0]):
-            for j in range(axis.shape[1]):
-                ax = axis[i,j]
-
-                d = data[0, :, :]
-                ax.imshow(d, vmin=0.0, vmax=1.0)
-
-                if j>0:
-                    ax.get_yaxis().set_visible(False)
-
-                if i<9:
-                    ax.get_xaxis().set_visible(False)
-
-                ax.tick_params(axis="y", which='major', labelsize=5)
-                ax.tick_params(axis="x", which='major', labelsize=5)
-
-                idx += 1
-
-        plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0.05, hspace=0.0)
-        self.save_or_show(save, fname=lyr_name)
-
     def save_or_show(self, save: bool = True, fname=None):
         if save:
             assert isinstance(fname, str)
@@ -1222,8 +1185,133 @@ class Model(NN):
         h5.close()
         return
 
+    def features_2D(self, data, lyr_name,
+                    reflect_half=False,
+                    timesteps_xaxis=False, max_timesteps=None,
+                    **kwargs):
+        """Plots 2D heatmaps in a standalone graph or subplot grid.
 
-def _get_nrows_ncols(n_rows, n_subplots):
+        iter == list/tuple (both work)
+
+        Arguments:
+            data: np.ndarray, 2D/3D. Data to plot.
+                  2D -> standalone graph; 3D -> subplot grid.
+                  3D: (samples, timesteps, channels)
+                  2D: (timesteps, channels)
+
+            reflect_half: bool. If True, second half of channels dim will be
+                  flipped about the timesteps dim.
+            timesteps_xaxis: bool. If True, the timesteps dim (`data` dim 1)
+                  if plotted along the x-axis.
+            max_timesteps:  int/None. Max number of timesteps to show per plot.
+                  If None, keeps original.
+
+        kwargs:
+            w: float. Scale width  of resulting plot by a factor.
+            h: float. Scale height of resulting plot by a factor.
+            show_borders:  bool.  If True, shows boxes around plot(s).
+            show_xy_ticks: int/bool iter. Slot 0 -> x, Slot 1 -> y.
+                  Ex: [1, 1] -> show both x- and y-ticks (and their labels).
+                      [0, 0] -> hide both.
+            show_colorbar: bool. If True, shows one colorbar next to plot(s).
+            title: bool/str. If True, shows generic supertitle.
+                  If str in {'grads', 'outputs', 'generic'}, shows supertitle
+                  tailored to `data` dim (2D/3D). If other str, shows `title`
+                  as supertitle. If False, no title is shown.
+            tight: bool. If True, plots compactly by removing subplot padding.
+            channel_axis: int, 0 or -1. `data` axis holding channels/features.
+                  -1 --> (samples,  timesteps, channels)
+                  0  --> (channels, timesteps, samples)
+            borderwidth: float / None. Width of subplot borders.
+            bordercolor: str / None. Color of subplot borders. Default black.
+            save: bool, .
+
+        Returns:
+            (figs, axes) of generated plots.
+        """
+
+        w, h          = kwargs.get('w', 1), kwargs.get('h', 1)
+        show_borders  = kwargs.get('show_borders', True)
+        show_xy_ticks = kwargs.get('show_xy_ticks', (1, 1))
+        show_colorbar = kwargs.get('show_colorbar', False)
+        tight         = kwargs.get('tight', False)
+        channel_axis  = kwargs.get('channel_axis', -1)
+        borderwidth   = kwargs.get('borderwidth', None)
+        bordercolor   = kwargs.get('bordercolor', None)
+        save      = kwargs.get('savepath', True)
+
+
+        def _process_data(data, max_timesteps, reflect_half,
+                          timesteps_xaxis, channel_axis):
+            if data.ndim not in (2, 3):
+                raise Exception("`data` must be 2D or 3D (got ndim=%s)" % data.ndim)
+
+            if max_timesteps is not None:
+                data = data[..., :max_timesteps, :]
+
+            if reflect_half:
+                data = data.copy()  # prevent passed array from changing
+                half_chs = data.shape[-1] // 2
+                data[..., half_chs:] = np.flip(data[..., half_chs:], axis=0)
+
+            if data.ndim != 3:
+                # (1, width, height) -> one image
+                data = np.expand_dims(data, 0)
+            if timesteps_xaxis:
+                data = np.transpose(data, (0, 2, 1))
+            return data
+
+        def _style_axis(ax, show_borders, show_xy_ticks):
+            ax.axis('tight')
+            if not show_xy_ticks[0]:
+                ax.set_xticks([])
+            if not show_xy_ticks[1]:
+                ax.set_yticks([])
+            if not show_borders:
+                ax.set_frame_on(False)
+
+        if isinstance(show_xy_ticks, (int, bool)):
+            show_xy_ticks = (show_xy_ticks, show_xy_ticks)
+        data = _process_data(data, max_timesteps, reflect_half,
+                             timesteps_xaxis, channel_axis)
+        n_rows, n_cols = _get_nrows_and_ncols(n_subplots=len(data))
+
+        fig, axes = plt.subplots(n_rows, n_cols, dpi=76, figsize=(10, 10), sharex='all', sharey='all')
+        axes = np.asarray(axes)
+
+        fig.suptitle(lyr_name, weight='bold', fontsize=14, y=.93 + .12 * tight)
+
+        for ax_idx, ax in enumerate(axes.flat):
+            img = ax.imshow(data[ax_idx], cmap='bwr', vmin=-1, vmax=1)
+            _style_axis(ax, show_borders, show_xy_ticks)
+
+        if show_colorbar:
+            fig.colorbar(img, ax=axes.ravel().tolist())
+        if tight:
+            fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
+        if borderwidth is not None or bordercolor is not None:
+            for ax in axes.flat:
+                for s in ax.spines.values():
+                    if borderwidth is not None:
+                        s.set_linewidth(borderwidth)
+                    if bordercolor is not None:
+                        s.set_color(bordercolor)
+
+        self.save_or_show(save, lyr_name)
+
+        return
+
+
+def unison_shuffled_copies(a, b, c):
+    """makes sure that all the arrays are permuted similarly"""
+    assert len(a) == len(b) == len(c)
+    p = np.random.permutation(len(a))
+    return a[p], b[p], c[p]
+
+
+from copy import deepcopy
+
+def _get_nrows_and_ncols(n_subplots, n_rows=None):
     if n_rows is None:
         n_rows = int(np.sqrt(n_subplots))
     n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
@@ -1235,8 +1323,27 @@ def _get_nrows_ncols(n_rows, n_subplots):
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
 
-def unison_shuffled_copies(a, b, c):
-    """makes sure that all the arrays are permuted similarly"""
-    assert len(a) == len(b) == len(c)
-    p = np.random.permutation(len(a))
-    return a[p], b[p], c[p]
+
+def _kw_from_configs(configs, defaults):
+    def _fill_absent_defaults(kw, defaults):
+        # override `defaults`, but keep those not in `configs`
+        for name, _dict in defaults.items():
+            if name not in kw:
+                kw[name] = _dict
+            else:
+                for k, v in _dict.items():
+                    if k not in kw[name]:
+                        kw[name][k] = v
+        return kw
+
+    configs = configs or {}
+    configs = deepcopy(configs)  # ensure external dict unchanged
+    for key in configs:
+        if key not in defaults:
+            raise ValueError(f"unexpected `configs` key: {key}; "
+                             "supported are: %s" % ', '.join(list(defaults)))
+
+    kw = deepcopy(configs)  # ensure external dict unchanged
+    # override `defaults`, but keep those not in `configs`
+    kw = _fill_absent_defaults(configs, defaults)
+    return kw
