@@ -12,18 +12,10 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml']
 
-    layers = {
-        "LSTM_0": {"config": {"units": 64, "return_sequences": True}},
-        "LSTM_1": {"config": {"units": 32}},
-        "Dense": {"config": {"units": 1}}
-    }
-
     data_config, nn_config, total_intervals = make_model(batch_size=16,
-                                                         lookback=10,
+                                                         lookback=1,
                                                          inputs=input_features,
                                                          outputs=outputs,
-                                                         layers=layers,
-                                                         epochs=10,
                                                          lr=0.0001)
     df = pd.read_csv('../data/all_data_30min.csv')
 
@@ -37,6 +29,5 @@ if __name__ == "__main__":
 
     history = model.train_nn(indices='random')
 
-    #y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
-    #model.view_model(st=0)
-    model.plot_activations(st=0, en=50)
+    y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
+    model.view_model(st=0)
