@@ -343,6 +343,28 @@ layers ={
 
 It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional while `config` is mandatory.
 
+### lambda layers
+You can also add [`lambda`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Lambda) layers by placing the 
+lambda layer definition in the `config` as following:
+```python
+from models.global_variables import tf
+from models import Model
+import pandas as pd
+
+layers = {
+    "LSTM_0": {"config": {"units": 32, "return_sequences": True}},
+    "lambda": {"config": tf.keras.layers.Lambda(lambda x: x[:, -1, :])},
+    "Dense": {"config": {"units": 1}}
+}
+
+# The model can be seelessly loaded from the saved json file using
+
+config_path = "path like"
+df = pd.read_csv('data/data.csv')
+model = Model.from_config(config_path=config_path, data=df)
+```
+<img src="imgs/lambda.png" width="300" height="400" />
+
 For more examples see `docs`.
 
 ## Disclaimer

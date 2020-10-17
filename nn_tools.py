@@ -62,19 +62,21 @@ class NN(AttributeStore):
 
     def add_layers(self, layers_config:dict, inputs=None):
         """
-        @param layers_config: `dict`
-        Every layer must contain initializing arguments as `config` dictionary and calling arguments as `inputs`. If
-        `inputs` key is missing for a layer, it will be supposed that either this is an Input layer or it uses previous
-        outputs as inputs. The `config` dictionary for every layer can contain `name` key and its value must be `str`
-        type. If `name` key  is not provided in the config, the provided layer name will be used as its name e.g in following case
-        layers = {'LSTM': {'config': {'units': 16}}}
-        the name of `LSTM` layer will be `LSTM` while in follwoing case
-        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
-        the name of the lstm will be `MyLSTM`.
-        We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
-        list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
-        We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
-        a list of strings.
+        @param layers_config: `dict`, wholse keys can be one of the following:
+            `config`: `dict`/lambda, Every layer must contain initializing arguments as `config` dictionary. The `config`
+                                     dictionary for every layer can contain `name` key and its value must be `str`
+                                     type. If `name` key  is not provided in the config, the provided layer name will be
+                                     used as its name e.g in following case
+                                       layers = {'LSTM': {'config': {'units': 16}}}
+                                     the name of `LSTM` layer will be `LSTM` while in follwoing case
+                                        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
+                                     the name of the lstm will be `MyLSTM`.
+            `inputs`: str/list,  The calling arguments for the list. If `inputs` key is missing for a layer, it will be
+                                 supposed that either this is an Input layer or it uses previous outputs as inputs.
+            `outputs`: str/list  We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
+                                 list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
+            `call_args`: str/list  We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
+                                   a list of strings.
 
         @param inputs: if None, it will be supposed the the `Input` layer either exists in `layers_config` or an Input
         layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
@@ -122,6 +124,12 @@ class NN(AttributeStore):
                         wrp_layer = LAYERS[lyr_name.upper()]
                         lyr_cache[lyr_name] = wrp_layer
                         continue
+                    elif  lyr_name.upper() == "LAMBDA":
+                        # lyr_config is serialized lambda layer, which needs to be deserialized
+                        layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
+                        # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
+                        # object (lambda) with the serialized version (lyr_config) so that it can be saved as json file.
+                        layers_config[lyr]['config'] = lyr_config
                     else:
                         if wrp_layer is not None:
                             layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
@@ -138,6 +146,9 @@ class NN(AttributeStore):
                     wrp_layer = LAYERS[lyr_name.upper()]
                     lyr_cache[lyr_name] = wrp_layer
                     continue
+                elif lyr_name.upper() == "LAMBDA":
+                    layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
+                    layers_config[lyr]['config'] = lyr_config
                 else:
                     if wrp_layer is not None:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
@@ -184,21 +195,28 @@ class NN(AttributeStore):
 
     def deconstruct_lyr_args(self, lyr_args:dict) ->tuple:
 
+        config = lyr_args['config']
         inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None
         outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
         call_args = lyr_args['call_args'] if 'call_args' in lyr_args else None
 
-        return lyr_args['config'], inputs, outputs, call_args
+        if isinstance(config, tf.keras.layers.Lambda):
+            config = tf.keras.layers.serialize(config)
+
+        return config, inputs, outputs, call_args
 
     def check_lyr_config(self, lyr_name: str, config: dict):
 
         if 'name' not in config:
             config['name'] = lyr_name
 
-        config, activation = self.check_act_fn(config)
+        activation = None
+        if "LAMBDA" not in lyr_name.upper():
+            # for lambda layers, we don't need to check activation functions and layer names.
+            config, activation = self.check_act_fn(config)
 
-        # get keras/tensorflow layer compatible layer name
-        lyr_name = self.get_layer_name(lyr_name)
+            # get keras/tensorflow layer compatible layer name
+            lyr_name = self.get_layer_name(lyr_name)
 
         return lyr_name, config, activation
 

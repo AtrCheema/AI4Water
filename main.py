@@ -852,7 +852,7 @@ class Model(NN):
 
     def _plot_activation(self, activation, lyr_name, save):
         if "LSTM" in lyr_name and np.ndim(activation) in (2, 3):
-            self.features_2D(activation, save=save, lyr_name=lyr_name, norm=(-1,1))
+            self.features_2d(activation, save=save, lyr_name=lyr_name, norm=(-1,1))
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             self._imshow(activation, lyr_name + " Activations", save, lyr_name)
         elif np.ndim(activation) == 3:
@@ -897,7 +897,7 @@ class Model(NN):
             fname = lyr_name + "_activation gradients"
             title = lyr_name + " Activation Gradients"
             if "LSTM" in lyr_name and np.ndim(gradient) in (2, 3):
-                self.features_2D(gradient, lyr_name=lyr_name, save=save)
+                self.features_2d(gradient, lyr_name=lyr_name, save=save)
 
             elif np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
@@ -1185,7 +1185,7 @@ class Model(NN):
         h5.close()
         return
 
-    def features_2D(self, data, lyr_name,
+    def features_2d(self, data, lyr_name,
                     reflect_half=False,
                     timesteps_xaxis=False, max_timesteps=None,
                     **kwargs):
@@ -1309,8 +1309,6 @@ def unison_shuffled_copies(a, b, c):
     return a[p], b[p], c[p]
 
 
-from copy import deepcopy
-
 def _get_nrows_and_ncols(n_subplots, n_rows=None):
     if n_rows is None:
         n_rows = int(np.sqrt(n_subplots))
@@ -1322,28 +1320,3 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
-
-
-def _kw_from_configs(configs, defaults):
-    def _fill_absent_defaults(kw, defaults):
-        # override `defaults`, but keep those not in `configs`
-        for name, _dict in defaults.items():
-            if name not in kw:
-                kw[name] = _dict
-            else:
-                for k, v in _dict.items():
-                    if k not in kw[name]:
-                        kw[name][k] = v
-        return kw
-
-    configs = configs or {}
-    configs = deepcopy(configs)  # ensure external dict unchanged
-    for key in configs:
-        if key not in defaults:
-            raise ValueError(f"unexpected `configs` key: {key}; "
-                             "supported are: %s" % ', '.join(list(defaults)))
-
-    kw = deepcopy(configs)  # ensure external dict unchanged
-    # override `defaults`, but keep those not in `configs`
-    kw = _fill_absent_defaults(configs, defaults)
-    return kw
