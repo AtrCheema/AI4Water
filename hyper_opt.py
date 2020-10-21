@@ -75,6 +75,10 @@ def clear_weigths(_res:dict, opt_dir, keep=3):
     src = os.path.join(os.getcwd(), json_file)
     if os.path.exists(src):
         copyfile(src, os.path.join(opt_path, json_file))
+
+    sorted_fname = os.path.join(opt_dir, 'sorted.json')
+    with open(sorted_fname, 'w') as sfp:
+        json.dump(od, sfp, sort_keys=True, indent=True)
     return
 
 @use_named_args(dimensions=dimensions)
@@ -87,19 +91,20 @@ def fitness(batch_size, lookback, lr,
     if out_act == "none":
         out_act = None
 
-    autoenc_config = {'lstm_0': {'config': {'units': int(lstm1_units),  'activation': lstm1_act,  'dropout': 0.2, 'recurrent_dropout': 0.4,
+    layers = {
+        'lstm_0': {'config': {'units': int(lstm1_units),  'activation': lstm1_act,  'dropout': 0.2, 'recurrent_dropout': 0.4,
                                         'return_sequences': True, 'return_state': False, 'name': 'lstm_0'}},
-               'lstm_1': {'config':  {'units': int(lstm2_units),  'activation': lstm2_act,  'dropout': 0.2, 'recurrent_dropout': 0.4,
+        'lstm_1': {'config':  {'units': int(lstm2_units),  'activation': lstm2_act,  'dropout': 0.2, 'recurrent_dropout': 0.4,
                                         'return_sequences': False, 'return_state': False, 'name': 'lstm_1'}},
-               'Dense_0': {'config':  {'units': int(dense_units), 'activation': dense_act}},
-               'Dropout': {'config':  {'rate': 0.4}},
-               'Dense_1': {'config':  {'units': 1, "activation": out_act}}
+        'Dense_0': {'config':  {'units': int(dense_units), 'activation': dense_act}},
+        'Dropout': {'config':  {'rate': 0.4}},
+        'Dense_1': {'config':  {'units': 1, "activation": out_act}}
                }
 
     _path, error = objective_fn(batch_size=int(batch_size),
                          lookback=int(lookback),
                          lr=lr,
-                         layers=autoenc_config,
+                         layers=layers,
                          epochs=10)
 
 
