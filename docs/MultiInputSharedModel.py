@@ -78,6 +78,10 @@ class MultiInputSharedModel(Model):
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, **plot_args):
         out_cols = self.out_cols
+
+        predictions = []
+        observations = []
+
         for idx, out in enumerate(out_cols):
 
             self.out_cols = [self.data_config['outputs'][idx]]  # because fetch_data depends upon self.outs
@@ -115,7 +119,10 @@ class MultiInputSharedModel(Model):
                 self.plot_quantiles2(true_outputs, predicted)
                 self.plot_all_qs(true_outputs, predicted)
 
-        return predicted, true_outputs
+            predictions.append(predicted)
+            observations.append(true_outputs)
+
+        return observations, predictions
 
 
 def make_multi_model(input_model,  from_config=False, config_path=None, weights=None,
