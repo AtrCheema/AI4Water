@@ -10,7 +10,7 @@ data_config, nn_config, _ = make_model()
 layers = {}
 
 for lyr in ['PRELU', "RELU", "TANH", "ELU", "LEAKYRELU", "THRESHOLDRELU", "SELU", 'sigmoid', 'hardsigmoid', 'crelu',
-            'relu6', 'softmax', 'softplus', 'softsign']:
+            'relu6', 'softmax', 'softplus', 'softsign', 'swish']:
     layers[lyr] = {'config': {}}
 
 layers["Dense"] = {'config': {'units': 1}}
@@ -29,7 +29,7 @@ model.train_nn()
 
 layers = {}
 for idx, act_fn in enumerate(['tanh', 'relu', 'elu', 'leakyrelu', 'crelu', 'selu', 'relu6', 'sigmoid',
-                              'hardsigmoid']):
+                              'hardsigmoid', 'swish']):
 
     layers["Dense_" + str(idx)] = {'config': {'units': 1, 'activation': act_fn}}
 

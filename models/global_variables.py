@@ -57,20 +57,23 @@ if keras is not None:
     LAYERS.update(get_attributes(aus=attns, what='attn_layers'))
 
     ACTIVATION_LAYERS = {
-        'LEAKYRELU': keras.layers.LeakyReLU(), # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
-        'PRELU': keras.layers.PReLU(),  # https://arxiv.org/pdf/1502.01852v1.pdf
-        'RELU': keras.layers.Activation('relu'),
-        'TANH': keras.layers.Activation('tanh'),
-        'ELU': keras.layers.ELU(),
-        'THRESHOLDRELU': keras.layers.ThresholdedReLU(),
-        'SELU': keras.layers.Activation("selu"),
-        'SIGMOID': keras.layers.Activation('sigmoid'),
-        'HARDSIGMOID': keras.layers.Activation('hard_sigmoid'),
-        'CRELU': keras.layers.Activation(tf.nn.crelu),
-        'RELU6': keras.layers.Activation(tf.nn.relu6),
-        'SOFTMAX': keras.layers.Activation(tf.nn.softmax),
-        'SOFTPLUS': keras.layers.Activation(tf.nn.softplus),
-        'SOFTSIGN': keras.layers.Activation(tf.nn.softsign)
+        # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
+        'LEAKYRELU': lambda name='softsign':  keras.layers.LeakyReLU(),
+        # https://arxiv.org/pdf/1502.01852v1.pdf
+        'PRELU': lambda name='prelu':  keras.layers.PReLU(name=name),
+        'RELU': lambda name='relu':  keras.layers.Activation('relu', name=name),
+        'TANH': lambda name='tanh':  keras.layers.Activation('tanh', name=name),
+        'ELU': lambda name='elu':  keras.layers.ELU(name=name),
+        'THRESHOLDRELU': lambda name='ThresholdRelu':  keras.layers.ThresholdedReLU(name=name),
+        'SELU': lambda name='selu':  keras.layers.Activation("selu", name=name),
+        'SIGMOID': lambda name='sigmoid':  keras.layers.Activation('sigmoid', name=name),
+        'HARDSIGMOID': lambda name='HardSigmoid':  keras.layers.Activation('hard_sigmoid', name=name),
+        'CRELU': lambda name='crelu':  keras.layers.Activation(tf.nn.crelu, name=name),
+        'RELU6': lambda name='relu6':  keras.layers.Activation(tf.nn.relu6, name=name),
+        'SOFTMAX': lambda name='softmax':  keras.layers.Activation(tf.nn.softmax, name=name),
+        'SOFTPLUS': lambda name='sofplus':  keras.layers.Activation(tf.nn.softplus, name=name),
+        'SOFTSIGN': lambda name='softsign': keras.layers.Activation(tf.nn.softsign,name=name),
+        "SWISH": lambda name='swish': keras.layers.Activation(tf.nn.swish, name=name),
                    }
 
     ACTIVATION_FNS = {
@@ -82,9 +85,12 @@ if keras is not None:
         'SELU': tf.nn.selu,  # tf.keras.activations.selu, # https://arxiv.org/pdf/1706.02515.pdf
         'RELU6': tf.nn.relu6,  # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
         'SOFTMAX': tf.nn.softmax,
+        "SOFTSIGN": tf.nn.softsign,
+        "SOFTPLUS": tf.nn.softplus,
         'SIGMOID': tf.nn.sigmoid,
         "HARDSIGMOID": 'hard_sigmoid',
-        "LINEAR": 'linear'
+        "LINEAR": 'linear',
+        "SWISH": tf.nn.swish, # https://arxiv.org/pdf/1710.05941.pdf
     }
 
     OPTIMIZERS = get_attributes(what='optimizers')

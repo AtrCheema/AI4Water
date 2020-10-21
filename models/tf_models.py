@@ -7,6 +7,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from main import Model
 from .global_variables import keras
+from nn_tools import check_act_fn
 from models.layer_definition import MyTranspose, MyDot
 
 from .nbeats_keras import NBeatsNet
@@ -53,11 +54,16 @@ class DualAttentionModel(Model):
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
 
         enc_lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'])
-        print('encoder output before reshaping: ', enc_lstm_out)
+
+        if self.verbosity > 2:
+            print('encoder output before reshaping: ', enc_lstm_out)
+
         # originally the last dimentions was -1 but I put it equal to 'm'
         # eq 11 in paper
         enc_out = layers.Reshape((self.lookback, enc_config['m']), name='enc_out_eq_11')(enc_lstm_out)
-        print('output from Encoder LSTM:', enc_out)
+
+        if self.verbosity > 1:
+            print('output from Encoder LSTM:', enc_out)
 
         h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
         h = layers.Reshape((1, dec_config['p']))(h)
@@ -66,9 +72,15 @@ class DualAttentionModel(Model):
         print('last_concat', last_concat)
         sec_dim = enc_config['m'] + dec_config['p']  # original it was not defined but in tf-keras we need to define it
         last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
-        print('reshape:', last_reshape)
+
+        if self.verbosity > 2:
+            print('reshape:', last_reshape)
+
         result = layers.Dense(dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
-        print('result:', result)
+
+        if self.verbosity > 1:
+            print('result:', result)
+
         output = layers.Dense(1)(result)
 
         self.k_model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
@@ -78,8 +90,10 @@ class DualAttentionModel(Model):
     def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1'):
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We_'+suf)
-        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=config['enc_lstm1_act'],
+        _config, act_str = check_act_fn({'activation': config['enc_lstm1_act']})
+        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=_config['activation'],
                                         name='encoder_LSTM_'+suf)
+        config['enc_lstm1_act'] = act_str
 
         # initialize the first cell state
         s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_'+suf)
@@ -87,11 +101,17 @@ class DualAttentionModel(Model):
         h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_'+suf)
 
         enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
-        print('encoder attention output:', enc_attn_out)
+        if self.verbosity > 2:
+            print('encoder attention output:', enc_attn_out)
         enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input_'+suf)(enc_attn_out)
-        print('input to encoder LSTM:', enc_lstm_in)
-        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=config['enc_lstm2_act'],
+        if self.verbosity > 2:
+            print('input to encoder LSTM:', enc_lstm_in)
+
+        _config, act_str = check_act_fn({'activation': config['enc_lstm2_act']})
+        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=_config['activation'],
                                    name='LSTM_after_encoder_'+suf)(enc_lstm_in)  # h_en_all
+        config['enc_lstm2_act'] = act_str
+
         print('Output from LSTM out: ', enc_lstm_out)
         return enc_lstm_out, h0, s0
 
@@ -121,16 +141,20 @@ class DualAttentionModel(Model):
 
         s = _s0
         _h = _h0
-        print('encoder cell state:', s)
+        if self.verbosity > 2:
+            print('encoder cell state:', s)
         # initialize empty list of outputs
         attention_weight_t = None
         for t in range(self.lookback):
-            print('encoder input:', _input)
+            if self.verbosity > 2:
+                print('encoder input:', _input)
             _context = self.one_encoder_attention_step(_h, s, _input, t, suf=suf)  # (none,1,n)
-            print('context:', _context)
+            if self.verbosity > 2:
+                print('context:', _context)
             x = layers.Lambda(lambda x: _input[:, t, :])(_input)
             x = layers.Reshape((1, self.ins))(x)
-            print('x:', x)
+            if self.verbosity > 2:
+                print('x:', x)
             _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
             if t != 0:
                 print('attention_weight_:'+str(t), attention_weight_t)
@@ -140,19 +164,21 @@ class DualAttentionModel(Model):
                 attention_weight_t = layers.Concatenate(axis=1,
                                                         name='attn_weight_'+str(t)+'_'+suf)([attention_weight_t,
                                                                                              _context])
-                print('salam')
             else:
                 attention_weight_t = _context
-            print('Now attention_weight_:' + str(t), attention_weight_t)
-            print('encoder hidden state:', _h)
-            print('_:', _)
-            print('encoder cell state:', s)
-            print('time-step', t)
+
+            if self.verbosity > 2:
+                print('Now attention_weight_:' + str(t), attention_weight_t)
+                print('encoder hidden state:', _h)
+                print('_:', _)
+                print('encoder cell state:', s)
+                print('time-step', t)
             # break
 
         # get the driving input series
         enc_output = layers.Multiply(name='enc_output_'+suf)([attention_weight_t, _input])  # equation 10 in paper
-        print('output from encoder attention:', enc_output)
+        if self.verbosity > 1:
+            print('output from encoder attention:', enc_output)
         return enc_output
 
     def one_decoder_attention_step(self, _h_de_prev, _s_de_prev, _h_en_all, t):
@@ -163,14 +189,16 @@ class DualAttentionModel(Model):
         :param t: int, timestep
         :return: x_t's attention weights,total n numbers,sum these are 1
         """
-        print('h_en_all:', _h_en_all)
+        if self.verbosity > 2:
+            print('h_en_all:', _h_en_all)
         # concatenation of the previous hidden state and cell state of the LSTM unit in eq 12
         _concat = layers.Concatenate(name='eq_12_'+str(t))([_h_de_prev, _s_de_prev])  # (None,1,2p)
         result1 = self.de_densor_We(_concat)   # (None,1,m)
         result1 = layers.RepeatVector(self.lookback)(result1)  # (None,T,m)
         result2 = MyDot(self.nn_config['enc_config']['m'])(_h_en_all)
-        print('result1:', result1)
-        print('result2:', result2)
+        if self.verbosity > 2:
+            print('result1:', result1)
+            print('result2:', result2)
         result3 = layers.Add()([result1, result2])  # (None,T,m)
         result4 = layers.Activation(activation='tanh')(result3)  # (None,T,m)
         result5 = MyDot(1)(result4)
@@ -182,21 +210,26 @@ class DualAttentionModel(Model):
     def decoder_attention(self, _h_en_all, _y, _s0, _h0):
         s = _s0
         _h = _h0
-        print('y_prev into decoder: ', _y)
+        if self.verbosity > 2:
+            print('y_prev into decoder: ', _y)
         for t in range(self.lookback-1):
             y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)
             y_prev = layers.Reshape((1, 1))(y_prev)   # (None,1,1)
-            print('\ny_prev at {}'.format(t), y_prev)
+            if self.verbosity > 2:
+                print('\ny_prev at {}'.format(t), y_prev)
             _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (None,1,20)
             # concatenation of decoder input and computed context vector  # ??
             y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
-            print('y_prev1 at {}:'.format(t), y_prev)
+            if self.verbosity > 2:
+                print('y_prev1 at {}:'.format(t), y_prev)
             y_prev = layers.Dense(1, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
-            print('y_prev2 at {}:'.format(t), y_prev)
+            if self.verbosity > 2:
+                print('y_prev2 at {}:'.format(t), y_prev)
             _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??
-            print('decoder hidden state:', _h)
-            print('_:', _)
-            print('decoder cell state:', s)
+            if self.verbosity > 2:
+                print('decoder hidden state:', _h)
+                print('_:', _)
+                print('decoder cell state:', s)
 
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context

@@ -119,7 +119,7 @@ class NN(AttributeStore):
                 else:
                     # it is executable and uses previous outputs as inputs
                     if lyr_name.upper() in ACTIVATION_LAYERS:
-                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](layer_outputs)
+                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(layer_outputs)
                     elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
                         wrp_layer = LAYERS[lyr_name.upper()]
                         lyr_cache[lyr_name] = wrp_layer
@@ -141,7 +141,7 @@ class NN(AttributeStore):
                 # it is an executable
                 if lyr_name.upper() in ACTIVATION_LAYERS:
                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](call_args, **add_args)
+                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(call_args, **add_args)
                 elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
                     wrp_layer = LAYERS[lyr_name.upper()]
                     lyr_cache[lyr_name] = wrp_layer
@@ -213,23 +213,12 @@ class NN(AttributeStore):
         activation = None
         if "LAMBDA" not in lyr_name.upper():
             # for lambda layers, we don't need to check activation functions and layer names.
-            config, activation = self.check_act_fn(config)
+            config, activation = check_act_fn(config)
 
             # get keras/tensorflow layer compatible layer name
             lyr_name = self.get_layer_name(lyr_name)
 
         return lyr_name, config, activation
-
-    def check_act_fn(self, config: dict):
-        """ it is possible that the config file does not have activation argument or activation is None"""
-        activation = None
-        if 'activation' in config:
-            activation = config['activation']
-        if activation is not None:
-            assert isinstance(activation, str), f"unknown activation function {activation}"
-            config['activation'] = ACTIVATION_FNS[activation.upper()]
-
-        return config, activation
 
     def get_layer_name(self, lyr: str) -> str:
 
@@ -239,6 +228,16 @@ class NN(AttributeStore):
 
         return layer_name
 
+def check_act_fn(config: dict):
+    """ it is possible that the config file does not have activation argument or activation is None"""
+    activation = None
+    if 'activation' in config:
+        activation = config['activation']
+    if activation is not None:
+        assert isinstance(activation, str), f"unknown activation function {activation}"
+        config['activation'] = ACTIVATION_FNS[activation.upper()]
+
+    return config, activation
 
 def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
     """ gets the additional call arguments for a layer. It is supposed that the call arguments are actually tensors/layers
