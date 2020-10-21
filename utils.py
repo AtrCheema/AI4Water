@@ -273,6 +273,7 @@ def make_model(**kwargs):
     nn_config['epochs'] = 14
     nn_config['min_val_loss'] = 0.0001
     nn_config['patience'] = 100
+    nn_config['shuffle'] = True
 
     nn_config['subsequences'] = 3  # used for cnn_lst structure
 

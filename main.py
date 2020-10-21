@@ -9,6 +9,12 @@ import os
 from sklearn.model_selection import train_test_split
 import json
 import h5py
+import random
+
+seed = 313
+np.random.seed(seed)
+random.seed(seed)
+os.environ['PYTHONHASHSEED']=str(seed)
 
 from nn_tools import NN
 from models.global_variables import keras, tf, tcn
@@ -16,16 +22,18 @@ from utils import plot_results, plot_loss, maybe_create_path, save_config_file, 
 from models.global_variables import LOSSES, OPTIMIZERS
 
 
-np.random.seed(313)
 if tf is not None:
     tf.compat.v1.disable_eager_execution()
     # tf.enable_eager_execution()
     import keract_mod as keract
     if int(tf.__version__[0]) == 1:
-        tf.compat.v1.set_random_seed(313)
+        tf.compat.v1.set_random_seed(seed)
     elif int(tf.__version__[0]) > 1:
-        tf.random.set_seed(313)
-    tf.keras.backend.clear_session()
+        tf.random.set_seed(seed)
+    # following lines prevent clashing of GPU access when multiple instances/files using GPU are running simultaneously
+    config = tf.compat.v1.ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = tf.compat.v1.Session(config=config)
 
 np.set_printoptions(suppress=True)  # to suppress scientific notation while printing arrays
 
@@ -46,6 +54,11 @@ class Model(NN):
                  prefix: str = None,
                  path: str = None,
                  verbosity=1):
+
+        if tf is not None:
+            # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
+            # file, they may share same graph.
+            tf.keras.backend.clear_session()
 
         super(Model, self).__init__(data_config, nn_config)
 
@@ -155,7 +168,7 @@ class Model(NN):
         return len(self.k_model.inputs)
 
     def fetch_data(self, data: pd.DataFrame,  st: int = 0, en=None,
-                   shuffle: bool = True,
+                   shuffle: bool = False,  # TODO, is this arg requried?
                    write_data=False,
                    noise: int = 0,
                    indices: list = None,
@@ -312,6 +325,10 @@ class Model(NN):
             return None
         shape = []
         for d in self.k_model.layers[0].input.shape:
+            if int(tf.__version__[0]) == 1:
+                if isinstance(d, tf.Dimension): # for tf 1.x
+                    d = d.value
+
             if d is None:
                 d = -1
             shape.append(d)
@@ -348,6 +365,7 @@ class Model(NN):
                          validation_split=self.data_config['val_fraction'],
                          validation_data=validation_data,
                          callbacks=_callbacks,
+                         shuffle=self.nn_config['shuffle'],
                          steps_per_epoch=self.data_config['steps_per_epoch']
                          )
         history = self.k_model.history
@@ -851,7 +869,7 @@ class Model(NN):
         return
 
     def _plot_activation(self, activation, lyr_name, save):
-        if "LSTM" in lyr_name and np.ndim(activation) in (2, 3):
+        if "LSTM" in lyr_name.upper() and np.ndim(activation) in (2, 3):
             self.features_2d(activation, save=save, lyr_name=lyr_name, norm=(-1,1))
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             self._imshow(activation, lyr_name + " Activations", save, lyr_name)
@@ -896,7 +914,7 @@ class Model(NN):
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_activation gradients"
             title = lyr_name + " Activation Gradients"
-            if "LSTM" in lyr_name and np.ndim(gradient) in (2, 3):
+            if "LSTM" in lyr_name.upper() and np.ndim(gradient) in (2, 3):
                 self.features_2d(gradient, lyr_name=lyr_name, save=save)
 
             elif np.ndim(gradient) == 2:
@@ -952,6 +970,18 @@ class Model(NN):
         plt.show()
         return
 
+    def inputs_for_attention(self, inputs):
+        """ it is being provided separately so that it can be overwritten for cases when attention mechanism depends
+        on more than one inputs or the model applying attention has more than one inputs. """
+        if isinstance(inputs, list):
+            inputs = inputs[0]
+
+        inputs = inputs[:, -1, :] # why 0, why not -1
+
+        assert inputs.shape[1] == self.ins
+
+        return inputs
+
     def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
 
         assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(type(layer_name))
@@ -960,11 +990,8 @@ class Model(NN):
 
         activation, data = self.activations(layer_names=layer_name, **kwargs)
 
-        if isinstance(data, list):
-            data = data[0]
-
         activation = activation[layer_name]
-        data = data[:, 0, :]
+        data = self.inputs_for_attention(data)
 
         assert data.shape[1] == self.ins
 
@@ -1089,8 +1116,11 @@ class Model(NN):
 
     def plot1d(self, array, label: str = '', save=True, fname=None, rnn_args=None):
         plt.close('all')
-        plt.plot(array, '.')
+        plt.style.use('ggplot')
+        plt.plot(array)
+        plt.xlabel("Examples")
         plt.title(label)
+        plt.grid(b=True, which='major', color='0.2', linestyle='-')
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
