@@ -250,7 +250,7 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
             call_args.append(lyr_cache[lyr_ins])
     else:
         if lyr_inputs not in lyr_cache:
-            raise ValueError("No layer named '{}' currently exists in the model which can be fed as input to '{}' layer.".format(lyr_inputs, lyr_name))
+            raise ValueError(f"No layer named '{lyr_inputs}' currently exists in the model which can be fed as input to '{lyr_name}' layer. Available layers are {list(lyr_cache.keys())}")
         call_args = lyr_cache[lyr_inputs]
 
     additional_args = {}

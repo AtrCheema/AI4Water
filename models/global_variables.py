@@ -46,7 +46,7 @@ if keras is not None:
         # Concatenate and concatenate act differently, so if we want to use Concatenate, then use Concat not Concatenate
         # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
         "CONCAT": keras.layers.Concatenate,
-        "MYNBEATS": NBeats,
+        "NBEATS": NBeats,
     }
 
     LAYERS.update(get_attributes(what='layers'))

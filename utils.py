@@ -96,7 +96,8 @@ def plot_loss(history: dict, name=None):
 
     if name is not None:
         plt.savefig(name, dpi=300, bbox_inches='tight')
-    plt.show()
+    else:
+        plt.show()
 
     return
 
