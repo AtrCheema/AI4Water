@@ -2,15 +2,12 @@ __all__ = ["CNNLSTMModel", "DualAttentionModel",
            "AutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
 
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
 
 from main import Model
 from .global_variables import keras
 from nn_tools import check_act_fn
 from models.layer_definition import MyTranspose, MyDot
 
-from .nbeats_keras import NBeatsNet
 from utils import plot_loss
 layers = keras.layers
 KModel = keras.models.Model
@@ -374,156 +371,17 @@ class NBeatsModel(Model):
     original paper https://arxiv.org/pdf/1905.10437.pdf which is implemented by https://github.com/philipperemy/n-beats
     must be used with normalization
     """
-    def build_nn(self):
 
-        nbeats_options = self.nn_config['nbeats_options']
-        nbeats_options['input_dim'] = self.outs
-        nbeats_options['exo_dim'] = self.ins
-        self.k_model = NBeatsNet(**nbeats_options)
-
-        adam = keras.optimizers.Adam(lr=self.nn_config['lr'])
-        self.k_model.compile(loss=self.loss, optimizer=adam, metrics=['mse'])
-
-        return
-
-    def run_paras(self, **kwargs):
+    def train_data(self, **kwargs):
 
         exo_x, x, label = self.fetch_data(data=self.data, **kwargs)
 
         return [x, exo_x], label.reshape(-1, 1, 1)
 
-    def fetch_data(self, data: pd.DataFrame,  st: int=0, en=None,
-                   shuffle: bool = True,
-                   write_data=True,
-                   noise: int = 0,
-                   indices: list = None,
-                   scaler_key: str = '0',
-                   return_dt_index=False):
-        """
+    def get_batches(self, df, ins, outs):
 
-        :param data:
-        :param st:
-        :param en:
-        :param shuffle:
-        :param write_data: writes the created batches/generated data in h5 file. The filename will be data_scaler_key.h5
-        :param noise:
-        :param indices:
-        :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
-                   MinMaxScaler object and can be saved with a unique key in memory.
-        :param return_dt_index: if True, first value in returned `x` will be datetime index. This can be used when
-                                fetching data during predict but must be separated before feeding in NN for prediction.
-        :return:
-        """
+        return self.prepare_batches(df, ins, outs)
 
-        if indices is not None:
-            assert isinstance(indices, list), "indices must be list"
-            if en is not None or st != 0:
-                raise ValueError
-
-        df = data
-        dt_index = None
-        if return_dt_index:
-            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
-             pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
-            `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
-            If the data file already contains `datetime` column, then use following command
-            `data.index = pd.to_datetime(data['datetime'])`
-            or use set `use_datetime_index` in `predict` method to False.
-            """
-            dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
-
-        # # add random noise in the data
-        if noise > 0:
-            x = pd.DataFrame(np.random.randint(0, 1, (len(df), noise)))
-            df = pd.concat([df, x], axis=1)
-            prev_inputs = self.in_cols
-            self.in_cols = prev_inputs + list(x.columns)
-            ys = []
-            for y in self.out_cols:
-                ys.append(df.pop(y))
-            df[self.out_cols] = ys
-
-        cols = self.in_cols + self.out_cols
-        df = df[cols]
-
-        scaler = MinMaxScaler()
-        data = scaler.fit_transform(df)
-        df = pd.DataFrame(data)
-
-        if return_dt_index:
-            # pandas will add the 'datetime' column as first column. This columns will only be used to keep
-            # track of indices of train and test data.
-            df.insert(0, 'dt_index', dt_index)
-            self.in_cols = ['dt_index'] + self.in_cols
-
-        self.scalers['scaler_' + scaler_key] = scaler
-
-        if en is None:
-            en = df.shape[0]
-
-        if self.intervals is None:
-
-            df = df[st:en]
-            df.columns = self.in_cols + self.out_cols
-
-            x, y, label = self.prepare_batches(df,
-                                        len(self.in_cols),
-                                        len(self.out_cols)
-                                        )
-            if indices is not None:
-                # because the x,y,z have some initial values removed
-                indices = np.subtract(np.array(indices), self.lookback - 1).tolist()
-
-                # if indices are given then this should be done after `get_data` method
-                x = x[indices]
-                y = y[indices]
-                label = label[indices]
-        else:
-            xs, ys, labels = [], [], []
-            for _st, _en in self.intervals:
-                df1 = df[_st:_en]
-
-                df.columns = self.in_cols + self.out_cols
-                df1.columns = self.in_cols + self.out_cols
-
-                if df1.shape[0] > 0:
-                    x, y, label = self.prepare_batches(df1,
-                                                len(self.in_cols),
-                                                len(self.out_cols))
-                    xs.append(x)
-                    ys.append(y)
-                    labels.append(label.reshape(-1, 1))
-
-            if indices is None:
-                x = np.vstack(xs)[st:en]
-                y = np.vstack(ys)[st:en]
-                label = np.vstack(labels)[st:en]
-            else:
-                x = np.vstack(xs)[indices]
-                y = np.vstack(ys)[indices]
-                label = np.vstack(labels)[indices]
-
-        if shuffle:
-            x, y, label = unison_shuffled_copies(x, y, label)
-
-        x = self.conform_shape(x)
-
-        print('input_X shape:', x.shape)
-        print('input_Y shape:', y.shape)
-        print('label_Y shape:', label.shape)
-
-        if return_dt_index:
-            self.in_cols.remove("dt_index")
-        else:
-            x = x.astype(np.float32)
-
-        if write_data:
-            self.write_cache('data_' + scaler_key, x, y, label)
-
-        return x, y, label
-
-    def conform_shape(self, x):
-        return x
 
     def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
 

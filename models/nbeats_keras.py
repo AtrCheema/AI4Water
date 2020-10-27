@@ -6,8 +6,12 @@ Concatenate, Add, Reshape = keras.layers.Concatenate, keras.layers.Add, keras.la
 Input, Dense, Lambda, Subtract = keras.layers.Input, keras.layers.Dense, keras.layers.Lambda, keras.layers.Subtract
 Model = keras.models.Model
 
-
-class NBeatsNet:
+class NBeats(keras.layers.Layer):
+    """
+    This implementation is same as that of https://github.com/philipperemy/n-beats/tree/master/nbeats_keras
+    except that here NBeats can be used as a layer.
+    The output shape will be (batch_size, self.forecast_length, self.input_dim)
+    """
     GENERIC_BLOCK = 'generic'
     TREND_BLOCK = 'trend'
     SEASONALITY_BLOCK = 'seasonality'
@@ -22,7 +26,8 @@ class NBeatsNet:
                  thetas_dim=(4, 8),
                  share_weights_in_stack=False,
                  hidden_layer_units=256,
-                 nb_harmonics=None
+                 nb_harmonics=None,
+                 **kwargs
                  ):
 
         self.stack_types = stack_types
@@ -34,24 +39,24 @@ class NBeatsNet:
         self.forecast_length = forecast_length
         self.input_dim = input_dim
         self.exo_dim = exo_dim
-        self.input_shape = (self.backcast_length, self.input_dim)
         self.exo_shape = (self.backcast_length, self.exo_dim)
-        self.output_shape = (self.forecast_length, self.input_dim)
-        self.weights = {}
+        self._weights = {}
         self.nb_harmonics = nb_harmonics
         assert len(self.stack_types) == len(self.thetas_dim)
+        super().__init__(**kwargs)
 
-        x = Input(shape=self.input_shape, name='input_variable')
+    def __call__(self, prev_inputs,  *args, **kwargs):
+
+        x = prev_inputs
+        e = kwargs['exo_inputs'] if self.has_exog() else None
         x_ = {}
         for k in range(self.input_dim):
             x_[k] = Lambda(lambda z: z[..., k])(x)
         e_ = {}
         if self.has_exog():
-            e = Input(shape=self.exo_shape, name='exos_variables')
             for k in range(self.exo_dim):
                 e_[k] = Lambda(lambda z: z[..., k])(e)
-        else:
-            e = None
+
         y_ = {}
 
         for stack_id in range(len(self.stack_types)):
@@ -73,22 +78,10 @@ class NBeatsNet:
         else:
             y_ = y_[0]
 
-        if self.has_exog():
-            model = Model([x, e], y_)
-        else:
-            model = Model(x, y_)
-
-        model.summary()
-
-        self.n_beats = model
+        return y_
 
     def has_exog(self):
         return self.exo_dim > 0
-
-    @staticmethod
-    def load(filepath, custom_objects=None, _compile=True):
-        from tensorflow.keras.models import load_model
-        return load_model(filepath, custom_objects, _compile)
 
     def _r(self, layer_with_weights, stack_id):
         # mechanism to restore weights when block share the same weights.
@@ -96,13 +89,13 @@ class NBeatsNet:
         if self.share_weights_in_stack:
             layer_name = layer_with_weights.name.split('/')[-1]
             try:
-                reused_weights = self.weights[stack_id][layer_name]
+                reused_weights = self._weights[stack_id][layer_name]
                 return reused_weights
             except KeyError:
                 pass
-            if stack_id not in self.weights:
-                self.weights[stack_id] = {}
-            self.weights[stack_id][layer_name] = layer_with_weights
+            if stack_id not in self._weights:
+                self._weights[stack_id] = {}
+            self._weights[stack_id][layer_name] = layer_with_weights
         return layer_with_weights
 
     def create_block(self, x, e, stack_id, block_id, stack_type, nb_poly):
@@ -159,24 +152,6 @@ class NBeatsNet:
             forecast_[k] = forecast(theta_f_)
 
         return backcast_, forecast_
-
-    # def compile_model(self, loss, learning_rate):
-    #     optimizer = Adam(lr=learning_rate)
-    #     self.compile(loss=loss, optimizer=optimizer)
-
-    def __getattr__(self, name):
-        # https://github.com/faif/python-patterns
-        # model.predict() instead of model.n_beats.predict()
-        # same for fit(), train_on_batch()...
-        attr = getattr(self.n_beats, name)
-
-        if not callable(attr):
-            return attr
-
-        def wrapper(*args, **kwargs):
-            return attr(*args, **kwargs)
-
-        return wrapper
 
 
 def linear_space(backcast_length, forecast_length, fwd_looking=True):

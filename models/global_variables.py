@@ -7,6 +7,7 @@ try:
     import tensorflow as tf
     maj_version = int(tf.__version__[0])
     min_version = int(tf.__version__[2])
+    from .nbeats_keras import NBeats
 except ModuleNotFoundError:
     keras = None
     tf = None
@@ -45,6 +46,7 @@ if keras is not None:
         # Concatenate and concatenate act differently, so if we want to use Concatenate, then use Concat not Concatenate
         # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
         "CONCAT": keras.layers.Concatenate,
+        "MYNBEATS": NBeats,
     }
 
     LAYERS.update(get_attributes(what='layers'))

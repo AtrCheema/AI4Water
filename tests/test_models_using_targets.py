@@ -18,7 +18,7 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
     _model = input_model(data_config=data_config,
                          nn_config=nn_config,
                          data=df,
-                         intervals=total_intervals
+                         #intervals=total_intervals
                          )
 
     _model.build_nn()
@@ -29,10 +29,21 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
 
     return _model
 
-
+lookback = 12
+exo_ins = 81
+layers = {
+    "Input": {"config": {"shape": (lookback, 1), "name": "prev_inputs"}},
+    "Input_Exo": {"config": {"shape": (lookback, exo_ins),"name": "exo_inputs"}},
+    "NBeats": {"config": {"backcast_length":lookback, "input_dim":1, "exo_dim":81, "forecast_length":1,
+                            "stack_types":('generic', 'generic'), "nb_blocks_per_stack":2, "thetas_dim":(4,4),
+                            "share_weights_in_stack":True, "hidden_layer_units":62},
+                 "inputs": "prev_inputs",
+                 "call_args": {"exo_inputs": "exo_inputs"}},
+    "Flatten": {"config": {}},
+}
 ##
 # NBeats based model
-model = make_and_run(NBeatsModel)
+model = make_and_run(NBeatsModel, _layers=layers, lookback=lookback)
 
 ##
 # DualAttentionModel based model
