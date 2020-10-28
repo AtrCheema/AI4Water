@@ -6,7 +6,6 @@ except AttributeError:
 
 try:
     from .tf_models import CNNLSTMModel
-    from .tf_models import AutoEncoder
     from .tf_models import InputAttentionModel
     from .tf_models import DualAttentionModel
     from .tf_models import NBeatsModel

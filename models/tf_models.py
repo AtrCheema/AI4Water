@@ -1,5 +1,5 @@
 __all__ = ["CNNLSTMModel", "DualAttentionModel",
-           "AutoEncoder", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
+           "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
 
 import numpy as np
 
@@ -231,7 +231,7 @@ class DualAttentionModel(Model):
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
-    def run_paras(self, **kwargs):
+    def train_data(self, **kwargs):
 
         x, prev_y, labels = self.fetch_data(self.data, **kwargs)
 
@@ -241,28 +241,6 @@ class DualAttentionModel(Model):
         h_de0 = s_de0 = np.zeros((x.shape[0], self.nn_config['dec_config']['p']))
 
         return [x, prev_y, s0, h0, h_de0, s_de0], labels
-
-
-class AutoEncoder(Model):
-
-    def __init__(self, nn_config, **kwargs):
-        # because composite attribute is used in this Model
-        self.composite = nn_config['composite']
-
-        super(AutoEncoder, self).__init__(nn_config=nn_config, **kwargs)
-
-
-    def run_paras(self, **kwargs):
-
-        x, y, labels = self.fetch_data(self.data, **kwargs)
-
-        if self.composite:
-            outputs = [x, labels]
-        else:
-            outputs = labels
-
-        return [x], outputs
-
 
 class InputAttentionModel(DualAttentionModel):
 
@@ -282,7 +260,7 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
-    def run_paras(self, **kwargs):
+    def train_data(self, **kwargs):
         x, y, labels = self.fetch_data(self.data, **kwargs)
 
         s0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_s']))
