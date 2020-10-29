@@ -131,7 +131,7 @@ def fitness(batch_size, lookback, lr,
     # instead of appending, writing the new file, so that all the results are saved as one dictionary, which can be
     # useful if we want to reload the results.
     with open(title + '.json', 'w') as rfp:
-        json.dump(RESULTS, rfp, sort_keys=True, indent=4)
+        json.dump(RESULTS, rfp, sort_keys=False, indent=4)
 
     return error
 
