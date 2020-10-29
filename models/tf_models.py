@@ -354,7 +354,7 @@ class NBeatsModel(Model):
 
         exo_x, x, label = self.fetch_data(data=self.data, **kwargs)
 
-        return [x, exo_x], label.reshape(-1, 1, 1)
+        return [x, exo_x], label   # TODO  .reshape(-1, 1, 1) ?
 
     def get_batches(self, df, ins, outs):
 
