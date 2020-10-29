@@ -27,7 +27,7 @@ torch = torch
 tf = tf
 
 
-def get_attributes(aus=tf.keras, what:str='losses') ->dict:
+def get_attributes(aus, what:str='losses') ->dict:
     """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
     capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
     are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
@@ -49,7 +49,7 @@ if keras is not None:
         "NBEATS": NBeats,
     }
 
-    LAYERS.update(get_attributes(what='layers'))
+    LAYERS.update(get_attributes(aus=tf.keras, what='layers'))
 
     # tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
     LAYERS["MULTIPLY"] = keras.layers.Multiply
@@ -95,10 +95,10 @@ if keras is not None:
         "SWISH": tf.nn.swish, # https://arxiv.org/pdf/1710.05941.pdf
     }
 
-    OPTIMIZERS = get_attributes(what='optimizers')
+    OPTIMIZERS = get_attributes(aus=tf.keras, what='optimizers')
 else:
     LAYERS = None
-    ACTIVATION_LAYER = None
+    ACTIVATION_LAYERS = None
     ACTIVATION_FNS = None
     OPTIMIZERS = None
 
@@ -109,8 +109,8 @@ if tf is not None:
         'nse': tf_losses.tf_nse,
         'kge': tf_losses.tf_kge,
     }
-    LOSSES.update(get_attributes(what='losses'))
+    LOSSES.update(get_attributes(aus=tf.keras, what='losses'))
 else:
     LOSSES = {
-        'mse': torch.nn.MSELoss
+        'MSE': torch.nn.MSELoss
     }

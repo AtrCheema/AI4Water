@@ -9,6 +9,7 @@ from .global_variables import torch
 from .HARHN import HARHN
 from .imv_networks import IMVTensorLSTM
 from main import Model
+from utils import check_min_loss
 
 
 class HARHNModel(Model):
@@ -115,7 +116,7 @@ class HARHNModel(Model):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        x, y_his, target = self.prepare_batches(self.data[st:en],  self.data_config['outputs'][0])
+        x, y_his, target = self.prepare_batches(self.data[st:en], '',  self.data_config['outputs'][0])
 
         x_tr, x_val, y_his_tr, y_his_val, target_tr, target_val = train_test_split(x, y_his, target,
                                                                                    test_size=self.data_config['val_fraction'])
@@ -201,7 +202,7 @@ class HARHNModel(Model):
         return losses
 
     def predict(self, st=0, ende=None, indices=None):
-        x_test, y_his_test, target_test = self.prepare_batches(self.data[st:ende],  self.data_config['outputs'][0])
+        x_test, y_his_test, target_test = self.prepare_batches(self.data[st:ende], '',  self.data_config['outputs'][0])
         x_test = (x_test - self.min_max['x_min']) / (self.min_max['x_max'] - self.min_max['x_min'])
         y_his_test = (y_his_test - self.min_max['y_his_min']) / (self.min_max['y_his_max'] - self.min_max['y_his_min'])
         target_test = (target_test - self.min_max['target_min']) / (self.min_max['target_max'] - self.min_max['target_min'])
@@ -258,7 +259,7 @@ class IMVLSTMModel(HARHNModel):
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
-        x, y_h, target = self.prepare_batches(self.data[st:en], self.data_config['outputs'][0])
+        x, y_h, target = self.prepare_batches(self.data[st:en], '',  self.data_config['outputs'][0])
 
         if not self.use_predicted_output:
             x = np.dstack([x, y_h])
@@ -290,7 +291,7 @@ class IMVLSTMModel(HARHNModel):
         counter = 0
         losses = {'train_loss': [],
                   'val_loss': []}
-        for i in range(self.nn_config['epochs']):
+        for epoch in range(self.nn_config['epochs']):
             mse_train = 0
             for batch_x, batch_y in data_train_loader:
                 batch_x = batch_x.cuda()
@@ -318,34 +319,38 @@ class IMVLSTMModel(HARHNModel):
             pred = np.concatenate(preds)
             true = np.concatenate(true)
 
-            if min_val_loss > mse_val ** 0.5:
-                min_val_loss = mse_val ** 0.5
-                print("Saving...")
-                self.saved_model = os.path.join(self.path, "imv_tensor_lstm_nasdaq.pt")
-                torch.save(self.pt_model.state_dict(), self.saved_model)
-                counter = 0
-            else:
-                counter += 1
-
             if counter == self.nn_config['patience']:
                 break
             train_loss = (mse_train / len(x_train_t)) ** 0.5
             val_loss = (mse_val / len(x_val_t)) ** 0.5
             losses['train_loss'].append(train_loss)
             losses['val_loss'].append(val_loss)
-            print("Iter: ", i, "train: ", train_loss, "val: ", val_loss)
-            if i % 10 == 0:
-                pred = pred * (self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
-                true = true * (self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
 
-                self.process_results(true, pred, str(i))
+            msg, save_this_epoch = check_min_loss(losses['val_loss'], epoch, ' ', False, True)
+            if save_this_epoch:
+                self.saved_model = os.path.join(self.w_path, "weights_{:03d}_{:.4f}.pt".format(epoch, val_loss))
+                torch.save(self.pt_model.state_dict(), self.saved_model)
+                counter = 0
+            else:
+                counter += 1
+
+            print("Iter: ", epoch, "train: ", train_loss, "val: ", val_loss)
+
+            if self.verbosity > 1:
+                if epoch % 10 == 0:
+                    pred = pred * (self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
+                    true = true * (self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
+
+                    self.process_results([true], [pred], str(epoch))
 
         return
 
-    def predict(self, st=0, ende=None, indices=None):
+    def predict(self, st=0, en=None, indices=None):
+        if self.saved_model is None:
+            raise ValueError("No model is saved")
         self.pt_model.load_state_dict(torch.load(self.saved_model))
 
-        x_test, y_h, target_test = self.prepare_batches(self.data[st:ende], self.data_config['outputs'][0])
+        x_test, y_h, target_test = self.prepare_batches(self.data[st:en], '', self.data_config['outputs'][0])
 
         if not self.use_predicted_output:
             x_test = np.dstack([x_test, y_h])
@@ -381,28 +386,28 @@ class IMVLSTMModel(HARHNModel):
         preds = preds*(self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
         true = true*(self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
 
-        self.process_results(true, preds, 'validation')
+        self.process_results([true], [preds], 'validation')
 
-        return preds, true
+        return true, preds
 
-    def plot_activations(self):
-        alphas = np.concatenate(self.alphas)
-        betas = np.concatenate(self.betas)
+    def plot_activations(self, **kwargs):
+        alphas = np.concatenate(self.alphas)  # (samples, lookback, ins, 1)
+        betas = np.concatenate(self.betas)    # (samples, ins, 1)
 
-        alphas = alphas.mean(axis=0)
-        betas = betas.mean(axis=0)
+        alphas = alphas.mean(axis=0)   # (lookback, ins, 1)
+        betas = betas.mean(axis=0)     # (ins, 1)
 
-        alphas = alphas[..., 0]
-        betas = betas[..., 0]
+        alphas = alphas[..., 0]        # (lookback, ins)
+        betas = betas[..., 0]          # (ins, )
 
-        alphas = alphas.transpose(1, 0)
+        alphas = alphas.transpose(1, 0)  # (ins, lookback)
 
-        all_cols = self.data_config['inputs'] + self.data_config['outputs']
+        all_cols = self.data_config['inputs'] if self.use_predicted_output else  self.data_config['inputs'] + self.data_config['outputs']
         plt.close('all')
         fig, ax = plt.subplots()
-        # fig.set_figwidth(12)
-        # fig.set_figheight(14)
-        plt.figure(dpi=400)
+        fig.set_figwidth(60)
+        fig.set_figheight(80)
+        #plt.figure(dpi=400)
         _ = ax.imshow(alphas)
         ax.set_xticks(np.arange(self.lookback))
         ax.set_yticks(np.arange(len(all_cols)))
@@ -413,13 +418,15 @@ class IMVLSTMModel(HARHNModel):
                 _ = ax.text(j, i, round(alphas[i, j], 3),
                             ha="center", va="center", color="w")
         ax.set_title("Importance of features and timesteps")
+        plt.savefig(os.path.join(self.act_path, 'acts'), dpi=400, bbox_inches='tight')
 
-        plt.show()
 
+        plt.close('all')
         plt.figure()
         plt.title("Feature importance")
-        plt.bar(range(self.ins + self.outs), betas)
-        plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90)
+        plt.bar(range(self.ins if self.use_predicted_output else self.ins + self.outs), betas)
+        plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
+        plt.savefig(os.path.join(self.act_path, 'import'), dpi=400, bbox_inches='tight')
 
 
 def to_torch_tensor(array):
