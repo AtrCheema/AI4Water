@@ -150,24 +150,19 @@ def maybe_create_path(prefix=None, path=None):
 
 
 def dateandtime_now():
+    """ returns the datetime in following format
+    YYYYMMDD_HHMMSS
+    """
     jetzt = datetime.datetime.now()
-    jahre = str(jetzt.year)
-    month = str(jetzt.month)
-    if len(month) < 2:
-        month = '0' + month
-    tag = str(jetzt.day)
-    if len(tag) < 2:
-        tag = '0' + tag
-    datum = jahre + month + tag
-
-    stunde = str(jetzt.hour)
-    if len(stunde) < 2:
-        stunde = '0' + stunde
-    minute = str(jetzt.minute)
-    if len(minute) < 2:
-        minute = '0' + minute
-
-    return datum + '_' + stunde + str(minute)
+    dt = str(jetzt.year)
+    for time in ['month', 'day', 'hour', 'minute', 'second']:
+        _time = str(getattr(jetzt, time))
+        if len(_time) < 2:
+            _time = '0' + _time
+        if time == 'hour':
+            _time = '_' + _time
+        dt += _time
+    return dt
 
 
 def save_config_file(path, config=None, errors=None, indices=None, name=''):
@@ -197,20 +192,20 @@ def skopt_plots(search_result, pref=os.getcwd()):
 
     from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 
+    plt.close('all')
     _ = plot_evaluations(search_result)
     plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
-    plt.show()
 
+    plt.close('all')
     _ = plot_objective(search_result)
     plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
-    plt.show()
 
+    plt.close('all')
     _ = plot_convergence(search_result)
     plt.savefig(os.path.join(pref , 'convergence'), dpi=400, bbox_inches='tight')
-    plt.show()
 
 
-def check_min_loss(epoch_losses, _epoch, _msg:str, _save_fg:bool, to_save=None):
+def check_min_loss(epoch_losses, epoch, msg:str, save_fg:bool, to_save=None):
     epoch_loss_array = epoch_losses[:-1]
 
     current_epoch_loss = epoch_losses[-1]
@@ -221,14 +216,14 @@ def check_min_loss(epoch_losses, _epoch, _msg:str, _save_fg:bool, to_save=None):
         min_loss = current_epoch_loss
 
     if np.less(current_epoch_loss, min_loss):
-        _msg = _msg + "    {:10.5f} ".format(current_epoch_loss)
+        msg = msg + "    {:10.5f} ".format(current_epoch_loss)
 
         if to_save is not None:
-            _save_fg = True
+            save_fg = True
     else:
-        _msg = _msg + "              "
+        msg = msg + "              "
 
-    return _msg, _save_fg
+    return msg, save_fg
 
 
 def make_model(**kwargs):
