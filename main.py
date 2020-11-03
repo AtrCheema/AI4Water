@@ -285,10 +285,6 @@ class Model(NN):
 
         x = self.conform_shape(x, datetime_index=return_dt_index)
 
-        print('input_X shape:', x.shape)
-        print('input_Y shape:', y.shape)
-        print('label_Y shape:', label.shape)
-
         if return_dt_index:
             self.in_cols.remove("dt_index")
         else:
@@ -298,6 +294,35 @@ class Model(NN):
             self.write_cache('data_' + scaler_key, x, y, label)
 
         return x, y, label
+
+    def check_batches(self, x:np.ndarray, prev_y:np.ndarray,  y:np.ndarray)-> (np.ndarray, np.ndarray):
+
+        steps_per_epoch = self.data_config['batches_per_epoch']
+        if steps_per_epoch is None:
+            return x, prev_y,  y
+        else:
+            assert isinstance(x, np.ndarray)
+            assert isinstance(y, np.ndarray)
+
+            batch_size = self.data_config['batch_size']
+            _x = [None for _ in range(steps_per_epoch)]
+            _prev_y = [None for _ in range(steps_per_epoch)]
+            _y = [None for _ in range(steps_per_epoch)]
+
+            st, en = 0, batch_size
+            for batch in range(steps_per_epoch):
+                _x[batch] = x[st:en, :]
+                _prev_y[batch] = prev_y[st:en, :]
+                _y[batch] = y[st:en,:]
+
+                st += batch_size
+                en += batch_size
+
+            x = np.vstack(_x)
+            prev_y = np.vstack(_prev_y)
+            y = np.vstack(_y)
+
+            return x, prev_y, y
 
     def conform_shape(self, x, datetime_index):
         """
@@ -324,12 +349,12 @@ class Model(NN):
         if self.num_input_layers > 1:
             return None
         shape = []
-        for d in self.k_model.layers[0].input.shape:
+        for idx, d in enumerate(self.k_model.layers[0].input.shape):
             if int(tf.__version__[0]) == 1:
                 if isinstance(d, tf.Dimension): # for tf 1.x
                     d = d.value
 
-            if d is None:
+            if idx == 0:  # the first dimension must remain undefined so that the user may define batch_size
                 d = -1
             shape.append(d)
         return shape
@@ -339,8 +364,9 @@ class Model(NN):
         _callbacks = list()
 
         _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
+        fname = "{val_loss:.4f}.hdf5" if self.data_config['val_fraction'] > 0.0 else "{loss:.5f}.hdf5"
         _callbacks.append(keras.callbacks.ModelCheckpoint(
-            filepath=self.w_path + "\\weights_{epoch:03d}_{val_loss:.4f}.hdf5",
+            filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
             save_weights_only=True,
             monitor=_monitor,
             mode='min',
@@ -427,6 +453,13 @@ class Model(NN):
     def train_data(self, **kwargs):
         """ prepare data on which to train the NN"""
         x, y, label = self.fetch_data(self.data, **kwargs)
+
+        x, y, label = self.check_batches(x, y, label)
+
+        print('input_X shape:', x.shape)
+        print('prev_Y shape:', y.shape)
+        print('label shape:', label.shape)
+
         return [x], label
 
     def process_results(self, true: list, predicted: list, name=None, **plot_args):

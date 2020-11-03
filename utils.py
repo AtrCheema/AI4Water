@@ -288,6 +288,7 @@ def make_model(**kwargs):
     }
 
     data_config = dict()
+    data_config['batches_per_epoch'] = None  # comes handy if we want to skip certain batches from last
     data_config['normalize'] = True
     data_config['lookback'] = 15
     data_config['batch_size'] = 32
