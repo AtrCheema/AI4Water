@@ -4,14 +4,14 @@ from utils import make_model
 from models import Model, InputAttentionModel
 
 
-def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
+def make_and_run(input_model, _layers=None, lookback=12, epochs=4, batch_size=16, **kwargs):
 
     input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
                       'rel_hum']
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml']
 
-    data_config, nn_config, total_intervals = make_model(batch_size=16,
+    data_config, nn_config, total_intervals = make_model(batch_size=batch_size,
                                                          lookback=lookback,
                                                          lr=0.001,
                                                          inputs=input_features,
@@ -56,6 +56,30 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           }
 make_and_run(Model, layers)
 
+
+##
+# SeqSelfAttention
+batch_size=16
+layers = {
+    "Input": {"config": {"batch_shape": (batch_size, 12, 8)}},
+    "LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "SeqSelfAttention": {"config": {"units": 32, "attention_width": 12, "attention_activation": "sigmoid"}},
+          "LSTM_1": {'config': {'units': 32}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense": {'config': {'units': 1, 'name': 'output'}}
+          }
+
+make_and_run(Model, layers, batch_size=batch_size, batches_per_epoch=5)
+
+
+##
+# SeqWeightedAttention
+layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+          "SeqWeightedAttention": {"config": {}},
+          "Dropout": {'config': {'rate': 0.3}},
+          "Dense": {'config': {'units': 1, 'name': 'output'}}
+          }
+make_and_run(Model, layers)
 
 ##
 # LSTM  + Raffel Attention
@@ -168,7 +192,6 @@ layers = {
     "relu_1": {'config': {}},
     'Dense': {'config': {'units': 1}}
 }
-# TODO running this after SelfAttention is failing probably due to one of the commits made btw 10-12 Oct.
 make_and_run(Model, layers, lookback=12)
 
 
@@ -192,8 +215,8 @@ make_and_run(Model, layers)
 make_and_run(InputAttentionModel)
 layers = {
     'Input_1': {'config': {'shape': (_lookback, ins), 'name': 'inputs'}},
-    'Input_2': {'config': {'shape': (20), 'name': 'input_s0'}},
-    'Input_3': {'config': {'shape': (20), 'name': 'input_h0'}},
+    'Input_2': {'config': {'shape': (20,), 'name': 'input_s0'}},
+    'Input_3': {'config': {'shape': (20,), 'name': 'input_h0'}},
     'EncAttention': {'config': {'n_s': 20, 'n_h': 20, 'm': 20, 'lookback': _lookback, 'ins': ins, 'outs': 1},
                        'inputs': ['inputs', 'input_s0', 'input_h0']},
     'Flatten': {'config': {}},
