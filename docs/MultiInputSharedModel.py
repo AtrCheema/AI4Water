@@ -59,7 +59,7 @@ class MultiInputSharedModel(Model):
         return
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
-        self.training = True
+
         train_data = self.train_data(st=st, en=en, indices=indices)
 
         val_data = self.val_data(st=st, en=en, indices=indices)
@@ -67,7 +67,6 @@ class MultiInputSharedModel(Model):
         history = self.fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
 
         plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
-        self.training = False
 
         return history.history
 
@@ -76,7 +75,7 @@ class MultiInputSharedModel(Model):
         return predicted, true_outputs[0]
 
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
-                use_datetime_index=True, **plot_args):
+                use_datetime_index=True, pp=False, **plot_args):
         out_cols = self.out_cols
 
         predictions = []
@@ -107,12 +106,13 @@ class MultiInputSharedModel(Model):
                 true_outputs = pd.Series(true_outputs.reshape(-1,), index=dt_index).sort_index()
                 predicted = pd.Series(predicted.reshape(-1, ), index=dt_index).sort_index()
 
-                df = pd.concat([true_outputs, predicted], axis=1)
-                df.columns = ['true_' + str(out), 'pred_' + str(out)]
-                df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
+                if pp:
+                    df = pd.concat([true_outputs, predicted], axis=1)
+                    df.columns = ['true_' + str(out), 'pred_' + str(out)]
+                    df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
-                self.out_cols = [out]
-                self.process_results([true_outputs], [predicted], pref + '_', **plot_args)
+                    self.out_cols = [out]
+                    self.process_results([true_outputs], [predicted], pref + '_', **plot_args)
 
             else:
                 self.plot_quantiles1(true_outputs, predicted)
@@ -122,6 +122,7 @@ class MultiInputSharedModel(Model):
             predictions.append(predicted)
             observations.append(true_outputs)
 
+        self.out_cols = out_cols
         return observations, predictions
 
 
