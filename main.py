@@ -529,9 +529,10 @@ class Model(NN):
         return self.train_data(**kwargs)
 
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
-                use_datetime_index=True, **plot_args):
+                use_datetime_index=True, pp=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
+        pp: post processing
 
         """
 
@@ -571,15 +572,16 @@ class Model(NN):
             true_outputs = [pd.Series(t_out.reshape(-1,), index=dt_index).sort_index() for t_out in true_outputs]
             predicted = [pd.Series(p_out.reshape(-1,), index=dt_index).sort_index() for p_out in predicted]
 
-            # save the results
-            for idx, out in enumerate(self.out_cols):
-                p = predicted[idx]
-                t = true_outputs[idx]
-                df = pd.concat([t, p], axis=1)
-                df.columns = ['true_' + str(out), 'pred_' + str(out)]
-                df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
+            if pp:
+                # save the results
+                for idx, out in enumerate(self.out_cols):
+                    p = predicted[idx]
+                    t = true_outputs[idx]
+                    df = pd.concat([t, p], axis=1)
+                    df.columns = ['true_' + str(out), 'pred_' + str(out)]
+                    df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
-            self.process_results(true_outputs, predicted, pref+'_', **plot_args)
+                self.process_results(true_outputs, predicted, pref+'_', **plot_args)
 
             return true_outputs, predicted
 
@@ -828,7 +830,7 @@ class Model(NN):
 
     def activations(self, layer_names=None, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
-        inputs, outputs = self.train_data(**kwargs)
+        inputs, outputs = self.test_data(**kwargs)
 
         activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
         return activations, inputs
@@ -845,13 +847,13 @@ class Model(NN):
 
     def gradients_of_weights(self, **kwargs) -> dict:
 
-        x, y = self.train_data(**kwargs)
+        x, y = self.test_data(**kwargs)
 
         return keract.get_gradients_of_trainable_weights(self.k_model, x, y)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
 
-        x, y = self.train_data(st=st, en=en, indices=indices)
+        x, y = self.test_data(st=st, en=en, indices=indices)
 
         return keract.get_gradients_of_activations(self.k_model, x, y, layer_names=layer_name)
 
@@ -1019,7 +1021,7 @@ class Model(NN):
 
         assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(type(layer_name))
 
-        predictions, observations = self.predict(**kwargs)
+        predictions, observations = self.predict(pp=False, **kwargs)
 
         activation, data = self.activations(layer_names=layer_name, **kwargs)
 
@@ -1116,11 +1118,11 @@ class Model(NN):
         # return x, y, target
         return self.check_nans(df, input_x, input_y, label_y, outs)
 
-    def _imshow(self, img, label: str = '', save=True, fname=None, rnn_args=None):
+    def _imshow(self, img, label: str = '', save=True, fname=None, interpolation:str='none', rnn_args=None):
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
         plt.rcParams.update(plt.rcParamsDefault)
-        plt.imshow(img, aspect='auto')
+        plt.imshow(img, aspect='auto', interpolation=interpolation)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
