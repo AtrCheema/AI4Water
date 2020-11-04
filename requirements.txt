@@ -1,0 +1,9 @@
+tensorflow # optional
+numpy
+pandas
+matplotlib
+scikit-learn
+scikit-optimize
+seaborn
+TSErrors
+pytorch # optional
