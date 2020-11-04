@@ -288,15 +288,16 @@ def make_model(**kwargs):
     }
 
     data_config = dict()
+    data_config['forecast_length'] = 1   # how many future values we want to predict
     data_config['batches_per_epoch'] = None  # comes handy if we want to skip certain batches from last
     data_config['normalize'] = True
     data_config['lookback'] = 15
     data_config['batch_size'] = 32
     data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
     data_config['val_data'] = None # If this is not string and not None, this will overwite `val_fraction`
-    data_config['steps_per_epoch'] = None
-    data_config['test_fraction'] = 0.2
-    data_config['CACHEDATA'] = True
+    data_config['steps_per_epoch'] = None  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
+    data_config['test_fraction'] = 0.2   # fraction of data to be used for test
+    data_config['CACHEDATA'] = True   # write the data/batches as hdf5 file
     data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
     data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
     data_config['metrics'] = None  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'

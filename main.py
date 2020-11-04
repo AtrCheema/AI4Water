@@ -468,20 +468,25 @@ class Model(NN):
         out_name = ''
         for out, out_name in enumerate(self.out_cols):
 
-            t = true[out]
-            p = predicted[out]
+            _t = true[out]
+            _p = predicted[out]
 
-            if np.isnan(t).sum() > 0:
-                mask = np.invert(np.isnan(t))
-                t = t[mask]
-                p = p[mask]
+            for hor in range(self.data_config['forecast_length']):
 
-            errors = FindErrors(t, p)
-            errs[out_name + '_errors'] = errors.calculate_all()
-            errs[out_name + '_stats'] = errors.stats()
+                t = _t.values[:, hor]  # _t is dataframe if shape (samples, horizons)
+                p = _p.values[:, hor]
 
-            plot_results(t, p, name=os.path.join(self.path, name + out_name),
-                         **plot_args)
+                if np.isnan(t).sum() > 0:
+                    mask = np.invert(np.isnan(t))
+                    t = t[mask]
+                    p = p[mask]
+
+                errors = FindErrors(t, p)
+                errs[out_name + '_errors_' + str(hor)] = errors.calculate_all()
+                errs[out_name + '_stats_' + str(hor)] = errors.stats()
+
+                plot_results(t, p, name=os.path.join(self.path, name + out_name + '_' + str(hor)),
+                             **plot_args)
 
         save_config_file(self.path, errors=errs, name=name + '_' + out_name + '_')
 
@@ -568,9 +573,10 @@ class Model(NN):
             if not isinstance(predicted, list):
                 predicted = [predicted]
 
+            horizons = self.data_config['forecast_length']
             # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
-            true_outputs = [pd.Series(t_out.reshape(-1,), index=dt_index).sort_index() for t_out in true_outputs]
-            predicted = [pd.Series(p_out.reshape(-1,), index=dt_index).sort_index() for p_out in predicted]
+            true_outputs = [pd.DataFrame(t_out.reshape(-1,horizons), index=dt_index, columns=['true_'+ str(i) for i in range(horizons)]).sort_index() for t_out in true_outputs]
+            predicted = [pd.DataFrame(p_out.reshape(-1, horizons), index=dt_index, columns=['pred_'+ str(i) for i in range(horizons)]).sort_index() for p_out in predicted]
 
             if pp:
                 # save the results
@@ -578,7 +584,7 @@ class Model(NN):
                     p = predicted[idx]
                     t = true_outputs[idx]
                     df = pd.concat([t, p], axis=1)
-                    df.columns = ['true_' + str(out), 'pred_' + str(out)]
+                    df.columns = [col+ '_' + str(out) for col in df.columns]
                     df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
                 self.process_results(true_outputs, predicted, pref+'_', **plot_args)
@@ -1099,24 +1105,25 @@ class Model(NN):
         target = self.data_config['outputs'][0]
 
         x = np.zeros((len(df), self.lookback, df.shape[1] - 1))
-        y = np.zeros((len(df), self.lookback, 1))
+        prev_y = np.zeros((len(df), self.lookback, 1))
 
         for i, name in enumerate(list(df.columns[:-1])):
             for j in range(self.lookback):
                 x[:, j, i] = df[name].shift(self.lookback - j - 1).fillna(method="bfill")
 
         for j in range(self.lookback):
-            y[:, j, 0] = df[target].shift(self.lookback - j - 1).fillna(method="bfill")
+            prev_y[:, j, 0] = df[target].shift(self.lookback - j - 1).fillna(method="bfill")
 
-        prediction_horizon = 1
-        target = df[target].shift(-prediction_horizon).fillna(method="ffill").values
+        fl = self.data_config['forecast_length']
+        _y = np.zeros((df.shape[0], fl))
+        for i in range(df.shape[0]-fl):
+            _y[i-1, :] = df[target].values[i:i+fl]
 
-        input_x = x[self.lookback:]
-        input_y = y[self.lookback:]
-        label_y = target[self.lookback:]
+        input_x = x[self.lookback:-fl,:]
+        prev_y = prev_y[self.lookback:-fl,:]
+        y = _y[self.lookback:-fl,:]
 
-        # return x, y, target
-        return self.check_nans(df, input_x, input_y, label_y, outs)
+        return self.check_nans(df, input_x, prev_y, y, outs)
 
     def _imshow(self, img, label: str = '', save=True, fname=None, interpolation:str='none', rnn_args=None):
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))

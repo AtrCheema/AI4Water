@@ -31,10 +31,11 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
 
 lookback = 12
 exo_ins = 81
+forecsat_length = 4 # predict next 4 values
 layers = {
     "Input": {"config": {"shape": (lookback, 1), "name": "prev_inputs"}},
     "Input_Exo": {"config": {"shape": (lookback, exo_ins),"name": "exo_inputs"}},
-    "NBeats": {"config": {"backcast_length":lookback, "input_dim":1, "exo_dim":81, "forecast_length":1,
+    "NBeats": {"config": {"backcast_length":lookback, "input_dim":1, "exo_dim":exo_ins, "forecast_length":forecsat_length,
                             "stack_types":('generic', 'generic'), "nb_blocks_per_stack":2, "thetas_dim":(4,4),
                             "share_weights_in_stack":True, "hidden_layer_units":62},
                  "inputs": "prev_inputs",
@@ -43,7 +44,7 @@ layers = {
 }
 ##
 # NBeats based model
-model = make_and_run(NBeatsModel, _layers=layers, lookback=lookback)
+model = make_and_run(NBeatsModel, _layers=layers, lookback=lookback, forecast_length=forecsat_length)
 
 ##
 # DualAttentionModel based model
