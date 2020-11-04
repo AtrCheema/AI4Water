@@ -14,31 +14,32 @@ import random
 seed = 313
 np.random.seed(seed)
 random.seed(seed)
-os.environ['PYTHONHASHSEED']=str(seed)
+os.environ['PYTHONHASHSEED'] = str(seed)
 
 from nn_tools import NN
 from models.global_variables import keras, tf, tcn
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
 from models.global_variables import LOSSES, OPTIMIZERS
-
+from plotting_tools import Plots
 
 if tf is not None:
     tf.compat.v1.disable_eager_execution()
     # tf.enable_eager_execution()
     import keract_mod as keract
+
     if int(tf.__version__[0]) == 1:
         tf.compat.v1.set_random_seed(seed)
     elif int(tf.__version__[0]) > 1:
         tf.random.set_seed(seed)
     # following lines prevent clashing of GPU access when multiple instances/files using GPU are running simultaneously
-    config = tf.compat.v1.ConfigProto()
-    config.gpu_options.allow_growth = True
-    session = tf.compat.v1.Session(config=config)
+    tf_config = tf.compat.v1.ConfigProto()
+    tf_config.gpu_options.allow_growth = True
+    session = tf.compat.v1.Session(config=tf_config)
 
 np.set_printoptions(suppress=True)  # to suppress scientific notation while printing arrays
 
 
-class Model(NN):
+class Model(NN, Plots):
     """
     data_config: `dict` contains parameters for data processing, check make_model function in utils for options
     nn_config: `dict` contains parameters for building NN, check `make_model` function in utils.py for all options
@@ -47,6 +48,7 @@ class Model(NN):
     prefix: `str`, prefix to be added to the folder name which contains results of this model
     verbosity: `int`, determines amount of information to be printed to console.
     """
+
     def __init__(self, data_config: dict,
                  nn_config: dict,
                  data,
@@ -157,7 +159,7 @@ class Model(NN):
     def layers_out_shapes(self) -> dict:
         """ returns shapes of outputs from all layers in model as dictionary"""
         shapes = {}
-        
+
         for lyr in self.k_model.layers:
             shapes[lyr.name] = lyr.output_shape
 
@@ -167,7 +169,7 @@ class Model(NN):
     def num_input_layers(self) -> int:
         return len(self.k_model.inputs)
 
-    def fetch_data(self, data: pd.DataFrame,  st: int = 0, en=None,
+    def fetch_data(self, data: pd.DataFrame, st: int = 0, en=None,
                    shuffle: bool = False,  # TODO, is this arg requried?
                    write_data=False,
                    noise: int = 0,
@@ -244,9 +246,9 @@ class Model(NN):
             df.columns = self.in_cols + self.out_cols
 
             x, y, label = self.get_batches(df,
-                                        len(self.in_cols),
-                                        len(self.out_cols)
-                                        )
+                                           len(self.in_cols),
+                                           len(self.out_cols)
+                                           )
             if indices is not None:
                 # because the x,y,z have some initial values removed
                 indices = np.subtract(np.array(indices), self.lookback - 1).tolist()
@@ -265,8 +267,8 @@ class Model(NN):
 
                 if df1.shape[0] > 0:
                     x, y, label = self.get_batches(df1,
-                                                len(self.in_cols),
-                                                len(self.out_cols))
+                                                   len(self.in_cols),
+                                                   len(self.out_cols))
                     xs.append(x)
                     ys.append(y)
                     labels.append(label)
@@ -295,11 +297,11 @@ class Model(NN):
 
         return x, y, label
 
-    def check_batches(self, x:np.ndarray, prev_y:np.ndarray,  y:np.ndarray)-> (np.ndarray, np.ndarray):
+    def check_batches(self, x: np.ndarray, prev_y: np.ndarray, y: np.ndarray) -> (np.ndarray, np.ndarray):
 
         steps_per_epoch = self.data_config['batches_per_epoch']
         if steps_per_epoch is None:
-            return x, prev_y,  y
+            return x, prev_y, y
         else:
             assert isinstance(x, np.ndarray)
             assert isinstance(y, np.ndarray)
@@ -313,7 +315,7 @@ class Model(NN):
             for batch in range(steps_per_epoch):
                 _x[batch] = x[st:en, :]
                 _prev_y[batch] = prev_y[st:en, :]
-                _y[batch] = y[st:en,:]
+                _y[batch] = y[st:en, :]
 
                 st += batch_size
                 en += batch_size
@@ -351,7 +353,7 @@ class Model(NN):
         shape = []
         for idx, d in enumerate(self.k_model.layers[0].input.shape):
             if int(tf.__version__[0]) == 1:
-                if isinstance(d, tf.Dimension): # for tf 1.x
+                if isinstance(d, tf.Dimension):  # for tf 1.x
                     d = d.value
 
             if idx == 0:  # the first dimension must remain undefined so that the user may define batch_size
@@ -575,8 +577,12 @@ class Model(NN):
 
             horizons = self.data_config['forecast_length']
             # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
-            true_outputs = [pd.DataFrame(t_out.reshape(-1,horizons), index=dt_index, columns=['true_'+ str(i) for i in range(horizons)]).sort_index() for t_out in true_outputs]
-            predicted = [pd.DataFrame(p_out.reshape(-1, horizons), index=dt_index, columns=['pred_'+ str(i) for i in range(horizons)]).sort_index() for p_out in predicted]
+            true_outputs = [pd.DataFrame(t_out.reshape(-1, horizons), index=dt_index,
+                                         columns=['true_' + str(i) for i in range(horizons)]).sort_index() for t_out in
+                            true_outputs]
+            predicted = [pd.DataFrame(p_out.reshape(-1, horizons), index=dt_index,
+                                      columns=['pred_' + str(i) for i in range(horizons)]).sort_index() for p_out in
+                         predicted]
 
             if pp:
                 # save the results
@@ -584,10 +590,10 @@ class Model(NN):
                     p = predicted[idx]
                     t = true_outputs[idx]
                     df = pd.concat([t, p], axis=1)
-                    df.columns = [col+ '_' + str(out) for col in df.columns]
+                    df.columns = [col + '_' + str(out) for col in df.columns]
                     df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
-                self.process_results(true_outputs, predicted, pref+'_', **plot_args)
+                self.process_results(true_outputs, predicted, pref + '_', **plot_args)
 
             return true_outputs, predicted
 
@@ -599,13 +605,14 @@ class Model(NN):
 
             return true_outputs, predicted
 
-    def plot_quantile(self, true_outputs, predicted,  min_q: int, max_q, st=0, en=None, save=False):
+    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
         plt.close('all')
         plt.style.use('ggplot')
 
         if en is None:
             en = true_outputs.shape[0]
-        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st), str(en))
+        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
+                                              str(en))
 
         plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
         plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
@@ -663,10 +670,10 @@ class Model(NN):
             en = true_outputs.shape[0]
         for q in range(len(self.quantiles) - 1):
             st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[q+1] * 100)
+            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
 
             plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q+1], alpha=0.2,
+            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q + 1], alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
             if save:
@@ -696,7 +703,7 @@ class Model(NN):
 
             in_obs = np.hstack([first_input, true_outputs])
             in_pred = np.hstack([first_input, predicted])
-            scaler = self.scalers['scaler_'+scaler_key]
+            scaler = self.scalers['scaler_' + scaler_key]
             in_obs_den = scaler.inverse_transform(in_obs)
             in_pred_den = scaler.inverse_transform(in_pred)
             true_outputs = in_obs_den[:, -self.outs:]
@@ -809,19 +816,19 @@ class Model(NN):
         nans = df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
             if self.data_config['ignore_nans']:
-                print("\n{} Ignoring NANs in predictions {}\n".format(10*'*', 10*'*'))
+                print("\n{} Ignoring NANs in predictions {}\n".format(10 * '*', 10 * '*'))
             else:
                 if self.method == 'dual_attention':
                     raise ValueError
                 if outs > 1:
-                    assert np.all(nans.values == int(nans.sum()/outs)), """output columns contains nan values at
+                    assert np.all(nans.values == int(nans.sum() / outs)), """output columns contains nan values at
                      different indices"""
-                print('\n{} Removing Samples with nan labels  {}\n'.format(10*'*', 10*'*'))
+                print('\n{} Removing Samples with nan labels  {}\n'.format(10 * '*', 10 * '*'))
                 # y = df[df.columns[-1]]
                 nan_idx = np.isnan(label_y) if self.outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]
                 # non_nan_idx = ~nan_idx_t.values
-                non_nan_idx = ~nan_idx.reshape(-1,)
+                non_nan_idx = ~nan_idx.reshape(-1, )
                 label_y = label_y[non_nan_idx]
                 input_x = input_x[non_nan_idx]
                 input_y = input_y[non_nan_idx]
@@ -911,15 +918,15 @@ class Model(NN):
 
     def _plot_activation(self, activation, lyr_name, save):
         if "LSTM" in lyr_name.upper() and np.ndim(activation) in (2, 3):
-            self.features_2d(activation, save=save, lyr_name=lyr_name, norm=(-1,1))
+            self.features_2d(activation, save=save, lyr_name=lyr_name, norm=(-1, 1))
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             self._imshow(activation, lyr_name + " Activations", save, lyr_name)
         elif np.ndim(activation) == 3:
             self._imshow_3d(activation, lyr_name, save=save)
         elif np.ndim(activation) == 2:  # this is now 1d
             # shape= (?, 1)
-            self.plot1d(activation, label=lyr_name+' Activations', save=save,
-                        fname=lyr_name+'_activations')
+            self.plot1d(activation, label=lyr_name + ' Activations', save=save,
+                        fname=lyr_name + '_activations')
         else:
             print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
                                                                                    np.ndim(activation)))
@@ -932,7 +939,7 @@ class Model(NN):
         for lyr_name, gradient in gradients.items():
 
             title = lyr_name + "Weight Gradients"
-            fname = lyr_name+'_weight_grads'
+            fname = lyr_name + '_weight_grads'
             rnn_args = None
 
             if "LSTM" in title.upper():
@@ -940,7 +947,7 @@ class Model(NN):
                             'gate_names_str': "(input, forget, cell, output)"}
 
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                self._imshow(gradient, title, save,  fname, rnn_args=rnn_args)
+                self._imshow(gradient, title, save, fname, rnn_args=rnn_args)
 
             elif len(gradient) and np.ndim(gradient) < 3:
                 self.plot1d(gradient, title, save, fname, rnn_args=rnn_args)
@@ -1017,7 +1024,7 @@ class Model(NN):
         if isinstance(inputs, list):
             inputs = inputs[0]
 
-        inputs = inputs[:, -1, :] # why 0, why not -1
+        inputs = inputs[:, -1, :]  # why 0, why not -1
 
         assert inputs.shape[1] == self.ins
 
@@ -1070,35 +1077,6 @@ class Model(NN):
 
             return
 
-    def plot2d_act_for_a_sample(self, activations, sample=0, name: str = None):
-        fig, axis = plt.subplots()
-        fig.set_figheight(8)
-        # for idx, ax in enumerate(axis):
-        im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
-        axis.set_xlabel('lookback')
-        axis.set_ylabel('inputs')
-        print(self.in_cols)
-        axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
-        fig.colorbar(im)
-        if name is not None:
-            plt.savefig(os.path.join(self.path, name) + '_' + str(sample), dpi=400, bbox_inches='tight')
-        else:
-            plt.show()
-        return
-
-    def plot1d_act_for_a_sample(self, activations, sample=0, name=None):
-        fig, axis = plt.subplots()
-
-        for idx in range(self.lookback-1):
-            axis.plot(activations[sample, idx, :].transpose(), label='lookback '+str(idx))
-        axis.set_xlabel('inputs')
-        axis.set_ylabel('activation weight')
-        axis.set_title('Activations at different lookbacks for all inputs for sample ' + str(sample))
-        if name is not None:
-            plt.savefig(os.path.join(self.path, name) + '_' + str(sample), dpi=400, bbox_inches='tight')
-        else:
-            plt.show()
-
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 
         assert self.outs == 1
@@ -1116,76 +1094,14 @@ class Model(NN):
 
         fl = self.data_config['forecast_length']
         _y = np.zeros((df.shape[0], fl))
-        for i in range(df.shape[0]-fl):
-            _y[i-1, :] = df[target].values[i:i+fl]
+        for i in range(df.shape[0] - fl):
+            _y[i - 1, :] = df[target].values[i:i + fl]
 
-        input_x = x[self.lookback:-fl,:]
-        prev_y = prev_y[self.lookback:-fl,:]
-        y = _y[self.lookback:-fl,:]
+        input_x = x[self.lookback:-fl, :]
+        prev_y = prev_y[self.lookback:-fl, :]
+        y = _y[self.lookback:-fl, :]
 
         return self.check_nans(df, input_x, prev_y, y, outs)
-
-    def _imshow(self, img, label: str = '', save=True, fname=None, interpolation:str='none', rnn_args=None):
-        assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
-        plt.close('all')
-        plt.rcParams.update(plt.rcParamsDefault)
-        plt.imshow(img, aspect='auto', interpolation=interpolation)
-
-        if rnn_args is not None:
-            assert isinstance(rnn_args, dict)
-
-            rnn_dim = int(img.shape[1] / rnn_args['n_gates'])
-            [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.5, color='k')
-                     for gate_idx in range(1, rnn_args['n_gates'])]
-
-            plt.xlabel(rnn_args['gate_names_str'])
-            if "RECURRENT" in label.upper():
-                plt.ylabel("Hidden Units")
-            else:
-                plt.ylabel("Channel Units")
-
-        plt.colorbar()
-        plt.title(label)
-        self.save_or_show(save, fname)
-
-    def _imshow_3d(self, activation, lyr_name, save=True):
-        act_2d = []
-        for i in range(activation.shape[0]):
-            act_2d.append(activation[i, :])
-        activation_2d = np.vstack(act_2d)
-        self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
-                     save, lyr_name)
-
-    def plot1d(self, array, label: str = '', save=True, fname=None, rnn_args=None):
-        plt.close('all')
-        plt.style.use('ggplot')
-        plt.plot(array)
-        plt.xlabel("Examples")
-        plt.title(label)
-        plt.grid(b=True, which='major', color='0.2', linestyle='-')
-
-        if rnn_args is not None:
-            assert isinstance(rnn_args, dict)
-
-            rnn_dim = int(array.shape[0] / rnn_args['n_gates'])
-            [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.5, color='k')
-                     for gate_idx in range(1, rnn_args['n_gates'])]
-            plt.xlabel(rnn_args['gate_names_str'])
-
-        self.save_or_show(save, fname)
-
-    def save_or_show(self, save: bool = True, fname=None):
-        if save:
-            assert isinstance(fname, str)
-            if "/" in fname:
-                fname = fname.replace("/", "__")
-            if ":" in fname:
-                fname = fname.replace(":", "__")
-            fname = os.path.join(self.act_path, fname + ".png")
-            plt.savefig(fname)
-        else:
-            plt.show()
-        return
 
     def save_config(self, history: dict):
 
@@ -1245,7 +1161,7 @@ class Model(NN):
         # loads the weights of keras model from weight file `w_file`.
         cpath = os.path.join(self.w_path, w_file)
         self.k_model.load_weights(cpath)
-        print("{} Successfully loaded weights {}".format('*'*10, '*'*10))
+        print("{} Successfully loaded weights {}".format('*' * 10, '*' * 10))
         return
 
     def write_cache(self, _fname, input_x, input_y, label_y):
@@ -1257,138 +1173,9 @@ class Model(NN):
         h5.close()
         return
 
-    def features_2d(self, data, lyr_name,
-                    reflect_half=False,
-                    timesteps_xaxis=False, max_timesteps=None,
-                    **kwargs):
-        """Plots 2D heatmaps in a standalone graph or subplot grid.
-
-        iter == list/tuple (both work)
-
-        Arguments:
-            data: np.ndarray, 2D/3D. Data to plot.
-                  2D -> standalone graph; 3D -> subplot grid.
-                  3D: (samples, timesteps, channels)
-                  2D: (timesteps, channels)
-
-            reflect_half: bool. If True, second half of channels dim will be
-                  flipped about the timesteps dim.
-            timesteps_xaxis: bool. If True, the timesteps dim (`data` dim 1)
-                  if plotted along the x-axis.
-            max_timesteps:  int/None. Max number of timesteps to show per plot.
-                  If None, keeps original.
-
-        kwargs:
-            w: float. Scale width  of resulting plot by a factor.
-            h: float. Scale height of resulting plot by a factor.
-            show_borders:  bool.  If True, shows boxes around plot(s).
-            show_xy_ticks: int/bool iter. Slot 0 -> x, Slot 1 -> y.
-                  Ex: [1, 1] -> show both x- and y-ticks (and their labels).
-                      [0, 0] -> hide both.
-            show_colorbar: bool. If True, shows one colorbar next to plot(s).
-            title: bool/str. If True, shows generic supertitle.
-                  If str in {'grads', 'outputs', 'generic'}, shows supertitle
-                  tailored to `data` dim (2D/3D). If other str, shows `title`
-                  as supertitle. If False, no title is shown.
-            tight: bool. If True, plots compactly by removing subplot padding.
-            channel_axis: int, 0 or -1. `data` axis holding channels/features.
-                  -1 --> (samples,  timesteps, channels)
-                  0  --> (channels, timesteps, samples)
-            borderwidth: float / None. Width of subplot borders.
-            bordercolor: str / None. Color of subplot borders. Default black.
-            save: bool, .
-
-        Returns:
-            (figs, axes) of generated plots.
-        """
-
-        w, h          = kwargs.get('w', 1), kwargs.get('h', 1)
-        show_borders  = kwargs.get('show_borders', True)
-        show_xy_ticks = kwargs.get('show_xy_ticks', (1, 1))
-        show_colorbar = kwargs.get('show_colorbar', False)
-        tight         = kwargs.get('tight', False)
-        channel_axis  = kwargs.get('channel_axis', -1)
-        borderwidth   = kwargs.get('borderwidth', None)
-        bordercolor   = kwargs.get('bordercolor', None)
-        save      = kwargs.get('savepath', True)
-
-
-        def _process_data(data, max_timesteps, reflect_half,
-                          timesteps_xaxis, channel_axis):
-            if data.ndim not in (2, 3):
-                raise Exception("`data` must be 2D or 3D (got ndim=%s)" % data.ndim)
-
-            if max_timesteps is not None:
-                data = data[..., :max_timesteps, :]
-
-            if reflect_half:
-                data = data.copy()  # prevent passed array from changing
-                half_chs = data.shape[-1] // 2
-                data[..., half_chs:] = np.flip(data[..., half_chs:], axis=0)
-
-            if data.ndim != 3:
-                # (1, width, height) -> one image
-                data = np.expand_dims(data, 0)
-            if timesteps_xaxis:
-                data = np.transpose(data, (0, 2, 1))
-            return data
-
-        def _style_axis(ax, show_borders, show_xy_ticks):
-            ax.axis('tight')
-            if not show_xy_ticks[0]:
-                ax.set_xticks([])
-            if not show_xy_ticks[1]:
-                ax.set_yticks([])
-            if not show_borders:
-                ax.set_frame_on(False)
-
-        if isinstance(show_xy_ticks, (int, bool)):
-            show_xy_ticks = (show_xy_ticks, show_xy_ticks)
-        data = _process_data(data, max_timesteps, reflect_half,
-                             timesteps_xaxis, channel_axis)
-        n_rows, n_cols = _get_nrows_and_ncols(n_subplots=len(data))
-
-        fig, axes = plt.subplots(n_rows, n_cols, dpi=76, figsize=(10, 10), sharex='all', sharey='all')
-        axes = np.asarray(axes)
-
-        fig.suptitle(lyr_name, weight='bold', fontsize=14, y=.93 + .12 * tight)
-
-        for ax_idx, ax in enumerate(axes.flat):
-            img = ax.imshow(data[ax_idx], cmap='bwr', vmin=-1, vmax=1)
-            _style_axis(ax, show_borders, show_xy_ticks)
-
-        if show_colorbar:
-            fig.colorbar(img, ax=axes.ravel().tolist())
-        if tight:
-            fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
-        if borderwidth is not None or bordercolor is not None:
-            for ax in axes.flat:
-                for s in ax.spines.values():
-                    if borderwidth is not None:
-                        s.set_linewidth(borderwidth)
-                    if bordercolor is not None:
-                        s.set_color(bordercolor)
-
-        self.save_or_show(save, lyr_name)
-
-        return
-
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
     assert len(a) == len(b) == len(c)
     p = np.random.permutation(len(a))
     return a[p], b[p], c[p]
-
-
-def _get_nrows_and_ncols(n_subplots, n_rows=None):
-    if n_rows is None:
-        n_rows = int(np.sqrt(n_subplots))
-    n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
-    n_rows = int(n_subplots / n_cols)
-
-    while not ((n_subplots / n_cols).is_integer() and
-               (n_subplots / n_rows).is_integer()):
-        n_cols -= 1
-        n_rows = int(n_subplots / n_cols)
-    return n_rows, n_cols

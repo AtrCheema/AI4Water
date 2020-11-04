@@ -1,9 +1,10 @@
-tensorflow # optional
+tensorflow # only if you want to use tensorflow-based models
 numpy
 pandas
 matplotlib
 scikit-learn
-scikit-optimize
+scikit-optimize  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 seaborn
 TSErrors
-pytorch # optional
+pytorch # only if you want to use pytorch-based models
+h5py # only if you want to save batches
