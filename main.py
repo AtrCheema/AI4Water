@@ -175,7 +175,7 @@ class Model(NN, Plots):
                    noise: int = 0,
                    indices: list = None,
                    scaler_key: str = '0',
-                   return_dt_index=False):
+                   use_datetime_index=False):
         """
 
         :param data:
@@ -187,7 +187,7 @@ class Model(NN, Plots):
         :param indices:
         :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
                    MinMaxScaler object and can be saved with a unique key in memory.
-        :param return_dt_index: if True, first value in returned `x` will be datetime index. This can be used when
+        :param use_datetime_index: if True, first value in returned `x` will be datetime index. This can be used when
                                 fetching data during predict but must be separated before feeding in NN for prediction.
         :return:
         """
@@ -199,7 +199,7 @@ class Model(NN, Plots):
 
         df = data
         dt_index = None
-        if return_dt_index:
+        if use_datetime_index:
             assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
              pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
             `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
@@ -229,7 +229,7 @@ class Model(NN, Plots):
             data = scaler.fit_transform(df)
             df = pd.DataFrame(data)
 
-        if return_dt_index:
+        if use_datetime_index:
             # pandas will add the 'datetime' column as first column. This columns will only be used to keep
             # track of indices of train and test data.
             df.insert(0, 'dt_index', dt_index)
@@ -285,9 +285,9 @@ class Model(NN, Plots):
         if shuffle:
             x, y, label = unison_shuffled_copies(x, y, label)
 
-        x = self.conform_shape(x, datetime_index=return_dt_index)
+        x = self.conform_shape(x, datetime_index=use_datetime_index)
 
-        if return_dt_index:
+        if use_datetime_index:
             self.in_cols.remove("dt_index")
         else:
             x = x.astype(np.float32)
@@ -549,19 +549,7 @@ class Model(NN, Plots):
         inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                               return_dt_index=use_datetime_index)
 
-        first_input = inputs[0]
-        dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
-        if use_datetime_index:
-            # remove the first of first inputs which is datetime index
-            if np.ndim(first_input) == 2:
-                dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
-            elif np.ndim(first_input) == 3:
-                dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-            elif np.ndim(first_input) == 4:
-                dt_index = get_index(np.array(first_input[:, -1, -1, 0], dtype=np.int64))
-
-            first_input = first_input[..., 1:].astype(np.float32)
-            inputs[0] = first_input
+        first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
@@ -605,83 +593,6 @@ class Model(NN, Plots):
 
             return true_outputs, predicted
 
-    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
-                                              str(en))
-
-        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-        plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
-                         color='g', edgecolor=None, label=q_name + ' %')
-        plt.legend(loc="best")
-        if save:
-            plt.savefig(os.path.join(self.path, "q_" + q_name + ".png"))
-        else:
-            plt.show()
-
-    def plot_all_qs(self, true_outputs, predicted, save=False):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        st, en = 0, true_outputs.shape[0]
-
-        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-
-        for idx, q in enumerate(self.quantiles):
-            q_name = "{:.1f}".format(self.quantiles[idx] * 100)
-            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
-
-        plt.legend(loc="best")
-        if save:
-            plt.savefig(os.path.join(self.path, "all_quantiles.png"))
-        else:
-            plt.show()
-        return
-
-    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        for q in range(len(self.quantiles) - 1):
-            st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
-
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, -q], alpha=0.2,
-                             color='g', edgecolor=None, label=st_q + '_' + en_q)
-            plt.legend(loc="best")
-            if save:
-                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
-            else:
-                plt.show()
-        return
-
-    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        for q in range(len(self.quantiles) - 1):
-            st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
-
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q + 1], alpha=0.2,
-                             color='g', edgecolor=None, label=st_q + '_' + en_q)
-            plt.legend(loc="best")
-            if save:
-                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
-            else:
-                plt.show()
-        return
-
     def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
 
         if self.data_config['normalize']:
@@ -716,6 +627,29 @@ class Model(NN, Plots):
             return predicted, true_outputs
         else:
             return predicted, true_outputs
+
+    def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
+
+        first_input = inputs[0]
+        dt_index = np.arange(len(first_input))
+
+        if use_datetime_index:
+            if np.ndim(first_input) == 2:
+                dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
+            elif np.ndim(first_input) == 3:
+                dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
+            elif np.ndim(first_input) == 4:
+                dt_index = get_index(np.array(first_input[:, -1, -1, 0], dtype=np.int64))
+
+            # remove the first of first inputs which is datetime index
+            first_input = first_input[..., 1:].astype(np.float32)
+
+            if sort:
+                first_input =first_input[np.argsort(dt_index.to_pydatetime())]
+
+        inputs[0] = first_input
+
+        return first_input, inputs, dt_index
 
     def compile(self, model_inputs, outputs):
 
@@ -845,6 +779,10 @@ class Model(NN, Plots):
         # if layer names are not specified, this will get get activations of allparameters
         inputs, outputs = self.test_data(**kwargs)
 
+        # samples/examples in inputs may not be ordered/sorted so we should order them
+        # remvoe the first column from x data
+        _, inputs, _ = self.deindexify_input_data(inputs, sort=True, **kwargs)
+
         activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
         return activations, inputs
 
@@ -862,11 +800,15 @@ class Model(NN, Plots):
 
         x, y = self.test_data(**kwargs)
 
+        _, x, _ = self.deindexify_input_data(x, sort=True, **kwargs)
+
         return keract.get_gradients_of_trainable_weights(self.k_model, x, y)
 
-    def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None) -> dict:
+    def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None, **kwargs) -> dict:
 
         x, y = self.test_data(st=st, en=en, indices=indices)
+
+        _, x, _ = self.deindexify_input_data(x, sort=True, **kwargs)
 
         return keract.get_gradients_of_activations(self.k_model, x, y, layer_names=layer_name)
 

@@ -74,6 +74,20 @@ class MultiInputSharedModel(Model):
 
         return predicted, true_outputs[0]
 
+    def deindexify_input_data(self, inputs, sort=False, use_datetime_index=False):
+        first_input = inputs[0]
+        dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
+        if use_datetime_index:
+            # remove the first of first inputs which is datetime index
+            dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
+            first_input = first_input[..., 1:].astype(np.float32)
+            inputs[0] = first_input
+            if self.num_input_layers > 1:
+                for i in range(1, self.num_input_layers):
+                    inputs[i] = inputs[i][..., 1:]
+
+        return first_input, inputs, dt_index
+
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, pp=False, **plot_args):
         out_cols = self.out_cols
@@ -88,13 +102,7 @@ class MultiInputSharedModel(Model):
                                                    return_dt_index=use_datetime_index, data=self.data[idx])
             self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
 
-            first_input = inputs[0]
-            dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
-            if use_datetime_index:
-                # remove the first of first inputs which is datetime index
-                dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-                first_input = first_input[..., 1:].astype(np.float32)
-                inputs[0] = first_input
+            first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
             predicted = self.k_model.predict(x=inputs,
                                              batch_size=self.data_config['batch_size'],
