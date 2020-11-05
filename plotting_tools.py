@@ -56,15 +56,30 @@ class Plots(object):
                 self.save_or_show(save=save, fname='input'+str(st) + str(en), where='data')
         return
 
-    def _imshow_3d(self, activation, lyr_name, save=True):
+    def _imshow_3d(self, activation,
+                   lyr_name,
+                   save=True,
+                   where='act'):
+
         act_2d = []
         for i in range(activation.shape[0]):
             act_2d.append(activation[i, :])
         activation_2d = np.vstack(act_2d)
-        self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
-                     save, lyr_name)
+        self._imshow(activation_2d,
+                     lyr_name + " Activations (3d of {})".format(activation.shape),
+                     save,
+                     lyr_name,
+                     where=where)
+        return
 
-    def _imshow(self, img, label: str = '', save=True, fname=None, interpolation:str='none', rnn_args=None):
+    def _imshow(self, img,
+                label: str = '',
+                save=True,
+                fname=None,
+                interpolation:str='none',
+                where='act',
+                rnn_args=None):
+
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
         plt.rcParams.update(plt.rcParamsDefault)
@@ -85,7 +100,7 @@ class Plots(object):
 
         plt.colorbar()
         plt.title(label)
-        self.save_or_show(save, fname)
+        self.save_or_show(save, fname, where=where)
 
         return
 
@@ -164,11 +179,33 @@ class Plots(object):
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
         x,y = self.train_data(**kwargs)
+        self.plot_model_input_data(x, how=how, save=save, which='training')
 
-        for idx, inputs in enumerate(x):
-            if how.upper() == "3D":
-                self._imshow_3d(inputs, str(idx), save=save)
+        return
 
+    def plot_val_data(self, how='3d', save=True,  **kwargs):
+
+        x,y = self.val_data(**kwargs)
+        self.plot_model_input_data(x, how=how, save=save, which='validation')
+
+        return
+
+    def plot_test_data(self, how='3d', save=True,  **kwargs):
+
+        x,y = self.test_data(**kwargs)
+        self.plot_model_input_data(x, how=how, save=save, which='test')
+
+        return
+
+    def plot_model_input_data(self, in_data, how, save, which='training'):
+
+        for idx, inputs in enumerate(in_data):
+            if np.ndim(inputs) == 3:
+                if how.upper() == "3D":
+                    self._imshow_3d(inputs, which + '_data_' + str(idx), save=save, where='data')
+            elif np.ndim(inputs) == 2:
+                if how.upper() == "3D":
+                    self._imshow(inputs, save=save, fname= which + '_data_' + str(idx), where='data')
         return
 
     def features_2d(self, data, lyr_name,
@@ -287,11 +324,83 @@ class Plots(object):
 
         return
 
-    def plot_val_data(self):
-        pass
+    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
 
-    def plot_test_data(self):
-        pass
+        if en is None:
+            en = true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
+
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q + 1], alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            if save:
+                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
+            else:
+                plt.show()
+        return
+
+
+    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        if en is None:
+            en = true_outputs.shape[0]
+        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
+                                              str(en))
+
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+        plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
+                         color='g', edgecolor=None, label=q_name + ' %')
+        plt.legend(loc="best")
+        if save:
+            plt.savefig(os.path.join(self.path, "q_" + q_name + ".png"))
+        else:
+            plt.show()
+
+    def plot_all_qs(self, true_outputs, predicted, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        st, en = 0, true_outputs.shape[0]
+
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+
+        for idx, q in enumerate(self.quantiles):
+            q_name = "{:.1f}".format(self.quantiles[idx] * 100)
+            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
+
+        plt.legend(loc="best")
+        if save:
+            plt.savefig(os.path.join(self.path, "all_quantiles.png"))
+        else:
+            plt.show()
+        return
+
+    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        if en is None:
+            en = true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
+
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, -q], alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            if save:
+                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
+            else:
+                plt.show()
+        return
 
 
 def _get_nrows_and_ncols(n_subplots, n_rows=None):
