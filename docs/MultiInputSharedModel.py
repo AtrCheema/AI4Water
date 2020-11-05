@@ -110,13 +110,15 @@ class MultiInputSharedModel(Model):
 
             predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
+            horizons = self.data_config['forecast_length']
             if self.quantiles is None:
-                true_outputs = pd.Series(true_outputs.reshape(-1,), index=dt_index).sort_index()
-                predicted = pd.Series(predicted.reshape(-1, ), index=dt_index).sort_index()
+                true_outputs = pd.DataFrame(true_outputs.reshape(-1, horizons), index=dt_index,
+                                            columns=['true_' + str(i) for i in range(horizons)]).sort_index()
+                predicted = pd.DataFrame(predicted.reshape(-1, horizons), index=dt_index,
+                                         columns=['pred_' + str(i) for i in range(horizons)]).sort_index()
 
                 if pp:
                     df = pd.concat([true_outputs, predicted], axis=1)
-                    df.columns = ['true_' + str(out), 'pred_' + str(out)]
                     df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
                     self.out_cols = [out]
