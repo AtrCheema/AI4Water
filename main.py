@@ -547,7 +547,7 @@ class Model(NN, Plots):
             setattr(self, 'predict_indices', indices)
 
         inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
-                                              return_dt_index=use_datetime_index)
+                                              use_datetime_index=use_datetime_index)
 
         first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
@@ -781,7 +781,7 @@ class Model(NN, Plots):
 
         # samples/examples in inputs may not be ordered/sorted so we should order them
         # remvoe the first column from x data
-        _, inputs, _ = self.deindexify_input_data(inputs, sort=True, **kwargs)
+        _, inputs, _ = self.deindexify_input_data(inputs, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
         activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
         return activations, inputs
@@ -800,7 +800,7 @@ class Model(NN, Plots):
 
         x, y = self.test_data(**kwargs)
 
-        _, x, _ = self.deindexify_input_data(x, sort=True, **kwargs)
+        _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
         return keract.get_gradients_of_trainable_weights(self.k_model, x, y)
 
@@ -808,7 +808,7 @@ class Model(NN, Plots):
 
         x, y = self.test_data(st=st, en=en, indices=indices)
 
-        _, x, _ = self.deindexify_input_data(x, sort=True, **kwargs)
+        _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
         return keract.get_gradients_of_activations(self.k_model, x, y, layer_names=layer_name)
 
@@ -1016,7 +1016,7 @@ class Model(NN, Plots):
                     plt.savefig(os.path.join(self.act_path, _name) + self.in_cols[idx], dpi=400, bbox_inches='tight')
                 else:
                     plt.show()
-
+                plt.close('all')
             return
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):

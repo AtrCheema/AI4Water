@@ -43,7 +43,7 @@ class Plots(object):
         if df.shape[1] <= 10:
 
             df.plot(**kwargs)
-            self.save_or_show(save=save, where='data')
+            self.save_or_show(save=save, fname='input_',  where='data')
         else:
             tot_plots = np.arange(0, df.shape[1], 10)
 

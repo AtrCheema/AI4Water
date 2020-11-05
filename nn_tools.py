@@ -82,6 +82,7 @@ class NN(AttributeStore):
         layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
         layer and the remaining NN architecture will be built as defined in `layers_config`. This can be handy when we
         want to use this method several times to build a complex or parallel NN structure.
+        avoid `Input` in layer names.
         """
         lyr_cache = {}
         wrp_layer = None  # indicator for wrapper layers
