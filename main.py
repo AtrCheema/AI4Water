@@ -5,6 +5,7 @@ import pandas as pd
 from TSErrors import FindErrors
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+import matplotlib # for version info
 import os
 from sklearn.model_selection import train_test_split
 import json
@@ -17,7 +18,7 @@ random.seed(seed)
 os.environ['PYTHONHASHSEED'] = str(seed)
 
 from nn_tools import NN
-from models.global_variables import keras, tf, tcn
+from models.global_variables import keras, tf, tcn, VERSION_INFO
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
 from models.global_variables import LOSSES, OPTIMIZERS
 from plotting_tools import Plots
@@ -1062,7 +1063,12 @@ class Model(NN, Plots):
         config['method'] = self.method
         config['quantiles'] = self.quantiles
         config['loss'] = self.k_model.loss.__name__ if self.k_model is not None else None
-        config['params'] = int(self.k_model.count_params())
+        config['params'] = int(self.k_model.count_params()),
+
+        VERSION_INFO.update({'numpy_version': str(np.__version__),
+                             'pandas_version': str(pd.__version__),
+                             'matplotlib_version': str(matplotlib.__version__)})
+        config['version_info'] = VERSION_INFO
 
         save_config_file(config=config, path=self.path)
         return config

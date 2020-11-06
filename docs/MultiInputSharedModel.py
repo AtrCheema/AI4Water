@@ -99,7 +99,7 @@ class MultiInputSharedModel(Model):
 
             self.out_cols = [self.data_config['outputs'][idx]]  # because fetch_data depends upon self.outs
             inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
-                                                   return_datetime_index=use_datetime_index, data=self.data[idx])
+                                                   use_datetime_index=use_datetime_index, data=self.data[idx])
             self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
 
             first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)

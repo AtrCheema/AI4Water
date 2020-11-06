@@ -26,6 +26,12 @@ keras = keras
 torch = torch
 tf = tf
 
+VERSION_INFO = {
+    'tensorflow_version': str(tf.__version__) if tf is not None else None,
+    'keras_version': str(keras.__version__) if keras is not None else None,
+    'tcn_version': str(tcn.__version__) if tcn is not None else None,
+    'pytorch_version': str(torch.__version__) if torch is not None else None
+}
 
 def get_attributes(aus, what:str='losses') ->dict:
     """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
