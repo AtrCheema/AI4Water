@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from collections import OrderedDict
 import os
+from shutil import rmtree
 import datetime
 import json
 import pandas as pd
@@ -335,6 +337,7 @@ def make_model(**kwargs):
 
     return data_config, nn_config, total_intervals
 
+
 def get_index(idx_array, fmt='%Y%m%d%H%M'):
     """ converts a numpy 1d array into pandas DatetimeIndex type."""
 
@@ -342,3 +345,102 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
         raise TypeError
 
     return pd.to_datetime(idx_array.astype(str), format=fmt)
+
+
+def jsonize_skopt_results(skopt_results):
+    """ just converts skopt_results in a way that when written to json file, they look pretty/more understandable"""
+    gp_sr = {}
+    for attr in ['fun', 'func_vals', 'models', 'random_state', 'space', 'specs', 'x', 'x_iters']:
+        val = getattr(skopt_results, attr)
+        if attr == 'fun':
+            gp_sr[attr] = float(val)
+
+        elif attr == 'func_vals':
+            gp_sr[attr] = val.tolist()
+
+        elif attr == 'models':
+            models = {}
+            for idx, mod in enumerate(val):
+                models[idx] = str(mod)
+            gp_sr[attr] = models
+
+        elif attr == 'random_state':
+            gp_sr[attr] = str(val)
+
+        elif attr == 'space':
+            space = {}
+            for idx, dim in enumerate(val.dimensions):
+                space[idx] = str(dim)
+            gp_sr[attr] = space
+
+        elif attr == 'specs':
+            specs = {}
+            for k, v in val.items():
+                if k == 'args':
+                    args = {}
+                    for _k, _v in v.items():
+                        if _k == 'dimensions':
+                            dims = {}
+                            for idx, dim in enumerate(_v):
+                                dims[idx] = str(dim)
+                            args[_k] = dims
+                        else:
+                            args[_k] = str(_v)
+                    specs[k] = args
+                else:
+                    specs[k] = str(v)
+            gp_sr[attr] = specs
+
+        elif attr == "x":
+            gp_sr[attr] = val
+
+        elif attr == "x_iters":
+            x_iters = val
+            nx_iters = []
+
+            for xiter in x_iters:
+                nxiter = []
+                for x in xiter:
+                    if isinstance(x, np.int32) or isinstance(x, np.int64):
+                        nxiter.append(int(x))
+                    elif isinstance(x, str):
+                        nxiter.append(x)
+                    else:
+                        nxiter.append(float(x))
+                nx_iters.append(nxiter)
+            gp_sr[attr] = nx_iters
+
+    return gp_sr
+
+
+def clear_weigths(_res:dict, opt_dir, keep=3):
+    """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
+    of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
+    od = OrderedDict(sorted(_res.items()))
+
+    idx = 0
+    for k,v in od.items():
+        folder = v['folder']
+        _path = os.path.join(opt_dir, folder)
+        w_path = os.path.join(_path, 'weights')
+
+        if idx > keep-1:
+            if os.path.exists(w_path):
+                rmtree(w_path)
+
+        idx += 1
+
+    # append ranking of models to folder_names
+    idx = 0
+    for k,v in od.items():
+        folder = v['folder']
+        old_path = os.path.join(opt_dir, folder)
+        new_path = os.path.join(opt_dir, str(idx+1) + "_" + folder)
+        os.rename(old_path, new_path)
+
+        idx += 1
+
+    sorted_fname = os.path.join(opt_dir, 'sorted.json')
+    with open(sorted_fname, 'w') as sfp:
+        json.dump(od, sfp, sort_keys=True, indent=True)
+    return

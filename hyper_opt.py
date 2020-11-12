@@ -3,15 +3,13 @@ from skopt.utils import use_named_args
 from skopt import gp_minimize
 import numpy as np
 import json
-from collections import OrderedDict
 import os
-from shutil import rmtree, copyfile
 
-from utils import skopt_plots
+from utils import skopt_plots, jsonize_skopt_results, clear_weigths
 from docs.MultiInputSharedModel import make_multi_model, MultiInputSharedModel
 
 
-title = 'tcn_dense_hpo'
+title = 'lstm_dense_hpo'
 RESULTS = {}
 
 dim_batch_size = Categorical(categories=[8, 16, 24, 32], name='batch_size')
@@ -52,34 +50,6 @@ def objective_fn(**kwargs):
 
     return model.path, np.min(history['val_loss'])
 
-
-def clear_weigths(_res:dict, opt_dir, keep=3):
-    """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
-    of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
-    od = OrderedDict(sorted(_res.items()))
-
-    idx = 0
-    for k,v in od.items():
-        folder = v['folder']
-        _path = os.path.join(opt_dir, folder)
-        w_path = os.path.join(_path, 'weights')
-
-        if idx > keep-1:
-            if os.path.exists(w_path):
-                rmtree(w_path)
-
-        idx += 1
-
-    # move json file to opt_path
-    json_file = os.path.basename(opt_dir) + ".json"
-    src = os.path.join(os.getcwd(), json_file)
-    if os.path.exists(src):
-        copyfile(src, os.path.join(opt_path, json_file))
-
-    sorted_fname = os.path.join(opt_dir, 'sorted.json')
-    with open(sorted_fname, 'w') as sfp:
-        json.dump(od, sfp, sort_keys=True, indent=True)
-    return
 
 @use_named_args(dimensions=dimensions)
 def fitness(batch_size, lookback, lr,
@@ -130,7 +100,8 @@ def fitness(batch_size, lookback, lr,
 
     # instead of appending, writing the new file, so that all the results are saved as one dictionary, which can be
     # useful if we want to reload the results.
-    with open(title + '.json', 'w') as rfp:
+    _fname = os.path.join(os.path.dirname(_path), title + ".json")
+    with open(_fname, 'w') as rfp:
         json.dump(RESULTS, rfp, sort_keys=False, indent=4)
 
     return error
@@ -149,9 +120,8 @@ opt_path = os.path.join(os.getcwd(), "results\\" + title)
 skopt_plots(search_result, pref=opt_path)
 
 fname = os.path.join(opt_path, 'gp_parameters')
-sr = {}
-for attr in dir(search_result):
-    sr[attr] = str(getattr(search_result, attr))
+
+sr = jsonize_skopt_results(search_result)
 
 with open(fname + '.json', 'w') as fp:
     json.dump(sr, fp, sort_keys=True, indent=4)
