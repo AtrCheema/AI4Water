@@ -292,6 +292,9 @@ def make_model(**kwargs):
     data_config = dict()
     data_config['forecast_length'] = 1   # how many future values we want to predict
     data_config['batches_per_epoch'] = None  # comes handy if we want to skip certain batches from last
+    # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
+    # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
+    data_config['skip_last_batch'] = False
     data_config['normalize'] = True
     data_config['lookback'] = 15
     data_config['batch_size'] = 32

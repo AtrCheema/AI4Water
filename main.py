@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 import json
 import h5py
 import random
+import math
 
 seed = 313
 np.random.seed(seed)
@@ -298,34 +299,69 @@ class Model(NN, Plots):
 
         return x, y, label
 
-    def check_batches(self, x: np.ndarray, prev_y: np.ndarray, y: np.ndarray) -> (np.ndarray, np.ndarray):
-
+    def check_batches(self, x, prev_y, y: np.ndarray):
+        """
+        Will have no effect if skip_last_batch is False or batches_per_epoch are not specified.
+        :param x: a list consisting of one or more 1D arrays
+        :param prev_y:
+        :param y: nd array
+        :return:
+        """
         steps_per_epoch = self.data_config['batches_per_epoch']
         if steps_per_epoch is None:
+
+            examples = x[0].shape[0] if isinstance(x, list) else x.shape[0]
+
+            if self.data_config['skip_last_batch']:
+                iterations = math.floor(examples/self.data_config['batch_size'])
+                return self._check_batches(x, prev_y, y, iterations)
+
             return x, prev_y, y
         else:
-            assert isinstance(x, np.ndarray)
-            assert isinstance(y, np.ndarray)
 
-            batch_size = self.data_config['batch_size']
-            _x = [None for _ in range(steps_per_epoch)]
-            _prev_y = [None for _ in range(steps_per_epoch)]
-            _y = [None for _ in range(steps_per_epoch)]
+             return self._check_batches(x, prev_y, y, steps_per_epoch)
 
-            st, en = 0, batch_size
-            for batch in range(steps_per_epoch):
-                _x[batch] = x[st:en, :]
-                _prev_y[batch] = prev_y[st:en, :]
-                _y[batch] = y[st:en, :]
+    def _check_batches(self, x, prev_y, y, iterations):
 
-                st += batch_size
-                en += batch_size
+        if self.verbosity > 0:
+            print(f"Number of total batches are {iterations}")
 
-            x = np.vstack(_x)
-            prev_y = np.vstack(_prev_y)
-            y = np.vstack(_y)
+        x_is_list = True
+        if not isinstance(x, list):
+            x = [x]
+            x_is_list = False
 
-            return x, prev_y, y
+        assert isinstance(y, np.ndarray)
+
+        if prev_y is None:
+            prev_y = y.copy()
+
+        batch_size = self.data_config['batch_size']
+        _x = [[None for _ in range(iterations)] for _ in range(len(x))]
+        _prev_y = [None for _ in range(iterations)]
+        _y = [None for _ in range(iterations)]
+
+        st, en = 0, batch_size
+        for batch in range(iterations):
+            for ex in range(len(x)):
+
+                _x[ex][batch] = x[ex][st:en, :]
+
+
+            _prev_y[batch] = prev_y[st:en, :]
+            _y[batch] = y[st:en, :]
+
+            st += batch_size
+            en += batch_size
+
+        x = [np.vstack(_x[i]) for i in range(len(_x))]
+        prev_y = np.vstack(_prev_y)
+        y = np.vstack(_y)
+
+        if not x_is_list:
+            x = x[0]
+
+        return x, prev_y, y
 
     def conform_shape(self, x, datetime_index):
         """
