@@ -100,9 +100,10 @@ class AttentionRaffel(Layer):
 
 class SelfAttention(Layer):
 
-    def __init__(self, attn_units=128, attn_activation='tanh', **kwargs):
+    def __init__(self, attn_units=128, attn_activation='tanh', context='', **kwargs):
         self.attn_units = attn_units
         self.attn_activation = attn_activation
+        self.context = context
         super().__init__(**kwargs)
 
     def __call__(self, hidden_states):
@@ -128,16 +129,16 @@ class SelfAttention(Layer):
         #              hidden_states            dot               W            =>           score_first_part
         # (batch_size, time_steps, hidden_size) dot (hidden_size, hidden_size) => (batch_size, time_steps, hidden_size)
         # W is the trainable weight matrix of attention Luong's multiplicative style score
-        score_first_part = Dense(hidden_size, use_bias=False, name='attention_score_vec')(hidden_states)
+        score_first_part = Dense(hidden_size, use_bias=False, name='attention_score_vec' + self.context)(hidden_states)
         #            score_first_part           dot        last_hidden_state     => attention_weights
         # (batch_size, time_steps, hidden_size) dot   (batch_size, hidden_size)  => (batch_size, time_steps)
-        h_t = Lambda(lambda x: x[:, -1, :], output_shape=(hidden_size,), name='last_hidden_state')(hidden_states)
-        score = dot([score_first_part, h_t], [2, 1], name='attention_score')
-        attention_weights = Activation('softmax', name='attention_weight')(score)
+        h_t = Lambda(lambda x: x[:, -1, :], output_shape=(hidden_size,), name='last_hidden_state' + self.context)(hidden_states)
+        score = dot([score_first_part, h_t], [2, 1], name='attention_score' + self.context)
+        attention_weights = Activation('softmax', name='attention_weight' + self.context)(score)
         # (batch_size, time_steps, hidden_size) dot (batch_size, time_steps) => (batch_size, hidden_size)
-        context_vector = dot([hidden_states, attention_weights], [1, 1], name='context_vector')
-        pre_activation = concatenate([context_vector, h_t], name='attention_output')
-        attention_vector = Dense(self.attn_units, use_bias=False, activation=self.attn_activation, name='attention_vector')(pre_activation)
+        context_vector = dot([hidden_states, attention_weights], [1, 1], name='context_vector' + self.context)
+        pre_activation = concatenate([context_vector, h_t], name='attention_output' + self.context)
+        attention_vector = Dense(self.attn_units, use_bias=False, activation=self.attn_activation, name='attention_vector' + self.context)(pre_activation)
         return attention_vector
 
 

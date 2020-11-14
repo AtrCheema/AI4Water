@@ -47,7 +47,7 @@ class DualAttentionModel(Model):
 
         h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
         s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
-        input_y = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
+        input_y = layers.Input(shape=(self.lookback - 1, self.outs), name='input_y')
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
 
         enc_lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'])
@@ -63,7 +63,7 @@ class DualAttentionModel(Model):
             print('output from Encoder LSTM:', enc_out)
 
         h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
-        h = layers.Reshape((1, dec_config['p']))(h)
+        h = layers.Reshape((self.outs, dec_config['p']))(h)
         # concatenation of decoder hidden state and the context vector.
         last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
         print('last_concat', last_concat)
@@ -78,7 +78,7 @@ class DualAttentionModel(Model):
         if self.verbosity > 1:
             print('result:', result)
 
-        output = layers.Dense(1)(result)
+        output = layers.Dense(self.outs)(result)
 
         self.k_model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
 
@@ -211,7 +211,7 @@ class DualAttentionModel(Model):
             print('y_prev into decoder: ', _y)
         for t in range(self.lookback-1):
             y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)
-            y_prev = layers.Reshape((1, 1))(y_prev)   # (None,1,1)
+            y_prev = layers.Reshape((1, self.outs))(y_prev)   # (None,1,1)
             if self.verbosity > 2:
                 print('\ny_prev at {}'.format(t), y_prev)
             _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (None,1,20)
@@ -219,7 +219,7 @@ class DualAttentionModel(Model):
             y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
             if self.verbosity > 2:
                 print('y_prev1 at {}:'.format(t), y_prev)
-            y_prev = layers.Dense(1, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
+            y_prev = layers.Dense(self.outs, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
             if self.verbosity > 2:
                 print('y_prev2 at {}:'.format(t), y_prev)
             _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??

@@ -185,6 +185,12 @@ class NN(AttributeStore):
                 if 'INPUT' in k.upper():
                     inputs.append(v)
         setattr(self, 'layers', lyr_cache)
+
+        # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
+        # {Input_1, Input -> Dense }, thus it makes Dense as output and first 2 as inputs, so throwing warning
+        if len(layer_outputs.op.inputs) < 1:
+            print("Warning: the output is of Input tensor class type")
+
         return inputs, layer_outputs
 
     def update_cache(self, cache:dict, key, value):
