@@ -84,7 +84,7 @@ class DualAttentionModel(Model):
 
         return
 
-    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1'):
+    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, h0=None):
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We_'+suf)
         _config, act_str = check_act_fn({'activation': config['enc_lstm1_act']})
@@ -93,9 +93,11 @@ class DualAttentionModel(Model):
         config['enc_lstm1_act'] = act_str
 
         # initialize the first cell state
-        s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_'+suf)
+        if s0 is not None:
+            s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_'+suf)
         # initialize the first hidden state
-        h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_'+suf)
+        if h0 is not None:
+            h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_'+suf)
 
         enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
         if self.verbosity > 2:
