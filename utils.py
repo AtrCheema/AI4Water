@@ -40,7 +40,8 @@ def plot_results(true, predicted, name=None, **kwargs):
 
     if name is not None:
         plt.savefig(name, dpi=300, bbox_inches='tight')
-    plt.show()
+    else:
+        plt.show()
 
     return
 
@@ -54,7 +55,8 @@ def regplot_using_searborn(true, pred, name):
 
     if name is not None:
         plt.savefig(name + '_reg', dpi=300, bbox_inches='tight')
-    plt.show()
+    else:
+        plt.show()
 
 
 def plot_loss(history: dict, name=None):
