@@ -10,9 +10,6 @@ import os
 
 from utils import plot_loss, get_index, make_model
 from models import Model
-from models.global_variables import keras
-
-layers = keras.layers
 
 
 class MultiInputSharedModel(Model):

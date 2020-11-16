@@ -418,7 +418,7 @@ def jsonize_skopt_results(skopt_results):
     return gp_sr
 
 
-def clear_weigths(_res:dict, opt_dir, keep=3):
+def clear_weights(_res:dict, opt_dir, keep=3):
     """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
     of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
     od = OrderedDict(sorted(_res.items()))

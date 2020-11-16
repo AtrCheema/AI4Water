@@ -10,6 +10,7 @@ try:
     from .tf_models import DualAttentionModel
     from .tf_models import NBeatsModel
     from .tf_models import ConvLSTMModel
-    from main import Model
 except AttributeError:
     print("\n{}Tensorflow models could not be imported {}\n".format(10 * '*', 10 * '*'))
+
+from main import Model

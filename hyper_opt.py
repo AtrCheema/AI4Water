@@ -5,7 +5,7 @@ import numpy as np
 import json
 import os
 
-from utils import skopt_plots, jsonize_skopt_results, clear_weigths
+from utils import skopt_plots, jsonize_skopt_results, clear_weights
 from docs.MultiInputSharedModel import make_multi_model, MultiInputSharedModel
 
 
@@ -126,4 +126,4 @@ sr = jsonize_skopt_results(search_result)
 with open(fname + '.json', 'w') as fp:
     json.dump(sr, fp, sort_keys=True, indent=4)
 
-clear_weigths(RESULTS, opt_path)
+clear_weights(RESULTS, opt_path)
