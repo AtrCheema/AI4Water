@@ -8,8 +8,7 @@ before_install:
   - pip install codecov
 
 install:
-  - pip install -r requirements.txt
-  - python -m pip install git+https://github.com/AtrCheema/dl4seq.git
+  - pip install -r requirements.txt 
 
 script: python tests/test_models.py
 
