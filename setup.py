@@ -10,7 +10,7 @@ with open('version.py') as fv:
     exec(fv.read())
 
 setup(
-    name='TSErrors',
+    name='dl4seq',
 
     version=1.0,
 
@@ -51,5 +51,11 @@ setup(
     packages=['dl4seq'],
 
     install_requires=[
+        'numpy',
+        'TSErrors',
+        'seaborn',
+        'scikit-learn',
+        'pandas',
+        'matplotlib'
     ],
 )
