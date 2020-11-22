@@ -51,13 +51,5 @@ setup(
     packages=['dl4seq'],
 
     install_requires=[
-        'numpy',
-        'matplotlib',
-        'pandas',
-        'TSErrors',
-        'seaborn',
-        'scikit-learn',
-        'h5py',
-        'tensorflow',
     ],
 )
