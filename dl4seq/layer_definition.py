@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 
 
-from backend import keras
+from dl4seq.backend import keras
 
 
 class MyDot(keras.layers.Layer):  # The parameters are (inputs, output_dim) only change the last dimension of the input

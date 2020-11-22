@@ -2,6 +2,14 @@ import pandas as pd
 import os
 import unittest
 
+import site
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+print(os.path.dirname(os.path.dirname(__file__)), 'here')
+import sys
+
+for p in sys.path:
+    print(p)
+
 from dl4seq.utils import make_model
 from dl4seq.tf_models import Model, NBeatsModel
 
