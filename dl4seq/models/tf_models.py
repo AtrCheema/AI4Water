@@ -156,7 +156,8 @@ class DualAttentionModel(Model):
                 print('x:', x)
             _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
             if t != 0:
-                print('attention_weight_:'+str(t), attention_weight_t)
+                if self.verbosity > 1:
+                    print('attention_weight_:'+str(t), attention_weight_t)
                 # attention_weight_t = layers.Merge(mode='concat', concat_axis=1,
                 #                                    name='attn_weight_'+str(t))([attention_weight_t,
                 #                                                                _context])

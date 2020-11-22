@@ -475,9 +475,10 @@ class Model(NN, Plots):
 
         x, y, label = self.check_batches(x, y, label)
 
-        print('input_X shape:', x.shape)
-        print('prev_Y shape:', y.shape)
-        print('label shape:', label.shape)
+        if self.verbosity > 0:
+            print('input_X shape:', x.shape)
+            print('prev_Y shape:', y.shape)
+            print('label shape:', label.shape)
 
         return [x], label
 
@@ -513,14 +514,16 @@ class Model(NN, Plots):
 
     def build_nn(self):
 
-        print('building {} layer based model'.format(self.method))
+        if self.verbosity > 0:
+            print('building {} layer based model'.format(self.method))
 
         inputs, predictions = self.add_layers(self.nn_config['layers'])
 
         self.k_model = self.compile(inputs, predictions)
 
-        if 'tcn' in self.nn_config['layers']:
-            tcn.tcn_full_summary(self.k_model, expand_residual_blocks=True)
+        if self.verbosity > 0:
+            if 'tcn' in self.nn_config['layers']:
+                tcn.tcn_full_summary(self.k_model, expand_residual_blocks=True)
 
         return
 
@@ -570,7 +573,7 @@ class Model(NN, Plots):
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
-                                         verbose=1)
+                                         verbose=self.verbosity)
 
         predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
@@ -676,7 +679,9 @@ class Model(NN, Plots):
         optimizer = OPTIMIZERS[self.nn_config['optimizer'].upper()](**opt_args)
 
         k_model.compile(loss=self.loss, optimizer=optimizer, metrics=self.get_metrics())
-        k_model.summary()
+
+        if self.verbosity > 0:
+            k_model.summary()
 
         try:
             keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, dpi=300)
@@ -774,7 +779,9 @@ class Model(NN, Plots):
                 if outs > 1:
                     assert np.all(nans.values == int(nans.sum() / outs)), """output columns contains nan values at
                      different indices"""
-                print('\n{} Removing Samples with nan labels  {}\n'.format(10 * '*', 10 * '*'))
+
+                if self.verbosity > 0:
+                    print('\n{} Removing Samples with nan labels  {}\n'.format(10 * '*', 10 * '*'))
                 # y = df[df.columns[-1]]
                 nan_idx = np.isnan(label_y) if self.outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]

@@ -14,7 +14,10 @@ data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      epochs=epochs)
 
 
-model = IMVLSTMModel(data_config=data_config, nn_config=nn_config, data = df)
+model = IMVLSTMModel(data_config=data_config,
+                     nn_config=nn_config,
+                     data=df
+                     )
 
 model.build_nn()
 h = model.train_nn(st=0, en=1000)

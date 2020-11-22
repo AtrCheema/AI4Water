@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2020  Ather Abbas
+# I rights may be researved by 2020  Ather Abbas
 from setuptools import setup
 
 
@@ -25,6 +25,9 @@ setup(
 
     license='GPLv3',
 
+    package_data={'data': ['nasdaq100_padding.csv', 'data_30min.csv']},
+    include_package_data=True,
+
     classifiers=[
         'Development Status :: 4 - Beta',
 
@@ -48,14 +51,15 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython'
     ],
 
-    packages=['dl4seq'],
+    packages=['dl4seq', 'dl4seq/models', 'data', 'tests', 'docs'],
 
     install_requires=[
         'numpy',
-        'TSErrors',
+        'TSErrors>=1.1',
         'seaborn',
         'scikit-learn',
         'pandas',
-        'matplotlib'
+        'matplotlib',
+        'scikit-optimize'
     ],
 )

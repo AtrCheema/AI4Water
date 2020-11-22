@@ -9,3 +9,8 @@ __pycache__/
 results/
 data/
 testing/
+
+# build related
+*dist/
+*build/
+*dl4seq.egg-info/
