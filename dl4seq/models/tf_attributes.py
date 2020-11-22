@@ -5,9 +5,9 @@ __all__ = ["ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "LAYERS", "OPTIMIZER
 
 import tensorflow as tf
 
-import dl4seq.tf_losses as tf_losses
+from .. import tf_losses
 from .nbeats_keras import NBeats
-import dl4seq.models.attention_layers as attns
+from . import attention_layers as attns
 
 try:
     import tcn
