@@ -11,10 +11,10 @@ import h5py
 import random
 import math
 
-from nn_tools import NN
-from models.backend import tf, keras, tcn, VERSION_INFO
-from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
-from plotting_tools import Plots
+from dl4seq.nn_tools import NN
+from dl4seq.models.backend import tf, keras, tcn, VERSION_INFO
+from dl4seq.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
+from dl4seq.plotting_tools import Plots
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -25,7 +25,7 @@ def reset_seed(seed):
 
 if tf is not None:
     import keract_mod as keract
-    from models.tf_attributes import LOSSES, OPTIMIZERS
+    from dl4seq.models.tf_attributes import LOSSES, OPTIMIZERS
 
 class Model(NN, Plots):
 
@@ -699,7 +699,7 @@ class Model(NN, Plots):
                 assert isinstance(_metrics, str)
                 _metrics = [_metrics]
 
-            from tf_losses import nse, kge, pbias
+            from dl4seq.tf_losses import nse, kge, pbias
 
             METRICS = {'NSE': nse,
                        'KGE': kge,
