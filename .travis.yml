@@ -9,6 +9,7 @@ before_install:
 
 install:
   - pip install -r requirements.txt
+  - python -m pip install git+https://github.com/AtrCheema/dl4seq.git
 
 script: python tests/test_models.py
 

@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 import unittest
 
 from dl4seq.utils import make_model
@@ -17,13 +18,15 @@ def make_and_run(
         **kwargs):
 
     if data_type == "nasdaq":
-        df = pd.read_csv("../data/nasdaq100_padding.csv")
+        fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+        df = pd.read_csv(fname)
         in_cols = list(df.columns)
         in_cols.remove("NDX")
         inputs = in_cols
         outputs = ["NDX"]
     else:
-        df = pd.read_csv('../data/data_30min.csv')
+        fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+        df = pd.read_csv(fname)
         inputs = input_features
         outputs = ['target7'] # column in dataframe to bse used as output/target
 
