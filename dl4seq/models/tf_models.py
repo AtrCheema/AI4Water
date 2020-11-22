@@ -3,12 +3,12 @@ __all__ = ["CNNLSTMModel", "DualAttentionModel",
 
 import numpy as np
 
-from main import Model
+from dl4seq.main import Model
 from .backend import keras
-from nn_tools import check_act_fn
-from models.layer_definition import MyTranspose, MyDot
+from dl4seq.nn_tools import check_act_fn
+from dl4seq.models.layer_definition import MyTranspose, MyDot
 
-from utils import plot_loss
+from dl4seq.utils import plot_loss
 layers = keras.layers
 KModel = keras.models.Model
 

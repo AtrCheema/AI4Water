@@ -317,7 +317,7 @@ def make_model(**kwargs):
     data_config['seed'] = 313  # for reproducability
 
     # input features in data_frame
-    dpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
     _df = pd.read_csv(os.path.join(dpath, "nasdaq100_padding.csv"))
     in_cols = list(_df.columns)
     in_cols.remove("NDX")

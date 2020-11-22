@@ -53,7 +53,7 @@ setup(
     install_requires=[
         'numpy',
         'matplotlib',
-        'pandas'
+        'pandas',
         'TSErrors',
         'seaborn',
         'scikit-learn',

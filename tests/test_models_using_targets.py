@@ -1,5 +1,5 @@
-from utils import make_model
-from models import NBeatsModel, DualAttentionModel
+from dl4seq.utils import make_model
+from dl4seq.models import NBeatsModel, DualAttentionModel
 
 import pandas as pd
 import numpy as np
@@ -50,6 +50,6 @@ np.testing.assert_almost_equal(float(predictions[0].sum().values.sum()), 85065.5
 
 ##
 # DualAttentionModel based model
-import tensorflow as tf
-tf.compat.v1.disable_eager_execution()
-preds = make_and_run(DualAttentionModel)
+# import tensorflow as tf
+# tf.compat.v1.disable_eager_execution()
+# preds = make_and_run(DualAttentionModel)

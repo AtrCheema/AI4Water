@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-from utils import make_model
-from models import Model, InputAttentionModel
+from dl4seq.utils import make_model
+from dl4seq.models import Model, InputAttentionModel
 
 
 def make_and_run(input_model, layers=None, lookback=12, epochs=4, batch_size=16, **kwargs):

@@ -24,7 +24,7 @@ def reset_seed(seed):
 
 
 if tf is not None:
-    import keract_mod as keract
+    import dl4seq.keract_mod as keract
     from dl4seq.models.tf_attributes import LOSSES, OPTIMIZERS
 
 class Model(NN, Plots):
@@ -500,7 +500,7 @@ class Model(NN, Plots):
                     t = t[mask]
                     p = p[mask]
 
-                errors = FindErrors(t, p)
+                errors = FindErrors(t, p, warn="ignore")
                 errs[out_name + '_errors_' + str(hor)] = errors.calculate_all()
                 errs[out_name + '_stats_' + str(hor)] = errors.stats()
 

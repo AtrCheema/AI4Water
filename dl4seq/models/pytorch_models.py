@@ -8,8 +8,8 @@ import os
 from .backend import torch
 from .HARHN import HARHN
 from .imv_networks import IMVTensorLSTM
-from main import Model
-from utils import check_min_loss
+from dl4seq.main import Model
+from dl4seq.utils import check_min_loss
 
 
 class HARHNModel(Model):

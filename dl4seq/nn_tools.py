@@ -1,5 +1,5 @@
 import tensorflow as tf
-from models.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS
+from dl4seq.models.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS
 
 from weakref import WeakKeyDictionary
 

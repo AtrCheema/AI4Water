@@ -1,4 +1,4 @@
-from main import Model
+from dl4seq.main import Model
 
 try:
     from .pytorch_models import IMVLSTMModel
