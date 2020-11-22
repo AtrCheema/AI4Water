@@ -31,7 +31,7 @@ can be used as shown below
 
 using github link for the latest code
 
-	python -m pip install git+https://github.com/AtrCheema/TSErrors.git
+	python -m pip install git+https://github.com/AtrCheema/dl4seq.git
 
 using setup file, go to folder where repo is downloaded
 
