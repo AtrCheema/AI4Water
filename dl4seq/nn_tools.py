@@ -2,7 +2,7 @@ __all__ = ["NN", "check_act_fn"]
 
 
 import tensorflow as tf
-from dl4seq.models.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS
+from tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS
 
 from weakref import WeakKeyDictionary
 

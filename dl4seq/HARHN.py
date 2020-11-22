@@ -1,5 +1,5 @@
 
-from .backend import torch
+from backend import torch
 
 class HSGLayer(torch.nn.Module):
     def __init__(self, n_units, init_gates_closed):

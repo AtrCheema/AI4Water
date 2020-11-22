@@ -5,9 +5,9 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import os
 
-from .backend import torch
-from .HARHN import HARHN
-from .imv_networks import IMVTensorLSTM
+from backend import torch
+from HARHN import HARHN
+from imv_networks import IMVTensorLSTM
 from dl4seq.main import Model
 from dl4seq.utils import check_min_loss
 

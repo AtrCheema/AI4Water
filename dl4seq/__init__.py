@@ -1,5 +1,16 @@
-from . import tf_losses
-#from .main import Model
+from dl4seq.main import Model
 
-from .utils import make_model
-from .nn_tools import NN, check_act_fn
+try:
+    from .pytorch_models import IMVLSTMModel
+    from .pytorch_models import HARHNModel
+except AttributeError:
+    print("\n{}Pytorch models could not be imported {}\n".format(10*'*', 10*'*'))
+
+try:
+    from .tf_models import CNNLSTMModel
+    from .tf_models import InputAttentionModel
+    from .tf_models import DualAttentionModel
+    from .tf_models import NBeatsModel
+    from .tf_models import ConvLSTMModel
+except AttributeError:
+    print("\n{}Tensorflow models could not be imported {}\n".format(10 * '*', 10 * '*'))

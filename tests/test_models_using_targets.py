@@ -3,7 +3,7 @@ import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 
 from dl4seq.utils import make_model
-from dl4seq.models import InputAttentionModel, DualAttentionModel
+from dl4seq import InputAttentionModel, DualAttentionModel
 import unittest
 
 import pandas as pd

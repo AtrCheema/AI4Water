@@ -1,8 +1,8 @@
 # this file tests that given activations are working both as layers as well as activation functions withing a layer
 import unittest
 
-from models import Model
-from utils import make_model
+from dl4seq import Model
+from dl4seq.utils import make_model
 
 import pandas as pd
 
