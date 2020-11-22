@@ -26,6 +26,17 @@ Currently following models are implemented
 
 `*` These models can be constructed by stacking layers in a python dictionary as shown later here. The remaining models 
 can be used as shown below
+
+## Installation
+
+using github link for the latest code
+
+	python -m pip install git+https://github.com/AtrCheema/TSErrors.git
+
+using setup file, go to folder where repo is downloaded
+
+    python setup.py install
+
 ## How to use
 
 ```python
@@ -347,7 +358,7 @@ It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional
 You can also add [`lambda`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Lambda) layers by placing the 
 lambda layer definition in the `config` as following:
 ```python
-from models.global_variables import tf
+from dl4seq.models.backend import tf
 from models import Model
 import pandas as pd
 

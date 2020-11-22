@@ -55,7 +55,6 @@ setup(
 
     install_requires=[
         'numpy',
-        'TSErrors>=1.1',
         'seaborn',
         'scikit-learn',
         'pandas',
