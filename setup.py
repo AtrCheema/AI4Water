@@ -51,7 +51,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython'
     ],
 
-    packages=['dl4seq', 'dl4seq/models', 'data', 'tests', 'docs'],
+    packages=['dl4seq', 'dl4seq/models', 'data'],
 
     install_requires=[
         'numpy',
