@@ -1,4 +1,5 @@
-from models.global_variables import ACTIVATION_FNS, ACTIVATION_LAYERS, LAYERS, tf
+import tensorflow as tf
+from models.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS
 
 from weakref import WeakKeyDictionary
 

@@ -1,5 +1,3 @@
-__all__ = ["Model"]
-
 import numpy as np
 import pandas as pd
 from TSErrors import FindErrors
@@ -13,52 +11,33 @@ import h5py
 import random
 import math
 
-seed = 313
-np.random.seed(seed)
-random.seed(seed)
-os.environ['PYTHONHASHSEED'] = str(seed)
-
 from nn_tools import NN
-from models.global_variables import keras, tf, tcn, VERSION_INFO
+from models.backend import tf, keras, tcn, VERSION_INFO
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
-from models.global_variables import LOSSES, OPTIMIZERS
 from plotting_tools import Plots
 
+def reset_seed(seed):
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    tf.random.set_seed(seed)
+
+
 if tf is not None:
-    tf.compat.v1.disable_eager_execution()
-    # tf.enable_eager_execution()
     import keract_mod as keract
-
-    if int(tf.__version__[0]) == 1:
-        tf.compat.v1.set_random_seed(seed)
-    elif int(tf.__version__[0]) > 1:
-        tf.random.set_seed(seed)
-    # following lines prevent clashing of GPU access when multiple instances/files using GPU are running simultaneously
-    tf_config = tf.compat.v1.ConfigProto()
-    tf_config.gpu_options.allow_growth = True
-    session = tf.compat.v1.Session(config=tf_config)
-
-np.set_printoptions(suppress=True)  # to suppress scientific notation while printing arrays
-
+    from models.tf_attributes import LOSSES, OPTIMIZERS
 
 class Model(NN, Plots):
-    """
-    data_config: `dict` contains parameters for data processing, check make_model function in utils for options
-    nn_config: `dict` contains parameters for building NN, check `make_model` function in utils.py for all options
-    intervals: `tuple` of `tuples`, where each sub-tuple determines chunk of data to be used
-    path: `str`, if None, new folder will be created, where all the results of this model will be saved
-    prefix: `str`, prefix to be added to the folder name which contains results of this model
-    verbosity: `int`, determines amount of information to be printed to console.
-    """
 
     def __init__(self, data_config: dict,
                  nn_config: dict,
-                 data,
+                 data=None,
                  intervals=None,
                  prefix: str = None,
                  path: str = None,
                  verbosity=1):
 
+        reset_seed(data_config['seed'])
         if tf is not None:
             # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
             # file, they may share same graph.
@@ -431,7 +410,8 @@ class Model(NN, Plots):
                          validation_data=validation_data,
                          callbacks=_callbacks,
                          shuffle=self.nn_config['shuffle'],
-                         steps_per_epoch=self.data_config['steps_per_epoch']
+                         steps_per_epoch=self.data_config['steps_per_epoch'],
+                         verbose=self.verbosity
                          )
         history = self.k_model.history
 
@@ -466,7 +446,7 @@ class Model(NN, Plots):
 
             idx = np.arange(tot_obs - self.lookback)
             train_indices, test_idx = train_test_split(idx, test_size=self.data_config['test_fraction'],
-                                                       random_state=313)
+                                                       random_state=self.data_config['seed'])
             setattr(self, 'test_indices', list(test_idx))
             indices = list(train_indices)
 

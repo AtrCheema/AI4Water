@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import os
 
-from .global_variables import torch
+from .backend import torch
 from .HARHN import HARHN
 from .imv_networks import IMVTensorLSTM
 from main import Model

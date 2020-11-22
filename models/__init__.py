@@ -1,3 +1,5 @@
+from main import Model
+
 try:
     from .pytorch_models import IMVLSTMModel
     from .pytorch_models import HARHNModel
@@ -12,5 +14,3 @@ try:
     from .tf_models import ConvLSTMModel
 except AttributeError:
     print("\n{}Tensorflow models could not be imported {}\n".format(10 * '*', 10 * '*'))
-
-from main import Model

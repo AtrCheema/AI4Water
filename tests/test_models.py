@@ -1,10 +1,11 @@
 import pandas as pd
+import numpy as np
 
 from utils import make_model
 from models import Model, InputAttentionModel
 
 
-def make_and_run(input_model, _layers=None, lookback=12, epochs=4, batch_size=16, **kwargs):
+def make_and_run(input_model, layers=None, lookback=12, epochs=4, batch_size=16, **kwargs):
 
     input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
                       'rel_hum']
@@ -18,7 +19,7 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, batch_size=16
                                                          outputs = outputs,
                                                          epochs=epochs,
                                                          **kwargs)
-    nn_config['layers'] = _layers
+    nn_config['layers'] = layers
 
     df = pd.read_csv('../data/all_data_30min.csv')
 
@@ -32,12 +33,12 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, batch_size=16
 
     _ = _model.train_nn(indices='random')
 
-    _ = _model.predict(use_datetime_index=False)
+    _,  pred_y = _model.predict(use_datetime_index=False)
 
-    return _model
+    return pred_y
 
 
-layers = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
+lyrs = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
           "Dropout_0": {'config': {'rate': 0.3}},
           "Dense_1": {'config': {'units': 32, 'activation': 'relu'}},
           "Dropout_1": {'config': {'rate': 0.3}},
@@ -45,22 +46,23 @@ layers = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
           "Dense_3": {'config': {'units': 1}}
           }
 
-model = make_and_run(Model, lookback=1, _layers=layers)
+prediction = model = make_and_run(Model, lookback=1, layers=lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1312.9748, decimal=4)
 
 ##
 # LSTM based model
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "LSTM_1": {'config': {'units': 32}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(Model, layers)
-
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1452.8463, decimal=4)
 
 ##
 # SeqSelfAttention
 batch_size=16
-layers = {
+lyrs = {
     "Input": {"config": {"batch_shape": (batch_size, 12, 8)}},
     "LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "SeqSelfAttention": {"config": {"units": 32, "attention_width": 12, "attention_activation": "sigmoid"}},
@@ -69,32 +71,34 @@ layers = {
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
 
-make_and_run(Model, layers, batch_size=batch_size, batches_per_epoch=5)
-
+prediction = make_and_run(Model, lyrs, batch_size=batch_size, batches_per_epoch=5)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 471.49829, decimal=4)
 
 ##
 # SeqWeightedAttention
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "SeqWeightedAttention": {"config": {}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1457.831176, decimal=4)  #
 
 ##
 # LSTM  + Raffel Attention
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "LSTM_1": {'config': {'units': 32, 'return_sequences': True}},
           "AttentionRaffel": {'config': {'step_dim': 12}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1378.492431, decimal=4)
 
 
 ##
 # LSTM  + Snail Attention
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "LSTM_1": {'config': {'units': 32, 'return_sequences': True}},
           "SnailAttention": {'config': {'dims': 32, 'k_size': 32, 'v_size': 32}},
           "Dropout": {'config': {'rate': 0.3}},
@@ -102,30 +106,33 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Flatten": {'config': {}},
           "Dense": {'config': {'units': 1}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1306.02380, decimal=4)
 
 ##
 # LSTM + SelfAttention model
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "SelfAttention": {'config': {}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1527.28979, decimal=4)
 
 
 ##
 # LSTM + HierarchicalAttention model
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "HierarchicalAttention": {'config': {}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1, 'name': 'output'}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1374.090332, decimal=4)
 
 ##
 # CNN based model
-layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
+lyrs = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
           "dropout": {'config': {'rate': 0.3}},
           "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
           "maxpool1d": {'config': {'pool_size': 2}},
@@ -133,11 +140,12 @@ layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
           'leakyrelu': {'config': {}},
           "Dense": {'config': {'units': 1}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1333.210693, decimal=4)
 
 ##
 # LSTMCNNModel based model
-layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
+lyrs = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
           "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
           "dropout": {'config': {'rate': 0.3}},
           "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
@@ -146,7 +154,8 @@ layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
           'leakyrelu': {'config': {}},
           "Dense": {'config': {'units': 1}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1398.09057, decimal=4)
 
 ##
 # ConvLSTMModel based model
@@ -154,21 +163,22 @@ ins = 8
 _lookback = 12
 sub_seq = 3
 sub_seq_lens = int(_lookback / sub_seq)
-layers = {'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
+lyrs = {'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
           'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'}},
           'flatten': {'config': {}},
           'repeatvector': {'config': {'n': 1}},
           'lstm':   {'config': {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 }},
           'Dense': {'config': {'units': 1}}
           }
-make_and_run(Model, layers, subsequences=sub_seq, lookback=_lookback)
+prediction = make_and_run(Model, lyrs, subsequences=sub_seq, lookback=_lookback)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1413.6604, decimal=4)
 
 
 ##
 # CNNLSTM based model
 subsequences = 3
 timesteps = _lookback // subsequences
-layers = {'Input' : {'config': {'shape':(subsequences, timesteps, ins)}},
+lyrs = {'Input' : {'config': {'shape':(subsequences, timesteps, ins)}},
           "TimeDistributed_0": {'config': {}},
           "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
           "leakyrelu": {'config': {}},
@@ -176,28 +186,30 @@ layers = {'Input' : {'config': {'shape':(subsequences, timesteps, ins)}},
           "maxpool1d": {'config': {'pool_size': 2}},
           "TimeDistributed_2": {'config': {}},
           'flatten': {'config': {}},
-          'lstm':   {'config': {'units': 64,   'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5 }},
+          'lstm':   {'config': {'units': 64,   'activation': 'relu'}},
           'Dense': {'config': {'units': 1}}
                }
-make_and_run(Model, layers, subsequences=subsequences)
+prediction = make_and_run(Model, lyrs, subsequences=subsequences)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1523.9479, decimal=4)
 
 
 ##
 # LSTM auto-encoder
-layers = {
-    'lstm_0': {'config': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4}},
+lyrs = {
+    'lstm_0': {'config': {'units': 100,  'recurrent_dropout': 0.4}},
     "leakyrelu_0": {'config': {}},
     'RepeatVector': {'config': {'n': 11}},
-    'lstm_1': {'config': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4}},
+    'lstm_1': {'config': {'units': 100,  'dropout': 0.3}},
     "relu_1": {'config': {}},
     'Dense': {'config': {'units': 1}}
 }
-make_and_run(Model, layers, lookback=12)
+prediction = make_and_run(Model, lyrs, lookback=12)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 1514.47912, decimal=4)
 
 
 ##
 # TCN based model auto-encoder
-layers = {"tcn":  {'config': {'nb_filters': 64,
+lyrs = {"tcn":  {'config': {'nb_filters': 64,
                   'kernel_size': 2,
                   'nb_stacks': 1,
                   'dilations': [1, 2, 4, 8, 16, 32],
@@ -207,13 +219,17 @@ layers = {"tcn":  {'config': {'nb_filters': 64,
                   'dropout_rate': 0.0}},
           'Dense':  {'config': {'units': 1}}
           }
-make_and_run(Model, layers)
+prediction = make_and_run(Model, lyrs)
+np.testing.assert_almost_equal(float(prediction[0].sum()), 935.47619, decimal=4)
 
 
 ##
 # InputAttentionModel based model
-make_and_run(InputAttentionModel)
-layers = {
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
+prediction = make_and_run(InputAttentionModel)
+lyrs = {
     'Input_1': {'config': {'shape': (_lookback, ins), 'name': 'inputs'}},
     'Input_2': {'config': {'shape': (20,), 'name': 'input_s0'}},
     'Input_3': {'config': {'shape': (20,), 'name': 'input_h0'}},
@@ -222,4 +238,4 @@ layers = {
     'Flatten': {'config': {}},
     'Dense': {'config': {'units': 1}}
     }
-#make_and_run(Model, layers)
+#make_and_run(Model, lyrs)

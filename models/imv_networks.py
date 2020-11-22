@@ -1,4 +1,4 @@
-from .global_variables import torch
+from .backend import torch
 nn = torch.nn
 
 

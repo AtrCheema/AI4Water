@@ -4,6 +4,7 @@ from models import Model
 from utils import make_model
 
 import pandas as pd
+import numpy as np
 
 data_config, nn_config, _ = make_model()
 
@@ -25,7 +26,9 @@ model = Model(data_config, nn_config, df)
 
 model.build_nn()
 
-model.train_nn()
+history = model.train_nn()
+
+np.testing.assert_array_almost_equal(history.history['val_loss'], [0.1004275307059288, 0.09452582150697708])
 
 layers = {}
 for idx, act_fn in enumerate(['tanh', 'relu', 'elu', 'leakyrelu', 'crelu', 'selu', 'relu6', 'sigmoid',
@@ -39,4 +42,5 @@ model = Model(data_config, nn_config, df)
 
 model.build_nn()
 
-model.train_nn()
+history = model.train_nn()
+np.testing.assert_array_almost_equal(history.history['val_loss'], [0.8970817923545837, 0.7911913394927979])

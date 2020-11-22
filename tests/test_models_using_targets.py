@@ -2,6 +2,7 @@ from utils import make_model
 from models import NBeatsModel, DualAttentionModel
 
 import pandas as pd
+import numpy as np
 
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
@@ -15,19 +16,19 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
 
     df = pd.read_csv("../data/nasdaq100_padding.csv")
 
-    _model = input_model(data_config=data_config,
+    model = input_model(data_config=data_config,
                          nn_config=nn_config,
                          data=df,
                          #intervals=total_intervals
                          )
 
-    _model.build_nn()
+    model.build_nn()
 
-    _ = _model.train_nn(indices='random')
+    _ = model.train_nn(indices='random')
 
-    _ = _model.predict(use_datetime_index=False)
+    _, pred_y = model.predict(use_datetime_index=False)
 
-    return _model
+    return pred_y
 
 lookback = 12
 exo_ins = 81
@@ -44,8 +45,11 @@ layers = {
 }
 ##
 # NBeats based model
-model = make_and_run(NBeatsModel, _layers=layers, lookback=lookback, forecast_length=forecsat_length)
+predictions = make_and_run(NBeatsModel, _layers=layers, lookback=lookback, forecast_length=forecsat_length)
+np.testing.assert_almost_equal(float(predictions[0].sum().values.sum()), 85065.516, decimal=3)
 
 ##
 # DualAttentionModel based model
-make_and_run(DualAttentionModel)
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+preds = make_and_run(DualAttentionModel)

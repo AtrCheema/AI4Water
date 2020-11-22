@@ -314,6 +314,7 @@ def make_model(**kwargs):
     # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
     # for Dense layer.
     data_config['batches'] = '3d'
+    data_config['seed'] = 313  # for reproducability
 
     # input features in data_frame
     dpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')

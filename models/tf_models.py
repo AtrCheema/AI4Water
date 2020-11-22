@@ -4,7 +4,7 @@ __all__ = ["CNNLSTMModel", "DualAttentionModel",
 import numpy as np
 
 from main import Model
-from .global_variables import keras
+from .backend import keras
 from nn_tools import check_act_fn
 from models.layer_definition import MyTranspose, MyDot
 
@@ -93,10 +93,10 @@ class DualAttentionModel(Model):
         config['enc_lstm1_act'] = act_str
 
         # initialize the first cell state
-        if s0 is not None:
+        if s0 is None:
             s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_'+suf)
         # initialize the first hidden state
-        if h0 is not None:
+        if h0 is None:
             h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_'+suf)
 
         enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
