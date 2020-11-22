@@ -1,2 +1,16 @@
 
 language: python
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+before_install:
+  - pip install codecov
+
+install:
+  - pip install -r requirements.txt
+
+script: python tests/test_models.py
+
+after_success:
+  - codecov # submit coverage
