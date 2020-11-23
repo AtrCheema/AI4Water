@@ -127,18 +127,18 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction[0].sum()), 1378.492431, 4)
 
-    # def test_SnailAttention(self):  # TODO failing to save model to h5 file on linux
-    #     # LSTM  + Snail Attention
-    #     lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True, "name": "first_lstm"}},
-    #               "LSTM_1": {'config': {'units': 32, 'return_sequences': True, "name": "second_lstm"}},
-    #               "SnailAttention": {'config': {'dims': 32, 'k_size': 32, 'v_size': 32, "name": "snail"}},
-    #               "Dropout": {'config': {'rate': 0.3, "name": "FirstDropout"}},
-    #               "Dense_0": {'config': {'units': 1, 'name': 'FirstDense'}},
-    #               "Flatten": {'config': {"name": "FirstFlatten"}},
-    #               "Dense": {'config': {'units': 1, "name": "prediction"}}
-    #               }
-    #     prediction = make_and_run(Model, layers=lyrs)
-    #     self.assertAlmostEqual(float(prediction[0].sum()), 1306.02380, 4)
+    def test_SnailAttention(self):  # TODO failing to save model to h5 file on linux
+        # LSTM  + Snail Attention
+        lyrs = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True, "name": "first_lstm"}},
+                  "LSTM_1": {'config': {'units': 32, 'return_sequences': True, "name": "second_lstm"}},
+                  "SnailAttention": {'config': {'dims': 32, 'k_size': 32, 'v_size': 32, "name": "snail"}},
+                  "Dropout": {'config': {'rate': 0.3, "name": "FirstDropout"}},
+                  "Dense_0": {'config': {'units': 1, 'name': 'FirstDense'}},
+                  "Flatten": {'config': {"name": "FirstFlatten"}},
+                  "Dense": {'config': {'units': 1, "name": "prediction"}}
+                  }
+        prediction = make_and_run(Model, layers=lyrs, save_model=False)
+        self.assertAlmostEqual(float(prediction[0].sum()), 1306.02380, 4)
 
     def test_SelfAttention(self):
         # LSTM + SelfAttention model

@@ -383,12 +383,13 @@ class Model(NN, Plots):
 
         _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
         fname = "{val_loss:.4f}.hdf5" if self.data_config['val_fraction'] > 0.0 else "{loss:.5f}.hdf5"
-        _callbacks.append(keras.callbacks.ModelCheckpoint(
-            filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
-            save_weights_only=True,
-            monitor=_monitor,
-            mode='min',
-            save_best_only=True))
+        if self.nn_config['save_model']:
+            _callbacks.append(keras.callbacks.ModelCheckpoint(
+                filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
+                save_weights_only=True,
+                monitor=_monitor,
+                mode='min',
+                save_best_only=True))
 
         _callbacks.append(keras.callbacks.EarlyStopping(
             monitor=_monitor, min_delta=self.nn_config['min_val_loss'],

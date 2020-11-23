@@ -274,6 +274,7 @@ def make_model(**kwargs):
     nn_config['min_val_loss'] = 0.0001
     nn_config['patience'] = 100
     nn_config['shuffle'] = True
+    nn_config['save_model'] = True # to save the best models using checkpoints
 
     nn_config['subsequences'] = 3  # used for cnn_lst structure
 
