@@ -810,15 +810,15 @@ class SnailAttention(Layer):
 
     def build(self, input_shape):
         # https://stackoverflow.com/questions/54194724/how-to-use-keras-layers-in-custom-keras-layer
-        self.keys_fc = Dense(self.k_size)
+        self.keys_fc = Dense(self.k_size, "Keys")
         self.keys_fc.build((None, self.dims))
         self._trainable_weights.extend(self.keys_fc.trainable_weights)
 
-        self.queries_fc = Dense(self.k_size)
+        self.queries_fc = Dense(self.k_size, "Queries")
         self.queries_fc.build((None, self.dims))
         self._trainable_weights.extend(self.queries_fc.trainable_weights)
 
-        self.values_fc = Dense(self.v_size)
+        self.values_fc = Dense(self.v_size, "Values")
         self.values_fc.build((None, self.dims))
         self._trainable_weights.extend(self.values_fc.trainable_weights)
 
@@ -830,7 +830,7 @@ class SnailAttention(Layer):
         logits = K.batch_dot(queries, K.permute_dimensions(keys, (0, 2, 1)))
         mask = K.ones_like(logits) * np.triu((-np.inf) * np.ones(logits.shape.as_list()[1:]), k=1)
         logits = mask + logits
-        probs = Softmax(axis=-1)(logits / self.sqrt_k)
+        probs = Softmax(axis=-1, name="Softmax")(logits / self.sqrt_k)
         read = K.batch_dot(probs, values)
         output = K.concatenate([inputs, read], axis=-1)
         return output
