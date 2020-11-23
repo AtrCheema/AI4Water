@@ -14,7 +14,7 @@ import pandas as pd
 from inspect import getsourcefile
 from os.path import abspath
 
-def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
+def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
     data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                          lookback=lookback,
