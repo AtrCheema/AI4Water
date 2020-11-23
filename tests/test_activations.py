@@ -16,6 +16,11 @@ nn_config['epochs'] = 2
 data_config['lookback'] = 1
 
 fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+import sys
+print(os.getcwd(), "cwd")
+print(os.path.dirname(__file__), "dir_name(__file__)")
+for p in sys.path:
+    print(p)
 df = pd.read_csv(fname)
 
 class TestActivations(unittest.TestCase):
