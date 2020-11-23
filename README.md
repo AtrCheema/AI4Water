@@ -1,7 +1,12 @@
-# dl_ts_prediction
+# dl4seq
+
+[![Build Status](https://travis-ci.com/AtrCheema/dl4seq.svg?branch=master)](https://travis-ci.com/AtrCheema/dl4seq)
+[![Coverage Status](https://coveralls.io/repos/github/AtrCheema/dl4seq/badge.svg?branch=master)](https://coveralls.io/github/AtrCheema/dl4seq?branch=master)
+
 Different deep learning based architechtures for time series forecasting.  
 This repo provides a framework to build layered models from python dictionary and it provides several helper tools 
-which fasten the process of  modeling time-series forcasting. 
+which fasten the process of  modeling time-series forcasting. The purpose to cut the time to write boiler plate code
+in developing deep learning based models.
 
 Most of the models in this repository have been adopted from other repositories in order to create an `all in one` code.
 I have tried to reference the original repositories as well.
@@ -41,8 +46,8 @@ using setup file, go to folder where repo is downloaded
 
 ```python
 import pandas as pd 
-from models import InputAttentionModel  # import any of the above model
-from utils import make_model  # helper function to make inputs for model
+from dl4seq import InputAttentionModel  # import any of the above model
+from dl4seq.utils import make_model  # helper function to make inputs for model
 
 data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      lookback=15,
@@ -74,8 +79,8 @@ documentation of corresponding layer in `Tensorflow` docs.
 ### multi-layer perceptron
 
 ```python
-from utils import make_model
-from models import Model
+from dl4seq.utils import make_model
+from dl4seq import Model
 
 import pandas as pd
 
@@ -107,8 +112,8 @@ _model.build_nn()
 
 ### LSTM based model
 ```python
-from utils import make_model
-from models import Model
+from dl4seq.utils import make_model
+from dl4seq import Model
 import pandas as pd
 
 layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
@@ -247,7 +252,7 @@ for the layer and specify which inputs the layer uses. The `value` of the `input
 case whose members must be the names of the layers which must have been defined earlier.
 
 ```python
-from models import Model
+from dl4seq import Model
 class MyModel(Model):
 
     def run_paras(self, **kwargs) -> (list, list):
@@ -358,8 +363,8 @@ It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional
 You can also add [`lambda`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Lambda) layers by placing the 
 lambda layer definition in the `config` as following:
 ```python
-from dl4seq.models.backend import tf
-from models import Model
+import tensorflow as tf
+from dl4seq import Model
 import pandas as pd
 
 layers = {

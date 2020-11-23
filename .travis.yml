@@ -12,6 +12,9 @@ install:
 
 script:
   - python tests/test_activations.py
+  - python tests/test_models.py
+  - python tests/test_without_eager.py
 
 after_success:
   - codecov # submit coverage
+  - coveralls

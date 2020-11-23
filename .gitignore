@@ -14,3 +14,12 @@ testing/
 *dist/
 *build/
 *dl4seq.egg-info/
+
+# Unit test / coverage reports
+.coveralls.yml
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
