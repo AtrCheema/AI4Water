@@ -6,8 +6,7 @@
 # This means the different target values are present at different time stamps.
 # The number of inputs and outputs to and from each NN are equal (but not same)
 
-from models import Model
-from models.global_variables import keras, tf
+from dl4seq import Model
 from utils import check_min_loss, plot_loss
 from utils import make_model
 from docs import LSTM_CONFIG, TCN_CONFIG, ConvLSTM_CONFIG, LSTMAutoEnc_Config
@@ -19,6 +18,8 @@ import time
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import numpy as np
+import tensorflow as tf
+from tensorflow import keras
 
 
 class MultiOutputParallel(Model):

@@ -6,9 +6,10 @@
 import numpy as np
 import pandas as pd
 
-from models import Model
+from dl4seq.main import Model
 from utils import make_model
-from models.global_variables import tf, keras
+import tensorflow as tf
+from tensorflow import keras
 
 
 class QuantileModel(Model):

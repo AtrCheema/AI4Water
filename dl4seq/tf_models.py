@@ -111,7 +111,8 @@ class DualAttentionModel(Model):
                                    name='LSTM_after_encoder_'+suf)(enc_lstm_in)  # h_en_all
         config['enc_lstm2_act'] = act_str
 
-        print('Output from LSTM out: ', enc_lstm_out)
+        if self.verbosity > 2:
+            print('Output from LSTM out: ', enc_lstm_out)
         return enc_lstm_out, h0, s0
 
     def one_encoder_attention_step(self, h_prev, s_prev, x, t, suf: str = '1'):
@@ -257,7 +258,8 @@ class InputAttentionModel(DualAttentionModel):
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.outs)(act_out)
-        print('predictions: ', predictions)
+        if self.verbosity > 2:
+            print('predictions: ', predictions)
 
         self.k_model = self.compile(model_inputs=[enc_input, s0, h0], outputs=predictions)
 

@@ -6,10 +6,10 @@
 import pandas as pd
 import numpy as np
 import os
+from tensorflow import keras
 
-from models import InputAttentionModel
-from models.global_variables import keras
-from utils import make_model
+from dl4seq import InputAttentionModel
+from dl4seq.utils import make_model
 
 
 class MultiSite(InputAttentionModel):
@@ -50,10 +50,10 @@ class MultiSite(InputAttentionModel):
 
 
 if __name__ == "__main__":
-    input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
-                      'rel_hum']
+    input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
+                  'input11']
     # column in dataframe to bse used as output/target
-    outputs = ['blaTEM_coppml', 'sul1_coppml']
+    outputs = ['target7', 'target8']
 
     data_config, nn_config, total_intervals = make_model(batch_size=4,
                                                          lookback=15,
@@ -65,8 +65,8 @@ if __name__ == "__main__":
                                                          test_fraction=0.3
                                                          )
 
-    cwd = os.getcwd()
-    df = pd.read_csv(os.path.join(os.path.dirname(cwd), "data\\all_data_30min.csv"))
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+    df = pd.read_csv(fname)
     df.index = pd.to_datetime(df['Date_Time2'])
 
     model = MultiSite(data_config=data_config,

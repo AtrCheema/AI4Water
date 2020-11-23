@@ -11,7 +11,6 @@ import h5py
 import random
 import math
 
-#from . import NN
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
 from dl4seq.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index

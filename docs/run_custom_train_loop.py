@@ -1,7 +1,9 @@
 from utils import make_model
-from models import Model
-from models.global_variables import keras, tf
+from dl4seq.main import Model
 
+import tensorflow as tf
+from tensorflow import keras
+import os
 import pandas as pd
 
 # TODO put code in @tf.function
@@ -75,9 +77,10 @@ class CustomModel(Model):
 
 
 # input features in data_frame
-input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps', 'rel_hum']
+input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
+                  'input11']
 # column in dataframe to bse used as output/target
-outputs = ['blaTEM_coppml']
+outputs = ['target7']
 
 layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "LSTM_1": {'config':  {'units': 32}},
@@ -94,9 +97,9 @@ data_config, nn_config, total_intervals = make_model(layers=layers,
                                                      outputs=outputs,
                                                      epochs=10)
 
-df = pd.read_csv('../data/all_data_30min.csv')  # must be 2d dataframe
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+df = pd.read_csv(fname)  # must be 2d dataframe
 
-df.index = pd.date_range("20110101", periods=len(df), freq='H')
 
 model = CustomModel(data_config=data_config,
                     nn_config=nn_config,

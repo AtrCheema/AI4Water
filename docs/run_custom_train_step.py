@@ -1,7 +1,10 @@
 from utils import make_model
-from models import Model
-from models.global_variables import keras, tf
+from dl4seq import Model
 
+
+import tensorflow as tf
+from tensorflow import keras
+import os
 import pandas as pd
 
 
@@ -37,7 +40,8 @@ data_config, nn_config, total_intervals = make_model(lstm_units=64,
                                                      lookback=1,
                                                      lr=8.95e-5)
 
-df = pd.read_csv('../data/nasdaq100_padding.csv')
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+df = pd.read_csv(fname)
 
 model = Model(data_config=data_config,
               nn_config=nn_config,

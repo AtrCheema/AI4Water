@@ -2,14 +2,16 @@
 # first we will train and save a simple model and load it from config file
 
 import pandas as pd
+import os
 
 from utils import make_model
-from models import Model
+from dl4seq.main import Model
 
 
 data_config, nn_config, total_intervals = make_model(lookback=1)
 
-df = pd.read_csv('../data/nasdaq100_padding.csv')
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+df = pd.read_csv(fname)
 
 model = Model(data_config=data_config,
               nn_config=nn_config,

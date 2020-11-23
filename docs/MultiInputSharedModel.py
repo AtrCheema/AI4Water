@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 import os
 
-from utils import plot_loss, get_index, make_model
-from models import Model
+from dl4seq.utils import plot_loss, get_index, make_model
+from dl4seq import Model
 
 
 class MultiInputSharedModel(Model):

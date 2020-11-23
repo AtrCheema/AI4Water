@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# I rights may be researved by 2020  Ather Abbas
+# some rights may be researved by 2020  Ather Abbas
 from setuptools import setup
 
 

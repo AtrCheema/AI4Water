@@ -4,12 +4,13 @@
 # values after certain values. These nan values will then be ignored using the feature `intervals`.
 import numpy as np
 import pandas as pd
+import os
 
-from models import DualAttentionModel
-from utils import make_model
+from dl4seq import DualAttentionModel
+from dl4seq.utils import make_model
 
-
-df = pd.read_csv("../data/nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+df = pd.read_csv(fname)
 
 # df.index = pd.date_range("20110101", periods=len(df), freq='H')
 out = df["NDX"]

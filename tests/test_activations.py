@@ -1,7 +1,11 @@
 # this file tests that given activations are working both as layers as well as activation functions withing a layer
 import unittest
+import os
 
-from dl4seq.main import Model
+import site   # so that dl4seq directory is in path
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+
+from dl4seq import Model
 from dl4seq.utils import make_model
 
 import pandas as pd
@@ -11,7 +15,8 @@ data_config, nn_config, _ = make_model()
 nn_config['epochs'] = 2
 data_config['lookback'] = 1
 
-df = pd.read_csv("../data/nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+df = pd.read_csv(fname)
 
 class TestActivations(unittest.TestCase):
     def test_as_layers(self):

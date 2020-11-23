@@ -1,6 +1,10 @@
 import tensorflow as tf
+import os
 
 tf.compat.v1.disable_eager_execution()
+
+import site  # so that dl4seq directory is in path
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)))
 
 from dl4seq.utils import make_model
 from dl4seq import InputAttentionModel, DualAttentionModel
@@ -18,7 +22,8 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=4, **kwargs):
                                                          **kwargs)
     nn_config['layers'] = _layers
 
-    df = pd.read_csv("../data/nasdaq100_padding.csv")
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+    df = pd.read_csv(fname)
 
     model = input_model(
         data_config=data_config,

@@ -1,4 +1,4 @@
-from .backend import torch
+from dl4seq.backend import torch
 nn = torch.nn
 
 

@@ -2,16 +2,13 @@ import pandas as pd
 import os
 import unittest
 
-import site
+import site  # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
-print(os.path.dirname(os.path.dirname(__file__)), 'here')
-import sys
 
-for p in sys.path:
-    print(p)
 
 from dl4seq.utils import make_model
-from dl4seq.tf_models import Model, NBeatsModel
+from dl4seq import Model
+from dl4seq import NBeatsModel
 
 input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']
