@@ -18,10 +18,17 @@ data_config['lookback'] = 1
 import sys
 fname = os.path.join(os.path.dirname(os.path.dirname(sys.argv[0])), "data\\nasdaq100_padding.csv")
 
+from inspect import getsourcefile
+from os.path import abspath
+
+abc = abspath(getsourcefile(lambda:0))
+print(abc, "abs(getsourcefile)")
+print(os.path.dirname(abc), "dirname(abc)")
 print(fname, "fname")
 print(os.getcwd(), "cwd")
+print(sys.argv[0], "sys.arv")
 print(os.path.dirname(__file__), "dir_name(__file__)")
-print(os.path.dirname(sys.argv[0]), "sys.argv")
+print(os.path.dirname(sys.argv[0]), "dir_name sys.argv")
 for p in sys.path:
     print(p)
 df = pd.read_csv(fname)
