@@ -15,10 +15,13 @@ data_config, nn_config, _ = make_model()
 nn_config['epochs'] = 2
 data_config['lookback'] = 1
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
 import sys
+fname = os.path.join(os.path.dirname(os.path.dirname(sys.argv[0])), "data\\nasdaq100_padding.csv")
+
+print(fname, "fname")
 print(os.getcwd(), "cwd")
 print(os.path.dirname(__file__), "dir_name(__file__)")
+print(os.path.dirname(sys.argv[0]), "sys.argv")
 for p in sys.path:
     print(p)
 df = pd.read_csv(fname)
