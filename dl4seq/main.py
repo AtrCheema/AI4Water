@@ -685,7 +685,7 @@ class Model(NN, Plots):
 
         try:
             keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, dpi=300)
-        except AssertionError:
+        except (AssertionError, ImportError) as e:
             print("dot plot of model could not be plotted")
         return k_model
 

@@ -5,6 +5,8 @@ import unittest
 import site  # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
+from inspect import getsourcefile
+from os.path import abspath
 
 from dl4seq.utils import make_model
 from dl4seq import Model
@@ -13,6 +15,9 @@ from dl4seq import NBeatsModel
 input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']
 ins = len(input_features)
+
+file_path = abspath(getsourcefile(lambda:0))
+dpath = os.path.join(os.path.dirname(os.path.dirname(file_path)), "data")
 
 def make_and_run(
         model,
@@ -23,14 +28,14 @@ def make_and_run(
         **kwargs):
 
     if data_type == "nasdaq":
-        fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+        fname = os.path.join(dpath, "nasdaq100_padding.csv")
         df = pd.read_csv(fname)
         in_cols = list(df.columns)
         in_cols.remove("NDX")
         inputs = in_cols
         outputs = ["NDX"]
     else:
-        fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+        fname = os.path.join(dpath, "data_30min.csv")
         df = pd.read_csv(fname)
         inputs = input_features
         outputs = ['target7'] # column in dataframe to bse used as output/target

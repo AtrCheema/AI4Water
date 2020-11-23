@@ -18,13 +18,9 @@ data_config['lookback'] = 1
 from inspect import getsourcefile
 from os.path import abspath
 
-abc = abspath(getsourcefile(lambda:0))
-print(abc, "abs(getsourcefile)")
-print(os.path.dirname(abc), "dirname(abc)")
-dpath = os.path.join(os.path.dirname(os.path.dirname(abc)), "data")
-print(dpath, "dpath")
+file_path = abspath(getsourcefile(lambda:0))
+dpath = os.path.join(os.path.dirname(os.path.dirname(file_path)), "data")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
-print(fname, "fname")
 
 df = pd.read_csv(fname)
 
