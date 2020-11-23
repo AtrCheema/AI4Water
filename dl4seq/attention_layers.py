@@ -810,15 +810,15 @@ class SnailAttention(Layer):
 
     def build(self, input_shape):
         # https://stackoverflow.com/questions/54194724/how-to-use-keras-layers-in-custom-keras-layer
-        self.keys_fc = Dense(self.k_size, "Keys")
+        self.keys_fc = Dense(self.k_size,  name="Keys")
         self.keys_fc.build((None, self.dims))
         self._trainable_weights.extend(self.keys_fc.trainable_weights)
 
-        self.queries_fc = Dense(self.k_size, "Queries")
+        self.queries_fc = Dense(self.k_size, name="Queries")
         self.queries_fc.build((None, self.dims))
         self._trainable_weights.extend(self.queries_fc.trainable_weights)
 
-        self.values_fc = Dense(self.v_size, "Values")
+        self.values_fc = Dense(self.v_size,  name="Values")
         self.values_fc.build((None, self.dims))
         self._trainable_weights.extend(self.values_fc.trainable_weights)
 
