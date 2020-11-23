@@ -7,4 +7,4 @@ scikit-optimize  # only if you want to use file hyper_opt.py for hyper-parameter
 seaborn
 TSErrors  # preferably use github for installation
 # pytorch # only if you want to use pytorch-based models
-h5py # only if you want to save batches
+h5py<2.11.0 # only if you want to save batches
