@@ -11,13 +11,15 @@ install:
   - pip uninstall TSErrors -y
   - python -m pip install git+https://github.com/AtrCheema/TSErrors.git
   - pip install keras-tcn
+  - pip install coverage
 
 script:
-  - python tests/test_activations.py
-  - python tests/test_models.py
-  - python tests/test_without_eager.py
-  - python tests/test_utils.py
+  - coverage run -m unittest tests.test_activations
+  #- coverage run -m unittest tests.test_models.py
+  #- coverage run -m unittest tests.test_without_eager
+  #- coverage run -m unittest tests.test_utils
 
 after_success:
   - codecov # submit coverage
   - coveralls
+  - bash <(curl -s https://codecov.io/bash)
