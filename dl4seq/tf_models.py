@@ -329,8 +329,9 @@ class OutputAttentionModel(DualAttentionModel):
 
         return history
 
-    def predict(self, st=0,
-                ende=None,
+    def predict(self,
+                st=0,
+                en=None,
                 indices=None,
                 pref: str = "test",
                 scaler_key: str = '5',
@@ -338,7 +339,7 @@ class OutputAttentionModel(DualAttentionModel):
                 **plot_args):
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=en, shuffle=False,
                                                      write_data=False,
                                                      indices=indices)
 

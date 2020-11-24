@@ -568,7 +568,7 @@ class Model(NN, Plots):
         return self.train_data(**kwargs)
 
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
-                use_datetime_index=True, pp=True, **plot_args):
+                use_datetime_index=False, pp=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
         pp: post processing
@@ -803,7 +803,7 @@ class Model(NN, Plots):
 
     def activations(self, layer_names=None, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
-        inputs, outputs = self.test_data(**kwargs)
+        inputs, _ = self.test_data(**kwargs)
 
         # samples/examples in inputs may not be ordered/sorted so we should order them
         # remvoe the first column from x data

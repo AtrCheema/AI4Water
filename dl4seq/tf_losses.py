@@ -21,6 +21,7 @@ def tf_nse(true, _pred, name='NSE'):
 
 def corr_coeff(true, predicted):
     """ Pearson correlation coefficient
+
     https://stackoverflow.com/a/58890795/5982232
     """
     mx = tf.math.reduce_mean(true)
@@ -88,7 +89,7 @@ def pbias(true, predicted):
 
 
 def nse(true, _pred, name='NSE'):
-    """ Nash-Sutcliff efficiency to be used as loss function. It is subtracted from one before being returned"""
+    """Nash-Sutcliff efficiency to be used as loss function. It is subtracted from one before being returned"""
     neum = tf.reduce_sum(tf.square(tf.subtract(_pred, true)))
     denom = tf.reduce_sum(tf.square(tf.subtract(true, tf.math.reduce_mean(true))))
     const = tf.constant(1.0, dtype=tf.float32)

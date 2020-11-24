@@ -1,3 +1,7 @@
+"""
+main models are pytorch based and Model.
+All tensorflow based models can be implemented purely using Model.
+"""
 from dl4seq.main import Model
 
 try:
