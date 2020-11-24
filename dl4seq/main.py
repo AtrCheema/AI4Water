@@ -215,7 +215,7 @@ class Model(NN, Plots):
         df = df[cols]
 
         if self.data_config['normalize']:
-            df, scaler = self.normalize(df, scaler_key)
+            df, _ = self.normalize(df, scaler_key)
 
         if use_datetime_index:
             # pandas will add the 'datetime' column as first column. This columns will only be used to keep
@@ -284,8 +284,7 @@ class Model(NN, Plots):
         return x, y, label
 
     def normalize(self, df, key):
-        """ should return the transformed dataframe and the key with which scaler is put in memory.
-        """
+        """ should return the transformed dataframe and the key with which scaler is put in memory. """
         scaler = MinMaxScaler()
         data = scaler.fit_transform(df)
         df = pd.DataFrame(data)

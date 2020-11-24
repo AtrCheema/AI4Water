@@ -69,6 +69,7 @@ def make_and_run(
 
 
 class TestModels(unittest.TestCase):
+
     """
     Tests that most of the models run with some basic configuration.
     Also checks reproducibility in most ases

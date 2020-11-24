@@ -371,7 +371,7 @@ class NBeatsModel(Model):
 
     def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
 
-        first_input, inputs, dt_index = Model.deindexify_input_data(self,
+        _, inputs, dt_index = Model.deindexify_input_data(self,
                                                                     inputs,
                                                                     sort=sort,
                                                                     use_datetime_index=use_datetime_index)

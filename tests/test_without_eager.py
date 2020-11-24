@@ -16,11 +16,11 @@ from os.path import abspath
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
-    data_config, nn_config, total_intervals = make_model(batch_size=64,
-                                                         lookback=lookback,
-                                                         lr=0.001,
-                                                         epochs=epochs,
-                                                         **kwargs)
+    data_config, nn_config, _ = make_model(batch_size=64,
+                                           lookback=lookback,
+                                           lr=0.001,
+                                           epochs=epochs,
+                                           **kwargs)
     nn_config['layers'] = _layers
 
     file_path = abspath(getsourcefile(lambda: 0))

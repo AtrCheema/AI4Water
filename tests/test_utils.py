@@ -1,51 +1,14 @@
 import pandas as pd
 import numpy as np
 import unittest
+import os
+
+import site   # so that dl4seq directory is in path
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
-"""
-Given following sample consisting of input/output paris
-input, input, output1, output2, output 3
-1,     11,     21,       31,     41
-2,     12,     22,       32,     42
-3,     13,     23,       33,     43
-4,     14,     24,       34,     44 
-5,     15,     25,       35,     45 
-6,     16,     26,       36,     46
-7,     17,     27,       37,     47
 
-if we predict
-27, 37, 47     outs=3, forecast_length=1,  horizon/forecast_step=0, 
-
-if we predict
-28, 38, 48     outs=3, forecast_length=1,  horizon/forecast_step=1, 
-
-if we predict
-27, 37, 47
-28, 38, 48     outs=3, forecast_length=2,  horizon/forecast_step=0,  
-
-if we predict
-28, 38, 48     
-29, 39, 49   outs=3, forecast_length=3,  horizon/forecast_step=1,  
-30, 40, 50
-
-if we predict
-38            outs=1, forecast_length=3, forecast_step=0
-39
-40
-
-if we predict
-39            outs=1, forecast_length=1, forecast_step=2
-
-if we predict
-39            outs=1, forecast_length=3, forecast_step=2
-40
-41
-
-output/target/label shape
-(examples, outs, forecast_length)
-"""
 examples = 2000
 ins = 5
 outs = 1
@@ -93,6 +56,47 @@ def build_train_predict(_model):
 class TestUtils(unittest.TestCase):
 
     """
+    Given following sample consisting of input/output paris
+    input, input, output1, output2, output 3
+    1,     11,     21,       31,     41
+    2,     12,     22,       32,     42
+    3,     13,     23,       33,     43
+    4,     14,     24,       34,     44
+    5,     15,     25,       35,     45
+    6,     16,     26,       36,     46
+    7,     17,     27,       37,     47
+
+    if we predict
+    27, 37, 47     outs=3, forecast_length=1,  horizon/forecast_step=0,
+
+    if we predict
+    28, 38, 48     outs=3, forecast_length=1,  horizon/forecast_step=1,
+
+    if we predict
+    27, 37, 47
+    28, 38, 48     outs=3, forecast_length=2,  horizon/forecast_step=0,
+
+    if we predict
+    28, 38, 48
+    29, 39, 49   outs=3, forecast_length=3,  horizon/forecast_step=1,
+    30, 40, 50
+
+    if we predict
+    38            outs=1, forecast_length=3, forecast_step=0
+    39
+    40
+
+    if we predict
+    39            outs=1, forecast_length=1, forecast_step=2
+
+    if we predict
+    39            outs=1, forecast_length=3, forecast_step=2
+    40
+    41
+
+    output/target/label shape
+    (examples, outs, forecast_length)
+
     Additonally I also build, train and predict from the model so that it is confirmed that everything works
     with different input/output shapes.
     """
