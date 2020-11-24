@@ -498,10 +498,22 @@ class Model(NN, Plots):
 
         return [x], label
 
+    def maybe_2d_data(self, true, predicted):
+        if true.ndim ==2:
+            assert self.forecast_len == 1
+            true = np.expand_dims(true, axis=2)
+        if predicted.ndim ==2:
+            assert self.forecast_len == 1
+            predicted = np.expand_dims(predicted, axis=2)
+        return true, predicted
+
     def process_results(self, true: np.ndarray, predicted: np.ndarray, prefix=None, index=None, **plot_args):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
+        # for cases if they are 2D, add the third dimension.
+        true, predicted = self.maybe_2d_data(true, predicted)
+
         errs = dict()
 
         for idx, out in enumerate(self.out_cols):
@@ -606,6 +618,9 @@ class Model(NN, Plots):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
+        # for cases if they are 2D, add the third dimension.
+        true, predicted = self.maybe_2d_data(true, predicted)
+
         if self.data_config['normalize']:
             if np.ndim(inputs) == 4:
                 inputs = inputs[:, -1, 0, :]
