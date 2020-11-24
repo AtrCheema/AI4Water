@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.com/AtrCheema/dl4seq.svg?branch=master)](https://travis-ci.com/AtrCheema/dl4seq)
 [![Coverage Status](https://coveralls.io/repos/github/AtrCheema/dl4seq/badge.svg?branch=master)](https://coveralls.io/github/AtrCheema/dl4seq?branch=master)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/60cf9c47365d4e9a90c411ff3d2ba156)](https://www.codacy.com/gh/AtrCheema/dl4seq/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=AtrCheema/dl4seq&amp;utm_campaign=Badge_Grade)
 
 Different deep learning based architechtures for time series forecasting.  
 This repo provides a framework to build layered models from python dictionary and it provides several helper tools 

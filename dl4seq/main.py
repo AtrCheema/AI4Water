@@ -55,6 +55,16 @@ class Model(NN, Plots):
         self.verbosity = verbosity
 
     @property
+    def forecast_step(self):
+        # should only be changed using self.data_config
+        return self.data_config['forecast_step']
+
+    @property
+    def forecast_len(self):
+        # should only be changed using self.data_config
+        return self.data_config['forecast_length']
+
+    @property
     def data(self):
         # so that .data attribute can be customized
         return self._data
@@ -204,19 +214,14 @@ class Model(NN, Plots):
         cols = self.in_cols + self.out_cols
         df = df[cols]
 
-        scaler = None
         if self.data_config['normalize']:
-            scaler = MinMaxScaler()
-            data = scaler.fit_transform(df)
-            df = pd.DataFrame(data)
+            df, scaler = self.normalize(df, scaler_key)
 
         if use_datetime_index:
             # pandas will add the 'datetime' column as first column. This columns will only be used to keep
             # track of indices of train and test data.
             df.insert(0, 'dt_index', dt_index)
             self.in_cols = ['dt_index'] + self.in_cols
-
-        self.scalers['scaler_' + scaler_key] = scaler
 
         if en is None:
             en = df.shape[0]
@@ -277,6 +282,17 @@ class Model(NN, Plots):
             self.write_cache('data_' + scaler_key, x, y, label)
 
         return x, y, label
+
+    def normalize(self, df, key):
+        """ should return the transformed dataframe and the key with which scaler is put in memory.
+        """
+        scaler = MinMaxScaler()
+        data = scaler.fit_transform(df)
+        df = pd.DataFrame(data)
+        self.scalers[key] = scaler
+        self.scalers[key + '_shape'] = df.shape
+
+        return df, scaler
 
     def check_batches(self, x, prev_y, y: np.ndarray):
         """
@@ -483,33 +499,29 @@ class Model(NN, Plots):
 
         return [x], label
 
-    def process_results(self, true: list, predicted: list, name=None, **plot_args):
-
+    def process_results(self, true: np.ndarray, predicted: np.ndarray, prefix=None, index=None, **plot_args):
+        """
+        predicted, true are arrays of shape (examples, outs, forecast_len)
+        """
         errs = dict()
-        out_name = ''
-        for out, out_name in enumerate(self.out_cols):
 
-            _t = true[out]
-            _p = predicted[out]
+        for idx, out in enumerate(self.out_cols):
+            for h in range(self.forecast_len):
 
-            for hor in range(self.data_config['forecast_length']):
-
-                t = _t.values[:, hor]  # _t is dataframe if shape (samples, horizons)
-                p = _p.values[:, hor]
-
-                if np.isnan(t).sum() > 0:
-                    mask = np.invert(np.isnan(t))
-                    t = t[mask]
-                    p = p[mask]
+                t = pd.DataFrame(true[:, idx, h], index=index, columns=[out])
+                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=[out])
+                df = pd.concat([t, p], axis=1)
+                fname = prefix + '_' + out + '_' + str(h) +  ".csv"
+                df.to_csv(os.path.join(self.path, fname), index_label='time')
 
                 errors = FindErrors(t, p, warn="ignore")
-                errs[out_name + '_errors_' + str(hor)] = errors.calculate_all()
-                errs[out_name + '_stats_' + str(hor)] = errors.stats()
+                errs[out + '_errors_' + str(h)] = errors.calculate_all()
+                errs[out + '_stats_' + str(h)] = errors.stats()
 
-                plot_results(t, p, name=os.path.join(self.path, name + out_name + '_' + str(hor)),
+                plot_results(t, p, name=os.path.join(self.path, prefix + out + '_' + str(h)),
                              **plot_args)
 
-        save_config_file(self.path, errors=errs, name=name + '_' + out_name + '_')
+        save_config_file(self.path, errors=errs, name=prefix)
 
         return
 
@@ -579,32 +591,9 @@ class Model(NN, Plots):
         predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
         if self.quantiles is None:
-            if not isinstance(true_outputs, list):
-                true_outputs = [true_outputs]
-            if not isinstance(predicted, list):
-                predicted = [predicted]
-
-            horizons = self.data_config['forecast_length']
-            # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
-            true_outputs = [pd.DataFrame(t_out.reshape(-1, horizons), index=dt_index,
-                                         columns=['true_' + str(i) for i in range(horizons)]).sort_index() for t_out in
-                            true_outputs]
-            predicted = [pd.DataFrame(p_out.reshape(-1, horizons), index=dt_index,
-                                      columns=['pred_' + str(i) for i in range(horizons)]).sort_index() for p_out in
-                         predicted]
 
             if pp:
-                # save the results
-                for idx, out in enumerate(self.out_cols):
-                    p = predicted[idx]
-                    t = true_outputs[idx]
-                    df = pd.concat([t, p], axis=1)
-                    df.columns = [col + '_' + str(out) for col in df.columns]
-                    df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
-
-                self.process_results(true_outputs, predicted, pref + '_', **plot_args)
-
-            return true_outputs, predicted
+                self.process_results(true_outputs, predicted, prefix=pref + '_', index=dt_index, **plot_args)
 
         else:
             assert self.outs == 1
@@ -612,42 +601,43 @@ class Model(NN, Plots):
             self.plot_quantiles2(true_outputs, predicted)
             self.plot_all_qs(true_outputs, predicted)
 
-            return true_outputs, predicted
+        return true_outputs, predicted
 
-    def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
-
+    def denormalize_data(self, inputs: np.ndarray, predicted: np.ndarray, true: np.ndarray, scaler_key:str):
+        """
+        predicted, true are arrays of shape (examples, outs, forecast_len)
+        """
         if self.data_config['normalize']:
-            if self.outs == 1:
-                # denormalize the data
-                if np.ndim(first_input) == 4:
-                    first_input = first_input[:, -1, 0, :]
-                elif np.ndim(first_input) == 5:
-                    first_input = first_input[:, -1, 0, -1, :]
-                elif np.ndim(first_input) == 3:
-                    first_input = first_input[:, -1, :]
-                elif np.ndim(first_input) == 2:
-                    first_input = first_input[:, :]
+            if np.ndim(inputs) == 4:
+                inputs = inputs[:, -1, 0, :]
+            elif np.ndim(inputs) == 5:
+                inputs = inputs[:, -1, 0, -1, :]
+            elif np.ndim(inputs) == 3:
+                inputs = inputs[:, -1, :]
+            elif np.ndim(inputs) == 2:
+                pass
             else:
-                if np.ndim(first_input) == 3:
-                    first_input = first_input[:, -1, :]
-                    true_outputs = np.stack(true_outputs, axis=1).reshape(-1, self.outs)
-                    predicted = np.stack(predicted, axis=1).reshape(-1, self.outs)
+                raise ValueError(f"Input data has dimension {np.ndim(inputs)}.")
 
-            in_obs = np.hstack([first_input, true_outputs])
-            in_pred = np.hstack([first_input, predicted])
-            scaler = self.scalers['scaler_' + scaler_key]
-            in_obs_den = scaler.inverse_transform(in_obs)
-            in_pred_den = scaler.inverse_transform(in_pred)
-            true_outputs = in_obs_den[:, -self.outs:]
-            predicted = in_pred_den[:, -self.outs:]
+            true_denorm = np.full(true.shape, np.nan)
+            pred_denorm = np.full(predicted.shape, np.nan)
 
-            if self.outs > 1:
-                true_outputs = [true_outputs[:, i] for i in range(self.outs)]
-                predicted = [predicted[:, i] for i in range(self.outs)]
+            for h in range(self.forecast_len):
+                t = true[:, :, h]
+                p = predicted[:, :, h]
+                in_obs = np.hstack([inputs, t])
+                in_pred = np.hstack([inputs, p])
+                scaler = self.scalers[scaler_key]
+                in_obs_den = scaler.inverse_transform(in_obs)
+                in_pred_den = scaler.inverse_transform(in_pred)
+                true_denorm[:, :, h] = in_obs_den[:, -self.outs:]
+                pred_denorm[:, :, h] = in_pred_den[:, -self.outs:]
 
-            return predicted, true_outputs
-        else:
-            return predicted, true_outputs
+            predicted = pred_denorm
+            true = true_denorm
+
+        return predicted, true
+
 
     def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
 
@@ -726,9 +716,9 @@ class Model(NN, Plots):
 
         assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
         """.format(self.lookback)
-        return self.check_nans(df, input_x, input_y, label_y, outs)
+        return self.check_nans(df, input_x, input_y, np.expand_dims(label_y, axis=2), outs)
 
-    def get_3d_batches(self, df, ins, outs):
+    def get_3d_batches(self, df, ins, outs, lookback, in_step, forecast_step, forecast_len):
         # Provide lookback/history/seq length in input data
         input_x = []
         input_y = []
@@ -736,16 +726,26 @@ class Model(NN, Plots):
 
         row_length = len(df)
         column_length = df.columns.size
-        for i in range(row_length - self.lookback + 1):
-            x_data = df.iloc[i:i + self.lookback, 0:column_length - outs]
-            y_data = df.iloc[i:i + self.lookback - 1, column_length - outs:]
-            label_data = df.iloc[i + self.lookback - 1, column_length - outs:]
+
+        for i in range(row_length - lookback * in_step + 1 - forecast_step - forecast_len + 1):
+            stx, enx = i, i + lookback * in_step
+            x_data = df.iloc[stx:enx:in_step, 0:column_length - outs]
+
+            st, en = i, i + (lookback - 1) * in_step
+            y_data = df.iloc[st:en:in_step, column_length - outs:]
+
+            sty = enx + forecast_step - in_step
+            eny = sty + forecast_len
+            label_data = df.iloc[sty:eny, column_length - outs:]
+
             input_x.append(np.array(x_data))
             input_y.append(np.array(y_data))
             label_y.append(np.array(label_data))
-        input_x = np.array(input_x, dtype=np.float64).reshape(-1, self.lookback, ins)
-        input_y = np.array(input_y, dtype=np.float32).reshape(-1, self.lookback - 1, outs)
-        label_y = np.array(label_y, dtype=np.float32).reshape(-1, outs)
+
+        input_x = np.array(input_x, dtype=np.float64).reshape(-1, lookback, ins)
+        input_y = np.array(input_y, dtype=np.float32).reshape(-1, lookback - 1, outs)
+        # transpose because we want labels to be of shape (examples, outs, forecast_length)
+        label_y = np.array([np.array(i, dtype=np.float32).T for i in label_y], dtype=np.float32)
 
         return self.check_nans(df, input_x, input_y, label_y, outs)
 
@@ -759,13 +759,15 @@ class Model(NN, Plots):
             if self.data_config['batches'].upper() == "2D":
                 return self.get_2d_batches(df, ins, outs)
             else:
-                return self.get_3d_batches(df, ins, outs)
+                return self.get_3d_batches(df, ins, outs, self.lookback, self.data_config['input_step'],
+                                           self.forecast_step, self.forecast_len)
         else:
             if len(self.first_layer_shape()) == 2:
                 return self.get_2d_batches(df, ins, outs)
 
             else:
-                return self.get_3d_batches(df, ins, outs)
+                return self.get_3d_batches(df, ins, outs, self.lookback, self.data_config['input_step'],
+                                           self.forecast_step, self.forecast_len)
 
     def check_nans(self, df, input_x, input_y, label_y, outs):
         """ checks whether anns are present or not and checks shapes of arrays being prepared.
@@ -850,6 +852,9 @@ class Model(NN, Plots):
     def plot_weights(self, save=True):
         weights = self.trainable_weights()
 
+        if self.verbosity > 0:
+            print("Plotting trainable weights of layers of the model.")
+
         for _name, weight in weights.items():
             title = _name + " Weights"
             fname = _name + '_weights'
@@ -872,6 +877,9 @@ class Model(NN, Plots):
         """ plots activations of intermediate layers except input and output.
         If called without any arguments then it will plot activations of all layers."""
         activations, _ = self.activations(**kwargs)
+
+        if self.verbosity > 0:
+            print("Plotting activations of layers")
 
         for lyr_name, activation in activations.items():
             # activation may be tuple e.g if input layer receives more than 1 input
@@ -903,6 +911,10 @@ class Model(NN, Plots):
         """ plots gradient of all trainable weights"""
 
         gradients = self.gradients_of_weights(**kwargs)
+
+        if self.verbosity > 0:
+            print("Plotting gradients of trainable weights")
+
         for lyr_name, gradient in gradients.items():
 
             title = lyr_name + "Weight Gradients"
@@ -925,6 +937,9 @@ class Model(NN, Plots):
     def plot_act_grads(self, save: bool = True, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         gradients = self.gradients_of_activations(**kwargs)
+
+        if self.verbosity > 0:
+            print("Plotting gradients of activations of layersr")
 
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_activation gradients"
@@ -1066,7 +1081,7 @@ class Model(NN, Plots):
 
         input_x = x[self.lookback:-fl, :]
         prev_y = prev_y[self.lookback:-fl, :]
-        y = _y[self.lookback:-fl, :]
+        y = _y[self.lookback:-fl, :].reshape(-1, outs, self.forecast_len)
 
         return self.check_nans(df, input_x, prev_y, y, outs)
 

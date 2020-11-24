@@ -16,7 +16,7 @@ from os.path import abspath
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
-    data_config, nn_config, total_intervals = make_model(batch_size=16,
+    data_config, nn_config, total_intervals = make_model(batch_size=64,
                                                          lookback=lookback,
                                                          lr=0.001,
                                                          epochs=epochs,

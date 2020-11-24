@@ -1,5 +1,5 @@
-from models import IMVLSTMModel
-from utils import make_model
+from dl4seq.pytorch_models import IMVLSTMModel
+from dl4seq.utils import make_model
 
 import pandas as pd
 

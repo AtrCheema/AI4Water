@@ -316,6 +316,8 @@ def make_model(**kwargs):
     # for Dense layer.
     data_config['batches'] = '3d'
     data_config['seed'] = 313  # for reproducability
+    data_config['forecast_step'] = 0  # how many steps ahead we want to predict
+    data_config['input_step'] = 1  # step size of input data
 
     # input features in data_frame
     dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')

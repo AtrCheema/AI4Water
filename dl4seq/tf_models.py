@@ -66,7 +66,9 @@ class DualAttentionModel(Model):
         h = layers.Reshape((self.outs, dec_config['p']))(h)
         # concatenation of decoder hidden state and the context vector.
         last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
-        print('last_concat', last_concat)
+
+        if self.verbosity > 2:
+            print('last_concat', last_concat)
         sec_dim = enc_config['m'] + dec_config['p']  # original it was not defined but in tf-keras we need to define it
         last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
 
@@ -79,6 +81,7 @@ class DualAttentionModel(Model):
             print('result:', result)
 
         output = layers.Dense(self.outs)(result)
+        output = layers.Reshape(target_shape=(self.outs, self.forecast_len))(output)
 
         self.k_model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
 
@@ -258,6 +261,7 @@ class InputAttentionModel(DualAttentionModel):
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.outs)(act_out)
+        predictions = layers.Reshape(target_shape=(self.outs, self.forecast_len))(predictions)
         if self.verbosity > 2:
             print('predictions: ', predictions)
 
@@ -365,13 +369,21 @@ class NBeatsModel(Model):
 
         return self.prepare_batches(df, ins, outs)
 
+    def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
 
-    def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
+        first_input, inputs, dt_index = Model.deindexify_input_data(self,
+                                                                    inputs,
+                                                                    sort=sort,
+                                                                    use_datetime_index=use_datetime_index)
 
-        predicted = predicted.reshape(-1, 1)
-        true_outputs = true_outputs.reshape(-1, 1)
+        return inputs[1], inputs, dt_index
 
-        return [predicted], [true_outputs]
+    # def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
+    #
+    #     predicted = predicted.reshape(-1, 1)
+    #     true_outputs = true_outputs.reshape(-1, 1)
+    #
+    #     return [predicted], [true_outputs]
 
 
 class ConvLSTMModel(Model):

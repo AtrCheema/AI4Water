@@ -6,9 +6,11 @@
 __pycache__/
 .idea/
 
+# private stuff
 results/
 data/
 testing/
+models/
 
 # build related
 *dist/
