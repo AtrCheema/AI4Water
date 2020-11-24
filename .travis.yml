@@ -15,7 +15,7 @@ install:
 
 script:
   - coverage run -m unittest tests.test_activations
-  - coverage run -m unittest tests.test_models.py
+  - coverage run -m unittest tests.test_models
   - coverage run -m unittest tests.test_without_eager
   - coverage run -m unittest tests.test_utils
 
