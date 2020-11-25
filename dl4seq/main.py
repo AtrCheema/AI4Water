@@ -189,40 +189,14 @@ class Model(NN, Plots):
         if en is None:
             en = data.shape[0]
 
-        df = data
-        dt_index = None
         df = self.indexify_data(data, use_datetime_index)
-        # if use_datetime_index:
-        #     assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
-        #      pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
-        #     `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
-        #     If the data file already contains `datetime` column, then use following command
-        #     `data.index = pd.to_datetime(data['datetime'])`
-        #     or use set `use_datetime_index` in `predict` method to False.
-        #     """
-        #     dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
-        #     # pandas will add the 'datetime' column as first column. This columns will only be used to keep
-        #     # track of indices of train and test data.
-        #     data.insert(0, 'dt_index', dt_index)
-        #     self.in_cols = ['dt_index'] + self.in_cols
 
         # # add random noise in the data
         df = self.add_noise(df, noise)
 
-        # cols = self.in_cols + self.out_cols
-        # df = df[cols]
 
         if self.data_config['normalize']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
             df, _ = self.normalize(df, scaler_key)
-
-        # if use_datetime_index:
-        #     # pandas will add the 'datetime' column as first column. This columns will only be used to keep
-        #     # track of indices of train and test data.
-        #     df.insert(0, 'dt_index', dt_index)
-        #     self.in_cols = ['dt_index'] + self.in_cols
-
-        # if en is None:
-        #     en = df.shape[0]
 
         if self.intervals is None:
 
@@ -614,7 +588,6 @@ class Model(NN, Plots):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
         pp: post processing
-
         """
 
         if indices is not None:
