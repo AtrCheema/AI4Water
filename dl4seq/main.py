@@ -168,7 +168,6 @@ class Model(NN, Plots):
                    scaler_key: str = '0',
                    use_datetime_index=False):
         """
-
         :param data:
         :param st:
         :param en:
@@ -187,44 +186,43 @@ class Model(NN, Plots):
             assert isinstance(indices, list), "indices must be list"
             if en is not None or st != 0:
                 raise ValueError
+        if en is None:
+            en = data.shape[0]
 
         df = data
         dt_index = None
-        if use_datetime_index:
-            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
-             pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
-            `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
-            If the data file already contains `datetime` column, then use following command
-            `data.index = pd.to_datetime(data['datetime'])`
-            or use set `use_datetime_index` in `predict` method to False.
-            """
-            dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
+        df = self.indexify_data(data, use_datetime_index)
+        # if use_datetime_index:
+        #     assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
+        #      pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
+        #     `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
+        #     If the data file already contains `datetime` column, then use following command
+        #     `data.index = pd.to_datetime(data['datetime'])`
+        #     or use set `use_datetime_index` in `predict` method to False.
+        #     """
+        #     dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
+        #     # pandas will add the 'datetime' column as first column. This columns will only be used to keep
+        #     # track of indices of train and test data.
+        #     data.insert(0, 'dt_index', dt_index)
+        #     self.in_cols = ['dt_index'] + self.in_cols
 
         # # add random noise in the data
-        if noise > 0:
-            x = pd.DataFrame(np.random.randint(0, 1, (len(df), noise)))
-            df = pd.concat([df, x], axis=1)
-            prev_inputs = self.in_cols
-            self.in_cols = prev_inputs + list(x.columns)
-            ys = []
-            for y in self.out_cols:
-                ys.append(df.pop(y))
-            df[self.out_cols] = ys
+        df = self.add_noise(df, noise)
 
-        cols = self.in_cols + self.out_cols
-        df = df[cols]
+        # cols = self.in_cols + self.out_cols
+        # df = df[cols]
 
-        if self.data_config['normalize']:
+        if self.data_config['normalize']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
             df, _ = self.normalize(df, scaler_key)
 
-        if use_datetime_index:
-            # pandas will add the 'datetime' column as first column. This columns will only be used to keep
-            # track of indices of train and test data.
-            df.insert(0, 'dt_index', dt_index)
-            self.in_cols = ['dt_index'] + self.in_cols
+        # if use_datetime_index:
+        #     # pandas will add the 'datetime' column as first column. This columns will only be used to keep
+        #     # track of indices of train and test data.
+        #     df.insert(0, 'dt_index', dt_index)
+        #     self.in_cols = ['dt_index'] + self.in_cols
 
-        if en is None:
-            en = df.shape[0]
+        # if en is None:
+        #     en = df.shape[0]
 
         if self.intervals is None:
 
@@ -282,6 +280,38 @@ class Model(NN, Plots):
             self.write_cache('data_' + scaler_key, x, y, label)
 
         return x, y, label
+
+    def indexify_data(self, data, use_datetime_index):
+
+        if use_datetime_index:
+            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
+             pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
+            `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
+            If the data file already contains `datetime` column, then use following command
+            `data.index = pd.to_datetime(data['datetime'])`
+            or use set `use_datetime_index` in `predict` method to False.
+            """
+            dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
+            # pandas will add the 'datetime' column as first column. This columns will only be used to keep
+            # track of indices of train and test data.
+            data.insert(0, 'dt_index', dt_index)
+            self.in_cols = ['dt_index'] + self.in_cols
+
+        return data
+
+    def add_noise(self, df, noise):
+
+        if noise > 0:
+            x = pd.DataFrame(np.random.randint(0, 1, (len(df), noise)))
+            df = pd.concat([df, x], axis=1)
+            prev_inputs = self.in_cols
+            self.in_cols = prev_inputs + list(x.columns)
+            ys = []
+            for y in self.out_cols:
+                ys.append(df.pop(y))
+            df[self.out_cols] = ys
+
+        return df
 
     def normalize(self, df, key):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
