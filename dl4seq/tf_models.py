@@ -1,5 +1,4 @@
-__all__ = ["CNNLSTMModel", "DualAttentionModel",
-           "InputAttentionModel", "OutputAttentionModel", "NBeatsModel", "ConvLSTMModel"]
+__all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel"]
 
 import numpy as np
 
@@ -11,22 +10,6 @@ from dl4seq.layer_definition import MyTranspose, MyDot
 from dl4seq.utils import plot_loss
 layers = keras.layers
 KModel = keras.models.Model
-
-
-class CNNLSTMModel(Model):
-    """
-    This class is deprecated. Use Model class instead.
-    https://link.springer.com/article/10.1007/s00521-020-04867-x
-    https://www.sciencedirect.com/science/article/pii/S0360544219311223
-    """
-    def __init__(self, **kwargs):
-
-        self.method = 'CNN_LSTM'
-
-        super(CNNLSTMModel, self).__init__(**kwargs)
-
-        assert self.lookback % self.nn_config['subsequences'] == int(0), """lookback must be multiple of subsequences.
-        Lookback: {}, sub-sequences: {}""".format(self.lookback, self.nn_config['subsequences'])
 
 
 class DualAttentionModel(Model):
@@ -378,33 +361,3 @@ class NBeatsModel(Model):
                                                                     use_datetime_index=use_datetime_index)
 
         return inputs[1], inputs, dt_index
-
-    # def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
-    #
-    #     predicted = predicted.reshape(-1, 1)
-    #     true_outputs = true_outputs.reshape(-1, 1)
-    #
-    #     return [predicted], [true_outputs]
-
-
-class ConvLSTMModel(Model):
-    """
-    This class is deprecated. Use Model class instead.
-    Original:
-      https://arxiv.org/abs/1506.04214v1
-    implemented after
-      https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/
-    Literature:
-      https://www.sciencedirect.com/science/article/pii/S0957417420305285
-      https://www.nature.com/articles/s41598-019-46850-0
-      this is more like a encoder decoder example
-    """
-    def __init__(self, **kwargs):
-        super(ConvLSTMModel, self).__init__(**kwargs)
-        assert self.lookback % self.nn_config['subsequences'] == int(0), "lookback must be multiple of subsequences"
-
-def unison_shuffled_copies(a, b, c):
-    """makes sure that all the arrays are permuted similarly"""
-    assert len(a) == len(b) == len(c)
-    p = np.random.permutation(len(a))
-    return a[p], b[p], c[p]

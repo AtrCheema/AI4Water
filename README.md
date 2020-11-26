@@ -4,6 +4,12 @@
 [![codecov](https://codecov.io/gh/AtrCheema/dl4seq/branch/master/graph/badge.svg?token=8FGNPJGCOI)](https://codecov.io/gh/AtrCheema/dl4seq)[![Codacy Badge](https://app.codacy.com/project/badge/Grade/60cf9c47365d4e9a90c411ff3d2ba156)](https://www.codacy.com/gh/AtrCheema/dl4seq/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=AtrCheema/dl4seq&amp;utm_campaign=Badge_Grade)
 
 Different deep learning based architechtures for time series forecasting.  
+
+The purpose of the repository is
+* compliment the functionality of keras by making pre and post processing easeier for time-series prediction problems
+* save, load/reload or build models from readable json file.
+* both of above functionalities should be available without complicating simple keras implementation
+
 This repo provides a framework to build layered models using python dictionary and with several helper tools 
 which fasten the process of  modeling time-series forcasting. The purpose is to cut the time to write boiler plate code
 in developing deep learning based models.

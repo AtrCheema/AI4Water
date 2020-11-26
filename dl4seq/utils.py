@@ -298,7 +298,7 @@ def make_model(**kwargs):
     # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
     data_config['skip_last_batch'] = False
-    data_config['normalize'] = True
+    data_config['normalize'] = 'minmax'  # can be None or any of the method defined in scalers.py
     data_config['lookback'] = 15
     data_config['batch_size'] = 32
     data_config['val_fraction'] = 0.2  # fraction of data to be used for validation

@@ -18,6 +18,7 @@ script:
   - coverage run -m unittest tests.test_models
   - coverage run -m unittest tests.test_without_eager
   - coverage run -m unittest tests.test_utils
+  - coverage run -m unittest tests.test_scalers
 
 after_success:
   - codecov # submit coverage

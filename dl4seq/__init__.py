@@ -11,10 +11,8 @@ except AttributeError:
     print("\n{}Pytorch models could not be imported {}\n".format(10*'*', 10*'*'))
 
 try:
-    from dl4seq.tf_models import CNNLSTMModel
     from dl4seq.tf_models import InputAttentionModel
     from dl4seq.tf_models import DualAttentionModel
     from dl4seq.tf_models import NBeatsModel
-    from dl4seq.tf_models import ConvLSTMModel
 except AttributeError:
     print("\n{}Tensorflow models could not be imported {}\n".format(10 * '*', 10 * '*'))

@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from TSErrors import FindErrors
-from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import matplotlib # for version info
 import os
@@ -15,6 +14,7 @@ from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
 from dl4seq.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
 from dl4seq.plotting_tools import Plots
+from dl4seq.scalers import Scalers
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -289,11 +289,11 @@ class Model(NN, Plots):
 
     def normalize(self, df, key):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
-        scaler = MinMaxScaler()
-        data = scaler.fit_transform(df)
-        df = pd.DataFrame(data)
-        self.scalers[key] = scaler
-        self.scalers[key + '_shape'] = df.shape
+        scaler = None
+        if self.data_config['normalize'] is not None:
+
+            df, scaler = Scalers(data=df, method=self.data_config['normalize'])('normalize')
+            self.scalers[key] = scaler
 
         return df, scaler
 
@@ -644,7 +644,7 @@ class Model(NN, Plots):
                 p = predicted[:, :, h]
                 in_obs = np.hstack([inputs, t])
                 in_pred = np.hstack([inputs, p])
-                scaler = self.scalers[scaler_key]
+                scaler = self.scalers[scaler_key]['scaler']
                 in_obs_den = scaler.inverse_transform(in_obs)
                 in_pred_den = scaler.inverse_transform(in_pred)
                 true_denorm[:, :, h] = in_obs_den[:, -self.outs:]

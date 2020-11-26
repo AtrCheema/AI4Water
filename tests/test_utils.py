@@ -37,7 +37,7 @@ def build_model(**kwargs):
     data_config, nn_config, _ = make_model(
         batch_size=batch_size,
         lookback=lookback,
-        normalize=False,
+        normalize=None,
         epochs=1,
         **kwargs
     )
@@ -314,103 +314,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(int(y[-1].sum()), 254565)
         return
 
-    def test_indexification(self):
-        """makes sure that using inexification the order of input/output is reconstructed."""
-        model = build_model(
-            inputs=in_cols,
-            outputs=out_cols,
-            layers=get_layers()
-        )
-
-        model.get_indices(indices='random')
-
-        test_inputs, true_outputs = model.test_data(indices=model.test_indices,
-                                              use_datetime_index=True)
-
-
-        first_input, inputs, dt_index = model.deindexify_input_data(test_inputs,
-                                                                    sort=False,
-                                                                    use_datetime_index=True)
-
-        self.assertEqual(dt_index.__class__.__name__, "DatetimeIndex")
-
-        x = test_inputs[0][:, -1, :]
-        y = true_outputs[:, :, 0]
-        df = pd.DataFrame(np.concatenate([x, y], axis=1), index=dt_index,
-                          columns=model.in_cols + model.out_cols).sort_index()
-
-        self.assertEqual(df.shape[0], len(model.test_indices))
-
-        # instead of checking for individual values, we jsut make sure that inputs and outputs are sorted.
-        # This is because above we used "random"
-        prev_i = 0
-        prev_o = 0
-        for i,o in zip(df['input_0'][0:10], df['output'][0:10]):
-            current_i = i
-            current_o = o
-            self.assertGreater(current_i, prev_i)
-            self.assertGreater(current_o, prev_o)
-            prev_i = current_i
-            prev_o = current_o
-
-        return
-
-    def test_indexification_with_NaNLabels(self):
-
-        model = build_model(
-            inputs=in_cols,
-            outputs=out_cols,
-            layers=get_layers()
-        )
-
-        model.get_indices(indices='random')
-
-        prev_tr_indices = len(model.train_indices)
-        prev_test_indices = len(model.test_indices)
-
-        df = data.copy()
-        df['output'][100:200] = np.nan
-
-        model.intervals = ((0, 100), (200, 2000))
-        model.data = df
-
-        model.build_nn()
-
-        model.get_indices(indices='random')
-
-        self.assertGreater(prev_tr_indices, len(model.train_indices))
-        self.assertGreater(prev_test_indices, len(model.test_indices))
-
-        test_inputs, true_outputs = model.test_data(indices=model.test_indices,
-                                              use_datetime_index=True)
-
-        _, _, dt_index = model.deindexify_input_data(test_inputs,
-                                                     sort=False,
-                                                     use_datetime_index=True)
-
-        x = test_inputs[0][:, -1, :]
-        y = true_outputs[:, :, 0]
-        df = pd.DataFrame(np.concatenate([x, y], axis=1), index=dt_index,
-                          columns=model.in_cols + model.out_cols).sort_index()
-
-        # the data for this period must be missing because it had Nans
-        self.assertEqual(len(df["20110411": "20110719"]), 0)
-        # instead of checking for individual values, we jsut make sure that inputs and outputs are sorted.
-        # This is because above we used "random"
-        prev_i = 0
-        prev_o = 0
-        for i,o in zip(df['input_0'][0:10], df['output'][0:10]):
-            current_i = i
-            current_o = o
-            self.assertGreater(current_i, prev_i)
-            self.assertGreater(current_o, prev_o)
-            prev_i = current_i
-            prev_o = current_o
-
-        model.intervals = None
-        model.data = data
-
-        return
 
 if __name__ == "__main__":
     unittest.main()
