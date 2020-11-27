@@ -1,6 +1,5 @@
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from TSErrors import FindErrors
 import numpy as np
 
 
@@ -103,23 +102,3 @@ def kge(true, predicted):
     tf_alpha = tf.math.reduce_std(predicted) / tf.math.reduce_std(true)
     tf_beta = K.sum(predicted) / K.sum(true)
     return 1.0 - K.sqrt(K.square(tf_cc - 1.0) + K.square(tf_alpha - 1.0) + K.square(tf_beta - 1.0))
-
-
-if __name__ == "__main__":
-    reset_graph()
-    _true = np.random.random(10)
-    pred = np.random.random(10)
-
-    t = tf.convert_to_tensor(_true, dtype=tf.float32)
-    p = tf.convert_to_tensor(pred, dtype=tf.float32)
-
-    np_errors = FindErrors(_true, pred)
-
-    print('corr_coeff {:<10.5f} {:<10.5f}'.format(np_errors.corr_coeff(), K.eval(corr_coeff(t, p))))
-    print('r2 {:<10.5f} {:<10.5f}'.format(np_errors.r2(), 1.0-K.eval(tf_r2(t, p))))
-    print('nse {:<10.5f} {:<10.5f}'.format(np_errors.nse(), 1.0 - K.eval(tf_nse(t, p))))
-    print('kge {:<10.5f} {:<10.5f}'.format(np_errors.kge(), 1.0 - K.eval(tf_kge(t, p))))
-    print('r2_mod {:<10.5f} {:<10.5f}'.format(np_errors.r2_mod(), 1.0 - K.eval(tf_r2_mod(t, p))))
-    print('nse_beta {:<10.5f} {:<10.5f}'.format(np_errors.nse_beta(), 1.0 - K.eval(tf_nse_beta(t, p))))
-    print('nse_alpha {:<10.5f} {:<10.5f}'.format(np_errors.nse_alpha(), 1.0 - K.eval(tf_nse_alpha(t, p))))
-    print('pbias {:<10.5f} {:<10.5f}'.format(np_errors.pbias(), K.eval(pbias(t, p))))

@@ -8,25 +8,12 @@ import tensorflow as tf
 import dl4seq.tf_losses as tf_losses
 from dl4seq.nbeats_keras import NBeats
 import dl4seq.attention_layers as attns
+from dl4seq.utils import get_attributes
 
 try:
     import tcn
 except ModuleNotFoundError:
     tcn = None
-
-def get_attributes(aus, what:str='losses') ->dict:
-    """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
-    capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
-    are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
-    losses, in that case the error will be generated from tensorflow. We are not catching those error right now."""
-    all_attrs = {}
-    for l in dir(getattr(aus, what)):
-        attr = getattr(getattr(aus, what), l)
-        if callable(attr) and not l.startswith('_'):
-            all_attrs[l.upper()] = attr
-
-    return all_attrs
-
 
 keras = tf.keras
 

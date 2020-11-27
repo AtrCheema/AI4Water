@@ -22,7 +22,7 @@ class AttributeNotSetYet:
 class AttributeStore(object):
     """ a class which will just make sure that attributes are set at its childs class level and not here.
     It's purpose is just to avoid cluttering of __init__ method of its child classes. """
-    k_model = AttributeNotSetYet("`build_nn` to build neural network")
+    _model = AttributeNotSetYet("`build` to build neural network")
     method = None
     ins = None
     outs = None
@@ -43,6 +43,7 @@ class AttributeStore(object):
     dense_counter = 0
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
     layers = None
+    framework = "DL"
 
 
 class NN(AttributeStore):

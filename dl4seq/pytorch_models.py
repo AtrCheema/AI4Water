@@ -420,13 +420,7 @@ class IMVLSTMModel(HARHNModel):
         ax.set_title("Importance of features and timesteps")
         plt.savefig(os.path.join(self.act_path, 'acts'), dpi=400, bbox_inches='tight')
 
-
-        plt.close('all')
-        plt.figure()
-        plt.title("Feature importance")
-        plt.bar(range(self.ins if self.use_predicted_output else self.ins + self.outs), betas)
-        plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
-        plt.savefig(os.path.join(self.act_path, 'import'), dpi=400, bbox_inches='tight')
+        self.plot_feature_importance(betas)
 
 
 def to_torch_tensor(array):

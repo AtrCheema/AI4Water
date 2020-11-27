@@ -8,6 +8,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
+from dl4seq.utils import get_sklearn_models
 
 examples = 2000
 ins = 5
@@ -48,7 +49,7 @@ def build_model(**kwargs):
                   verbosity=0
                   )
 
-    model.build_nn()
+    model.build()
 
     return model
 
@@ -57,7 +58,7 @@ def train_predict(model):
 
     x, y = model.train_data(st=10, en=500)
 
-    model.train_nn()
+    model.train()
     model.predict()
 
     return x,y
@@ -313,6 +314,20 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(int(x[0][-1].sum()), 51261)
         self.assertEqual(int(y[-1].sum()), 254565)
         return
+
+    def test_plot_feature_importance(self):
+
+        model = build_model(inputs=in_cols,
+                            outputs=out_cols)
+        model.plot_feature_importance(np.random.randint(1, 10, 5))
+
+
+    def test_get_attributes(self):
+        sk = get_sklearn_models()
+        rf = sk["RANDOMFORESTREGRESSOR"]
+        gb = sk["GRADIENTBOOSTINGREGRESSOR"]
+        return
+
 
 
 if __name__ == "__main__":

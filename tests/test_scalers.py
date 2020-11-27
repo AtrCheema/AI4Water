@@ -33,19 +33,39 @@ class test_Scalers(unittest.TestCase):
         normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)()
         denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
 
-        for i,j,k,l in zip(normalized_df1[cols].values, normalized_df2[cols].values, normalized_df3[cols].values, normalized_df4[cols].values):
-            for x in [0, 1]:
-                self.assertEqual(int(i[x]), int(j[x]))
-                self.assertEqual(int(j[x]), int(k[x]))
-                self.assertEqual(int(k[x]), int(l[x]))
+        if len(cols) < 2:
+            self.check_features(denormalized_df1)
+        else:
+            for i,j,k,l in zip(normalized_df1[cols].values, normalized_df2[cols].values, normalized_df3[cols].values, normalized_df4[cols].values):
+                for x in [0, 1]:
+                    self.assertEqual(int(i[x]), int(j[x]))
+                    self.assertEqual(int(j[x]), int(k[x]))
+                    self.assertEqual(int(k[x]), int(l[x]))
 
-        for a,i,j,k,l in zip(df.values, denormalized_df1[cols].values, denormalized_df2[cols].values, denormalized_df3[cols].values, denormalized_df4[cols].values):
-            for x in [0, 1]:
-                self.assertEqual(int(round(a[x])), int(round(j[x])))
-                self.assertEqual(int(round(i[x])), int(round(j[x])))
-                self.assertEqual(int(round(j[x])), int(round(k[x])))
-                self.assertEqual(int(round(k[x])), int(round(l[x])))
+            for a,i,j,k,l in zip(df.values, denormalized_df1[cols].values, denormalized_df2[cols].values, denormalized_df3[cols].values, denormalized_df4[cols].values):
+                for x in [0, 1]:
+                    self.assertEqual(int(round(a[x])), int(round(j[x])))
+                    self.assertEqual(int(round(i[x])), int(round(j[x])))
+                    self.assertEqual(int(round(j[x])), int(round(k[x])))
+                    self.assertEqual(int(round(k[x])), int(round(l[x])))
 
+    def check_features(self, denorm):
+
+        for idx, v in enumerate(denorm['data2']):
+            self.assertEqual(v, 1001 + idx)
+
+
+    def test_call_error(self):
+
+        self.assertRaises(ValueError, Scalers(data=df), 'transform')
+
+    def test_get_scaler_from_dict_error(self):
+        normalized_df1, scaler = Scalers(data=df)('normalize')
+        self.assertRaises(ValueError, Scalers(data=normalized_df1), 'denorm')
+
+    def test_scaler_method_with_features(self):
+        for m in ["log", "robust", "minmax", "maxabs", "zscore", "power", "quantile"]:
+            self.run_method(method=m, cols=["data1"])
 
     def test_scaler_method(self):
         for m in ["log", "robust", "minmax", "maxabs", "zscore", "power", "quantile"]:

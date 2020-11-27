@@ -12,7 +12,7 @@ import math
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
-from dl4seq.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
+from dl4seq.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index, get_sklearn_models
 from dl4seq.plotting_tools import Plots
 from dl4seq.scalers import Scalers
 
@@ -35,7 +35,8 @@ class Model(NN, Plots):
                  intervals=None,
                  prefix: str = None,
                  path: str = None,
-                 verbosity=1):
+                 verbosity=1,
+                 framework="DL"):
 
         reset_seed(data_config['seed'])
         if tf is not None:
@@ -53,6 +54,7 @@ class Model(NN, Plots):
         self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
+        self.framework = framework
 
     @property
     def forecast_step(self):
@@ -132,7 +134,7 @@ class Model(NN, Plots):
     @property
     def layer_names(self):
         _all_layers = []
-        for layer in self.k_model.layers:
+        for layer in self._model.layers:
             _all_layers.append(layer.name)
         return _all_layers
 
@@ -141,7 +143,7 @@ class Model(NN, Plots):
         """ returns the shapes of inputs to all layers"""
         shapes = {}
 
-        for lyr in self.k_model.layers:
+        for lyr in self._model.layers:
             shapes[lyr.name] = lyr.input_shape
 
         return shapes
@@ -151,14 +153,21 @@ class Model(NN, Plots):
         """ returns shapes of outputs from all layers in model as dictionary"""
         shapes = {}
 
-        for lyr in self.k_model.layers:
+        for lyr in self._model.layers:
             shapes[lyr.name] = lyr.output_shape
 
         return shapes
 
     @property
     def num_input_layers(self) -> int:
-        return len(self.k_model.inputs)
+        if self.framework.upper() != "DL":
+            return np.inf
+        else:
+            return len(self._model.inputs)
+
+    def feature_imporance(self):
+        if self.framework.upper() == "ML":
+            return self._model.feature_importances_
 
     def fetch_data(self, data: pd.DataFrame, st: int = 0, en=None,
                    shuffle: bool = False,  # TODO, is this arg requried?
@@ -299,7 +308,7 @@ class Model(NN, Plots):
 
     def check_batches(self, x, prev_y, y: np.ndarray):
         """
-        Will have no effect if skip_last_batch is False or batches_per_epoch are not specified.
+        Will have no effect if drop_remainder is False or batches_per_epoch are not specified.
         :param x: a list consisting of one or more 1D arrays
         :param prev_y:
         :param y: nd array
@@ -310,7 +319,7 @@ class Model(NN, Plots):
 
             examples = x[0].shape[0] if isinstance(x, list) else x.shape[0]
 
-            if self.data_config['skip_last_batch']:
+            if self.data_config['drop_remainder']:
                 iterations = math.floor(examples/self.data_config['batch_size'])
                 return self._check_batches(x, prev_y, y, iterations)
 
@@ -386,7 +395,7 @@ class Model(NN, Plots):
         if self.num_input_layers > 1:
             return None
         shape = []
-        for idx, d in enumerate(self.k_model.layers[0].input.shape):
+        for idx, d in enumerate(self._model.layers[0].input.shape):
             if int(tf.__version__[0]) == 1:
                 if isinstance(d, tf.Dimension):  # for tf 1.x
                     d = d.value
@@ -396,7 +405,7 @@ class Model(NN, Plots):
             shape.append(d)
         return shape
 
-    def fit(self, inputs, outputs, validation_data, **callbacks):
+    def get_callbacks(self, **callbacks):
 
         _callbacks = list()
 
@@ -422,18 +431,24 @@ class Model(NN, Plots):
         for key, val in callbacks.items():
             _callbacks.append(val)
 
-        self.k_model.fit(inputs,
+        return _callbacks
+
+    def fit(self, inputs, outputs, validation_data, **callbacks):
+
+        callbacks = self.get_callbacks(**callbacks)
+
+        self._model.fit(inputs,
                          outputs,
                          epochs=self.nn_config['epochs'],
                          batch_size=self.data_config['batch_size'],
                          validation_split=self.data_config['val_fraction'],
                          validation_data=validation_data,
-                         callbacks=_callbacks,
+                         callbacks=callbacks,
                          shuffle=self.nn_config['shuffle'],
                          steps_per_epoch=self.data_config['steps_per_epoch'],
                          verbose=self.verbosity
                          )
-        history = self.k_model.history
+        history = self._model.history
 
         self.save_config(history.history)
 
@@ -502,21 +517,23 @@ class Model(NN, Plots):
 
         return [x], label
 
-    def maybe_2d_data(self, true, predicted):
+    def maybe_not_3d_data(self, true, predicted):
         if true.ndim ==2:
             assert self.forecast_len == 1
-            true = np.expand_dims(true, axis=2)
-        if predicted.ndim ==2:
+            axis = 2 if true.ndim == 2 else (1, 2)
+            true = np.expand_dims(true, axis=axis)
+        if predicted.ndim < 3:
             assert self.forecast_len == 1
-            predicted = np.expand_dims(predicted, axis=2)
+            axis = 2 if predicted.ndim == 2 else (1,2)
+            predicted = np.expand_dims(predicted, axis=axis)
         return true, predicted
 
     def process_results(self, true: np.ndarray, predicted: np.ndarray, prefix=None, index=None, **plot_args):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
-        # for cases if they are 2D, add the third dimension.
-        true, predicted = self.maybe_2d_data(true, predicted)
+        # for cases if they are 2D/1D, add the third dimension.
+        true, predicted = self.maybe_not_3d_data(true, predicted)
 
         errs = dict()
 
@@ -540,18 +557,33 @@ class Model(NN, Plots):
 
         return
 
-    def build_nn(self):
+    def build(self):
 
         if self.verbosity > 0:
-            print('building {} layer based model'.format(self.method))
+            print('building {} layer based model'.format(self.framework))
 
-        inputs, predictions = self.add_layers(self.nn_config['layers'])
+        if self.framework.upper() == "DL":
+            inputs, predictions = self.add_layers(self.nn_config['layers'])
 
-        self.k_model = self.compile(inputs, predictions)
+            self._model = self.compile(inputs, predictions)
+
+        else:
+            self.build_ml_model()
 
         if self.verbosity > 0:
             if 'tcn' in self.nn_config['layers']:
-                tcn.tcn_full_summary(self.k_model, expand_residual_blocks=True)
+                tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
+
+        return
+
+    def build_ml_model(self):
+        """ currently only sklearn based  ML models. """
+        regr_name = self.nn_config['ml_model'].upper()
+        sklearn_models = get_sklearn_models()
+        regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'],
+                                     verbose=self.verbosity,
+                                     criterion=self.nn_config['loss'])
+        self._model = regr
 
         return
 
@@ -567,21 +599,35 @@ class Model(NN, Plots):
 
         return val_data
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
 
         indices = self.get_indices(indices)
 
         inputs, outputs = self.train_data(st=st, en=en, indices=indices)
 
-        history = self.fit(inputs, outputs, self.val_data(), **callbacks)
+        if self.framework.upper() == "DL":
+            history = self.fit(inputs, outputs, self.val_data(), **callbacks)
 
-        plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
+            plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
+
+        else:
+            history = self._model.fit(*inputs, outputs.reshape(-1, ))
 
         return history
 
     def test_data(self, **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
         return self.train_data(**kwargs)
+
+    def prediction_step(self, inputs):
+        if self.framework.upper() == "DL":
+            predicted = self._model.predict(x=inputs,
+                                             batch_size=self.data_config['batch_size'],
+                                             verbose=self.verbosity)
+        else:
+            predicted = self._model.predict(*inputs)
+
+        return predicted
 
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=False, pp=True, **plot_args):
@@ -598,9 +644,7 @@ class Model(NN, Plots):
 
         first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
-        predicted = self.k_model.predict(x=inputs,
-                                         batch_size=self.data_config['batch_size'],
-                                         verbose=self.verbosity)
+        predicted = self.prediction_step(inputs)
 
         predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
@@ -622,7 +666,7 @@ class Model(NN, Plots):
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
         # for cases if they are 2D, add the third dimension.
-        true, predicted = self.maybe_2d_data(true, predicted)
+        true, predicted = self.maybe_not_3d_data(true, predicted)
 
         if self.data_config['normalize']:
             if np.ndim(inputs) == 4:
@@ -827,7 +871,7 @@ class Model(NN, Plots):
         # remvoe the first column from x data
         _, inputs, _ = self.deindexify_input_data(inputs, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        activations = keract.get_activations(self.k_model, inputs, layer_names=layer_names, auto_compile=True)
+        activations = keract.get_activations(self._model, inputs, layer_names=layer_names, auto_compile=True)
         return activations, inputs
 
     def display_activations(self, layer_name: str = None, st=0, en=None, indices=None, **kwargs):
@@ -846,7 +890,7 @@ class Model(NN, Plots):
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        return keract.get_gradients_of_trainable_weights(self.k_model, x, y)
+        return keract.get_gradients_of_trainable_weights(self._model, x, y)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None, **kwargs) -> dict:
 
@@ -854,12 +898,12 @@ class Model(NN, Plots):
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        return keract.get_gradients_of_activations(self.k_model, x, y, layer_names=layer_name)
+        return keract.get_gradients_of_activations(self._model, x, y, layer_names=layer_name)
 
     def trainable_weights(self):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
-        for weight in self.k_model.trainable_weights:
+        for weight in self._model.trainable_weights:
             if tf.executing_eagerly():
                 weights[weight.name] = weight.numpy()
             else:
@@ -1118,8 +1162,8 @@ class Model(NN, Plots):
         config['intervals'] = self.intervals
         config['method'] = self.method
         config['quantiles'] = self.quantiles
-        config['loss'] = self.k_model.loss.__name__ if self.k_model is not None else None
-        config['params'] = int(self.k_model.count_params()),
+        config['loss'] = self._model.loss.__name__ if self._model is not None else None
+        config['params'] = int(self._model.count_params()) if self._model is not None and self.framework == "DL" else None,
 
         VERSION_INFO.update({'numpy_version': str(np.__version__),
                              'pandas_version': str(pd.__version__),
@@ -1164,7 +1208,7 @@ class Model(NN, Plots):
     def load_weights(self, w_file: str):
         # loads the weights of keras model from weight file `w_file`.
         cpath = os.path.join(self.w_path, w_file)
-        self.k_model.load_weights(cpath)
+        self._model.load_weights(cpath)
         print("{} Successfully loaded weights {}".format('*' * 10, '*' * 10))
         return
 

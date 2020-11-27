@@ -20,7 +20,7 @@ class DualAttentionModel(Model):
 
         super(DualAttentionModel, self).__init__(**kwargs)
 
-    def build_nn(self):
+    def build(self):
 
         dec_config = self.nn_config['dec_config']
         enc_config = self.nn_config['enc_config']
@@ -66,7 +66,7 @@ class DualAttentionModel(Model):
         output = layers.Dense(self.outs)(result)
         output = layers.Reshape(target_shape=(self.outs, self.forecast_len))(output)
 
-        self.k_model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
+        self._model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
 
         return
 
@@ -234,7 +234,7 @@ class DualAttentionModel(Model):
 
 class InputAttentionModel(DualAttentionModel):
 
-    def build_nn(self):
+    def build(self):
 
         setattr(self, 'method', 'input_attention')
         print('building input attention')
@@ -248,7 +248,7 @@ class InputAttentionModel(DualAttentionModel):
         if self.verbosity > 2:
             print('predictions: ', predictions)
 
-        self.k_model = self.compile(model_inputs=[enc_input, s0, h0], outputs=predictions)
+        self._model = self.compile(model_inputs=[enc_input, s0, h0], outputs=predictions)
 
         return
 
@@ -263,7 +263,7 @@ class InputAttentionModel(DualAttentionModel):
 
 class OutputAttentionModel(DualAttentionModel):
 
-    def build_nn(self):
+    def build(self):
 
         setattr(self, 'method', 'output_attention')
 
@@ -293,11 +293,11 @@ class OutputAttentionModel(DualAttentionModel):
         print('result:', result)
         predictions = layers.Dense(1)(result)
 
-        k_model = self.compile([inputs, prev_output, s_de0, h_de0], predictions)
+        self._model = self.compile([inputs, prev_output, s_de0, h_de0], predictions)
 
-        return k_model
+        return
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
 
         train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
                                                         write_data=self.data_config['CACHEDATA'],
@@ -328,7 +328,7 @@ class OutputAttentionModel(DualAttentionModel):
 
         h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
 
-        predicted = self.k_model.predict([test_x, test_y, s_de0_test, h_de0_test],
+        predicted = self._model.predict([test_x, test_y, s_de0_test, h_de0_test],
                                          batch_size=test_x.shape[0],
                                          verbose=1)
 

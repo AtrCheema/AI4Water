@@ -1,4 +1,4 @@
-from utils import make_model
+from dl4seq.utils import make_model
 from dl4seq import Model
 
 

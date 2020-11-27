@@ -5,7 +5,7 @@ import numpy as np
 import json
 import os
 
-from utils import skopt_plots, jsonize_skopt_results, clear_weights
+from dl4seq.utils import skopt_plots, jsonize_skopt_results, clear_weights
 from docs.MultiInputSharedModel import make_multi_model, MultiInputSharedModel
 
 
@@ -45,8 +45,8 @@ def objective_fn(**kwargs):
                           prefix=title,
                           **kwargs)
 
-    model.build_nn()
-    history = model.train_nn(st=0, en=5500)
+    model.build()
+    history = model.train(st=0, en=5500)
 
     return model.path, np.min(history['val_loss'])
 

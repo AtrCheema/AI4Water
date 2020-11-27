@@ -71,9 +71,9 @@ model = InputAttentionModel(data_config=data_config,
               intervals=total_intervals
               )
 
-model.build_nn()
+model.build()
 
-history = model.train_nn(indices='random')
+history = model.train(indices='random')
 
 preds, obs = model.predict()
 acts = model.view_model()
@@ -116,7 +116,7 @@ _model = Model(data_config=data_config,
               data=df
               )
 
-_model.build_nn()
+_model.build()
 ```
 
 <img src="imgs/mlp.png" width="300" height="400" />
@@ -146,7 +146,7 @@ _model = Model(data_config=data_config,
               data=df
               )
 
-_model.build_nn()
+_model.build()
 ```
 <img src="imgs/lstm.png" width="300" height="400" />
 

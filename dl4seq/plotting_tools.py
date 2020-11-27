@@ -402,6 +402,24 @@ class Plots(object):
                 plt.show()
         return
 
+    def plot_feature_importance(self, importance=None):
+
+        if importance is None:
+            importance = self.feature_imporance()
+
+        if isinstance(importance, np.ndarray):
+            assert importance.ndim <= 2
+
+        use_prev = self.data_config['use_predicted_output']
+        all_cols = self.data_config['inputs'] if use_prev else self.data_config['inputs'] + \
+                                                                                self.data_config['outputs']
+        plt.close('all')
+        plt.figure()
+        plt.title("Feature importance")
+        plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
+        plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
+        plt.savefig(os.path.join(self.act_path, 'import'), dpi=400, bbox_inches='tight')
+
 
 def _get_nrows_and_ncols(n_subplots, n_rows=None):
     if n_rows is None:

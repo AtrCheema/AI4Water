@@ -59,9 +59,9 @@ def make_and_run(
         verbosity=0
     )
 
-    model.build_nn()
+    model.build()
 
-    _ = model.train_nn(indices='random')
+    _ = model.train(indices='random')
 
     _,  pred_y = model.predict(use_datetime_index=False)
 

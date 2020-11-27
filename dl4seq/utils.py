@@ -7,6 +7,7 @@ from shutil import rmtree
 import datetime
 import json
 import pandas as pd
+import sklearn
 
 plt.rcParams["font.family"] = "Times New Roman"
 
@@ -297,7 +298,7 @@ def make_model(**kwargs):
     data_config['batches_per_epoch'] = None  # comes handy if we want to skip certain batches from last
     # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
-    data_config['skip_last_batch'] = False
+    data_config['drop_remainder'] = False
     data_config['normalize'] = 'minmax'  # can be None or any of the method defined in scalers.py
     data_config['lookback'] = 15
     data_config['batch_size'] = 32
@@ -453,3 +454,33 @@ def clear_weights(_res:dict, opt_dir, keep=3):
     with open(sorted_fname, 'w') as sfp:
         json.dump(od, sfp, sort_keys=True, indent=True)
     return
+
+def get_attributes(aus, what:str='losses') ->dict:
+    """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
+    capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
+    are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
+    losses, in that case the error will be generated from tensorflow. We are not catching those error right now."""
+    all_attrs = {}
+    for l in dir(getattr(aus, what)):
+        attr = getattr(getattr(aus, what), l)
+        if callable(attr) and not l.startswith('_'):
+            all_attrs[l.upper()] = attr
+
+    return all_attrs
+
+def get_sklearn_models():
+
+    # the following line must be executed in order for get_attributes to work, don't know why
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.neural_network import multilayer_perceptron
+    from sklearn.multioutput import MultiOutputRegressor
+
+    sklearn_models = get_attributes(sklearn, "ensemble")
+    sklearn_models.update(get_attributes(sklearn, "linear_model"))
+    sklearn_models.update(get_attributes(sklearn, "multioutput"))
+    sklearn_models.update(get_attributes(sklearn, "neighbors"))
+    sklearn_models.update(get_attributes(sklearn, "neural_network"))
+    sklearn_models.update(get_attributes(sklearn, "svm"))
+    sklearn_models.update(get_attributes(sklearn, "tree"))
+
+    return sklearn_models

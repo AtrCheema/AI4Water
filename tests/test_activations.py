@@ -44,9 +44,9 @@ class TestActivations(unittest.TestCase):
                       verbosity=0
                       )
 
-        model.build_nn()
+        model.build()
 
-        history = model.train_nn()
+        history = model.train()
         for t,p in zip(history.history['val_loss'], [0.1004275307059288, 0.09452582150697708]):
             self.assertAlmostEqual(t,p, 5)
 
@@ -65,9 +65,9 @@ class TestActivations(unittest.TestCase):
                       verbosity=0
                       )
 
-        model.build_nn()
+        model.build()
 
-        history = model.train_nn()
+        history = model.train()
         for t,p in zip(history.history['val_loss'], [0.8970817923545837, 0.7911913394927979]):
             self.assertAlmostEqual(t,p, 5)
 
