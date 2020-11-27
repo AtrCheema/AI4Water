@@ -1,7 +1,8 @@
 # dl4seq
 
 [![Build Status](https://travis-ci.com/AtrCheema/dl4seq.svg?branch=master)](https://travis-ci.com/AtrCheema/dl4seq)
-[![codecov](https://codecov.io/gh/AtrCheema/dl4seq/branch/master/graph/badge.svg?token=8FGNPJGCOI)](https://codecov.io/gh/AtrCheema/dl4seq)[![Codacy Badge](https://app.codacy.com/project/badge/Grade/60cf9c47365d4e9a90c411ff3d2ba156)](https://www.codacy.com/gh/AtrCheema/dl4seq/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=AtrCheema/dl4seq&amp;utm_campaign=Badge_Grade)
+[![codecov](https://codecov.io/gh/AtrCheema/dl4seq/branch/master/graph/badge.svg?token=8FGNPJGCOI)](https://codecov.io/gh/AtrCheema/dl4seq)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/60cf9c47365d4e9a90c411ff3d2ba156)](https://www.codacy.com/gh/AtrCheema/dl4seq/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=AtrCheema/dl4seq&amp;utm_campaign=Badge_Grade)
 
 Different deep learning based architechtures for time series forecasting.  
 
@@ -41,7 +42,7 @@ Currently following models are implemented
 | Input Attention  | `InputAttentionModel` | |
 
 `*` These models can be constructed by stacking layers in a python dictionary as shown later here. The remaining models 
-can be used as shown below
+can be used as shown [here](https://github.com/AtrCheema/dl4seq/blob/master/examples/build_dl_models.md)
 
 ## Installation
 

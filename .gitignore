@@ -10,7 +10,6 @@ __pycache__/
 results/
 data/
 testing/
-models/
 
 # build related
 *dist/
