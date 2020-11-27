@@ -4,8 +4,8 @@
 import pandas as pd
 import os
 
-from utils import make_model
-from dl4seq.main import Model
+from dl4seq.utils import make_model
+from dl4seq import Model
 
 
 data_config, nn_config, total_intervals = make_model(lookback=1)
@@ -18,9 +18,9 @@ model = Model(data_config=data_config,
               data=df,
               )
 
-model.build_nn()
+model.build()
 
-history = model.train_nn(indices='random')
+history = model.train(indices='random')
 
 # for clarity, delete the model, although it is overwritten
 del model
@@ -29,7 +29,7 @@ del model
 cpath = "provide complete path of config file"
 model = Model.from_config(cpath, data=df)
 
-model.build_nn()
+model.build()
 
 w_file = "file_name.hdf5"
 model.load_weights(w_file)

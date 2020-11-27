@@ -9,7 +9,7 @@ from dl4seq.backend import torch
 from dl4seq.HARHN import HARHN
 from dl4seq.imv_networks import IMVTensorLSTM
 from dl4seq.main import Model
-from dl4seq.utils import check_min_loss
+from dl4seq.utils.utils import check_min_loss
 
 
 class HARHNModel(Model):

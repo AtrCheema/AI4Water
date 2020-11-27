@@ -19,7 +19,7 @@ if __name__ == "__main__":
                                                          outputs=outputs,
                                                          lr=0.0001)
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
     df = pd.read_csv(fname)
     df.index = pd.to_datetime(df['Date_Time2'])
 
@@ -29,9 +29,9 @@ if __name__ == "__main__":
                   intervals=total_intervals
                   )
 
-    model.build_nn()
+    model.build()
 
-    history = model.train_nn(indices='random')
+    history = model.train(indices='random')
 
     y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
     model.view_model(st=0)

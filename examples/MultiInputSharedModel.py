@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 
-from dl4seq.utils import plot_loss, get_index, make_model
+from dl4seq.utils.utils import plot_loss, get_index, make_model
 from dl4seq import Model
 
 
@@ -47,15 +47,15 @@ class MultiInputSharedModel(Model):
 
         return x, labels
 
-    def build_nn(self):
+    def build(self):
 
         inputs, predictions = self.add_layers(self.nn_config['layers'])
 
-        self.k_model = self.compile(inputs, predictions)
+        self._model = self.compile(inputs, predictions)
 
         return
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
 
         train_data = self.train_data(st=st, en=en, indices=indices)
 
@@ -101,7 +101,7 @@ class MultiInputSharedModel(Model):
 
             first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
-            predicted = self.k_model.predict(x=inputs,
+            predicted = self._model.predict(x=inputs,
                                              batch_size=self.data_config['batch_size'],
                                              verbose=1)
 
@@ -194,8 +194,8 @@ if __name__ == "__main__":
                                                   epochs=300,
                                                   ignore_nans=False,
                                                   )
-    model.build_nn()
-    model.train_nn(st=0, en=5500)
+    model.build()
+    model.train(st=0, en=5500)
     # model.predict()
 
     # cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction_copy\\results\\lstm_hyper_opt_shared_weights\\20200922_0147\\config.json"

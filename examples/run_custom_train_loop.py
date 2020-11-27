@@ -1,4 +1,4 @@
-from utils import make_model
+from dl4seq.utils import make_model
 from dl4seq.main import Model
 
 import tensorflow as tf
@@ -12,7 +12,7 @@ import pandas as pd
 
 class CustomModel(Model):
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
         optimizer = keras.optimizers.Adam(learning_rate=self.nn_config['lr'])
         # Instantiate a loss function.
@@ -49,7 +49,7 @@ class CustomModel(Model):
 
                     if y_obj.shape[0] < 1:  # no observations present for this batch so skip this
                         continue
-                    logits = self.k_model(x_batch_train, training=True)  # Logits for this minibatch
+                    logits = self._model(x_batch_train, training=True)  # Logits for this minibatch
 
                     logits_obj = logits[mask]
                     # Compute the loss value for this minibatch.
@@ -57,14 +57,14 @@ class CustomModel(Model):
 
                 # Use the gradient tape to automatically retrieve
                 # the gradients of the trainable variables with respect to the loss.
-                grads = tape.gradient(loss_value, self.k_model.trainable_weights)
+                grads = tape.gradient(loss_value, self._model.trainable_weights)
 
                 # grads = [tf.clip_by_norm(g, 1.0) for g in grads]
                 grads = [tf.clip_by_value(g, -1.0, 1.0) for g in grads]
 
                 # Run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(zip(grads, self.k_model.trainable_weights))
+                optimizer.apply_gradients(zip(grads, self._model.trainable_weights))
 
                 # Log every 200 batches.
                 if step % 20 == 0:
@@ -106,9 +106,9 @@ model = CustomModel(data_config=data_config,
                     data=df
                     )
 
-model.build_nn()
+model.build()
 
-history = model.train_nn(indices='random', tensorboard=True)
+history = model.train(indices='random', tensorboard=True)
 
 test_pred, test_obs = model.predict(indices=model.test_indices)
 train_pred, train_obs = model.predict(indices=model.train_indices)

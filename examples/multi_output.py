@@ -44,7 +44,7 @@ class MultiSite(InputAttentionModel):
 
         print('predictions: ', predictions)
 
-        self.k_model = self.compile(model_inputs=inputs, outputs=predictions)
+        self._model = self.compile(model_inputs=inputs, outputs=predictions)
 
         return
 
@@ -65,8 +65,8 @@ if __name__ == "__main__":
                                                          test_fraction=0.3
                                                          )
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
-    df = pd.read_csv(fname)
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+    df = pd.read_csv(fname, na_values="#NUM!")
     df.index = pd.to_datetime(df['Date_Time2'])
 
     model = MultiSite(data_config=data_config,
@@ -85,9 +85,9 @@ if __name__ == "__main__":
 
     model.loss = loss
 
-    model.build_nn()
+    model.build()
 
-    history = model.train_nn(indices='random', tensorboard=True)
+    history = model.train(indices='random', tensorboard=True)
 
     y, obs = model.predict()
     # acts = model.activations(st=0, en=1400)

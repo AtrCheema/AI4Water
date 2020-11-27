@@ -5,8 +5,8 @@ import numpy as np
 import json
 import os
 
-from dl4seq.utils import skopt_plots, jsonize_skopt_results, clear_weights
-from docs.MultiInputSharedModel import make_multi_model, MultiInputSharedModel
+from dl4seq.utils.utils import skopt_plots, jsonize_skopt_results, clear_weights
+from examples.MultiInputSharedModel import make_multi_model, MultiInputSharedModel
 
 
 title = 'lstm_dense_hpo'

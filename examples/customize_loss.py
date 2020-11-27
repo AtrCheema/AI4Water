@@ -6,8 +6,8 @@
 import numpy as np
 import pandas as pd
 
-from dl4seq.main import Model
-from utils import make_model
+from dl4seq import Model
+from dl4seq.utils import make_model
 import tensorflow as tf
 from tensorflow import keras
 
@@ -61,10 +61,10 @@ model.loss = qloss
 model.quantiles = quantiles
 
 # Build the NN
-model.build_nn()
+model.build()
 
 # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-model.train_nn(st=0, en=1500)
+model.train(st=0, en=1500)
 
 # make predictions on a chunk of test data, which was retained while training
 true_y, pred_y = model.predict(st=1500, en=1700)

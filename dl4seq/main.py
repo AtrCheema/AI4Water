@@ -12,9 +12,9 @@ import math
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
-from dl4seq.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index, get_sklearn_models
-from dl4seq.plotting_tools import Plots
-from dl4seq.scalers import Scalers
+from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index, get_sklearn_models
+from dl4seq.utils.plotting_tools import Plots
+from dl4seq.utils.scalers import Scalers
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -28,7 +28,18 @@ if tf is not None:
     from dl4seq.tf_attributes import LOSSES, OPTIMIZERS
 
 class Model(NN, Plots):
+    """
 
+    data_config: dict
+    nn_config: dict
+    data: pd.Dataframe or any other conforming type
+    prefix: str, prefix to be used for the folder in which the results are saved
+    path: str/path like, if given, new path will not be created
+    verbosity: int, determines the amount of information being printed
+    category: str, one of "DL" or "ML", signifying, whether a machine learning model or deep learning model
+    problem: str, tell whether it is is classification problem or regression problem.
+
+    """
     def __init__(self, data_config: dict,
                  nn_config: dict,
                  data=None,
@@ -36,7 +47,8 @@ class Model(NN, Plots):
                  prefix: str = None,
                  path: str = None,
                  verbosity=1,
-                 framework="DL"):
+                 category="DL",
+                 problem="reg"):
 
         reset_seed(data_config['seed'])
         if tf is not None:
@@ -54,7 +66,8 @@ class Model(NN, Plots):
         self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
-        self.framework = framework
+        self.category = category
+        self.problem = problem
 
     @property
     def forecast_step(self):
@@ -160,13 +173,13 @@ class Model(NN, Plots):
 
     @property
     def num_input_layers(self) -> int:
-        if self.framework.upper() != "DL":
+        if self.category.upper() != "DL":
             return np.inf
         else:
             return len(self._model.inputs)
 
     def feature_imporance(self):
-        if self.framework.upper() == "ML":
+        if self.category.upper() == "ML":
             return self._model.feature_importances_
 
     def fetch_data(self, data: pd.DataFrame, st: int = 0, en=None,
@@ -477,7 +490,7 @@ class Model(NN, Plots):
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
                     nans = self.data[self.out_cols].isna().sum()
-                    assert np.all(nans.values == int(nans.sum() / self.outs))
+                    assert np.all(nans.values == int(nans.sum() / self.outs)), f"toal nan values in data are {nans}."
 
             idx = np.arange(tot_obs - self.lookback)
             train_indices, test_idx = train_test_split(idx, test_size=self.data_config['test_fraction'],
@@ -560,9 +573,9 @@ class Model(NN, Plots):
     def build(self):
 
         if self.verbosity > 0:
-            print('building {} layer based model'.format(self.framework))
+            print('building {} layer based model for {} problem'.format(self.category, self.problem))
 
-        if self.framework.upper() == "DL":
+        if self.category.upper() == "DL":
             inputs, predictions = self.add_layers(self.nn_config['layers'])
 
             self._model = self.compile(inputs, predictions)
@@ -581,8 +594,7 @@ class Model(NN, Plots):
         regr_name = self.nn_config['ml_model'].upper()
         sklearn_models = get_sklearn_models()
         regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'],
-                                     verbose=self.verbosity,
-                                     criterion=self.nn_config['loss'])
+                                     verbose=self.verbosity)
         self._model = regr
 
         return
@@ -605,7 +617,7 @@ class Model(NN, Plots):
 
         inputs, outputs = self.train_data(st=st, en=en, indices=indices)
 
-        if self.framework.upper() == "DL":
+        if self.category.upper() == "DL":
             history = self.fit(inputs, outputs, self.val_data(), **callbacks)
 
             plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
@@ -620,7 +632,7 @@ class Model(NN, Plots):
         return self.train_data(**kwargs)
 
     def prediction_step(self, inputs):
-        if self.framework.upper() == "DL":
+        if self.category.upper() == "DL":
             predicted = self._model.predict(x=inputs,
                                              batch_size=self.data_config['batch_size'],
                                              verbose=self.verbosity)
@@ -645,6 +657,9 @@ class Model(NN, Plots):
         first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
         predicted = self.prediction_step(inputs)
+
+        if self.problem.upper().startswith("CLASS"):
+            self.plot_roc_curve(inputs, true_outputs)
 
         predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
@@ -756,7 +771,7 @@ class Model(NN, Plots):
                 assert isinstance(_metrics, str)
                 _metrics = [_metrics]
 
-            from dl4seq.tf_losses import nse, kge, pbias
+            from dl4seq.utils.tf_losses import nse, kge, pbias
 
             METRICS = {'NSE': nse,
                        'KGE': kge,
@@ -1163,7 +1178,7 @@ class Model(NN, Plots):
         config['method'] = self.method
         config['quantiles'] = self.quantiles
         config['loss'] = self._model.loss.__name__ if self._model is not None else None
-        config['params'] = int(self._model.count_params()) if self._model is not None and self.framework == "DL" else None,
+        config['params'] = int(self._model.count_params()) if self._model is not None and self.category == "DL" else None,
 
         VERSION_INFO.update({'numpy_version': str(np.__version__),
                              'pandas_version': str(pd.__version__),

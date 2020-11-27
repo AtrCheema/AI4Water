@@ -6,7 +6,7 @@ import os
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.scalers import Scalers
+from dl4seq.utils.scalers import Scalers
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
@@ -63,13 +63,47 @@ class test_Scalers(unittest.TestCase):
         normalized_df1, scaler = Scalers(data=df)('normalize')
         self.assertRaises(ValueError, Scalers(data=normalized_df1), 'denorm')
 
-    def test_scaler_method_with_features(self):
-        for m in ["log", "robust", "minmax", "maxabs", "zscore", "power", "quantile"]:
-            self.run_method(method=m, cols=["data1"])
+    def test_log_scaler_with_feat(self):
+        self.run_method("log", cols=["data1"])
 
-    def test_scaler_method(self):
-        for m in ["log", "robust", "minmax", "maxabs", "zscore", "power", "quantile"]:
-            self.run_method(method=m)
+    def test_robust_scaler_with_feat(self):
+        self.run_method("robust", cols=["data1"])
+
+    def test_minmax_scaler_with_feat(self):
+        self.run_method("minmax", cols=["data1"])
+
+    def test_maxabs_scaler_with_feat(self):
+        self.run_method("maxabs", cols=["data1"])
+
+    def test_zscore_scaler_with_feat(self):
+        self.run_method("minmax", cols=["data1"])
+
+    def test_power_scaler_with_feat(self):
+        self.run_method("maxabs", cols=["data1"])
+
+    def test_quantile_scaler_with_feat(self):
+        self.run_method("quantile", cols=["data1"])
+
+    def test_log_scaler(self):
+        self.run_method("log")
+
+    def test_robust_scaler(self):
+        self.run_method("robust")
+
+    def test_minmax_scaler(self):
+        self.run_method("minmax")
+
+    def test_maxabs_scaler(self):
+        self.run_method("maxabs")
+
+    def test_zscore_scaler(self):
+        self.run_method("minmax")
+
+    def test_power_scaler(self):
+        self.run_method("maxabs")
+
+    def test_quantile_scaler(self):
+        self.run_method("quantile")
 
 
 if __name__ == "__main__":

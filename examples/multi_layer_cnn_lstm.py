@@ -49,7 +49,7 @@ data_config, nn_config, total_intervals = make_model(batch_size=16,
                                                      layers=layers,
                                                      lr=0.0001)
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
 df = pd.read_csv(fname)
 df.index = pd.to_datetime(df['Date_Time2'])
 
@@ -59,9 +59,9 @@ model = Model(data_config=data_config,
               intervals=total_intervals
               )
 
-model.build_nn()
+model.build()
 
 # This model is built only to showcase how to build multi layer model by manipulating nn_config
-# history = model.train_nn(indices='random')
+# history = model.train(indices='random')
 
 #y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')

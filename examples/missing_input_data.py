@@ -39,9 +39,9 @@ model = DualAttentionModel(data_config=data_config,
                            intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)]
                            )
 
-model.build_nn()
+model.build()
 
-history = model.train_nn(indices='random')
+history = model.train(indices='random')
 
 y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
 # tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train', use_datetime_index=False)

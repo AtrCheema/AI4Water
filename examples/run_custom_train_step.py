@@ -50,8 +50,8 @@ model = Model(data_config=data_config,
 
 model.KModel = CustomModel
 
-model.build_nn()
+model.build()
 
-history = model.train_nn(indices='random')
+history = model.train(indices='random')
 
 # y, obs = model.predict()

@@ -8,7 +8,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
-from dl4seq.utils import get_sklearn_models
+from dl4seq.utils.utils import get_sklearn_models
 
 examples = 2000
 ins = 5

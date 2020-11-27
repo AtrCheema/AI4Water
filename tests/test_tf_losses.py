@@ -7,7 +7,7 @@ from TSErrors import FindErrors
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq import tf_losses
+from dl4seq.utils import tf_losses
 import tensorflow as tf
 import tensorflow.keras.backend as K
 

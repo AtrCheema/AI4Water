@@ -7,9 +7,9 @@
 # The number of inputs and outputs to and from each NN are equal (but not same)
 
 from dl4seq import Model
-from utils import check_min_loss, plot_loss
-from utils import make_model
-from docs import LSTM_CONFIG, TCN_CONFIG, ConvLSTM_CONFIG, LSTMAutoEnc_Config
+from dl4seq.utils.utils import check_min_loss, plot_loss
+from dl4seq.utils import make_model
+from examples import LSTMAutoEnc_Config
 
 from tensorflow.python.keras.engine import training_utils
 
@@ -53,7 +53,7 @@ class MultiOutputParallel(Model):
 
         return x_data, y_data
 
-    def build_nn(self):
+    def build(self):
 
         self.nn_config['tr_outs'] = self.tr_outs
         self.nn_config['val_outs'] = self.val_outs
@@ -69,7 +69,7 @@ class MultiOutputParallel(Model):
             inputs.append(site_inputs)
             predictions.append(site_predictions)
 
-        self.k_model = self.compile(inputs, predictions)
+        self._model = self.compile(inputs, predictions)
 
         return
 
@@ -84,7 +84,7 @@ class MultiOutputParallel(Model):
 
         return x, y, val_x, val_y
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
         optimizer = keras.optimizers.Adam(learning_rate=self.nn_config['lr'])
         # Instantiate a loss function.
@@ -126,7 +126,7 @@ class MultiOutputParallel(Model):
                     _masks.append(mask)
                     _y_trues.append(complete_y[out][mask])
 
-                _predictions = self.k_model(train__x, training=True)  # predictions for this minibatch
+                _predictions = self._model(train__x, training=True)  # predictions for this minibatch
 
                 losses = {}
                 for out in range(self.outs):
@@ -143,12 +143,12 @@ class MultiOutputParallel(Model):
 
             losses.update({'loss': float(loss_val)})
 
-            _grads = taape.gradient(loss_val, self.k_model.trainable_weights)  # list
+            _grads = taape.gradient(loss_val, self._model.trainable_weights)  # list
 
             grads = [tf.clip_by_value(g, -1.0, 1.0) for g in _grads]
 
             # Run one step of gradient descent by updating the value of the variables to minimize the loss.
-            optimizer.apply_gradients(zip(grads, self.k_model.trainable_weights))
+            optimizer.apply_gradients(zip(grads, self._model.trainable_weights))
 
             return losses  # , skip_flag
 
@@ -161,7 +161,7 @@ class MultiOutputParallel(Model):
                 masks.append(mask)
                 y_trues.append(complete_y[out][mask])
 
-            predictions = self.k_model(_val_x, training=False)  # predictions for this minibatch
+            predictions = self._model(_val_x, training=False)  # predictions for this minibatch
 
             val_step_losses = {}
             for out in range(self.outs):
@@ -224,7 +224,7 @@ class MultiOutputParallel(Model):
             msg = msg + "{} ouf of {} minibatches skipped".format(skipped_batches, tr_step)
 
             if save_this_epoch:
-                self.k_model.save_weights(filepath=os.path.join(self.path + "\\weights_{:03d}_{:.4f}.h5"
+                self._model.save_weights(filepath=os.path.join(self.path + "\\weights_{:03d}_{:.4f}.h5"
                                                                 .format(epoch, np.nanmean(val_batch_losses['loss']))))
             print(epoch, msg)
 
@@ -239,7 +239,7 @@ class MultiOutputParallel(Model):
         # compiles losses and saves them
 
         # lets save the last epoch
-        self.k_model.save_weights(filepath=os.path.join(self.path + "\\weights_last_epoch.h5"))
+        self._model.save_weights(filepath=os.path.join(self.path + "\\weights_last_epoch.h5"))
 
         _history = {'loss': tr_epoch_losses['loss'], 'val_loss': val_epoch_losses['loss']}
 
@@ -310,7 +310,7 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
         self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
         return x_data, y_data
 
-    def build_nn(self):
+    def build(self):
 
         inputs = []
         predictions = []
@@ -329,7 +329,7 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
             inputs.append(site_inputs)
             predictions.append(site_predictions)
 
-        self.k_model = self.compile(inputs, predictions)
+        self._model = self.compile(inputs, predictions)
 
         return
 
@@ -423,14 +423,14 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     if from_config:
         _model = input_model.from_config(config_path=config_path,
                                          data=[df_1, df_3, df_8, df_12])
-        _model.build_nn()
+        _model.build()
         _model.load_weights(weights)
     else:
         _model = input_model(data_config=data_config,
                              nn_config=nn_config,
                              data=[df_1, df_3, df_8, df_12]
                              )
-        _model.build_nn()
+        _model.build()
 
     return _model, _train_idx, _test_idx
 
@@ -443,7 +443,7 @@ if __name__ == "__main__":
                                                   lookback=3,
                                                   lr=0.00047681,
                                                   epochs=2)
-    history = model.train_nn(indices=train_idx)
+    history = model.train(indices=train_idx)
 
     # cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\results\\convlstm_parallel\\20200918_1549\\config.json"
     # model, train_idx, test_idx = make_multi_model(ConvLSTMMultiOutput, from_config=True,

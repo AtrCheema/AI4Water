@@ -3,7 +3,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, Ma
     QuantileTransformer, FunctionTransformer
 import numpy as np
 
-from dl4seq.utils import dateandtime_now
+from .utils import dateandtime_now
 
 class scaler_container(object):
 

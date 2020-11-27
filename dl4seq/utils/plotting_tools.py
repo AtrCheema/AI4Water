@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import seaborn as sns
+from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 
 class Plots(object):
     # TODO initialte this class with at least path
@@ -338,10 +340,7 @@ class Plots(object):
             plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q + 1], alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
-            if save:
-                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
-            else:
-                plt.show()
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
         return
 
 
@@ -358,10 +357,8 @@ class Plots(object):
         plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
                          color='g', edgecolor=None, label=q_name + ' %')
         plt.legend(loc="best")
-        if save:
-            plt.savefig(os.path.join(self.path, "q_" + q_name + ".png"))
-        else:
-            plt.show()
+        self.save_or_show(save, fname= "q_" + q_name + ".png", where='results')
+        return
 
     def plot_all_qs(self, true_outputs, predicted, save=False):
         plt.close('all')
@@ -376,10 +373,8 @@ class Plots(object):
             plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
 
         plt.legend(loc="best")
-        if save:
-            plt.savefig(os.path.join(self.path, "all_quantiles.png"))
-        else:
-            plt.show()
+        self.save_or_show(save, fname="all_quantiles", where='results')
+
         return
 
     def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
@@ -396,13 +391,10 @@ class Plots(object):
             plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, -q], alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
-            if save:
-                plt.savefig(os.path.join(self.path, 'q' + st_q + '_' + en_q + ".png"))
-            else:
-                plt.show()
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
 
-    def plot_feature_importance(self, importance=None):
+    def plot_feature_importance(self, importance=None, save=True):
 
         if importance is None:
             importance = self.feature_imporance()
@@ -418,8 +410,34 @@ class Plots(object):
         plt.title("Feature importance")
         plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
         plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
-        plt.savefig(os.path.join(self.act_path, 'import'), dpi=400, bbox_inches='tight')
+        self.save_or_show(save, fname="feature_importance", where='results')
+        return
 
+    def plot_feature_feature_corr(self, remove_targets=True, save=True, **kwargs):
+        plt.close('')
+        cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
+        corr = self.data[cols].corr()
+        sns.heatmap(corr, **kwargs)
+        self.save_or_show(save, fname="feature_feature_corr", where="data")
+        return
+
+    def plot_roc_curve(self, x, y, save=True):
+        assert self.problem.upper().startswith("CLASS")
+        plot_roc_curve(self._model, *x, y.reshape(-1, ))
+        self.save_or_show(save, fname="roc", where="results")
+        return
+
+    def plot_confusion_matrx(self, x, y, save=True):
+        assert self.problem.upper().startswith("CLASS")
+        plot_confusion_matrix(self._model, *x, y.reshape(-1, ))
+        self.save_or_show(save, fname="confusion_matrix", where="results")
+        return
+
+    def plot_precision_recall_curve(self, x, y, save=True):
+        assert self.problem.upper().startswith("CLASS")
+        plot_precision_recall_curve(self._model, *x, y.reshape(-1, ))
+        self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
+        return
 
 def _get_nrows_and_ncols(n_subplots, n_rows=None):
     if n_rows is None:

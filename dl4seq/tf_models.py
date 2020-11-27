@@ -7,7 +7,7 @@ from dl4seq.backend import keras
 from dl4seq.nn_tools import check_act_fn
 from dl4seq.layer_definition import MyTranspose, MyDot
 
-from dl4seq.utils import plot_loss
+from dl4seq.utils.utils import plot_loss
 layers = keras.layers
 KModel = keras.models.Model
 
