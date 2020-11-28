@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
+from xgboost import plot_importance
 
 class Plots(object):
     # TODO initialte this class with at least path
@@ -394,7 +395,7 @@ class Plots(object):
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
 
-    def plot_feature_importance(self, importance=None, save=True):
+    def plot_feature_importance(self, importance=None, save=True, use_xgb=False):
 
         if importance is None:
             importance = self.feature_imporance()
@@ -408,8 +409,11 @@ class Plots(object):
         plt.close('all')
         plt.figure()
         plt.title("Feature importance")
-        plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
-        plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
+        if use_xgb:
+            plot_importance(self._model)
+        else:
+            plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
+            plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
         self.save_or_show(save, fname="feature_importance", where='results')
         return
 

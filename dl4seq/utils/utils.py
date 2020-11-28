@@ -8,6 +8,7 @@ import datetime
 import json
 import pandas as pd
 import sklearn
+from xgboost import XGBRegressor, XGBClassifier, XGBRFRegressor, XGBRFClassifier
 
 plt.rcParams["font.family"] = "Times New Roman"
 
@@ -496,3 +497,12 @@ def get_sklearn_models():
     sklearn_models.update(get_attributes(sklearn, "tree"))
 
     return sklearn_models
+
+def get_xgboost_models():
+
+    return {
+        "XGBOOSTREGRESSOR": XGBRegressor,
+        "XGBOOSTCLASSIFIER": XGBClassifier,
+        "XGBOOSTRFREGRESSOR": XGBRFRegressor,
+        "XGBOOSTRFCLASSIFIER": XGBRFClassifier,
+    }

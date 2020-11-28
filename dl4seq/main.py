@@ -12,7 +12,8 @@ import math
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
-from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index, get_sklearn_models
+from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
+from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.scalers import Scalers
 
@@ -596,10 +597,18 @@ class Model(NN, Plots):
 
     def build_ml_model(self):
         """ currently only sklearn based  ML models. """
-        
+
         regr_name = self.nn_config['ml_model'].upper()
         sklearn_models = get_sklearn_models()
-        regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'])
+        xgboost_models = get_xgboost_models()
+        if regr_name in sklearn_models:
+            regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'])
+        elif regr_name in xgboost_models:
+            regr = xgboost_models[regr_name](**self.nn_config['sklearn_model_args'],
+                                verbosity=self.verbosity)
+        else:
+            raise ValueError(f"model {regr_name} not found")
+
         self._model = regr
 
         return
