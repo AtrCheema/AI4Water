@@ -16,7 +16,7 @@ class test_Scalers(unittest.TestCase):
     def run_method(self, method, cols=None):
 
         cols = ['data1', 'data2'] if cols is None else cols
-        print("testing: ", method)
+        print(f"testing: {method} with {cols} features")
 
         normalized_df1, scaler = Scalers(data=df, method=method, features=cols)('normalize')
         denormalized_df1 = Scalers(data=normalized_df1, features=cols)('denorm', scaler=scaler['scaler'])
@@ -53,7 +53,6 @@ class test_Scalers(unittest.TestCase):
 
         for idx, v in enumerate(denorm['data2']):
             self.assertEqual(v, 1001 + idx)
-
 
     def test_call_error(self):
 
@@ -104,6 +103,101 @@ class test_Scalers(unittest.TestCase):
 
     def test_quantile_scaler(self):
         self.run_method("quantile")
+
+    def test_pca(self):
+        self.run_decomposition(method="pca")
+
+    def test_kpca(self):
+        self.run_decomposition(method="kpca")
+
+    def test_ipca(self):
+        self.run_decomposition(method="ipca")
+
+    def test_fastica(self):
+        self.run_decomposition(method="fastica")
+
+    def test_pca_with_components(self):
+        self.run_decomposition_with_components(method="pca")
+
+    def test_kpca_with_components(self):
+        self.run_decomposition_with_components(method="kpca")
+
+    def test_ipca_with_components(self):
+        self.run_decomposition_with_components(method="ipca")
+
+    def test_fastica_with_components(self):
+        self.run_decomposition_with_components(method="fastica")
+
+    def run_decomposition(self, method):
+        df_len, features, components = 10, 5, 5
+        for run_method in [1,2, 3]:
+            trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
+            self.assertEqual(trans_df.shape, orig_df.shape)
+
+    def run_decomposition_with_components(self, method):
+        df_len, features, components = 10, 5, 4
+        for run_method in [1,2,3]:
+            trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
+            self.assertEqual(trans_df.shape, (df_len,components))
+            self.assertEqual(orig_df.shape, (df_len, features))
+
+    def do_decomposition(self, df_len, features, components, m, method):
+        print(f"testing {method} with {features} features and {components} components with {m} call method")
+
+        data = pd.DataFrame(np.random.random((df_len, features)),
+                          columns=['data' + str(i) for i in range(features)])
+
+        args = {"n_components": components}
+        if method.upper() == "KPCA":
+            args.update({"fit_inverse_transform": True})
+
+        if m==1:
+            return self.run_decomposition1(data, args, method=method)
+        elif m==2:
+            return self.run_decomposition2(data, args, method=method)
+        elif m==3:
+            return self.run_decomposition3(data, args, method=method)
+
+    def run_decomposition1(self, data, args, method):
+
+        scaler = Scalers(data=data, method=method, **args)
+        normalized_df, scaler_dict = scaler.transform()
+        denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
+
+        return normalized_df, denormalized_df
+
+    def run_decomposition2(self, data, args, method):
+
+        scaler = Scalers(data=data, **args)
+        normalized_df, scaler_dict = getattr(scaler, "transform_with_"+method.lower())()
+        denormalized_df = getattr(scaler, "inverse_transform_with_" + method.lower())(data=normalized_df, key=scaler_dict['key'])
+
+        return normalized_df, denormalized_df
+
+    def run_decomposition3(self, data, args, method):
+
+        normalized_df, scaler = Scalers(data=data, method=method, **args)('normalize')
+        denormalized_df = Scalers(data=normalized_df, method=method, **args)('denorm', scaler=scaler['scaler'])
+
+        return normalized_df, denormalized_df
+
+    def test_plot_pca3d(self):
+        from sklearn import datasets
+
+        iris = datasets.load_iris()
+        X = iris.data
+        y = iris.target
+
+        scaler = Scalers(X, method="pca", n_components=3)
+        scaler()
+        for dim in ["2d", "3D"]:
+            self.run_plot_pca(scaler, y, dim=dim)
+        return
+
+    def run_plot_pca(self, scaler, y, dim):
+        scaler.plot_pca(target=y, labels=['Setosa', 'Versicolour', 'Virginica'], save=None, dim=dim)
+        return
+
 
 
 if __name__ == "__main__":
