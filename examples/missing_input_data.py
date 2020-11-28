@@ -9,7 +9,7 @@ import os
 from dl4seq import DualAttentionModel
 from dl4seq.utils import make_model
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
 # df.index = pd.date_range("20110101", periods=len(df), freq='H')
@@ -29,7 +29,7 @@ print("{} nan values created in NDX column".format(out.isna().sum()))
 # verify the missing values
 print(df[98:108])
 
-data_config, nn_config, _ = make_model(batch_size=32,
+data_config, nn_config = make_model(batch_size=32,
                                        lookback=5,
                                        lr=0.0001)
 

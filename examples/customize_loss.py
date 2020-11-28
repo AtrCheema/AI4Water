@@ -43,7 +43,7 @@ layers = {'Dense_0': {'config':  {'units': 64, 'activation': 'relu'}},
           'Dense_2': {'config':  {'units': 16, 'activation': 'relu'}},
           'Dense_3': {'config':  {'units': 9}}}
 
-data_config, nn_config, _ = make_model(inputs=['input_' + str(i) for i in range(cols-1)],
+data_config, nn_config = make_model(inputs=['input_' + str(i) for i in range(cols-1)],
                                        outputs=['input_' + str(cols-1)],
                                        lookback=1,
                                        layers=layers,

@@ -312,9 +312,14 @@ class Model(NN, Plots):
     def normalize(self, df, key):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
         scaler = None
-        if self.data_config['normalize'] is not None:
+        transformation = self.data_config['normalize']
+        if transformation is not None:
 
-            df, scaler = Scalers(data=df, method=self.data_config['normalize'])('normalize')
+            if isinstance(transformation, dict):
+                df, scaler = Scalers(data=df, **transformation)('normalize')
+            else:
+                assert isinstance(transformation, str)
+                df, scaler = Scalers(data=df, method=transformation)('normalize')
             self.scalers[key] = scaler
 
         return df, scaler
@@ -591,10 +596,10 @@ class Model(NN, Plots):
 
     def build_ml_model(self):
         """ currently only sklearn based  ML models. """
+        
         regr_name = self.nn_config['ml_model'].upper()
         sklearn_models = get_sklearn_models()
-        regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'],
-                                     verbose=self.verbosity)
+        regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'])
         self._model = regr
 
         return

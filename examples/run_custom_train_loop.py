@@ -88,7 +88,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config':  {'units': 1}}
           }
 
-data_config, nn_config, total_intervals = make_model(layers=layers,
+data_config, nn_config = make_model(layers=layers,
                                                      batch_size=12,
                                                      lookback=15,
                                                      lr=8.95e-5,
@@ -97,7 +97,7 @@ data_config, nn_config, total_intervals = make_model(layers=layers,
                                                      outputs=outputs,
                                                      epochs=10)
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
 df = pd.read_csv(fname)  # must be 2d dataframe
 
 

@@ -55,7 +55,7 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['target7', 'target8']
 
-    data_config, nn_config, total_intervals = make_model(batch_size=4,
+    data_config, nn_config = make_model(batch_size=4,
                                                          lookback=15,
                                                          inputs=input_features,
                                                          outputs=outputs,
@@ -65,14 +65,14 @@ if __name__ == "__main__":
                                                          test_fraction=0.3
                                                          )
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
     df = pd.read_csv(fname, na_values="#NUM!")
     df.index = pd.to_datetime(df['Date_Time2'])
 
     model = MultiSite(data_config=data_config,
                       nn_config=nn_config,
                       data=df,
-                      intervals=total_intervals
+                      intervals=data_config['intervals']
                       )
 
 

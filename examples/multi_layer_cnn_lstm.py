@@ -42,21 +42,21 @@ layers = {
 }
 
 
-data_config, nn_config, total_intervals = make_model(batch_size=16,
+data_config, nn_config = make_model(batch_size=16,
                                                      lookback=lookback,
                                                      inputs=input_features,
                                                      outputs=outputs,
                                                      layers=layers,
                                                      lr=0.0001)
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
 df = pd.read_csv(fname)
 df.index = pd.to_datetime(df['Date_Time2'])
 
 model = Model(data_config=data_config,
               nn_config=nn_config,
               data=df,
-              intervals=total_intervals
+              intervals=data_config['intervals']
               )
 
 model.build()

@@ -10,7 +10,7 @@ from dl4seq.utils import make_model
 
 import pandas as pd
 
-data_config, nn_config, _ = make_model()
+data_config, nn_config = make_model()
 
 nn_config['epochs'] = 2
 data_config['lookback'] = 1
@@ -19,7 +19,7 @@ from inspect import getsourcefile
 from os.path import abspath
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.dirname(os.path.dirname(file_path)), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 
 df = pd.read_csv(fname)

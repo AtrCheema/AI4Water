@@ -238,114 +238,125 @@ def make_model(**kwargs):
     :return
       nn_config: `dict`, contais parameters to build and train the neural network such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
-      intervals:  `tuple` tuple of tuples whiere each tuple consits of two integers, marking the start and end of
-                   interval. An interval here means chunk/rows from the input file/dataframe to be skipped when
-                   when preparing data/batches for NN. This happens when we have for example some missing values at some
-                   time in our data. For further usage see `docs/using_intervals`.
     """
-    nn_config = dict()
 
-    nn_config['layers'] = {
-        "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
-        "Dropout_0": {'config':  {'rate': 0.3}},
-        "Dense_1": {'config':  {'units': 32, 'activation': 'relu'}},
-        "Dropout_1": {'config':  {'rate': 0.3}},
-        "Dense_2": {'config':  {'units': 16, 'activation': 'relu'}},
-        "Dense_3": {'config':  {'units': 1}}
-                                 }
+    dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+    df = pd.read_csv(os.path.join(dpath, "nasdaq100_padding.csv"))
+    in_cols = list(df.columns)
+    in_cols.remove("NDX")
 
-    nn_config['enc_config'] = {'n_h': 20,  # length of hidden state m
+    nn_args = {
+        'enc_config': {'type': dict, 'default': {'n_h': 20,  # length of hidden state m
                                 'n_s': 20,  # length of hidden state m
                                 'm': 20,  # length of hidden state m
                                 'enc_lstm1_act': None,
                                 'enc_lstm2_act': None,
-                                }
-    nn_config['dec_config'] = {
-        'p': 30,
-        'n_hde0': 30,
-        'n_sde0': 30
+                                }},
+        'dec_config': {'': dict, 'default': {
+                                            'p': 30,
+                                            'n_hde0': 30,
+                                            'n_sde0': 30
+                                            }},
+        'layers': {'type': dict, 'default': {
+                                "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
+                                "Dense_3": {'config':  {'units': 1}}
+                                 }},
+        'composite':    {'type': bool, 'default': False},   # for auto-encoders
+        'lr':           {'type': float, 'default': 0.0001},
+        'optimizer':    {'type': str, 'default': 'adam'},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+        'loss':         {'type': str, 'default': 'mse'},
+        'epochs':       {'type': int, 'default': 14},
+        'min_val_loss': {'type': float, 'default': 0.0001},
+        'patience':     {'type': int, 'default': 100},
+        'shuffle':      {'type': bool, 'default': True},
+        'save_model':   {'type': bool, 'default': True},  # to save the best models using checkpoints
+        'subsequences': {'type': int, 'default': 3},  # used for cnn_lst structure
+        'harhn_config': {'type': dict, 'default': {'n_conv_lyrs': 3,
+                                                  'enc_units': 64,
+                                                  'dec_units': 64}},
+        'nbeats_options': {'type': dict, 'default': {
+                                        'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
+                                        'forecast_length': 1,
+                                        'stack_types': ('generic', 'generic'),
+                                        'nb_blocks_per_stack': 2,
+                                        'thetas_dim': (4, 4),
+                                        'share_weights_in_stack': True,
+                                        'hidden_layer_units': 62
+                                    }}
     }
 
-    nn_config['composite'] = False  # for auto-encoders
-
-    nn_config['lr'] = 0.0001
-    nn_config['optimizer'] = 'adam' # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
-    nn_config['loss'] = 'mse'
-    nn_config['epochs'] = 14
-    nn_config['min_val_loss'] = 0.0001
-    nn_config['patience'] = 100
-    nn_config['shuffle'] = True
-    nn_config['save_model'] = True # to save the best models using checkpoints
-
-    nn_config['subsequences'] = 3  # used for cnn_lst structure
-
-    nn_config['HARHN_config'] = {'n_conv_lyrs': 3,
-                                  'enc_units': 64,
-                                  'dec_units': 64}
-
-    nn_config['nbeats_options'] = {
-        'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
-        'forecast_length': 1,
-        'stack_types': ('generic', 'generic'),
-        'nb_blocks_per_stack': 2,
-        'thetas_dim': (4, 4),
-        'share_weights_in_stack': True,
-        'hidden_layer_units': 62
-    }
-
-    data_config = dict()
-    data_config['forecast_length'] = 1   # how many future values we want to predict
-    data_config['batches_per_epoch'] = None  # comes handy if we want to skip certain batches from last
+    data_args = {
+        'forecast_length':   {"type": int, "default": 1},   # how many future values we want to predict
+        'batches_per_epoch': {"type": int, "default": None},  # comes handy if we want to skip certain batches from last
     # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
-    data_config['drop_remainder'] = False
-    data_config['normalize'] = 'minmax'  # can be None or any of the method defined in scalers.py
-    data_config['lookback'] = 15
-    data_config['batch_size'] = 32
-    data_config['val_fraction'] = 0.2  # fraction of data to be used for validation
-    data_config['val_data'] = None # If this is not string and not None, this will overwite `val_fraction`
-    data_config['steps_per_epoch'] = None  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
-    data_config['test_fraction'] = 0.2   # fraction of data to be used for test
-    data_config['CACHEDATA'] = True   # write the data/batches as hdf5 file
-    data_config['ignore_nans'] = False  # if True, and if target values contain Nans, those samples will not be ignored
-    data_config['use_predicted_output'] = True  # if true, model will use previous predictions as input
-    data_config['metrics'] = None  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+        'drop_remainder':    {"type": bool,  "default": False},
+        'normalize':         {"type": [str, type(None), dict],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
+        'lookback':          {"type": int,   "default": 15},
+        'batch_size':        {"type": int,   "default": 32},
+        'val_fraction':      {"type": float, "default": 0.2}, # fraction of data to be used for validation
+        'val_data':          {"type": None,  "default": None}, # If this is not string and not None, this will overwite `val_fraction`
+        'steps_per_epoch':   {"type": int,   "default": None},  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
+        'test_fraction':     {"type": float, "default": 0.2},   # fraction of data to be used for test
+        'cache_data':        {"type": bool,  "default": False},   # write the data/batches as hdf5 file
+        'ignore_nans':       {"type": bool,  "default": False},  # if True, and if target values contain Nans, those samples will not be ignored
+        'metrics':           {"type": list,  "default": ['nse']},  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+        'use_predicted_output': {"type": bool , "default": True},  # if true, model will use previous predictions as input
     # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches
     # will be inferred from this Input layer but for cases,  the model takes more than 1 Input, then there can be two
     # cases, either all the inputs are of same shape or they  are not. In second case, we should overwrite `train_paras`
     # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
     # for Dense layer.
-    data_config['batches'] = '3d'
-    data_config['seed'] = 313  # for reproducability
-    data_config['forecast_step'] = 0  # how many steps ahead we want to predict
-    data_config['input_step'] = 1  # step size of input data
+        'batches':           {"type": str, "default": '3d'},
+        'seed':              {"type": int, "default": 313},  # for reproducability
+        'forecast_step':     {"type": int, "default": 0},  # how many steps ahead we want to predict
+        'input_step':        {"type": int, "default": 1},  # step size of input data
+        'inputs':            {"type": list, "default": in_cols}, # input features in data_frame
+        'outputs':           {"type": list, "default": ["NDX"]}, # column in dataframe to bse used as output/target
+    # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
+    # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
+    # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
+        "intervals":         {"type": tuple, "default": (
+                                                        (0, 146,),
+                                                        (145, 386,),
+                                                        (385, 628,),
+                                                        (625, 821,),
+                                                        (821, 1110),
+                                                        (1110, 1447)
+        )}
+    }
 
-    # input features in data_frame
-    dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'data')
-    _df = pd.read_csv(os.path.join(dpath, "nasdaq100_padding.csv"))
-    in_cols = list(_df.columns)
-    in_cols.remove("NDX")
-    data_config['inputs'] = in_cols
-    # column in dataframe to bse used as output/target
-    data_config['outputs'] = ["NDX"]
+    nn_config=  {key:val['default'] for key,val in nn_args.items()}
 
-    nn_config['dense_config'] = {1: {'units':1}}
+    data_config=  {key:val['default'] for key,val in data_args.items()}
 
     for key, val in kwargs.items():
-        if key in data_config:
-            data_config[key] = val
-        if key in nn_config:
-            nn_config[key] = val
+        arg_name = key.lower()
 
-    total_intervals = (
-        (0, 146,),
-        (145, 386,),
-        (385, 628,),
-        (625, 821,),
-        (821, 1110),
-        (1110, 1447))
+        if arg_name in nn_config:
+            update_dict(arg_name, val, nn_args[arg_name]['type'], nn_config)
 
-    return data_config, nn_config, total_intervals
+        elif arg_name in data_config:
+            update_dict(arg_name, val, data_args[arg_name]['type'], data_config)
+
+        else:
+            raise ValueError(f"Unknown keyworkd argument {key} provided")
+
+    return data_config, nn_config
+
+
+def update_dict(arg_name, val, dtype, dict_to_update):
+
+    if dtype is not None:
+        if isinstance(dtype, list):
+            val_type = type(val)
+            if val_type not in dtype:
+                raise TypeError("{} must be any of the type {} but it is of type {}"
+                                .format(arg_name, dtype, type(val)))
+        elif not isinstance(val, dtype):
+            raise TypeError(f"{arg_name} must be of type {dtype} but it is of type {type(val)}")
+    dict_to_update[arg_name] = val
+    return
 
 
 def get_index(idx_array, fmt='%Y%m%d%H%M'):
@@ -467,6 +478,7 @@ def get_attributes(aus, what:str='losses') ->dict:
             all_attrs[l.upper()] = attr
 
     return all_attrs
+
 
 def get_sklearn_models():
 

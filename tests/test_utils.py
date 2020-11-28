@@ -35,7 +35,7 @@ def get_layers(o=1, forecast_len=1):
 
 def build_model(**kwargs):
 
-    data_config, nn_config, _ = make_model(
+    data_config, nn_config = make_model(
         batch_size=batch_size,
         lookback=lookback,
         normalize=None,

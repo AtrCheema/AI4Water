@@ -19,7 +19,7 @@ ins = len(input_features)
 outs = 1
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.dirname(os.path.dirname(file_path)), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
 
 def make_and_run(
         model,
@@ -43,7 +43,7 @@ def make_and_run(
         # column in dataframe to bse used as output/target
         outputs = ['target7']
 
-    data_config, nn_config, total_intervals = make_model(batch_size=batch_size,
+    data_config, nn_config = make_model(batch_size=batch_size,
                                                          lookback=lookback,
                                                          lr=0.001,
                                                          inputs=inputs,
@@ -55,7 +55,7 @@ def make_and_run(
         data_config=data_config,
         nn_config=nn_config,
         data=df,
-        intervals=None if data_type=="nasdaq" else total_intervals,
+        intervals=None if data_type=="nasdaq" else data_config['intervals'],
         verbosity=0
     )
 

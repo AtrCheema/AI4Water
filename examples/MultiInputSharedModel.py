@@ -137,7 +137,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                      prefix=None,
                      batch_size=8, lookback=19, lr=1.52e-5, ignore_nans=True, **kwargs):
 
-    data_config, nn_config, total_intervals = make_model(batch_size=batch_size,
+    data_config, nn_config = make_model(batch_size=batch_size,
                                                          lookback=lookback,
                                                          lr=lr,
                                                          ignore_nans=ignore_nans,

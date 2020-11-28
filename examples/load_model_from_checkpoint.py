@@ -8,9 +8,9 @@ from dl4seq.utils import make_model
 from dl4seq import Model
 
 
-data_config, nn_config, total_intervals = make_model(lookback=1)
+data_config, nn_config = make_model(lookback=1)
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data\\nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
 model = Model(data_config=data_config,

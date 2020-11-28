@@ -367,7 +367,7 @@ class LSTMAutoEncMultiOutput(MultiOutputParallel):
 def make_multi_model(input_model,  from_config=False, config_path=None, weights=None,
                      batch_size=8, lookback=19, lr=1.52e-5, **kwargs):
 
-    data_config, nn_config, total_intervals = make_model(batch_size=batch_size,
+    data_config, nn_config = make_model(batch_size=batch_size,
                                                          lookback=lookback,
                                                          lr=lr,
                                                          ignore_nans=True,
