@@ -8,3 +8,4 @@ seaborn
 TSErrors  # preferably use github for installation
 # pytorch # only if you want to use pytorch-based models
 h5py<2.11.0 # only if you want to save batches
+xgboost
