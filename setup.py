@@ -23,8 +23,6 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    license='GPLv3',
-
     package_data={'data': ['nasdaq100_padding.csv', 'data_30min.csv']},
     include_package_data=True,
 
@@ -36,19 +34,14 @@ setup(
         'Intended Audience :: Science/Research',
         'Intended Audience :: Developers',
 
-        'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX :: Linux',
-
-
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
 
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: Implementation :: CPython'
     ],
 
     packages=['dl4seq', 'dl4seq/models', 'dl4seq/utils'],
@@ -59,6 +52,7 @@ setup(
         'scikit-learn',
         'pandas',
         'matplotlib',
-        'scikit-optimize'
+        'scikit-optimize',
+        'xgboost',
     ],
 )

@@ -246,14 +246,14 @@ def make_model(**kwargs):
     in_cols = list(df.columns)
     in_cols.remove("NDX")
 
-    nn_args = {
+    model_args = {
         'enc_config': {'type': dict, 'default': {'n_h': 20,  # length of hidden state m
                                 'n_s': 20,  # length of hidden state m
                                 'm': 20,  # length of hidden state m
                                 'enc_lstm1_act': None,
                                 'enc_lstm2_act': None,
                                 }},
-        'dec_config': {'': dict, 'default': {
+        'dec_config': {'': dict, 'default': {        # arguments for decoder/outputAttention in Dual stage attention
                                             'p': 30,
                                             'n_hde0': 30,
                                             'n_sde0': 30
@@ -283,7 +283,9 @@ def make_model(**kwargs):
                                         'thetas_dim': (4, 4),
                                         'share_weights_in_stack': True,
                                         'hidden_layer_units': 62
-                                    }}
+                                    }},
+        'ml_model': {'type': str, 'default': None},  # name of machine learning model
+        'ml_model_args': {'type': dict, 'default': None},  # arguments to instantiate/initiate ML model
     }
 
     data_args = {
@@ -292,7 +294,7 @@ def make_model(**kwargs):
     # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder':    {"type": bool,  "default": False},
-        'normalize':         {"type": [str, type(None), dict],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
+        'transformation':         {"type": [str, type(None), dict],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
         'lookback':          {"type": int,   "default": 15},
         'batch_size':        {"type": int,   "default": 32},
         'val_fraction':      {"type": float, "default": 0.2}, # fraction of data to be used for validation
@@ -327,36 +329,36 @@ def make_model(**kwargs):
         )}
     }
 
-    nn_config=  {key:val['default'] for key,val in nn_args.items()}
+    model_config=  {key:val['default'] for key,val in model_args.items()}
 
     data_config=  {key:val['default'] for key,val in data_args.items()}
 
     for key, val in kwargs.items():
         arg_name = key.lower()
 
-        if arg_name in nn_config:
-            update_dict(arg_name, val, nn_args[arg_name]['type'], nn_config)
+        if arg_name in model_config:
+            update_dict(arg_name, val, model_args[arg_name]['type'], model_config)
 
         elif arg_name in data_config:
             update_dict(arg_name, val, data_args[arg_name]['type'], data_config)
 
         else:
-            raise ValueError(f"Unknown keyworkd argument {key} provided")
+            raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
-    return data_config, nn_config
+    return data_config, model_config
 
 
-def update_dict(arg_name, val, dtype, dict_to_update):
-
+def update_dict(key, val, dtype, dict_to_update):
+    """Updates the dictionary with key, val if the val is of type dtype."""
     if dtype is not None:
         if isinstance(dtype, list):
             val_type = type(val)
             if val_type not in dtype:
                 raise TypeError("{} must be any of the type {} but it is of type {}"
-                                .format(arg_name, dtype, type(val)))
+                                .format(key, dtype, type(val)))
         elif not isinstance(val, dtype):
-            raise TypeError(f"{arg_name} must be of type {dtype} but it is of type {type(val)}")
-    dict_to_update[arg_name] = val
+            raise TypeError(f"{key} must be of type {dtype} but it is of type {type(val)}")
+    dict_to_update[key] = val
     return
 
 

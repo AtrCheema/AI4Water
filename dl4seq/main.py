@@ -15,13 +15,16 @@ from dl4seq.backend import tf, keras, tcn, VERSION_INFO
 from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
 from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models
 from dl4seq.utils.plotting_tools import Plots
-from dl4seq.utils.scalers import Scalers
+from dl4seq.utils.transformations import Transformations
 
 def reset_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
-    tf.random.set_seed(seed)
+    if int(tf.__version__.split('.')[0]) == 1:
+        tf.compat.v1.random.set_random_seed(seed)
+    elif int(tf.__version__.split('.')[0]) > 1:
+        tf.random.set_seed(seed)
 
 
 if tf is not None:
@@ -218,7 +221,7 @@ class Model(NN, Plots):
         df = self.add_noise(df, noise)
 
 
-        if self.data_config['normalize']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
+        if self.data_config['transformation']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
             df, _ = self.normalize(df, scaler_key)
 
         if self.intervals is None:
@@ -226,7 +229,7 @@ class Model(NN, Plots):
             df = df[st:en]
             df.columns = self.in_cols + self.out_cols
 
-            x, y, label = self.get_batches(df,
+            x, y, label = self.get_batches(df.values,
                                            len(self.in_cols),
                                            len(self.out_cols)
                                            )
@@ -247,7 +250,7 @@ class Model(NN, Plots):
                 df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_batches(df1,
+                    x, y, label = self.get_batches(df1.values,
                                                    len(self.in_cols),
                                                    len(self.out_cols))
                     xs.append(x)
@@ -313,15 +316,22 @@ class Model(NN, Plots):
     def normalize(self, df, key):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
         scaler = None
-        transformation = self.data_config['normalize']
+        transformation = self.data_config['transformation']
         if transformation is not None:
 
             if isinstance(transformation, dict):
-                df, scaler = Scalers(data=df, **transformation)('normalize')
+                df, scaler = Transformations(data=df, **transformation)('transformation', return_key=True)
+                self.scalers[key] = scaler
+
+            # we want to apply multiple transformations
+            elif isinstance(transformation, list):
+                for trans in transformation:
+                    df, scaler = Transformations(data=df, **trans)('transformation', return_key=True)
+                    self.scalers[key] = scaler
             else:
                 assert isinstance(transformation, str)
-                df, scaler = Scalers(data=df, method=transformation)('normalize')
-            self.scalers[key] = scaler
+                df, scaler = Transformations(data=df, method=transformation)('transformation', return_key=True)
+                self.scalers[key] = scaler
 
         return df, scaler
 
@@ -602,9 +612,9 @@ class Model(NN, Plots):
         sklearn_models = get_sklearn_models()
         xgboost_models = get_xgboost_models()
         if regr_name in sklearn_models:
-            regr = sklearn_models[regr_name](**self.nn_config['sklearn_model_args'])
+            regr = sklearn_models[regr_name](**self.nn_config['ml_model_args'])
         elif regr_name in xgboost_models:
-            regr = xgboost_models[regr_name](**self.nn_config['sklearn_model_args'],
+            regr = xgboost_models[regr_name](**self.nn_config['ml_model_args'],
                                 verbosity=self.verbosity)
         else:
             raise ValueError(f"model {regr_name} not found")
@@ -697,7 +707,7 @@ class Model(NN, Plots):
         # for cases if they are 2D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
-        if self.data_config['normalize']:
+        if self.data_config['transformation']:
             if np.ndim(inputs) == 4:
                 inputs = inputs[:, -1, 0, :]
             elif np.ndim(inputs) == 5:
@@ -802,7 +812,7 @@ class Model(NN, Plots):
 
     def get_2d_batches(self, df, ins, outs):
         # for case when there is not lookback, i.e first layer is dense layer and takes 2D input
-        input_x, input_y, label_y = df.iloc[:, 0:ins].values, df.iloc[:, -outs:].values, df.iloc[:, -outs:].values
+        input_x, input_y, label_y = df[:, 0:ins], df[:, -outs:], df[:, -outs:]
 
         assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
         """.format(self.lookback)
@@ -815,18 +825,18 @@ class Model(NN, Plots):
         label_y = []
 
         row_length = len(df)
-        column_length = df.columns.size
+        column_length = df.shape[-1]
 
         for i in range(row_length - lookback * in_step + 1 - forecast_step - forecast_len + 1):
             stx, enx = i, i + lookback * in_step
-            x_data = df.iloc[stx:enx:in_step, 0:column_length - outs]
+            x_data = df[stx:enx:in_step, 0:column_length - outs]
 
             st, en = i, i + (lookback - 1) * in_step
-            y_data = df.iloc[st:en:in_step, column_length - outs:]
+            y_data = df[st:en:in_step, column_length - outs:]
 
             sty = enx + forecast_step - in_step
             eny = sty + forecast_len
-            label_data = df.iloc[sty:eny, column_length - outs:]
+            label_data = df[sty:eny, column_length - outs:]
 
             input_x.append(np.array(x_data))
             input_y.append(np.array(y_data))
@@ -862,7 +872,10 @@ class Model(NN, Plots):
     def check_nans(self, df, input_x, input_y, label_y, outs):
         """ checks whether anns are present or not and checks shapes of arrays being prepared.
         """
-        nans = df[self.out_cols].isna().sum()
+        if isinstance(df, pd.DataFrame):
+            nans = df[self.out_cols].isna().sum()
+        else:
+            nans = np.isnan(df[:, -outs:]) # df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
             if self.data_config['ignore_nans']:
                 print("\n{} Ignoring NANs in predictions {}\n".format(10 * '*', 10 * '*'))
@@ -870,7 +883,7 @@ class Model(NN, Plots):
                 if self.method == 'dual_attention':
                     raise ValueError
                 if outs > 1:
-                    assert np.all(nans.values == int(nans.sum() / outs)), """output columns contains nan values at
+                    assert np.all(nans == int(nans.sum() / outs)), """output columns contains nan values at
                      different indices"""
 
                 if self.verbosity > 0:

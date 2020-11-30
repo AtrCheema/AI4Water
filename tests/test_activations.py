@@ -1,6 +1,7 @@
 # this file tests that given activations are working both as layers as well as activation functions withing a layer
 import unittest
 import os
+import tensorflow as tf
 
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
@@ -24,6 +25,8 @@ fname = os.path.join(dpath, "nasdaq100_padding.csv")
 
 df = pd.read_csv(fname)
 
+version = tf.__version__.split('.')[0] + tf.__version__.split('.')[1]
+
 class TestActivations(unittest.TestCase):
     def test_as_layers(self):
 
@@ -35,6 +38,7 @@ class TestActivations(unittest.TestCase):
             layers[lyr] = {'config': {}}
 
         layers["Dense"] = {'config': {'units': 1}}
+        layers["reshape"] = {'config': {'target_shape': (1, 1)}}
 
         nn_config['layers'] = layers
 
@@ -46,9 +50,16 @@ class TestActivations(unittest.TestCase):
 
         model.build()
 
+        val = {
+            '21': [0.09297575600513237, 0.09400989675627566],
+            '23': [0.1004275307059288, 0.09452582150697708]
+        }
+
         history = model.train()
-        for t,p in zip(history.history['val_loss'], [0.1004275307059288, 0.09452582150697708]):
-            self.assertAlmostEqual(t,p, 5)
+        if int(tf.__version__.split('.')[0]) > 1:
+            for t,p in zip(history.history['val_loss'], val[version]):
+                self.assertAlmostEqual(t,p, 5)
+        return
 
     def test_as_fns(self):
         layers = {}
@@ -57,7 +68,7 @@ class TestActivations(unittest.TestCase):
 
             layers["Dense_" + str(idx)] = {'config': {'units': 1, 'activation': act_fn}}
 
-
+        layers["reshape"] = {'config': {'target_shape': (1, 1)}}
         nn_config['layers'] = layers
         model = Model(data_config,
                       nn_config,
@@ -68,8 +79,15 @@ class TestActivations(unittest.TestCase):
         model.build()
 
         history = model.train()
-        for t,p in zip(history.history['val_loss'], [0.8970817923545837, 0.7911913394927979]):
-            self.assertAlmostEqual(t,p, 5)
+        val = {
+            '21': [0.8971164431680119, 0.7911620726129243],
+            '23': [0.8970817923545837, 0.7911913394927979]
+        }
+
+        if int(tf.__version__.split('.')[0]) > 1:
+            for t,p in zip(history.history['val_loss'], val[version]):
+                self.assertAlmostEqual(t,p, 5)
+        return
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 __all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel"]
 
 import numpy as np
+import pandas as pd
 
 from dl4seq.main import Model
 from dl4seq.backend import keras
@@ -350,7 +351,7 @@ class NBeatsModel(Model):
         return [x, exo_x], label   # TODO  .reshape(-1, 1, 1) ?
 
     def get_batches(self, df, ins, outs):
-
+        df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
         return self.prepare_batches(df, ins, outs)
 
     def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):

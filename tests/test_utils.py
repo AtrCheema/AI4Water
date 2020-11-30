@@ -38,7 +38,7 @@ def build_model(**kwargs):
     data_config, nn_config = make_model(
         batch_size=batch_size,
         lookback=lookback,
-        normalize=None,
+        transformation=None,
         epochs=1,
         **kwargs
     )
@@ -320,7 +320,6 @@ class TestUtils(unittest.TestCase):
         model = build_model(inputs=in_cols,
                             outputs=out_cols)
         model.plot_feature_importance(np.random.randint(1, 10, 5))
-
 
     def test_get_attributes(self):
         sk = get_sklearn_models()

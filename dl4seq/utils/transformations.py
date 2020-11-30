@@ -8,11 +8,14 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from dl4seq.utils.utils import dateandtime_now
 
+# TODO add logistic, tanh and more scalers.
+
 class scaler_container(object):
 
-    scalers = {}
+    def __init__(self):
+        self.scalers = {}
 
-class Scalers(scaler_container):
+class Transformations(scaler_container):
     """
     Any new transforming methods should define two methods one starting with "transform_with_" and "inverse_transofrm_with_"
     https://developers.google.com/machine-learning/data-prep/transform/normalization
@@ -30,6 +33,10 @@ class Scalers(scaler_container):
       ipca
       fastica
 
+    replace_nans: bool, If true, then will replace the nan values in data with some fixed value `replace_with` before
+        transformation.
+    replace_with: str/int/float, if replace_nans is True, then this value will be used to replace nans in dataframe
+        before doing transformation.
     kwargs: any arguments provided to be provided to transformer on INTIALIZATION and not during transform or inverse
             transform e.g. n_components for pca.
 
@@ -67,8 +74,15 @@ class Scalers(scaler_container):
                  data: pd.DataFrame,
                  method:str = 'minmax',
                  features=None,
+                 replace_nans = False,
+                 replace_with='mean',
                  **kwargs):
 
+        super().__init__()
+
+        self.replace_nans=replace_nans
+        self.replace_with=replace_with
+        data = self.pre_process_data(data.copy())
         self.data = data
         self.method = method
         self.features = features
@@ -76,18 +90,18 @@ class Scalers(scaler_container):
         self.kwargs = kwargs
         self.transformed_features = None
 
-    def __call__(self, what="normalize", **kwargs):
+    def __call__(self, what="transform", return_key=False, **kwargs):
 
-        if what.upper().startswith("NORM"):
+        if what.upper().startswith("TRANS"):
 
-            return self.transform(**kwargs)
+            return self.transform(return_key=return_key, **kwargs)
 
-        elif what.upper().startswith("DENORM"):
+        elif what.upper().startswith("INV"):
 
             return self.inverse_transform(**kwargs)
 
         else:
-            raise ValueError
+            raise ValueError(f"The class Transformation can not be called with keyword argument 'what'={what}")
 
     def __getattr__(self, item):
 
@@ -151,7 +165,40 @@ class Scalers(scaler_container):
 
         return self.available_scalers[self.method.lower()]
 
-    def transform_with_sklearn(self, **kwargs):
+    def pre_process_data(self, data):
+        """Makes sure that data is dataframe and optionally replaces nans"""
+        if isinstance(data, pd.DataFrame):
+            data = data
+        else:
+            assert isinstance(data, np.ndarray)
+            data = pd.DataFrame(data, columns=['data'+str(i) for i in range(data.shape[1])])
+
+        if self.replace_nans:
+            indices = {}
+
+            for col in data.columns:
+
+                i = data[col].index[data[col].apply(np.isnan)]
+                if len(i) > 0:
+                    indices[col] = i.values
+                    # replace nans with values
+                    data[col][indices[col]] = get_val(data[col], self.replace_with)
+
+            self.nan_indices = indices
+
+        return data
+
+    def post_process_data(self, data):
+        """If nans were replaces with some value, put nans back."""
+        if self.replace_nans:
+            if hasattr(self, 'nan_indices'):
+
+                for col, idx in self.nan_indices.items():
+                    data[col][idx] = np.nan
+
+        return data
+
+    def transform_with_sklearn(self, return_key=False, **kwargs):
 
         if self.method.lower() == "log":
             scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True)
@@ -174,15 +221,25 @@ class Scalers(scaler_container):
 
         data = self.maybe_insert_features(data)
 
+        data = self.post_process_data(data)
+
         self.tr_data = data
-        return data, scaler
+        if return_key:
+            return data, scaler
+        return data
 
     def inverse_transform_with_sklearn(self, **kwargs):
 
         scaler = self.get_scaler_from_dict(**kwargs)
 
+        # if 'data' in kwargs:
+        #     if self.replace_nans:
+        #         kwargs['data'] = self.pre_process_data(kwargs['data'])
+
         to_transform = self.get_features(**kwargs)
+
         data = scaler.inverse_transform(to_transform)
+
         if self.method.lower() in self.dim_red_methods:
             # now use orignal data columns names, but if the class is being directly called for inverse transform
             # then we don't know what cols were transformed, in that scenariio use dummy col name.
@@ -193,19 +250,29 @@ class Scalers(scaler_container):
 
         data = self.maybe_insert_features(data)
 
+        data = self.post_process_data(data)
+
         return data
 
-    def transform(self, **kwargs):
+    def transform(self, return_key=False, **kwargs):
 
-        return getattr(self, "transform_with_" + self.method.lower())(**kwargs)
+        return getattr(self, "transform_with_" + self.method.lower())(return_key=return_key, **kwargs)
 
     def inverse_transform(self, **kwargs):
+
+        if 'key' in kwargs or 'scaler' in kwargs:
+            pass
+        elif len(self.scalers) ==1:
+            kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
 
         return getattr(self, "inverse_transform_with_" + self.method.lower())(**kwargs)
 
     def get_features(self, **kwargs) -> pd.DataFrame:
         # use the provided data if given otherwise use self.data
         data = kwargs['data'] if 'data' in kwargs else self.data
+
+        if self.replace_nans:
+            data = self.pre_process_data(data)
 
         if self.features is None:
             return data
@@ -307,6 +374,22 @@ class Scalers(scaler_container):
         end_fig(save)
         return
 
+
+def get_val(df:pd.DataFrame, method):
+
+    if isinstance(method, str):
+        if method.lower() == "mean":
+            return df.mean()
+        elif method.lower() == "max":
+            return df.max()
+        elif method.lower() == "min":
+            return df.min()
+    elif isinstance(method, int) or isinstance(method, float):
+        return method
+    else:
+        raise ValueError(f"unknown method {method} to replace nan vlaues")
+
+
 def end_fig(save):
     if save is None:
         pass
@@ -316,18 +399,3 @@ def end_fig(save):
         plt.show()
     plt.close('all')
     return
-if __name__ == "__main__":
-
-    from sklearn import datasets
-
-    iris = datasets.load_iris()
-    X = iris.data
-    y = iris.target
-
-    scaler = Scalers(X, method="sparsepca", n_components=3)
-    tx, keys =  scaler()
-    dtx = scaler.inverse_transform(data=tx, key=keys['key'])
-#     # scaler.plot_pca(target=y, labels=['Setosa','Versicolour', 'Virginica'], dim="3d")
-#     # scaler.plot_pca(target=y, labels=['Setosa', 'Versicolour', 'Virginica'], dim="2d")
-
-

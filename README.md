@@ -1,14 +1,18 @@
 # dl4seq
 
 [![Build Status](https://travis-ci.com/AtrCheema/dl4seq.svg?branch=master)](https://travis-ci.com/AtrCheema/dl4seq)  
+
 Different deep learning based architechtures for time series forecasting.  
 
 The purpose of the repository is
 * compliment the functionality of keras by making pre and post processing easeier for time-series prediction problems
 * save, load/reload or build models from readable json file.
-* both of above functionalities should be available without complicating simple keras implementation
+* both of above functionalities should be available without complicating simple keras implementation.
+* It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
+ `Model`. So at the highest level you just need to initiate the `Model`, and then need `build`, `train`, `predict` and 
+ `view_model` methods of `Model` class but you can go as lower as you could go with tensorflow/keras. 
 
-This repo provides a framework to build layered models using python dictionary and with several helper tools 
+This repository provides a framework to build layered models using python dictionary and with several helper tools 
 which fasten the process of  modeling time-series forcasting. The purpose is to cut the time to write boiler plate code
 in developing deep learning based models.
 
@@ -16,8 +20,8 @@ Most of the models in this repository have been adopted from other repositories 
 I have tried to reference the original repositories as well.
 
 This repository is for you if you want to
-* avoid pre and post post processing of data to build NNs for 1D or time series data.
-* want to save and reload models in readable json config file.
+* avoid pre and post post processing of data to build data-driven models for 1D or time series data.
+* want to save (in) and reload models from readable json config file.
 * Customize some of the utilities provided here while retaining others e.g using your own normalization and denormalization 
 
 Currently following models are implemented
@@ -58,15 +62,15 @@ import pandas as pd
 from dl4seq import InputAttentionModel  # import any of the above model
 from dl4seq.utils import make_model  # helper function to make inputs for model
 
-data_config, nn_config, total_intervals = make_model(batch_size=16,
+data_config, nn_config = make_model(batch_size=16,
                                                      lookback=15,
                                                      lr=0.001)
-df = pd.read_csv('data/all_data_30min.csv')
+df = pd.read_csv('data/data_30min.csv')  # path for data file
 
 model = InputAttentionModel(data_config=data_config,
               nn_config=nn_config,
               data=df,
-              intervals=total_intervals
+              intervals=data_config['intervals']
               )
 
 model.build()
@@ -77,7 +81,39 @@ preds, obs = model.predict()
 acts = model.view_model()
 ```
 
+## using for `scikit-learn`/`xgboost` based models
+The repository can also be used for scikit-learn/xgboost based models for both classificationa and regression
+problems by making use of `ml_model` and `ml_model_args` keyword arguments in `make_model` function. However, integration
+of ML based models is not complete yet.
+```python
+from dl4seq import Model
+import pandas as pd
+from dl4seq.utils import make_model  # helper function to make inputs for model
 
+df = pd.read_csv('data/data_30min.csv')  # path for data file
+
+data_config, nn_config = make_model(batches="2d",
+                                    inputs=['input1', 'input2', 'input3', 'input4'],
+                                    outputs=['target7'],
+                                    lookback=1,
+                                    val_fraction=0.0,
+                                    ml_model="randomforestregressor",  #  any regressor from https://scikit-learn.org/stable/modules/classes.html
+                                    ml_model_args={"n_estimators":1000}  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
+    # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
+)
+
+model = Model(data_config=data_config,
+              nn_config=nn_config,
+              data=df,
+              category="ML"
+              )
+
+model.build()
+
+history = model.train(st=0, en=150)
+
+preds, obs = model.predict(st=150, en=220)
+```
 
 ## Disclaimer
 Athough the purpose of this repo is purportedly `all_in_one` model, however there is no `one_for_all` model. For each

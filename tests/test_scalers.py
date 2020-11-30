@@ -6,10 +6,73 @@ import os
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils.scalers import Scalers
+from dl4seq.utils.transformations import Transformations
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
+
+def run_method1(method,
+                cols=None,
+                replace_nans=False,
+                data=None,
+                **kwargs):
+
+    normalized_df1, scaler = Transformations(data=df if data is None else data,
+                                             method=method,
+                                             features=cols,
+                                             replace_nans=replace_nans,
+                                             **kwargs)('Transform', return_key=True)
+
+    denormalized_df1 = Transformations(data=normalized_df1, features=cols)('inverse', scaler=scaler['scaler'])
+    return normalized_df1, denormalized_df1
+
+def run_method2(method,
+                replace_nans=False,
+                data=None,
+                **kwargs):
+
+    scaler = Transformations(data=df if data is None else data,
+                             replace_nans=replace_nans,
+                             method=method,
+                             **kwargs)
+
+    normalized_df2, scaler_dict = scaler.transform(return_key=True)
+
+    denormalized_df2 = scaler.inverse_transform(data=normalized_df2, key=scaler_dict['key'])
+    return normalized_df2, denormalized_df2
+
+def run_method3(method,
+                replace_nans=False,
+                data=None,
+                **kwargs):
+
+    scaler = Transformations(data=df if data is None else data,
+                             replace_nans=replace_nans,
+                             method=method,
+                             **kwargs)
+
+    normalized_df3, scaler_dict = scaler(return_key=True)
+    denormalized_df3 = scaler('inverse', data=normalized_df3, key=scaler_dict['key'])
+
+    return normalized_df3, denormalized_df3
+
+
+def run_method4(method,
+                replace_nans=False,
+                data=None):
+
+    scaler = Transformations(data=df if data is None else data,
+                             replace_nans=replace_nans)
+
+    normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)(return_key=True)
+    denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
+
+    return normalized_df4, denormalized_df4
+
+def run_plot_pca(scaler, y, dim):
+    scaler.plot_pca(target=y, labels=['Setosa', 'Versicolour', 'Virginica'], save=None, dim=dim)
+    return
+
 
 class test_Scalers(unittest.TestCase):
 
@@ -18,20 +81,13 @@ class test_Scalers(unittest.TestCase):
         cols = ['data1', 'data2'] if cols is None else cols
         print(f"testing: {method} with {cols} features")
 
-        normalized_df1, scaler = Scalers(data=df, method=method, features=cols)('normalize')
-        denormalized_df1 = Scalers(data=normalized_df1, features=cols)('denorm', scaler=scaler['scaler'])
+        normalized_df1, denormalized_df1 = run_method1(method, cols)
 
-        scaler = Scalers(data=df, method=method)
-        normalized_df2, scaler_dict = scaler.transform()
-        denormalized_df2 = scaler.inverse_transform(data=normalized_df2, key=scaler_dict['key'])
+        normalized_df2, denormalized_df2 = run_method2(method)
 
-        scaler = Scalers(data=df, method=method)
-        normalized_df3, scaler_dict = scaler()
-        denormalized_df3 = scaler('denorm', data=normalized_df2, key=scaler_dict['key'])
+        normalized_df3, denormalized_df3 = run_method3(method)
 
-        scaler = Scalers(data=df)
-        normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)()
-        denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
+        normalized_df4, denormalized_df4 = run_method4(method)
 
         if len(cols) < 2:
             self.check_features(denormalized_df1)
@@ -54,13 +110,13 @@ class test_Scalers(unittest.TestCase):
         for idx, v in enumerate(denorm['data2']):
             self.assertEqual(v, 1001 + idx)
 
-    def test_call_error(self):
-
-        self.assertRaises(ValueError, Scalers(data=df), 'transform')
+    # def test_call_error(self):
+    #
+    #     self.assertRaises(ValueError, Transformations(data=df), 'transform')
 
     def test_get_scaler_from_dict_error(self):
-        normalized_df1, scaler = Scalers(data=df)('normalize')
-        self.assertRaises(ValueError, Scalers(data=normalized_df1), 'denorm')
+        normalized_df1, scaler = Transformations(data=df)('transform', return_key=True)
+        self.assertRaises(ValueError, Transformations(data=normalized_df1), 'inverse')
 
     def test_log_scaler_with_feat(self):
         self.run_method("log", cols=["data1"])
@@ -140,7 +196,7 @@ class test_Scalers(unittest.TestCase):
             trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
             self.assertEqual(trans_df.shape, (df_len,components))
             self.assertEqual(orig_df.shape, (df_len, features))
-
+    #
     def do_decomposition(self, df_len, features, components, m, method):
         print(f"testing {method} with {features} features and {components} components with {m} call method")
 
@@ -153,31 +209,17 @@ class test_Scalers(unittest.TestCase):
 
         if m==1:
             return self.run_decomposition1(data, args, method=method)
+            #return run_method1(data=data, method=method, **args)
         elif m==2:
-            return self.run_decomposition2(data, args, method=method)
+            return run_method2(data=data, method=method, **args)
         elif m==3:
-            return self.run_decomposition3(data, args, method=method)
+            return run_method3(data=data, method=method, **args)
 
     def run_decomposition1(self, data, args, method):
 
-        scaler = Scalers(data=data, method=method, **args)
-        normalized_df, scaler_dict = scaler.transform()
+        scaler = Transformations(data=data, method=method, **args)
+        normalized_df, scaler_dict = scaler.transform(return_key=True)
         denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
-
-        return normalized_df, denormalized_df
-
-    def run_decomposition2(self, data, args, method):
-
-        scaler = Scalers(data=data, **args)
-        normalized_df, scaler_dict = getattr(scaler, "transform_with_"+method.lower())()
-        denormalized_df = getattr(scaler, "inverse_transform_with_" + method.lower())(data=normalized_df, key=scaler_dict['key'])
-
-        return normalized_df, denormalized_df
-
-    def run_decomposition3(self, data, args, method):
-
-        normalized_df, scaler = Scalers(data=data, method=method, **args)('normalize')
-        denormalized_df = Scalers(data=normalized_df, method=method, **args)('denorm', scaler=scaler['scaler'])
 
         return normalized_df, denormalized_df
 
@@ -188,16 +230,24 @@ class test_Scalers(unittest.TestCase):
         X = iris.data
         y = iris.target
 
-        scaler = Scalers(X, method="pca", n_components=3)
+        scaler = Transformations(X, method="pca", n_components=3)
         scaler()
         for dim in ["2d", "3D"]:
-            self.run_plot_pca(scaler, y, dim=dim)
+            run_plot_pca(scaler, y, dim=dim)
         return
 
-    def run_plot_pca(self, scaler, y, dim):
-        scaler.plot_pca(target=y, labels=['Setosa', 'Versicolour', 'Virginica'], save=None, dim=dim)
+    def test_log_with_nans(self):
+        a = np.random.random((5, 4))
+        a[2, 1] = np.nan
+        a[3, 2:3] = np.nan
+        a[2:4, 3] = np.nan
+        cols = ['data1', 'data2', 'data3', 'data4']
+        df3 = pd.DataFrame(a, columns=cols)
+        run_method1(method='log', replace_nans=True, data=df3)
+        run_method2(method='log', replace_nans=True, data=df3)
+        run_method3(method='log', replace_nans=True, data=df3)
+        run_method4(method='log', replace_nans=True, data=df3)
         return
-
 
 
 if __name__ == "__main__":
