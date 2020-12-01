@@ -42,20 +42,25 @@ def make_and_run(
         inputs = input_features
         # column in dataframe to bse used as output/target
         outputs = ['target7']
+        kwargs['intervals'] = ((0, 146,),
+                              (145, 386,),
+                              (385, 628,),
+                              (625, 821,),
+                              (821, 1110),
+                              (1110, 1447))
 
     data_config, nn_config = make_model(batch_size=batch_size,
-                                                         lookback=lookback,
-                                                         lr=0.001,
-                                                         inputs=inputs,
-                                                         outputs = outputs,
-                                                         epochs=epochs,
-                                                         **kwargs)
+                                        lookback=lookback,
+                                        lr=0.001,
+                                        inputs=inputs,
+                                        outputs = outputs,
+                                        epochs=epochs,
+                                        **kwargs)
 
     model = model(
         data_config=data_config,
         nn_config=nn_config,
         data=df,
-        intervals=None if data_type=="nasdaq" else data_config['intervals'],
         verbosity=0
     )
 

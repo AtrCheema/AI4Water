@@ -56,13 +56,13 @@ if __name__ == "__main__":
     outputs = ['target7', 'target8']
 
     data_config, nn_config = make_model(batch_size=4,
-                                                         lookback=15,
-                                                         inputs=input_features,
-                                                         outputs=outputs,
-                                                         lr=0.0001,
-                                                         epochs=20,
-                                                         val_fraction=0.3,  # TODO why less than 0.3 give error here?
-                                                         test_fraction=0.3
+                                        lookback=15,
+                                        inputs=input_features,
+                                        outputs=outputs,
+                                        lr=0.0001,
+                                        epochs=20,
+                                        val_fraction=0.3,  # TODO why less than 0.3 give error here?
+                                        test_fraction=0.3
                                                          )
 
     fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")

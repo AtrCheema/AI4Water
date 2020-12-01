@@ -13,7 +13,7 @@ import math
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
 from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
-from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models
+from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 
@@ -47,7 +47,6 @@ class Model(NN, Plots):
     def __init__(self, data_config: dict,
                  nn_config: dict,
                  data=None,
-                 intervals=None,
                  prefix: str = None,
                  path: str = None,
                  verbosity=1,
@@ -62,7 +61,7 @@ class Model(NN, Plots):
 
         super(Model, self).__init__(data_config, nn_config)
 
-        self.intervals = intervals
+        self.intervals = data_config['intervals']
         self.data = data
         self.in_cols = self.data_config['inputs']
         self.out_cols = self.data_config['outputs']
@@ -327,7 +326,7 @@ class Model(NN, Plots):
             elif isinstance(transformation, list):
                 for trans in transformation:
                     df, scaler = Transformations(data=df, **trans)('transformation', return_key=True)
-                    self.scalers[key] = scaler
+                    self.scalers[key+str(trans['method'])] = scaler
             else:
                 assert isinstance(transformation, str)
                 df, scaler = Transformations(data=df, method=transformation)('transformation', return_key=True)
@@ -466,17 +465,79 @@ class Model(NN, Plots):
 
         callbacks = self.get_callbacks(**callbacks)
 
+        inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
+
         self._model.fit(inputs,
-                         outputs,
+                        y=None if isinstance(inputs, tf.data.Dataset) else outputs,
                          epochs=self.nn_config['epochs'],
-                         batch_size=self.data_config['batch_size'],
-                         validation_split=self.data_config['val_fraction'],
+                         batch_size=None if isinstance(inputs, tf.data.Dataset) else self.data_config['batch_size'],
+                         validation_split=0.0 if isinstance(inputs, tf.data.Dataset) else self.data_config['val_fraction'],
                          validation_data=validation_data,
                          callbacks=callbacks,
                          shuffle=self.nn_config['shuffle'],
                          steps_per_epoch=self.data_config['steps_per_epoch'],
                          verbose=self.verbosity
                          )
+
+        return self.post_kfit()
+
+    def to_tf_data(self, inputs, outputs, val_data):
+        """This method has only effect when we want to use same data for validation and test. This will work in following
+           scenarios:
+            if val_data is string,
+            if val_data is is defined by user and is in (x,y) form.
+        In both above scenarios, val_dataset will be returned which will be instance of tf.data.Dataset. (since the name
+        to_tf_data) The test and validation data is set as Model's attribute in such cases.
+        Following attributes will be generated
+          - val_dataset
+          - train_dataset
+          """
+        x_val, y_val =  None, None
+
+        if isinstance(val_data, str):
+            # we need to get validation data from training data depending upon value of 'val_fraction' and convert it
+            # to tf.data
+            val_frac = self.data_config['val_fraction'] if self.data_config['val_fraction'] > 0.0 else self.data_config['test_fraction']
+            if val_frac > 0.0:
+
+                x_train, y_train,  x_val, y_val, = train_val_split(inputs, outputs,
+                                                                   validation_split=self.data_config['val_fraction'])
+                self.val_dataset = (x_val, y_val)
+                self.train_dataset = (x_train, y_train)
+                if self.verbosity > 0.0:
+                    print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
+            else:
+                # Normally we should not encounter such scenario. TODO, raise error?
+                x_train = inputs
+                y_train = outputs
+        elif hasattr(val_data, '__len__'):
+            x_train = inputs
+            y_train = outputs
+
+            assert len(val_data) == 2
+            x_val, y_val = val_data
+
+        else:
+            return inputs, outputs, val_data
+
+        train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
+
+        if self.nn_config['shuffle']:
+            train_dataset = train_dataset.shuffle(self.data_config['buffer_size'])
+        train_dataset = train_dataset.batch(self.data_config['batch_size'],
+                                             drop_remainder=self.data_config['drop_remainder'])
+
+        if x_val is not None:
+            val_dataset = tf.data.Dataset.from_tensor_slices((x_val[0], y_val))
+            val_dataset = val_dataset.batch(self.data_config['batch_size'],
+                                                drop_remainder=self.data_config['drop_remainder'])
+        else:
+            val_dataset = val_data
+
+        return train_dataset, outputs,  val_dataset
+
+    def post_kfit(self):
+        """Does some stuff after Keras model.fit has been called"""
         history = self._model.history
 
         self.save_config(history.history)
@@ -533,8 +594,14 @@ class Model(NN, Plots):
 
         return interval_length
 
-    def train_data(self, **kwargs):
-        """ prepare data on which to train the NN"""
+    def train_data(self, data=None, **kwargs):
+        """ prepare data on which to train the NN."""
+
+        # For cases we don't want to use any of data-preprocessing utils, the train_data can be called directly with 'data'
+        # keyword argumentnt, and that will be returned.
+        if data is not None:
+            return data
+
         x, y, label = self.fetch_data(self.data, **kwargs)
 
         x, y, label = self.check_batches(x, y, label)
@@ -628,18 +695,28 @@ class Model(NN, Plots):
         val_data = None
         if self.data_config['val_data'] is not None:
             if isinstance(self.data_config['val_data'], str):
-                val_data = NotImplementedError("Define the method `val_data` in your model class.")
+
+                assert self.data_config['val_data'].lower() == "same"
+
+                # It is good that the user knows  explicitly that either of val_fraction or test_fraction is used so
+                # one of them must be set to 0.0
+                if self.data_config['val_fraction'] > 0.0:
+                    assert self.data_config['test_fraction'] == 0.0
+                if self.data_config['test_fraction'] > 0.0:
+                    assert self.data_config['val_fraction'] == 0.0
+
+                return self.data_config['val_data']
             else:
                 # `val_data` might have been provided (then use it as it is) or it is None
                 val_data = self.data_config['val_data']
 
         return val_data
 
-    def train(self, st=0, en=None, indices=None, **callbacks):
-
+    def train(self, st=0, en=None, indices=None, data=None, **callbacks):
+        """data: if not None, it will directlry passed to fit."""
         indices = self.get_indices(indices)
 
-        inputs, outputs = self.train_data(st=st, en=en, indices=indices)
+        inputs, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
 
         if self.category.upper() == "DL":
             history = self.fit(inputs, outputs, self.val_data(), **callbacks)
@@ -653,6 +730,9 @@ class Model(NN, Plots):
 
     def test_data(self, **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
+        if kwargs['data'] is not None:
+            return kwargs['data']
+
         return self.train_data(**kwargs)
 
     def prediction_step(self, inputs):
@@ -665,17 +745,30 @@ class Model(NN, Plots):
 
         return predicted
 
-    def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
+    def predict(self, st=0, en=None, indices=None, data=None, scaler_key: str = None, pref: str = 'test',
                 use_datetime_index=False, pp=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
         pp: post processing
+        data: if not None, this will diretly passed to predict. If data_config['transformation'] is True, do provide
+            the scaler_key that was used when the data was transformed. By default that is '0'. If the data was not
+            transformed with Model, then make sure that data_config['transformation'] is None.
         """
 
         if indices is not None:
-            setattr(self, 'predict_indices', indices)
+            if not hasattr(self, 'predict_indices'):
+                setattr(self, 'predict_indices', indices)
 
-        inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
+        if data is not None:
+            if scaler_key is None:
+                if self.data_config['transformation'] is not None:
+                    raise ValueError(f"""The transformation argument in config_file was set to {self.data_config['transformation']}
+                                    but a scaler_key given. Provide the either 'scaler_key' argument while calling
+                                    'predict' or set the transformation while initializing model to None."""
+                                     )
+
+        inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, data=data,
+                                              scaler_key=scaler_key,
                                               use_datetime_index=use_datetime_index)
 
         first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
@@ -707,7 +800,9 @@ class Model(NN, Plots):
         # for cases if they are 2D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
-        if self.data_config['transformation']:
+        transformation = self.data_config['transformation']
+
+        if transformation is not None:
             if np.ndim(inputs) == 4:
                 inputs = inputs[:, -1, 0, :]
             elif np.ndim(inputs) == 5:
@@ -727,9 +822,25 @@ class Model(NN, Plots):
                 p = predicted[:, :, h]
                 in_obs = np.hstack([inputs, t])
                 in_pred = np.hstack([inputs, p])
-                scaler = self.scalers[scaler_key]['scaler']
-                in_obs_den = scaler.inverse_transform(in_obs)
-                in_pred_den = scaler.inverse_transform(in_pred)
+
+                in_obs = pd.DataFrame(in_obs, columns=self.in_cols + self.out_cols)
+                in_pred = pd.DataFrame(in_pred, columns=self.in_cols + self.out_cols)
+                if isinstance(transformation, list):  # for cases when we used multiple transformatinos
+                    for trans in transformation:
+                        scaler = self.scalers[scaler_key + trans['method']]['scaler']
+                        in_obs = Transformations(data=in_obs, **trans)(what='inverse', scaler=scaler)
+                        in_pred = Transformations(data=in_pred, **trans)(what='inverse', scaler=scaler)
+                elif isinstance(transformation, dict):
+                    scaler = self.scalers[scaler_key]['scaler']
+                    in_obs = Transformations(data=in_obs, **transformation)(what='inverse', scaler=scaler)
+                    in_pred = Transformations(data=in_pred, **transformation)(what='inverse', scaler=scaler)
+                else:
+                    scaler = self.scalers[scaler_key]['scaler']
+                    in_obs = Transformations(data=in_obs, method=transformation)(what='inverse', scaler=scaler)
+                    in_pred = Transformations(data=in_pred, method=transformation)(what='inverse', scaler=scaler)
+
+                in_obs_den = in_obs.values
+                in_pred_den = in_pred.values
                 true_denorm[:, :, h] = in_obs_den[:, -self.outs:]
                 pred_denorm[:, :, h] = in_pred_den[:, -self.outs:]
 
@@ -819,6 +930,7 @@ class Model(NN, Plots):
         return self.check_nans(df, input_x, input_y, np.expand_dims(label_y, axis=2), outs)
 
     def get_3d_batches(self, df, ins, outs, lookback, in_step, forecast_step, forecast_len):
+
         # Provide lookback/history/seq length in input data
         input_x = []
         input_y = []
@@ -1201,7 +1313,6 @@ class Model(NN, Plots):
         config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['intervals'] = self.intervals
         config['method'] = self.method
         config['quantiles'] = self.quantiles
         config['loss'] = self._model.loss.__name__ if self._model is not None else None
@@ -1226,10 +1337,6 @@ class Model(NN, Plots):
 
         data_config = config['data_config']
         nn_config = config['nn_config']
-        if 'intervals' in config:
-            intervals = config['intervals']
-        else:
-            intervals = None
 
         cls.from_check_point = True
 
@@ -1244,7 +1351,6 @@ class Model(NN, Plots):
         return cls(data_config=data_config,
                    nn_config=nn_config,
                    data=data,
-                   intervals=intervals,
                    path=path)
 
     def load_weights(self, w_file: str):

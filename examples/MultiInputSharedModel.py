@@ -187,13 +187,13 @@ if __name__ == "__main__":
                }
 
     model = make_multi_model(MultiInputSharedModel,
-                                                  batch_size=4,
-                                                  lookback=3,
-                                                  lr=0.000216,
-                                                  layers=_layers,
-                                                  epochs=300,
-                                                  ignore_nans=False,
-                                                  )
+                             batch_size=4,
+                             lookback=3,
+                             lr=0.000216,
+                             layers=_layers,
+                             epochs=300,
+                             ignore_nans=False,
+                             )
     model.build()
     model.train(st=0, en=5500)
     # model.predict()

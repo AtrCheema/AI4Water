@@ -289,15 +289,19 @@ def make_model(**kwargs):
     }
 
     data_args = {
+        # buffer_size is only relevant if 'val_data' is same and shuffle is true. https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
+        'buffer_size':       {'type': int, 'default': 100}, # It is used to shuffle tf.Dataset of training data.
         'forecast_length':   {"type": int, "default": 1},   # how many future values we want to predict
         'batches_per_epoch': {"type": int, "default": None},  # comes handy if we want to skip certain batches from last
     # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder':    {"type": bool,  "default": False},
-        'transformation':         {"type": [str, type(None), dict],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
+        'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
         'lookback':          {"type": int,   "default": 15},
         'batch_size':        {"type": int,   "default": 32},
         'val_fraction':      {"type": float, "default": 0.2}, # fraction of data to be used for validation
+        # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
+        # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
         'val_data':          {"type": None,  "default": None}, # If this is not string and not None, this will overwite `val_fraction`
         'steps_per_epoch':   {"type": int,   "default": None},  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
         'test_fraction':     {"type": float, "default": 0.2},   # fraction of data to be used for test
@@ -319,14 +323,7 @@ def make_model(**kwargs):
     # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
     # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
     # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
-        "intervals":         {"type": tuple, "default": (
-                                                        (0, 146,),
-                                                        (145, 386,),
-                                                        (385, 628,),
-                                                        (625, 821,),
-                                                        (821, 1110),
-                                                        (1110, 1447)
-        )}
+        "intervals":         {"type": tuple, "default": None}
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -508,3 +505,21 @@ def get_xgboost_models():
         "XGBOOSTRFREGRESSOR": XGBRFRegressor,
         "XGBOOSTRFCLASSIFIER": XGBRFClassifier,
     }
+
+def train_val_split(x, y, validation_split):
+    if hasattr(x[0], 'shape'):
+        split_at = int(x[0].shape[0] * (1. - validation_split))
+    else:
+        split_at = int(len(x[0]) * (1. - validation_split))
+
+    x, val_x = (slice_arrays(x, 0, split_at), slice_arrays(x, split_at))
+    y, val_y = (slice_arrays(y, 0, split_at), slice_arrays(y, split_at))
+
+    return x, y, val_x, val_y
+
+
+def slice_arrays(arrays, start, stop=None):
+    if isinstance(arrays, list):
+        return [array[start:stop] for array in arrays]
+    elif hasattr(arrays, 'shape'):
+        return arrays[start:stop]

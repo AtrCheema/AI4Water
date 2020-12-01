@@ -23,7 +23,9 @@ def run_method1(method,
                                              replace_nans=replace_nans,
                                              **kwargs)('Transform', return_key=True)
 
-    denormalized_df1 = Transformations(data=normalized_df1, features=cols)('inverse', scaler=scaler['scaler'])
+    denormalized_df1 = Transformations(data=normalized_df1,
+                                       features=cols,
+                                       replace_nans=replace_nans)('inverse', scaler=scaler['scaler'])
     return normalized_df1, denormalized_df1
 
 def run_method2(method,
@@ -73,6 +75,29 @@ def run_plot_pca(scaler, y, dim):
     scaler.plot_pca(target=y, labels=['Setosa', 'Versicolour', 'Virginica'], save=None, dim=dim)
     return
 
+
+def run_log_methods(index=None):
+    a = np.random.random((10, 4))
+    a[2:4, 1] = np.nan
+    a[3:5, 2:3] = np.nan
+    a[5:8, 3] = np.nan
+
+    cols = ['data1', 'data2', 'data3', 'data4']
+
+    if index is not None:
+        index = pd.date_range("20110101", periods=len(a), freq="D")
+
+    df3 = pd.DataFrame(a, columns=cols, index=index)
+
+    _, dfo = run_method1(method='log', replace_nans=True, data=df3)
+    np.allclose(df3, dfo, equal_nan=True)
+    _, dfo = run_method2(method='log', replace_nans=True, data=df3)
+    np.allclose(df3, dfo, equal_nan=True)
+    _, dfo = run_method3(method='log', replace_nans=True, data=df3)
+    np.allclose(df3, dfo, equal_nan=True)
+    _, dfo = run_method4(method='log', replace_nans=True, data=df3)
+    np.allclose(df3, dfo, equal_nan=True)
+    return
 
 class test_Scalers(unittest.TestCase):
 
@@ -237,18 +262,12 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_log_with_nans(self):
-        a = np.random.random((5, 4))
-        a[2, 1] = np.nan
-        a[3, 2:3] = np.nan
-        a[2:4, 3] = np.nan
-        cols = ['data1', 'data2', 'data3', 'data4']
-        df3 = pd.DataFrame(a, columns=cols)
-        run_method1(method='log', replace_nans=True, data=df3)
-        run_method2(method='log', replace_nans=True, data=df3)
-        run_method3(method='log', replace_nans=True, data=df3)
-        run_method4(method='log', replace_nans=True, data=df3)
+        run_log_methods(index=None)
         return
 
+    def test_log_with_index(self):
+        run_log_methods(True)
+        return
 
 if __name__ == "__main__":
     unittest.main()

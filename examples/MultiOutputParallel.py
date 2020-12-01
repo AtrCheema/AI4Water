@@ -372,7 +372,6 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                                                          lr=lr,
                                                          ignore_nans=True,
                                                          **kwargs)
-
     lookback = data_config['lookback']
 
     data_config['inputs'] = ['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',

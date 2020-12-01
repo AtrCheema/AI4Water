@@ -25,8 +25,7 @@ if __name__ == "__main__":
 
     model = Model(data_config=data_config,
                   nn_config=nn_config,
-                  data=df,
-                  intervals=data_config['intervals']
+                  data=df
                   )
 
     model.build()

@@ -17,28 +17,37 @@ class scaler_container(object):
 
 class Transformations(scaler_container):
     """
+    Apply transformation to data.
     Any new transforming methods should define two methods one starting with "transform_with_" and "inverse_transofrm_with_"
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
-    Currently following methods are available
-      minmax
-      maxabs
-      robust
-      power
-      zscore,
-      quantile,
-      log
-      pca
-      kpca
-      ipca
-      fastica
+    ---------
+    arguments
+    ---------
+     - data: a dataframe or numpy ndarray. The transformed or inversely transformed value will have the same type as data
+             and will have the same index as data (in case data is dataframe).
+     - method: str, method by which to transform and consequencly inversely transform the data. default is 'minmax'.
+                Currently following methods are available
+                  minmax
+                  maxabs
+                  robust
+                  power
+                  zscore,
+                  quantile,
+                  log
+                  pca
+                  kpca
+                  ipca
+                  fastica
 
-    replace_nans: bool, If true, then will replace the nan values in data with some fixed value `replace_with` before
-        transformation.
-    replace_with: str/int/float, if replace_nans is True, then this value will be used to replace nans in dataframe
-        before doing transformation.
-    kwargs: any arguments provided to be provided to transformer on INTIALIZATION and not during transform or inverse
-            transform e.g. n_components for pca.
+     - features: list of strings, if data is datafrmae, then this list is the features on which we want to apply transformation.
+                 The remaining columns will remain same/unchanged.
+     - replace_nans: bool, If true, then will replace the nan values in data with some fixed value `replace_with` before
+                     transformation.
+     - replace_with: str/int/float, if replace_nans is True, then this value will be used to replace nans in dataframe
+                      before doing transformation.
+     - kwargs: any arguments provided to be provided to transformer on INTIALIZATION and not during transform or inverse
+                    transform e.g. n_components for pca.
 
     To transform a datafrmae using any of the above methods use
         scaler = Scalers(data=df, method=method)
@@ -173,6 +182,10 @@ class Transformations(scaler_container):
             assert isinstance(data, np.ndarray)
             data = pd.DataFrame(data, columns=['data'+str(i) for i in range(data.shape[1])])
 
+        # save the index if not already saved so that can be used later
+        if self.index is None:
+            self.index = data.index
+
         if self.replace_nans:
             indices = {}
 
@@ -184,7 +197,8 @@ class Transformations(scaler_container):
                     # replace nans with values
                     data[col][indices[col]] = get_val(data[col], self.replace_with)
 
-            self.nan_indices = indices
+            # because pre_processing is implemented 2 times, we don't want to overwrite nan_indices
+            if self.nan_indices is None: self.nan_indices = indices
 
         return data
 
@@ -231,10 +245,6 @@ class Transformations(scaler_container):
     def inverse_transform_with_sklearn(self, **kwargs):
 
         scaler = self.get_scaler_from_dict(**kwargs)
-
-        # if 'data' in kwargs:
-        #     if self.replace_nans:
-        #         kwargs['data'] = self.pre_process_data(kwargs['data'])
 
         to_transform = self.get_features(**kwargs)
 
@@ -302,17 +312,20 @@ class Transformations(scaler_container):
 
     def maybe_insert_features(self, trans_df):
 
+        if self.index is not None:
+            trans_df.index = self.index
+
         transformed_features = len(self.transformed_features) if self.transformed_features is not None else len(trans_df.columns)
         num_features = len(self.data.columns) if self.method.lower() not in self.dim_red_methods else transformed_features
         if len(trans_df.columns) != num_features:
-            df = pd.DataFrame()
+            df = pd.DataFrame(index=self.index)
             for col in self.data.columns: #features:
                 if col in trans_df.columns:
                     _df = trans_df[col]
                 else:
                     _df = self.data[col]
 
-                df = pd.concat([df, _df], axis=1)
+                df = pd.concat([df, _df], axis=1, sort=True)
         else:
             df = trans_df
 
@@ -399,3 +412,10 @@ def end_fig(save):
         plt.show()
     plt.close('all')
     return
+
+if __name__ == "__main__":
+    d = np.random.random((10,4))
+    d = pd.DataFrame(d, index=pd.date_range("20110101", periods=len(d), freq="6min"), columns=['data1', 'data2', 'data3', 'data4'])
+    sc = Transformations(d, method='log', features=['data3'])
+    dn, key = sc.transform(return_key=True)
+    do = sc.inverse_transform(data=dn)
