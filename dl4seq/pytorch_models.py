@@ -29,14 +29,14 @@ class HARHNModel(Model):
         return self.data_config['use_predicted_output']
 
     def build_nn(self):
-        config = self.nn_config['HARHN_config']
+        config = self.model_config['HARHN_config']
 
         self.pt_model = HARHN(config['n_conv_lyrs'],
                               self.lookback, self.ins, self.outs,
                               n_units_enc=config['enc_units'],
                               n_units_dec=config['dec_units'],
                               use_predicted_output=self.data_config['use_predicted_output']).cuda()
-        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.nn_config['lr'])
+        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.model_config['lr'])
 
         self.epoch_scheduler = torch.optim.lr_scheduler.StepLR(self.opt, 20, gamma=0.9)
 
@@ -155,12 +155,12 @@ class HARHNModel(Model):
                                                                                      target_val_t), shuffle=False,
                                                       batch_size=self.data_config['batch_size'])
 
-        min_val_loss = self.nn_config['min_val_loss']
+        min_val_loss = self.model_config['min_val_loss']
         counter = 0
         losses = {'train_loss': [],
                   'val_loss': []}
 
-        for i in range(self.nn_config['epochs']):
+        for i in range(self.model_config['epochs']):
             if self.use_predicted_output:
                 mse_train = self.train_epoch_v2(data_train_loader)
             else:
@@ -185,7 +185,7 @@ class HARHNModel(Model):
             else:
                 counter += 1
 
-            if counter == self.nn_config['patience']:
+            if counter == self.model_config['patience']:
                 print("Training is stopped because patience reached")
                 break
             train_loss = (mse_train / len(x_train_t)) ** 0.5
@@ -201,7 +201,7 @@ class HARHNModel(Model):
 
         return losses
 
-    def predict(self, st=0, ende=None, indices=None):
+    def predict(self, st=0, ende=None, indices=None, data=None, **kwargs):
         x_test, y_his_test, target_test = self.prepare_batches(self.data[st:ende], '',  self.data_config['outputs'][0])
         x_test = (x_test - self.min_max['x_min']) / (self.min_max['x_max'] - self.min_max['x_min'])
         y_his_test = (y_his_test - self.min_max['y_his_min']) / (self.min_max['y_his_max'] - self.min_max['y_his_min'])
@@ -249,7 +249,7 @@ class IMVLSTMModel(HARHNModel):
 
         self.pt_model = IMVTensorLSTM(ins, self.outs, self.data_config['batch_size']).cuda()
 
-        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.nn_config['lr'])
+        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.model_config['lr'])
 
         self.epoch_scheduler = torch.optim.lr_scheduler.StepLR(self.opt, 20, gamma=0.9)
 
@@ -287,11 +287,11 @@ class IMVLSTMModel(HARHNModel):
         data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, target_val_t),
                                                       shuffle=False, batch_size=self.data_config['batch_size'])
 
-        min_val_loss = self.nn_config['min_val_loss']
+        min_val_loss = self.model_config['min_val_loss']
         counter = 0
         losses = {'train_loss': [],
                   'val_loss': []}
-        for epoch in range(self.nn_config['epochs']):
+        for epoch in range(self.model_config['epochs']):
             mse_train = 0
             for batch_x, batch_y in data_train_loader:
                 batch_x = batch_x.cuda()
@@ -319,7 +319,7 @@ class IMVLSTMModel(HARHNModel):
             pred = np.concatenate(preds)
             true = np.concatenate(true)
 
-            if counter == self.nn_config['patience']:
+            if counter == self.model_config['patience']:
                 break
             train_loss = (mse_train / len(x_train_t)) ** 0.5
             val_loss = (mse_val / len(x_val_t)) ** 0.5
@@ -345,7 +345,7 @@ class IMVLSTMModel(HARHNModel):
 
         return
 
-    def predict(self, st=0, en=None, indices=None):
+    def predict(self, st=0, en=None, indices=None, **kwargs):
         if self.saved_model is None:
             raise ValueError("No model is saved")
         self.pt_model.load_state_dict(torch.load(self.saved_model))

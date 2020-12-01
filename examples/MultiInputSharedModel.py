@@ -49,7 +49,7 @@ class MultiInputSharedModel(Model):
 
     def build(self):
 
-        inputs, predictions = self.add_layers(self.nn_config['layers'])
+        inputs, predictions = self.add_layers(self.model_config['layers'])
 
         self._model = self.compile(inputs, predictions)
 
@@ -137,16 +137,16 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                      prefix=None,
                      batch_size=8, lookback=19, lr=1.52e-5, ignore_nans=True, **kwargs):
 
-    data_config, nn_config = make_model(batch_size=batch_size,
-                                                         lookback=lookback,
-                                                         lr=lr,
-                                                         ignore_nans=ignore_nans,
-                                                         **kwargs)
+    config = make_model(batch_size=batch_size,
+                        lookback=lookback,
+                        lr=lr,
+                        ignore_nans=ignore_nans,
+                        inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
+                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3'],
+                        outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
+                              ],
+                        **kwargs)
 
-    data_config['inputs'] = ['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3']
-    data_config['outputs'] = ['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
-                              ]
 
     fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
@@ -163,11 +163,9 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
         _model = input_model.from_config(config_path=config_path,
                                          data=[df_1, df_3, df_8  # , df_12
                                                ])
-        _model.build_nn()
         _model.load_weights(weights)
     else:
-        _model = input_model(data_config=data_config,
-                             nn_config=nn_config,
+        _model = input_model(config,
                              data=[df_1, df_3, df_8  # , df_12
                                    ],
                              prefix=prefix
@@ -194,7 +192,6 @@ if __name__ == "__main__":
                              epochs=300,
                              ignore_nans=False,
                              )
-    model.build()
     model.train(st=0, en=5500)
     # model.predict()
 

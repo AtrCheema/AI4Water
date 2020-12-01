@@ -15,20 +15,23 @@ dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
-data_config, nn_config = make_model(batch_size=16,
-                                    lookback=lookback,
-                                    lr=0.001,
-                                    use_predicted_output=True,
-                                    epochs=epochs)
+config = make_model(batch_size=16,
+                    lookback=lookback,
+                    lr=0.001,
+                    use_predicted_output=True,
+                    intervals=((0, 146,),
+                              (145, 386,),
+                              (385, 628,),
+                              (625, 821,),
+                              (821, 1110),
+                              (1110, 1447)),
+                    epochs=epochs)
 
 
-model = IMVLSTMModel(data_config=data_config,
-                     nn_config=nn_config,
+model = IMVLSTMModel(config,
                      data=df,
-                     intervals=data_config['intervals']
                      )
 
-model.build()
 h = model.train(st=0, en=1000)
 
 x, y = model.predict(st=0, en=1000)

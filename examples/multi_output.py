@@ -20,14 +20,14 @@ class MultiSite(InputAttentionModel):
 
         inputs = [train_x]
         for out in range(self.outs):
-            s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-            h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+            s0_train = np.zeros((train_x.shape[0], self.model_config['enc_config']['n_s']))
+            h0_train = np.zeros((train_x.shape[0], self.model_config['enc_config']['n_h']))
 
             inputs = inputs + [s0_train, h0_train]
 
         return inputs, [train_label[:, 0], train_label[:, 1]]
 
-    def build_nn(self):
+    def build(self):
 
         setattr(self, 'method', 'input_attention')
         print('building input attention')
@@ -37,7 +37,7 @@ class MultiSite(InputAttentionModel):
         inputs = [enc_input]
 
         for out in range(self.outs):
-            lstm_out1, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'], lstm2_seq=False, suf=str(out))
+            lstm_out1, h0, s0 = self._encoder(enc_input, self.model_config['enc_config'], lstm2_seq=False, suf=str(out))
             act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]
@@ -55,24 +55,22 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['target7', 'target8']
 
-    data_config, nn_config = make_model(batch_size=4,
-                                        lookback=15,
-                                        inputs=input_features,
-                                        outputs=outputs,
-                                        lr=0.0001,
-                                        epochs=20,
-                                        val_fraction=0.3,  # TODO why less than 0.3 give error here?
-                                        test_fraction=0.3
+    config = make_model(batch_size=4,
+                        lookback=15,
+                        inputs=input_features,
+                        outputs=outputs,
+                        lr=0.0001,
+                        epochs=20,
+                        val_fraction=0.3,  # TODO why less than 0.3 give error here?
+                        test_fraction=0.3
                                                          )
 
     fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
     df = pd.read_csv(fname, na_values="#NUM!")
     df.index = pd.to_datetime(df['Date_Time2'])
 
-    model = MultiSite(data_config=data_config,
-                      nn_config=nn_config,
-                      data=df,
-                      intervals=data_config['intervals']
+    model = MultiSite(config=config,
+                      data=df
                       )
 
 
@@ -84,8 +82,6 @@ if __name__ == "__main__":
 
 
     model.loss = loss
-
-    model.build()
 
     history = model.train(indices='random', tensorboard=True)
 

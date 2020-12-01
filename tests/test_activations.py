@@ -2,6 +2,9 @@
 import unittest
 import os
 import tensorflow as tf
+from inspect import getsourcefile
+from os.path import abspath
+import pandas as pd
 
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
@@ -9,15 +12,14 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 from dl4seq import Model
 from dl4seq.utils import make_model
 
-import pandas as pd
 
-data_config, nn_config = make_model()
-
-nn_config['epochs'] = 2
-data_config['lookback'] = 1
-
-from inspect import getsourcefile
-from os.path import abspath
+def make_model_local(**kwargs):
+    config = make_model(
+        epochs=2,
+        lookback=1,
+        **kwargs
+    )
+    return config
 
 file_path = abspath(getsourcefile(lambda:0))
 dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
@@ -40,15 +42,12 @@ class TestActivations(unittest.TestCase):
         layers["Dense"] = {'config': {'units': 1}}
         layers["reshape"] = {'config': {'target_shape': (1, 1)}}
 
-        nn_config['layers'] = layers
+        config = make_model_local(layers=layers)
 
-        model = Model(data_config,
-                      nn_config,
+        model = Model(config,
                       df,
                       verbosity=0
                       )
-
-        model.build()
 
         val = {
             '21': [0.09297575600513237, 0.09400989675627566],
@@ -69,14 +68,13 @@ class TestActivations(unittest.TestCase):
             layers["Dense_" + str(idx)] = {'config': {'units': 1, 'activation': act_fn}}
 
         layers["reshape"] = {'config': {'target_shape': (1, 1)}}
-        nn_config['layers'] = layers
-        model = Model(data_config,
-                      nn_config,
+
+        config = make_model_local(layers=layers)
+
+        model = Model(config,
                       df,
                       verbosity=0
                       )
-
-        model.build()
 
         history = model.train()
         val = {

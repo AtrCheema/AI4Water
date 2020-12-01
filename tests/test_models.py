@@ -49,22 +49,19 @@ def make_and_run(
                               (821, 1110),
                               (1110, 1447))
 
-    data_config, nn_config = make_model(batch_size=batch_size,
-                                        lookback=lookback,
-                                        lr=0.001,
-                                        inputs=inputs,
-                                        outputs = outputs,
-                                        epochs=epochs,
-                                        **kwargs)
+    config = make_model(batch_size=batch_size,
+                        lookback=lookback,
+                        lr=0.001,
+                        inputs=inputs,
+                        outputs = outputs,
+                        epochs=epochs,
+                        **kwargs)
 
     model = model(
-        data_config=data_config,
-        nn_config=nn_config,
+        config,
         data=df,
         verbosity=0
     )
-
-    model.build()
 
     _ = model.train(indices='random')
 

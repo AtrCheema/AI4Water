@@ -14,7 +14,7 @@ class CustomModel(Model):
 
     def train(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
-        optimizer = keras.optimizers.Adam(learning_rate=self.nn_config['lr'])
+        optimizer = keras.optimizers.Adam(learning_rate=self.model_config['lr'])
         # Instantiate a loss function.
         loss_fn = self.loss
 
@@ -30,7 +30,7 @@ class CustomModel(Model):
         train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_label))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
-        for epoch in range(self.nn_config['epochs']):
+        for epoch in range(self.model_config['epochs']):
             print("\nStart of epoch %d" % (epoch,))
 
             # Iterate over the batches of the dataset.
@@ -88,26 +88,22 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config':  {'units': 1}}
           }
 
-data_config, nn_config = make_model(layers=layers,
-                                    batch_size=12,
-                                    lookback=15,
-                                    lr=8.95e-5,
-                                    ignore_nans=False,
-                                    inputs=input_features,
-                                    outputs=outputs,
-                                    epochs=10)
+config = make_model(layers=layers,
+                    batch_size=12,
+                    lookback=15,
+                    lr=8.95e-5,
+                    ignore_nans=False,
+                    inputs=input_features,
+                    outputs=outputs,
+                    epochs=10)
 
 fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
 df = pd.read_csv(fname)  # must be 2d dataframe
 
 
-model = CustomModel(data_config=data_config,
-                    nn_config=nn_config,
+model = CustomModel(config=config,
                     data=df
                     )
-
-model.build()
-
 history = model.train(indices='random', tensorboard=True)
 
 test_pred, test_obs = model.predict(indices=model.test_indices)

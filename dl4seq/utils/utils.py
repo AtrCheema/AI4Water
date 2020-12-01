@@ -342,7 +342,7 @@ def make_model(**kwargs):
         else:
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
-    return data_config, model_config
+    return {"data_config": data_config, "model_config": model_config}
 
 
 def update_dict(key, val, dtype, dict_to_update):

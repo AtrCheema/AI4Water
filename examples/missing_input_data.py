@@ -29,17 +29,14 @@ print("{} nan values created in NDX column".format(out.isna().sum()))
 # verify the missing values
 print(df[98:108])
 
-data_config, nn_config = make_model(batch_size=32,
-                                       lookback=5,
-                                       lr=0.0001)
+config = make_model(batch_size=32,
+                    lookback=5,
+                    lr=0.0001)
 
-model = DualAttentionModel(data_config=data_config,
-                           nn_config=nn_config,
+model = DualAttentionModel(config=config,
                            data=df,
                            intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)]
                            )
-
-model.build()
 
 history = model.train(indices='random')
 

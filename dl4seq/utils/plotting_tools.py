@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
-from xgboost import plot_importance
+from xgboost import plot_importance, plot_tree
 
 class Plots(object):
     # TODO initialte this class with at least path
@@ -441,6 +441,13 @@ class Plots(object):
         assert self.problem.upper().startswith("CLASS")
         plot_precision_recall_curve(self._model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
+        return
+
+    def plot_xgbmodel(self, save=True, **kwargs):
+        """For kwargs see https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree"""
+        plt.close('')
+        plot_tree(self._model, **kwargs)
+        self.save_or_show(save, fname="model", where="results")
         return
 
 def _get_nrows_and_ncols(n_subplots, n_rows=None):

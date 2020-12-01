@@ -23,8 +23,8 @@ class DualAttentionModel(Model):
 
     def build(self):
 
-        dec_config = self.nn_config['dec_config']
-        enc_config = self.nn_config['enc_config']
+        dec_config = self.model_config['dec_config']
+        enc_config = self.model_config['enc_config']
 
         self.de_LSTM_cell = layers.LSTM(dec_config['p'], return_state=True, name='decoder_LSTM')
         self.de_densor_We = layers.Dense(enc_config['m'])
@@ -34,7 +34,7 @@ class DualAttentionModel(Model):
         input_y = layers.Input(shape=(self.lookback - 1, self.outs), name='input_y')
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
 
-        enc_lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'])
+        enc_lstm_out, h0, s0 = self._encoder(enc_input, self.model_config['enc_config'])
 
         if self.verbosity > 2:
             print('encoder output before reshaping: ', enc_lstm_out)
@@ -183,7 +183,7 @@ class DualAttentionModel(Model):
         _concat = layers.Concatenate(name='eq_12_'+str(t))([_h_de_prev, _s_de_prev])  # (None,1,2p)
         result1 = self.de_densor_We(_concat)   # (None,1,m)
         result1 = layers.RepeatVector(self.lookback)(result1)  # (None,T,m)
-        result2 = MyDot(self.nn_config['enc_config']['m'])(_h_en_all)
+        result2 = MyDot(self.model_config['enc_config']['m'])(_h_en_all)
         if self.verbosity > 2:
             print('result1:', result1)
             print('result2:', result2)
@@ -226,10 +226,10 @@ class DualAttentionModel(Model):
 
         x, prev_y, labels = self.fetch_data(self.data, **kwargs)
 
-        s0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_h']))
+        s0 = np.zeros((x.shape[0], self.model_config['enc_config']['n_s']))
+        h0 = np.zeros((x.shape[0], self.model_config['enc_config']['n_h']))
 
-        h_de0 = s_de0 = np.zeros((x.shape[0], self.nn_config['dec_config']['p']))
+        h_de0 = s_de0 = np.zeros((x.shape[0], self.model_config['dec_config']['p']))
 
         return [x, prev_y, s0, h0, h_de0, s_de0], labels
 
@@ -241,7 +241,7 @@ class InputAttentionModel(DualAttentionModel):
         print('building input attention')
 
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')
-        lstm_out, h0, s0 = self._encoder(enc_input, self.nn_config['enc_config'], lstm2_seq=False)
+        lstm_out, h0, s0 = self._encoder(enc_input, self.model_config['enc_config'], lstm2_seq=False)
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.outs)(act_out)
@@ -256,8 +256,8 @@ class InputAttentionModel(DualAttentionModel):
     def train_data(self, data=None, **kwargs):
         x, y, labels = self.fetch_data(self.data, **kwargs)
 
-        s0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0 = np.zeros((x.shape[0], self.nn_config['enc_config']['n_h']))
+        s0 = np.zeros((x.shape[0], self.model_config['enc_config']['n_s']))
+        h0 = np.zeros((x.shape[0], self.model_config['enc_config']['n_h']))
 
         return [x, s0, h0], labels
 
@@ -270,15 +270,15 @@ class OutputAttentionModel(DualAttentionModel):
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
-        enc_config = self.nn_config['enc_config']
-        dec_config = self.nn_config['dec_config']
+        enc_config = self.model_config['enc_config']
+        dec_config = self.model_config['dec_config']
 
         self.de_densor_We = layers.Dense(enc_config['m'])
         h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
         s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
         prev_output = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
 
-        enc_lstm_out = layers.LSTM(self.nn_config['lstm_config']['lstm_units'], return_sequences=True,
+        enc_lstm_out = layers.LSTM(self.model_config['lstm_config']['lstm_units'], return_sequences=True,
                                    name='starting_LSTM')(inputs)
         print('Output from LSTM: ', enc_lstm_out)
         enc_out = layers.Reshape((self.lookback, -1), name='enc_out_eq_11')(enc_lstm_out)  # eq 11 in paper
@@ -304,7 +304,7 @@ class OutputAttentionModel(DualAttentionModel):
                                                         write_data=self.data_config['CACHEDATA'],
                                                         indices=indices)
 
-        h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.nn_config['dec_config']['p']))
+        h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.model_config['dec_config']['p']))
 
         inputs = [train_x, train_y, s_de0_train, h_de0_train]
         history = self.fit(inputs, train_label, **callbacks)
@@ -327,7 +327,7 @@ class OutputAttentionModel(DualAttentionModel):
                                                      write_data=False,
                                                      indices=indices)
 
-        h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
+        h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.model_config['dec_config']['p']))
 
         predicted = self._model.predict([test_x, test_y, s_de0_test, h_de0_test],
                                          batch_size=test_x.shape[0],

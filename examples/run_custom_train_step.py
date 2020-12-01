@@ -32,25 +32,22 @@ class CustomModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-data_config, nn_config = make_model(lstm_units=64,
-                                                     dropout=0.4,
-                                                     rec_dropout=0.5,
-                                                     lstm_act='relu',
-                                                     batch_size=32,
-                                                     lookback=1,
-                                                     lr=8.95e-5)
+config = make_model(lstm_units=64,
+                    dropout=0.4,
+                    rec_dropout=0.5,
+                    lstm_act='relu',
+                    batch_size=32,
+                    lookback=1,
+                    lr=8.95e-5)
 
 fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
-model = Model(data_config=data_config,
-              nn_config=nn_config,
+model = Model(config=config,
               data=df
               )
 
 model.KModel = CustomModel
-
-model.build()
 
 history = model.train(indices='random')
 

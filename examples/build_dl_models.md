@@ -22,20 +22,17 @@ layers = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
           "Dense_3": {'config': {'units': 1}}
           }
 
-data_config, nn_config, _ = make_model(batch_size=16,
+config = make_model(batch_size=16,
     lookback=1,
     lr=0.001,
+    layers=layers,
     epochs=2)
-nn_config['layers'] = layers
 
 df = pd.read_csv('data/all_data_30min.csv')
 
-_model = Model(data_config=data_config,
-              nn_config=nn_config,
+model = Model(config=config,
               data=df
               )
-
-_model.build()
 ```
 
 <img src="imgs/mlp.png" width="300" height="400" />
@@ -52,20 +49,17 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1}}
           }
-data_config, nn_config, _ = make_model(batch_size=16,
+config = make_model(batch_size=16,
     lookback=1,
     lr=0.001,
+    layers=layers,
     epochs=2)
-nn_config['layers'] = layers
 
 df = pd.read_csv("data/all_data_30min.csv")
 
-_model = Model(data_config=data_config,
-              nn_config=nn_config,
+model = Model(config=config,
               data=df
               )
-
-_model.build()
 ```
 <img src="imgs/lstm.png" width="300" height="400" />
 
@@ -187,7 +181,7 @@ case whose members must be the names of the layers which must have been defined 
 from dl4seq import Model
 class MyModel(Model):
 
-    def run_paras(self, **kwargs) -> (list, list):
+    def train_data(self, **kwargs) -> (list, list):
         """ write code which returns x and y where x consits of [(samples, 5, 10), (samples, 10)] and y consits of 
             list [(samples, 1)]
          """

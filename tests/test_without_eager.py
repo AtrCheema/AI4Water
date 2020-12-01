@@ -16,12 +16,11 @@ from os.path import abspath
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
-    data_config, nn_config = make_model(batch_size=64,
-                                           lookback=lookback,
-                                           lr=0.001,
-                                           epochs=epochs,
-                                           **kwargs)
-    nn_config['layers'] = _layers
+    config = make_model(batch_size=64,
+                        lookback=lookback,
+                        lr=0.001,
+                        epochs=epochs,
+                        **kwargs)
 
     file_path = abspath(getsourcefile(lambda: 0))
     dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
@@ -29,13 +28,10 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
     df = pd.read_csv(fname)
 
     model = input_model(
-        data_config=data_config,
-        nn_config=nn_config,
+        config=config,
         data=df,
         verbosity=0
     )
-
-    model.build()
 
     _ = model.train(indices='random')
 

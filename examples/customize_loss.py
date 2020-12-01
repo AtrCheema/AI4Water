@@ -43,25 +43,22 @@ layers = {'Dense_0': {'config':  {'units': 64, 'activation': 'relu'}},
           'Dense_2': {'config':  {'units': 16, 'activation': 'relu'}},
           'Dense_3': {'config':  {'units': 9}}}
 
-data_config, nn_config = make_model(inputs=['input_' + str(i) for i in range(cols-1)],
-                                       outputs=['input_' + str(cols-1)],
-                                       lookback=1,
-                                       layers=layers,
-                                       epochs=100)
+config = make_model(inputs=['input_' + str(i) for i in range(cols-1)],
+                    outputs=['input_' + str(cols-1)],
+                    lookback=1,
+                    layers=layers,
+                    epochs=100)
 
 # Define Quantiles
 quantiles = [0.005, 0.025, 0.165, 0.250, 0.500, 0.750, 0.835, 0.975, 0.995]
 
 # Initiate Model
-model = QuantileModel(data_config, nn_config, data)
+model = QuantileModel(config=config, data=data)
 
 # Assign loss for the model
 model.loss = qloss
 # the quantiles must also be assigned to the model for post-processing purpose
 model.quantiles = quantiles
-
-# Build the NN
-model.build()
 
 # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
 model.train(st=0, en=1500)

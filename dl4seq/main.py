@@ -33,9 +33,11 @@ if tf is not None:
 
 class Model(NN, Plots):
     """
+    Model class that implements everything.
 
-    data_config: dict
-    nn_config: dict
+    config: dict, consisting of two dictionaries
+        - data_config:
+        - model_config:
     data: pd.Dataframe or any other conforming type
     prefix: str, prefix to be used for the folder in which the results are saved
     path: str/path like, if given, new path will not be created
@@ -44,8 +46,8 @@ class Model(NN, Plots):
     problem: str, tell whether it is is classification problem or regression problem.
 
     """
-    def __init__(self, data_config: dict,
-                 nn_config: dict,
+    def __init__(self,
+                 config:dict,
                  data=None,
                  prefix: str = None,
                  path: str = None,
@@ -53,24 +55,27 @@ class Model(NN, Plots):
                  category="DL",
                  problem="reg"):
 
+        data_config, model_config = config['data_config'], config['model_config']
         reset_seed(data_config['seed'])
         if tf is not None:
             # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
             # file, they may share same graph.
             tf.keras.backend.clear_session()
 
-        super(Model, self).__init__(data_config, nn_config)
+        super(Model, self).__init__(**config)
 
         self.intervals = data_config['intervals']
         self.data = data
         self.in_cols = self.data_config['inputs']
         self.out_cols = self.data_config['outputs']
-        self.loss = LOSSES[self.nn_config['loss'].upper()]
+        self.loss = LOSSES[self.model_config['loss'].upper()]
         self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
         self.category = category
         self.problem = problem
+
+        self.build() # will initialize ML models or build NNs
 
     @property
     def forecast_step(self):
@@ -439,7 +444,7 @@ class Model(NN, Plots):
 
         _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
         fname = "{val_loss:.4f}.hdf5" if self.data_config['val_fraction'] > 0.0 else "{loss:.5f}.hdf5"
-        if self.nn_config['save_model']:
+        if self.model_config['save_model']:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
                 filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
                 save_weights_only=True,
@@ -448,8 +453,8 @@ class Model(NN, Plots):
                 save_best_only=True))
 
         _callbacks.append(keras.callbacks.EarlyStopping(
-            monitor=_monitor, min_delta=self.nn_config['min_val_loss'],
-            patience=self.nn_config['patience'], verbose=0, mode='auto'
+            monitor=_monitor, min_delta=self.model_config['min_val_loss'],
+            patience=self.model_config['patience'], verbose=0, mode='auto'
         ))
 
         if 'tensorboard' in callbacks:
@@ -469,12 +474,12 @@ class Model(NN, Plots):
 
         self._model.fit(inputs,
                         y=None if isinstance(inputs, tf.data.Dataset) else outputs,
-                         epochs=self.nn_config['epochs'],
+                         epochs=self.model_config['epochs'],
                          batch_size=None if isinstance(inputs, tf.data.Dataset) else self.data_config['batch_size'],
                          validation_split=0.0 if isinstance(inputs, tf.data.Dataset) else self.data_config['val_fraction'],
                          validation_data=validation_data,
                          callbacks=callbacks,
-                         shuffle=self.nn_config['shuffle'],
+                         shuffle=self.model_config['shuffle'],
                          steps_per_epoch=self.data_config['steps_per_epoch'],
                          verbose=self.verbosity
                          )
@@ -522,7 +527,7 @@ class Model(NN, Plots):
 
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
 
-        if self.nn_config['shuffle']:
+        if self.model_config['shuffle']:
             train_dataset = train_dataset.shuffle(self.data_config['buffer_size'])
         train_dataset = train_dataset.batch(self.data_config['batch_size'],
                                              drop_remainder=self.data_config['drop_remainder'])
@@ -659,7 +664,7 @@ class Model(NN, Plots):
             print('building {} layer based model for {} problem'.format(self.category, self.problem))
 
         if self.category.upper() == "DL":
-            inputs, predictions = self.add_layers(self.nn_config['layers'])
+            inputs, predictions = self.add_layers(self.model_config['layers'])
 
             self._model = self.compile(inputs, predictions)
 
@@ -667,7 +672,7 @@ class Model(NN, Plots):
             self.build_ml_model()
 
         if self.verbosity > 0:
-            if 'tcn' in self.nn_config['layers']:
+            if 'tcn' in self.model_config['layers']:
                 tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
 
         return
@@ -675,14 +680,23 @@ class Model(NN, Plots):
     def build_ml_model(self):
         """ currently only sklearn based  ML models. """
 
-        regr_name = self.nn_config['ml_model'].upper()
+        regr_name = self.model_config['ml_model'].upper()
         sklearn_models = get_sklearn_models()
         xgboost_models = get_xgboost_models()
+        kwargs = self.model_config['ml_model_args']
         if regr_name in sklearn_models:
-            regr = sklearn_models[regr_name](**self.nn_config['ml_model_args'])
+            if kwargs is not None:  # sklear-raises error when kwargs is None (default here)
+                #if len(kwargs)>0:
+                regr = sklearn_models[regr_name](**kwargs)
+            else:
+                regr = sklearn_models[regr_name]()
         elif regr_name in xgboost_models:
-            regr = xgboost_models[regr_name](**self.nn_config['ml_model_args'],
-                                verbosity=self.verbosity)
+            if kwargs is not None:
+                #if len(kwargs)> 0:
+                regr = xgboost_models[regr_name](**kwargs,
+                            verbosity=self.verbosity)
+            else:
+                regr = xgboost_models[regr_name](verbosity=self.verbosity)
         else:
             raise ValueError(f"model {regr_name} not found")
 
@@ -725,6 +739,8 @@ class Model(NN, Plots):
 
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
+            if self.model_config['ml_model'].lower().startswith("xgb"):
+                self.plot_xgbmodel()
 
         return history
 
@@ -878,7 +894,7 @@ class Model(NN, Plots):
         k_model = self.KModel(inputs=model_inputs, outputs=outputs)
 
         opt_args = self.get_opt_args()
-        optimizer = OPTIMIZERS[self.nn_config['optimizer'].upper()](**opt_args)
+        optimizer = OPTIMIZERS[self.model_config['optimizer'].upper()](**opt_args)
 
         k_model.compile(loss=self.loss, optimizer=optimizer, metrics=self.get_metrics())
 
@@ -894,7 +910,7 @@ class Model(NN, Plots):
     def get_opt_args(self):
         """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
         in sub-classes"""
-        return {'lr': self.nn_config['lr']}
+        return {'lr': self.model_config['lr']}
 
     def get_metrics(self) -> list:
         """ returns the performance metrics specified"""
@@ -1311,7 +1327,7 @@ class Model(NN, Plots):
         config = dict()
         config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
         config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
-        config['nn_config'] = self.nn_config
+        config['model_config'] = self.model_config
         config['data_config'] = self.data_config
         config['method'] = self.method
         config['quantiles'] = self.quantiles
@@ -1335,8 +1351,8 @@ class Model(NN, Plots):
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
 
-        data_config = config['data_config']
-        nn_config = config['nn_config']
+        config = {'data_config': config['data_config'],
+                  'model_config':config['model_config']}
 
         cls.from_check_point = True
 
@@ -1348,8 +1364,7 @@ class Model(NN, Plots):
             path = os.path.dirname(config_path)
         else:
             path = None
-        return cls(data_config=data_config,
-                   nn_config=nn_config,
+        return cls(config,
                    data=data,
                    path=path)
 

@@ -42,7 +42,7 @@ Currently following models are implemented
 | Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
 | Input Attention  | `InputAttentionModel` | |
 
-`*` These models can be constructed by stacking layers in a python dictionary as shown later here. The remaining models 
+`*` These models can be constructed by stacking layers in a python dictionary as shown in [examples](https://github.com/AtrCheema/dl4seq/blob/master/examples/build_dl_models.md). The remaining models 
 can be used as shown [here](https://github.com/AtrCheema/dl4seq/blob/master/examples/build_dl_models.md)
 
 ## Installation
@@ -62,18 +62,15 @@ import pandas as pd
 from dl4seq import InputAttentionModel  # import any of the above model
 from dl4seq.utils import make_model  # helper function to make inputs for model
 
-data_config, nn_config = make_model(batch_size=16,
-                                                     lookback=15,
-                                                     lr=0.001)
+config = make_model(batch_size=16,
+                    lookback=15,
+                    lr=0.001)
 df = pd.read_csv('data/data_30min.csv')  # path for data file
 
-model = InputAttentionModel(data_config=data_config,
-              nn_config=nn_config,
-              data=df,
-              intervals=data_config['intervals']
+model = InputAttentionModel(
+              config=config,
+              data=df
               )
-
-model.build()
 
 history = model.train(indices='random')
 
@@ -92,18 +89,17 @@ from dl4seq.utils import make_model  # helper function to make inputs for model
 
 df = pd.read_csv('data/data_30min.csv')  # path for data file
 
-data_config, nn_config = make_model(batches="2d",
-                                    inputs=['input1', 'input2', 'input3', 'input4'],
-                                    outputs=['target7'],
-                                    lookback=1,
-                                    val_fraction=0.0,
-                                    ml_model="randomforestregressor",  #  any regressor from https://scikit-learn.org/stable/modules/classes.html
-                                    ml_model_args={"n_estimators":1000}  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
+config = make_model(batches="2d",
+                    inputs=['input1', 'input2', 'input3', 'input4'],
+                    outputs=['target7'],
+                    lookback=1,
+                    val_fraction=0.0,
+                    ml_model="randomforestregressor",  #  any regressor from https://scikit-learn.org/stable/modules/classes.html
+                    ml_model_args={"n_estimators":1000}  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
 )
 
-model = Model(data_config=data_config,
-              nn_config=nn_config,
+model = Model(config=config,
               data=df,
               category="ML"
               )

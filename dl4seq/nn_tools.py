@@ -48,11 +48,12 @@ class AttributeStore(object):
 
 class NN(AttributeStore):
 
-    def __init__(self, data_config: dict,
-                 nn_config: dict
+    def __init__(self,
+                 data_config: dict,
+                 model_config: dict
                  ):
         self.data_config = data_config
-        self.nn_config = nn_config
+        self.model_config = model_config
         self.lookback = self.data_config['lookback']
 
         super(NN, self).__init__()
