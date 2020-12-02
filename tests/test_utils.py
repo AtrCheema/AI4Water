@@ -71,6 +71,24 @@ def train_predict(model):
     return x,y
 
 
+def run_same_train_val_data(**kwargs):
+    config = make_model(
+        val_data="same",
+        val_fraction=0.0,
+        test_fraction=0.2,
+        epochs=1,
+    )
+
+    model = Model(config,
+                  data=nasdaq_df,
+                  verbosity=0)
+
+    model.train(**kwargs)
+
+    x, y = model.train_data(indices=model.train_indices)
+    return x, y
+
+
 class TestUtils(unittest.TestCase):
 
     """
@@ -353,27 +371,29 @@ class TestUtils(unittest.TestCase):
 
         return
 
-    def test_same_test_val_data_train(self):
+    def test_same_test_val_data_train_random(self):
         #TODO not a good test, must check that individual elements in returned arrayare correct
-        config = make_model(
-            val_data="same",
-            val_fraction=0.0,
-            test_fraction=0.2,
-            epochs=1,
-        )
 
-        model = Model(config,
-                      data=nasdaq_df,
-                      verbosity=0)
+        x,y = run_same_train_val_data(indices='random')
+        self.assertEqual(len(x[0]), len(y))
 
-        h = model.train(indices='random')
+        return
 
-        x, y = model.train_data(indices=model.train_indices)
+
+    def test_same_test_val_data_with_chunk(self):
+        #TODO not a good test, must check that individual elements in returned arrayare correct
+
+        x, y = run_same_train_val_data(st=0, en=3000)
 
         self.assertEqual(len(x[0]), len(y))
 
         return
 
+    def test_same_test_val_data(self):
+
+        x,y = run_same_train_val_data()
+        self.assertEqual(len(x[0]), len(y))
+        return
 
 if __name__ == "__main__":
     unittest.main()

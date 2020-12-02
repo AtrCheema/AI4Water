@@ -496,7 +496,6 @@ class Model(NN, Plots):
           - val_dataset
           - train_dataset
           """
-        x_val, y_val =  None, None
 
         if isinstance(val_data, str):
             # we need to get validation data from training data depending upon value of 'val_fraction' and convert it
@@ -507,13 +506,9 @@ class Model(NN, Plots):
                 x_train, y_train, x_val, y_val = split_by_indices(inputs, outputs,
                                                                   self.test_indices)
             else:
+                # split the data into train/val by chunk not randomly
                 x_train, y_train, x_val, y_val = train_val_split(inputs, outputs, val_frac)
-                # Normally we should not encounter such scenario. TODO, raise error?
-                x_train = inputs
-                y_train = outputs
 
-            if self.verbosity > 0.0:
-                print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
         elif hasattr(val_data, '__len__'):
             # val_data has already been in the form of x,y paris
             x_train = inputs
@@ -525,6 +520,9 @@ class Model(NN, Plots):
         else:
             return inputs, outputs, val_data
 
+        if self.verbosity > 0.0:
+            print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
+
         train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
 
         if self.model_config['shuffle']:
@@ -533,6 +531,9 @@ class Model(NN, Plots):
                                              drop_remainder=self.data_config['drop_remainder'])
 
         if x_val is not None:
+            assert self.num_input_layers == 1
+            if isinstance(x_val, list):
+                x_val = x_val[0]
             assert isinstance(x_val, np.ndarray)
             val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
             val_dataset = val_dataset.batch(self.data_config['batch_size'],
