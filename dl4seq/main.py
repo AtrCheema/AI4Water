@@ -9,6 +9,7 @@ import json
 import h5py
 import random
 import math
+import warnings
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
@@ -33,7 +34,7 @@ if tf is not None:
 
 class Model(NN, Plots):
     """
-    Model class that implements everything.
+    Model class that implements theme of dl4seq.
 
     config: dict, consisting of two dictionaries
         - data_config:
@@ -62,7 +63,9 @@ class Model(NN, Plots):
             # file, they may share same graph.
             tf.keras.backend.clear_session()
 
-        super(Model, self).__init__(**config)
+        #super(Model, self).__init__(**config)
+        NN.__init__(self, **config)
+
 
         self.intervals = data_config['intervals']
         self.data = data
@@ -74,6 +77,8 @@ class Model(NN, Plots):
         self.verbosity = verbosity
         self.category = category
         self.problem = problem
+
+        Plots.__init__(self, self.path, self.problem, self.category, self._model, **config)
 
         self.build() # will initialize ML models or build NNs
 
@@ -143,6 +148,10 @@ class Model(NN, Plots):
         self._loss = x
 
     @property
+    def quantiles(self):
+        return self.model_config['quantiles']
+
+    @property
     def KModel(self):
         """In case when we want to customize the model such as for
         implementing custom `train_step`, we can provide the customized model as input the this Model class"""
@@ -185,10 +194,6 @@ class Model(NN, Plots):
             return np.inf
         else:
             return len(self._model.inputs)
-
-    def feature_imporance(self):
-        if self.category.upper() == "ML":
-            return self._model.feature_importances_
 
     def fetch_data(self, data: pd.DataFrame, st: int = 0, en=None,
                    shuffle: bool = False,  # TODO, is this arg requried?
@@ -719,8 +724,11 @@ class Model(NN, Plots):
 
                 # It is good that the user knows  explicitly that either of val_fraction or test_fraction is used so
                 # one of them must be set to 0.0
-                assert self.data_config['val_fraction'] == 0.0
-                assert self.data_config['test_fraction'] > 0.0
+                if self.data_config['val_fraction'] > 0.0:
+                    warnings.warn(f"Setting validation from {self.data_config['val_fraction']} to 0.0")
+                    self.data_config['val_fraction'] = 0.0
+
+                assert self.data_config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.data_config['test_fraction']}"
 
                 if self.test_indices is not None:
                     x, prev_y, label = self.fetch_data(data=self.data, indices=self.test_indices)
@@ -746,7 +754,7 @@ class Model(NN, Plots):
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
             if self.model_config['ml_model'].lower().startswith("xgb"):
-                self.plot_xgbmodel()
+
                 fname = os.path.join(self.w_path, "xgboost_model.json")
                 self._model.save_model(fname)
 
@@ -754,8 +762,9 @@ class Model(NN, Plots):
 
     def test_data(self, **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
-        if kwargs['data'] is not None:
-            return kwargs['data']
+        if 'data' in kwargs:
+            if kwargs['data'] is not None:
+                return kwargs['data']
 
         return self.train_data(**kwargs)
 
@@ -800,7 +809,7 @@ class Model(NN, Plots):
         predicted = self.prediction_step(inputs)
 
         if self.problem.upper().startswith("CLASS"):
-            self.plot_roc_curve(inputs, true_outputs)
+            self.roc_curve(inputs, true_outputs)
 
         predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
 
@@ -859,6 +868,7 @@ class Model(NN, Plots):
                     in_obs = Transformations(data=in_obs, **transformation)(what='inverse', scaler=scaler)
                     in_pred = Transformations(data=in_pred, **transformation)(what='inverse', scaler=scaler)
                 else:
+                    assert isinstance(transformation, str)
                     scaler = self.scalers[scaler_key]['scaler']
                     in_obs = Transformations(data=in_obs, method=transformation)(what='inverse', scaler=scaler)
                     in_pred = Transformations(data=in_pred, method=transformation)(what='inverse', scaler=scaler)
@@ -1070,9 +1080,9 @@ class Model(NN, Plots):
 
         return keract.get_gradients_of_trainable_weights(self._model, x, y)
 
-    def gradients_of_activations(self, st=0, en=None, indices=None, layer_name=None, **kwargs) -> dict:
+    def gradients_of_activations(self, st=0, en=None, indices=None, data=None, layer_name=None, **kwargs) -> dict:
 
-        x, y = self.test_data(st=st, en=en, indices=indices)
+        x, y = self.test_data(st=st, en=en, indices=indices, data=data)
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
@@ -1088,11 +1098,46 @@ class Model(NN, Plots):
                 weights[weight.name] = keras.backend.eval(weight)
         return weights
 
+    def find_num_lstms(self)->list:
+        """Finds names of lstm layers in model"""
+
+        lstm_names = []
+        for lyr, config in self.model_config['layers'].items():
+            if "LSTM" in lyr.upper():
+
+                prosp_name = config["config"]['name'] if "name" in config['config'] else lyr
+
+                lstm_names.append(prosp_name)
+
+        return lstm_names
+
+    def get_rnn_weights(self, weights:dict)->dict:
+        """Finds RNN related weights and combine kernel, recurrent curnel and bias
+        of each layer into a list."""
+        lstm_weights = {}
+        if "LSTM" in self.model_config['layers']:
+            lstms = self.find_num_lstms()
+            for lstm in lstms:
+                lstm_w = []
+                for w in ["kernel", "recurrent_kernel", "bias"]:
+                    w_name = lstm + "/lstm_cell/" + w
+                    for k,v in weights.items():
+                        if w_name in k:
+                            lstm_w.append(v)
+
+                lstm_weights[lstm] = lstm_w
+
+        return lstm_weights
+
     def plot_weights(self, save=True):
         weights = self.trainable_weights()
 
         if self.verbosity > 0:
             print("Plotting trainable weights of layers of the model.")
+
+        rnn_weights = self.get_rnn_weights(weights)
+        for k,w in rnn_weights.items():
+            self.rnn_histogram(w, name=k+"_weight_histogram", save=save)
 
         for _name, weight in weights.items():
             title = _name + " Weights"
@@ -1112,9 +1157,9 @@ class Model(NN, Plots):
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
-    def plot_activations(self, save: bool = True, **kwargs):
-        """ plots activations of intermediate layers except input and output.
-        If called without any arguments then it will plot activations of all layers."""
+    def plot_layer_outputs(self, save: bool = True, **kwargs):
+        """Plots outputs of intermediate layers except input and output.
+        If called without any arguments then it will plot outputs of all layers."""
         activations, _ = self.activations(**kwargs)
 
         if self.verbosity > 0:
@@ -1123,24 +1168,27 @@ class Model(NN, Plots):
         for lyr_name, activation in activations.items():
             # activation may be tuple e.g if input layer receives more than 1 input
             if isinstance(activation, np.ndarray):
-                self._plot_activation(activation, lyr_name, save)
+                self._plot_layer_outputs(activation, lyr_name, save)
 
             elif isinstance(activation, tuple):
                 for act in activation:
-                    self._plot_activation(act, lyr_name, save)
+                    self._plot_layer_outputs(act, lyr_name, save)
         return
 
-    def _plot_activation(self, activation, lyr_name, save):
+    def _plot_layer_outputs(self, activation, lyr_name, save):
+
         if "LSTM" in lyr_name.upper() and np.ndim(activation) in (2, 3):
-            self.features_2d(activation, save=save, lyr_name=lyr_name, norm=(-1, 1))
+
+            self.features_2d(activation, save=save, name=lyr_name+"_outputs", title="Outputs", norm=(-1, 1))
+
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
-            self._imshow(activation, lyr_name + " Activations", save, lyr_name)
+            self._imshow(activation, lyr_name + " Outputs", save, lyr_name)
         elif np.ndim(activation) == 3:
             self._imshow_3d(activation, lyr_name, save=save)
         elif np.ndim(activation) == 2:  # this is now 1d
             # shape= (?, 1)
-            self.plot1d(activation, label=lyr_name + ' Activations', save=save,
-                        fname=lyr_name + '_activations')
+            self.plot1d(activation, label=lyr_name + ' Outputs', save=save,
+                        fname=lyr_name + '_outputs')
         else:
             print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
                                                                                    np.ndim(activation)))
@@ -1154,6 +1202,10 @@ class Model(NN, Plots):
         if self.verbosity > 0:
             print("Plotting gradients of trainable weights")
 
+        rnn_weights = self.get_rnn_weights(gradients)
+        for k,w in rnn_weights.items():
+            self.rnn_histogram(w, name=k+"_weight_grads_histogram", save=save)
+
         for lyr_name, gradient in gradients.items():
 
             title = lyr_name + "Weight Gradients"
@@ -1163,6 +1215,9 @@ class Model(NN, Plots):
             if "LSTM" in title.upper():
                 rnn_args = {'n_gates': 4,
                             'gate_names_str': "(input, forget, cell, output)"}
+
+                if np.ndim(gradient) == 3:
+                    self.rnn_histogram(gradient, name=fname, title=title, save=save)
 
             if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
                 self._imshow(gradient, title, save, fname, rnn_args=rnn_args)
@@ -1181,10 +1236,17 @@ class Model(NN, Plots):
             print("Plotting gradients of activations of layersr")
 
         for lyr_name, gradient in gradients.items():
-            fname = lyr_name + "_activation gradients"
-            title = lyr_name + " Activation Gradients"
+            fname = lyr_name + "_output_grads"
+            title = lyr_name + " Output Gradients"
             if "LSTM" in lyr_name.upper() and np.ndim(gradient) in (2, 3):
-                self.features_2d(gradient, lyr_name=lyr_name, save=save)
+
+                self.features_2d(gradient, name=fname, title=title, save=save, n_rows=8, norm=(-1e-4, 1e-4))
+                self.features_1d(gradient[0], show_borders=False, name=fname, title=title, save=save, n_rows=8)
+
+                if gradient.ndim == 2:
+                    self.features_0d(gradient, name=fname, title=title, save=save)
+
+
 
             elif np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
@@ -1214,10 +1276,27 @@ class Model(NN, Plots):
 
     def view_model(self, **kwargs):
         """ shows all activations, weights and gradients of the keras model."""
-        self.plot_act_grads(**kwargs)
-        self.plot_weight_grads(**kwargs)
-        self.plot_activations(**kwargs)
-        self.plot_weights()
+        if self.model_config['ml_model'] is not None:
+
+            if self.problem.lower().startswith("cl"):
+                self.plot_treeviz_leaves()
+                self.decision_tree(which="sklearn", **kwargs)
+
+                x, y = self.test_data()
+                self.confusion_matrx(x=x, y=y)
+                self.precision_recall_curve(x=x, y=y)
+                self.roc_curve(x=x, y=y)
+
+
+            if self.model_config['ml_model'].lower().startswith("xgb"):
+                self.decision_tree(which="xgboost", **kwargs)
+
+        if self.category.upper() == "DL":
+            self.plot_act_grads(**kwargs)
+            self.plot_weight_grads(**kwargs)
+            self.plot_layer_outputs(**kwargs)
+            self.plot_weights()
+
         return
 
     def plot_act_along_lookback(self, activations, sample=0):

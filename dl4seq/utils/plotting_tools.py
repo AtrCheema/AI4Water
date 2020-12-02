@@ -4,10 +4,36 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
+from sklearn import tree
 from xgboost import plot_importance, plot_tree
+from see_rnn.visuals_gen import features_0D, features_1D, features_2D
+
+from dl4seq.utils.utils_from_see_rnn import rnn_histogram
+
+try:
+    from dtreeviz import trees
+except ModuleNotFoundError:
+    trees = None
+
+rnn_info = {"LSTM": {'rnn_type': 'LSTM',
+                     'gate_names': ['INPUT', 'FORGET', 'CELL', 'OUTPUT'],
+                     'n_gates': 4,
+                     'is_bidir': False,
+                     'rnn_dim': 64,
+                     'uses_bias': True,
+                     'direction_names': [[]]}}
 
 class Plots(object):
     # TODO initialte this class with at least path
+
+    def __init__(self, path, problem, category, model, data_config, model_config):
+        self.path = path
+        self.problem = problem
+        self.category=category
+        self._model = model
+        self.data_config = data_config
+        self.model_cofig = model_config
+        self.act_path = os.path.join(path, "activations")
 
     @property
     def train_data(self):
@@ -24,6 +50,30 @@ class Plots(object):
     @property
     def data(self):
         raise AttributeError
+
+    @property
+    def in_cols(self):
+        return self.data_config['inputs']
+
+    @property
+    def out_cols(self):
+        return self.data_config['outputs']
+
+    @property
+    def ins(self):
+        return len(self.data_config['inputs'])
+
+    @property
+    def outs(self):
+        return self.data_config['outputs']
+
+    @property
+    def lookback(self):
+        return self.data_config['lookback']
+
+    def feature_imporance(self):
+        if self.category.upper() == "ML":
+            return self._model.feature_importances_
 
     def plot_input_data(self, save=True, **kwargs):
         """
@@ -127,7 +177,8 @@ class Plots(object):
 
         return
 
-    def save_or_show(self, save: bool = True, fname=None, where='act'):
+    def save_or_show(self, save: bool = True, fname=None, where='act', dpi=300, bbox_inches='tight'):
+
         if save:
             assert isinstance(fname, str)
             if "/" in fname:
@@ -145,7 +196,7 @@ class Plots(object):
             else:
                 fname = os.path.join(self.path, fname + ".png")
 
-            plt.savefig(fname)
+            plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
         else:
             plt.show()
 
@@ -211,119 +262,39 @@ class Plots(object):
                     self._imshow(inputs, save=save, fname= which + '_data_' + str(idx), where='data')
         return
 
-    def features_2d(self, data, lyr_name,
-                    reflect_half=False,
-                    timesteps_xaxis=False, max_timesteps=None,
-                    **kwargs):
-        """Plots 2D heatmaps in a standalone graph or subplot grid.
+    def features_2d(self, data, name, save=True, **kwargs):
+        """Calls the features_2d from see-rnn"""
+        st=0
+        for en in np.arange(32, data.shape[0] + 32, 32):
 
-        iter == list/tuple (both work)
+            if save:
+                name = name + f"_{st}_{en}"
+                save = os.path.join(self.act_path, name+".png")
 
-        Arguments:
-            data: np.ndarray, 2D/3D. Data to plot.
-                  2D -> standalone graph; 3D -> subplot grid.
-                  3D: (samples, timesteps, channels)
-                  2D: (timesteps, channels)
+            features_2D(data[st:en, :], savepath=save, **kwargs)
+            st=en
 
-            reflect_half: bool. If True, second half of channels dim will be
-                  flipped about the timesteps dim.
-            timesteps_xaxis: bool. If True, the timesteps dim (`data` dim 1)
-                  if plotted along the x-axis.
-            max_timesteps:  int/None. Max number of timesteps to show per plot.
-                  If None, keeps original.
+        return
 
-        kwargs:
-            w: float. Scale width  of resulting plot by a factor.
-            h: float. Scale height of resulting plot by a factor.
-            show_borders:  bool.  If True, shows boxes around plot(s).
-            show_xy_ticks: int/bool iter. Slot 0 -> x, Slot 1 -> y.
-                  Ex: [1, 1] -> show both x- and y-ticks (and their labels).
-                      [0, 0] -> hide both.
-            show_colorbar: bool. If True, shows one colorbar next to plot(s).
-            title: bool/str. If True, shows generic supertitle.
-                  If str in {'grads', 'outputs', 'generic'}, shows supertitle
-                  tailored to `data` dim (2D/3D). If other str, shows `title`
-                  as supertitle. If False, no title is shown.
-            tight: bool. If True, plots compactly by removing subplot padding.
-            channel_axis: int, 0 or -1. `data` axis holding channels/features.
-                  -1 --> (samples,  timesteps, channels)
-                  0  --> (channels, timesteps, samples)
-            borderwidth: float / None. Width of subplot borders.
-            bordercolor: str / None. Color of subplot borders. Default black.
-            save: bool, .
+    def features_1d(self, data, save=True, name='', **kwargs):
 
-        Returns:
-            (figs, axes) of generated plots.
-        """
+        if save:
+            save = os.path.join(self.act_path, name + ".png")
+            features_1D(data, savepath=save, **kwargs)
 
-        w, h          = kwargs.get('w', 1), kwargs.get('h', 1)
-        show_borders  = kwargs.get('show_borders', True)
-        show_xy_ticks = kwargs.get('show_xy_ticks', (1, 1))
-        show_colorbar = kwargs.get('show_colorbar', False)
-        tight         = kwargs.get('tight', False)
-        channel_axis  = kwargs.get('channel_axis', -1)
-        borderwidth   = kwargs.get('borderwidth', None)
-        bordercolor   = kwargs.get('bordercolor', None)
-        save      = kwargs.get('savepath', True)
+        return
 
+    def features_0d(self, data, save=True, name='', **kwargs):
+        if save:
+            save = os.path.join(self.act_path, name + "0D.png")
 
-        def _process_data(data, max_timesteps, reflect_half,
-                          timesteps_xaxis, channel_axis):
-            if data.ndim not in (2, 3):
-                raise Exception("`data` must be 2D or 3D (got ndim=%s)" % data.ndim)
+        return features_0D(data, savepath=save, **kwargs)
 
-            if max_timesteps is not None:
-                data = data[..., :max_timesteps, :]
+    def rnn_histogram(self, data, save=True, name='', **kwargs):
 
-            if reflect_half:
-                data = data.copy()  # prevent passed array from changing
-                half_chs = data.shape[-1] // 2
-                data[..., half_chs:] = np.flip(data[..., half_chs:], axis=0)
-
-            if data.ndim != 3:
-                # (1, width, height) -> one image
-                data = np.expand_dims(data, 0)
-            if timesteps_xaxis:
-                data = np.transpose(data, (0, 2, 1))
-            return data
-
-        def _style_axis(ax, show_borders, show_xy_ticks):
-            ax.axis('tight')
-            if not show_xy_ticks[0]:
-                ax.set_xticks([])
-            if not show_xy_ticks[1]:
-                ax.set_yticks([])
-            if not show_borders:
-                ax.set_frame_on(False)
-
-        if isinstance(show_xy_ticks, (int, bool)):
-            show_xy_ticks = (show_xy_ticks, show_xy_ticks)
-        data = _process_data(data, max_timesteps, reflect_half,
-                             timesteps_xaxis, channel_axis)
-        n_rows, n_cols = _get_nrows_and_ncols(n_subplots=len(data))
-
-        fig, axes = plt.subplots(n_rows, n_cols, dpi=76, figsize=(10, 10), sharex='all', sharey='all')
-        axes = np.asarray(axes)
-
-        fig.suptitle(lyr_name, weight='bold', fontsize=14, y=.93 + .12 * tight)
-
-        for ax_idx, ax in enumerate(axes.flat):
-            img = ax.imshow(data[ax_idx], cmap='bwr', vmin=-1, vmax=1)
-            _style_axis(ax, show_borders, show_xy_ticks)
-
-        if show_colorbar:
-            fig.colorbar(img, ax=axes.ravel().tolist())
-        if tight:
-            fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
-        if borderwidth is not None or bordercolor is not None:
-            for ax in axes.flat:
-                for s in ax.spines.values():
-                    if borderwidth is not None:
-                        s.set_linewidth(borderwidth)
-                    if bordercolor is not None:
-                        s.set_color(bordercolor)
-
-        self.save_or_show(save, lyr_name)
+        if save:
+            save = os.path.join(self.act_path, name + "0D.png")
+        rnn_histogram(data, rnn_info["LSTM"], bins=400, savepath=save, **kwargs)
 
         return
 
@@ -425,30 +396,50 @@ class Plots(object):
         self.save_or_show(save, fname="feature_feature_corr", where="data")
         return
 
-    def plot_roc_curve(self, x, y, save=True):
+    def roc_curve(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
         plot_roc_curve(self._model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="roc", where="results")
         return
 
-    def plot_confusion_matrx(self, x, y, save=True):
+    def confusion_matrx(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
         plot_confusion_matrix(self._model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="confusion_matrix", where="results")
         return
 
-    def plot_precision_recall_curve(self, x, y, save=True):
+    def precision_recall_curve(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
         plot_precision_recall_curve(self._model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
 
-    def plot_xgbmodel(self, save=True, **kwargs):
+    def decision_tree(self, which="sklearn", save=True, **kwargs):
         """For kwargs see https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree"""
         plt.close('')
-        plot_tree(self._model, **kwargs)
-        self.save_or_show(save, fname="model", where="results")
+        if which == "sklearn":
+            tree.plot_tree(self._model, **kwargs)
+        else:  # xgboost
+            plot_tree(self._model, **kwargs)
+        self.save_or_show(save, fname="decision_tree", where="results")
         return
+
+    def plot_treeviz_leaves(self, save=True, **kwargs):
+        """Plots dtreeviz related plots if dtreeviz is installed"""
+
+        if trees is None:
+            print("dtreeviz related plots can not be plotted")
+        else:
+            x,y = self.test_data()
+
+            if np.ndim(y) > 2:
+                y = np.squeeze(y, axis=2)
+
+            trees.viz_leaf_samples(self._model, *x, self.in_cols)
+            self.save_or_show(save, fname="viz_leaf_samples", where="plots")
+
+            trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
+            self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
 
 def _get_nrows_and_ncols(n_subplots, n_rows=None):
     if n_rows is None:

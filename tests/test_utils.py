@@ -74,7 +74,6 @@ def train_predict(model):
 def run_same_train_val_data(**kwargs):
     config = make_model(
         val_data="same",
-        val_fraction=0.0,
         test_fraction=0.2,
         epochs=1,
     )

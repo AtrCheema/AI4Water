@@ -1,4 +1,4 @@
-tensorflow<=2.3.0 # only if you want to use tensorflow-based models
+tensorflow # only if you want to use tensorflow-based models, >=1.15
 numpy
 pandas
 matplotlib
@@ -10,3 +10,4 @@ TSErrors  # preferably use github for installation
 h5py<2.11.0 # only if you want to save batches
 xgboost
 EMD-signal  # for emd transformation
+see-rnn   # for rnn visualizations

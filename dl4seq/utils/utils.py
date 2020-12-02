@@ -271,6 +271,7 @@ def make_model(**kwargs):
         'lr':           {'type': float, 'default': 0.0001},
         'optimizer':    {'type': str, 'default': 'adam'},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
         'loss':         {'type': str, 'default': 'mse'},
+        'quantiles':    {'type': list, 'default': None},
         'epochs':       {'type': int, 'default': 14},
         'min_val_loss': {'type': float, 'default': 0.0001},
         'patience':     {'type': int, 'default': 100},
@@ -302,6 +303,9 @@ def make_model(**kwargs):
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder':    {"type": bool,  "default": False},
         'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
+        # The term lookback has been adopted from Francois Chollet's "deep learning with keras" book. This means how many
+        # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
+        # for any non timeseries forecasting related problems.
         'lookback':          {"type": int,   "default": 15},
         'batch_size':        {"type": int,   "default": 32},
         'val_fraction':      {"type": float, "default": 0.2}, # fraction of data to be used for validation

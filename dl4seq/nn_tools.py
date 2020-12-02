@@ -32,15 +32,7 @@ class AttributeStore(object):
         self.de_densor_We = None
         self.test_indices = None
         self.train_indices = None
-        self.quantiles = None  # when predicted quantiles, this will not be None, and post-processing will be different
         self.scalers = {}
-        self.cnn_counter = 0
-        self.lstm_counter = 0
-        self.act_counter = 0
-        self.time_dist_counter = 0
-        self.conv2d_lstm_counter = 0
-        self.dense_counter = 0
-        self.run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
         self.layers = None
         self.framework = "DL"
 
