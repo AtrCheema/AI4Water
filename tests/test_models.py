@@ -318,7 +318,7 @@ class TestModels(unittest.TestCase):
 
         predictions = make_and_run(NBeatsModel, layers=layers, forecast_length=forecsat_length, data_type="nasdaq")
         if platform.upper() in ["WIN32"]:
-            self.assertAlmostEqual(float(predictions.sum()), 780624765.5024414, 4)
+            self.assertAlmostEqual(float(predictions.sum()), 780862697.4541016, 4)
         else:
             self.assertGreater(float(predictions.sum()), 80000.0)  # TODO reproduction failing on linux
 

@@ -242,7 +242,12 @@ def make_model(**kwargs):
     """
 
     dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
-    df = pd.read_csv(os.path.join(dpath, "nasdaq100_padding.csv"))
+    fname = os.path.join(dpath, "nasdaq100_padding.csv")
+    if not os.path.exists(fname):
+        print(f"downloading file to {fname}")
+        df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
+        df.to_csv(fname)
+    df = pd.read_csv(fname)
     in_cols = list(df.columns)
     in_cols.remove("NDX")
 
@@ -523,3 +528,23 @@ def slice_arrays(arrays, start, stop=None):
         return [array[start:stop] for array in arrays]
     elif hasattr(arrays, 'shape'):
         return arrays[start:stop]
+
+
+def split_by_indices(x, y, indices):
+
+    def split_with_indices(data):
+        if isinstance(data, list):
+            _data = []
+
+            for d in data:
+                assert isinstance(d, np.ndarray)
+                _data.append(d[indices])
+        else:
+            assert isinstance(data, np.ndarray)
+            _data = data[indices]
+        return _data
+
+    x = split_with_indices(x)
+    y = split_with_indices(y)
+
+    return x, y

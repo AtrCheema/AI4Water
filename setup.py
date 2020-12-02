@@ -54,5 +54,6 @@ setup(
         'matplotlib',
         'scikit-optimize',
         'xgboost',
+        'EMD-signal'
     ],
 )

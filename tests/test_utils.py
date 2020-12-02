@@ -1,14 +1,24 @@
+from inspect import getsourcefile
+from os.path import abspath
 import pandas as pd
 import numpy as np
 import unittest
 import os
-
+from sklearn.model_selection import train_test_split
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
-from dl4seq.utils.utils import get_sklearn_models
+from dl4seq.utils.utils import get_sklearn_models, split_by_indices
+
+seed = 313
+np.random.seed(seed)
+
+file_path = abspath(getsourcefile(lambda:0))
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+fname = os.path.join(dpath, "nasdaq100_padding.csv")
+nasdaq_df = pd.read_csv(fname)
 
 examples = 2000
 ins = 5
@@ -322,8 +332,47 @@ class TestUtils(unittest.TestCase):
         sk = get_sklearn_models()
         rf = sk["RANDOMFORESTREGRESSOR"]
         gb = sk["GRADIENTBOOSTINGREGRESSOR"]
+        self.assertGreater(len(sk), 1)
         return
 
+    def test_split_by_indices(self):
+        x = np.arange(1000).reshape(100, 5, 2)
+        y = np.arange(100)
+        tr_indices, test_indices = train_test_split(np.arange(100), test_size=0.2, random_state=seed)
+        testx, testy = split_by_indices(x,y, test_indices)
+        np.allclose(testx[0][0], [600, 601])
+        np.allclose(testy, test_indices)
+
+        tr_x1, tr_y = split_by_indices(x, y, tr_indices)
+        np.allclose(tr_y, tr_indices)
+        tr_x2, tr_y = split_by_indices([x, x, x], [y], tr_indices)
+        self.assertEqual(len(tr_x2), 3)
+        self.assertEqual(len(tr_y), 1)
+        np.allclose(tr_y[0], tr_indices)
+        np.allclose(tr_x1, tr_x2[0])
+
+        return
+
+    def test_same_test_val_data_train(self):
+        #TODO not a good test, must check that individual elements in returned arrayare correct
+        config = make_model(
+            val_data="same",
+            val_fraction=0.0,
+            test_fraction=0.2,
+            epochs=1,
+        )
+
+        model = Model(config,
+                      data=nasdaq_df,
+                      verbosity=0)
+
+        h = model.train(indices='random')
+
+        x, y = model.train_data(indices=model.train_indices)
+
+        self.assertEqual(len(x[0]), len(y))
+
+        return
 
 
 if __name__ == "__main__":

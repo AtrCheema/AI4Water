@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, PowerTransformer,\
     QuantileTransformer, FunctionTransformer
 from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA, FastICA, SparsePCA
+from PyEMD import EMD, EEMD
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -9,6 +10,41 @@ from mpl_toolkits.mplot3d import Axes3D
 from dl4seq.utils.utils import dateandtime_now
 
 # TODO add logistic, tanh and more scalers.
+
+
+class EmdTransformer(object):
+    """Empirical Mode Decomposition"""
+    def __init__(self, ensemble=False, **kwargs):
+        self.ensemble = ensemble
+        if ensemble:
+            self.emd_obj = EEMD(**kwargs)
+        else:
+            self.emd_obj = EMD(**kwargs)
+
+    def fit_transform(self, data, **kwargs):
+
+        if isinstance(data, pd.DataFrame):
+            data = data.values
+        else:
+            assert isinstance(data, np.ndarray)
+
+        assert len(data.shape) == 2
+
+        imfs = []
+        for col in range(data.shape[1]):
+
+            if self.ensemble:
+                IMFs = self.emd_obj.eemd(data[:, col], **kwargs)
+            else:
+                IMFs = self.emd_obj.emd(data[:, col], **kwargs)
+
+            imfs.append(IMFs.T)
+
+        return np.concatenate(imfs, axis=1)
+
+    def inverse_transform(self, **kwargs):
+        raise NotImplementedError
+
 
 class scaler_container(object):
 
@@ -27,18 +63,25 @@ class Transformations(scaler_container):
      - data: a dataframe or numpy ndarray. The transformed or inversely transformed value will have the same type as data
              and will have the same index as data (in case data is dataframe).
      - method: str, method by which to transform and consequencly inversely transform the data. default is 'minmax'.
-                Currently following methods are available
+                Currently following methods are available for transformation and inverse transformation
                   minmax
                   maxabs
                   robust
                   power
-                  zscore,
-                  quantile,
-                  log
-                  pca
-                  kpca
-                  ipca
-                  fastica
+                  zscore:
+                  quantile:
+                  log:     logrithmic
+                  tan:     tangent
+                  cumsum:  cummulative sum
+                  pca:     principle component analysis
+                  kpca:    kernel component analysis
+                  ipca:    incremental principle component analysis
+                  fastica: fast incremental component analysis
+
+                Following methods have only transformations and not inverse transformations. They can be used for feature
+                creation.
+                  emd:    empirical mode decomposition
+                  eemd:   ensemble empirical mode decomposition
 
      - features: list of strings, if data is datafrmae, then this list is the features on which we want to apply transformation.
                  The remaining columns will remain same/unchanged.
@@ -75,9 +118,13 @@ class Transformations(scaler_container):
         "ipca": IncrementalPCA,
         "fastica": FastICA,
         "sparsepca": SparsePCA,
+        "emd": EmdTransformer,
+        "eemd": EmdTransformer,
     }
 
+    dim_expand_methods = ['emd', 'eemd']
     dim_red_methods = ["pca", "kpca", "ipca", "fastica", "sparsepca"]  # dimensionality reduction methods
+    mod_dim_methods = dim_red_methods + dim_expand_methods
 
     def __init__(self,
                  data: pd.DataFrame,
@@ -89,11 +136,12 @@ class Transformations(scaler_container):
 
         super().__init__()
 
+        self.method = method
         self.replace_nans=replace_nans
         self.replace_with=replace_with
         data = self.pre_process_data(data.copy())
         self.data = data
-        self.method = method
+
         self.features = features
         self.initial_shape = data.shape
         self.kwargs = kwargs
@@ -118,12 +166,12 @@ class Transformations(scaler_container):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
             transformer = item.split('_')[2]
-            if transformer.lower() in list(self.available_scalers.keys()) + ["log"]:
+            if transformer.lower() in list(self.available_scalers.keys()) + ["log", "tan", "cumsum"]:
                 self.method = transformer
                 return self.transform_with_sklearn
         elif item.startswith("inverse_transform_with"):
             transformer = item.split('_')[3]
-            if transformer.lower() in list(self.available_scalers.keys()) + ["log"]:
+            if transformer.lower() in list(self.available_scalers.keys()) + ["log", "tan", "cumsum"]:
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
 
@@ -164,8 +212,8 @@ class Transformations(scaler_container):
         return len(self.features)
 
     @property
-    def reduce_dim(self):
-        if self.method.lower() in self.dim_red_methods:
+    def change_dim(self):
+        if self.method.lower() in self.mod_dim_methods:
             return True
         else:
             return False
@@ -200,6 +248,9 @@ class Transformations(scaler_container):
             # because pre_processing is implemented 2 times, we don't want to overwrite nan_indices
             if self.nan_indices is None: self.nan_indices = indices
 
+            if len(indices) > 0:
+                if self.method.lower() == "cumsum":
+                    print("Warning: nan values found and they may cause problem")
         return data
 
     def post_process_data(self, data):
@@ -215,15 +266,20 @@ class Transformations(scaler_container):
     def transform_with_sklearn(self, return_key=False, **kwargs):
 
         if self.method.lower() == "log":
-            scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True)
+            scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
+        elif self.method.lower() == "tan":
+            scaler = FunctionTransformer(func=np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
+        elif self.method.lower() == "cumsum":
+            scaler = FunctionTransformer(func=np.cumsum, inverse_func=np.diff, validate=True, check_inverse=False,
+                                         kw_args={"axis": 0}, inv_kw_args={"axis": 0, "append": 0})
         else:
             scaler = self.get_scaler()(**self.kwargs)
 
-        to_transform = self.get_features()
+        to_transform = self.get_features()  #TODO, shouldn't kwargs go here as input?
 
         data = scaler.fit_transform(to_transform, **kwargs)
 
-        if self.method.lower() in self.dim_red_methods:
+        if self.method.lower() in self.mod_dim_methods:
             features = [self.method.lower() + str(i+1) for i in range(data.shape[1])]
             data = pd.DataFrame(data, columns=features)
             self.transformed_features = features
@@ -250,7 +306,7 @@ class Transformations(scaler_container):
 
         data = scaler.inverse_transform(to_transform)
 
-        if self.method.lower() in self.dim_red_methods:
+        if self.method.lower() in self.mod_dim_methods:
             # now use orignal data columns names, but if the class is being directly called for inverse transform
             # then we don't know what cols were transformed, in that scenariio use dummy col name.
             cols = ['data'+str(i) for i in range(data.shape[1])] if self.transformed_features is None else self.data.columns
@@ -316,7 +372,7 @@ class Transformations(scaler_container):
             trans_df.index = self.index
 
         transformed_features = len(self.transformed_features) if self.transformed_features is not None else len(trans_df.columns)
-        num_features = len(self.data.columns) if self.method.lower() not in self.dim_red_methods else transformed_features
+        num_features = len(self.data.columns) if self.method.lower() not in self.mod_dim_methods else transformed_features
         if len(trans_df.columns) != num_features:
             df = pd.DataFrame(index=self.index)
             for col in self.data.columns: #features:
@@ -329,7 +385,7 @@ class Transformations(scaler_container):
         else:
             df = trans_df
 
-        if not self.reduce_dim:
+        if not self.change_dim:
             assert df.shape == self.initial_shape
         return df
 
@@ -412,10 +468,3 @@ def end_fig(save):
         plt.show()
     plt.close('all')
     return
-
-if __name__ == "__main__":
-    d = np.random.random((10,4))
-    d = pd.DataFrame(d, index=pd.date_range("20110101", periods=len(d), freq="6min"), columns=['data1', 'data2', 'data3', 'data4'])
-    sc = Transformations(d, method='log', features=['data3'])
-    dn, key = sc.transform(return_key=True)
-    do = sc.inverse_transform(data=dn)

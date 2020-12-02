@@ -22,28 +22,27 @@ class AttributeNotSetYet:
 class AttributeStore(object):
     """ a class which will just make sure that attributes are set at its childs class level and not here.
     It's purpose is just to avoid cluttering of __init__ method of its child classes. """
-    _model = AttributeNotSetYet("`build` to build neural network")
-    method = None
-    ins = None
-    outs = None
-    en_densor_We = None
-    en_LSTM_cell = None
-    auto_enc_composite = None
-    de_LSTM_cell = None
-    de_densor_We = None
-    test_indices = None
-    train_indices = None
-    quantiles = None  # when predicted quantiles, this will not be None, and post-processing will be different
-    scalers = {}
-    cnn_counter = 0
-    lstm_counter = 0
-    act_counter = 0
-    time_dist_counter = 0
-    conv2d_lstm_counter = 0
-    dense_counter = 0
-    run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
-    layers = None
-    framework = "DL"
+    def __init__(self):
+        self._model = AttributeNotSetYet("`build` to build neural network")
+        self.method = None
+        self.en_densor_We = None
+        self.en_LSTM_cell = None
+        self.auto_enc_composite = None
+        self.de_LSTM_cell = None
+        self.de_densor_We = None
+        self.test_indices = None
+        self.train_indices = None
+        self.quantiles = None  # when predicted quantiles, this will not be None, and post-processing will be different
+        self.scalers = {}
+        self.cnn_counter = 0
+        self.lstm_counter = 0
+        self.act_counter = 0
+        self.time_dist_counter = 0
+        self.conv2d_lstm_counter = 0
+        self.dense_counter = 0
+        self.run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
+        self.layers = None
+        self.framework = "DL"
 
 
 class NN(AttributeStore):

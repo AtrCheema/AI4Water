@@ -17,6 +17,8 @@ def run_method1(method,
                 data=None,
                 **kwargs):
 
+    print(f"testing: {method} with {cols} features")
+
     normalized_df1, scaler = Transformations(data=df if data is None else data,
                                              method=method,
                                              features=cols,
@@ -76,11 +78,12 @@ def run_plot_pca(scaler, y, dim):
     return
 
 
-def run_log_methods(index=None):
+def run_log_methods(method="log", index=None, insert_nans=True, assert_equality=True):
     a = np.random.random((10, 4))
-    a[2:4, 1] = np.nan
-    a[3:5, 2:3] = np.nan
-    a[5:8, 3] = np.nan
+    if insert_nans:
+        a[2:4, 1] = np.nan
+        a[3:5, 2:3] = np.nan
+        a[5:8, 3] = np.nan
 
     cols = ['data1', 'data2', 'data3', 'data4']
 
@@ -89,14 +92,19 @@ def run_log_methods(index=None):
 
     df3 = pd.DataFrame(a, columns=cols, index=index)
 
-    _, dfo = run_method1(method='log', replace_nans=True, data=df3)
-    np.allclose(df3, dfo, equal_nan=True)
-    _, dfo = run_method2(method='log', replace_nans=True, data=df3)
-    np.allclose(df3, dfo, equal_nan=True)
-    _, dfo = run_method3(method='log', replace_nans=True, data=df3)
-    np.allclose(df3, dfo, equal_nan=True)
-    _, dfo = run_method4(method='log', replace_nans=True, data=df3)
-    np.allclose(df3, dfo, equal_nan=True)
+    _, dfo1 = run_method1(method=method, replace_nans=True, data=df3)
+
+    _, dfo2 = run_method2(method=method, replace_nans=True, data=df3)
+
+    _, dfo3 = run_method3(method=method, replace_nans=True, data=df3)
+
+    _, dfo4 = run_method4(method=method, replace_nans=True, data=df3)
+
+    if assert_equality:
+        np.allclose(df3, dfo1, equal_nan=True)
+        np.allclose(df3, dfo2, equal_nan=True)
+        np.allclose(df3, dfo3, equal_nan=True)
+        np.allclose(df3, dfo4, equal_nan=True)
     return
 
 class test_Scalers(unittest.TestCase):
@@ -266,8 +274,32 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_log_with_index(self):
-        run_log_methods(True)
+        run_log_methods("log", True)
         return
+
+    def test_tan_with_nans(self):
+        run_log_methods("tan", index=None)
+        return
+
+    def test_tan_with_index(self):
+        run_log_methods("tan", True)
+        return
+
+    def test_cumsum_with_index(self):
+        run_log_methods("cumsum", True, insert_nans=False, assert_equality=False)
+        return
+
+    def test_cumsum_with_nan(self):
+        run_log_methods("cumsum", True, insert_nans=True, assert_equality=False)
+        return
+
+    # def test_emd_transformation(self):
+    #     d = np.random.random((10, 4))
+    #     d = pd.DataFrame(d, index=pd.date_range("20110101", periods=len(d), freq="6min"),
+    #                      columns=['data1', 'data2', 'data3', 'data4'])
+    #     sc = Transformations(d, method='emd')
+    #     sc.transform(return_key=True)
+    #     return
 
 if __name__ == "__main__":
     unittest.main()

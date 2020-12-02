@@ -13,7 +13,7 @@ import math
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
 from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
-from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split
+from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split, split_by_indices
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 
@@ -231,7 +231,6 @@ class Model(NN, Plots):
         if self.intervals is None:
 
             df = df[st:en]
-            df.columns = self.in_cols + self.out_cols
 
             x, y, label = self.get_batches(df.values,
                                            len(self.in_cols),
@@ -502,24 +501,25 @@ class Model(NN, Plots):
         if isinstance(val_data, str):
             # we need to get validation data from training data depending upon value of 'val_fraction' and convert it
             # to tf.data
-            val_frac = self.data_config['val_fraction'] if self.data_config['val_fraction'] > 0.0 else self.data_config['test_fraction']
-            if val_frac > 0.0:
+            val_frac = self.data_config['test_fraction']
+            if self.test_indices is not None:
 
-                x_train, y_train,  x_val, y_val, = train_val_split(inputs, outputs,
-                                                                   validation_split=self.data_config['val_fraction'])
-                self.val_dataset = (x_val, y_val)
-                self.train_dataset = (x_train, y_train)
-                if self.verbosity > 0.0:
-                    print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
+                x_train, y_train, x_val, y_val = split_by_indices(inputs, outputs,
+                                                                  self.test_indices)
             else:
+                x_train, y_train, x_val, y_val = train_val_split(inputs, outputs, val_frac)
                 # Normally we should not encounter such scenario. TODO, raise error?
                 x_train = inputs
                 y_train = outputs
+
+            if self.verbosity > 0.0:
+                print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
         elif hasattr(val_data, '__len__'):
+            # val_data has already been in the form of x,y paris
             x_train = inputs
             y_train = outputs
 
-            assert len(val_data) == 2
+            assert len(val_data) <= 3
             x_val, y_val = val_data
 
         else:
@@ -533,11 +533,15 @@ class Model(NN, Plots):
                                              drop_remainder=self.data_config['drop_remainder'])
 
         if x_val is not None:
-            val_dataset = tf.data.Dataset.from_tensor_slices((x_val[0], y_val))
+            assert isinstance(x_val, np.ndarray)
+            val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
             val_dataset = val_dataset.batch(self.data_config['batch_size'],
                                                 drop_remainder=self.data_config['drop_remainder'])
         else:
             val_dataset = val_data
+
+        self.val_dataset = val_dataset
+        self.train_dataset = train_dataset
 
         return train_dataset, outputs,  val_dataset
 
@@ -714,11 +718,12 @@ class Model(NN, Plots):
 
                 # It is good that the user knows  explicitly that either of val_fraction or test_fraction is used so
                 # one of them must be set to 0.0
-                if self.data_config['val_fraction'] > 0.0:
-                    assert self.data_config['test_fraction'] == 0.0
-                if self.data_config['test_fraction'] > 0.0:
-                    assert self.data_config['val_fraction'] == 0.0
+                assert self.data_config['val_fraction'] == 0.0
+                assert self.data_config['test_fraction'] > 0.0
 
+                if self.test_indices is not None:
+                    x, prev_y, label = self.fetch_data(data=self.data, indices=self.test_indices)
+                    return x, label
                 return self.data_config['val_data']
             else:
                 # `val_data` might have been provided (then use it as it is) or it is None
@@ -741,6 +746,8 @@ class Model(NN, Plots):
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
             if self.model_config['ml_model'].lower().startswith("xgb"):
                 self.plot_xgbmodel()
+                fname = os.path.join(self.w_path, "xgboost_model.json")
+                self._model.save_model(fname)
 
         return history
 
@@ -1330,6 +1337,8 @@ class Model(NN, Plots):
         config['model_config'] = self.model_config
         config['data_config'] = self.data_config
         config['method'] = self.method
+        config['category'] = self.category
+        config['problem'] = self.problem
         config['quantiles'] = self.quantiles
         config['loss'] = self._model.loss.__name__ if self._model is not None else None
         config['params'] = int(self._model.count_params()) if self._model is not None and self.category == "DL" else None,
@@ -1351,6 +1360,8 @@ class Model(NN, Plots):
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
 
+        category = config['category']
+        problem = config['problem']
         config = {'data_config': config['data_config'],
                   'model_config':config['model_config']}
 
@@ -1366,12 +1377,21 @@ class Model(NN, Plots):
             path = None
         return cls(config,
                    data=data,
-                   path=path)
+                   path=path,
+                   category=category,
+                   problem=problem)
 
-    def load_weights(self, w_file: str):
-        # loads the weights of keras model from weight file `w_file`.
-        cpath = os.path.join(self.w_path, w_file)
-        self._model.load_weights(cpath)
+    def load_weights(self, weight_file: str):
+        """
+        weight_file: str, name of file which contains parameters of model.
+        """
+        weight_file = os.path.join(self.w_path, weight_file)
+        if self.category.lower() == "ML":
+            if self.data_config['ml_model'].lower().startswith("xgb"):
+                self._model.load_model(weight_file)
+        else:
+            # loads the weights of keras model from weight file `w_file`.
+            self._model.load_weights(weight_file)
         print("{} Successfully loaded weights {}".format('*' * 10, '*' * 10))
         return
 

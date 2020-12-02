@@ -104,8 +104,6 @@ model = Model(config=config,
               category="ML"
               )
 
-model.build()
-
 history = model.train(st=0, en=150)
 
 preds, obs = model.predict(st=150, en=220)

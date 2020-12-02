@@ -45,7 +45,6 @@ def objective_fn(**kwargs):
                           prefix=title,
                           **kwargs)
 
-    model.build()
     history = model.train(st=0, en=5500)
 
     return model.path, np.min(history['val_loss'])
