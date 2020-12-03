@@ -621,6 +621,9 @@ class Model(NN, Plots):
 
         x, y, label = self.check_batches(x, y, label)
 
+        if self.category.upper() == "ML" and self.outs == 1:
+            label = label.reshape(-1,)
+
         if self.verbosity > 0:
             print('input_X shape:', x.shape)
             print('prev_Y shape:', y.shape)
@@ -732,6 +735,9 @@ class Model(NN, Plots):
 
                 if self.test_indices is not None:
                     x, prev_y, label = self.fetch_data(data=self.data, indices=self.test_indices)
+
+                    if self.category.upper() == "ML" and self.outs == 1:
+                        label = label.reshape(-1, )
                     return x, label
                 return self.data_config['val_data']
             else:
@@ -752,7 +758,8 @@ class Model(NN, Plots):
             plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 
         else:
-            history = self._model.fit(*inputs, outputs.reshape(-1, ))
+            history = self._model.fit(*inputs, outputs.reshape(-1, ),
+                                      verbose=self.verbosity)
             if self.model_config['ml_model'].lower().startswith("xgb"):
 
                 fname = os.path.join(self.w_path, "xgboost_model.json")

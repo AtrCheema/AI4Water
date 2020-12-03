@@ -270,6 +270,8 @@ class Plots(object):
             if save:
                 name = name + f"_{st}_{en}"
                 save = os.path.join(self.act_path, name+".png")
+            else:
+                save = None
 
             features_2D(data[st:en, :], savepath=save, **kwargs)
             st=en
@@ -280,13 +282,18 @@ class Plots(object):
 
         if save:
             save = os.path.join(self.act_path, name + ".png")
-            features_1D(data, savepath=save, **kwargs)
+        else:
+            save=None
+
+        features_1D(data, savepath=save, **kwargs)
 
         return
 
     def features_0d(self, data, save=True, name='', **kwargs):
         if save:
             save = os.path.join(self.act_path, name + "0D.png")
+        else:
+            save=None
 
         return features_0D(data, savepath=save, **kwargs)
 
@@ -294,6 +301,8 @@ class Plots(object):
 
         if save:
             save = os.path.join(self.act_path, name + "0D.png")
+        else:
+            save=None
         rnn_histogram(data, rnn_info["LSTM"], bins=400, savepath=save, **kwargs)
 
         return

@@ -5,7 +5,7 @@ matplotlib
 scikit-learn
 scikit-optimize  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 seaborn
-TSErrors  # preferably use github for installation
+git+https://github.com/AtrCheema/TSErrors.git  # preferably use github for TSErrors
 # pytorch # only if you want to use pytorch-based models
 h5py<2.11.0 # only if you want to save batches
 xgboost

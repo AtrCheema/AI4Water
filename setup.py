@@ -23,7 +23,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'data': ['nasdaq100_padding.csv', 'data_30min.csv']},
+    package_data={'data': ['data_30min.csv']},
     include_package_data=True,
 
     classifiers=[
@@ -54,6 +54,7 @@ setup(
         'matplotlib',
         'scikit-optimize',
         'xgboost',
-        'EMD-signal'
+        'EMD-signal',
+        'see-rnn'
     ],
 )

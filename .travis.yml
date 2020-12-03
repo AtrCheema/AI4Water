@@ -14,12 +14,12 @@ install:
   - pip install coverage
 
 script:
-  - coverage run -m unittest tests.test_activations
   - coverage run -m unittest tests.test_models
   - coverage run -m unittest tests.test_without_eager
   - coverage run -m unittest tests.test_utils
   - coverage run -m unittest tests.test_scalers
   - coverage run -m unittest tests.test_tf_losses
+  - coverage run -m unittest tests.test_activations
 
 after_success:
   - codecov # submit coverage
