@@ -91,48 +91,7 @@ def run_same_train_val_data(**kwargs):
 class TestUtils(unittest.TestCase):
 
     """
-    Given following sample consisting of input/output paris
-    input, input, output1, output2, output 3
-    1,     11,     21,       31,     41
-    2,     12,     22,       32,     42
-    3,     13,     23,       33,     43
-    4,     14,     24,       34,     44
-    5,     15,     25,       35,     45
-    6,     16,     26,       36,     46
-    7,     17,     27,       37,     47
-
-    if we predict
-    27, 37, 47     outs=3, forecast_length=1,  horizon/forecast_step=0,
-
-    if we predict
-    28, 38, 48     outs=3, forecast_length=1,  horizon/forecast_step=1,
-
-    if we predict
-    27, 37, 47
-    28, 38, 48     outs=3, forecast_length=2,  horizon/forecast_step=0,
-
-    if we predict
-    28, 38, 48
-    29, 39, 49   outs=3, forecast_length=3,  horizon/forecast_step=1,
-    30, 40, 50
-
-    if we predict
-    38            outs=1, forecast_length=3, forecast_step=0
-    39
-    40
-
-    if we predict
-    39            outs=1, forecast_length=1, forecast_step=2
-
-    if we predict
-    39            outs=1, forecast_length=3, forecast_step=2
-    40
-    41
-
-    output/target/label shape
-    (examples, outs, forecast_length)
-
-    Additonally I also build, train and predict from the model so that it is confirmed that everything works
+    I also build, train and predict from the model so that it is confirmed that everything works
     with different input/output shapes.
     """
 
@@ -378,7 +337,6 @@ class TestUtils(unittest.TestCase):
 
         return
 
-
     def test_same_test_val_data_with_chunk(self):
         #TODO not a good test, must check that individual elements in returned arrayare correct
 
@@ -393,6 +351,21 @@ class TestUtils(unittest.TestCase):
         x,y = run_same_train_val_data()
         self.assertEqual(len(x[0]), len(y))
         return
+
+    def test_make_3d_batches(self):
+        class MyModel:
+            def check_nans(self, xx, _y, y, o):
+                return xx, _y, y
+        exs = 50
+        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
+        x, prevy, label = Model.make_3d_batches(MyModel, d,outs=2,
+                          lookback=4, in_step=2, forecast_step=2, forecast_len=4)
+        self.assertEqual(x.shape, (38, 4, 3))
+        self.assertEqual(label.shape, (38, 2, 4))
+        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
+                                                        [208., 209., 210., 211.]])))
+        return
+
 
 if __name__ == "__main__":
     unittest.main()
