@@ -8,8 +8,6 @@ before_install:
 
 install:
   - pip install -r requirements.txt
-  - pip uninstall TSErrors -y
-  - python -m pip install git+https://github.com/AtrCheema/TSErrors.git
   - pip install keras-tcn
   - pip install coverage
 

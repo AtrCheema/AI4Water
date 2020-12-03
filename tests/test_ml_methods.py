@@ -215,6 +215,32 @@ class TestMLMethods(unittest.TestCase):
         run_class_test("ADABOOSTCLASSIFIER")
         return
 
+    def test_ml_random_indices(self):
+        config = make_model(
+            inputs=data_reg['feature_names'],
+            outputs=["target"],
+            lookback=1,
+            batches="2d",
+            val_fraction=0.0,
+            val_data="same",
+            test_fraction=0.3,
+            ml_model="xgboostregressor",
+            # ml_model_args= {"max_dep":1000},
+            transformation=None
+        )
+        model = Model(config,
+                      data=df_reg,
+                      verbosity=0,
+                      category="ML",
+                      problem="reg")
+
+        model.train(indices="random")
+        trtt, trp = model.predict(indices=model.train_indices, pref='train')
+        t, p = model.predict(indices=model.test_indices, pref='test')
+        self.assertGreater(len(t), 1)
+        self.assertGreater(len(trtt), 1)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

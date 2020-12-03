@@ -30,8 +30,6 @@ class AttributeStore(object):
         self.auto_enc_composite = None
         self.de_LSTM_cell = None
         self.de_densor_We = None
-        self.test_indices = None
-        self.train_indices = None
         self.scalers = {}
         self.layers = None
         self.framework = "DL"

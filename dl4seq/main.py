@@ -506,8 +506,9 @@ class Model(NN, Plots):
             # we need to get validation data from training data depending upon value of 'val_fraction' and convert it
             # to tf.data
             val_frac = self.data_config['test_fraction']
+            if not hasattr(self, 'test_indices'):
+                self.test_indices = None
             if self.test_indices is not None:
-
                 x_train, y_train, x_val, y_val = split_by_indices(inputs, outputs,
                                                                   self.test_indices)
             else:
@@ -632,7 +633,7 @@ class Model(NN, Plots):
         return [x], label
 
     def maybe_not_3d_data(self, true, predicted):
-        if true.ndim ==2:
+        if true.ndim < 3:
             assert self.forecast_len == 1
             axis = 2 if true.ndim == 2 else (1, 2)
             true = np.expand_dims(true, axis=axis)
@@ -733,7 +734,7 @@ class Model(NN, Plots):
 
                 assert self.data_config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.data_config['test_fraction']}"
 
-                if self.test_indices is not None:
+                if hasattr(self, 'test_indices'):
                     x, prev_y, label = self.fetch_data(data=self.data, indices=self.test_indices)
 
                     if self.category.upper() == "ML" and self.outs == 1:
@@ -758,8 +759,8 @@ class Model(NN, Plots):
             plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
 
         else:
-            history = self._model.fit(*inputs, outputs.reshape(-1, ),
-                                      verbose=self.verbosity)
+            history = self._model.fit(*inputs, outputs.reshape(-1, ))
+
             if self.model_config['ml_model'].lower().startswith("xgb"):
 
                 fname = os.path.join(self.w_path, "xgboost_model.json")
@@ -1504,8 +1505,17 @@ class Model(NN, Plots):
 
     def save_config(self, history: dict):
 
-        test_indices = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
-        train_indices = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
+        if hasattr(self, 'train_indices'):
+            train_indices = self.train_indices
+        else:
+            train_indices = None
+        if hasattr(self, 'test_indices'):
+            test_indices = self.test_indices
+        else:
+            test_indices = None
+
+        test_indices = np.array(self.test_indices, dtype=int).tolist() if test_indices is not None else None
+        train_indices = np.array(self.train_indices, dtype=int).tolist() if train_indices is not None else None
 
         save_config_file(indices={'test_indices': test_indices,
                                   'train_indices': train_indices}, path=self.path)
