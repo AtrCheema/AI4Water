@@ -79,7 +79,7 @@ acts = model.view_model()
 ```
 
 ## using for `scikit-learn`/`xgboost` based models
-The repository can also be used for scikit-learn/xgboost based models for both classificationa and regression
+The repository can also be used for scikit-learn/xgboost based models for both classifications and regression
 problems by making use of `ml_model` and `ml_model_args` keyword arguments in `make_model` function. However, integration
 of ML based models is not complete yet.
 ```python
