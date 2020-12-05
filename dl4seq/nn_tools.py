@@ -32,7 +32,7 @@ class AttributeStore(object):
         self.de_densor_We = None
         self.scalers = {}
         self.layers = None
-        self.framework = "DL"
+        self.is_training = False
 
 
 class NN(AttributeStore):

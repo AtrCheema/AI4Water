@@ -52,9 +52,7 @@ class Model(NN, Plots):
                  data=None,
                  prefix: str = None,
                  path: str = None,
-                 verbosity=1,
-                 category="DL",
-                 problem="reg"):
+                 verbosity=1):
 
         data_config, model_config = config['data_config'], config['model_config']
         reset_seed(data_config['seed'])
@@ -75,8 +73,8 @@ class Model(NN, Plots):
         self.KModel = keras.models.Model if keras is not None else None
         self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
-        self.category = category
-        self.problem = problem
+        self.category = self.model_config['category']
+        self.problem = self.model_config['problem']
 
         Plots.__init__(self, self.path, self.problem, self.category, self._model, **config)
 
@@ -591,7 +589,8 @@ class Model(NN, Plots):
             setattr(self, 'test_indices', list(test_idx))
             indices = list(train_indices)
 
-        setattr(self, 'train_indices', indices)
+        if self.is_training:
+            setattr(self, 'train_indices', indices)
 
         return indices
 
@@ -749,6 +748,7 @@ class Model(NN, Plots):
 
     def train(self, st=0, en=None, indices=None, data=None, **callbacks):
         """data: if not None, it will directlry passed to fit."""
+        self.is_training = True
         indices = self.get_indices(indices)
 
         inputs, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
@@ -766,6 +766,7 @@ class Model(NN, Plots):
                 fname = os.path.join(self.w_path, "xgboost_model.json")
                 self._model.save_model(fname)
 
+        self.is_training = False
         return history
 
     def test_data(self, **kwargs):
@@ -1254,6 +1255,11 @@ class Model(NN, Plots):
 
             elif len(weight) > 1 and np.ndim(weight) < 3:
                 self.plot1d(weight, title, save, fname, rnn_args=rnn_args)
+
+            elif "conv" in _name.lower() and np.ndim(weight) == 3:
+                _name = _name.replace("/", "_")
+                _name = _name.replace(":", "_")
+                self.features_2d(data=weight, save=save, name=_name, slices=64, slice_dim=2, tight=True, borderwidth=1, norm=(-.1, .1))
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
@@ -1503,22 +1509,23 @@ class Model(NN, Plots):
 
         return self.check_nans(df, input_x, prev_y, y, outs)
 
+    def save_indices(self):
+        indices={}
+        for idx in ['train_indices', 'test_indices']:
+            if hasattr(self, idx):
+                idx_val = getattr(self, idx)
+                if idx_val is not None:
+                    idx_val = np.array(idx_val, dtype=int).tolist()
+            else:
+                idx_val = None
+
+            indices[idx] = idx_val
+        save_config_file(indices=indices, path=self.path)
+        return
+
     def save_config(self, history: dict):
 
-        if hasattr(self, 'train_indices'):
-            train_indices = self.train_indices
-        else:
-            train_indices = None
-        if hasattr(self, 'test_indices'):
-            test_indices = self.test_indices
-        else:
-            test_indices = None
-
-        test_indices = np.array(self.test_indices, dtype=int).tolist() if test_indices is not None else None
-        train_indices = np.array(self.train_indices, dtype=int).tolist() if train_indices is not None else None
-
-        save_config_file(indices={'test_indices': test_indices,
-                                  'train_indices': train_indices}, path=self.path)
+        self.save_indices()
 
         config = dict()
         config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None

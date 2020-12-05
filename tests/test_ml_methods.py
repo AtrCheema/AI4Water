@@ -40,16 +40,15 @@ def run_class_test(method):
             lookback=1,
             batches="2d",
             val_fraction=0.0,
-            ml_model = method,
+            ml_model=method,
+            problem=problem,
             transformation=None
         )
 
 
         model = Model(config,
                       data=df_reg if problem=="regression" else data_class,
-                      verbosity=0,
-                      category="ML",
-                      problem=problem)
+                      verbosity=0)
 
         return model.train()
 
@@ -224,15 +223,15 @@ class TestMLMethods(unittest.TestCase):
             val_fraction=0.0,
             val_data="same",
             test_fraction=0.3,
+            category="ML",
+            problem="regression",
             ml_model="xgboostregressor",
             # ml_model_args= {"max_dep":1000},
             transformation=None
         )
         model = Model(config,
                       data=df_reg,
-                      verbosity=0,
-                      category="ML",
-                      problem="reg")
+                      verbosity=0)
 
         model.train(indices="random")
         trtt, trp = model.predict(indices=model.train_indices, pref='train')

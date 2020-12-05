@@ -119,7 +119,7 @@ class MultiInputSharedModel(Model):
                     df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
 
                     self.out_cols = [out]
-                    self.process_results([true_outputs], [predicted], pref + '_', **plot_args)
+                    self.process_results(true_outputs.values, predicted.values, pref + '_', index=dt_index, **plot_args)
 
             else:
                 self.plot_quantiles1(true_outputs, predicted)

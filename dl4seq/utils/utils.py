@@ -10,16 +10,6 @@ import pandas as pd
 import sklearn
 from xgboost import XGBRegressor, XGBClassifier, XGBRFRegressor, XGBRFClassifier
 
-plt.rcParams["font.family"] = "Times New Roman"
-
-
-def _plot(*args, **kwargs):
-    plt.close('all')
-    plt.plot(*args, **kwargs)
-    plt.legend(loc="best")
-    plt.show()
-    return
-
 
 def plot_results(true, predicted, name=None, **kwargs):
     """
@@ -232,6 +222,17 @@ def check_min_loss(epoch_losses, epoch, msg:str, save_fg:bool, to_save=None):
     return msg, save_fg
 
 
+def check_kwargs(**kwargs):
+
+    # If learning rate for XGBoost is not provided use same as default for NN
+    lr = kwargs["lr"] if "lr" in kwargs else 0.001
+    if "ml_model" in kwargs:
+        if kwargs['ml_model'].upper().startswith("XGB"):
+            if "ml_model_args" in kwargs:
+                if "learning_rate" not in kwargs["ml_model_args"]:
+                    kwargs["ml_model_args"]["learning_rate"] = lr
+    return kwargs
+
 def make_model(**kwargs):
     """
     This functions fills the default arguments needed to run all the models. All the input arguments can be overwritten
@@ -240,6 +241,18 @@ def make_model(**kwargs):
       nn_config: `dict`, contais parameters to build and train the neural network such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
+    kwargs = check_kwargs(**kwargs)
+
+    def_prob = "regression"
+    if "ml_model" not in kwargs:
+        def_cat = "DL"
+        # for DL, the default problem case will be regression
+    else:
+        if kwargs["ml_model"].upper().startswith("CLASS"):
+            def_prob = "classification"
+        def_cat = "ML"
+
+
 
     dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
     fname = os.path.join(dpath, "nasdaq100_padding.csv")
@@ -257,30 +270,30 @@ def make_model(**kwargs):
                                 'm': 20,  # length of hidden state m
                                 'enc_lstm1_act': None,
                                 'enc_lstm2_act': None,
-                                }},
+                                }, 'lower': None, 'upper': None, 'between': None},
         'dec_config': {'': dict, 'default': {        # arguments for decoder/outputAttention in Dual stage attention
                                             'p': 30,
                                             'n_hde0': 30,
                                             'n_sde0': 30
-                                            }},
+                                            }, 'lower': None, 'upper': None, 'between': None},
         'layers': {'type': dict, 'default': {
                                 "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
                                 "Dense_3": {'config':  {'units': 1}}
-                                 }},
-        'composite':    {'type': bool, 'default': False},   # for auto-encoders
-        'lr':           {'type': float, 'default': 0.0001},
-        'optimizer':    {'type': str, 'default': 'adam'},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
-        'loss':         {'type': str, 'default': 'mse'},
-        'quantiles':    {'type': list, 'default': None},
-        'epochs':       {'type': int, 'default': 14},
-        'min_val_loss': {'type': float, 'default': 0.0001},
-        'patience':     {'type': int, 'default': 100},
-        'shuffle':      {'type': bool, 'default': True},
-        'save_model':   {'type': bool, 'default': True},  # to save the best models using checkpoints
-        'subsequences': {'type': int, 'default': 3},  # used for cnn_lst structure
+                                 }, 'lower': None, 'upper': None, 'between': None},
+        'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},   # for auto-encoders
+        'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
+        'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+        'loss':         {'type': str, 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
+        'quantiles':    {'type': list, 'default': None, 'lower': None, 'upper': None, 'between': None},
+        'epochs':       {'type': int, 'default': 14, 'lower': None, 'upper': None, 'between': None},
+        'min_val_loss': {'type': float, 'default': 0.0001, 'lower': None, 'upper': None, 'between': None},
+        'patience':     {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
+        'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
+        'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},  # to save the best models using checkpoints
+        'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},  # used for cnn_lst structure
         'harhn_config': {'type': dict, 'default': {'n_conv_lyrs': 3,
                                                   'enc_units': 64,
-                                                  'dec_units': 64}},
+                                                  'dec_units': 64}, 'lower': None, 'upper': None, 'between': None},
         'nbeats_options': {'type': dict, 'default': {
                                         'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
                                         'forecast_length': 1,
@@ -289,50 +302,52 @@ def make_model(**kwargs):
                                         'thetas_dim': (4, 4),
                                         'share_weights_in_stack': True,
                                         'hidden_layer_units': 62
-                                    }},
-        'ml_model': {'type': str, 'default': None},  # name of machine learning model
-        'ml_model_args': {'type': dict, 'default': None},  # arguments to instantiate/initiate ML model
+                                    }, 'lower': None, 'upper': None, 'between': None},
+        'ml_model':      {'type': str, 'default': None, 'lower': None, 'upper': None, 'between': None},  # name of machine learning model
+        'ml_model_args': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},  # arguments to instantiate/initiate ML model
+        'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
+        'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]}
     }
 
     data_args = {
         # buffer_size is only relevant if 'val_data' is same and shuffle is true. https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
-        'buffer_size':       {'type': int, 'default': 100}, # It is used to shuffle tf.Dataset of training data.
-        'forecast_length':   {"type": int, "default": 1},   # how many future values we want to predict
-        'batches_per_epoch': {"type": int, "default": None},  # comes handy if we want to skip certain batches from last
+        'buffer_size':       {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None}, # It is used to shuffle tf.Dataset of training data.
+        'forecast_length':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},   # how many future values we want to predict
+        'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},  # comes handy if we want to skip certain batches from last
     # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
     # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
-        'drop_remainder':    {"type": bool,  "default": False},
-        'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax'},  # can be None or any of the method defined in scalers.py
+        'drop_remainder':    {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
+        'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax', 'lower': None, 'upper': None, 'between': None},  # can be None or any of the method defined in scalers.py
         # The term lookback has been adopted from Francois Chollet's "deep learning with keras" book. This means how many
         # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
         # for any non timeseries forecasting related problems.
-        'lookback':          {"type": int,   "default": 15},
-        'batch_size':        {"type": int,   "default": 32},
-        'val_fraction':      {"type": float, "default": 0.2}, # fraction of data to be used for validation
+        'lookback':          {"type": int,   "default": 15, 'lower': 1, 'upper': None, 'between': None},
+        'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
+        'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None}, # fraction of data to be used for validation
         # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
         # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
-        'val_data':          {"type": None,  "default": None}, # If this is not string and not None, this will overwite `val_fraction`
-        'steps_per_epoch':   {"type": int,   "default": None},  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
-        'test_fraction':     {"type": float, "default": 0.2},   # fraction of data to be used for test
-        'cache_data':        {"type": bool,  "default": False},   # write the data/batches as hdf5 file
-        'ignore_nans':       {"type": bool,  "default": False},  # if True, and if target values contain Nans, those samples will not be ignored
-        'metrics':           {"type": list,  "default": ['nse']},  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
-        'use_predicted_output': {"type": bool , "default": True},  # if true, model will use previous predictions as input
+        'val_data':          {"type": None,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]}, # If this is not string and not None, this will overwite `val_fraction`
+        'steps_per_epoch':   {"type": int,   "default": None, 'lower': None, 'upper': None, 'between': None},  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
+        'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},   # fraction of data to be used for test
+        'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},   # write the data/batches as hdf5 file
+        'ignore_nans':       {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},  # if True, and if target values contain Nans, those samples will not be ignored
+        'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+        'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},  # if true, model will use previous predictions as input
     # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches
     # will be inferred from this Input layer but for cases,  the model takes more than 1 Input, then there can be two
     # cases, either all the inputs are of same shape or they  are not. In second case, we should overwrite `train_paras`
     # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
     # for Dense layer.
-        'batches':           {"type": str, "default": '3d'},
-        'seed':              {"type": int, "default": 313},  # for reproducability
-        'forecast_step':     {"type": int, "default": 0},  # how many steps ahead we want to predict
-        'input_step':        {"type": int, "default": 1},  # step size of input data
-        'inputs':            {"type": list, "default": in_cols}, # input features in data_frame
-        'outputs':           {"type": list, "default": ["NDX"]}, # column in dataframe to bse used as output/target
+        'batches':           {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
+        'seed':              {"type": int, "default": 313, 'lower': None, 'upper': None, 'between': None},  # for reproducability
+        'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},  # how many steps ahead we want to predict
+        'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},  # step size of input data
+        'inputs':            {"type": list, "default": in_cols, 'lower': None, 'upper': None, 'between': None}, # input features in data_frame
+        'outputs':           {"type": list, "default": ["NDX"], 'lower': None, 'upper': None, 'between': None}, # column in dataframe to bse used as output/target
     # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
     # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
     # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
-        "intervals":         {"type": tuple, "default": None}
+        "intervals":         {"type": tuple, "default": None, 'lower': None, 'upper': None, 'between': None}
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -343,10 +358,10 @@ def make_model(**kwargs):
         arg_name = key.lower()
 
         if arg_name in model_config:
-            update_dict(arg_name, val, model_args[arg_name]['type'], model_config)
+            update_dict(arg_name, val, model_args, model_config)
 
         elif arg_name in data_config:
-            update_dict(arg_name, val, data_args[arg_name]['type'], data_config)
+            update_dict(arg_name, val, data_args, data_config)
 
         else:
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
@@ -354,8 +369,13 @@ def make_model(**kwargs):
     return {"data_config": data_config, "model_config": model_config}
 
 
-def update_dict(key, val, dtype, dict_to_update):
+def update_dict(key, val, dict_to_lookup, dict_to_update):
     """Updates the dictionary with key, val if the val is of type dtype."""
+    dtype = dict_to_lookup[key]['type']
+    low = dict_to_lookup[key]['lower']
+    up = dict_to_lookup[key]['upper']
+    between = dict_to_lookup[key]['between']
+
     if dtype is not None:
         if isinstance(dtype, list):
             val_type = type(val)
@@ -364,6 +384,20 @@ def update_dict(key, val, dtype, dict_to_update):
                                 .format(key, dtype, type(val)))
         elif not isinstance(val, dtype):
             raise TypeError(f"{key} must be of type {dtype} but it is of type {type(val)}")
+
+    if isinstance(val, int) or isinstance(val, float):
+        if low is not None:
+            if val < low:
+                raise ValueError(f"The value '{val}' for '{key}' must be greater than '{low}'")
+        if up is not None:
+            if val > up:
+                raise ValueError(f"The value '{val} for '{key} must be less than '{up}'")
+
+    if isinstance(val, str):
+        if between is not None:
+            if val not in between:
+                raise ValueError(f"Unknown value '{val}' for '{key}'. It must be one of '{between}'")
+
     dict_to_update[key] = val
     return
 
@@ -377,70 +411,293 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
     return pd.to_datetime(idx_array.astype(str), format=fmt)
 
 
-def jsonize_skopt_results(skopt_results):
-    """ just converts skopt_results in a way that when written to json file, they look pretty/more understandable"""
-    gp_sr = {}
-    for attr in ['fun', 'func_vals', 'models', 'random_state', 'space', 'specs', 'x', 'x_iters']:
-        val = getattr(skopt_results, attr)
-        if attr == 'fun':
-            gp_sr[attr] = float(val)
+class SerializeSKOptResults(object):
+    """
+    This class has two functions
+      - converts everything in skopt results into python native types so that these results can be saved in readable
+        json files.
+      - Store as much attributes in in serialized form that a skopt `search_result` object can be generated from it
+        which then can be used to regenerate all hyper-parameter optimization related plots.
 
-        elif attr == 'func_vals':
-            gp_sr[attr] = val.tolist()
+     skopt_results is a dictionary which contains following keys
+     x: list, list of parameters being optimized
+     fun: float, final value of objective function
+     func_vals: numpy array, of length equal to number of iterations
+     x_iters: list of lists, outer list is equal to number of iterations and each inner list is equal number of parameters
+              being optimized
+     models: list of models, where a model has following attributes
+             - noise: str
+             - kernel: skopt.learning.gaussian_process.kernels.Sum, it has following 2 attributes
+                 - k1: skopt.learning.gaussian_process.kernels.Product, it has following attributes
+                     -k1: skopt.learning.gaussian_process.kernels.ConstantKernel
+                         - constant_value: flaot
+                         - constant_value_bounds: tuple of floats
+                     -k2: skopt.learning.gaussian_process.kernels.Matern
+                         - length_scale: numpy ndarray
+                         - length_scale_bounds: list of floats
+                         - nu: float
+                 - k2: skopt.learning.gaussian_process.kernels.WhiteKernel
+                     - noise_level: float
+                     - noise_level_bounds: tuple of floats
+             - alpha: float
+             - optimizer: str
+             - n_restarts_optimizer: int
+             - normalize_y: bool
+             - copy_X_train: bool
+             - random_state: int
+             - kernel_: skopt.learning.gaussian_process.kernels.Sum
+             - _rng: numpy.random.mtrand.RandomState
+             - n_features_in_: int
+             - _y_train_mean: np.float64
+             - _y_train_std: np.float64
+             - X_train_: numpy array
+             - y_train_: numpy array
+             - log_marginal_likelihood_value_: numpy array
+             - L_: numpy array
+             - _K_inv: NoneType
+             - alpha_: numpy array
+             - noise_: np.float64
+             - K_inv_: numpy array
+             - y_train_std_: np.float64
+             - y_train_mean_: np.float64
+     space: skopt.space.space.Space, parameter spaces
+     random_state: numpy.random.mtrand.RandomState
+     specs: dict,  specs of each iteration. It has following keys
+         - args: dict, which has following keys
+             - func: function
+             - dimensions: skopt.space.space.Space
+             - base_estimator: skopt.learning.gaussian_process.gpr.GaussianProcessRegressor, which has following attributes
+                 - noise: str
+                 - kernel: skopt.learning.gaussian_process.kernels.Product
+                     - k1: skopt.learning.gaussian_process.kernels.ConstantKernel, which has following attributes
+                         - constant_value: flaot
+                         - constant_value_bounds: tuple of floats
+                     - k2: skopt.learning.gaussian_process.kernels.Matern, which has following attributes
+                         - length_scale: numpy ndarray
+                         - length_scale_bounds: list of floats
+                         - nu: float
+                 - alpha: float
+                 - optimizer: str
+                 - n_restarts_optimizer: int
+                 - normalize_y: bool
+                 - copy_X_train: bool
+                 - random_state: int
+             - n_cals: int
+             - n_random_starts: NoneType
+             - n_initial_points: str
+             - initial_point_generator: str
+             - acq_func: str
+             - acq_optimizer: str
+             - x0: list
+             - y0: NoneType
+             - random_state: numpy.random.mtrand.RandomState
+             - verbose: book
+             - callback: NoneType
+             - n_points: int
+             - n_restarts_optimizer: int
+             - xi: float
+             - kappa: float
+             - n_jobs: int
+             - model_queue_size: NoneType
+         - function: str
+     """
+    def __init__(self, results:dict):
+        self.results = results
+        self.iters = len(results['func_vals'])
+        self.paras = len(results['x'])
+        self.serialized_results = {}
 
-        elif attr == 'models':
-            models = {}
-            for idx, mod in enumerate(val):
-                models[idx] = str(mod)
-            gp_sr[attr] = models
+        for key in results.keys():
+            self.serialized_results[key] = getattr(self, key)()
 
-        elif attr == 'random_state':
-            gp_sr[attr] = str(val)
+    def x(self):
 
-        elif attr == 'space':
-            space = {}
-            for idx, dim in enumerate(val.dimensions):
-                space[idx] = str(dim)
-            gp_sr[attr] = space
+        return self.para_list(self.results['x'])
 
-        elif attr == 'specs':
-            specs = {}
-            for k, v in val.items():
-                if k == 'args':
-                    args = {}
-                    for _k, _v in v.items():
-                        if _k == 'dimensions':
-                            dims = {}
-                            for idx, dim in enumerate(_v):
-                                dims[idx] = str(dim)
-                            args[_k] = dims
-                        else:
-                            args[_k] = str(_v)
-                    specs[k] = args
+    def para_list(self, x):
+        """Serializes list of parameters"""
+        _x = []
+        for para in x:
+            _x.append(self.obj(para))
+        return _x
+
+    def obj(self, obj):
+        """Serializes one object"""
+        if 'int' in obj.__class__.__name__:
+            return int(obj)
+        if 'float' in obj.__class__.__name__:
+            return float(obj)
+        if hasattr(obj, '__len__') and not isinstance(obj, str):
+            return [self.obj1(i) for i in obj]
+        return str(obj)
+
+
+    def obj1(self, obj):
+        """Serializes one object"""
+        if 'int' in obj.__class__.__name__:
+            return int(obj)
+        if 'float' in obj.__class__.__name__:
+            return float(obj)
+        if hasattr(obj, '__len__') and not isinstance(obj, str):
+            return [self.obj2(i) for i in obj]
+        return str(obj)
+
+    @staticmethod
+    def obj2(_obj):
+        if 'int' in _obj.__class__.__name__:
+            return int(_obj)
+        if 'float' in _obj.__class__.__name__:
+            return float(_obj)
+        return str(_obj)
+
+    def x0(self):
+        _x0 = []
+
+        __xo = self.results['specs']['args']['x0']
+
+        if __xo is not None:
+            for para in __xo:
+                if isinstance(para, list):
+                    _x0.append(self.para_list(para))
                 else:
-                    specs[k] = str(v)
-            gp_sr[attr] = specs
+                    _x0.append(self.obj(para))
+        return _x0
 
-        elif attr == "x":
-            gp_sr[attr] = val
+    def y0(self):
+        __y0 = self.results['specs']['args']['y0']
+        if __y0 is None:
+            return __y0
+        if isinstance(list, __y0):
+            _y0 = []
+            for y in self.results['specs']['args']['y0']:
+                _y0.append(self.obj(y))
+            return _y0
 
-        elif attr == "x_iters":
-            x_iters = val
-            nx_iters = []
+        return self.obj(self.results['specs']['args']['y0'])
 
-            for xiter in x_iters:
-                nxiter = []
-                for x in xiter:
-                    if isinstance(x, np.int32) or isinstance(x, np.int64):
-                        nxiter.append(int(x))
-                    elif isinstance(x, str):
-                        nxiter.append(x)
-                    else:
-                        nxiter.append(float(x))
-                nx_iters.append(nxiter)
-            gp_sr[attr] = nx_iters
 
-    return gp_sr
+    def fun(self):
+        return float(self.results['fun'])
+
+    def func_vals(self):
+        return [float(i) for i in self.results['func_vals']]
+
+    def x_iters(self):
+        out_x = []
+        for i in range(self.iters):
+            x = []
+            for para in self.results['x_iters'][i]:
+                x.append(self.obj(para))
+
+            out_x.append(x)
+
+        return out_x
+
+    def space(self):
+        raum = {}
+        for sp in self.results['space'].dimensions:
+            if sp.__class__.__name__ == 'Categorical':
+                _raum = {k:v for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
+                _raum.update({'type': 'Categorical'})
+                raum[sp.name] = _raum
+
+            elif sp.__class__.__name__ == 'Integer':
+                _raum = {k: v for k, v in sp.__dict__.items() if
+                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
+                _raum.update({'type': 'Integer'})
+                raum[sp.name] = _raum
+
+            elif sp.__class__.__name__ == 'Real':
+                _raum = {k: v for k, v in sp.__dict__.items() if
+                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
+                _raum.update({'type': 'Real'})
+                raum[sp.name] = _raum
+
+        return raum
+
+    def random_state(self):
+        return str(self.results['random_state'])
+
+    def kernel(self, k):
+        """Serializes Kernel"""
+        if k.__class__.__name__ == "Product":
+            return self.prod_kernel(k)
+
+        if k.__class__.__name__ == "Sum":
+            return self.sum_kernel(k)
+        # default scenario, just converts it to string
+        return str(k)
+
+    def prod_kernel(self, k):
+        """Serializes product kernel"""
+        kernel = {}
+        for _k,v in k.__dict__.items():
+
+
+            kernel[_k] = self.singleton_kernel(v)
+
+        return {"ProductKernel": kernel}
+
+    def sum_kernel(self, k):
+        """Serializes sum kernel"""
+        kernel = {}
+
+        for _k,v in k.__dict__.items():
+
+            if v.__class__.__name__ == "Product":
+                kernel[_k] = self.prod_kernel(v)
+            else:
+                kernel[_k] = self.singleton_kernel(v)
+
+        return {"SumKernel": kernel}
+
+    def singleton_kernel(self, k):
+        """Serializes Kernels such as  Matern, White, Constant Kernels"""
+        return {k:self.obj(v) for k,v in k.__dict__.items()}
+
+
+    def specs(self):
+        _specs = {}
+
+        _specs['function'] = self.results['specs']['function']
+
+        args = {}
+
+        args['func'] = str(self.results['specs']['args']['func'])
+
+        args['dimensions'] = self.space
+
+        be = self.results['specs']['args']['base_estimator']
+        b_e = {k: v for k, v in be.__dict__.items() if
+                                       k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state']}
+        b_e['kernel'] = self.kernel(be.kernel)
+
+        args['base_estimator'] = b_e
+
+        for k,v in self.results['specs']['args'].items():
+            if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func', 'acq_optimizer',
+                     'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa', 'n_jobs', 'model_queue_size']:
+                args[k] = v
+
+        args['x0'] = self.x0()
+        args['y0'] = self.y0()
+
+        _specs['args'] = args
+        return _specs
+
+    def models(self):
+
+        mods = []
+        for model in self.results['models']:
+            mod = {k:self.obj(v) for k,v in model.__dict__.items() if k in  ['noise',
+                         'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
+                         '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train', 'log_marginal_likelihood',
+                         'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
+
+            mod['kernel'] = self.kernel(model.kernel)
+            mods.append({model.__class__.__name__: mod})
+
+        return mods
 
 
 def clear_weights(_res:dict, opt_dir, keep=3):
@@ -475,6 +732,7 @@ def clear_weights(_res:dict, opt_dir, keep=3):
         json.dump(od, sfp, sort_keys=True, indent=True)
     return
 
+
 def get_attributes(aus, what:str='losses') ->dict:
     """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
     capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
@@ -506,6 +764,7 @@ def get_sklearn_models():
 
     return sklearn_models
 
+
 def get_xgboost_models():
 
     return {
@@ -514,6 +773,7 @@ def get_xgboost_models():
         "XGBOOSTRFREGRESSOR": XGBRFRegressor,
         "XGBOOSTRFCLASSIFIER": XGBRFClassifier,
     }
+
 
 def train_val_split(x, y, validation_split):
     if hasattr(x[0], 'shape'):
@@ -535,6 +795,7 @@ def slice_arrays(arrays, start, stop=None):
 
 
 def split_by_indices(x, y, indices):
+    """Slices the x and y arrays or lists of arrays by the indices"""
 
     def split_with_indices(data):
         if isinstance(data, list):
@@ -552,3 +813,17 @@ def split_by_indices(x, y, indices):
     y = split_with_indices(y)
 
     return x, y
+
+
+def post_process_skopt_results(skopt_results, results, opt_path):
+
+    skopt_plots(skopt_results, pref=opt_path)
+
+    fname = os.path.join(opt_path, 'gp_parameters')
+
+    sr_res = SerializeSKOptResults(skopt_results)
+
+    with open(fname + '.json', 'w') as fp:
+        json.dump(sr_res.serialized_results, fp, sort_keys=True, indent=4)
+
+    clear_weights(results, opt_path)

@@ -262,10 +262,10 @@ class Plots(object):
                     self._imshow(inputs, save=save, fname= which + '_data_' + str(idx), where='data')
         return
 
-    def features_2d(self, data, name, save=True, **kwargs):
+    def features_2d(self, data, name, save=True, slices=32, slice_dim=0, **kwargs):
         """Calls the features_2d from see-rnn"""
         st=0
-        for en in np.arange(32, data.shape[0] + 32, 32):
+        for en in np.arange(slices, data.shape[slice_dim] + slices, slices):
 
             if save:
                 name = name + f"_{st}_{en}"
@@ -273,7 +273,11 @@ class Plots(object):
             else:
                 save = None
 
-            features_2D(data[st:en, :], savepath=save, **kwargs)
+            if slice_dim == 0:
+                features_2D(data[st:en, :], savepath=save, **kwargs)
+            else:
+                # assuming it will always be the last dim if not first
+                features_2D(data[..., st:en], savepath=save, **kwargs)
             st=en
 
         return

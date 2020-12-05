@@ -9,8 +9,8 @@ The purpose of the repository is
 * save, load/reload or build models from readable json file.
 * both of above functionalities should be available without complicating simple keras implementation.
 * It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
- `Model`. So at the highest level you just need to initiate the `Model`, and then need `build`, `train`, `predict` and 
- `view_model` methods of `Model` class but you can go as lower as you could go with tensorflow/keras. 
+ `Model`. So at the highest level you just need to initiate the `Model`, and then need `train`, `predict` and 
+ `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
 This repository provides a framework to build layered models using python dictionary and with several helper tools 
 which fasten the process of  modeling time-series forcasting. The purpose is to cut the time to write boiler plate code
@@ -100,8 +100,7 @@ config = make_model(batches="2d",
 )
 
 model = Model(config=config,
-              data=df,
-              category="ML"
+              data=df
               )
 
 history = model.train(st=0, en=150)
