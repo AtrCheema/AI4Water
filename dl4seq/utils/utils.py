@@ -9,6 +9,9 @@ import json
 import pandas as pd
 import sklearn
 from xgboost import XGBRegressor, XGBClassifier, XGBRFRegressor, XGBRFClassifier
+from skopt.plots import plot_evaluations, plot_objective, plot_convergence
+from skopt.utils import dump
+from pickle import PicklingError
 
 
 def plot_results(true, predicted, name=None, **kwargs):
@@ -95,6 +98,7 @@ def plot_loss(history: dict, name=None):
     else:
         plt.show()
 
+    plt.close('all')
     return
 
 
@@ -186,8 +190,6 @@ def save_config_file(path, config=None, errors=None, indices=None, name=''):
 
 def skopt_plots(search_result, pref=os.getcwd()):
 
-    from skopt.plots import plot_evaluations, plot_objective, plot_convergence
-
     plt.close('all')
     _ = plot_evaluations(search_result)
     plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
@@ -256,6 +258,10 @@ def make_model(**kwargs):
 
     dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
     fname = os.path.join(dpath, "nasdaq100_padding.csv")
+
+    if not os.path.exists(dpath):
+        os.makedirs(dpath)
+
     if not os.path.exists(fname):
         print(f"downloading file to {fname}")
         df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
@@ -597,18 +603,18 @@ class SerializeSKOptResults(object):
         raum = {}
         for sp in self.results['space'].dimensions:
             if sp.__class__.__name__ == 'Categorical':
-                _raum = {k:v for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
+                _raum = {k: self.obj(v) for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
                 _raum.update({'type': 'Categorical'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Integer':
-                _raum = {k: v for k, v in sp.__dict__.items() if
+                _raum = {k: self.obj(v) for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
                 _raum.update({'type': 'Integer'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Real':
-                _raum = {k: v for k, v in sp.__dict__.items() if
+                _raum = {k: self.obj(v) for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
                 _raum.update({'type': 'Real'})
                 raum[sp.name] = _raum
@@ -665,10 +671,10 @@ class SerializeSKOptResults(object):
 
         args['func'] = str(self.results['specs']['args']['func'])
 
-        args['dimensions'] = self.space
+        args['dimensions'] = self.space()
 
         be = self.results['specs']['args']['base_estimator']
-        b_e = {k: v for k, v in be.__dict__.items() if
+        b_e = {k: self.obj(v) for k, v in be.__dict__.items() if
                                        k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state']}
         b_e['kernel'] = self.kernel(be.kernel)
 
@@ -677,7 +683,7 @@ class SerializeSKOptResults(object):
         for k,v in self.results['specs']['args'].items():
             if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func', 'acq_optimizer',
                      'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa', 'n_jobs', 'model_queue_size']:
-                args[k] = v
+                args[k] = self.obj(v)
 
         args['x0'] = self.x0()
         args['y0'] = self.y0()
@@ -707,25 +713,27 @@ def clear_weights(_res:dict, opt_dir, keep=3):
 
     idx = 0
     for k,v in od.items():
-        folder = v['folder']
-        _path = os.path.join(opt_dir, folder)
-        w_path = os.path.join(_path, 'weights')
+        if 'folder' in v:
+            folder = v['folder']
+            _path = os.path.join(opt_dir, folder)
+            w_path = os.path.join(_path, 'weights')
 
-        if idx > keep-1:
-            if os.path.exists(w_path):
-                rmtree(w_path)
+            if idx > keep-1:
+                if os.path.exists(w_path):
+                    rmtree(w_path)
 
-        idx += 1
+            idx += 1
 
     # append ranking of models to folder_names
     idx = 0
     for k,v in od.items():
-        folder = v['folder']
-        old_path = os.path.join(opt_dir, folder)
-        new_path = os.path.join(opt_dir, str(idx+1) + "_" + folder)
-        os.rename(old_path, new_path)
+        if 'folder' in v:
+            folder = v['folder']
+            old_path = os.path.join(opt_dir, folder)
+            new_path = os.path.join(opt_dir, str(idx+1) + "_" + folder)
+            os.rename(old_path, new_path)
 
-        idx += 1
+            idx += 1
 
     sorted_fname = os.path.join(opt_dir, 'sorted.json')
     with open(sorted_fname, 'w') as sfp:
@@ -823,7 +831,18 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
     sr_res = SerializeSKOptResults(skopt_results)
 
-    with open(fname + '.json', 'w') as fp:
-        json.dump(sr_res.serialized_results, fp, sort_keys=True, indent=4)
-
     clear_weights(results, opt_path)
+
+    try:
+        dump(skopt_results, os.path.basename(opt_path))
+    except PicklingError:
+        print("could not pickle results")
+
+    try:
+        with open(fname + '.json', 'w') as fp:
+            json.dump(sr_res.serialized_results, fp, sort_keys=True, indent=4)
+    except TypeError:
+        with open(fname + '.json', 'w') as fp:
+            json.dump(str(sr_res.serialized_results), fp, sort_keys=True, indent=4)
+
+    return

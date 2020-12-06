@@ -8,6 +8,11 @@ The purpose of the repository is
 * compliment the functionality of keras by making pre and post processing easeier for time-series prediction problems
 * save, load/reload or build models from readable json file.
 * both of above functionalities should be available without complicating simple keras implementation.
+* provide a uniform `one window` interface for optimizing hyper-parameters using either Bayesian, random or grid search
+  for any kind of model using `HyperOpt` class. This class sits on top of [BayesSearchCV](https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html),
+  [GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV),
+  [RandomizeSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV)
+  but but has some extra functionalities. See [example](https://github.com/AtrCheema/dl4seq/tree/84d139e3ade30d44fb07bf2755e2f284b3d9fb9e/examples/hyper_para_opt.ipynb) using its application.
 * It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `train`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
@@ -76,6 +81,37 @@ history = model.train(indices='random')
 
 preds, obs = model.predict()
 acts = model.view_model()
+```
+
+## Using your own pre-processed data
+You can use your own pre-processed data without using any of pre-processing tools of dl4seq. You will need to provide
+input output paris to `data` argument to `train` and/or `predict` methods.
+```python
+import numpy as np
+from dl4seq import InputAttentionModel  # import any of the above model
+from dl4seq.utils import make_model  # helper function to make inputs for model
+
+batch_size = 16
+lookback = 15
+inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names for plotting and saving results.
+outputs=['DummyTarget']
+config = make_model(batch_size=batch_size,
+                    lookback=lookback,
+                    transformation=None,
+                    inputs=inputs,
+                    outputs=outputs,
+                    lr=0.001)
+
+model = InputAttentionModel(
+              config=config,
+              data=None
+              )
+x = np.random.random((batch_size*10, lookback, len(inputs)))
+y = np.random.random((batch_size*10, len(outputs)))
+data = (x,y)
+
+history = model.train(data=data)
+
 ```
 
 ## using for `scikit-learn`/`xgboost` based models

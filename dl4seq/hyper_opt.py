@@ -95,6 +95,9 @@ class HyperOpt(object):
         self.dl4seq_args = None
         self.use_named_args = False
         self.title = self.method
+        self.results = {}  # internally stored results
+        self.gpmin_results = None  #
+        self.data = None,
 
         self.gpmin_args = self.check_args(**kwargs)
 
@@ -111,7 +114,7 @@ class HyperOpt(object):
             self.fit = self.own_fit
 
         elif self.use_own:
-
+            self.predict = self._predict()
             if self.method == "grid":
                 self.fit = self.grid_search
             else:
@@ -182,9 +185,13 @@ class HyperOpt(object):
 
         t, p = model.predict(indices=model.test_indices, pref='test')
         mse = FindErrors(t, p).mse()
-        print(f"Validation mse {mse}")
 
-        return mse
+        error = round(mse, 7)
+        self.results[error] = kwargs
+
+        print(f"Validation mse {error}")
+
+        return error
 
     def dims(self):
 
@@ -200,7 +207,6 @@ class HyperOpt(object):
           In first case, we just return what user has provided.
           """
         if callable(self.model) and not self.use_named_args:
-            print('here')
             return self.model
 
         dims = self.dims()
@@ -221,8 +227,6 @@ class HyperOpt(object):
 
     def own_fit(self):
 
-        results = {}
-
         search_result = gp_minimize(func=self.model_for_gpmin(),
                                     dimensions=self.dims(),
                                     **self.gpmin_args)
@@ -230,22 +234,26 @@ class HyperOpt(object):
         opt_path = os.path.join(os.getcwd(), "results\\" + self.title)
         if not os.path.exists(opt_path):
             os.makedirs(opt_path)
-        post_process_skopt_results(search_result, results, opt_path)
+
+        self.gpmin_results = search_result
+
+        post_process_skopt_results(search_result, self.results, opt_path)
 
         return search_result
 
     def eval_sequence(self, params):
 
-        results = {}
         for para in params:
 
             err = self.dl4seq_model(**para)
-            results[str(err)] = para
+            err = round(err, 6)
+            self.results[str(err)] = para
 
-        with open(self.method + "_results.jsong", "w") as fp:
-            json.dump(results, fp, sort_keys=True, indent=4)
+        # with open(self.method + "_results.jsong", "w") as fp:
+        #     json.dump(self.results, fp, sort_keys=True, indent=4)
 
-        return results
+        return self.results
+
     def grid_search(self):
 
         params = list(ParameterGrid(self.param_space))
@@ -270,3 +278,7 @@ class HyperOpt(object):
                                            random_state=rng))
 
         return self.eval_sequence(param_list)
+
+    def _predict(self, **params):
+
+        return self.dl4seq_model(**params)

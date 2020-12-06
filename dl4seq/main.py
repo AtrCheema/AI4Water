@@ -1119,6 +1119,8 @@ class Model(NN, Plots):
     def check_nans(self, df, input_x, input_y, label_y, outs):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.
         """
+        # TODO, nans in inputs should be ignored at all cost because this causes error in results, when we set ignore_nans
+        # to True, then this should apply only to target/labels, and examples with nans in inputs should still be ignored.
         if isinstance(df, pd.DataFrame):
             nans = df[self.out_cols].isna().sum()
         else:
