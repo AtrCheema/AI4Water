@@ -1,4 +1,0 @@
-include tests *.py
-include docs *.py
-recursive-include tests *.py
-recursive-include docs *.py

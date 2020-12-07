@@ -23,7 +23,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'data': ['data_30min.csv']},
+    package_data={'dl4seq/data': ['data_30min.csv', "input_target_u1.csv"]},
     include_package_data=True,
 
     classifiers=[
@@ -44,7 +44,7 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
 
-    packages=['dl4seq', 'dl4seq/models', 'dl4seq/utils', 'dl4sq/data'],
+    packages=['dl4seq', 'dl4seq/models', 'dl4seq/utils', 'dl4seq/data'],
 
     install_requires=[
         'numpy',
