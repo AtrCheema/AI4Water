@@ -12,7 +12,7 @@ The purpose of the repository is
   for any kind of model using `HyperOpt` class. This class sits on top of [BayesSearchCV](https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html),
   [GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV),
   [RandomizeSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV)
-  but but has some extra functionalities. See [example](https://github.com/AtrCheema/dl4seq/tree/84d139e3ade30d44fb07bf2755e2f284b3d9fb9e/examples/hyper_para_opt.ipynb) using its application.
+  but but has some extra functionalities. See [example](https://github.com/AtrCheema/dl4seq/blob/master/examples/hyper_para_opt.ipynb) using its application.
 * It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `train`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 

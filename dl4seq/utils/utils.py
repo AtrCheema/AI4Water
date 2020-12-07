@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 from collections import OrderedDict
 import os
@@ -13,45 +12,6 @@ from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 from skopt.utils import dump
 from pickle import PicklingError
 
-
-def plot_results(true, predicted, name=None, **kwargs):
-    """
-    # kwargs can be any/all of followings
-        # fillstyle:
-        # marker:
-        # linestyle:
-        # markersize:
-        # color:
-    """
-
-    regplot_using_searborn(true, predicted, name)
-    fig, axis = plt.subplots()
-    set_fig_dim(fig, 12, 8)
-    axis.plot(true, **kwargs, color='b', label='True')
-    axis.plot(predicted, **kwargs, color='r', label='predicted')
-    axis.legend(loc="best", fontsize=22, markerscale=4)
-    plt.xticks(fontsize=18)
-    plt.yticks(fontsize=18)
-
-    if name is not None:
-        plt.savefig(name, dpi=300, bbox_inches='tight')
-    else:
-        plt.show()
-
-    return
-
-
-def regplot_using_searborn(true, pred, name):
-    # https://seaborn.pydata.org/generated/seaborn.regplot.html
-    plt.close('all')
-    sns.regplot(x=true, y=pred, color="g")
-    plt.xlabel('Observed', fontsize=14)
-    plt.ylabel('Predicted', fontsize=14)
-
-    if name is not None:
-        plt.savefig(name + '_reg', dpi=300, bbox_inches='tight')
-    else:
-        plt.show()
 
 
 def plot_loss(history: dict, name=None):
@@ -100,27 +60,6 @@ def plot_loss(history: dict, name=None):
 
     plt.close('all')
     return
-
-
-def set_fig_dim(fig, width, height):
-    fig.set_figwidth(width)
-    fig.set_figheight(height)
-
-
-def plot_train_test_pred(y, obs, tr_idx, test_idx):
-    yf_tr = np.full(len(y), np.nan)
-    yf_test = np.full(len(y), np.nan)
-    yf_tr[tr_idx.reshape(-1, )] = y[tr_idx.reshape(-1, )].reshape(-1, )
-    yf_test[test_idx.reshape(-1, )] = y[test_idx.reshape(-1, )].reshape(-1, )
-
-    fig, axis = plt.subplots()
-    set_fig_dim(fig, 14, 8)
-    axis.plot(obs, '-', label='True')
-    axis.plot(yf_tr, '.', label='predicted train')
-    axis.plot(yf_test, '.', label='predicted test')
-    axis.legend(loc="best", fontsize=18, markerscale=4)
-
-    plt.show()
 
 
 def maybe_create_path(prefix=None, path=None):
@@ -233,6 +172,13 @@ def check_kwargs(**kwargs):
             if "ml_model_args" in kwargs:
                 if "learning_rate" not in kwargs["ml_model_args"]:
                     kwargs["ml_model_args"]["learning_rate"] = lr
+
+        if "batches" not in kwargs: # for ML, default batches will be 2d unless the user specifies otherwise.
+            kwargs["batches"] = "2d"
+
+        if "lookback" not in kwargs:
+            kwargs["lookback"] = 1
+
     return kwargs
 
 def make_model(**kwargs):

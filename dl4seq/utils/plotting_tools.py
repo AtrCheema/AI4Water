@@ -7,6 +7,8 @@ from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precisio
 from sklearn import tree
 from xgboost import plot_importance, plot_tree
 from see_rnn.visuals_gen import features_0D, features_1D, features_2D
+import matplotlib as mpl
+
 
 from dl4seq.utils.utils_from_see_rnn import rnn_histogram
 
@@ -177,8 +179,9 @@ class Plots(object):
 
         return
 
-    def save_or_show(self, save: bool = True, fname=None, where='act', dpi=300, bbox_inches='tight'):
+    def save_or_show(self, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
 
+        assert where in['', 'act', 'activation', 'weights', 'plots', 'data', 'results']
         if save:
             assert isinstance(fname, str)
             if "/" in fname:
@@ -186,23 +189,19 @@ class Plots(object):
             if ":" in fname:
                 fname = fname.replace(":", "__")
 
-            if where.upper() == 'DATA':
-                fpath = os.path.join(self.path, 'data')
-                if not os.path.exists(fpath):
-                    os.makedirs(fpath)
-                fname = os.path.join(fpath, fname)
-            elif where.upper() == 'ACT':
-                fname = os.path.join(self.act_path, fname + ".png")
-            else:
-                fname = os.path.join(self.path, fname + ".png")
+            save_dir = os.path.join(self.path, where)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+
+            fname = os.path.join(self.path, fname + ".png")
 
             plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
         else:
             plt.show()
 
-        plt.close('all')
+        if close:
+            plt.close('all')
         return
-
 
     def plot2d_act_for_a_sample(self, activations, sample=0, save:bool = False, name: str = None):
         fig, axis = plt.subplots()
@@ -453,6 +452,59 @@ class Plots(object):
 
             trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
             self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
+
+    def plot_results(self, true, predicted:pd.DataFrame, save=True, name=None, **kwargs):
+        """
+        # kwargs can be any/all of followings
+            # fillstyle:
+            # marker:
+            # linestyle:
+            # markersize:
+            # color:
+        """
+
+        self.regplot_using_searborn(true, predicted, save=save, name=name)
+
+        mpl.style.use('classic')
+
+        fig, axis = plt.subplots()
+        set_fig_dim(fig, 12, 8)
+
+        # it is quite possible that when data is datetime indexed, then it is not equalidistant and large amount of graph
+        # will have not data in that case lines plot will create a lot of useless interpolating lines where no data is present.
+        style = '.' if isinstance(true.index, pd.DatetimeIndex) else '-'
+
+        if np.isnan(true.values).sum() > 0:
+            style = '.' # For Nan values we should be using this style otherwise nothing is plotted.
+
+        ms = 4 if style == '.' else 2
+        axis.plot(true, style, color='b', markersize=ms, label='True')
+
+        axis.plot(predicted, style, color='r', label='Prediction')
+
+        axis.legend(loc="best", fontsize=22, markerscale=4)
+        plt.xticks(fontsize=18)
+        plt.yticks(fontsize=18)
+        plt.xlabel("Time", fontsize=18)
+
+        self.save_or_show(save=save, fname=name, close=False)
+        return
+
+    def regplot_using_searborn(self, true, pred, save, name):
+        # https://seaborn.pydata.org/generated/seaborn.regplot.html
+        plt.close('all')
+        sns.regplot(x=true, y=pred, color="g")
+        plt.xlabel('Observed', fontsize=14)
+        plt.ylabel('Predicted', fontsize=14)
+
+        self.save_or_show(save=save, fname=name + "_reg.png", close=False)
+        return
+
+
+def set_fig_dim(fig, width, height):
+    fig.set_figwidth(width)
+    fig.set_figheight(height)
+
 
 def _get_nrows_and_ncols(n_subplots, n_rows=None):
     if n_rows is None:

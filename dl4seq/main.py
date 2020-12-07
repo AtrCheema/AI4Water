@@ -13,7 +13,7 @@ import warnings
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
-from dl4seq.utils.utils import plot_results, plot_loss, maybe_create_path, save_config_file, get_index
+from dl4seq.utils.utils import plot_loss, maybe_create_path, save_config_file, get_index
 from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split, split_by_indices
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
@@ -279,6 +279,7 @@ class Model(NN, Plots):
 
         if use_datetime_index:
             self.in_cols.remove("dt_index")
+            self.data.pop('dt_index') # because self.data belongs to class, this should remain intact.
         else:
             x = x.astype(np.float32)
 
@@ -664,8 +665,7 @@ class Model(NN, Plots):
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
                 errs[out + '_stats_' + str(h)] = errors.stats()
 
-                plot_results(t, p, name=os.path.join(self.path, prefix + out + '_' + str(h)),
-                             **plot_args)
+                self.plot_results(t, p, name=prefix + out + '_' + str(h), **plot_args)
 
         save_config_file(self.path, errors=errs, name=prefix)
 
@@ -728,7 +728,7 @@ class Model(NN, Plots):
                 # It is good that the user knows  explicitly that either of val_fraction or test_fraction is used so
                 # one of them must be set to 0.0
                 if self.data_config['val_fraction'] > 0.0:
-                    warnings.warn(f"Setting validation from {self.data_config['val_fraction']} to 0.0")
+                    warnings.warn(f"Setting val_fraction from {self.data_config['val_fraction']} to 0.0")
                     self.data_config['val_fraction'] = 0.0
 
                 assert self.data_config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.data_config['test_fraction']}"
@@ -1089,7 +1089,8 @@ class Model(NN, Plots):
             prev_y.append(np.array(y_data))
             y.append(np.array(target))
 
-        x = np.array([np.array(i, dtype=np.float32) for i in x], dtype=np.float32)
+        #x = np.array([np.array(i, dtype=np.float32) for i in x], dtype=np.float32)
+        x = np.stack(x)
         prev_y = np.array([np.array(i, dtype=np.float32) for i in prev_y], dtype=np.float32)
         # transpose because we want labels to be of shape (examples, outs, forecast_length)
         y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
@@ -1122,7 +1123,7 @@ class Model(NN, Plots):
         # TODO, nans in inputs should be ignored at all cost because this causes error in results, when we set ignore_nans
         # to True, then this should apply only to target/labels, and examples with nans in inputs should still be ignored.
         if isinstance(df, pd.DataFrame):
-            nans = df[self.out_cols].isna().sum()
+            nans = df[self.out_cols].isna()
         else:
             nans = np.isnan(df[:, -outs:]) # df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:

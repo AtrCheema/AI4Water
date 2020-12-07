@@ -3,10 +3,12 @@ import os
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from skopt import gp_minimize
 from skopt.utils import use_named_args
+from skopt.plots import plot_convergence
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 import numpy as np
 from TSErrors import FindErrors
 import json
+import matplotlib.pyplot as plt
 
 from dl4seq import Model
 from dl4seq.utils import make_model
@@ -16,7 +18,7 @@ from dl4seq.utils.utils import post_process_skopt_results
 class HyperOpt(object):
     """
     Combines the power of sklearn based GridSeearchCV, RandomizeSearchCV and skopt based BayeSearchCV.
-    Complements the following two deficiences of sklearn
+    Sklearn is great but
       - sklearn based SearchCVs apply only on sklearn based models and not on such as on NNs
       - sklearn does not provide Bayesian optimization
     On the other hand BayesSearchCV of skopt library
@@ -25,30 +27,30 @@ class HyperOpt(object):
       - The gp_minimize function from skopt allows application of Bayesian on any regressor/classifier/model, but in that
         case this will only be Bayesian
 
-    We with to make a class which allows application of any of the three optimization methods on any type of model/classifier/regressor.
-    The way should be that if the classifier/regressor is of sklearn-based, then for random search, we should be using
-    RanddomSearchCV, for grid search, it should be using GridSearchCV and for Bayesian, it should be using BayesSearchCV.
-    On the other hand, if the model is not from sklearn-based, we should still be able to implement any of the three methods.
-    In such case, the bayesian will be implemented using gp_minimize. Random search and grid search will be done by
-    simple iterating over the sample space generated as in sklearn based samplers. However, the post-processing of the
-    results should be done same as done on RandomSearchCV and GridSearch CV.
+    We wish to make a class which allows application of any of the three optimization methods on any type of model/classifier/regressor.
+    If the classifier/regressor is of sklearn-based, then for random search, we use RanddomSearchCV, for grid search,
+    we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the other hand, if the model is not sklearn-based,
+    you will still be able to implement any of the three methods. In such case, the bayesian will be implemented using
+    gp_minimize. Random search and grid search will be done by simple iterating over the sample space generated as in
+    sklearn based samplers. However, the post-processing of the results is (supposed to be) done same as done in
+    RandomSearchCV and GridSearchCV.
 
     Thus one motivation of this class is to unify GridSearchCV, RandomSearchCV and BayesSearchCV by complimenting each other.
     The second motivation is to extend their abilities.
 
-    All of the above should be done without limiting the capabilities of GridSearchCV, RandomSearchCV and BayesSearchCV
-    or complicating their use.
+    All of the above is done (in theory at least) without limiting the capabilities of GridSearchCV, RandomSearchCV and
+    BayesSearchCV or complicating their use.
 
     The class should pass all the tests written in sklearn or skopt for corresponding classes.
 
-    BayesSearchCV also inherits from BaseSearchCV as GridSearchCV and RandomSearchCV do.
-
+    For detailed use of this class see [example](https://github.com/AtrCheema/dl4seq/blob/master/examples/hyper_para_opt.ipynb)
     :Scenarios
     ---------------
     Use scenarios of this class can be one of the following:
       1) Apply grid/random/bayesian search for sklearn based regressor/classifier
-      2) Apply grid/random/bayesian search for custom regressor/classifier/model/function such as for xgboost
-      3) Apply grid/random/bayesian search for dl4seq. This may be the easierst one, if user is familier with dl4seq
+      2) Apply grid/random/bayesian search for custom regressor/classifier/model/function
+      3) Apply grid/random/bayesian search for dl4seq. This may be the easierst one, if user is familier with dl4seq. Only
+         supported for ml models and not for dl models. For dl based dl4eq's models, consider scenario 2.
 
 
     :parameters
@@ -62,13 +64,30 @@ class HyperOpt(object):
                        of sklearn as `param_distribution`.  If `method` is "bayes",  then this must be a
                        dictionary of parameter spaces and this argument will be passed to `BayesSearchCV` as
                        `search_spaces`.
-                   - If you are using your custom function as `model`, and "method` is "bayes", then this must be either
-                     dictionary of parameter spaces or a list of tuples defining upper and lower bounds of each parameter
-                     of the custom function which you used as `model`. These tuples must follow the same sequence as the
-                     order of input parameters in your custom model/function. This argument will then be provided to
-                     `gp_minnimize` function of skopt. This case will the :ref:`<example>(4) in skopt.
+                   - For scenario 2, and "method` is "bayes", then this must be either  dictionary of parameter spaces or
+                     a list of tuples defining upper and lower bounds of each parameter of the custom function which you
+                     used as `model`. These tuples must follow the same sequence as the order of input parameters in
+                     your custom model/function. This argument will then be provided to `gp_minnimize` function of skopt.
+                     This case will the :ref:`<example>(4) in skopt.
+                   - For case 3, this argument must be list of dictionary of each parameter.
+
+    kwargs: dict, For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
+                  passed to initialize dl4seq's Model class. The choice of kwargs depends whether you are using this class
+                  For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
+                  For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
+                  For scenario 2, f your custom model/function accepts named arguments, then an argument `use_named_args`
+                  must be passed as True. This must also be passed if you are using in-built `dl4seq_model` as objective
+                  function.
 
 
+    Attributes
+    --------------
+    For scenario 1, all attributes of corresponding classes of skopt and sklean as available from HyperOpt.
+    For scenario 2 and 3, some additional attributes are available.
+
+    - results: dict
+    - gpmin_results: dict
+    - paam_grid: dict, only for scenario 3.
 
     References
     --------------
@@ -97,7 +116,7 @@ class HyperOpt(object):
         self.title = self.method
         self.results = {}  # internally stored results
         self.gpmin_results = None  #
-        self.data = None,
+        self.data = None
 
         self.gpmin_args = self.check_args(**kwargs)
 
@@ -114,7 +133,7 @@ class HyperOpt(object):
             self.fit = self.own_fit
 
         elif self.use_own:
-            self.predict = self._predict()
+            self.predict = self._predict
             if self.method == "grid":
                 self.fit = self.grid_search
             else:
@@ -131,7 +150,7 @@ class HyperOpt(object):
         return kwargs
 
     def __getattr__(self, item):
-        # TODO, not sure if this is the best way
+        # TODO, not sure if this is the best way but venturing since it is done by the legend here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
         # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
         # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
         # available with class.
@@ -171,9 +190,52 @@ class HyperOpt(object):
             return True
         return False
 
-    def dl4seq_model(self, **kwargs):
+
+    @property
+    def random_state(self):
+        if "random_state" not in self.gpmin_args:
+            return np.random.RandomState(313)
+        else:
+            return np.random.RandomState(self.gpmin_args['random_state'])
+
+    @property
+    def iters(self):
+        return self.gpmin_args['n_iter']
+
+    @property
+    def best_paras(self):
+        if self.use_skopt_gpmin:
+            x_iters = self.gpmin_results['x_iters']
+            func_vals = self.gpmin_results['func_vals']
+            idx = np.argmin(func_vals)
+            paras = x_iters[idx]
+        else:
+            fun = list(sorted(self.results.keys()))[0]
+            paras = self.results[fun]
+
+        return paras
+
+    @property
+    def opt_path(self):
+        path = os.path.join(os.getcwd(), "results\\" + self.title)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        return path
+
+    def dl4seq_model(self, pp=False, **kwargs):
+
+        # this is for it to make json serializable.
+        for k,v in kwargs.items():
+            if 'int' in v.__class__.__name__:
+                kwargs[k] = int(v)
+            if 'float' in v.__class__.__name__:
+                kwargs[k] = float(v)
 
         config = make_model(ml_model_args=kwargs, **self.dl4seq_args)
+
+        assert config["model_config"]["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
+                                                               " dl4seq model and pass it as custom model."
 
         self.title = self.method + '_' + config["model_config"]["problem"] + '_' + config["model_config"]["ml_model"]
         model = Model(config,
@@ -183,11 +245,11 @@ class HyperOpt(object):
 
         model.train(indices="random")
 
-        t, p = model.predict(indices=model.test_indices, pref='test')
+        t, p = model.predict(indices=model.test_indices, pp=pp)
         mse = FindErrors(t, p).mse()
 
-        error = round(mse, 7)
-        self.results[error] = kwargs
+        error = round(mse, 6)
+        self.results[str(error)] = kwargs
 
         print(f"Validation mse {error}")
 
@@ -207,17 +269,19 @@ class HyperOpt(object):
           In first case, we just return what user has provided.
           """
         if callable(self.model) and not self.use_named_args:
+            # external function for bayesian but this function does not require named args.
             return self.model
 
         dims = self.dims()
         if self.use_named_args and self.dl4seq_args is None:
-
+            # external function and this function accepts named args.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
                 return self.model(**kwargs)
             return fitness
 
         if self.use_named_args and self.dl4seq_args is not None:
+            # using in-build dl4seq_model as objective function.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
                 return self.dl4seq_model(**kwargs)
@@ -231,27 +295,27 @@ class HyperOpt(object):
                                     dimensions=self.dims(),
                                     **self.gpmin_args)
 
-        opt_path = os.path.join(os.getcwd(), "results\\" + self.title)
-        if not os.path.exists(opt_path):
-            os.makedirs(opt_path)
-
         self.gpmin_results = search_result
 
-        post_process_skopt_results(search_result, self.results, opt_path)
+        post_process_skopt_results(search_result, self.results, self.opt_path)
 
         return search_result
 
     def eval_sequence(self, params):
 
+        print(f"total number of iterations: {len(params)}")
         for para in params:
 
             err = self.dl4seq_model(**para)
             err = round(err, 6)
-            self.results[str(err)] = para
 
-        # with open(self.method + "_results.jsong", "w") as fp:
-        #     json.dump(self.results, fp, sort_keys=True, indent=4)
+            if self.dl4seq_args is not None:
+                self.results[str(err)] = para
 
+        with open(self.method + "_results.json", "w") as fp:
+            json.dump(self.results, fp, sort_keys=True, indent=4)
+
+        self._plot_convergence()
         return self.results
 
     def grid_search(self):
@@ -261,24 +325,27 @@ class HyperOpt(object):
 
         return self.eval_sequence(params)
 
-    @property
-    def random_state(self):
-        if "random_state" not in self.gpmin_args:
-            return np.random.RandomState(313)
-        else:
-            return np.random.RandomState(self.gpmin_args['random_state'])
-
-    @property
-    def iters(self):
-        return self.gpmin_args['n_iter']
 
     def random_search(self):
-        rng = self.random_state
+
         param_list = list(ParameterSampler(self.param_space, n_iter=self.iters,
-                                           random_state=rng))
+                                           random_state=self.random_state))
+        self.param_grid = param_list
 
         return self.eval_sequence(param_list)
 
     def _predict(self, **params):
 
-        return self.dl4seq_model(**params)
+        return self.dl4seq_model(pp=True, **params)
+
+    def _plot_convergence(self):
+        class sr:
+            def __init__(self, results):
+                self.x_iters = list(results.values())
+                self.func_vals = np.array(list(results.keys()), dtype=np.float32)
+
+        res = sr(self.results)
+        plot_convergence([res])
+
+        fname = os.path.join(self.opt_path, "convergence.png")
+        return plt.savefig(fname, dpi=300)
