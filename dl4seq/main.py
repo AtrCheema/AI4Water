@@ -6,6 +6,7 @@ import matplotlib # for version info
 import os
 from sklearn.model_selection import train_test_split
 import json
+import joblib
 import h5py
 import random
 import math
@@ -761,10 +762,15 @@ class Model(NN, Plots):
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
 
+            fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + self.model_cofig['ml_model'])
+
+            joblib.dump(self._model, fname)
+
             if self.model_config['ml_model'].lower().startswith("xgb"):
 
-                fname = os.path.join(self.w_path, "xgboost_model.json")
-                self._model.save_model(fname)
+                self._model.save_model(fname + ".json")
+
+            self.save_config()
 
         self.is_training = False
         return history
@@ -1526,21 +1532,25 @@ class Model(NN, Plots):
         save_config_file(indices=indices, path=self.path)
         return
 
-    def save_config(self, history: dict):
+    def save_config(self, history: dict=None):
 
         self.save_indices()
 
         config = dict()
-        config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
-        config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
+        if history is not None:
+            config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
+            config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
+
         config['model_config'] = self.model_config
         config['data_config'] = self.data_config
         config['method'] = self.method
         config['category'] = self.category
         config['problem'] = self.problem
         config['quantiles'] = self.quantiles
-        config['loss'] = self._model.loss.__name__ if self._model is not None else None
-        config['params'] = int(self._model.count_params()) if self._model is not None and self.category == "DL" else None,
+
+        if self.category == "DL":
+            config['loss'] = self._model.loss.__name__ if self._model is not None else None
+            config['params'] = int(self._model.count_params()) if self._model is not None else None,
 
         VERSION_INFO.update({'numpy_version': str(np.__version__),
                              'pandas_version': str(pd.__version__),
@@ -1559,8 +1569,6 @@ class Model(NN, Plots):
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
 
-        category = config['category']
-        problem = config['problem']
         config = {'data_config': config['data_config'],
                   'model_config':config['model_config']}
 
@@ -1576,18 +1584,19 @@ class Model(NN, Plots):
             path = None
         return cls(config,
                    data=data,
-                   path=path,
-                   category=category,
-                   problem=problem)
+                   path=path)
 
     def load_weights(self, weight_file: str):
         """
         weight_file: str, name of file which contains parameters of model.
         """
         weight_file = os.path.join(self.w_path, weight_file)
-        if self.category.lower() == "ML":
+        if self.category == "ML":
             if self.data_config['ml_model'].lower().startswith("xgb"):
                 self._model.load_model(weight_file)
+            else:
+                # for sklearn based models
+                self._model = joblib.load(weight_file)
         else:
             # loads the weights of keras model from weight file `w_file`.
             self._model.load_weights(weight_file)

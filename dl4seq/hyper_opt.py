@@ -312,7 +312,8 @@ class HyperOpt(object):
             if self.dl4seq_args is not None:
                 self.results[str(err)] = para
 
-        with open(self.method + "_results.json", "w") as fp:
+        fname = os.path.join(self.opt_path, "eval_results.json")
+        with open(fname, "w") as fp:
             json.dump(self.results, fp, sort_keys=True, indent=4)
 
         self._plot_convergence()
