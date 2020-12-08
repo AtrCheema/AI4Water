@@ -780,7 +780,7 @@ def post_process_skopt_results(skopt_results, results, opt_path):
     clear_weights(results, opt_path)
 
     try:
-        dump(skopt_results, os.path.basename(opt_path))
+        dump(skopt_results, os.path.join(opt_path, os.path.basename(opt_path)))
     except PicklingError:
         print("could not pickle results")
 

@@ -69,8 +69,11 @@ class HyperOpt(object):
                      used as `model`. These tuples must follow the same sequence as the order of input parameters in
                      your custom model/function. This argument will then be provided to `gp_minnimize` function of skopt.
                      This case will the :ref:`<example>(4) in skopt.
-                   - For case 3, this argument must be list of dictionary of each parameter.
+                   - For scenario 3,  if method is grid or random then this argument should be same as in scenario 1. If method
+                     is 'bayes', then this must be list of Integer/Categorical/Real skopt.space instances..
 
+    eval_on_best: bool, if True, then after optimization, the model will be evaluated on best parameters and the results
+                  will be stored in the folder named "best" inside `title` folder.
     kwargs: dict, For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
                   passed to initialize dl4seq's Model class. The choice of kwargs depends whether you are using this class
                   For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
@@ -85,9 +88,20 @@ class HyperOpt(object):
     For scenario 1, all attributes of corresponding classes of skopt and sklean as available from HyperOpt.
     For scenario 2 and 3, some additional attributes are available.
 
+    - best_paras: returns the best parameters from optimization.
     - results: dict
     - gpmin_results: dict
     - paam_grid: dict, only for scenario 3.
+    - title: str, name of the folder in which all results will be saved. By default this is same as name of `method`. For
+             `dl4seq` based models, this is more detailed, containing problem type etc.
+
+
+    Methods
+    -----------------
+    best_paras_kw: returns the best parameters as dictionary.
+    eval_with_best: evaluates the model on best parameters
+
+
 
     References
     --------------
@@ -102,6 +116,7 @@ class HyperOpt(object):
                  method:str, *,
                  param_space,
                  model=None,
+                 eval_on_best=True,
                  **kwargs
                  ):
 
@@ -117,10 +132,11 @@ class HyperOpt(object):
         self.results = {}  # internally stored results
         self.gpmin_results = None  #
         self.data = None
+        self.eval_on_best=eval_on_best
 
         self.gpmin_args = self.check_args(**kwargs)
 
-        if self.use_sklearn():
+        if self.use_sklearn:
             if self.method == "random":
                 self.optfn = RandomizedSearchCV(estimator=model, param_distributions=param_space, **kwargs)
             else:
@@ -159,6 +175,7 @@ class HyperOpt(object):
         else:
             raise AttributeError(f"Attribute {item} not found")
 
+    @property
     def use_sklearn(self):
         # will return True if we are to use sklearn's GridSearchCV or RandomSearchCV
         if self.method in ["random", "grid"] and "sklearn" in str(type(self.model)):
@@ -169,7 +186,7 @@ class HyperOpt(object):
     def use_skopt_bayes(self):
         # will return true if we have to use skopt based BayesSearchCV
         if self.method=="bayes" and "sklearn" in str(type(self.model)):
-            assert not self.use_sklearn()
+            assert not self.use_sklearn
             return True
         return False
 
@@ -178,7 +195,7 @@ class HyperOpt(object):
         # will return True if we have to use skopt based gp_minimize function. This is to implement Bayesian on
         # non-sklearn based models
         if self.method == "bayes" and "sklearn" not in str(type(self.model)):
-            assert not self.use_sklearn()
+            assert not self.use_sklearn
             assert not self.use_skopt_bayes
             return True
         return False
@@ -186,7 +203,7 @@ class HyperOpt(object):
     @property
     def use_own(self):
         # return True, we have to build our own optimization method.
-        if not self.use_sklearn() and not self.use_skopt_bayes and not self.use_skopt_gpmin:
+        if not self.use_sklearn and not self.use_skopt_bayes and not self.use_skopt_gpmin:
             return True
         return False
 
@@ -223,7 +240,9 @@ class HyperOpt(object):
 
         return path
 
-    def dl4seq_model(self, pp=False, **kwargs):
+    def dl4seq_model(self, pp=False,
+                     title=None,
+                     **kwargs):
 
         # this is for it to make json serializable.
         for k,v in kwargs.items():
@@ -236,13 +255,15 @@ class HyperOpt(object):
 
         assert config["model_config"]["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " dl4seq model and pass it as custom model."
+        if title is None:
+            self.title = self.method + '_' + config["model_config"]["problem"] + '_' + config["model_config"]["ml_model"]
+        else:
+            self.title = title
 
-        self.title = self.method + '_' + config["model_config"]["problem"] + '_' + config["model_config"]["ml_model"]
         model = Model(config,
                       data=self.data,
                       prefix=self.title,
                       verbosity=0)
-
         model.train(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pp=pp)
@@ -299,6 +320,9 @@ class HyperOpt(object):
 
         post_process_skopt_results(search_result, self.results, self.opt_path)
 
+        if self.eval_on_best:
+            self.eval_with_best()
+
         return search_result
 
     def eval_sequence(self, params):
@@ -317,6 +341,10 @@ class HyperOpt(object):
             json.dump(self.results, fp, sort_keys=True, indent=4)
 
         self._plot_convergence()
+
+        if self.eval_on_best:
+            self.eval_with_best()
+
         return self.results
 
     def grid_search(self):
@@ -326,7 +354,6 @@ class HyperOpt(object):
 
         return self.eval_sequence(params)
 
-
     def random_search(self):
 
         param_list = list(ParameterSampler(self.param_space, n_iter=self.iters,
@@ -335,9 +362,16 @@ class HyperOpt(object):
 
         return self.eval_sequence(param_list)
 
-    def _predict(self, **params):
+    def _predict(self, *args, **params):
 
-        return self.dl4seq_model(pp=True, **params)
+        if self.use_named_args and self.dl4seq_args is not None:
+            return self.dl4seq_model(pp=True, **params)
+
+        if self.use_named_args and self.dl4seq_args is None:
+            return self.model(**params)
+
+        if callable(self.model) and not self.use_named_args:
+            return self.model(*args)
 
     def _plot_convergence(self):
         class sr:
@@ -350,3 +384,53 @@ class HyperOpt(object):
 
         fname = os.path.join(self.opt_path, "convergence.png")
         return plt.savefig(fname, dpi=300)
+
+    def best_paras_kw(self)->dict:
+        """Returns a dictionary consisting of best parameters with their names as keys and their values as keys."""
+        x = self.best_paras
+        if isinstance(x, dict):
+            return x
+
+        names = []
+        if isinstance(self.param_space, list):
+
+            for para in self.param_space:
+
+                if isinstance(para, dict):
+                    names.append(list(para.keys())[0])
+                    # each dictionary must contain only one key in this case
+                    assert len(para) == 1
+                else:
+                    names.append(para.name)
+
+        elif isinstance(self.param_space, dict):
+            for key in self.param_space.keys():
+                names.append(key)
+        else:
+            raise NotImplementedError
+
+        xkv = {}
+        for name, val in zip(names, x):
+            xkv[name] = val
+
+        return xkv
+
+    def eval_with_best(self):
+        """Find the best parameters and evaluate the model on them."""
+        x = self.best_paras
+
+        if self.use_named_args:
+            x = self.best_paras_kw()
+
+        if self.use_named_args and self.dl4seq_args is not None:
+            return self.dl4seq_model(pp=True,
+                                     title=os.path.join(self.opt_path, "best"),
+                                     **x)
+
+        if self.use_named_args and self.dl4seq_args is None:
+            return self.model(**x)
+
+        if callable(self.model) and not self.use_named_args:
+            return self.model(x)
+
+        raise NotImplementedError

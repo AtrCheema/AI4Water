@@ -27,11 +27,11 @@ dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "
 fname = os.path.join(dpath, "input_target_u1.csv")
 
 def run_dl4seq(method):
-    dims = [{'n_estimators': [1000, 1200, 1400, 1600, 1800, 2000]},
-            {'max_depth': [3, 4, 5, 6]},
-            {'learning_rate': [0.1, 0.05, 0.01, 0.005, 0.001, 0.0005]},
-            {'booster': ["gbtree", "dart"]}
-            ]
+    dims = {'n_estimators': [1000,  2000],
+            'max_depth': [3,  6],
+            'learning_rate': [0.1,  0.0005],
+            'booster': ["gbtree", "dart"]}
+
 
     data = pd.read_csv(fname)
     inputs = list(data.columns)
