@@ -1393,6 +1393,8 @@ class Model(NN, Plots):
         """ shows all activations, weights and gradients of the keras model."""
         if self.model_config['ml_model'] is not None:
 
+            self.plot_feature_importance()
+
             if self.problem.lower().startswith("cl"):
                 self.plot_treeviz_leaves()
                 self.decision_tree(which="sklearn", **kwargs)

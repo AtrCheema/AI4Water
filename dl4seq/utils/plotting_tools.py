@@ -1,3 +1,5 @@
+import warnings
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,7 +77,13 @@ class Plots(object):
 
     def feature_imporance(self):
         if self.category.upper() == "ML":
-            return self._model.feature_importances_
+
+            if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
+                if self._model.kernel == "linear":
+                    # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
+                    return self._model.coef_
+            else:
+                return self._model.feature_importances_
 
     def plot_input_data(self, save=True, **kwargs):
         """
@@ -383,6 +391,13 @@ class Plots(object):
         if importance is None:
             importance = self.feature_imporance()
 
+        if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
+            if self._model.kernel == "linear":
+                return self.f_importances_svm(importance, self.in_cols, save=save)
+            else:
+                warnings.warn(f"for {self._model.kernel} kernels of {self.model_cofig['ml_model']}, feature importance can not be plotted.")
+                return
+
         if isinstance(importance, np.ndarray):
             assert importance.ndim <= 2
 
@@ -397,7 +412,7 @@ class Plots(object):
         else:
             plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
             plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
-        self.save_or_show(save, fname="feature_importance", where='results')
+        self.save_or_show(save, fname="feature_importance.png")
         return
 
     def plot_feature_feature_corr(self, remove_targets=True, save=True, **kwargs):
@@ -465,7 +480,7 @@ class Plots(object):
 
         self.regplot_using_searborn(true, predicted, save=save, name=name)
 
-        mpl.style.use('classic')
+        mpl.rcParams['backend']
 
         fig, axis = plt.subplots()
         set_fig_dim(fig, 12, 8)
@@ -500,6 +515,22 @@ class Plots(object):
         self.save_or_show(save=save, fname=name + "_reg.png", close=False)
         return
 
+    def f_importances_svm(self, coef, names, save):
+
+        plt.close('all')
+        mpl.rcParams['backend']
+        classes = coef.shape[0]
+        features = coef.shape[1]
+        fig, axis = plt.subplots(classes, sharex='all')
+        axis = axis if hasattr(axis, "__len__") else [axis]
+
+        for idx, ax in enumerate(axis):
+            colors = ['red' if c < 0 else 'blue' for c in self._model.coef_[idx]]
+            ax.bar(range(features), self._model.coef_[idx], 0.4)
+
+        plt.xticks(ticks=range(features), labels=self.in_cols, rotation=90, fontsize=12)
+        self.save_or_show(save=save, fname=f"{self.model_cofig['ml_model']}_feature_importance")
+        return
 
 def set_fig_dim(fig, width, height):
     fig.set_figwidth(width)

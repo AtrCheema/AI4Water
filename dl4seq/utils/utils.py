@@ -11,6 +11,7 @@ from xgboost import XGBRegressor, XGBClassifier, XGBRFRegressor, XGBRFClassifier
 from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 from skopt.utils import dump
 from pickle import PicklingError
+import matplotlib as mpl
 
 
 
@@ -770,7 +771,7 @@ def split_by_indices(x, y, indices):
 
 
 def post_process_skopt_results(skopt_results, results, opt_path):
-
+    mpl.rcParams['backend']
     skopt_plots(skopt_results, pref=opt_path)
 
     fname = os.path.join(opt_path, 'gp_parameters')

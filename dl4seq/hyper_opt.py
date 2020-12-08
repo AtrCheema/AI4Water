@@ -116,7 +116,7 @@ class HyperOpt(object):
                  method:str, *,
                  param_space,
                  model=None,
-                 eval_on_best=True,
+                 eval_on_best=False,
                  **kwargs
                  ):
 
@@ -240,8 +240,11 @@ class HyperOpt(object):
 
         return path
 
-    def dl4seq_model(self, pp=False,
+    def dl4seq_model(self,
+                     pp=False,
                      title=None,
+                     return_model=False,
+                     view_model=False,
                      **kwargs):
 
         # this is for it to make json serializable.
@@ -256,14 +259,15 @@ class HyperOpt(object):
         assert config["model_config"]["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " dl4seq model and pass it as custom model."
         if title is None:
-            self.title = self.method + '_' + config["model_config"]["problem"] + '_' + config["model_config"]["ml_model"]
-        else:
+            title =  self.method + '_' + config["model_config"]["problem"] + '_' + config["model_config"]["ml_model"]
             self.title = title
+        else:
+            title = title
 
         model = Model(config,
                       data=self.data,
-                      prefix=self.title,
-                      verbosity=0)
+                      prefix=title,
+                      verbosity=1 if pp else 0)
         model.train(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pp=pp)
@@ -274,6 +278,11 @@ class HyperOpt(object):
 
         print(f"Validation mse {error}")
 
+        if view_model:
+            model.view_model()
+
+        if return_model:
+            return model
         return error
 
     def dims(self):
@@ -415,8 +424,9 @@ class HyperOpt(object):
 
         return xkv
 
-    def eval_with_best(self):
+    def eval_with_best(self, view_model=True):
         """Find the best parameters and evaluate the model on them."""
+        print("Evaluting model's performance on best set of parameters.")
         x = self.best_paras
 
         if self.use_named_args:
@@ -424,6 +434,7 @@ class HyperOpt(object):
 
         if self.use_named_args and self.dl4seq_args is not None:
             return self.dl4seq_model(pp=True,
+                                     view_model=view_model,
                                      title=os.path.join(self.opt_path, "best"),
                                      **x)
 
