@@ -279,6 +279,8 @@ class HyperOpt(object):
         print(f"Validation mse {error}")
 
         if view_model:
+            model.predict(indices=model.train_indices, pref='train')
+            model.predict(pref='all')
             model.view_model()
 
         if return_model:

@@ -52,13 +52,17 @@ can be used as shown [here](https://github.com/AtrCheema/dl4seq/blob/master/exam
 
 ## Installation
 
-using github link for the latest code
+using github link
 
 	python -m pip install git+https://github.com/AtrCheema/dl4seq.git
 
 using setup file, go to folder where repo is downloaded
 
     python setup.py install
+
+The latest code however (possibly with less bugs and more features) can be insalled from `exp` branch instead
+
+    python -m pip install git+https://github.com/AtrCheema/dl4seq.git@exp
 
 ## How to use
 
