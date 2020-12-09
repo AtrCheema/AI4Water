@@ -19,13 +19,13 @@ config = make_model(
     val_fraction=0.0,
     ml_model = 'DecisionTreeClassifier',
     ml_model_args = {"max_depth":4, "random_state":313},
-    transformation=None
+    transformation=None,
+    problem="classification"
 )
 
 model = Model(config,
-              data=df,
-              category="ML",
-              problem="classification")
+              data=df
+              )
 
 h = model.train()
 

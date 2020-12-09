@@ -3,6 +3,7 @@ __all__ = ["attn_layers"]
 from tensorflow.keras import initializers, regularizers, constraints
 from tensorflow.keras.layers import Layer
 from tensorflow import keras
+from tensorflow.keras import layers
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Dense, Lambda, dot, Activation, concatenate, Softmax
 import tensorflow as tf
@@ -841,6 +842,81 @@ class SnailAttention(Layer):
         return tuple(output_shape)
 
 
+def regularized_padded_conv(conv_dim, *args, **kwargs):
+    if conv_dim == "1d":
+        return layers.Conv1D(*args, **kwargs, padding='same', use_bias=False,
+                             kernel_initializer='he_normal',
+                             kernel_regularizer=regularizers.l2(5e-4))
+    elif conv_dim == "2d":
+        return layers.Conv2D(*args, **kwargs, padding='same', use_bias=False,
+                             kernel_initializer='he_normal',
+                             kernel_regularizer=regularizers.l2(5e-4))
+
+class ChannelAttention(layers.Layer):
+    """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0"""
+    def __init__(self, conv_dim, in_planes, ratio=16, **kwargs):
+
+        if conv_dim not in ["1d", "2d"]:
+            raise ValueError(f" conv_dim must be either 1d or 2d but it is {conv_dim}")
+
+        super(ChannelAttention, self).__init__(**kwargs)
+        if conv_dim == "1d":
+            self.axis = (1,)
+            self.avg= layers.GlobalAveragePooling1D()
+            self.max= layers.GlobalMaxPooling1D()
+            self.conv1 = layers.Conv1D(in_planes//ratio, kernel_size=1, strides=1, padding='same',
+                                       kernel_regularizer=regularizers.l2(5e-4),
+                                       use_bias=True, activation=tf.nn.relu)
+            self.conv2 = layers.Conv1D(in_planes, kernel_size=1, strides=1, padding='same',
+                                       kernel_regularizer=regularizers.l2(5e-4),
+                                       use_bias=True)
+        elif conv_dim == "2d":
+            self.axis = (1,1)
+            self.avg= layers.GlobalAveragePooling2D()
+            self.max= layers.GlobalMaxPooling2D()
+            self.conv1 = layers.Conv2D(in_planes//ratio, kernel_size=1, strides=1, padding='same',
+                                       kernel_regularizer=regularizers.l2(5e-4),
+                                       use_bias=True, activation=tf.nn.relu)
+            self.conv2 = layers.Conv2D(in_planes, kernel_size=1, strides=1, padding='same',
+                                       kernel_regularizer=regularizers.l2(5e-4),
+                                       use_bias=True)
+
+    def call(self, inputs, *args):
+        avg = self.avg(inputs)  # [256, 32, 32, 64] -> [256, 64]
+        max_pool = self.max(inputs) # [256, 32, 32, 64] -> [256, 64]
+        avg = layers.Reshape((*self.axis, avg.shape[1]))(avg)   # shape (None, 1, 1 feature)  # [256, 1, 1, 64]
+        max_pool = layers.Reshape((*self.axis, max_pool.shape[1]))(max_pool)   # shape (None, 1, 1 feature)  # [256, 1, 1, 64]
+        avg_out = self.conv2(self.conv1(avg))  # [256, 1, 1, 64] -> [256, 1, 1, 4] -> [256, 1, 1, 64]
+        max_out = self.conv2(self.conv1(max_pool))  # [256, 1, 1, 64] -> [256, 1, 1, 4] -> [256, 1, 1, 64]
+        out = avg_out + max_out  # [256, 1, 1, 64]
+        out = tf.nn.sigmoid(out, name="channel_attn_sigmoid")  # [256, 1, 1, 64]
+
+        return out
+
+
+class SpatialAttention(layers.Layer):
+    """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0"""
+    def __init__(self, conv_dim,  kernel_size=7, **kwargs):
+
+        if conv_dim not in ["1d", "2d"]:
+            raise ValueError(f" conv_dim must be either 1d or 2d but it is {conv_dim}")
+
+        super(SpatialAttention, self).__init__(**kwargs)
+        if conv_dim == "1d":
+            self.axis = 2
+        elif conv_dim == "2d":
+            self.axis = 3
+        self.conv1 = regularized_padded_conv(conv_dim,
+                                             1, kernel_size=kernel_size, strides=1, activation=tf.nn.sigmoid, name="spatial_attn")
+
+    def call(self, inputs, *args):
+        avg_out = tf.reduce_mean(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
+        max_out = tf.reduce_max(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
+        out = tf.stack([avg_out, max_out], axis=self.axis)             # 创建一个维度,拼接到一起concat。 -> [256, 32, 32, 2]
+        out = self.conv1(out)  # -> [256, 32, 32, 1]
+
+        return out
+
 class attn_layers(object):
 
     AttentionRaffel = AttentionRaffel
@@ -850,3 +926,5 @@ class attn_layers(object):
     SeqWeightedAttention = SeqWeightedAttention
     BahdanauAttention = BahdanauAttention
     HierarchicalAttention = HierarchicalAttention
+    SpatialAttention = SpatialAttention
+    ChannelAttention = ChannelAttention
