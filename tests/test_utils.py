@@ -10,7 +10,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
-from dl4seq.utils.utils import get_sklearn_models, split_by_indices
+from dl4seq.utils.utils import get_sklearn_models, split_by_indices, train_val_split
 
 seed = 313
 np.random.seed(seed)
@@ -366,6 +366,26 @@ class TestUtils(unittest.TestCase):
                                                         [208., 209., 210., 211.]])))
         return
 
+    def test_train_val_split(self):
+        # This should raise error
+        # This should raise error because all arrays are not of equal length
+        n1 = 175
+        n2 = 380
+        x1 = np.random.random((n1, 10))
+        x2 = np.random.random((n1, 9))
+        x3 = np.random.random((n1, 10, 9))
+        x4 = np.random.random((n2, 10))
+        x5 = np.random.random((n2, 9))
+        x6 = np.random.random((n2, 10, 9))
+        x = [x1, x2, x3, x4, x5, x6]
+
+        y1 = np.random.random((n1, 1))
+        y2 = np.random.random((n2, 1))
+        y = [y1, y2]
+
+        tr_x, tr_y, val_x, val_y = train_val_split(x,y, 0.33)
+
+        return
 
 if __name__ == "__main__":
     unittest.main()

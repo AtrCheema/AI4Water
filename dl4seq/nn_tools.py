@@ -85,7 +85,7 @@ class NN(AttributeStore):
 
         for lyr, lyr_args in layers_config.items():
 
-            lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr_args)
+            lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
 
             lyr_name, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
@@ -190,12 +190,15 @@ class NN(AttributeStore):
 
     def update_cache(self, cache:dict, key, value):
         if key in cache:
-            raise ValueError("Duplicate input/output name found. The name {} already exists as input/output for another layer"
+            raise ValueError("Duplicate input/output name found. The name '{}' already exists as input/output for another layer"
                              .format(key))
         cache[key] = value
         return
 
-    def deconstruct_lyr_args(self, lyr_args:dict) ->tuple:
+    def deconstruct_lyr_args(self, lyr_name,  lyr_args:dict) ->tuple:
+
+        if 'config' not in lyr_args:
+            raise ValueError(f"No config found for layer {lyr_name}")
 
         config = lyr_args['config']
         inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None

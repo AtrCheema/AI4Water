@@ -391,12 +391,14 @@ class Plots(object):
         if importance is None:
             importance = self.feature_imporance()
 
-        if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
-            if self._model.kernel == "linear":
-                return self.f_importances_svm(importance, self.in_cols, save=save)
-            else:
-                warnings.warn(f"for {self._model.kernel} kernels of {self.model_cofig['ml_model']}, feature importance can not be plotted.")
+        if self.category == "ML":
+            if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
+                if self._model.kernel == "linear":
+                    return self.f_importances_svm(importance, self.in_cols, save=save)
+                else:
+                    warnings.warn(f"for {self._model.kernel} kernels of {self.model_cofig['ml_model']}, feature importance can not be plotted.")
                 return
+            return 
 
         if isinstance(importance, np.ndarray):
             assert importance.ndim <= 2

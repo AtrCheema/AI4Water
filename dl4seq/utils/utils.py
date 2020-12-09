@@ -732,6 +732,7 @@ def get_xgboost_models():
 
 def train_val_split(x, y, validation_split):
     if hasattr(x[0], 'shape'):
+        # x is list of arrays
         split_at = int(x[0].shape[0] * (1. - validation_split))
     else:
         split_at = int(len(x[0]) * (1. - validation_split))
