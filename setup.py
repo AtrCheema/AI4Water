@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # some rights may be researved by 2020  Ather Abbas
 from setuptools import setup
-
+from version import __version__ as ver
 
 with open("README.md", "r") as fd:
     long_desc = fd.read()
@@ -12,7 +12,7 @@ with open('version.py') as fv:
 setup(
     name='dl4seq',
 
-    version=1.0,
+    version=ver,
 
     description='Platform for developing deep learning based for sequential data',
     long_description=long_desc,

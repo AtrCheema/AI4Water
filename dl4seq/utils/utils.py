@@ -12,6 +12,8 @@ from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 from skopt.utils import dump
 from pickle import PicklingError
 import matplotlib as mpl
+from scipy.stats import skew, kurtosis, variation, gmean, hmean
+import scipy
 
 
 
@@ -105,7 +107,7 @@ def dateandtime_now():
     return dt
 
 
-def save_config_file(path, config=None, errors=None, indices=None, name=''):
+def save_config_file(path, config=None, errors=None, indices=None, others=None, name=''):
 
     sort_keys = True
     if errors is not None:
@@ -120,7 +122,9 @@ def save_config_file(path, config=None, errors=None, indices=None, name=''):
         fpath = path + "/indices.json"
         data = indices
     else:
-        raise ValueError("")
+        assert others is not None
+        data = others
+        fpath = path
 
     with open(fpath, 'w') as fp:
         json.dump(data, fp, sort_keys=sort_keys, indent=4)
@@ -795,3 +799,40 @@ def post_process_skopt_results(skopt_results, results, opt_path):
             json.dump(str(sr_res.serialized_results), fp, sort_keys=True, indent=4)
 
     return
+
+
+def stats(feature) ->dict:
+    """Gets all the possible stats about an array like object `feature`.
+    `feature: array like
+    """
+    if not isinstance(feature, np.ndarray):
+        if hasattr(feature, '__len__'):
+            feature = np.array(feature)
+        else:
+            raise TypeError(f"input must be array like but it is of type {type(feature)}")
+
+    _stats = dict()
+    _stats['Skew'] = skew(feature)
+    _stats['Kurtosis'] = kurtosis(feature)
+    _stats['Mean'] = np.nanmean(feature)
+    _stats['Geometric Mean'] = gmean(feature)
+    _stats['Harmonic Mean'] = hmean(feature)
+    _stats['Standard error of mean'] = scipy.stats.sem(feature)
+    _stats['Median'] = np.nanmedian(feature)
+    _stats['Variance'] = np.nanvar(feature)
+    _stats['Coefficient of Variation'] = variation(feature)
+    _stats['Std'] = np.nanstd(feature)
+    _stats['Non zeros'] = np.count_nonzero(feature)
+    _stats['10 quant'] = np.nanquantile(feature, 0.1)
+    _stats['50 quant'] = np.nanquantile(feature, 0.5)
+    _stats['90 quant'] = np.nanquantile(feature, 0.9)
+    _stats['25 %ile'] = np.nanpercentile(feature, 25)
+    _stats['50 %ile'] = np.nanpercentile(feature, 50)
+    _stats['75 %ile'] = np.nanpercentile(feature, 75)
+    _stats['Min'] = np.nanmin(feature)
+    _stats['Max'] = np.nanmax(feature)
+    _stats["Negative counts"] = float(np.sum(feature < 0.0))
+    _stats["NaN counts"] = np.isnan(feature).sum()
+    _stats['Counts'] = len(feature)
+
+    return _stats

@@ -14,8 +14,8 @@ import warnings
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
-from dl4seq.utils.utils import plot_loss, maybe_create_path, save_config_file, get_index
-from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split, split_by_indices
+from dl4seq.utils.utils import plot_loss, maybe_create_path, save_config_file, get_index, dateandtime_now
+from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split, split_by_indices, stats
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 
@@ -1613,6 +1613,56 @@ class Model(NN, Plots):
         h5.create_dataset('label_Y', data=label_y)
         h5.close()
         return
+
+    def describe(self, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
+        """Finds the stats of inputs and outputs and puts them in a json file.
+        inputs: bool
+        fpath: str, path like
+        out_fmt: str, in which format to save. csv or json"""
+        cols = []
+        fname = "description_"
+        if inputs:
+            cols += self.in_cols
+            fname += "inputs_"
+        if outputs:
+            cols += self.out_cols
+            fname += "outputs_"
+
+        description = {}
+        if isinstance(self.data, pd.DataFrame):
+            description = {}
+            for col in cols:
+                if col in self.data:
+                    description[col] = stats(self.data[col])
+
+        elif isinstance(self.data, list):
+            description = {}
+
+            for idx, data in enumerate(self.data):
+                _description = {}
+
+                if isinstance(data, pd.DataFrame):
+
+                    for col in cols:
+                        if col in data:
+                            _description[col] = stats(data[col])
+
+                description['data' + str(idx)] = _description
+
+        else:
+            print(f"description can not be found for data type of {type(self.data)}")
+
+        fname += str(dateandtime_now())
+        if fpath is None:
+            fpath = os.path.join(self.path, fname)
+
+        if out_fmt == "csv":
+            pd.DataFrame.from_dict(description).to_csv(fpath + ".csv")
+        else:
+            save_config_file(others=description, path=fpath + ".json")
+
+        return description
+
 
 
 def unison_shuffled_copies(a, b, c):

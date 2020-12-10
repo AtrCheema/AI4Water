@@ -10,7 +10,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
-from dl4seq.utils.utils import get_sklearn_models, split_by_indices, train_val_split
+from dl4seq.utils.utils import get_sklearn_models, split_by_indices, train_val_split, stats
 
 seed = 313
 np.random.seed(seed)
@@ -386,6 +386,22 @@ class TestUtils(unittest.TestCase):
         tr_x, tr_y, val_x, val_y = train_val_split(x,y, 0.33)
 
         return
+
+    def test_stats(self):
+        d = stats(np.random.random(10))
+        self.assertGreater(len(d), 1)
+        return
+
+    def test_stats_pd(self):
+        d = stats(pd.Series(np.random.random(10)))
+        self.assertGreater(len(d), 1)
+        return
+
+    def test_stats_list(self):
+        d = stats(np.random.random(10).tolist())
+        self.assertGreater(len(d), 1)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

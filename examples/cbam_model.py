@@ -27,4 +27,4 @@ config = make_model(layers=layers,
 
 model = Model(config, data=load_30min())
 
-history = model.train(indices="random")
+#history = model.train(indices="random")

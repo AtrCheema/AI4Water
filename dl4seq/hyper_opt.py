@@ -15,15 +15,19 @@ from dl4seq.utils import make_model
 from dl4seq.utils.utils import post_process_skopt_results
 
 
+# TODO incorporate hyper_opt library
+# TODO add generic algorithm, deap/pygad
+# TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
+
 class HyperOpt(object):
     """
     Combines the power of sklearn based GridSeearchCV, RandomizeSearchCV and skopt based BayeSearchCV.
     Sklearn is great but
-      - sklearn based SearchCVs apply only on sklearn based models and not on such as on NNs
+      - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
       - sklearn does not provide Bayesian optimization
     On the other hand BayesSearchCV of skopt library
-      - extends sklearn that the sklearn-based regressors/classifiers could be used for Bayesian but then it can be used
-        used for sklearn-based regressors/classifiers
+      - extends sklearn such that the sklearn-based regressors/classifiers could be used for Bayesian but then it can be
+        used only for sklearn-based regressors/classifiers
       - The gp_minimize function from skopt allows application of Bayesian on any regressor/classifier/model, but in that
         case this will only be Bayesian
 
