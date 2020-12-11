@@ -113,6 +113,13 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
     if errors is not None:
         suffix = dateandtime_now()
         fpath = path + "/errors_" + name +  suffix + ".json"
+        # maybe some errors are not json serializable.
+        for er_name, er_val in errors.items():
+            if "int" in er_val.__class__.__name__:
+                errors[er_name] = int(er_val)
+            elif "float" in er_val.__class__.__name__:
+                errors[er_name] = float(er_val)
+
         data = errors
     elif config is not None:
         fpath = path + "/config.json"
@@ -127,7 +134,10 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
         fpath = path
 
     with open(fpath, 'w') as fp:
-        json.dump(data, fp, sort_keys=sort_keys, indent=4)
+        try:
+            json.dump(data, fp, sort_keys=sort_keys, indent=4)
+        except TypeError:
+            json.dump(str(data), fp, sort_keys=sort_keys, indent=4)
 
     return
 

@@ -106,6 +106,84 @@ class HyperOpt(object):
     eval_with_best: evaluates the model on best parameters
 
 
+    Examples
+    ---------------
+    ```python
+    # using grid search with dl4seq
+    >>opt = HyperOpt("grid",
+               param_space=dims,
+               dl4seq_args={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+                            'max_depth': [3, 4, 5, 6]},
+               data=data,
+               use_named_args=True,
+               )
+    >>opt.fit()
+
+
+    #using random search with dl4seq
+    >>opt = HyperOpt("random",
+               param_space=dims,
+               dl4seq_args={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+                            'max_depth': [3, 4, 5, 6]},
+               data=data,
+               use_named_args=True,
+               n_iter=100
+               )
+    >>sr = opt.fit()
+
+
+    # using Bayesian with dl4seq
+    >>opt = HyperOpt("bayes",
+                   param_space=dims,
+                   dl4seq_args={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+                                'max_depth': [3, 4, 5, 6]},
+                   data=data,
+                   use_named_args=True,
+                   n_calls=100,
+                   x0=[1000, 3],
+                   n_random_starts=3,  # the number of random initialization points
+                   random_state=2)
+    >>sr = opt.fit()
+
+
+    # using Bayesian with custom model
+    >>def f(x, noise_level=0.1):
+          return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) \
+                   + np.random.randn() * noise_level
+
+    >>opt = HyperOpt("bayes",
+               model=objective_fn,
+               param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
+                            Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
+                            ],
+               acq_func='EI',  # Expected Improvement.
+               n_calls=50,     #number of iterations
+               x0=[32, "relu"],  # inital value of optimizing parameters
+               n_random_starts=3,  # the number of random initialization points
+               )
+    >>opt_results = opt.fit()
+
+
+    # using Bayesian with custom model and named args
+    >>def f(noise_level=0.1, **kwargs):
+          x = kwargs['x']
+          return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) \
+                   + np.random.randn() * noise_level
+
+    >>opt = HyperOpt("bayes",
+               model=objective_fn,
+               param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
+                            Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
+                            ],
+               use_named_args=True,
+               acq_func='EI',  # Expected Improvement.
+               n_calls=50,     #number of iterations
+               x0=[32, "relu"],  # inital value of optimizing parameters
+               n_random_starts=3,  # the number of random initialization points
+               random_state=2
+               )
+    >>opt_results = opt.fit()
+    ```
 
     References
     --------------

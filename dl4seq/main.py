@@ -281,8 +281,8 @@ class Model(NN, Plots):
         if use_datetime_index:
             self.in_cols.remove("dt_index")
             self.data.pop('dt_index') # because self.data belongs to class, this should remain intact.
-        else:
-            x = x.astype(np.float32)
+
+        x = x.astype(np.float32)
 
         if write_data:
             self.write_cache('data_' + scaler_key, x, y, label)
@@ -662,7 +662,7 @@ class Model(NN, Plots):
                 fname = prefix + '_' + out + '_' + str(h) +  ".csv"
                 df.to_csv(os.path.join(self.path, fname), index_label='time')
 
-                errors = FindErrors(t, p, warn="ignore")
+                errors = FindErrors(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
                 errs[out + '_stats_' + str(h)] = errors.stats()
 
@@ -675,7 +675,7 @@ class Model(NN, Plots):
     def build(self):
 
         if self.verbosity > 0:
-            print('building {} layer based model for {} problem'.format(self.category, self.problem))
+            print('building {} based model for {} problem'.format(self.category, self.problem))
 
         if self.category.upper() == "DL":
             inputs, predictions = self.add_layers(self.model_config['layers'])
