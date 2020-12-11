@@ -14,7 +14,7 @@ from pickle import PicklingError
 import matplotlib as mpl
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 import scipy
-
+import warnings
 
 
 def plot_loss(history: dict, name=None):
@@ -826,7 +826,10 @@ def stats(feature) ->dict:
     _stats['Kurtosis'] = kurtosis(feature)
     _stats['Mean'] = np.nanmean(feature)
     _stats['Geometric Mean'] = gmean(feature)
-    _stats['Harmonic Mean'] = hmean(feature)
+    try:
+        _stats['Harmonic Mean'] = hmean(feature)
+    except ValueError:
+        warnings.warn("Harmonic mean only defined if all elements greater than or equal to zero", UserWarning)
     _stats['Standard error of mean'] = scipy.stats.sem(feature)
     _stats['Median'] = np.nanmedian(feature)
     _stats['Variance'] = np.nanvar(feature)

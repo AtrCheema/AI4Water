@@ -55,6 +55,7 @@ setup(
         'scikit-optimize',
         'xgboost',
         'EMD-signal',
+        'TSErrors',
         'see-rnn'
     ],
 )

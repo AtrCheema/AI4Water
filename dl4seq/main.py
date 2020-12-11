@@ -664,7 +664,8 @@ class Model(NN, Plots):
 
                 errors = FindErrors(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
-                errs[out + '_stats_' + str(h)] = errors.stats()
+                errs[out + 'true_stats_' + str(h)] = stats(t)
+                errs[out + 'predicted_stats_' + str(h)] = stats(p)
 
                 self.plot_results(t, p, name=prefix + out + '_' + str(h), **plot_args)
 
