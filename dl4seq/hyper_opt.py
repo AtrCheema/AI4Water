@@ -508,7 +508,9 @@ class HyperOpt(object):
 
         return xkv
 
-    def eval_with_best(self, view_model=True):
+    def eval_with_best(self,
+                       view_model=True,
+                       return_model=False):
         """Find the best parameters and evaluate the model on them."""
         print("Evaluting model's performance on best set of parameters.")
         x = self.best_paras
@@ -519,6 +521,7 @@ class HyperOpt(object):
         if self.use_named_args and self.dl4seq_args is not None:
             return self.dl4seq_model(pp=True,
                                      view_model=view_model,
+                                     return_model=return_model,
                                      title=os.path.join(self.opt_path, "best"),
                                      **x)
 

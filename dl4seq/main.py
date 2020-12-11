@@ -216,6 +216,8 @@ class Model(NN, Plots):
         :return:
         """
 
+        if st is not None:
+            assert isinstance(st, int), "starting point must be integer."
         if indices is not None:
             assert isinstance(indices, list), "indices must be list"
             if en is not None or st != 0:
