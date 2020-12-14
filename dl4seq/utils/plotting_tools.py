@@ -82,7 +82,7 @@ class Plots(object):
                 if self._model.kernel == "linear":
                     # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
                     return self._model.coef_
-            else:
+            elif hasattr(self._model, "feature_importances_"):
                 return self._model.feature_importances_
 
     def plot_input_data(self, save=True, **kwargs):
@@ -447,7 +447,8 @@ class Plots(object):
         """For kwargs see https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree"""
         plt.close('')
         if which == "sklearn":
-            tree.plot_tree(self._model, **kwargs)
+            if hasattr(self._model, "tree_"):
+                tree.plot_tree(self._model, **kwargs)
         else:  # xgboost
             plot_tree(self._model, **kwargs)
         self.save_or_show(save, fname="decision_tree", where="results")

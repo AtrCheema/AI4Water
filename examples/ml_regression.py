@@ -23,9 +23,7 @@ config = make_model(
 )
 
 model = Model(config,
-              data=df,
-              category="ML",
-              problem="reg")
+              data=df)
 
 h = model.train()
 

@@ -338,10 +338,10 @@ class HyperOpt(object):
 
         config = make_model(ml_model_args=kwargs, **self.dl4seq_args)
 
-        assert config["model_config"]["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
+        assert config.model["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " dl4seq model and pass it as custom model."
         if title is None:
-            title =  self.method + '_' + config["model_config"]["problem"] + '_' + config["model_config"]["ml_model"]
+            title =  self.method + '_' + config.model["problem"] + '_' + config.model["ml_model"]
             self.title = title
         else:
             title = title

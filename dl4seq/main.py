@@ -1598,8 +1598,12 @@ class Model(NN, Plots):
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
 
-        config = {'data_config': config['data_config'],
-                  'model_config':config['model_config']}
+        class MM:
+            def __init__(self):
+                self.data = config['data_config']
+                self.model = config['model_config']
+
+        config = MM()
 
         cls.from_check_point = True
 
