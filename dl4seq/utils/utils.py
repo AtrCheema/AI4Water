@@ -196,7 +196,16 @@ def check_kwargs(**kwargs):
 
     return kwargs
 
-def make_model(**kwargs):
+class make_model(object):
+
+    def __init__(self, **kwargs):
+
+        data_config, model_config = _make_model(**kwargs)
+        self.data = data_config
+        self.model = model_config
+
+
+def _make_model(**kwargs):
     """
     This functions fills the default arguments needed to run all the models. All the input arguments can be overwritten
     by providing their name.
@@ -333,7 +342,7 @@ def make_model(**kwargs):
         else:
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
-    return {"data_config": data_config, "model_config": model_config}
+    return data_config, model_config
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):

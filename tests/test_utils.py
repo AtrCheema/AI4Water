@@ -402,6 +402,24 @@ class TestUtils(unittest.TestCase):
         self.assertGreater(len(d), 1)
         return
 
+    def test_datetimeindex(self):
+        # makes sure that using datetime_index=True during prediction, the returned values are in correct order
+        config = make_model(inputs=in_cols,
+                            outputs=out_cols,
+                            epochs=2,
+                            layers={
+                                "LSTM": {"config": {"units": 2}},
+                                "Dense": {"config": {"units": 1}}},
+                            lookback=lookback)
+
+        model = Model(config, data, verbosity=0)
+
+        model.train(indices="random")
+        t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
+
+        self.assertEqual(int(t[0]), 10525)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

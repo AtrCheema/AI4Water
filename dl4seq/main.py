@@ -49,24 +49,24 @@ class Model(NN, Plots):
 
     """
     def __init__(self,
-                 config:dict,
+                 config,
                  data=None,
                  prefix: str = None,
                  path: str = None,
                  verbosity=1):
 
-        data_config, model_config = config['data_config'], config['model_config']
-        reset_seed(data_config['seed'])
+        #data_config, model_config = config['data_config'], config['model_config']
+        reset_seed(config.data['seed'])
         if tf is not None:
             # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
             # file, they may share same graph.
             tf.keras.backend.clear_session()
 
         #super(Model, self).__init__(**config)
-        NN.__init__(self, **config)
+        NN.__init__(self, data_config=config.data, model_config=config.model)
 
 
-        self.intervals = data_config['intervals']
+        self.intervals = config.data['intervals']
         self.data = data
         self.in_cols = self.data_config['inputs']
         self.out_cols = self.data_config['outputs']
@@ -77,7 +77,9 @@ class Model(NN, Plots):
         self.category = self.model_config['category']
         self.problem = self.model_config['problem']
 
-        Plots.__init__(self, self.path, self.problem, self.category, self._model, **config)
+        Plots.__init__(self, self.path, self.problem, self.category, self._model,
+                       data_config=config.data,
+                       model_config=config.model)
 
         self.build() # will initialize ML models or build NNs
 
@@ -225,14 +227,15 @@ class Model(NN, Plots):
         if en is None:
             en = data.shape[0]
 
-        df = self.indexify_data(data, use_datetime_index)
-
         # # add random noise in the data
-        df = self.add_noise(df, noise)
+        df = self.add_noise(data, noise)
 
 
         if self.data_config['transformation']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
             df, _ = self.normalize(df, scaler_key)
+
+        # indexification should happen after transformation, because datetime column should not be transformed.
+        df = self.indexify_data(df, use_datetime_index)
 
         if self.intervals is None:
 
@@ -282,9 +285,9 @@ class Model(NN, Plots):
 
         if use_datetime_index:
             self.in_cols.remove("dt_index")
-            data.pop('dt_index') # because self.data belongs to class, this should remain intact.
+            df.pop('dt_index') # because self.data belongs to class, this should remain intact.
 
-        x = x.astype(np.float32)
+        #x = x.astype(np.float32)
 
         if write_data:
             self.write_cache('data_' + scaler_key, x, y, label)
@@ -646,8 +649,7 @@ class Model(NN, Plots):
             predicted = np.expand_dims(predicted, axis=axis)
         return true, predicted
 
-    def process_results(self,
-                        true: np.ndarray,
+    def process_results(self, true: np.ndarray,
                         predicted: np.ndarray,
                         prefix=None,
                         index=None,
@@ -655,8 +657,6 @@ class Model(NN, Plots):
                         **plot_args):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
-        remove_nans: bool, if True, the nans will be removed from true array (and corresponding values from predicted)
-                     before calculating errors.
         """
         # for cases if they are 2D/1D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
@@ -666,11 +666,16 @@ class Model(NN, Plots):
         for idx, out in enumerate(self.out_cols):
             for h in range(self.forecast_len):
 
-                t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
-                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['predicted_' + out])
+                fpath = os.path.join(self.path, out)
+                if not os.path.exists(fpath):
+                    os.makedirs(fpath)
+
+                t = pd.DataFrame(true[:, idx, h], index=index, columns=[out])
+                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=[out])
                 df = pd.concat([t, p], axis=1)
+                df = df.sort_index()
                 fname = prefix + '_' + out + '_' + str(h) +  ".csv"
-                df.to_csv(os.path.join(self.path, fname), index_label='time')
+                df.to_csv(os.path.join(fpath, fname), index_label='time')
 
                 self.plot_results(t, p, name=prefix + out + '_' + str(h), **plot_args)
 
@@ -857,7 +862,7 @@ class Model(NN, Plots):
 
         return true_outputs, predicted
 
-    def denormalize_data(self, inputs: np.ndarray, predicted: np.ndarray, true: np.ndarray, scaler_key:str):
+    def denormalize_data(self, inputs: np.ndarray, predicted: np.ndarray, true: np.ndarray, scaler_key: str):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
@@ -914,11 +919,11 @@ class Model(NN, Plots):
 
         return predicted, true
 
-
     def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
 
         first_input = inputs[0]
         dt_index = np.arange(len(first_input))
+        new_inputs = inputs
 
         if use_datetime_index:
             if np.ndim(first_input) == 2:
@@ -934,9 +939,13 @@ class Model(NN, Plots):
             if sort:
                 first_input =first_input[np.argsort(dt_index.to_pydatetime())]
 
-        inputs[0] = first_input
+            new_inputs = []
+            for _input in inputs:
+                if sort:
+                    _input = _input[np.argsort(dt_index.to_pydatetime())]
+                new_inputs.append(_input[..., 1:])
 
-        return first_input, inputs, dt_index
+        return first_input, new_inputs, dt_index
 
     def compile(self, model_inputs, outputs):
 
