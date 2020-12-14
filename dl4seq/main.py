@@ -282,7 +282,7 @@ class Model(NN, Plots):
 
         if use_datetime_index:
             self.in_cols.remove("dt_index")
-            self.data.pop('dt_index') # because self.data belongs to class, this should remain intact.
+            data.pop('dt_index') # because self.data belongs to class, this should remain intact.
 
         x = x.astype(np.float32)
 
@@ -646,9 +646,17 @@ class Model(NN, Plots):
             predicted = np.expand_dims(predicted, axis=axis)
         return true, predicted
 
-    def process_results(self, true: np.ndarray, predicted: np.ndarray, prefix=None, index=None, **plot_args):
+    def process_results(self,
+                        true: np.ndarray,
+                        predicted: np.ndarray,
+                        prefix=None,
+                        index=None,
+                        remove_nans=True,
+                        **plot_args):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
+        remove_nans: bool, if True, the nans will be removed from true array (and corresponding values from predicted)
+                     before calculating errors.
         """
         # for cases if they are 2D/1D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
@@ -658,18 +666,23 @@ class Model(NN, Plots):
         for idx, out in enumerate(self.out_cols):
             for h in range(self.forecast_len):
 
-                t = pd.DataFrame(true[:, idx, h], index=index, columns=[out])
-                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=[out])
+                t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
+                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['predicted_' + out])
                 df = pd.concat([t, p], axis=1)
                 fname = prefix + '_' + out + '_' + str(h) +  ".csv"
                 df.to_csv(os.path.join(self.path, fname), index_label='time')
+
+                self.plot_results(t, p, name=prefix + out + '_' + str(h), **plot_args)
+
+                if remove_nans:
+                    nan_idx = np.isnan(t)
+                    t = t.values[~nan_idx]
+                    p = p.values[~nan_idx]
 
                 errors = FindErrors(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
                 errs[out + 'true_stats_' + str(h)] = stats(t)
                 errs[out + 'predicted_stats_' + str(h)] = stats(p)
-
-                self.plot_results(t, p, name=prefix + out + '_' + str(h), **plot_args)
 
         save_config_file(self.path, errors=errs, name=prefix)
 
@@ -1397,6 +1410,8 @@ class Model(NN, Plots):
         if self.model_config['ml_model'] is not None:
 
             self.plot_feature_importance()
+
+            self.plot_treeviz_leaves()
 
             if self.problem.lower().startswith("cl"):
                 self.plot_treeviz_leaves()

@@ -456,19 +456,21 @@ class Plots(object):
     def plot_treeviz_leaves(self, save=True, **kwargs):
         """Plots dtreeviz related plots if dtreeviz is installed"""
 
-        if trees is None:
-            print("dtreeviz related plots can not be plotted")
-        else:
-            x,y = self.test_data()
+        model = self.model_cofig['ml_model'].upper()
+        if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"] or model.startswith("XGBOOST"):
+            if trees is None:
+                print("dtreeviz related plots can not be plotted")
+            else:
+                x,y = self.test_data()
 
-            if np.ndim(y) > 2:
-                y = np.squeeze(y, axis=2)
+                if np.ndim(y) > 2:
+                    y = np.squeeze(y, axis=2)
 
-            trees.viz_leaf_samples(self._model, *x, self.in_cols)
-            self.save_or_show(save, fname="viz_leaf_samples", where="plots")
+                trees.viz_leaf_samples(self._model, *x, self.in_cols)
+                self.save_or_show(save, fname="viz_leaf_samples", where="plots")
 
-            trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
-            self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
+                trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
+                self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
 
     def plot_results(self, true, predicted:pd.DataFrame, save=True, name=None, **kwargs):
         """
@@ -504,7 +506,7 @@ class Plots(object):
         plt.yticks(fontsize=18)
         plt.xlabel("Time", fontsize=18)
 
-        self.save_or_show(save=save, fname=name, close=False)
+        self.save_or_show(save=save, fname=name, close=False, where='plots')
         return
 
     def regplot_using_searborn(self, true, pred, save, name):

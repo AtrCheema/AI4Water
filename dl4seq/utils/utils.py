@@ -722,6 +722,9 @@ def get_sklearn_models():
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.neural_network import multilayer_perceptron
     from sklearn.multioutput import MultiOutputRegressor
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.kernel_ridge import KernelRidge
+    from sklearn.isotonic import isotonic_regression
 
     sklearn_models = get_attributes(sklearn, "ensemble")
     sklearn_models.update(get_attributes(sklearn, "linear_model"))
@@ -730,6 +733,9 @@ def get_sklearn_models():
     sklearn_models.update(get_attributes(sklearn, "neural_network"))
     sklearn_models.update(get_attributes(sklearn, "svm"))
     sklearn_models.update(get_attributes(sklearn, "tree"))
+    sklearn_models.update(get_attributes(sklearn, "naive_bayes"))
+    sklearn_models.update(get_attributes(sklearn, "kernel_ridge"))
+    sklearn_models.update(get_attributes(sklearn, "isotonic"))
 
     return sklearn_models
 
