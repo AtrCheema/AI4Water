@@ -395,7 +395,7 @@ class Plots(object):
         if importance is None:
             importance = self.feature_imporance()
 
-        if self.category == "ML":
+        if self.category == "ML" and self.model_cofig["ml_model"] is not None:
             if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
                 if self._model.kernel == "linear":
                     return self.f_importances_svm(importance, self.in_cols, save=save)
@@ -539,6 +539,48 @@ class Plots(object):
 
         plt.xticks(ticks=range(features), labels=self.in_cols, rotation=90, fontsize=12)
         self.save_or_show(save=save, fname=f"{self.model_cofig['ml_model']}_feature_importance")
+        return
+
+    def plot_loss(self, history: dict, name="loss_curve"):
+
+
+        plt.clf()
+        plt.close('all')
+        fig = plt.figure()
+        plt.style.use('ggplot')
+        i = 1
+
+        sub_plots = {1: (1,1),
+                     2: (1, 1),
+                     3: (1, 2),
+                     4: (1, 2),
+                     5: (1, 3),
+                     6: (1, 3),
+                     7: (2, 2),
+                     8: (2, 2),
+                     9: (3, 2),
+                     10: (3, 2)
+                     }
+
+        epochs = range(1, len(history['loss']) + 1)
+        axis_cache = {}
+
+        for key, val in history.items():
+
+            m_name = key.split('_')[1] if '_' in key else key
+
+            if m_name in list(axis_cache.keys()):
+                axis = axis_cache[m_name]
+                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + m_name)
+                axis.legend()
+            else:
+                axis = fig.add_subplot(*sub_plots[len(history)], i)
+                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ' + key)
+                axis.legend()
+                axis_cache[key] = axis
+                i += 1
+
+        self.save_or_show(fname=name, save=True if name is not None else False)
         return
 
 def set_fig_dim(fig, width, height):

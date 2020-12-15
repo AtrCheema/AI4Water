@@ -411,6 +411,9 @@ class HyperOpt(object):
 
         self.gpmin_results = search_result
 
+        if len(self.results) < 1:
+            self.results = {str(round(k, 5)): self.to_kw(v) for k, v in zip(search_result.func_vals, search_result.x_iters)}
+
         post_process_skopt_results(search_result, self.results, self.opt_path)
 
         if self.eval_on_best:
@@ -484,6 +487,9 @@ class HyperOpt(object):
         if isinstance(x, dict):
             return x
 
+        return self.to_kw(x)
+
+    def to_kw(self, x):
         names = []
         if isinstance(self.param_space, list):
 

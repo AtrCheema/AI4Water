@@ -14,7 +14,7 @@ import warnings
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, VERSION_INFO
-from dl4seq.utils.utils import plot_loss, maybe_create_path, save_config_file, get_index, dateandtime_now
+from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
 from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split, split_by_indices, stats
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
@@ -37,15 +37,11 @@ class Model(NN, Plots):
     """
     Model class that implements theme of dl4seq.
 
-    config: dict, consisting of two dictionaries
-        - data_config:
-        - model_config:
+    config: instance of make_model class
     data: pd.Dataframe or any other conforming type
     prefix: str, prefix to be used for the folder in which the results are saved
     path: str/path like, if given, new path will not be created
     verbosity: int, determines the amount of information being printed
-    category: str, one of "DL" or "ML", signifying, whether a machine learning model or deep learning model
-    problem: str, tell whether it is is classification problem or regression problem.
 
     """
     def __init__(self,
@@ -778,7 +774,7 @@ class Model(NN, Plots):
         if self.category.upper() == "DL":
             history = self.fit(inputs, outputs, self.val_data(), **callbacks)
 
-            plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
+            self.plot_loss(history.history)
 
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))

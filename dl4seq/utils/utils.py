@@ -17,54 +17,6 @@ import scipy
 import warnings
 
 
-def plot_loss(history: dict, name=None):
-
-
-    plt.clf()
-    plt.close('all')
-    fig = plt.figure()
-    plt.style.use('ggplot')
-    i = 1
-
-    sub_plots = {1: (1,1),
-                 2: (1, 1),
-                 3: (1, 2),
-                 4: (1, 2),
-                 5: (1, 3),
-                 6: (1, 3),
-                 7: (2, 2),
-                 8: (2, 2),
-                 9: (3, 2),
-                 10: (3, 2)
-                 }
-
-    epochs = range(1, len(history['loss']) + 1)
-    axis_cache = {}
-
-    for key, val in history.items():
-
-        m_name = key.split('_')[1] if '_' in key else key
-
-        if m_name in list(axis_cache.keys()):
-            axis = axis_cache[m_name]
-            axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + m_name)
-            axis.legend()
-        else:
-            axis = fig.add_subplot(*sub_plots[len(history)], i)
-            axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ' + key)
-            axis.legend()
-            axis_cache[key] = axis
-            i += 1
-
-    if name is not None:
-        plt.savefig(name, dpi=300, bbox_inches='tight')
-    else:
-        plt.show()
-
-    plt.close('all')
-    return
-
-
 def maybe_create_path(prefix=None, path=None):
     if path is None:
         save_dir = dateandtime_now()
@@ -195,6 +147,7 @@ def check_kwargs(**kwargs):
             kwargs["lookback"] = 1
 
     return kwargs
+
 
 class make_model(object):
 
@@ -804,8 +757,6 @@ def split_by_indices(x, y, indices):
 def post_process_skopt_results(skopt_results, results, opt_path):
     mpl.rcParams.update(mpl.rcParamsDefault)
 
-    if len(results) < 1:
-        results = {str(round(k, 5)): v for k, v in zip(skopt_results.func_vals, skopt_results.x_iters)}
     skopt_plots(skopt_results, pref=opt_path)
 
     fname = os.path.join(opt_path, 'gp_parameters')
