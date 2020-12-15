@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 
-from dl4seq.utils.utils import plot_loss, get_index, make_model
+from dl4seq.utils.utils import make_model
 from dl4seq import Model
 
 
@@ -47,14 +47,6 @@ class MultiInputSharedModel(Model):
 
         return x, labels
 
-    def build(self):
-
-        inputs, predictions = self.add_layers(self.model_config['layers'])
-
-        self._model = self.compile(inputs, predictions)
-
-        return
-
     def train(self, st=0, en=None, indices=None, **callbacks):
 
         train_data = self.train_data(st=st, en=en, indices=indices)
@@ -63,7 +55,7 @@ class MultiInputSharedModel(Model):
 
         history = self.fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
 
-        plot_loss(history.history, name=os.path.join(self.path, "loss_curve"))
+        self.plot_loss(history.history)
 
         return history.history
 
@@ -71,19 +63,6 @@ class MultiInputSharedModel(Model):
 
         return predicted, true_outputs[0]
 
-    def deindexify_input_data(self, inputs, sort=False, use_datetime_index=False):
-        first_input = inputs[0]
-        dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
-        if use_datetime_index:
-            # remove the first of first inputs which is datetime index
-            dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
-            first_input = first_input[..., 1:].astype(np.float32)
-            inputs[0] = first_input
-            if self.num_input_layers > 1:
-                for i in range(1, self.num_input_layers):
-                    inputs[i] = inputs[i][..., 1:]
-
-        return first_input, inputs, dt_index
 
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, pp=True, **plot_args):
@@ -105,7 +84,7 @@ class MultiInputSharedModel(Model):
                                              batch_size=self.data_config['batch_size'],
                                              verbose=1)
 
-            predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
+            predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs[0], scaler_key)
 
             horizons = self.data_config['forecast_length']
             if self.quantiles is None:

@@ -192,6 +192,11 @@ class Model(NN, Plots):
         else:
             return len(self._model.inputs)
 
+    @property
+    def input_layer_names(self) -> list:
+
+        return [lyr.name.split(':')[0] for lyr in self._model.inputs]
+
     def fetch_data(self, data: pd.DataFrame, st: int = 0, en=None,
                    shuffle: bool = False,  # TODO, is this arg requried?
                    write_data=False,

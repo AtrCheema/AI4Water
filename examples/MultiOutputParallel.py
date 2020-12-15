@@ -7,7 +7,7 @@
 # The number of inputs and outputs to and from each NN are equal (but not same)
 
 from dl4seq import Model
-from dl4seq.utils.utils import check_min_loss, plot_loss
+from dl4seq.utils.utils import check_min_loss
 from dl4seq.utils import make_model
 from examples import LSTMAutoEnc_Config
 
@@ -247,7 +247,7 @@ class MultiOutputParallel(Model):
         for k, v in val_epoch_losses.items():
             val_losses['val_' + k] = v
 
-        plot_loss(_history, name=os.path.join(self.path, "loss_curve"))
+        self.plot_loss(_history)
         self.model_config['skipped_batches'] = skipped_batches
 
         self.save_config(_history)
