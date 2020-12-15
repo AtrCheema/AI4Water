@@ -661,10 +661,10 @@ class Model(NN, Plots):
         # for cases if they are 2D/1D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
-        errs = dict()
-
         for idx, out in enumerate(self.out_cols):
             for h in range(self.forecast_len):
+
+                errs = dict()
 
                 fpath = os.path.join(self.path, out)
                 if not os.path.exists(fpath):
@@ -677,7 +677,7 @@ class Model(NN, Plots):
                 fname = prefix + '_' + out + '_' + str(h) +  ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='time')
 
-                self.plot_results(t, p, name=prefix + out + '_' + str(h), **plot_args)
+                self.plot_results(t, p, name=prefix + out + '_' + str(h), where=fpath)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -689,7 +689,7 @@ class Model(NN, Plots):
                 errs[out + 'true_stats_' + str(h)] = stats(t)
                 errs[out + 'predicted_stats_' + str(h)] = stats(p)
 
-        save_config_file(self.path, errors=errs, name=prefix)
+                save_config_file(fpath, errors=errs, name=prefix)
 
         return
 

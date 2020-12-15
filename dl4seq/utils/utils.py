@@ -802,7 +802,10 @@ def split_by_indices(x, y, indices):
 
 
 def post_process_skopt_results(skopt_results, results, opt_path):
-    mpl.rcParams['backend']
+    mpl.rcParams.update(mpl.rcParamsDefault)
+
+    if len(results) < 1:
+        results = {str(round(k, 5)): v for k, v in zip(skopt_results.func_vals, skopt_results.x_iters)}
     skopt_plots(skopt_results, pref=opt_path)
 
     fname = os.path.join(opt_path, 'gp_parameters')

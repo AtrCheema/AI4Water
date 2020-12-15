@@ -189,7 +189,6 @@ class Plots(object):
 
     def save_or_show(self, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
 
-        assert where in['', 'act', 'activation', 'weights', 'plots', 'data', 'results']
         if save:
             assert isinstance(fname, str)
             if "/" in fname:
@@ -197,11 +196,16 @@ class Plots(object):
             if ":" in fname:
                 fname = fname.replace(":", "__")
 
-            save_dir = os.path.join(self.path, where)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
+            if not os.path.exists(where):
+                assert where in ['', 'act', 'activation', 'weights', 'plots', 'data', 'results']
+                save_dir = os.path.join(self.path, where)
 
-            fname = os.path.join(self.path, fname + ".png")
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+            else:
+                save_dir = where
+
+            fname = os.path.join(save_dir, fname + ".png")
 
             plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
         else:
@@ -473,7 +477,7 @@ class Plots(object):
                 trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
                 self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
 
-    def plot_results(self, true, predicted:pd.DataFrame, save=True, name=None, **kwargs):
+    def plot_results(self, true, predicted:pd.DataFrame, save=True, name=None, where=None):
         """
         # kwargs can be any/all of followings
             # fillstyle:
@@ -483,9 +487,9 @@ class Plots(object):
             # color:
         """
 
-        self.regplot_using_searborn(true, predicted, save=save, name=name)
+        self.regplot_using_searborn(true, predicted, save=save, name=name, where=where)
 
-        mpl.rcParams['backend']
+        mpl.rcParams.update(mpl.rcParamsDefault)
 
         fig, axis = plt.subplots()
         set_fig_dim(fig, 12, 8)
@@ -507,23 +511,23 @@ class Plots(object):
         plt.yticks(fontsize=18)
         plt.xlabel("Time", fontsize=18)
 
-        self.save_or_show(save=save, fname=name, close=False, where='plots')
+        self.save_or_show(save=save, fname=name, close=False, where=where)
         return
 
-    def regplot_using_searborn(self, true, pred, save, name):
+    def regplot_using_searborn(self, true, pred, save, name, where='plots'):
         # https://seaborn.pydata.org/generated/seaborn.regplot.html
         plt.close('all')
         sns.regplot(x=true, y=pred, color="g")
         plt.xlabel('Observed', fontsize=14)
         plt.ylabel('Predicted', fontsize=14)
 
-        self.save_or_show(save=save, fname=name + "_reg.png", close=False)
+        self.save_or_show(save=save, fname=name + "_reg", close=False, where=where)
         return
 
     def f_importances_svm(self, coef, names, save):
 
         plt.close('all')
-        mpl.rcParams['backend']
+        mpl.rcParams.update(mpl.rcParamsDefault)
         classes = coef.shape[0]
         features = coef.shape[1]
         fig, axis = plt.subplots(classes, sharex='all')
