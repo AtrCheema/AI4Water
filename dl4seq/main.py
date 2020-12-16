@@ -13,9 +13,9 @@ import math
 import warnings
 
 from dl4seq.nn_tools import NN
-from dl4seq.backend import tf, keras, tcn, VERSION_INFO
+from dl4seq.backend import tf, keras, tcn, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
-from dl4seq.utils.utils import get_sklearn_models, get_xgboost_models, train_val_split, split_by_indices, stats
+from dl4seq.utils.utils import train_val_split, split_by_indices, stats
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 
@@ -714,29 +714,18 @@ class Model(NN, Plots):
         return
 
     def build_ml_model(self):
-        """ currently only sklearn based  ML models. """
+        """ builds models that follow sklearn api such as xgboost, catboost, lightgbm and obviously sklearn."""
 
+        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
         regr_name = self.model_config['ml_model'].upper()
-        sklearn_models = get_sklearn_models()
-        xgboost_models = get_xgboost_models()
+
         kwargs = self.model_config['ml_model_args']
-        if regr_name in sklearn_models:
-            if kwargs is not None:  # sklear-raises error when kwargs is None (default here)
-                #if len(kwargs)>0:
-                regr = sklearn_models[regr_name](**kwargs)
-            else:
-                regr = sklearn_models[regr_name]()
-        elif regr_name in xgboost_models:
-            if kwargs is not None:
-                #if len(kwargs)> 0:
-                regr = xgboost_models[regr_name](**kwargs,
-                            verbosity=self.verbosity)
-            else:
-                regr = xgboost_models[regr_name](verbosity=self.verbosity)
+        if regr_name in ml_models:
+            model = ml_models[regr_name](**kwargs)
         else:
             raise ValueError(f"model {regr_name} not found")
 
-        self._model = regr
+        self._model = model
 
         return
 

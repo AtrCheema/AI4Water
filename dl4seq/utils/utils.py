@@ -6,8 +6,6 @@ from shutil import rmtree
 import datetime
 import json
 import pandas as pd
-import sklearn
-from xgboost import XGBRegressor, XGBClassifier, XGBRFRegressor, XGBRFClassifier
 from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 from skopt.utils import dump
 from pickle import PicklingError
@@ -233,7 +231,7 @@ def _make_model(**kwargs):
                                         'hidden_layer_units': 62
                                     }, 'lower': None, 'upper': None, 'between': None},
         'ml_model':      {'type': str, 'default': None, 'lower': None, 'upper': None, 'between': None},  # name of machine learning model
-        'ml_model_args': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},  # arguments to instantiate/initiate ML model
+        'ml_model_args': {'type': dict, 'default':{}, 'lower': None, 'upper': None, 'between': None},  # arguments to instantiate/initiate ML model
         'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]}
     }
@@ -676,40 +674,6 @@ def get_attributes(aus, what:str='losses') ->dict:
             all_attrs[l.upper()] = attr
 
     return all_attrs
-
-
-def get_sklearn_models():
-
-    # the following line must be executed in order for get_attributes to work, don't know why
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.neural_network import multilayer_perceptron
-    from sklearn.multioutput import MultiOutputRegressor
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.kernel_ridge import KernelRidge
-    from sklearn.isotonic import isotonic_regression
-
-    sklearn_models = get_attributes(sklearn, "ensemble")
-    sklearn_models.update(get_attributes(sklearn, "linear_model"))
-    sklearn_models.update(get_attributes(sklearn, "multioutput"))
-    sklearn_models.update(get_attributes(sklearn, "neighbors"))
-    sklearn_models.update(get_attributes(sklearn, "neural_network"))
-    sklearn_models.update(get_attributes(sklearn, "svm"))
-    sklearn_models.update(get_attributes(sklearn, "tree"))
-    sklearn_models.update(get_attributes(sklearn, "naive_bayes"))
-    sklearn_models.update(get_attributes(sklearn, "kernel_ridge"))
-    sklearn_models.update(get_attributes(sklearn, "isotonic"))
-
-    return sklearn_models
-
-
-def get_xgboost_models():
-
-    return {
-        "XGBOOSTREGRESSOR": XGBRegressor,
-        "XGBOOSTCLASSIFIER": XGBClassifier,
-        "XGBOOSTRFREGRESSOR": XGBRFRegressor,
-        "XGBOOSTRFCLASSIFIER": XGBRFClassifier,
-    }
 
 
 def train_val_split(x, y, validation_split):

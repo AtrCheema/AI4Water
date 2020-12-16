@@ -11,6 +11,7 @@ results/
 data/
 testing/
 _models/
+dl4seq/private_layers.py
 
 # build related
 *dist/
@@ -25,3 +26,5 @@ _models/
 nosetests.xml
 coverage.xml
 *.cover
+
+*tests/catboost_info/

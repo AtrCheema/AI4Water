@@ -214,6 +214,30 @@ class TestMLMethods(unittest.TestCase):
         run_class_test("ADABOOSTCLASSIFIER")
         return
 
+    def test_LGBMCLASSIFIER(self):
+        run_class_test("LGBMCLASSIFIER")
+        return
+
+    def test_CATBOOSTCLASSIFIER(self):
+        run_class_test("CATBOOSTCLASSIFIER")
+        return
+
+    def test_LGBMREGRESSOR(self):
+        run_class_test("LGBMREGRESSOR")
+        return
+
+    def test_CATBOOSTREGRESSOR(self):
+        run_class_test("CATBOOSTREGRESSOR")
+        return
+
+    def test_HISTGRADIENTBOOSTINGCLASSIFIER(self):
+        run_class_test("HISTGRADIENTBOOSTINGCLASSIFIER")
+        return
+
+    def test_HISTGRADIENTBOOSTINGREGRESSOR(self):
+        run_class_test("HISTGRADIENTBOOSTINGREGRESSOR")
+        return
+
     def test_ml_random_indices(self):
         config = make_model(
             inputs=data_reg['feature_names'],
