@@ -1641,7 +1641,15 @@ class Model(NN, Plots):
         h5.close()
         return
 
-    def describe(self, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
+    def describe(self, freq=None):
+        """Plots input data, the correlation between different input """
+        self.plot_data(freq=freq, subplots=True, figsize=(12, 14), sharex=True)
+        self.plot_feature_feature_corr()
+        self.stats()
+
+        return
+
+    def stats(self, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
         """Finds the stats of inputs and outputs and puts them in a json file.
         inputs: bool
         fpath: str, path like

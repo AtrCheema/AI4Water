@@ -87,38 +87,94 @@ class Plots(object):
             elif hasattr(self._model, "feature_importances_"):
                 return self._model.feature_importances_
 
-    def plot_input_data(self, save=True, **kwargs):
+    def plot_data(self, save=True, freq=None, **kwargs):
         """
         :param save:
         :param kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
+        :param freq: str, one of 'daily', 'weekly', 'monthly', 'yearly', determines interval of plot of data. It is
+                     valid for only time-series data.
         :return:
-        model.plot_input_data(subplots=True, figsize=(12, 14), sharex=True)
+
+        ------
+        examples:
+
+        >>model.plot_input_data(subplots=True, figsize=(12, 14), sharex=True)
+        >>model.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         """
         data = self.data
         if isinstance(data, list):
             for df in data:
-                self.plot_df(df, save=save, **kwargs)
+                self.plot_df(df, save=save, freq=freq, **kwargs)
         else:
-            self.plot_df(data, save=save, **kwargs)
+            self.plot_df(data, save=save, freq=freq, **kwargs)
         return
 
-    def plot_df(self, df, save=True, **kwargs):
+    def plot_df(self, df, save=True, freq=None, max_subplots=10, **kwargs):
+        """Plots each columns of dataframe and saves it if `save` is True.
+         max_subplots: determines how many sub_plots are to be plotted within one plot. If dataframe contains columns
+         greater than max_subplots, a separate plot will be generated for remaining columns."""
         assert isinstance(df, pd.DataFrame)
 
-        if df.shape[1] <= 10:
+        if df.shape[1] <= max_subplots:
 
-            df.plot(**kwargs)
-            self.save_or_show(save=save, fname='input_',  where='data')
+            if freq is None:
+                df.plot(**kwargs)
+                self.save_or_show(save=save, fname='input_',  where='data')
+            else:
+                self.plot_df_with_freq(df, freq, save, **kwargs)
         else:
-            tot_plots = np.arange(0, df.shape[1], 10)
+            features = df.shape[1]
+            tot_plots = np.linspace(0, features, int(features/max_subplots)+1 if features%max_subplots==0 else int(features/max_subplots)+2)
+            # converting each value to int because linspace can return array containing floats if features is odd
+            tot_plots = [int(i) for i in tot_plots]
 
             for i in range(len(tot_plots) - 1):
                 st, en = tot_plots[i], tot_plots[i + 1]
                 sub_df = df.iloc[:, st:en]
 
+                if freq is None:
+                    sub_df.plot(**kwargs)
+                    self.save_or_show(save=save, fname='input'+str(st) +'_' + str(en), where='data')
+                else:
+                    self.plot_df_with_freq(sub_df, freq, save, prefix=str(st) +'_' + str(en), **kwargs)
+        return
 
-                sub_df.plot(**kwargs)
-                self.save_or_show(save=save, fname='input'+str(st) + str(en), where='data')
+    def plot_df_with_freq(self, df:pd.DataFrame, freq:str, save:bool=True, prefix:str='', **kwargs):
+        """Plots a dataframe which has data as time-series and its index is pd.DatetimeIndex"""
+        assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
+        assert freq in ["weekly", "monthly", "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
+
+        st_year = df.index[0].year
+        en_year = df.index[-1].year
+
+        for yr in range(st_year, en_year + 1):
+
+            _df = df[df.index.year == yr]
+
+            if freq == 'yearly':
+                _df.plot(**kwargs)
+                self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)}', where='data')
+
+            elif freq == 'monthly':
+                st_mon = _df.index[0].month
+                en_mon = _df.index[-1].month
+
+                for mon in range(st_mon, en_mon+1):
+
+                    __df = _df[_df.index.month == mon]
+
+                    __df.plot(**kwargs)
+                    self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(mon)}', where='data/monthly')
+
+            elif freq == 'weekly':
+                st_week = _df.index[0].isocalendar()[1]
+                en_week = _df.index[-1].isocalendar()[1]
+
+                for week in range(st_week, en_week+1):
+                    __df = _df[_df.index.week == week]
+
+                    __df.plot(**kwargs)
+                    self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(week)}', where='data/weely')
         return
 
     def _imshow_3d(self, activation,
@@ -198,14 +254,14 @@ class Plots(object):
             if ":" in fname:
                 fname = fname.replace(":", "__")
 
-            if not os.path.exists(where):
-                assert where in ['', 'act', 'activation', 'weights', 'plots', 'data', 'results']
+            save_dir = os.path.join(self.path, where)
+
+            if not os.path.exists(save_dir):
+                assert os.path.dirname(where) in ['', 'act', 'activation', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
                 save_dir = os.path.join(self.path, where)
 
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
-            else:
-                save_dir = where
 
             fname = os.path.join(save_dir, fname + ".png")
 
