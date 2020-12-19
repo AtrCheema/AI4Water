@@ -13,7 +13,7 @@ import math
 import warnings
 
 from dl4seq.nn_tools import NN
-from dl4seq.backend import tf, keras, tcn, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models, sklearn_models
+from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats
 from dl4seq.utils.plotting_tools import Plots
@@ -23,15 +23,20 @@ def reset_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
-    if int(tf.__version__.split('.')[0]) == 1:
-        tf.compat.v1.random.set_random_seed(seed)
-    elif int(tf.__version__.split('.')[0]) > 1:
-        tf.random.set_seed(seed)
+    if tf is not None:
+        if int(tf.__version__.split('.')[0]) == 1:
+            tf.compat.v1.random.set_random_seed(seed)
+        elif int(tf.__version__.split('.')[0]) > 1:
+            tf.random.set_seed(seed)
 
 
+LOSSES = {}
 if tf is not None:
     import dl4seq.keract_mod as keract
     from dl4seq.tf_attributes import LOSSES, OPTIMIZERS
+if torch is not None:
+    from dl4seq.torch_attributes import LOSSES as pt_losses
+    LOSSES.update(pt_losses)
 
 class Model(NN, Plots):
     """
@@ -650,7 +655,8 @@ class Model(NN, Plots):
             predicted = np.expand_dims(predicted, axis=axis)
         return true, predicted
 
-    def process_results(self, true: np.ndarray,
+    def process_results(self,
+                        true: np.ndarray,
                         predicted: np.ndarray,
                         prefix=None,
                         index=None,

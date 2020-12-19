@@ -5,7 +5,7 @@ from os.path import abspath
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.pytorch_models import IMVLSTMModel
+from dl4seq.pytorch_models import HARHNModel
 from dl4seq.utils import make_model
 
 lookback = 10
@@ -28,11 +28,11 @@ config = make_model(batch_size=16,
                     epochs=epochs)
 
 
-model = IMVLSTMModel(config,
+model = HARHNModel(config=config,
                      data=df,
                      )
 
 h = model.train(st=0, en=1000)
 
 x, y = model.predict(st=0, en=1000)
-model.plot_activations()
+#model.plot_activations()

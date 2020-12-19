@@ -12,6 +12,7 @@ data/
 testing/
 _models/
 dl4seq/private_layers.py
+paper/
 
 # build related
 *dist/

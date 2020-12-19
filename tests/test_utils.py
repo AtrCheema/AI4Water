@@ -10,7 +10,8 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import make_model
 from dl4seq import Model
-from dl4seq.utils.utils import get_sklearn_models, split_by_indices, train_val_split, stats
+from dl4seq.utils.utils import split_by_indices, train_val_split, stats
+from dl4seq.backend import get_sklearn_models
 
 seed = 313
 np.random.seed(seed)

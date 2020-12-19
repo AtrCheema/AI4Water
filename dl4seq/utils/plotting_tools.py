@@ -8,11 +8,13 @@ import seaborn as sns
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 from sklearn import tree
 from xgboost import plot_importance, plot_tree
-from see_rnn.visuals_gen import features_0D, features_1D, features_2D
 import matplotlib as mpl
 
-
-from dl4seq.utils.utils_from_see_rnn import rnn_histogram
+try:
+    from dl4seq.utils.utils_from_see_rnn import rnn_histogram
+    from see_rnn.visuals_gen import features_0D, features_1D, features_2D
+except ModuleNotFoundError:
+    rnn_histogram = None
 
 try:
     from dtreeviz import trees

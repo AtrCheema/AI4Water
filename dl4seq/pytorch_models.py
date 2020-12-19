@@ -28,7 +28,7 @@ class HARHNModel(Model):
     def use_predicted_output(self):
         return self.data_config['use_predicted_output']
 
-    def build_nn(self):
+    def build(self):
         config = self.model_config['HARHN_config']
 
         self.pt_model = HARHN(config['n_conv_lyrs'],
@@ -114,13 +114,12 @@ class HARHNModel(Model):
 
         return true, preds, mse_val
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
 
-        x, y_his, target = self.prepare_batches(self.data[st:en], '',  self.data_config['outputs'][0])
+        x, y_his, target = self.prepare_batches(self.data[st:en], '',  self.outs)
 
         x_tr, x_val, y_his_tr, y_his_val, target_tr, target_val = train_test_split(x, y_his, target,
                                                                                    test_size=self.data_config['val_fraction'])
-
         self.min_max = {
             'x_max': x_tr.max(axis=0),
             'x_min': x_tr.min(axis=0),
@@ -197,7 +196,7 @@ class HARHNModel(Model):
                 preds = preds * (self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
                 true = true * (self.min_max['target_max'] - self.min_max['target_min']) + self.min_max['target_min']
 
-                self.process_results(true, preds, 'validation_' + str(i))
+                self.process_results(true, preds.reshape(-1,1), 'validation_' + str(i))
 
         return losses
 
@@ -240,7 +239,7 @@ class IMVLSTMModel(HARHNModel):
         self.betas = None
         super(IMVLSTMModel, self).__init__(**kwargs)
 
-    def build_nn(self):
+    def build(self):
 
         if self.use_predicted_output:
             ins = self.ins
@@ -257,9 +256,9 @@ class IMVLSTMModel(HARHNModel):
 
         return
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    def train(self, st=0, en=None, indices=None, **callbacks):
 
-        x, y_h, target = self.prepare_batches(self.data[st:en], '',  self.data_config['outputs'][0])
+        x, y_h, target = self.prepare_batches(self.data[st:en], '',  self.outs)   # self.data_config['outputs'][0])
 
         if not self.use_predicted_output:
             x = np.dstack([x, y_h])
@@ -350,7 +349,7 @@ class IMVLSTMModel(HARHNModel):
             raise ValueError("No model is saved")
         self.pt_model.load_state_dict(torch.load(self.saved_model))
 
-        x_test, y_h, target_test = self.prepare_batches(self.data[st:en], '', self.data_config['outputs'][0])
+        x_test, y_h, target_test = self.prepare_batches(self.data[st:en], '', self.outs)
 
         if not self.use_predicted_output:
             x_test = np.dstack([x_test, y_h])
