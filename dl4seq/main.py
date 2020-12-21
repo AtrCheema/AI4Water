@@ -268,7 +268,7 @@ class Model(NN, Plots):
                 df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_batches(df1.values,
+                    x, y, label = self.get_batches(df1.astype(np.float32).values,
                                                    len(self.in_cols),
                                                    len(self.out_cols))
                     xs.append(x)
@@ -1574,7 +1574,7 @@ class Model(NN, Plots):
         config['quantiles'] = self.quantiles
 
         if self.category == "DL":
-            config['loss'] = self._model.loss.__name__ if self._model is not None else None
+            config['loss'] = self.loss_name()
             config['params'] = int(self._model.count_params()) if self._model is not None else None,
 
         VERSION_INFO.update({'numpy_version': str(np.__version__),
@@ -1584,6 +1584,12 @@ class Model(NN, Plots):
 
         save_config_file(config=config, path=self.path)
         return config
+
+    def loss_name(self):
+        if isinstance(self._model.loss, str):
+            return self._model.loss
+        else:
+            return self._model.loss.__name__
 
     @classmethod
     def from_config(cls, config_path: str, data, use_pretrained_model=True):
@@ -1642,10 +1648,11 @@ class Model(NN, Plots):
         return
 
     def describe(self, freq=None):
-        """Plots input data, the correlation between different input """
+        """explanatory plots of data."""
         self.plot_data(freq=freq, subplots=True, figsize=(12, 14), sharex=True)
         self.plot_feature_feature_corr()
         self.stats()
+        self.box_plot()
 
         return
 

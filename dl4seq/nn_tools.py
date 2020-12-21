@@ -146,7 +146,8 @@ class NN(AttributeStore):
                     lyr_cache[lyr_name] = wrp_layer
                     continue
                 elif lyr_name.upper() == "LAMBDA":
-                    layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
+                    call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+                    layer_outputs = tf.keras.layers.deserialize(lyr_config)(call_args)
                     layers_config[lyr]['config'] = lyr_config
                 else:
                     if wrp_layer is not None:

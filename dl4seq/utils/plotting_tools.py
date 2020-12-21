@@ -10,6 +10,8 @@ from sklearn import tree
 from xgboost import plot_importance, plot_tree
 import matplotlib as mpl
 
+from dl4seq.utils.transformations import Transformations
+
 try:
     from dl4seq.utils.utils_from_see_rnn import rnn_histogram
     from see_rnn.visuals_gen import features_0D, features_1D, features_2D
@@ -639,6 +641,45 @@ class Plots(object):
                 i += 1
 
         self.save_or_show(fname=name, save=True if name is not None else False)
+        return
+
+    def box_plot(self, inputs=True, outputs=True, save=True, normalize=True, cols=None,
+                 figsize=(12,8),
+                 show_datapoints=False,
+                 **kwargs):
+        """
+        cols: list, the name of columns from data to be plotted.
+        kwargs: any args for seaborn.boxplot or seaborn.swarmplot.
+        show_datapoints: if True, sns.swarmplot() will be plotted. Will be time consuming for bigger data."""
+
+        data = self.data
+        fname = "box_plot_"
+
+        if cols is None:
+            cols = []
+
+            if inputs:
+                cols += self.in_cols
+                fname += "inputs_"
+            if outputs:
+                cols += self.out_cols
+                fname += "outptuts_"
+        else:
+            assert isinstance(cols, list)
+
+        if normalize:
+            transformer = Transformations(data=data[cols])
+            data = transformer.transform()
+
+        plt.close('all')
+        plt.figure(figsize=figsize)
+
+        ax = sns.boxplot(data=data, **kwargs)
+
+        if show_datapoints:
+            sns.swarmplot(data=data)
+
+        self.save_or_show(fname='box_plot', save=save)
         return
 
 def set_fig_dim(fig, width, height):
