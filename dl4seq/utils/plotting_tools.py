@@ -125,10 +125,7 @@ class Plots(object):
             else:
                 self.plot_df_with_freq(df, freq, save, **kwargs)
         else:
-            features = df.shape[1]
-            tot_plots = np.linspace(0, features, int(features/max_subplots)+1 if features%max_subplots==0 else int(features/max_subplots)+2)
-            # converting each value to int because linspace can return array containing floats if features is odd
-            tot_plots = [int(i) for i in tot_plots]
+            tot_plots = find_tot_plots(df.shape[1], max_subplots)
 
             for i in range(len(tot_plots) - 1):
                 st, en = tot_plots[i], tot_plots[i + 1]
@@ -143,8 +140,8 @@ class Plots(object):
 
     def plot_df_with_freq(self, df:pd.DataFrame, freq:str, save:bool=True, prefix:str='', **kwargs):
         """Plots a dataframe which has data as time-series and its index is pd.DatetimeIndex"""
-        assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
-        assert freq in ["weekly", "monthly", "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
+
+        validate_freq(df, freq)
 
         st_year = df.index[0].year
         en_year = df.index[-1].year
@@ -182,7 +179,7 @@ class Plots(object):
     def _imshow_3d(self, activation,
                    lyr_name,
                    save=True,
-                   where='act'):
+                   where='activations'):
 
         act_2d = []
         for i in range(activation.shape[0]):
@@ -200,7 +197,7 @@ class Plots(object):
                 save=True,
                 fname=None,
                 interpolation:str='none',
-                where='act',
+                where='activations',
                 rnn_args=None):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
@@ -243,7 +240,7 @@ class Plots(object):
                      for gate_idx in range(1, rnn_args['n_gates'])]
             plt.xlabel(rnn_args['gate_names_str'])
 
-        self.save_or_show(save, fname)
+        self.save_or_show(save, fname, where='activations')
 
         return
 
@@ -259,7 +256,7 @@ class Plots(object):
             save_dir = os.path.join(self.path, where)
 
             if not os.path.exists(save_dir):
-                assert os.path.dirname(where) in ['', 'act', 'activation', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
+                assert os.path.dirname(where) in ['', 'activations', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
                 save_dir = os.path.join(self.path, where)
 
                 if not os.path.exists(save_dir):
@@ -643,11 +640,20 @@ class Plots(object):
         self.save_or_show(fname=name, save=True if name is not None else False)
         return
 
-    def box_plot(self, inputs=True, outputs=True, save=True, normalize=True, cols=None,
+    def box_plot(self, inputs=True,
+                 outputs=True,
+                 save=True,
+                 normalize=True,
+                 cols=None,
                  figsize=(12,8),
+                 max_features=8,
                  show_datapoints=False,
+                 freq=None,
                  **kwargs):
         """
+        Plots box whister plot of data.
+        freq: str, one of 'weekly', 'monthly', 'yearly'. If given, box plot will be plotted for these intervals.
+        max_features: int, maximum number of features to appear in one plot.
         cols: list, the name of columns from data to be plotted.
         kwargs: any args for seaborn.boxplot or seaborn.swarmplot.
         show_datapoints: if True, sns.swarmplot() will be plotted. Will be time consuming for bigger data."""
@@ -667,9 +673,46 @@ class Plots(object):
         else:
             assert isinstance(cols, list)
 
+        data = data[cols]
+
+        if data.shape[1] <= max_features:
+            self.box_plot_df(data, normalize=normalize, show_datapoints=show_datapoints, save=save,
+                              freq=freq,
+                              figsize=figsize, **kwargs)
+        else:
+            tot_plots = find_tot_plots(data.shape[1], max_features)
+            for i in range(len(tot_plots) - 1):
+                st, en = tot_plots[i], tot_plots[i + 1]
+                sub_df = data.iloc[:, st:en]
+                self.box_plot_df(sub_df, normalize=normalize, show_datapoints=show_datapoints, save=save,
+                                  figsize=figsize,
+                                  freq=freq,
+                                  prefix=f"box_plot_{st}_{en}",
+                                  **kwargs)
+        return
+
+    def box_plot_df(self, data, normalize=True, show_datapoints=False, save=True, figsize=(12,8),
+                     prefix="box_plot",
+                     freq=None,
+                     **kwargs):
+
         if normalize:
-            transformer = Transformations(data=data[cols])
+            transformer = Transformations(data=data)
             data = transformer.transform()
+
+        if freq is not None:
+            return self.box_plot_with_freq(data, freq, show_datapoints, save, figsize, prefix=prefix, **kwargs)
+
+        return self._box_plot_df(data, prefix, save, figsize, show_datapoints, **kwargs)
+
+    def _box_plot_df(self,
+                     data,
+                     name,
+                     save=True,
+                     figsize=(12,8),
+                     show_datapoints=False,
+                     where='data',
+                     **kwargs):
 
         plt.close('all')
         plt.figure(figsize=figsize)
@@ -679,8 +722,111 @@ class Plots(object):
         if show_datapoints:
             sns.swarmplot(data=data)
 
-        self.save_or_show(fname='box_plot', save=save)
+        self.save_or_show(fname=name, save=save, where=where)
         return
+
+    def box_plot_with_freq(self, data, freq, show_datapoints=False, save=True, figsize=(12,8), name='bw', prefix='',
+                           **kwargs):
+
+        validate_freq(data, freq)
+
+        st_year = data.index[0].year
+        en_year = data.index[-1].year
+
+        for yr in range(st_year, en_year + 1):
+
+            _df = data[data.index.year == yr]
+
+            if freq == 'yearly':
+                self._box_plot_df(_df,
+                                  name=f'{name}_input_{prefix}_{str(yr)}',
+                                  figsize=figsize,
+                                  save=save,
+                                  show_datapoints=show_datapoints,
+                                  **kwargs)
+
+            elif freq == 'monthly':
+                st_mon = _df.index[0].month
+                en_mon = _df.index[-1].month
+
+                for mon in range(st_mon, en_mon+1):
+
+                    __df = _df[_df.index.month == mon]
+
+                    self._box_plot_df(__df,
+                                      name=f'{prefix}_{str(yr)} _{str(mon)}',
+                                      where='data/monthly',
+                                      figsize=figsize,
+                                      save=save,
+                                      show_datapoints=show_datapoints,
+                                      **kwargs)
+
+            elif freq == 'weekly':
+                st_week = _df.index[0].isocalendar()[1]
+                en_week = _df.index[-1].isocalendar()[1]
+
+                for week in range(st_week, en_week+1):
+                    __df = _df[_df.index.week == week]
+
+                    self._box_plot_df(__df,
+                                      name=f'{prefix}_{str(yr)} _{str(week)}',
+                                      where='data/weely',
+                                      figsize=figsize,
+                                      save=save,
+                                      show_datapoints=show_datapoints,
+                                      **kwargs)
+        return
+
+    def grouped_scatter(self, inputs=True, outputs=True, cols=None, save=True, max_subplots=8):
+
+        data = self.data
+        fname = "box_plot_"
+
+        if cols is None:
+            cols = []
+
+            if inputs:
+                cols += self.in_cols
+                fname += "inputs_"
+            if outputs:
+                cols += self.out_cols
+                fname += "outptuts_"
+        else:
+            assert isinstance(cols, list)
+
+        if isinstance(data, pd.DataFrame):
+            data = data[cols]
+            if data.shape[1] <= max_subplots:
+                self._grouped_scatter_plot(data, save=save)
+            else:
+                tot_plots = find_tot_plots(data.shape[1], max_subplots)
+                for i in range(len(tot_plots) - 1):
+                    st, en = tot_plots[i], tot_plots[i + 1]
+                    sub_df = data.iloc[:, st:en]
+                    self._grouped_scatter_plot(sub_df, name=f'grouped_scatter {st}_{en}')
+        return
+
+    def _grouped_scatter_plot(self, df, save=True, name='grouped_scatter'):
+        plt.close('all')
+        sns.set()
+        sns.pairplot(df, size=2.5)
+        self.save_or_show(fname=name, save=save)
+        return
+
+
+def validate_freq(df, freq):
+    assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
+    assert freq in ["weekly", "monthly",
+                    "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
+    return
+
+def find_tot_plots(features, max_subplots):
+
+    tot_plots = np.linspace(0, features, int(features / max_subplots) + 1 if features % max_subplots == 0 else int(
+        features / max_subplots) + 2)
+    # converting each value to int because linspace can return array containing floats if features is odd
+    tot_plots = [int(i) for i in tot_plots]
+    return tot_plots
 
 def set_fig_dim(fig, width, height):
     fig.set_figwidth(width)

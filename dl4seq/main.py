@@ -11,6 +11,7 @@ import h5py
 import random
 import math
 import warnings
+import time
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models, sklearn_models
@@ -34,7 +35,7 @@ LOSSES = {}
 if tf is not None:
     import dl4seq.keract_mod as keract
     from dl4seq.tf_attributes import LOSSES, OPTIMIZERS
-if torch is not None:
+elif torch is not None:  # TODO, what if both tf and torch are installed and we want to run pytorch-based model?
     from dl4seq.torch_attributes import LOSSES as pt_losses
     LOSSES.update(pt_losses)
 
@@ -268,7 +269,7 @@ class Model(NN, Plots):
                 df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_batches(df1.astype(np.float32).values,
+                    x, y, label = self.get_batches(df.values,
                                                    len(self.in_cols),
                                                    len(self.out_cols))
                     xs.append(x)
@@ -487,6 +488,8 @@ class Model(NN, Plots):
 
         inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
 
+        st = time.time()
+
         self._model.fit(inputs,
                         y=None if isinstance(inputs, tf.data.Dataset) else outputs,
                          epochs=self.model_config['epochs'],
@@ -498,6 +501,8 @@ class Model(NN, Plots):
                          steps_per_epoch=self.data_config['steps_per_epoch'],
                          verbose=self.verbosity
                          )
+
+        self.data_config['training_time'] = float(time.time() - st/60.0)
 
         return self.post_kfit()
 
@@ -677,8 +682,8 @@ class Model(NN, Plots):
                 if not os.path.exists(fpath):
                     os.makedirs(fpath)
 
-                t = pd.DataFrame(true[:, idx, h], index=index, columns=[out])
-                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=[out])
+                t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
+                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
                 fname = prefix + '_' + out + '_' + str(h) +  ".csv"
