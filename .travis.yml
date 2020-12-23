@@ -7,7 +7,7 @@ before_install:
   - pip install python-coveralls
 
 install:
-  - pip install -r requirements.txt
+  - pip install -r requirements_all.txt
   - pip install keras-tcn
   - pip install coverage
 

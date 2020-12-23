@@ -7,7 +7,7 @@ import os
 import seaborn as sns
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 from sklearn import tree
-from xgboost import plot_importance, plot_tree
+from dl4seq.backend import xgboost
 import matplotlib as mpl
 
 from dl4seq.utils.transformations import Transformations
@@ -17,6 +17,7 @@ try:
     from see_rnn.visuals_gen import features_0D, features_1D, features_2D
 except ModuleNotFoundError:
     rnn_histogram = None
+    features_0D, features_1D, features_2D = None, None, None
 
 try:
     from dtreeviz import trees
@@ -333,20 +334,23 @@ class Plots(object):
     def features_2d(self, data, name, save=True, slices=32, slice_dim=0, **kwargs):
         """Calls the features_2d from see-rnn"""
         st=0
-        for en in np.arange(slices, data.shape[slice_dim] + slices, slices):
+        if features_2D is None:
+            warnings.warn("install see-rnn to plot features-2D plot", UserWarning)
+        else:
+            for en in np.arange(slices, data.shape[slice_dim] + slices, slices):
 
-            if save:
-                name = name + f"_{st}_{en}"
-                save = os.path.join(self.act_path, name+".png")
-            else:
-                save = None
+                if save:
+                    name = name + f"_{st}_{en}"
+                    save = os.path.join(self.act_path, name+".png")
+                else:
+                    save = None
 
-            if slice_dim == 0:
-                features_2D(data[st:en, :], savepath=save, **kwargs)
-            else:
-                # assuming it will always be the last dim if not first
-                features_2D(data[..., st:en], savepath=save, **kwargs)
-            st=en
+                if slice_dim == 0:
+                    features_2D(data[st:en, :], savepath=save, **kwargs)
+                else:
+                    # assuming it will always be the last dim if not first
+                    features_2D(data[..., st:en], savepath=save, **kwargs)
+                st=en
 
         return
 
@@ -357,17 +361,23 @@ class Plots(object):
         else:
             save=None
 
-        features_1D(data, savepath=save, **kwargs)
+        if features_1D is None:
+            warnings.warn("install see-rnn to plot features-1D plot", UserWarning)
+        else:
+            features_1D(data, savepath=save, **kwargs)
 
         return
 
     def features_0d(self, data, save=True, name='', **kwargs):
         if save:
-            save = os.path.join(self.act_path, name + "0D.png")
+            save = os.path.join(self.act_path, name + "0D.png", UserWarning)
         else:
             save=None
 
-        return features_0D(data, savepath=save, **kwargs)
+        if features_0D is None:
+            warnings.warn("install see-rnn to plot 0D-features plot")
+        else:
+            return features_0D(data, savepath=save, **kwargs)
 
     def rnn_histogram(self, data, save=True, name='', **kwargs):
 
@@ -375,7 +385,11 @@ class Plots(object):
             save = os.path.join(self.act_path, name + "0D.png")
         else:
             save=None
-        rnn_histogram(data, rnn_info["LSTM"], bins=400, savepath=save, **kwargs)
+
+        if rnn_histogram is None:
+            warnings.warn("install see-rnn to plot rnn_histogram plot", UserWarning)
+        else:
+            rnn_histogram(data, rnn_info["LSTM"], bins=400, savepath=save, **kwargs)
 
         return
 
@@ -471,7 +485,10 @@ class Plots(object):
         plt.figure()
         plt.title("Feature importance")
         if use_xgb:
-            plot_importance(self._model)
+            if xgboost is None:
+                warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
+            else:
+                xgboost.plot_importance(self._model)
         else:
             plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
             plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
@@ -511,7 +528,10 @@ class Plots(object):
             if hasattr(self._model, "tree_"):
                 tree.plot_tree(self._model, **kwargs)
         else:  # xgboost
-            plot_tree(self._model, **kwargs)
+            if xgboost is None:
+                warnings.warn("install xgboost to use plot_tree method")
+            else:
+                xgboost.plot_tree(self._model, **kwargs)
         self.save_or_show(save, fname="decision_tree", where="results")
         return
 

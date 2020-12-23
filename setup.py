@@ -53,9 +53,6 @@ setup(
         'pandas',
         'matplotlib',
         'scikit-optimize',
-        'xgboost',
-        'EMD-signal',
         'TSErrors',
-        'see-rnn'
     ],
 )
