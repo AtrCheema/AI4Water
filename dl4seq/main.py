@@ -1652,12 +1652,23 @@ class Model(NN, Plots):
         h5.close()
         return
 
-    def describe(self, freq=None):
-        """explanatory plots of data."""
+    def eda(self, freq=None):
+        """Performs comprehensive Exploratory Data Analysis.
+        freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
+        be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
+        `monthly`."""
+        # line plots of input/output data
         self.plot_data(freq=freq, subplots=True, figsize=(12, 14), sharex=True)
+        # plot feature-feature correlation as heatmap
         self.plot_feature_feature_corr()
+        # print stats about input/output data
         self.stats()
-        self.box_plot()
+        # box-whisker plot
+        self.box_plot(freq=freq)
+        # principle components
+        self.plot_pcs()
+        # scatter plots of input/output data
+        self.grouped_scatter()
 
         return
 
@@ -1675,12 +1686,24 @@ class Model(NN, Plots):
             cols += self.out_cols
             fname += "outputs_"
 
+        fname += str(dateandtime_now())
+
+        def save_stats(_description, fpath):
+
+            if out_fmt == "csv":
+                pd.DataFrame.from_dict(_description).to_csv(fpath + ".csv")
+            else:
+                save_config_file(others=_description, path=fpath + ".json")
+
         description = {}
         if isinstance(self.data, pd.DataFrame):
             description = {}
             for col in cols:
                 if col in self.data:
                     description[col] = stats(self.data[col])
+
+            fpath = os.path.join(self.path, fname) if fpath is None else fpath
+            save_stats(description, fpath)
 
         elif isinstance(self.data, list):
             description = {}
@@ -1695,18 +1718,10 @@ class Model(NN, Plots):
                             _description[col] = stats(data[col])
 
                 description['data' + str(idx)] = _description
-
+                _fpath = os.path.join(self.path, fname+f'_{idx}') if fpath is None else fpath
+                save_stats(_description, _fpath)
         else:
             print(f"description can not be found for data type of {type(self.data)}")
-
-        fname += str(dateandtime_now())
-        if fpath is None:
-            fpath = os.path.join(self.path, fname)
-
-        if out_fmt == "csv":
-            pd.DataFrame.from_dict(description).to_csv(fpath + ".csv")
-        else:
-            save_config_file(others=description, path=fpath + ".json")
 
         return description
 

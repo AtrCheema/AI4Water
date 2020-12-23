@@ -9,7 +9,7 @@ from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precisio
 from sklearn import tree
 from dl4seq.backend import xgboost
 import matplotlib as mpl
-
+from sklearn.decomposition import PCA
 from dl4seq.utils.transformations import Transformations
 
 try:
@@ -106,13 +106,13 @@ class Plots(object):
         """
         data = self.data
         if isinstance(data, list):
-            for df in data:
-                self.plot_df(df, save=save, freq=freq, **kwargs)
+            for idx,df in enumerate(data):
+                self.plot_df(df, save=save, freq=freq, prefix=str(idx), **kwargs)
         else:
             self.plot_df(data, save=save, freq=freq, **kwargs)
         return
 
-    def plot_df(self, df, save=True, freq=None, max_subplots=10, **kwargs):
+    def plot_df(self, df, save=True, freq=None, max_subplots=10, prefix='', **kwargs):
         """Plots each columns of dataframe and saves it if `save` is True.
          max_subplots: determines how many sub_plots are to be plotted within one plot. If dataframe contains columns
          greater than max_subplots, a separate plot will be generated for remaining columns."""
@@ -122,7 +122,7 @@ class Plots(object):
 
             if freq is None:
                 df.plot(**kwargs)
-                self.save_or_show(save=save, fname='input_',  where='data')
+                self.save_or_show(save=save, fname=f"input_{prefix}",  where='data')
             else:
                 self.plot_df_with_freq(df, freq, save, **kwargs)
         else:
@@ -134,9 +134,9 @@ class Plots(object):
 
                 if freq is None:
                     sub_df.plot(**kwargs)
-                    self.save_or_show(save=save, fname='input'+str(st) +'_' + str(en), where='data')
+                    self.save_or_show(save=save, fname=f'input_{prefix}_{st}_{en}', where='data')
                 else:
-                    self.plot_df_with_freq(sub_df, freq, save, prefix=str(st) +'_' + str(en), **kwargs)
+                    self.plot_df_with_freq(sub_df, freq, save, prefix=f'{prefix}_{st}_{en}', **kwargs)
         return
 
     def plot_df_with_freq(self, df:pd.DataFrame, freq:str, save:bool=True, prefix:str='', **kwargs):
@@ -498,9 +498,16 @@ class Plots(object):
     def plot_feature_feature_corr(self, remove_targets=True, save=True, **kwargs):
         plt.close('')
         cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
-        corr = self.data[cols].corr()
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self._feature_feature_corr(data, cols, prefix=str(idx), save=save, **kwargs)
+        else:
+            self._feature_feature_corr(self.data, cols, save=save, **kwargs)
+
+    def _feature_feature_corr(self, data, cols, prefix='', save=True, **kwargs):
+        corr = data[cols].corr()
         sns.heatmap(corr, **kwargs)
-        self.save_or_show(save, fname="feature_feature_corr", where="data")
+        self.save_or_show(save, fname=f"feature_feature_corr_{prefix}", where="data")
         return
 
     def roc_curve(self, x, y, save=True):
@@ -688,16 +695,29 @@ class Plots(object):
                 cols += self.in_cols
                 fname += "inputs_"
             if outputs:
-                cols += self.out_cols
                 fname += "outptuts_"
         else:
             assert isinstance(cols, list)
 
+        if isinstance(data, list):
+            for idx, d in enumerate(data):
+                _cols  = cols +  [self.out_cols[idx]] if outputs else cols
+                self._box_plot(d, _cols, save, normalize, figsize, max_features, show_datapoints, freq, prefix=str(idx),
+                               **kwargs)
+        else:
+            cols = cols + self.out_cols if outputs else cols
+            self._box_plot(data, cols, save, normalize, figsize, max_features, show_datapoints, freq, **kwargs)
+
+
+    def _box_plot(self, data, cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                  prefix='',
+                  **kwargs):
         data = data[cols]
 
         if data.shape[1] <= max_features:
             self.box_plot_df(data, normalize=normalize, show_datapoints=show_datapoints, save=save,
                               freq=freq,
+                             prefix=f"box_plot_{prefix}",
                               figsize=figsize, **kwargs)
         else:
             tot_plots = find_tot_plots(data.shape[1], max_features)
@@ -707,7 +727,7 @@ class Plots(object):
                 self.box_plot_df(sub_df, normalize=normalize, show_datapoints=show_datapoints, save=save,
                                   figsize=figsize,
                                   freq=freq,
-                                  prefix=f"box_plot_{st}_{en}",
+                                  prefix=f"box_plot_{prefix}_{st}_{en}",
                                   **kwargs)
         return
 
@@ -797,7 +817,7 @@ class Plots(object):
                                       **kwargs)
         return
 
-    def grouped_scatter(self, inputs=True, outputs=True, cols=None, save=True, max_subplots=8):
+    def grouped_scatter(self, inputs=True, outputs=True, cols=None, save=True, max_subplots=8, **kwargs):
 
         data = self.data
         fname = "box_plot_"
@@ -817,22 +837,64 @@ class Plots(object):
         if isinstance(data, pd.DataFrame):
             data = data[cols]
             if data.shape[1] <= max_subplots:
-                self._grouped_scatter_plot(data, save=save)
+                self._grouped_scatter_plot(data, save=save, **kwargs)
             else:
                 tot_plots = find_tot_plots(data.shape[1], max_subplots)
                 for i in range(len(tot_plots) - 1):
                     st, en = tot_plots[i], tot_plots[i + 1]
                     sub_df = data.iloc[:, st:en]
-                    self._grouped_scatter_plot(sub_df, name=f'grouped_scatter {st}_{en}')
+                    self._grouped_scatter_plot(sub_df, name=f'grouped_scatter {st}_{en}', **kwargs)
         return
 
-    def _grouped_scatter_plot(self, df, save=True, name='grouped_scatter'):
+    def _grouped_scatter_plot(self, df, save=True, name='grouped_scatter', **kwargs):
         plt.close('all')
         sns.set()
-        sns.pairplot(df, size=2.5)
+        sns.pairplot(df, size=2.5, **kwargs)
         self.save_or_show(fname=name, save=save)
         return
 
+    def plot_pcs(self, num_pcs=None, save=True, save_as_csv=False, figsize=(12, 8), **kwargs):
+        """Plots principle components.
+        kwargs will go to sns.pairplot."""
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self._plot_pcs(data, num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
+                               hue=self.out_cols[idx], figsize=figsize, **kwargs)
+        else:
+            self._plot_pcs(self.data, num_pcs, save=save, save_as_csv=save_as_csv, hue=self.out_cols,
+                           figsize=figsize, **kwargs)
+        return
+
+    def _plot_pcs(self, data, num_pcs, save=True, prefix='', save_as_csv=False, hue=None, figsize=(12,8), **kwargs):
+
+        if num_pcs is None:
+            num_pcs = int(data.shape[1]/2)
+
+        df_pca = data[self.in_cols]
+        pca = PCA(n_components=num_pcs).fit(df_pca)
+        df_pca = pd.DataFrame(pca.transform(df_pca))
+        pcs = ['pc' + str(i + 1) for i in range(num_pcs)]
+        df_pca.columns = pcs
+
+        if hue is not None:
+            if isinstance(hue, list):
+                hue = hue[0]
+            if hue in data:
+                df_pca[hue] = data[hue]
+
+                if df_pca[hue].isna().sum() > 0: # output columns contains nans, so don't use it as hue.
+                    hue = None
+            else: # ignore it
+                hue = None
+
+        if save_as_csv:
+            df_pca.to_csv(os.path.join(self.path, f"data\\first_{num_pcs}_pcs_{prefix}"))
+
+        plt.close('all')
+        plt.figure(figsize=figsize)
+        sns.pairplot(data=df_pca, vars=pcs, hue=hue, **kwargs)
+        self.save_or_show(fname=f"first_{num_pcs}_pcs_{prefix}", save=save, where='data')
+        return
 
 def validate_freq(df, freq):
     assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
