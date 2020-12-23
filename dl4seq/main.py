@@ -269,7 +269,7 @@ class Model(NN, Plots):
                 df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_batches(df.values,
+                    x, y, label = self.get_batches(df1.values,
                                                    len(self.in_cols),
                                                    len(self.out_cols))
                     xs.append(x)

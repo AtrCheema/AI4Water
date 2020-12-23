@@ -92,7 +92,6 @@ class TestModels(unittest.TestCase):
         self.assertAlmostEqual(float(prediction.sum()), 1312.9749, 3)
         return
 
-
     def test_LSTMModel(self):
         lyrs = {
             "LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
@@ -104,7 +103,6 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), 1452.8463, 3)
         return
-
 
     def test_SeqSelfAttention(self):
         # SeqSelfAttention
@@ -173,7 +171,6 @@ class TestModels(unittest.TestCase):
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), 1527.28979, 4)
-
 
     def test_HierarchicalAttention(self):
         # LSTM + HierarchicalAttention model
