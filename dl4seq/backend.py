@@ -14,7 +14,10 @@ def get_sklearn_models():
     if sklearn is not None:
         # the following line must be executed in order for get_attributes to work, don't know why
         from sklearn.ensemble import RandomForestRegressor
-        from sklearn.neural_network import multilayer_perceptron
+        if int(sklearn.__version__.split('.')[1]) < 24:
+            from sklearn.neural_network import multilayer_perceptron
+        else:
+            from sklearn.neural_network import MLPClassifier
         from sklearn.multioutput import MultiOutputRegressor
         from sklearn.naive_bayes import GaussianNB
         from sklearn.kernel_ridge import KernelRidge
