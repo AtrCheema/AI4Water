@@ -74,7 +74,7 @@ class Model(NN, Plots):
         self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.model_config['loss'].upper()]
         self.KModel = keras.models.Model if keras is not None else None
-        self.path, self.act_path, self.w_path = maybe_create_path(path=path, prefix=prefix)
+        self.path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
         self.category = self.model_config['category']
         self.problem = self.model_config['problem']
@@ -84,6 +84,18 @@ class Model(NN, Plots):
                        model_config=config.model)
 
         self.build() # will initialize ML models or build NNs
+
+    @property
+    def act_path(self):
+        return os.path.join(self.path, 'activations')
+
+    @property
+    def w_path(self):
+        return os.path.join(self.path, 'weights')
+
+    @property
+    def data_path(self):
+        return os.path.join(self.path, 'data')
 
     @property
     def forecast_step(self):
@@ -1372,7 +1384,9 @@ class Model(NN, Plots):
     def plot_act_grads(self, save: bool = True, **kwargs):
         """ plots activations of intermediate layers except input and output"""
         gradients = self.gradients_of_activations(**kwargs)
+        return self._plot_act_grads(gradients, save=save)
 
+    def _plot_act_grads(self, gradients,  save=True):
         if self.verbosity > 0:
             print("Plotting gradients of activations of layersr")
 
@@ -1702,7 +1716,7 @@ class Model(NN, Plots):
                 if col in self.data:
                     description[col] = stats(self.data[col])
 
-            fpath = os.path.join(self.path, fname) if fpath is None else fpath
+            fpath = os.path.join(self.data_path, fname) if fpath is None else fpath
             save_stats(description, fpath)
 
         elif isinstance(self.data, list):
@@ -1718,7 +1732,7 @@ class Model(NN, Plots):
                             _description[col] = stats(data[col])
 
                 description['data' + str(idx)] = _description
-                _fpath = os.path.join(self.path, fname+f'_{idx}') if fpath is None else fpath
+                _fpath = os.path.join(self.data_path, fname+f'_{idx}') if fpath is None else fpath
                 save_stats(_description, _fpath)
         else:
             print(f"description can not be found for data type of {type(self.data)}")

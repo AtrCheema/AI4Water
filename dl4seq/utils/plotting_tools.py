@@ -42,7 +42,7 @@ class Plots(object):
         self._model = model
         self.data_config = data_config
         self.model_cofig = model_config
-        self.act_path = os.path.join(path, "activations")
+
 
     @property
     def train_data(self):
@@ -370,7 +370,7 @@ class Plots(object):
 
     def features_0d(self, data, save=True, name='', **kwargs):
         if save:
-            save = os.path.join(self.act_path, name + "0D.png", UserWarning)
+            save = os.path.join(self.act_path, name + "0D.png")
         else:
             save=None
 
