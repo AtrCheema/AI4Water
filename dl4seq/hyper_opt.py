@@ -111,9 +111,9 @@ class HyperOpt(object):
     ```python
     # using grid search with dl4seq
     >>opt = HyperOpt("grid",
-               param_space=dims,
-               dl4seq_args={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+               param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
                             'max_depth': [3, 4, 5, 6]},
+               dl4seq_args={'ml_model': 'xgboost'},
                data=data,
                use_named_args=True,
                )
@@ -122,9 +122,9 @@ class HyperOpt(object):
 
     #using random search with dl4seq
     >>opt = HyperOpt("random",
-               param_space=dims,
-               dl4seq_args={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+               param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
                             'max_depth': [3, 4, 5, 6]},
+               dl4seq_args={'ml_model': 'xgboost'},
                data=data,
                use_named_args=True,
                n_iter=100
@@ -134,9 +134,9 @@ class HyperOpt(object):
 
     # using Bayesian with dl4seq
     >>opt = HyperOpt("bayes",
-                   param_space=dims,
-                   dl4seq_args={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
-                                'max_depth': [3, 4, 5, 6]},
+               param_space=[Integer(low=1000, high=2000, name='n_estimators',
+                            Integer(low=3, high=6, name='max_depth')]
+               dl4seq_args={'ml_model': 'xgboost'},
                    data=data,
                    use_named_args=True,
                    n_calls=100,
@@ -215,6 +215,7 @@ class HyperOpt(object):
         self.gpmin_results = None  #
         self.data = None
         self.eval_on_best=eval_on_best
+        self.opt_path = kwargs.pop('opt_path') if 'opt_path' in kwargs else None
 
         self.gpmin_args = self.check_args(**kwargs)
 
@@ -316,11 +317,16 @@ class HyperOpt(object):
 
     @property
     def opt_path(self):
-        path = os.path.join(os.getcwd(), "results\\" + self.title)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        return self._opt_path
 
-        return path
+    @opt_path.setter
+    def opt_path(self, path):
+        if path is None:
+            path = os.path.join(os.getcwd(), "results\\" + self.title)
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+        self._opt_path = path
 
     def dl4seq_model(self,
                      pp=False,
