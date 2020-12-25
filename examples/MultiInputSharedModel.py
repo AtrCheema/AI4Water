@@ -59,11 +59,6 @@ class MultiInputSharedModel(Model):
 
         return history.history
 
-    def denormalize_data(self, first_input, predicted: list, true_outputs:list, scaler_key:str):
-
-        return predicted, true_outputs[0]
-
-
     def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
                 use_datetime_index=True, pp=True, **plot_args):
         out_cols = self.out_cols
@@ -74,9 +69,10 @@ class MultiInputSharedModel(Model):
         for idx, out in enumerate(out_cols):
 
             self.out_cols = [self.data_config['outputs'][idx]]  # because fetch_data depends upon self.outs
+            scaler_key = str(idx) + scaler_key
             inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                                    use_datetime_index=use_datetime_index, data=self.data[idx])
-            self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+
 
             first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
@@ -84,8 +80,10 @@ class MultiInputSharedModel(Model):
                                              batch_size=self.data_config['batch_size'],
                                              verbose=1)
 
-            predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs[0], scaler_key)
+            predicted, true_outputs = self.denormalize_data(inputs[1], predicted, true_outputs[0], scaler_key)
 
+            self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+            
             horizons = self.data_config['forecast_length']
             if self.quantiles is None:
                 true_outputs = pd.DataFrame(true_outputs.reshape(-1, horizons), index=dt_index,

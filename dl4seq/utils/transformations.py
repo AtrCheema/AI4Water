@@ -2,7 +2,11 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, PowerTransformer,\
     QuantileTransformer, FunctionTransformer
 from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA, FastICA, SparsePCA
-from PyEMD import EMD, EEMD
+try:
+    from PyEMD import EMD, EEMD
+except ModuleNotFoundError:
+    EMD, EEMD = None, None
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D

@@ -2,7 +2,8 @@
 
 [![Build Status](https://travis-ci.com/AtrCheema/dl4seq.svg?branch=master)](https://travis-ci.com/AtrCheema/dl4seq)  
 
-Different deep learning based architechtures for time series forecasting.  
+A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
+for time series and 1D data. 
 
 The purpose of the repository is
 * compliment the functionality of keras by making pre and post processing easeier for time-series prediction problems
@@ -80,6 +81,8 @@ model = InputAttentionModel(
               config=config,
               data=df
               )
+
+model.eda()  # perform comprehensive explanatory data analysis, check model.path directory for plots
 
 history = model.train(indices='random')
 

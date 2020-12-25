@@ -26,8 +26,10 @@ SOFTWARE.
 """
 import json
 import os
+import warnings
 from collections import OrderedDict
 
+import numpy as np
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.models import Model
@@ -74,7 +76,14 @@ def _evaluate(model: Model, nodes_to_evaluate, x, y=None, auto_compile=False):
         try:
             return K.function(k_inputs, nodes_to_evaluate)(model._standardize_user_data(x, y))
         except AttributeError:  # one way to avoid forcing non eager mode.
-            return K.function(k_inputs, nodes_to_evaluate)((x, y))  # although works.
+            try:
+                result = K.function(k_inputs, nodes_to_evaluate)((x, y))
+            except AttributeError:
+
+                _y = np.random.random((x[0].shape[0] if isinstance(x, list) else x.shape[0], 1))
+                result = K.function(k_inputs, nodes_to_evaluate)((x, _y))  # although works.
+                warnings.warn("using dummy y-data, this may not be correct.", UserWarning)
+            return result
 
     try:
         return eval_fn(model._feed_inputs + model._feed_targets + model._feed_sample_weights)
