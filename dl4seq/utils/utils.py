@@ -30,15 +30,11 @@ def maybe_create_path(prefix=None, path=None):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    act_dir = os.path.join(save_dir, 'activations')
-    if not os.path.exists(act_dir):
-        os.makedirs(act_dir)
+    for _dir in ['activations', 'weights', 'data']:
+        if not os.path.exists(os.path.join(save_dir, _dir)):
+            os.makedirs(os.path.join(save_dir, _dir))
 
-    weigth_dir = os.path.join(save_dir, 'weights')
-    if not os.path.exists(weigth_dir):
-        os.makedirs(weigth_dir)
-
-    return save_dir, act_dir, weigth_dir
+    return save_dir
 
 
 def dateandtime_now():
@@ -626,10 +622,30 @@ class SerializeSKOptResults(object):
         return mods
 
 
-def clear_weights(_res:dict, opt_dir, keep=3):
+def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
+    """Looks in opt_dir and saves the min val_loss with the folder name"""
+    results = {}
+    for folder in os.listdir(opt_dir):
+        fname = os.path.join(os.path.join(opt_dir, folder), 'losses.csv')
+
+        if os.path.exists(fname):
+            df = pd.read_csv(fname)
+
+            if 'val_loss' in df:
+                min_val_loss = round(float(np.min(df[metric_name])), 6)
+                results[min_val_loss] = {'folder': os.path.basename(folder)}
+    return results
+
+def clear_weights(opt_dir, results:dict=None, keep=3):
     """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
     of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
-    od = OrderedDict(sorted(_res.items()))
+
+    fname = 'sorted.json'
+    if results is None:
+        results = make_hpo_results(opt_dir)
+        fname = 'sorted_folders.json'
+
+    od = OrderedDict(sorted(results.items()))
 
     idx = 0
     for k,v in od.items():
@@ -655,7 +671,7 @@ def clear_weights(_res:dict, opt_dir, keep=3):
 
             idx += 1
 
-    sorted_fname = os.path.join(opt_dir, 'sorted.json')
+    sorted_fname = os.path.join(opt_dir, fname)
     with open(sorted_fname, 'w') as sfp:
         json.dump(od, sfp, sort_keys=True, indent=True)
     return
@@ -726,7 +742,10 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
     sr_res = SerializeSKOptResults(skopt_results)
 
-    clear_weights(results, opt_path)
+    if 'folder' in list(results.items())[0]:
+        clear_weights(results=results, opt_dir=opt_path)
+    else:
+        clear_weights(opt_dir=opt_path)
 
     try:
         dump(skopt_results, os.path.join(opt_path, os.path.basename(opt_path)))
