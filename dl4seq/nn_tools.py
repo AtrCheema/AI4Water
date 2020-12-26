@@ -181,8 +181,10 @@ class NN(AttributeStore):
             # the only way to know that how many `Input` layers were encountered during the run of this method. Each
             # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
             if k.upper() != "TIMEDISTRIBUTED":
-                if 'INPUT' in k.upper():
-                    inputs.append(v)
+                if hasattr(v.op, 'inputs'):
+                    _ins = v.op.inputs
+                    if len(_ins) == 0:
+                        inputs.append(v)
         setattr(self, 'layers', lyr_cache)
 
         # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
