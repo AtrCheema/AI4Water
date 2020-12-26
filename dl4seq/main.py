@@ -236,7 +236,7 @@ class Model(NN, Plots):
                                 fetching data during predict but must be separated before feeding in NN for prediction.
         :return:
         """
-
+        data = data.copy()
         if st is not None:
             assert isinstance(st, int), "starting point must be integer."
         if indices is not None:
@@ -304,7 +304,8 @@ class Model(NN, Plots):
 
         if use_datetime_index:
             self.in_cols.remove("dt_index")
-            df.pop('dt_index') # because self.data belongs to class, this should remain intact.
+            if 'dt_index' in df:  # TODO, is it necessary?
+                df.pop('dt_index') # because self.data belongs to class, this should remain intact.
 
         #x = x.astype(np.float32)
 
@@ -358,8 +359,9 @@ class Model(NN, Plots):
             # we want to apply multiple transformations
             elif isinstance(transformation, list):
                 for trans in transformation:
-                    df, scaler = Transformations(data=df, **trans)('transformation', return_key=True)
-                    self.scalers[key+str(trans['method'])] = scaler
+                    if trans['method'] is not None:
+                        df, scaler = Transformations(data=df, **trans)('transformation', return_key=True)
+                        self.scalers[key+str(trans['method'])] = scaler
             else:
                 assert isinstance(transformation, str)
                 df, scaler = Transformations(data=df, method=transformation)('transformation', return_key=True)
@@ -466,12 +468,12 @@ class Model(NN, Plots):
             shape.append(d)
         return shape
 
-    def get_callbacks(self, **callbacks):
+    def get_callbacks(self, val_data_present, **callbacks):
 
         _callbacks = list()
 
-        _monitor = 'val_loss' if self.data_config['val_fraction'] > 0.0 else 'loss'
-        fname = "{val_loss:.4f}.hdf5" if self.data_config['val_fraction'] > 0.0 else "{loss:.5f}.hdf5"
+        _monitor = 'val_loss' if val_data_present else 'loss'
+        fname = "{val_loss:.5f}.hdf5" if val_data_present else "{loss:.5f}.hdf5"
         if self.model_config['save_model']:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
                 filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
@@ -494,11 +496,26 @@ class Model(NN, Plots):
 
         return _callbacks
 
+    def use_val_data(self, val_split, val_data):
+        """Finds out if there is val_data or not"""
+        val_data_present=False
+        if val_split>0.0:
+            val_data_present=True
+
+        # it is possible that val_split=0.0 but we do have val_data.
+        if val_data is not None:
+            val_data_present=True
+
+        return val_data_present
+
+
     def fit(self, inputs, outputs, validation_data, **callbacks):
 
-        callbacks = self.get_callbacks(**callbacks)
-
         inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
+
+        validation_split = 0.0 if isinstance(inputs, tf.data.Dataset) else self.data_config['val_fraction']
+
+        callbacks = self.get_callbacks(self.use_val_data(validation_split, validation_data), **callbacks)
 
         st = time.time()
 
@@ -506,7 +523,7 @@ class Model(NN, Plots):
                         y=None if isinstance(inputs, tf.data.Dataset) else outputs,
                          epochs=self.model_config['epochs'],
                          batch_size=None if isinstance(inputs, tf.data.Dataset) else self.data_config['batch_size'],
-                         validation_split=0.0 if isinstance(inputs, tf.data.Dataset) else self.data_config['val_fraction'],
+                         validation_split=validation_split,
                          validation_data=validation_data,
                          callbacks=callbacks,
                          shuffle=self.model_config['shuffle'],
@@ -809,13 +826,13 @@ class Model(NN, Plots):
         self.is_training = False
         return history
 
-    def test_data(self, **kwargs):
+    def test_data(self, scaler_key='5', **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
         if 'data' in kwargs:
             if kwargs['data'] is not None:
                 return kwargs['data']
 
-        return self.train_data(**kwargs)
+        return self.train_data(scaler_key=scaler_key, **kwargs)
 
     def prediction_step(self, inputs):
         if self.category.upper() == "DL":
@@ -848,6 +865,8 @@ class Model(NN, Plots):
                                     but a scaler_key given. Provide the either 'scaler_key' argument while calling
                                     'predict' or set the transformation while initializing model to None."""
                                      )
+        if scaler_key is None:
+            scaler_key = '5'
 
         inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, data=data,
                                               scaler_key=scaler_key,
@@ -1111,6 +1130,8 @@ class Model(NN, Plots):
        [208., 209., 210., 211.]], dtype=float32)
 
         """
+        if len(df) <= 1:
+            raise ValueError(f"Can not create batches from data with shape {df.shape}")
         x = []
         prev_y = []
         y = []

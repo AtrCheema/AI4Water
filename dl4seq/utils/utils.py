@@ -744,8 +744,10 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
     if 'folder' in list(results.items())[0]:
         clear_weights(results=results, opt_dir=opt_path)
+
     else:
         clear_weights(opt_dir=opt_path)
+        clear_weights(results=results, opt_dir=opt_path)
 
     try:
         dump(skopt_results, os.path.join(opt_path, os.path.basename(opt_path)))
