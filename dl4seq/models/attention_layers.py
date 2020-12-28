@@ -851,6 +851,8 @@ def regularized_padded_conv(conv_dim, *args, **kwargs):
         return layers.Conv2D(*args, **kwargs, padding='same', use_bias=False,
                              kernel_initializer='he_normal',
                              kernel_regularizer=regularizers.l2(5e-4))
+    else:
+        raise ValueError(f"conv_dim must be either 1d or 2d but it is {conv_dim}")
 
 class ChannelAttention(layers.Layer):
     """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0"""

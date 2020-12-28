@@ -347,7 +347,7 @@ class HyperOpt(object):
         assert config.model["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " dl4seq model and pass it as custom model."
         if title is None:
-            title =  self.method + '_' + config.model["problem"] + '_' + config.model["ml_model"]
+            title =  self.opt_path #self.method + '_' + config.model["problem"] + '_' + config.model["ml_model"]
             self.title = title
         else:
             title = title

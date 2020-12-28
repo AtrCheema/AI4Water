@@ -9,7 +9,7 @@ from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precisio
 from sklearn import tree
 from dl4seq.backend import xgboost
 import matplotlib as mpl
-from sklearn.decomposition import PCA
+import plotly.express as px
 from dl4seq.utils.transformations import Transformations
 
 try:
@@ -90,9 +90,10 @@ class Plots(object):
             elif hasattr(self._model, "feature_importances_"):
                 return self._model.feature_importances_
 
-    def plot_data(self, save=True, freq=None, **kwargs):
+    def plot_data(self, save=True, freq=None, max_subplots=10, **kwargs):
         """
         :param save:
+        :param max_subplots: int, number of subplots within one plot. Each feature will be shown in a separate subplot.
         :param kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
         :param freq: str, one of 'daily', 'weekly', 'monthly', 'yearly', determines interval of plot of data. It is
                      valid for only time-series data.
@@ -107,9 +108,9 @@ class Plots(object):
         data = self.data
         if isinstance(data, list):
             for idx,df in enumerate(data):
-                self.plot_df(df, save=save, freq=freq, prefix=str(idx), **kwargs)
+                self.plot_df(df, save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
         else:
-            self.plot_df(data, save=save, freq=freq, **kwargs)
+            self.plot_df(data, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
         return
 
     def plot_df(self, df, save=True, freq=None, max_subplots=10, prefix='', **kwargs):
@@ -670,6 +671,7 @@ class Plots(object):
     def box_plot(self, inputs=True,
                  outputs=True,
                  save=True,
+                 violen=False,
                  normalize=True,
                  cols=None,
                  figsize=(12,8),
@@ -678,15 +680,16 @@ class Plots(object):
                  freq=None,
                  **kwargs):
         """
-        Plots box whister plot of data.
+        Plots box whister or violen plot of data.
         freq: str, one of 'weekly', 'monthly', 'yearly'. If given, box plot will be plotted for these intervals.
         max_features: int, maximum number of features to appear in one plot.
+        violen: bool, if True, then violen plot will be plotted else box_whisker plot
         cols: list, the name of columns from data to be plotted.
-        kwargs: any args for seaborn.boxplot or seaborn.swarmplot.
+        kwargs: any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
         show_datapoints: if True, sns.swarmplot() will be plotted. Will be time consuming for bigger data."""
 
         data = self.data
-        fname = "box_plot_"
+        fname = "violen_plot_" if violen else "box_plot_"
 
         if cols is None:
             cols = []
@@ -702,22 +705,28 @@ class Plots(object):
         if isinstance(data, list):
             for idx, d in enumerate(data):
                 _cols  = cols +  [self.out_cols[idx]] if outputs else cols
-                self._box_plot(d, _cols, save, normalize, figsize, max_features, show_datapoints, freq, prefix=str(idx),
+                self._box_plot(d, _cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                               violen=violen,
+                               prefix=str(idx),
                                **kwargs)
         else:
             cols = cols + self.out_cols if outputs else cols
-            self._box_plot(data, cols, save, normalize, figsize, max_features, show_datapoints, freq, **kwargs)
+            self._box_plot(data, cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                           violen=violen,
+                           **kwargs)
 
 
     def _box_plot(self, data, cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                  violen=False,
                   prefix='',
                   **kwargs):
         data = data[cols]
 
         if data.shape[1] <= max_features:
             self.box_plot_df(data, normalize=normalize, show_datapoints=show_datapoints, save=save,
-                              freq=freq,
-                             prefix=f"box_plot_{prefix}",
+                             violen=violen,
+                             freq=freq,
+                             prefix=f"{'violen' if violen else 'box'}_{prefix}",
                               figsize=figsize, **kwargs)
         else:
             tot_plots = find_tot_plots(data.shape[1], max_features)
@@ -725,13 +734,19 @@ class Plots(object):
                 st, en = tot_plots[i], tot_plots[i + 1]
                 sub_df = data.iloc[:, st:en]
                 self.box_plot_df(sub_df, normalize=normalize, show_datapoints=show_datapoints, save=save,
+                                 violen=violen,
                                   figsize=figsize,
                                   freq=freq,
-                                  prefix=f"box_plot_{prefix}_{st}_{en}",
+                                  prefix=f"{'violen' if violen else 'box'}_{prefix}_{st}_{en}",
                                   **kwargs)
         return
 
-    def box_plot_df(self, data, normalize=True, show_datapoints=False, save=True, figsize=(12,8),
+    def box_plot_df(self, data,
+                    normalize=True,
+                    show_datapoints=False,
+                    violen=False,
+                    save=True,
+                    figsize=(12,8),
                      prefix="box_plot",
                      freq=None,
                      **kwargs):
@@ -741,13 +756,22 @@ class Plots(object):
             data = transformer.transform()
 
         if freq is not None:
-            return self.box_plot_with_freq(data, freq, show_datapoints, save, figsize, prefix=prefix, **kwargs)
+            return self.box_plot_with_freq(data, freq, show_datapoints, save, figsize,
+                                           violen=violen,
+                                           prefix=prefix, **kwargs)
 
-        return self._box_plot_df(data, prefix, save, figsize, show_datapoints, **kwargs)
+        return self._box_plot_df(data=data,
+                                 name=prefix,
+                                 violen=violen,
+                                 save=save,
+                                 figsize=figsize,
+                                 show_datapoints=show_datapoints,
+                                 **kwargs)
 
     def _box_plot_df(self,
                      data,
                      name,
+                     violen=False,
                      save=True,
                      figsize=(12,8),
                      show_datapoints=False,
@@ -757,7 +781,10 @@ class Plots(object):
         plt.close('all')
         plt.figure(figsize=figsize)
 
-        ax = sns.boxplot(data=data, **kwargs)
+        if violen:
+            sns.violinplot(data=data, **kwargs)
+        else:
+            ax = sns.boxplot(data=data, **kwargs)
 
         if show_datapoints:
             sns.swarmplot(data=data)
@@ -765,7 +792,10 @@ class Plots(object):
         self.save_or_show(fname=name, save=save, where=where)
         return
 
-    def box_plot_with_freq(self, data, freq, show_datapoints=False, save=True, figsize=(12,8), name='bw', prefix='',
+    def box_plot_with_freq(self, data, freq,
+                           violen=False,
+                           show_datapoints=False,
+                           save=True, figsize=(12,8), name='bw', prefix='',
                            **kwargs):
 
         validate_freq(data, freq)
@@ -781,6 +811,7 @@ class Plots(object):
                 self._box_plot_df(_df,
                                   name=f'{name}_input_{prefix}_{str(yr)}',
                                   figsize=figsize,
+                                  violen=violen,
                                   save=save,
                                   show_datapoints=show_datapoints,
                                   **kwargs)
@@ -797,6 +828,7 @@ class Plots(object):
                                       name=f'{prefix}_{str(yr)} _{str(mon)}',
                                       where='data/monthly',
                                       figsize=figsize,
+                                      violen=violen,
                                       save=save,
                                       show_datapoints=show_datapoints,
                                       **kwargs)
@@ -811,6 +843,7 @@ class Plots(object):
                     self._box_plot_df(__df,
                                       name=f'{prefix}_{str(yr)} _{str(week)}',
                                       where='data/weely',
+                                      violen=violen,
                                       figsize=figsize,
                                       save=save,
                                       show_datapoints=show_datapoints,
@@ -819,8 +852,7 @@ class Plots(object):
 
     def grouped_scatter(self, inputs=True, outputs=True, cols=None, save=True, max_subplots=8, **kwargs):
 
-        data = self.data
-        fname = "box_plot_"
+        fname = "scatter_plot_"
 
         if cols is None:
             cols = []
@@ -829,28 +861,38 @@ class Plots(object):
                 cols += self.in_cols
                 fname += "inputs_"
             if outputs:
-                cols += self.out_cols
                 fname += "outptuts_"
         else:
             assert isinstance(cols, list)
 
-        if isinstance(data, pd.DataFrame):
-            data = data[cols]
-            if data.shape[1] <= max_subplots:
-                self._grouped_scatter_plot(data, save=save, **kwargs)
-            else:
-                tot_plots = find_tot_plots(data.shape[1], max_subplots)
-                for i in range(len(tot_plots) - 1):
-                    st, en = tot_plots[i], tot_plots[i + 1]
-                    sub_df = data.iloc[:, st:en]
-                    self._grouped_scatter_plot(sub_df, name=f'grouped_scatter {st}_{en}', **kwargs)
+        if isinstance(self.data, pd.DataFrame):
+            self.grouped_scatter_plot_df(self.data[cols], max_subplots, save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                if isinstance(data, pd.DataFrame):
+                    _cols = cols + [self.out_cols[idx]] if outputs else cols
+                    self.grouped_scatter_plot_df(data[_cols], max_subplots, save=save, prefix=str(idx), **kwargs)
+        return
+
+    def grouped_scatter_plot_df(self, data:pd.DataFrame, max_subplots:int=10, save=True, prefix='', **kwargs):
+        data = data.copy()
+        if data.shape[1] <= max_subplots:
+            self._grouped_scatter_plot(data, save=save, **kwargs)
+        else:
+            tot_plots = find_tot_plots(data.shape[1], max_subplots)
+            for i in range(len(tot_plots) - 1):
+                st, en = tot_plots[i], tot_plots[i + 1]
+                sub_df = data.iloc[:, st:en]
+                self._grouped_scatter_plot(sub_df, name=f'grouped_scatter_{prefix}_{st}_{en}', **kwargs)
+
         return
 
     def _grouped_scatter_plot(self, df, save=True, name='grouped_scatter', **kwargs):
         plt.close('all')
         sns.set()
         sns.pairplot(df, size=2.5, **kwargs)
-        self.save_or_show(fname=name, save=save)
+        self.save_or_show(fname=name, save=save, where='data')
         return
 
     def plot_pcs(self, num_pcs=None, save=True, save_as_csv=False, figsize=(12, 8), **kwargs):
@@ -858,10 +900,10 @@ class Plots(object):
         kwargs will go to sns.pairplot."""
         if isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self._plot_pcs(data, num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
+                self._plot_pcs(data[self.in_cols], num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
                                hue=self.out_cols[idx], figsize=figsize, **kwargs)
         else:
-            self._plot_pcs(self.data, num_pcs, save=save, save_as_csv=save_as_csv, hue=self.out_cols,
+            self._plot_pcs(self.data[self.in_cols], num_pcs, save=save, save_as_csv=save_as_csv, hue=self.out_cols,
                            figsize=figsize, **kwargs)
         return
 
@@ -870,9 +912,13 @@ class Plots(object):
         if num_pcs is None:
             num_pcs = int(data.shape[1]/2)
 
-        df_pca = data[self.in_cols]
-        pca = PCA(n_components=num_pcs).fit(df_pca)
-        df_pca = pd.DataFrame(pca.transform(df_pca))
+        #df_pca = data[self.in_cols]
+        #pca = PCA(n_components=num_pcs).fit(df_pca)
+        #df_pca = pd.DataFrame(pca.transform(df_pca))
+
+        transformer = Transformations(data=data, method='pca', n_components=num_pcs, replace_nans=True)
+        df_pca = transformer.transform()
+
         pcs = ['pc' + str(i + 1) for i in range(num_pcs)]
         df_pca.columns = pcs
 
@@ -895,6 +941,40 @@ class Plots(object):
         sns.pairplot(data=df_pca, vars=pcs, hue=hue, **kwargs)
         self.save_or_show(fname=f"first_{num_pcs}_pcs_{prefix}", save=save, where='data')
         return
+
+    def plot_missing(self, save=True, **kwargs):
+
+        if isinstance(self.data, pd.DataFrame):
+            self.plot_missing_df(self.data, save=save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self.plot_missing_df(data, prefix=str(idx), save=save, **kwargs)
+        return
+
+    def plot_missing_df(self, data:pd.DataFrame, prefix:str='', save:bool=True, **kwargs):
+        gone = data.isnull().sum()
+        fig = px.bar(gone, color=gone.values, title="Total number of missing values for each column", **kwargs)
+        if save:
+            fig.write_image(os.path.join(self.data_path, f"missing_vals_{prefix}.png"))
+        return
+
+    def plot_histograms(self, save=True, **kwargs):
+        """Plots distribution of data as histogram.
+        kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
+        """
+        if isinstance(self.data, pd.DataFrame):
+            self.plot_his_df(self.data, save=save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self.plot_his_df(data, prefix=str(idx), save=save, **kwargs)
+        return
+
+    def plot_his_df(self, data, prefix='', save=True, **kwargs):
+        data.hist(bins=100, figsize=(20, 8), **kwargs)
+        self.save_or_show(fname=f"hist_{prefix}", save=save, where='data')
+
 
 def validate_freq(df, freq):
     assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"

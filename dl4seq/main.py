@@ -928,9 +928,10 @@ class Model(NN, Plots):
                 in_pred = pd.DataFrame(in_pred, columns=self.in_cols + self.out_cols)
                 if isinstance(transformation, list):  # for cases when we used multiple transformatinos
                     for trans in transformation:
-                        scaler = self.scalers[scaler_key + trans['method']]['scaler']
-                        in_obs = Transformations(data=in_obs, **trans)(what='inverse', scaler=scaler)
-                        in_pred = Transformations(data=in_pred, **trans)(what='inverse', scaler=scaler)
+                        if trans['method'] is not None:
+                            scaler = self.scalers[scaler_key + trans['method']]['scaler']
+                            in_obs = Transformations(data=in_obs, **trans)(what='inverse', scaler=scaler)
+                            in_pred = Transformations(data=in_pred, **trans)(what='inverse', scaler=scaler)
                 elif isinstance(transformation, dict):
                     scaler = self.scalers[scaler_key]['scaler']
                     in_obs = Transformations(data=in_obs, **transformation)(what='inverse', scaler=scaler)
@@ -1692,18 +1693,29 @@ class Model(NN, Plots):
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
         `monthly`."""
+        # plot number if missing vals
+        self.plot_missing()
+
         # line plots of input/output data
         self.plot_data(freq=freq, subplots=True, figsize=(12, 14), sharex=True)
+
         # plot feature-feature correlation as heatmap
         self.plot_feature_feature_corr()
+
         # print stats about input/output data
         self.stats()
+
         # box-whisker plot
         self.box_plot(freq=freq)
+
         # principle components
         self.plot_pcs()
+
         # scatter plots of input/output data
         self.grouped_scatter()
+
+        # distributions as histograms
+        self.plot_histograms()
 
         return
 

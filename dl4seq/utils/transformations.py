@@ -92,7 +92,9 @@ class Transformations(scaler_container):
      - replace_nans: bool, If true, then will replace the nan values in data with some fixed value `replace_with` before
                      transformation.
      - replace_with: str/int/float, if replace_nans is True, then this value will be used to replace nans in dataframe
-                      before doing transformation.
+                      before doing transformation. You can define the method with which to replace nans for exaple
+                      by setting this argument to 'mean' will replace nans with 'mean' of the array/column which
+                      contains nans. Allowed string values are 'mean', 'max', 'man'.
      - kwargs: any arguments provided to be provided to transformer on INTIALIZATION and not during transform or inverse
                     transform e.g. n_components for pca.
 
@@ -243,11 +245,17 @@ class Transformations(scaler_container):
 
             for col in data.columns:
 
+                # find index of nan values in current column of data
+                # https://stackoverflow.com/questions/14016247/find-integer-index-of-rows-with-nan-in-pandas-dataframe
                 i = data[col].index[data[col].apply(np.isnan)]
                 if len(i) > 0:
                     indices[col] = i.values
                     # replace nans with values
-                    data[col][indices[col]] = get_val(data[col], self.replace_with)
+                    if self.replace_with in ['mean', 'max', 'min']:
+                        replace_with = getattr(np, 'nan'+self.replace_with)(data[col])
+                    else:
+                        replace_with = self.replace_with
+                    data[col][indices[col]] = get_val(data[col], replace_with)
 
             # because pre_processing is implemented 2 times, we don't want to overwrite nan_indices
             if self.nan_indices is None: self.nan_indices = indices
@@ -259,11 +267,12 @@ class Transformations(scaler_container):
 
     def post_process_data(self, data):
         """If nans were replaces with some value, put nans back."""
-        if self.replace_nans:
-            if hasattr(self, 'nan_indices'):
+        if self.method not in self.dim_red_methods:
+            if self.replace_nans:
+                if hasattr(self, 'nan_indices'):
 
-                for col, idx in self.nan_indices.items():
-                    data[col][idx] = np.nan
+                    for col, idx in self.nan_indices.items():
+                        data[col][idx] = np.nan
 
         return data
 
@@ -367,7 +376,7 @@ class Transformations(scaler_container):
         elif 'key' in kwargs:
             scaler = self.scalers[kwargs['key']]['scaler']
         else:
-            raise ValueError("provide scaler or key")
+            raise ValueError("provide scaler which was used to transform or key to fetch the scaler")
         return scaler
 
     def maybe_insert_features(self, trans_df):
