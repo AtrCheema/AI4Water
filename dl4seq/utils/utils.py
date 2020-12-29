@@ -333,6 +333,46 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
     return pd.to_datetime(idx_array.astype(str), format=fmt)
 
 
+
+class Jsonize(object):
+    """Converts the objects to basic python types so that they can be written to json files."""
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __call__(self):
+        """Serializes one object"""
+        if 'int' in self.obj.__class__.__name__:
+            return int(self.obj)
+        if 'float' in self.obj.__class__.__name__:
+            return float(self.obj)
+        if isinstance(self.obj, dict):
+            return {k:self.stage2(v) for k,v in self.obj.items()}
+        if hasattr(self.obj, '__len__') and not isinstance(self.obj, str):
+            return [self.stage2(i) for i in self.obj]
+        return str(self.obj)
+
+
+    def stage2(self, obj):
+        """Serializes one object"""
+        if 'int' in obj.__class__.__name__:
+            return int(obj)
+        if 'float' in obj.__class__.__name__:
+            return float(obj)
+        if isinstance(obj, dict):
+            return {k:self.stage_last(v) for k,v in obj.items()}
+        if hasattr(obj, '__len__') and not isinstance(obj, str):
+            return [self.stage_last(i) for i in obj]
+        return str(obj)
+
+    @staticmethod
+    def stage_last(_obj):
+        if 'int' in _obj.__class__.__name__:
+            return int(_obj)
+        if 'float' in _obj.__class__.__name__:
+            return float(_obj)
+        return str(_obj)
+
+
 class SerializeSKOptResults(object):
     """
     This class has two functions
@@ -440,37 +480,10 @@ class SerializeSKOptResults(object):
         """Serializes list of parameters"""
         _x = []
         for para in x:
-            _x.append(self.obj(para))
+            _x.append(Jsonize(para)())
         return _x
 
-    def obj(self, obj):
-        """Serializes one object"""
-        if 'int' in obj.__class__.__name__:
-            return int(obj)
-        if 'float' in obj.__class__.__name__:
-            return float(obj)
-        if hasattr(obj, '__len__') and not isinstance(obj, str):
-            return [self.obj1(i) for i in obj]
-        return str(obj)
 
-
-    def obj1(self, obj):
-        """Serializes one object"""
-        if 'int' in obj.__class__.__name__:
-            return int(obj)
-        if 'float' in obj.__class__.__name__:
-            return float(obj)
-        if hasattr(obj, '__len__') and not isinstance(obj, str):
-            return [self.obj2(i) for i in obj]
-        return str(obj)
-
-    @staticmethod
-    def obj2(_obj):
-        if 'int' in _obj.__class__.__name__:
-            return int(_obj)
-        if 'float' in _obj.__class__.__name__:
-            return float(_obj)
-        return str(_obj)
 
     def x0(self):
         _x0 = []
@@ -482,7 +495,7 @@ class SerializeSKOptResults(object):
                 if isinstance(para, list):
                     _x0.append(self.para_list(para))
                 else:
-                    _x0.append(self.obj(para))
+                    _x0.append(Jsonize(para)())
         return _x0
 
     def y0(self):
@@ -492,10 +505,10 @@ class SerializeSKOptResults(object):
         if isinstance(list, __y0):
             _y0 = []
             for y in self.results['specs']['args']['y0']:
-                _y0.append(self.obj(y))
+                _y0.append(Jsonize(y)())
             return _y0
 
-        return self.obj(self.results['specs']['args']['y0'])
+        return Jsonize(self.results['specs']['args']['y0'])()
 
 
     def fun(self):
@@ -509,7 +522,7 @@ class SerializeSKOptResults(object):
         for i in range(self.iters):
             x = []
             for para in self.results['x_iters'][i]:
-                x.append(self.obj(para))
+                x.append(Jsonize(para)())
 
             out_x.append(x)
 
@@ -519,18 +532,18 @@ class SerializeSKOptResults(object):
         raum = {}
         for sp in self.results['space'].dimensions:
             if sp.__class__.__name__ == 'Categorical':
-                _raum = {k: self.obj(v) for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
+                _raum = {k: Jsonize(v)() for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
                 _raum.update({'type': 'Categorical'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Integer':
-                _raum = {k: self.obj(v) for k, v in sp.__dict__.items() if
+                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
                 _raum.update({'type': 'Integer'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Real':
-                _raum = {k: self.obj(v) for k, v in sp.__dict__.items() if
+                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
                                        k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
                 _raum.update({'type': 'Real'})
                 raum[sp.name] = _raum
@@ -575,7 +588,7 @@ class SerializeSKOptResults(object):
 
     def singleton_kernel(self, k):
         """Serializes Kernels such as  Matern, White, Constant Kernels"""
-        return {k:self.obj(v) for k,v in k.__dict__.items()}
+        return {k:Jsonize(v)() for k,v in k.__dict__.items()}
 
 
     def specs(self):
@@ -590,7 +603,7 @@ class SerializeSKOptResults(object):
         args['dimensions'] = self.space()
 
         be = self.results['specs']['args']['base_estimator']
-        b_e = {k: self.obj(v) for k, v in be.__dict__.items() if
+        b_e = {k: Jsonize(v)() for k, v in be.__dict__.items() if
                                        k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state']}
         b_e['kernel'] = self.kernel(be.kernel)
 
@@ -599,7 +612,7 @@ class SerializeSKOptResults(object):
         for k,v in self.results['specs']['args'].items():
             if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func', 'acq_optimizer',
                      'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa', 'n_jobs', 'model_queue_size']:
-                args[k] = self.obj(v)
+                args[k] = Jsonize(v)()
 
         args['x0'] = self.x0()
         args['y0'] = self.y0()
@@ -611,7 +624,7 @@ class SerializeSKOptResults(object):
 
         mods = []
         for model in self.results['models']:
-            mod = {k:self.obj(v) for k,v in model.__dict__.items() if k in  ['noise',
+            mod = {k:Jsonize(v)() for k,v in model.__dict__.items() if k in  ['noise',
                          'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
                          '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train', 'log_marginal_likelihood',
                          'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
@@ -670,6 +683,8 @@ def clear_weights(opt_dir, results:dict=None, keep=3):
             os.rename(old_path, new_path)
 
             idx += 1
+
+    od = {k:Jsonize(v)() for k,v in od.items()}
 
     sorted_fname = os.path.join(opt_dir, fname)
     with open(sorted_fname, 'w') as sfp:
