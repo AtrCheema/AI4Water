@@ -240,7 +240,7 @@ class Model(NN, Plots):
         if st is not None:
             assert isinstance(st, int), "starting point must be integer."
         if indices is not None:
-            assert isinstance(indices, list), "indices must be list"
+            assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
             if en is not None or st != 0:
                 raise ValueError
         if en is None:
@@ -265,8 +265,32 @@ class Model(NN, Plots):
                                            len(self.out_cols)
                                            )
             if indices is not None:
-                # because the x,y,z have some initial values removed
-                indices = np.subtract(np.array(indices), self.lookback - 1).tolist()
+
+                if getattr(self, 'nans_removed_4m_st', 0)==0:
+                    # Either NaNs were not present in outputs or present but not at the start
+                    if not hasattr(self, 'nans_removed_4m_st'):
+                        # NaNs were not present in outputs
+                        to_subtract = self.lookback - 1
+                    else:
+                    # Either not present at the start or ?
+                    # TODO
+                    # verify this situation
+                        to_subtract = 0
+                        # so that when get_batches is called next time, with new data, this should be False by default
+                        self.nans_removed_4m_st = 0
+                else:
+                    # nans were present in output columns which were removed
+                    if getattr(self, 'nans_removed_4m_st', 0) > 0:
+                        warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
+                                      containing values were skipped from start. This may lead to some wrong examples
+                                      at the start or an offset of {self.lookback-self.nans_removed_4m_st-1} in
+                                      indices.""", UserWarning)
+                        to_subtract = 0
+                        self.nans_removed_4m_st = 0
+                    else:
+                        # because the x,y,z have some initial values removed
+                        to_subtract = self.lookback - 1
+                indices = np.subtract(np.array(indices), to_subtract).tolist()
 
                 # if indices are given then this should be done after `get_batches` method
                 x = x[indices]
@@ -550,12 +574,17 @@ class Model(NN, Plots):
         if isinstance(val_data, str):
             # we need to get validation data from training data depending upon value of 'val_fraction' and convert it
             # to tf.data
-            val_frac = self.data_config['test_fraction']
+            val_frac = self.data_config['test_fraction']  # assuming that val_fraction has been set to 0.0
             if not hasattr(self, 'test_indices'):
                 self.test_indices = None
             if self.test_indices is not None:
                 x_train, y_train, x_val, y_val = split_by_indices(inputs, outputs,
                                                                   self.test_indices)
+            elif self.train_indices == 'random': # val_data needs to be defined randomly
+                # split the data into train/val randomly
+                self.train_indices, self.test_indices = train_test_split(np.arange(outputs.shape[0]), test_size=0.3)
+                x_train, y_train = split_by_indices(inputs, outputs, self.train_indices)
+                x_val, y_val = split_by_indices(inputs, outputs, self.test_indices)
             else:
                 # split the data into train/val by chunk not randomly
                 x_train, y_train, x_val, y_val = train_val_split(inputs, outputs, val_frac)
@@ -611,7 +640,7 @@ class Model(NN, Plots):
 
     def get_indices(self, indices=None):
         # returns only train indices if `indices` is None
-        if isinstance(indices, str) and indices.upper() == 'RANDOM':
+        if isinstance(indices, str) and indices.upper() == 'RANDOM' and self.data_config['val_data'] != 'same':
             if self.data_config['ignore_nans']:
                 tot_obs = self.data.shape[0]
             else:
@@ -638,6 +667,13 @@ class Model(NN, Plots):
 
         if self.is_training:
             setattr(self, 'train_indices', indices)
+            if self.data_config['val_data'] == 'same':
+                if isinstance(indices, list):
+                    # indices have been provided externally so use them instead.
+                    return indices
+                else:
+                    # indices have not been created here and `indices` is None which we don't want to feed to fetch_data
+                    return None
 
         return indices
 
@@ -992,8 +1028,12 @@ class Model(NN, Plots):
         if self.verbosity > 0:
             k_model.summary()
 
+        kwargs = {}
+        if int(tf.__version__.split('.')[1])  > 14:
+            kwargs['dpi'] = 300
+
         try:
-            keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, dpi=300)
+            keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, **kwargs)
         except (AssertionError, ImportError) as e:
             print("dot plot of model could not be plotted")
         return k_model
@@ -1204,7 +1244,9 @@ class Model(NN, Plots):
 
                 if self.verbosity > 0:
                     print('\n{} Removing Samples with nan labels  {}\n'.format(10 * '*', 10 * '*'))
-                # y = df[df.columns[-1]]
+                if self.outs == 1:
+                    # find out how many nans were present from start of df until lookback, these nans will be removed
+                    self.nans_removed_4m_st = np.isnan(df[:, -outs:][0:self.lookback]).sum()
                 nan_idx = np.isnan(label_y) if self.outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]
                 # non_nan_idx = ~nan_idx_t.values

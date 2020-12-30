@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import unittest
 import os
+
 from sklearn.model_selection import train_test_split
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
@@ -417,8 +418,40 @@ class TestUtils(unittest.TestCase):
 
         model.train(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
-
+        # the first train_index is 525 which means the first true value must be 10525
         self.assertEqual(int(t[0]), 10525)
+        return
+
+    def test_random_idx_with_nan_in_outputs(self):
+        # testing that if output contains nans and we use random indices, then correct examples are assinged
+        # for training and testing given val_data is 'same'.
+        np.random.seed(seed)
+        n = 1000
+        df = pd.DataFrame(np.random.random((n, 3)), columns=['in1', 'in2', 'out1'])
+        for col in ['out1']:
+            df.loc[df.sample(frac=0.8).index, col] = np.nan
+
+        config = make_model(inputs=['in1', 'in2'], outputs=['out1'], transformation=None, val_data='same', epochs=1)
+        model = Model(config, data=df)
+        model.train(indices='random')
+        idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
+        self.assertTrue(np.allclose(idx5, model.train_indices[-8:]))
+
+        x,y = model.train_data(indices=model.train_indices)
+
+        third_non_nan_val_4m_st = df['out1'][df['out1'].notnull()].iloc[2]
+        # the seventh last indix is 0, so the 0th index value in x and y will be at index 0+2.
+        self.assertAlmostEqual(float(y[-7]), third_non_nan_val_4m_st)
+
+        # checking that x values are also correct
+        third_non_nan_val_4m_st = df[['in1', 'in2']][df['out1'].notnull()].iloc[2]
+        self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[14], third_non_nan_val_4m_st))
+        self.assertTrue(np.allclose(x[0][-7, -1], third_non_nan_val_4m_st))
+
+        xx,yy  = model.test_data(indices=model.test_indices)
+        self.assertEqual(model.test_indices[7], 9)
+        self.assertAlmostEqual(float(yy[7]), df['out1'][df['out1'].notnull()].iloc[11])
+        self.assertTrue(np.allclose(xx[0][7, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[11]))
         return
 
 

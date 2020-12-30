@@ -333,7 +333,6 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
     return pd.to_datetime(idx_array.astype(str), format=fmt)
 
 
-
 class Jsonize(object):
     """Converts the objects to basic python types so that they can be written to json files."""
     def __init__(self, obj):
