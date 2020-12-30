@@ -9,6 +9,7 @@ import dl4seq.utils.tf_losses as tf_losses
 from dl4seq.nbeats_keras import NBeats
 import dl4seq.models.attention_layers as attns
 from dl4seq.utils.utils import get_attributes
+from .private_layers import PrivateLayers
 
 try:
     import tcn
@@ -37,6 +38,9 @@ LAYERS.update(get_attributes(aus=tf.keras, what='layers'))
 LAYERS["MULTIPLY"] = keras.layers.Multiply
 
 LAYERS.update(get_attributes(aus=attns, what='attn_layers'))
+
+# add private layers to dictionary
+LAYERS.update(get_attributes(aus=PrivateLayers, what='layers'))
 
 ACTIVATION_LAYERS = {
     # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
