@@ -855,7 +855,10 @@ def regularized_padded_conv(conv_dim, *args, **kwargs):
         raise ValueError(f"conv_dim must be either 1d or 2d but it is {conv_dim}")
 
 class ChannelAttention(layers.Layer):
-    """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0"""
+    """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0.
+    This feature attention generates time step context descriptors self.avg and self. max by using both average and
+    max pooling operations along the time step axis and then fowards to a shared multi-layer perception (MLP) to produce
+    the feature (channel) attention map."""
     def __init__(self, conv_dim, in_planes, ratio=16, **kwargs):
 
         if conv_dim not in ["1d", "2d"]:
@@ -868,20 +871,20 @@ class ChannelAttention(layers.Layer):
             self.max= layers.GlobalMaxPooling1D()
             self.conv1 = layers.Conv1D(in_planes//ratio, kernel_size=1, strides=1, padding='same',
                                        kernel_regularizer=regularizers.l2(5e-4),
-                                       use_bias=True, activation=tf.nn.relu)
+                                       use_bias=True, activation=tf.nn.relu, name='channel_attn1')
             self.conv2 = layers.Conv1D(in_planes, kernel_size=1, strides=1, padding='same',
                                        kernel_regularizer=regularizers.l2(5e-4),
-                                       use_bias=True)
+                                       use_bias=True, name='channel_attn2')
         elif conv_dim == "2d":
             self.axis = (1,1)
             self.avg= layers.GlobalAveragePooling2D()
             self.max= layers.GlobalMaxPooling2D()
             self.conv1 = layers.Conv2D(in_planes//ratio, kernel_size=1, strides=1, padding='same',
                                        kernel_regularizer=regularizers.l2(5e-4),
-                                       use_bias=True, activation=tf.nn.relu)
+                                       use_bias=True, activation=tf.nn.relu, name='channel_attn1')
             self.conv2 = layers.Conv2D(in_planes, kernel_size=1, strides=1, padding='same',
                                        kernel_regularizer=regularizers.l2(5e-4),
-                                       use_bias=True)
+                                       use_bias=True, name='channe2_attn1')
 
     def call(self, inputs, *args):
         avg = self.avg(inputs)  # [256, 32, 32, 64] -> [256, 64]
@@ -897,7 +900,13 @@ class ChannelAttention(layers.Layer):
 
 
 class SpatialAttention(layers.Layer):
-    """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0"""
+    """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0 .
+    The time step (spatial) attention module generates a concatenated feature descriptor [F'Tavg;F'Tmax]∈R2×T by
+    applying average pooling and max pooling along the feature axis, followed by a standard convolution layer.[1].
+
+    Cheng, Y., Liu, Z., & Morimoto, Y. (2020). Attention-Based SeriesNet: An Attention-Based Hybrid Neural Network Model
+    for Conditional Time Series Forecasting. Information, 11(6), 305.
+    """
     def __init__(self, conv_dim,  kernel_size=7, **kwargs):
 
         if conv_dim not in ["1d", "2d"]:
@@ -914,7 +923,7 @@ class SpatialAttention(layers.Layer):
     def call(self, inputs, *args):
         avg_out = tf.reduce_mean(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
         max_out = tf.reduce_max(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
-        out = tf.stack([avg_out, max_out], axis=self.axis)             # 创建一个维度,拼接到一起concat。 -> [256, 32, 32, 2]
+        out = tf.stack([avg_out, max_out], axis=self.axis)             # concat。 -> [256, 32, 32, 2]
         out = self.conv1(out)  # -> [256, 32, 32, 1]
 
         return out

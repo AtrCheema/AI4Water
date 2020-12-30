@@ -9,7 +9,11 @@ from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precisio
 from sklearn import tree
 from dl4seq.backend import xgboost
 import matplotlib as mpl
-import plotly.express as px
+try:
+    import plotly.express as px
+except ModuleNotFoundError:
+    px = None
+
 from dl4seq.utils.transformations import Transformations
 
 try:
@@ -122,6 +126,7 @@ class Plots(object):
         if df.shape[1] <= max_subplots:
 
             if freq is None:
+                kwargs = plot_style(df, **kwargs)
                 df.plot(**kwargs)
                 self.save_or_show(save=save, fname=f"input_{prefix}",  where='data')
             else:
@@ -134,6 +139,7 @@ class Plots(object):
                 sub_df = df.iloc[:, st:en]
 
                 if freq is None:
+                    kwargs = plot_style(sub_df, **kwargs)
                     sub_df.plot(**kwargs)
                     self.save_or_show(save=save, fname=f'input_{prefix}_{st}_{en}', where='data')
                 else:
@@ -153,6 +159,7 @@ class Plots(object):
             _df = df[df.index.year == yr]
 
             if freq == 'yearly':
+                kwargs = plot_style(_df, **kwargs)
                 _df.plot(**kwargs)
                 self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)}', where='data')
 
@@ -163,7 +170,7 @@ class Plots(object):
                 for mon in range(st_mon, en_mon+1):
 
                     __df = _df[_df.index.month == mon]
-
+                    kwargs = plot_style(__df, **kwargs)
                     __df.plot(**kwargs)
                     self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(mon)}', where='data/monthly')
 
@@ -173,7 +180,7 @@ class Plots(object):
 
                 for week in range(st_week, en_week+1):
                     __df = _df[_df.index.week == week]
-
+                    kwargs = plot_style(__df, **kwargs)
                     __df.plot(**kwargs)
                     self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(week)}', where='data/weely')
         return
@@ -954,10 +961,13 @@ class Plots(object):
 
     def plot_missing_df(self, data:pd.DataFrame, prefix:str='', save:bool=True, **kwargs):
         gone = data.isnull().sum()
-        fig = px.bar(gone, color=gone.values, title="Total number of missing values for each column", **kwargs)
-        if save:
-            fig.write_image(os.path.join(self.data_path, f"missing_vals_{prefix}.png"))
-        return
+        if px is None:
+            warnings.warn("install plotly to use the method `plot_missing_df`.", UserWarning)
+        else:
+            fig = px.bar(gone, color=gone.values, title="Total number of missing values for each column", **kwargs)
+            if save:
+                fig.write_image(os.path.join(self.data_path, f"missing_vals_{prefix}.png"))
+            return
 
     def plot_histograms(self, save=True, **kwargs):
         """Plots distribution of data as histogram.
@@ -975,6 +985,11 @@ class Plots(object):
         data.hist(bins=100, figsize=(20, 8), **kwargs)
         self.save_or_show(fname=f"hist_{prefix}", save=save, where='data')
 
+
+def plot_style(df:pd.DataFrame, **kwargs):
+    if 'style' not in kwargs and df.isna().sum().sum() > 0:
+        kwargs['style'] = ['.' for _ in range(df.shape[1])]
+    return kwargs
 
 def validate_freq(df, freq):
     assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
