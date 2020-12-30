@@ -100,7 +100,7 @@ class HARHNModel(Model):
         mse_val = 0
         preds = []
         true = []
-        batch_y_h1 = torch.zeros(16, 1)
+        batch_y_h1 = torch.zeros(self.data_config['batch_size'], 1)
         for batch_x, _, batch_y in data_loader:
             batch_x = batch_x.cuda()
             batch_y = batch_y.cuda()
@@ -201,7 +201,7 @@ class HARHNModel(Model):
         return losses
 
     def predict(self, st=0, ende=None, indices=None, data=None, **kwargs):
-        x_test, y_his_test, target_test = self.prepare_batches(self.data[st:ende], '',  self.data_config['outputs'][0])
+        x_test, y_his_test, target_test = self.prepare_batches(self.data[st:ende], '',  self.outs)
         x_test = (x_test - self.min_max['x_min']) / (self.min_max['x_max'] - self.min_max['x_min'])
         y_his_test = (y_his_test - self.min_max['y_his_min']) / (self.min_max['y_his_max'] - self.min_max['y_his_min'])
         target_test = (target_test - self.min_max['target_min']) / (self.min_max['target_max'] - self.min_max['target_min'])

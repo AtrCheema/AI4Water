@@ -1,6 +1,6 @@
 # this is list of all libraries, if you want to use all features
 tensorflow <=2.3 # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
-numpy
+numpy>=1.16.5
 pandas
 matplotlib
 scikit-learn
@@ -14,3 +14,4 @@ EMD-signal  # for emd transformation
 see-rnn   # for rnn visualizations
 lightgbm
 catboost
+plotly
