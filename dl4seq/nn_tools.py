@@ -134,7 +134,8 @@ class NN(AttributeStore):
                             layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
                             wrp_layer = None
                         else:
-                            layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs)
+                            add_args = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
+                            layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs, **add_args)
 
             else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                 # it is an executable
@@ -264,6 +265,9 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
             raise ValueError(f"No layer named '{lyr_inputs}' currently exists in the model which can be fed as input to '{lyr_name}' layer. Available layers are {list(lyr_cache.keys())}")
         call_args = lyr_cache[lyr_inputs]
 
+    return call_args, get_add_call_args(add_args, lyr_cache, lyr_name)
+
+def get_add_call_args(add_args,lyr_cache, lyr_name):
     additional_args = {}
     if add_args is not None:
         assert isinstance(add_args, dict), "call_args to layer '{}' must be provided as dictionary".format(lyr_name)
@@ -281,7 +285,11 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
                     add_arg_val_list.append(lyr_cache[arg])
 
                 additional_args[arg_name] = add_arg_val_list
-            else:
-                raise NotImplementedError("The value {} for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
 
-    return call_args, additional_args
+            elif isinstance(arg_val, bool) or arg_val is None:
+                additional_args[arg_name] = arg_val
+
+            else:
+                raise NotImplementedError("The value `{}` for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
+
+    return additional_args
