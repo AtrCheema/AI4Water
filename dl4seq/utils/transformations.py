@@ -1,3 +1,4 @@
+import warnings
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, PowerTransformer,\
     QuantileTransformer, FunctionTransformer
@@ -90,12 +91,16 @@ class Transformations(scaler_container):
      - features: list of strings, if data is datafrmae, then this list is the features on which we want to apply transformation.
                  The remaining columns will remain same/unchanged.
      - replace_nans: bool, If true, then will replace the nan values in data with some fixed value `replace_with` before
-                     transformation.
+                     transformation. The nan values will be put back at their places after transformation so this
+                     replacement is done only to avoid error during transformation. However, the process of puttin
+                     the nans back does not happen when the `method` results in dimention change, such as for PCA etc.
      - replace_with: str/int/float, if replace_nans is True, then this value will be used to replace nans in dataframe
                       before doing transformation. You can define the method with which to replace nans for exaple
                       by setting this argument to 'mean' will replace nans with 'mean' of the array/column which
                       contains nans. Allowed string values are 'mean', 'max', 'man'.
-     - kwargs: any arguments provided to be provided to transformer on INTIALIZATION and not during transform or inverse
+     - replace_zeros: bool, same as replace_nans but for zeros in the data.
+     - replace_zeros_with: str/int/float, same as `replace_with` for for zeros in the data.
+     - kwargs: any arguments which are to be provided to transformer on INTIALIZATION and not during transform or inverse
                     transform e.g. n_components for pca.
 
     To transform a datafrmae using any of the above methods use
@@ -138,6 +143,8 @@ class Transformations(scaler_container):
                  features=None,
                  replace_nans = False,
                  replace_with='mean',
+                 replace_zeros=False,
+                 replace_zeros_with='mean',
                  **kwargs):
 
         super().__init__()
@@ -145,6 +152,8 @@ class Transformations(scaler_container):
         self.method = method
         self.replace_nans=replace_nans
         self.replace_with=replace_with
+        self.replace_zeros=replace_zeros
+        self.replace_zeros_with=replace_zeros_with
         data = self.pre_process_data(data.copy())
         self.data = data
 
@@ -252,7 +261,7 @@ class Transformations(scaler_container):
                     indices[col] = i.values
                     # replace nans with values
                     if self.replace_with in ['mean', 'max', 'min']:
-                        replace_with = getattr(np, 'nan'+self.replace_with)(data[col])
+                        replace_with = float(getattr(np, 'nan'+self.replace_with)(data[col]))
                     else:
                         replace_with = self.replace_with
                     data[col][indices[col]] = get_val(data[col], replace_with)
@@ -262,11 +271,27 @@ class Transformations(scaler_container):
 
             if len(indices) > 0:
                 if self.method.lower() == "cumsum":
-                    print("Warning: nan values found and they may cause problem")
+                    warnings.warn("Warning: nan values found and they may cause problem")
+
+        if self.replace_zeros:
+            indices = {}
+            for col in data.columns:
+                # find index containing 0s in corrent column of dataframe
+                i = data.index[data[col] == 0.0]
+                if len(i) > 0:
+                    indices[col] = i.values
+                    if self.replace_zeros_with in ['mean', 'max', 'min']:
+                        replace_with = float(getattr(np, 'nan' + self.replace_zeros_with)(data[col]))
+                    else:
+                        replace_with = self.replace_zeros_with
+                    data[col][indices[col]] = get_val(data[col], replace_with)
+
+            if self.zero_indices is None: self.zero_indices = indices
+
         return data
 
     def post_process_data(self, data):
-        """If nans were replaces with some value, put nans back."""
+        """If nans/zeros were replaced with some value, put nans/zeros back."""
         if self.method not in self.dim_red_methods:
             if self.replace_nans:
                 if hasattr(self, 'nan_indices'):
@@ -274,6 +299,10 @@ class Transformations(scaler_container):
                     for col, idx in self.nan_indices.items():
                         data[col][idx] = np.nan
 
+            if self.replace_zeros:
+                if hasattr(self, 'zero_indices'):
+                    for col, idx in self.zero_indices.items():
+                        data[col][idx] = 0.0
         return data
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
