@@ -15,7 +15,7 @@ The purpose of the repository is
   [RandomizeSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV)
   but but has some extra functionalities. See [example](https://github.com/AtrCheema/dl4seq/blob/master/examples/hyper_para_opt.ipynb) using its application.
 * It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
- `Model`. So at the highest level you just need to initiate the `Model`, and then need `train`, `predict` and 
+ `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
 This repository provides a framework to build layered models using python dictionary and with several helper tools 
@@ -69,22 +69,20 @@ The latest code however (possibly with less bugs and more features) can be insal
 
 ```python
 import pandas as pd 
-from dl4seq import InputAttentionModel  # import any of the above model
-from dl4seq.utils import make_model  # helper function to make inputs for model
+from dl4seq import InputAttentionModel  # import any of the above model 
 
-config = make_model(batch_size=16,
-                    lookback=15,
-                    lr=0.001)
 df = pd.read_csv('data/data_30min.csv')  # path for data file
 
 model = InputAttentionModel(
-              config=config,
+              batch_size=16,
+              lookback=15,
+              lr=0.001,
               data=df
               )
 
 model.eda()  # perform comprehensive explanatory data analysis, check model.path directory for plots
 
-history = model.train(indices='random')
+history = model.fit(indices='random')
 
 preds, obs = model.predict()
 acts = model.view_model()
@@ -92,61 +90,55 @@ acts = model.view_model()
 
 ## Using your own pre-processed data
 You can use your own pre-processed data without using any of pre-processing tools of dl4seq. You will need to provide
-input output paris to `data` argument to `train` and/or `predict` methods.
+input output paris to `data` argument to `fit` and/or `predict` methods.
 ```python
 import numpy as np
 from dl4seq import InputAttentionModel  # import any of the above model
-from dl4seq.utils import make_model  # helper function to make inputs for model
 
 batch_size = 16
 lookback = 15
 inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names for plotting and saving results.
 outputs=['DummyTarget']
-config = make_model(batch_size=batch_size,
+
+model = InputAttentionModel(
+                    data=None,
+                    batch_size=batch_size,
                     lookback=lookback,
                     transformation=None,
                     inputs=inputs,
                     outputs=outputs,
-                    lr=0.001)
-
-model = InputAttentionModel(
-              config=config,
-              data=None
+                    lr=0.001
               )
 x = np.random.random((batch_size*10, lookback, len(inputs)))
 y = np.random.random((batch_size*10, len(outputs)))
 data = (x,y)
 
-history = model.train(data=data)
+history = model.fit(data=data)
 
 ```
 
-## using for `scikit-learn`/`xgboost` based models
-The repository can also be used for scikit-learn/xgboost based models for both classification and regression
-problems by making use of `ml_model` and `ml_model_args` keyword arguments in `make_model` function. However, integration
-of ML based models is not complete yet.
+## using for `scikit-learn`/`xgboost`/`lgbm`/`catboost` based models
+The repository can also be used for machine learning based models such as scikit-learn/xgboost based models for both
+classification and regression problems by making use of `ml_model` and `ml_model_args` keyword arguments in `Model` 
+function. However, integration of ML based models is not complete yet.
 ```python
 from dl4seq import Model
-import pandas as pd
-from dl4seq.utils import make_model  # helper function to make inputs for model
+import pandas as pd 
 
 df = pd.read_csv('data/data_30min.csv')  # path for data file
 
-config = make_model(batches="2d",
-                    inputs=['input1', 'input2', 'input3', 'input4'],
-                    outputs=['target7'],
-                    lookback=1,
-                    val_fraction=0.0,
-                    ml_model="randomforestregressor",  #  any regressor from https://scikit-learn.org/stable/modules/classes.html
-                    ml_model_args={"n_estimators":1000}  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
+model = Model(batches="2d",
+              inputs=['input1', 'input2', 'input3', 'input4'],
+              outputs=['target7'],
+              lookback=1,
+              val_fraction=0.0,
+              ml_model="randomforestregressor",  #  any regressor from https://scikit-learn.org/stable/modules/classes.html
+              ml_model_args={"n_estimators":1000},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
-)
-
-model = Model(config=config,
               data=df
               )
 
-history = model.train(st=0, en=150)
+history = model.fit(st=0, en=150)
 
 preds, obs = model.predict(st=150, en=220)
 ```

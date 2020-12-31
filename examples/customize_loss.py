@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from dl4seq import Model
-from dl4seq.utils import make_model
 import tensorflow as tf
 from tensorflow import keras
 
@@ -43,25 +42,24 @@ layers = {'Dense_0': {'config':  {'units': 64, 'activation': 'relu'}},
           'Dense_2': {'config':  {'units': 16, 'activation': 'relu'}},
           'Dense_3': {'config':  {'units': 9}}}
 
-config = make_model(inputs=['input_' + str(i) for i in range(cols-1)],
-                    outputs=['input_' + str(cols-1)],
-                    lookback=1,
-                    layers=layers,
-                    epochs=100)
-
 # Define Quantiles
 quantiles = [0.005, 0.025, 0.165, 0.250, 0.500, 0.750, 0.835, 0.975, 0.995]
 
 # Initiate Model
-model = QuantileModel(config=config, data=data)
+model = QuantileModel(
+    inputs=['input_' + str(i) for i in range(cols - 1)],
+    outputs=['input_' + str(cols - 1)],
+    lookback=1,
+    layers=layers,
+    epochs=100,
+    data=data,
+    quantiles=quantiles)
 
 # Assign loss for the model
 model.loss = qloss
-# the quantiles must also be assigned to the model for post-processing purpose
-model.quantiles = quantiles
 
 # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-model.train(st=0, en=1500)
+model.fit(st=0, en=1500)
 
 # make predictions on a chunk of test data, which was retained while training
 true_y, pred_y = model.predict(st=1500, en=1700)

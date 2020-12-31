@@ -4,7 +4,6 @@ import numpy as np
 tf.compat.v1.disable_eager_execution()
 
 from dl4seq import Model
-from dl4seq.utils import make_model
 
 lookback = 10
 batch_size = 32
@@ -22,18 +21,16 @@ layers = {
     "Reshape": {"config": {"target_shape": (outs,1)}}
 }
 
-config = make_model(
-    layers = layers,
+model = Model(
+    layers=layers,
     lookback=lookback,
     epochs=epochs,
     batch_size=batch_size,
-)
-
-model = Model(config, data=None)
+    data=None)
 
 x = np.random.random((examples, lookback, ins))
 y = np.random.random((examples, outs, 1))
-model.train(data=(x,y))
+model.fit(data=(x,y))
 
 
 model.plot_layer_outputs(data=(x,y))

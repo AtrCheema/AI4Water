@@ -11,7 +11,6 @@ import json
 import matplotlib.pyplot as plt
 
 from dl4seq import Model
-from dl4seq.utils import make_model
 from dl4seq.utils.utils import post_process_skopt_results
 
 
@@ -342,21 +341,21 @@ class HyperOpt(object):
             if 'float' in v.__class__.__name__:
                 kwargs[k] = float(v)
 
-        config = make_model(ml_model_args=kwargs, **self.dl4seq_args)
-
-        assert config.model["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
-                                                               " dl4seq model and pass it as custom model."
         if title is None:
             title =  self.opt_path #self.method + '_' + config.model["problem"] + '_' + config.model["ml_model"]
             self.title = title
         else:
             title = title
 
-        model = Model(config,
-                      data=self.data,
+        model = Model(data=self.data,
                       prefix=title,
-                      verbosity=1 if pp else 0)
-        model.train(indices="random")
+                      verbosity=1 if pp else 0,
+                      ml_model_args=kwargs,
+                      **self.dl4seq_args)
+
+        assert model.model_config["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
+                                                               " dl4seq model and pass it as custom model."
+        model.fit(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pp=pp)
         mse = FindErrors(t, p).mse()
@@ -506,7 +505,12 @@ class HyperOpt(object):
                     # each dictionary must contain only one key in this case
                     assert len(para) == 1
                 else:
-                    names.append(para.name)
+                    if hasattr(para, 'name'):
+                        names.append(para.name)
+                    else:
+                        # self.param_space was not named rather it was just a list of tuples for example
+                        names = None
+                        break
 
         elif isinstance(self.param_space, dict):
             for key in self.param_space.keys():
@@ -515,8 +519,11 @@ class HyperOpt(object):
             raise NotImplementedError
 
         xkv = {}
-        for name, val in zip(names, x):
-            xkv[name] = val
+        if names is not None:
+            for name, val in zip(names, x):
+                xkv[name] = val
+        else:
+            xkv = x
 
         return xkv
 

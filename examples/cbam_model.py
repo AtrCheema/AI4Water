@@ -1,7 +1,6 @@
 # Put channel and spatial attention of CBAM model for time-series prediction
 
 
-from dl4seq.utils import make_model
 from dl4seq import Model
 from dl4seq.data import load_30min
 
@@ -20,11 +19,11 @@ layers = {
     "reshape": {"config": {"target_shape": (1,1)}}
 }
 
-config = make_model(layers=layers,
-                    lookback=10,
-                    inputs=inputs,
-                    outputs=outputs)
+model = Model(
+    layers=layers,
+    lookback=10,
+    inputs=inputs,
+    outputs=outputs,
+    data=load_30min())
 
-model = Model(config, data=load_30min())
-
-#history = model.train(indices="random")
+#history = model.fit(indices="random")

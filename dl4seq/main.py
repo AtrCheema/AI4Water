@@ -16,7 +16,7 @@ import time
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
-from dl4seq.utils.utils import train_val_split, split_by_indices, stats
+from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 
@@ -43,19 +43,23 @@ class Model(NN, Plots):
     """
     Model class that implements theme of dl4seq.
 
-    config: instance of make_model class
     data: pd.Dataframe or any other conforming type
     prefix: str, prefix to be used for the folder in which the results are saved
     path: str/path like, if given, new path will not be created
     verbosity: int, determines the amount of information being printed
+    kwargs: any argument for model building/pre-processing etc.
+            for details see make_model in utils.utils.py
 
     """
     def __init__(self,
-                 config,
+                 *,
                  data=None,
                  prefix: str = None,
                  path: str = None,
-                 verbosity=1):
+                 verbosity=1,
+                 **kwargs):
+
+        config = make_model(**kwargs)
 
         #data_config, model_config = config['data_config'], config['model_config']
         reset_seed(config.data['seed'])
@@ -264,13 +268,14 @@ class Model(NN, Plots):
                                            len(self.in_cols),
                                            len(self.out_cols)
                                            )
-            if indices is not None:
+            if indices is not None and not isinstance(indices, str):
 
                 if getattr(self, 'nans_removed_4m_st', 0)==0:
                     # Either NaNs were not present in outputs or present but not at the start
                     if not hasattr(self, 'nans_removed_4m_st'):
                         # NaNs were not present in outputs
-                        to_subtract = self.lookback - 1
+                        additional = self.data_config['forecast_length']+1 if self.data_config['forecast_length']>1 else 0
+                        to_subtract = self.lookback + additional - 1
                     else:
                     # Either not present at the start or ?
                     # TODO
@@ -281,11 +286,13 @@ class Model(NN, Plots):
                 else:
                     # nans were present in output columns which were removed
                     if getattr(self, 'nans_removed_4m_st', 0) > 0:
+                        additional = self.data_config['forecast_length']+1 if self.data_config['forecast_length'] > 1 else 0
+                        self.offset = self.lookback + additional - self.nans_removed_4m_st-1
                         warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
                                       containing values were skipped from start. This may lead to some wrong examples
-                                      at the start or an offset of {self.lookback-self.nans_removed_4m_st-1} in
+                                      at the start or an offset of {self.offset} in
                                       indices.""", UserWarning)
-                        to_subtract = 0
+                        to_subtract = self.offset
                         self.nans_removed_4m_st = 0
                     else:
                         # because the x,y,z have some initial values removed
@@ -533,7 +540,7 @@ class Model(NN, Plots):
         return val_data_present
 
 
-    def fit(self, inputs, outputs, validation_data, **callbacks):
+    def _fit(self, inputs, outputs, validation_data, **callbacks):
 
         inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
 
@@ -582,7 +589,7 @@ class Model(NN, Plots):
                                                                   self.test_indices)
             elif self.train_indices == 'random': # val_data needs to be defined randomly
                 # split the data into train/val randomly
-                self.train_indices, self.test_indices = train_test_split(np.arange(outputs.shape[0]), test_size=0.3)
+                self.train_indices, self.test_indices = train_test_split(np.arange(outputs.shape[0]), test_size=self.data_config['test_fraction'])
                 x_train, y_train = split_by_indices(inputs, outputs, self.train_indices)
                 x_val, y_val = split_by_indices(inputs, outputs, self.test_indices)
             else:
@@ -640,7 +647,7 @@ class Model(NN, Plots):
 
     def get_indices(self, indices=None):
         # returns only train indices if `indices` is None
-        if isinstance(indices, str) and indices.upper() == 'RANDOM' and self.data_config['val_data'] != 'same':
+        if isinstance(indices, str) and indices.upper() == 'RANDOM':
             if self.data_config['ignore_nans']:
                 tot_obs = self.data.shape[0]
             else:
@@ -651,7 +658,7 @@ class Model(NN, Plots):
                     # required. In such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that
                     # creates problems when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide
                     # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
-                    more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
+                    more = len(self.intervals) * self.lookback if self.intervals is not None else 0 #self.lookback
                     tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - more
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
@@ -659,7 +666,7 @@ class Model(NN, Plots):
                     nans = self.data[self.out_cols].isna().sum()
                     assert np.all(nans.values == int(nans.sum() / self.outs)), f"toal nan values in data are {nans}."
 
-            idx = np.arange(tot_obs - self.lookback)
+            idx = np.arange(tot_obs)
             train_indices, test_idx = train_test_split(idx, test_size=self.data_config['test_fraction'],
                                                        random_state=self.data_config['seed'])
             setattr(self, 'test_indices', list(test_idx))
@@ -834,7 +841,7 @@ class Model(NN, Plots):
 
         return val_data
 
-    def train(self, st=0, en=None, indices=None, data=None, **callbacks):
+    def fit(self, st=0, en=None, indices=None, data=None, **callbacks):
         """data: if not None, it will directlry passed to fit."""
         self.is_training = True
         indices = self.get_indices(indices)
@@ -842,7 +849,7 @@ class Model(NN, Plots):
         inputs, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
 
         if self.category.upper() == "DL":
-            history = self.fit(inputs, outputs, self.val_data(), **callbacks)
+            history = self._fit(inputs, outputs, self.val_data(), **callbacks)
 
             self.plot_loss(history.history)
 
@@ -1631,7 +1638,7 @@ class Model(NN, Plots):
         for idx in ['train_indices', 'test_indices']:
             if hasattr(self, idx):
                 idx_val = getattr(self, idx)
-                if idx_val is not None:
+                if idx_val is not None and not isinstance(idx_val, str):
                     idx_val = np.array(idx_val, dtype=int).tolist()
             else:
                 idx_val = None

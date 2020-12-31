@@ -54,10 +54,16 @@ df = pd.read_csv(fname)
 df.index = pd.to_datetime(df['Date_Time2'])
 
 model = Model(config=config,
-              data=df
+              data=df,
+              batch_size=16,
+                lookback=lookback,
+                inputs=input_features,
+                outputs=outputs,
+                layers=layers,
+                lr=0.0001
               )
 
 # This model is built only to showcase how to build multi layer model by manipulating nn_config
-# history = model.train(indices='random')
+# history = model.fit(indices='random')
 
 #y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')

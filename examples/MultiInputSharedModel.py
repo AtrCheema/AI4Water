@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 import os
 
-from dl4seq.utils.utils import make_model
 from dl4seq import Model
 
 
@@ -47,7 +46,7 @@ class MultiInputSharedModel(Model):
 
         return x, labels
 
-    def train(self, st=0, en=None, indices=None, **callbacks):
+    def fit(self, st=0, en=None, indices=None, **callbacks):
 
         train_data = self.train_data(st=st, en=en, indices=indices)
 
@@ -114,17 +113,6 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                      prefix=None,
                      batch_size=8, lookback=19, lr=1.52e-5, ignore_nans=True, **kwargs):
 
-    config = make_model(batch_size=batch_size,
-                        lookback=lookback,
-                        lr=lr,
-                        ignore_nans=ignore_nans,
-                        inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3'],
-                        outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
-                              ],
-                        **kwargs)
-
-
     fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
@@ -139,13 +127,32 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     if from_config:
         _model = input_model.from_config(config_path=config_path,
                                          data=[df_1, df_3, df_8  # , df_12
-                                               ])
+                                               ],
+                                         batch_size=batch_size,
+                                         lookback=lookback,
+                                         lr=lr,
+                                         ignore_nans=ignore_nans,
+                                         inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
+                                                 'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3'],
+                                         outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
+                                                  ],
+                                         **kwargs
+                                         )
         _model.load_weights(weights)
     else:
-        _model = input_model(config,
+        _model = input_model(
                              data=[df_1, df_3, df_8  # , df_12
                                    ],
-                             prefix=prefix
+                             prefix=prefix,
+                             batch_size=batch_size,
+                             lookback=lookback,
+                             lr=lr,
+                             ignore_nans=ignore_nans,
+                             inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
+                                     'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3'],
+                             outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
+                                      ],
+                             **kwargs
                              )
     return _model
 

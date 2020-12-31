@@ -1,4 +1,3 @@
-from dl4seq.utils import make_model
 from dl4seq.main import Model
 
 import tensorflow as tf
@@ -88,21 +87,18 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config':  {'units': 1}}
           }
 
-config = make_model(layers=layers,
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+df = pd.read_csv(fname)  # must be 2d dataframe
+
+
+model = CustomModel(layers=layers,
                     batch_size=12,
                     lookback=15,
                     lr=8.95e-5,
                     ignore_nans=False,
                     inputs=input_features,
                     outputs=outputs,
-                    epochs=10)
-
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
-df = pd.read_csv(fname)  # must be 2d dataframe
-
-
-model = CustomModel(config=config,
-                    data=df
+                    epochs=10
                     )
 history = model.train(indices='random', tensorboard=True)
 

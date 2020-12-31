@@ -4,20 +4,17 @@
 import pandas as pd
 import os
 
-from dl4seq.utils import make_model
 from dl4seq import Model
 
-
-config = make_model(lookback=1, epochs=2)
 
 fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
-model = Model(config=config,
+model = Model(lookback=1, epochs=2,
               data=df,
               )
 
-history = model.train(indices='random')
+history = model.fit(indices='random')
 
 w_path = model.path
 # for clarity, delete the model, although it is overwritten

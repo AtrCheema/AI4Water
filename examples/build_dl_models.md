@@ -9,7 +9,6 @@ documentation of corresponding layer in `Tensorflow` docs.
 ### multi-layer perceptron
 
 ```python
-from dl4seq.utils import make_model
 from dl4seq import Model
 
 import pandas as pd
@@ -22,15 +21,14 @@ layers = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
           "Dense_3": {'config': {'units': 1}}
           }
 
-config = make_model(batch_size=16,
-    lookback=1,
-    lr=0.001,
-    layers=layers,
-    epochs=2)
-
 df = pd.read_csv('data/all_data_30min.csv')
 
-model = Model(config=config,
+model = Model(
+            batch_size=16,
+            lookback=1,
+            lr=0.001,
+            layers=layers,
+            epochs=2,
               data=df
               )
 ```
@@ -40,7 +38,6 @@ model = Model(config=config,
 ### LSTM based model
 
 ```python
-from dl4seq.utils import make_model
 from dl4seq import Model
 import pandas as pd
 
@@ -49,15 +46,14 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dropout": {'config': {'rate': 0.3}},
           "Dense": {'config': {'units': 1}}
           }
-config = make_model(batch_size=16,
-    lookback=1,
-    lr=0.001,
-    layers=layers,
-    epochs=2)
 
 df = pd.read_csv("data/all_data_30min.csv")
 
-model = Model(config=config,
+model = Model(batch_size=16,
+                lookback=1,
+                lr=0.001,
+                layers=layers,
+                epochs=2,
               data=df
               )
 ```

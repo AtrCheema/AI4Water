@@ -1,4 +1,3 @@
-from dl4seq.utils import make_model
 from dl4seq import Model
 
 
@@ -32,23 +31,21 @@ class CustomModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-config = make_model(lstm_units=64,
-                    dropout=0.4,
-                    rec_dropout=0.5,
-                    lstm_act='relu',
-                    batch_size=32,
-                    lookback=1,
-                    lr=8.95e-5)
-
 fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
-model = Model(config=config,
+model = Model(lstm_units=64,
+            dropout=0.4,
+            rec_dropout=0.5,
+            lstm_act='relu',
+            batch_size=32,
+            lookback=1,
+            lr=8.95e-5,
               data=df
               )
 
 model.KModel = CustomModel
 
-history = model.train(indices='random')
+history = model.fit(indices='random')
 
 # y, obs = model.predict()

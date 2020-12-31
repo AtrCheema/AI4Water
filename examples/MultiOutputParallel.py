@@ -8,7 +8,6 @@
 
 from dl4seq import Model
 from dl4seq.utils.utils import check_min_loss
-from dl4seq.utils import make_model
 from examples import LSTMAutoEnc_Config
 
 from tensorflow.python.keras.engine import training_utils
@@ -84,7 +83,7 @@ class MultiOutputParallel(Model):
 
         return x, y, val_x, val_y
 
-    def train(self, st=0, en=None, indices=None, **callbacks):
+    def fit(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
         optimizer = keras.optimizers.Adam(learning_rate=self.model_config['lr'])
         # Instantiate a loss function.
@@ -368,17 +367,6 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                      batch_size=8, lookback=19, lr=1.52e-5, **kwargs):
 
     val_fraction = 0.2
-    config = make_model(batch_size=batch_size,
-                        inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
-                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3',# 'ORGP_INppm'
-                             ],
-                        outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8', 'obs_chla_12'],
-                        val_fraction=val_fraction,
-                        lookback=lookback,
-                        lr=lr,
-                        ignore_nans=True,
-                        **kwargs)
-
 
     fpath = os.path.join(os.path.dirname(os.getcwd()), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
@@ -419,12 +407,31 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     df_12.index = pd.to_datetime(df_12['date'])
 
     if from_config:
-        _model = input_model.from_config(config_path=config_path,
-                                         data=[df_1, df_3, df_8, df_12])
+        _model = input_model.from_config(batch_size=batch_size,
+                        inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
+                             'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3',# 'ORGP_INppm'
+                             ],
+                        outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8', 'obs_chla_12'],
+                        val_fraction=val_fraction,
+                        lookback=lookback,
+                        lr=lr,
+                        ignore_nans=True,
+                        data=[df_1, df_3, df_8, df_12],
+                                         **kwargs,)
         _model.load_weights(weights)
     else:
-        _model = input_model(config,
-                             data=[df_1, df_3, df_8, df_12]
+        _model = input_model(
+                             data=[df_1, df_3, df_8, df_12],
+                             batch_size=batch_size,
+                             inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
+                                     'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3',  # 'ORGP_INppm'
+                                     ],
+                             outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8', 'obs_chla_12'],
+                             val_fraction=val_fraction,
+                             lookback=lookback,
+                             lr=lr,
+                             ignore_nans=True,
+                             **kwargs
                              )
     return _model, _train_idx, _test_idx
 
@@ -437,7 +444,7 @@ if __name__ == "__main__":
                                                   lookback=3,
                                                   lr=0.00047681,
                                                   epochs=2)
-    history = model.train(indices=train_idx)
+    history = model.fit(indices=train_idx)
 
     # cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\results\\convlstm_parallel\\20200918_1549\\config.json"
     # model, train_idx, test_idx = make_multi_model(ConvLSTMMultiOutput, from_config=True,
