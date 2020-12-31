@@ -16,7 +16,6 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.hyper_opt import HyperOpt
 from dl4seq import Model
-from dl4seq.utils import make_model
 
 from inspect import getsourcefile
 from os.path import abspath
@@ -167,7 +166,7 @@ class TestHyperOpt(unittest.TestCase):
             inputs.remove('target_by_group')
             outputs = ['target']
 
-            config = make_model(
+            model = Model(
                 inputs=inputs,
                 outputs=outputs,
                 lookback=1,
@@ -176,15 +175,12 @@ class TestHyperOpt(unittest.TestCase):
                 test_fraction=0.3,
                 ml_model="xgboostregressor",
                 ml_model_args=kwargs,
-                transformation=None
-            )
+                transformation=None,
+                data=data,
+                prefix='testing',
+                verbosity=0)
 
-            model = Model(config,
-                          data=data,
-                          prefix='testing',
-                          verbosity=0)
-
-            model.train(indices="random")
+            model.fit(indices="random")
 
             t, p = model.predict(indices=model.test_indices, pref='test')
             mse = FindErrors(t, p).mse()

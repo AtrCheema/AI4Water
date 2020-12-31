@@ -9,7 +9,6 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 from inspect import getsourcefile
 from os.path import abspath
 
-from dl4seq.utils import make_model
 from dl4seq import Model
 from dl4seq import NBeatsModel
 
@@ -49,21 +48,19 @@ def make_and_run(
                               (821, 1110),
                               (1110, 1447))
 
-    config = make_model(batch_size=batch_size,
-                        lookback=lookback,
-                        lr=0.001,
-                        inputs=inputs,
-                        outputs = outputs,
-                        epochs=epochs,
-                        **kwargs)
-
     model = model(
-        config,
         data=df,
-        verbosity=0
+        verbosity=0,
+        batch_size=batch_size,
+        lookback=lookback,
+        lr=0.001,
+        inputs=inputs,
+        outputs = outputs,
+        epochs=epochs,
+        **kwargs
     )
 
-    _ = model.train(indices='random')
+    _ = model.fit(indices='random')
 
     _,  pred_y = model.predict(use_datetime_index=False)
 
@@ -89,7 +86,7 @@ class TestModels(unittest.TestCase):
         }
 
         prediction = make_and_run(Model, lookback=1, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1312.9749, 3)
+        self.assertAlmostEqual(float(prediction.sum()), 1289.3845434825826, 3)
         return
 
     def test_LSTMModel(self):
@@ -101,7 +98,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1452.8463, 3)
+        self.assertAlmostEqual(float(prediction.sum()), 1434.2028425805552, 3)
         return
 
     def test_SeqSelfAttention(self):
@@ -118,7 +115,7 @@ class TestModels(unittest.TestCase):
         }
 
         prediction = make_and_run(model=Model, layers=lyrs, batch_size=batch_size, batches_per_epoch=5)
-        self.assertAlmostEqual(float(prediction.sum()), 471.49829, 4)
+        self.assertAlmostEqual(float(prediction.sum()), 474.2324549024024, 4)
 
     def test_SeqWeightedAttention(self):
         # SeqWeightedAttention
@@ -130,7 +127,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1457.831176, 2)  # TODO failing with higher precision
+        self.assertAlmostEqual(float(prediction.sum()), 1479.8865355554844, 2)  # TODO failing with higher precision
 
     def test_RaffelAttention(self):
         # LSTM  + Raffel Attention
@@ -143,7 +140,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1378.492431, 4)
+        self.assertAlmostEqual(float(prediction.sum()), 1352.1619190201973, 4)
 
     def test_SnailAttention(self):  # TODO failing to save model to h5 file on linux
         # LSTM  + Snail Attention
@@ -158,8 +155,8 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }
         prediction = make_and_run(Model, layers=lyrs, save_model=False)
-        self.assertAlmostEqual(float(prediction.sum()), 1306.02380, 2)  # TODO failing with higher precision
-    #
+        self.assertAlmostEqual(float(prediction.sum()), 1356.0140036362777, 2)  # TODO failing with higher precision
+
     def test_SelfAttention(self):
         # LSTM + SelfAttention model
         lyrs = {
@@ -170,7 +167,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1527.28979, 4)
+        self.assertAlmostEqual(float(prediction.sum()), 1534.6699074814169, 4)
 
     def test_HierarchicalAttention(self):
         # LSTM + HierarchicalAttention model
@@ -182,7 +179,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1374.090332, 3)
+        self.assertAlmostEqual(float(prediction.sum()), 1370.537841767262, 3)
 
     def test_CNNModel(self):
         # CNN based model
@@ -197,7 +194,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1333.210693, 4)
+        self.assertAlmostEqual(float(prediction.sum()), 1347.498777542553, 4)
 
     def test_LSTMCNNModel(self):
         # LSTMCNNModel based model
@@ -213,7 +210,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1398.09045, 2)
+        self.assertAlmostEqual(float(prediction.sum()), 1416.0948761687332, 2)
 
     def test_ConvLSTMModel(self):
         # ConvLSTMModel based model
@@ -230,7 +227,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs, subsequences=sub_seq, lookback=self.lookback)
-        self.assertAlmostEqual(float(prediction.sum()), 1413.6604, 3)  # TODO failing with higher precision
+        self.assertAlmostEqual(float(prediction.sum()), 1410.6072313256, 3)  # TODO failing with higher precision
 
     def test_CNNLSTMModel(self):
         # CNNLSTM based model
@@ -251,7 +248,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs, subsequences=subsequences)
-        self.assertAlmostEqual(float(prediction.sum()), 1523.947998, 1)
+        self.assertAlmostEqual(float(prediction.sum()), 1518.5204820165645, 1)
         return
 
     def test_LSTMAutoEncoder(self):
@@ -266,7 +263,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs, lookback=12)
-        self.assertAlmostEqual(float(prediction.sum()), 1514.47912, 2)
+        self.assertAlmostEqual(float(prediction.sum()), 1532.7482818552835, 2)
         return
 
     def test_TCNModel(self):
@@ -286,9 +283,9 @@ class TestModels(unittest.TestCase):
         try:
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
-            self.assertAlmostEqual(float(prediction.sum()), 935.47619, 2)  # TODO failing with higher precision
-        except:
-            ModuleNotFoundError("tcn based model can not be tested as it is not found.")
+            self.assertAlmostEqual(float(prediction.sum()), 970.6771222840335, 2)  # TODO failing with higher precision
+        except ModuleNotFoundError:
+            print("tcn based model can not be tested as it is not found.")
 
     def test_NBeats(self):
         # NBeats based model
@@ -315,7 +312,7 @@ class TestModels(unittest.TestCase):
 
         predictions = make_and_run(NBeatsModel, layers=layers, forecast_length=forecsat_length, data_type="nasdaq")
         if platform.upper() in ["WIN32"]:
-            self.assertAlmostEqual(float(predictions.sum()), 780862696.2410148, 4)  # 780862696.2410148
+            self.assertAlmostEqual(float(predictions.sum()), 781079416.2836407, 4)  # 780862696.2410148
         else:
             self.assertGreater(float(predictions.sum()), 80000.0)  # TODO reproduction failing on linux
 

@@ -7,7 +7,6 @@ import unittest
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils import make_model
 from dl4seq import Model
 
 seed = 313
@@ -34,23 +33,19 @@ def run_class_test(method):
                       ]:
 
         print(f"testing {method}")
-        config = make_model(
+
+        model = Model(
             inputs=data_reg['feature_names'] if problem=="regression" else data_class['feature_names'],
             outputs=['target'],
-            lookback=1,
-            batches="2d",
             val_fraction=0.0,
             ml_model=method,
             problem=problem,
-            transformation=None
-        )
+            transformation=None,
+            data=df_reg if problem=="regression" else data_class,
+            ml_model_args={'iterations': 2} if "CATBOOST" in method else {},
+            verbosity=0)
 
-
-        model = Model(config,
-                      data=df_reg if problem=="regression" else data_class,
-                      verbosity=0)
-
-        return model.train()
+        return model.fit()
 
 class TestMLMethods(unittest.TestCase):
 
@@ -239,7 +234,8 @@ class TestMLMethods(unittest.TestCase):
         return
 
     def test_ml_random_indices(self):
-        config = make_model(
+
+        model = Model(
             inputs=data_reg['feature_names'],
             outputs=["target"],
             lookback=1,
@@ -250,14 +246,11 @@ class TestMLMethods(unittest.TestCase):
             category="ML",
             problem="regression",
             ml_model="xgboostregressor",
-            # ml_model_args= {"max_dep":1000},
-            transformation=None
-        )
-        model = Model(config,
-                      data=df_reg,
-                      verbosity=0)
+            transformation=None,
+            data=df_reg,
+            verbosity=0)
 
-        model.train(indices="random")
+        model.fit(indices="random")
         trtt, trp = model.predict(indices=model.train_indices, pref='train')
         t, p = model.predict(indices=model.test_indices, pref='test')
         self.assertGreater(len(t), 1)

@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils import make_model
 from dl4seq import Model
 from dl4seq.utils.utils import split_by_indices, train_val_split, stats
 from dl4seq.backend import get_sklearn_models
@@ -47,18 +46,15 @@ def get_layers(o=1, forecast_len=1):
 
 def build_model(**kwargs):
 
-    config = make_model(
+    model = Model(
+        data=data,
+        verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
         transformation=None,
         epochs=1,
         **kwargs
     )
-
-    model = Model(config,
-                  data=data,
-                  verbosity=0
-                  )
 
     return model
 
@@ -67,24 +63,22 @@ def train_predict(model):
 
     x, y = model.train_data(st=10, en=500)
 
-    model.train()
+    model.fit()
     model.predict()
 
     return x,y
 
 
 def run_same_train_val_data(**kwargs):
-    config = make_model(
+
+    model = Model(
+        data=nasdaq_df,
         val_data="same",
         test_fraction=0.2,
         epochs=1,
-    )
+        verbosity=0)
 
-    model = Model(config,
-                  data=nasdaq_df,
-                  verbosity=0)
-
-    model.train(**kwargs)
+    model.fit(**kwargs)
 
     x, y = model.train_data(indices=model.train_indices)
     return x, y
@@ -406,20 +400,23 @@ class TestUtils(unittest.TestCase):
 
     def test_datetimeindex(self):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
-        config = make_model(inputs=in_cols,
-                            outputs=out_cols,
-                            epochs=2,
-                            layers={
-                                "LSTM": {"config": {"units": 2}},
-                                "Dense": {"config": {"units": 1}}},
-                            lookback=lookback)
 
-        model = Model(config, data, verbosity=0)
+        model = Model(
+                      data=data,
+                      inputs=in_cols,
+                      outputs=out_cols,
+                      epochs=2,
+                      layers={
+                          "LSTM": {"config": {"units": 2}},
+                          "Dense": {"config": {"units": 1}}},
+                      lookback=lookback,
+                      verbosity=0)
 
-        model.train(indices="random")
+        model.fit(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
-        # the first train_index is 525 which means the first true value must be 10525
-        self.assertEqual(int(t[0]), 10525)
+        # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
+        for i in range(100):
+            self.assertEqual(int(t[i]), model.train_indices[i] + 10000)
         return
 
     def test_random_idx_with_nan_in_outputs(self):
@@ -431,27 +428,35 @@ class TestUtils(unittest.TestCase):
         for col in ['out1']:
             df.loc[df.sample(frac=0.8).index, col] = np.nan
 
-        config = make_model(inputs=['in1', 'in2'], outputs=['out1'], transformation=None, val_data='same', epochs=1)
-        model = Model(config, data=df)
-        model.train(indices='random')
+        model = Model(inputs=['in1', 'in2'],
+                      outputs=['out1'],
+                      transformation=None,
+                      val_data='same',
+                      test_fraction=0.3,
+                      epochs=1,
+                      data=df,
+                      verbosity=0)
+
+        model.fit(indices='random')
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
         self.assertTrue(np.allclose(idx5, model.train_indices[-8:]))
 
         x,y = model.train_data(indices=model.train_indices)
 
-        third_non_nan_val_4m_st = df['out1'][df['out1'].notnull()].iloc[2]
-        # the seventh last indix is 0, so the 0th index value in x and y will be at index 0+2.
-        self.assertAlmostEqual(float(y[-7]), third_non_nan_val_4m_st)
+        eighth_non_nan_val_4m_st = df['out1'][df['out1'].notnull()].iloc[8]
+        # the last training index is 8, so the last y value must be 8th non-nan value
+        self.assertAlmostEqual(float(y[-1]), eighth_non_nan_val_4m_st)
 
         # checking that x values are also correct
-        third_non_nan_val_4m_st = df[['in1', 'in2']][df['out1'].notnull()].iloc[2]
-        self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[14], third_non_nan_val_4m_st))
-        self.assertTrue(np.allclose(x[0][-7, -1], third_non_nan_val_4m_st))
+        eighth_non_nan_val_4m_st = df[['in1', 'in2']][df['out1'].notnull()].iloc[8]
+        self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[86], eighth_non_nan_val_4m_st))
+        self.assertTrue(np.allclose(x[0][-1, -1], eighth_non_nan_val_4m_st))
 
         xx,yy  = model.test_data(indices=model.test_indices)
-        self.assertEqual(model.test_indices[7], 9)
-        self.assertAlmostEqual(float(yy[7]), df['out1'][df['out1'].notnull()].iloc[11])
-        self.assertTrue(np.allclose(xx[0][7, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[11]))
+        # the second test index is 9, so second value of yy must be 9th non-nan value
+        self.assertEqual(model.test_indices[2], 9)
+        self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[9])
+        self.assertTrue(np.allclose(xx[0][2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[9]))
         return
 
 

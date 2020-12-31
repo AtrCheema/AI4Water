@@ -42,10 +42,10 @@ class TestActivations(unittest.TestCase):
         layers["Dense"] = {'config': {'units': 1}}
         layers["reshape"] = {'config': {'target_shape': (1, 1)}}
 
-        config = make_model_local(layers=layers)
-
-        model = Model(config,
-                      df,
+        model = Model(epochs=2,
+                      lookback=1,
+                      layers=layers,
+                      data=df,
                       verbosity=0
                       )
 
@@ -54,7 +54,7 @@ class TestActivations(unittest.TestCase):
             '23': [0.0870760977268219, 0.1053781732916832]
         }
 
-        history = model.train()
+        history = model.fit()
         if int(tf.__version__.split('.')[0]) > 1:
             for t,p in zip(history.history['val_loss'], val[version]):
                 self.assertAlmostEqual(t,p, 5)
@@ -69,14 +69,14 @@ class TestActivations(unittest.TestCase):
 
         layers["reshape"] = {'config': {'target_shape': (1, 1)}}
 
-        config = make_model_local(layers=layers)
-
-        model = Model(config,
-                      df,
+        model = Model(epochs=2,
+                      lookback=1,
+                      layers=layers,
+                      data=df,
                       verbosity=0
                       )
 
-        history = model.train()
+        history = model.fit()
         val = {
             '21': [0.8971164431680119, 0.7911620726129243],
             '23': [0.10781528055667877, 0.09552989155054092]
