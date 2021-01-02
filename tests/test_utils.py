@@ -35,6 +35,23 @@ data = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).tran
 lookback=7
 batch_size=16
 
+
+def get_missing_df(n=1000, inputs=True, outputs=False, frac=0.8):
+    np.random.seed(seed)
+
+    cols=[]
+    if inputs:
+        cols += ['in1', 'in2']
+    if outputs:
+        cols += ['out1']
+
+    df = pd.DataFrame(np.random.random((n, 3)), columns=['in1', 'in2', 'out1'])
+    for col in cols:
+        df.loc[df.sample(frac=frac).index, col] = np.nan
+
+    return df
+
+
 def get_layers(o=1, forecast_len=1):
 
     return {
@@ -459,6 +476,67 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.allclose(xx[0][2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[9]))
         return
 
+    def test_random_idx_with_nan_inputs(self):
+        """
+        Test that when nans are present in inputs and we use random indices, then x,y data is correctly made.
+        """
+
+        df = get_missing_df(inputs=True, frac=0.1)
+
+        model = Model(inputs=['in1', 'in2'],
+                      outputs=['out1'],
+                      transformation=None,
+                      val_data='same',
+                      test_fraction=0.3,
+                      epochs=1,
+                      data=df,
+                      input_nans={'fillna': {'method': 'bfill'}},
+                      verbosity=0)
+
+        model.fit(indices='random')
+
+        x,y = model.train_data(indices=model.train_indices)
+
+        for i in range(100):
+            idx = model.train_indices[i]
+            df_x = df[['in1', 'in2']].iloc[idx]
+            if idx > model.lookback and int(df_x.isna().sum()) == 0:
+                self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
+                self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
+
+        return
+
+
+    def test_ffill(self):
+        """Test that filling nan by ffill method works"""
+        df = get_missing_df(inputs=True, frac=0.8)
+
+        class DummyModel:
+            in_cols = ['in1', 'in2']
+            out_cols = ['out1']
+            data_config = {'input_nans': {'fillna': {'method': 'ffill'}}}
+
+        _df = Model.imputation(DummyModel, df, len(in_cols), len(out_cols))
+
+        self.assertAlmostEqual(sum(_df[2:8,1]), 0.1724 * 6, 4)
+
+        return
+
+
+    def test_interpolate_cubic(self):
+        """Test that fill nan by interpolating using cubic method works."""
+        df = get_missing_df(inputs=True, frac=0.8)
+
+        class DummyModel:
+            in_cols = ['in1', 'in2']
+            out_cols = ['out1']
+            data_config = {'input_nans': {'interpolate': {'method': 'cubic'}}}
+
+        _df = Model.imputation(DummyModel, df, len(in_cols), len(out_cols))
+
+        self.assertAlmostEqual(float(_df[8, 0]), 0.6530285703060589, 4)
+
+        return
 
 if __name__ == "__main__":
     unittest.main()

@@ -78,12 +78,18 @@ def run_plot_pca(scaler, y, dim):
     return
 
 
-def run_log_methods(method="log", index=None, insert_nans=True, assert_equality=True):
+def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False, assert_equality=True):
     a = np.random.random((10, 4))
-    if insert_nans:
-        a[2:4, 1] = np.nan
-        a[3:5, 2:3] = np.nan
-        a[5:8, 3] = np.nan
+    to_insert = np.nan if insert_nans else 0.0
+
+    if insert_nans or insert_zeros:
+        a[2:4, 1] = to_insert
+        a[3:5, 2:3] = to_insert
+        a[5:8, 3] = to_insert
+
+    kwargs = {}
+    if insert_zeros:
+        kwargs['replace_zeros'] = True
 
     cols = ['data1', 'data2', 'data3', 'data4']
 
@@ -92,11 +98,11 @@ def run_log_methods(method="log", index=None, insert_nans=True, assert_equality=
 
     df3 = pd.DataFrame(a, columns=cols, index=index)
 
-    _, dfo1 = run_method1(method=method, replace_nans=True, data=df3)
+    _, dfo1 = run_method1(method=method, replace_nans=True, data=df3, **kwargs)
 
-    _, dfo2 = run_method2(method=method, replace_nans=True, data=df3)
+    _, dfo2 = run_method2(method=method, replace_nans=True, data=df3, **kwargs)
 
-    _, dfo3 = run_method3(method=method, replace_nans=True, data=df3)
+    _, dfo3 = run_method3(method=method, replace_nans=True, data=df3, **kwargs)
 
     _, dfo4 = run_method4(method=method, replace_nans=True, data=df3)
 
@@ -293,13 +299,12 @@ class test_Scalers(unittest.TestCase):
         run_log_methods("cumsum", True, insert_nans=True, assert_equality=False)
         return
 
-    # def test_emd_transformation(self):
-    #     d = np.random.random((10, 4))
-    #     d = pd.DataFrame(d, index=pd.date_range("20110101", periods=len(d), freq="6min"),
-    #                      columns=['data1', 'data2', 'data3', 'data4'])
-    #     sc = Transformations(d, method='emd')
-    #     sc.transform(return_key=True)
-    #     return
+    def test_zero_log(self):
+
+        run_log_methods("log", True, insert_nans=True, insert_zeros=True, assert_equality=False)
+
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

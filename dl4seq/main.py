@@ -1210,7 +1210,41 @@ class Model(NN, Plots):
 
         return self.check_nans(df, x, prev_y, y, outs)
 
+    def imputation(self, df, ins:int, outs):
+
+        if self.data_config['input_nans'] is not None:
+
+            if not isinstance(df, pd.DataFrame):
+                df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
+
+            if isinstance(self.data_config['input_nans'], list):
+                # separate imputation method to be applied on each column/feature of df
+                assert len(self.data_config['input_nans']) == ins
+
+            elif isinstance(self.data_config['input_nans'], dict):
+                kwargs = list(self.data_config['input_nans'].values())[0]
+
+                if len(self.data_config['input_nans']) > 1:
+
+                    for key, val in self.data_config['input_nans'].items():
+
+                        how = list(val.keys())[0]
+                        kwargs = list(val.values())[0]
+                        df[key] = impute_df(pd.DataFrame(df[key]), how, **kwargs)
+                else:
+                    df = impute_df(df, list(self.data_config['input_nans'].keys())[0], **kwargs)
+
+            else:
+                raise ValueError(f"Unknown value '{self.data_config['input_nans']} to deal with with nans in inputs")
+
+        if isinstance(df, pd.DataFrame):
+            df = df.values
+
+        return df
+
     def get_batches(self, df, ins, outs):
+
+        df = self.imputation(df, ins, outs)
 
         if self.num_input_layers > 1:
             # if the model takes more than 1 input, we must define what kind of inputs must be made because
@@ -1821,6 +1855,16 @@ class Model(NN, Plots):
 
         return description
 
+
+
+def impute_df(df:pd.DataFrame, how, **kwargs):
+    """Given the dataframe df, will input missing values by how e.g. by df.fillna or df.interpolate"""
+    assert how in ['fillna', 'interpolate'], f"Unknown method to fill missing values {how}"
+
+    for col in df.columns:
+        df[col] = getattr(df[col], how)(**kwargs)
+
+    return df
 
 
 def unison_shuffled_copies(a, b, c):

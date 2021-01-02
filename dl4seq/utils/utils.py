@@ -253,6 +253,19 @@ def _make_model(**kwargs):
         'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},   # fraction of data to be used for test
         'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},   # write the data/batches as hdf5 file
         'ignore_nans':       {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},  # if True, and if target values contain Nans, those samples will not be ignored
+        # The following argument determines how to deal with missing values in the input data. The default value
+        # is None, which will raise error if missing/nan values are encountered in the input data. The can however
+        # specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
+        # be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
+        # forward filling, the user can do as following
+        # {'fillna': {'method': 'ffill'}}
+        # For details about fillna keyword options see https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
+        # For `interpolate`, the user can specify  the type of interpolation for example
+        # {'interpolate': {'method': 'spline': 'order': 2}} will perform spline interpolation with 2nd order.
+        # For other possible options/keyword arguments for interpolate see https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
+        # The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
+        # providing the above mentioned arguments as dictionary or list.
+        'input_nans':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
         'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
         'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},  # if true, model will use previous predictions as input
     # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches

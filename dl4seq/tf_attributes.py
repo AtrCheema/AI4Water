@@ -11,7 +11,7 @@ import dl4seq.models.attention_layers as attns
 from dl4seq.utils.utils import get_attributes
 try:
     from .private_layers import PrivateLayers
-except ModuleNotFoundError:
+except (ModuleNotFoundError, ImportError):
     PrivateLayers = None
 
 try:
