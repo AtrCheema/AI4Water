@@ -52,6 +52,17 @@ def get_missing_df(n=1000, inputs=True, outputs=False, frac=0.8):
     return df
 
 
+def make_dummy_model(imputation, inputs=True, frac=0.8):
+    orig_df = get_missing_df(inputs=inputs, frac=frac)
+
+    class DummyModel:
+        in_cols = ['in1', 'in2']
+        out_cols = ['out1']
+        data_config = {'input_nans': imputation}
+
+    _df = Model.imputation(DummyModel, orig_df, len(in_cols), len(out_cols))
+    return _df, orig_df
+
 def get_layers(o=1, forecast_len=1):
 
     return {
@@ -509,34 +520,29 @@ class TestUtils(unittest.TestCase):
 
     def test_ffill(self):
         """Test that filling nan by ffill method works"""
-        df = get_missing_df(inputs=True, frac=0.8)
+        out, _df = make_dummy_model({'fillna': {'method': 'ffill'}})
 
-        class DummyModel:
-            in_cols = ['in1', 'in2']
-            out_cols = ['out1']
-            data_config = {'input_nans': {'fillna': {'method': 'ffill'}}}
-
-        _df = Model.imputation(DummyModel, df, len(in_cols), len(out_cols))
-
-        self.assertAlmostEqual(sum(_df[2:8,1]), 0.1724 * 6, 4)
+        self.assertAlmostEqual(sum(out[2:8,1]), 0.1724 * 6, 4)
 
         return
 
 
     def test_interpolate_cubic(self):
         """Test that fill nan by interpolating using cubic method works."""
-        df = get_missing_df(inputs=True, frac=0.8)
+        out, _ = make_dummy_model({'interpolate': {'method': 'cubic'}})
 
-        class DummyModel:
-            in_cols = ['in1', 'in2']
-            out_cols = ['out1']
-            data_config = {'input_nans': {'interpolate': {'method': 'cubic'}}}
-
-        _df = Model.imputation(DummyModel, df, len(in_cols), len(out_cols))
-
-        self.assertAlmostEqual(float(_df[8, 0]), 0.6530285703060589, 4)
+        self.assertAlmostEqual(float(out[8, 0]), 0.6530285703060589, 4)
 
         return
+
+    def test_knn_imputation(self):
+        """Test that knn imputation works seamlessly"""
+        out, _df = make_dummy_model({'KNNImputer': {'n_neighbors': 3}}, frac=0.5)
+
+        self.assertEqual(np.isnan(out).sum(), 0)
+
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

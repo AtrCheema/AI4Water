@@ -265,6 +265,10 @@ def _make_model(**kwargs):
         # For other possible options/keyword arguments for interpolate see https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
         # The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
         # providing the above mentioned arguments as dictionary or list.
+        # The sklearn based imputation methods can also be used in a similar fashion. For KNN
+        # {'KNNImputer': {'n_neighbors': 3}    or for iterative imputation
+        # {'IterativeImputer': {'n_nearest_features': 2}
+        # For more on sklearn based imputation methods see https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
         'input_nans':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
         'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
         'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},  # if true, model will use previous predictions as input

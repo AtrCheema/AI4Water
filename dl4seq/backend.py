@@ -104,6 +104,13 @@ except ModuleNotFoundError:
 
 
 sklearn_models = get_sklearn_models()
+
+if sklearn is not None:
+    from sklearn.experimental import enable_iterative_imputer  # noqa
+    imputations = get_attributes(sklearn, 'impute')
+else:
+    imputations = {}
+
 keras = keras
 torch = torch
 tf = tf

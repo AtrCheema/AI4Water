@@ -14,7 +14,8 @@ import warnings
 import time
 
 from dl4seq.nn_tools import NN
-from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models, sklearn_models
+from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
+from dl4seq.backend import imputations, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model
 from dl4seq.utils.plotting_tools import Plots
@@ -1857,12 +1858,17 @@ class Model(NN, Plots):
 
 
 
-def impute_df(df:pd.DataFrame, how, **kwargs):
+def impute_df(df:pd.DataFrame, how:str, **kwargs):
     """Given the dataframe df, will input missing values by how e.g. by df.fillna or df.interpolate"""
-    assert how in ['fillna', 'interpolate'], f"Unknown method to fill missing values {how}"
+    if  how.lower() not in ['fillna', 'interpolate', 'knnimputer', 'iterativeimputer']:
+        raise ValueError(f"Unknown method to fill missing values `{how}`.")
 
-    for col in df.columns:
-        df[col] = getattr(df[col], how)(**kwargs)
+    if how.lower() in ['fillna', 'interpolate']:
+        for col in df.columns:
+            df[col] = getattr(df[col], how)(**kwargs)
+    else:
+        imputer = imputations[how.upper()](**kwargs)
+        df = imputer.fit_transform(df.values)
 
     return df
 
