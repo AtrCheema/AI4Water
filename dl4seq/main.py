@@ -4,6 +4,8 @@ from TSErrors import FindErrors
 import matplotlib.pyplot as plt
 import matplotlib # for version info
 import os
+from types import MethodType
+
 from sklearn.model_selection import train_test_split
 import json
 import joblib
@@ -20,6 +22,7 @@ from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, d
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
+from dl4seq.custom_training import train_step, test_step
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -288,7 +291,7 @@ class Model(NN, Plots):
                     # nans were present in output columns which were removed
                     if getattr(self, 'nans_removed_4m_st', 0) > 0:
                         additional = self.data_config['forecast_length']+1 if self.data_config['forecast_length'] > 1 else 0
-                        self.offset = self.lookback + additional - self.nans_removed_4m_st-1
+                        self.offset = abs(self.lookback + additional - self.nans_removed_4m_st-1)
                         warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
                                       containing values were skipped from start. This may lead to some wrong examples
                                       at the start or an offset of {self.offset} in
@@ -540,8 +543,21 @@ class Model(NN, Plots):
 
         return val_data_present
 
+    def do_fit(self, *args, **kwargs):
+        """If nans are present in y, then tf.keras.model.fit is called as it is otherwise it is called with custom
+        train_step and test_step which avoids calculating loss at points containing nans."""
+        if kwargs.pop('nans_in_y_exist'):
+
+            self._model.train_step = MethodType(train_step, self._model)
+            self._model.test_step = MethodType(test_step, self._model)
+
+        return self._model.fit(*args, **kwargs)
 
     def _fit(self, inputs, outputs, validation_data, **callbacks):
+
+        nans_in_y_exist = False
+        if np.isnan(outputs).sum()>0:
+            nans_in_y_exist=True
 
         inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
 
@@ -551,16 +567,17 @@ class Model(NN, Plots):
 
         st = time.time()
 
-        self._model.fit(inputs,
-                        y=None if isinstance(inputs, tf.data.Dataset) else outputs,
-                         epochs=self.model_config['epochs'],
-                         batch_size=None if isinstance(inputs, tf.data.Dataset) else self.data_config['batch_size'],
-                         validation_split=validation_split,
-                         validation_data=validation_data,
-                         callbacks=callbacks,
-                         shuffle=self.model_config['shuffle'],
-                         steps_per_epoch=self.data_config['steps_per_epoch'],
-                         verbose=self.verbosity
+        self.do_fit(inputs,
+                    y=None if isinstance(inputs, tf.data.Dataset) else outputs,
+                    epochs=self.model_config['epochs'],
+                    batch_size=None if isinstance(inputs, tf.data.Dataset) else self.data_config['batch_size'],
+                    validation_split=validation_split,
+                    validation_data=validation_data,
+                    callbacks=callbacks,
+                    shuffle=self.model_config['shuffle'],
+                    steps_per_epoch=self.data_config['steps_per_epoch'],
+                    verbose=self.verbosity,
+                    nans_in_y_exist=nans_in_y_exist
                          )
 
         self.data_config['training_time'] = float(time.time() - st/60.0)

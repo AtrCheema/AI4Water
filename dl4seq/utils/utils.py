@@ -233,26 +233,41 @@ def _make_model(**kwargs):
 
     data_args = {
         # buffer_size is only relevant if 'val_data' is same and shuffle is true. https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
-        'buffer_size':       {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None}, # It is used to shuffle tf.Dataset of training data.
-        'forecast_length':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},   # how many future values we want to predict
-        'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},  # comes handy if we want to skip certain batches from last
-    # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
-    # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
+        # It is used to shuffle tf.Dataset of training data.
+        'buffer_size':       {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
+        # how many future values we want to predict
+        'forecast_length':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
+        # comes handy if we want to skip certain batches from last
+        'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
+        # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
+        # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder':    {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
-        'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax', 'lower': None, 'upper': None, 'between': None},  # can be None or any of the method defined in scalers.py
+        # can be None or any of the method defined in dl4seq.utils.transformatinos.py
+        'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax', 'lower': None, 'upper': None, 'between': None},
         # The term lookback has been adopted from Francois Chollet's "deep learning with keras" book. This means how many
         # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
         # for any non timeseries forecasting related problems.
         'lookback':          {"type": int,   "default": 15, 'lower': 1, 'upper': None, 'between': None},
         'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
-        'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None}, # fraction of data to be used for validation
+        # fraction of data to be used for validation
+        'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
         # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
         # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
-        'val_data':          {"type": None,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]}, # If this is not string and not None, this will overwite `val_fraction`
-        'steps_per_epoch':   {"type": int,   "default": None, 'lower': None, 'upper': None, 'between': None},  # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
-        'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},   # fraction of data to be used for test
-        'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},   # write the data/batches as hdf5 file
-        'ignore_nans':       {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},  # if True, and if target values contain Nans, those samples will not be ignored
+        # If this is not string and not None, this will overwite `val_fraction`
+        'val_data':          {"type": None,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
+        # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
+        'steps_per_epoch':   {"type": int,   "default": None, 'lower': None, 'upper': None, 'between': None},
+        # fraction of data to be used for test
+        'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
+        # write the data/batches as hdf5 file
+        'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
+        # if True, and if target values contain Nans, those samples will not be ignored and will be fed as it is to
+        # training and test steps. In such a case a customized training and evaluation step is performed where the
+        # loss is not calculated for predictions corresponding to nan observations. Thus this option can be useful
+        # when we are predicting more than 1 target and the some of the samples have some of their labels missing. In
+        # such a scenario, if we set this optin to True, we don't need to ignore those samples at all during data
+        # preparation. This option should be set True only when using tensorflow for deep learning models.
+        'ignore_nans':       {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
         # The following argument determines how to deal with missing values in the input data. The default value
         # is None, which will raise error if missing/nan values are encountered in the input data. The can however
         # specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
@@ -270,22 +285,29 @@ def _make_model(**kwargs):
         # {'IterativeImputer': {'n_nearest_features': 2}
         # For more on sklearn based imputation methods see https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
         'input_nans':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
-        'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},  # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
-        'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},  # if true, model will use previous predictions as input
-    # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches
-    # will be inferred from this Input layer but for cases,  the model takes more than 1 Input, then there can be two
-    # cases, either all the inputs are of same shape or they  are not. In second case, we should overwrite `train_paras`
-    # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
-    # for Dense layer.
+        # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+        'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
+        # if true, model will use previous predictions as input
+        'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},
+        # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches
+        # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
+        # cases, either all the inputs are of same shape or they  are not. In second case, we should overwrite `train_paras`
+        # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
+        # for Dense layer.
         'batches':           {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
-        'seed':              {"type": int, "default": 313, 'lower': None, 'upper': None, 'between': None},  # for reproducability
-        'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},  # how many steps ahead we want to predict
-        'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},  # step size of input data
-        'inputs':            {"type": list, "default": in_cols, 'lower': None, 'upper': None, 'between': None}, # input features in data_frame
-        'outputs':           {"type": list, "default": ["NDX"], 'lower': None, 'upper': None, 'between': None}, # column in dataframe to bse used as output/target
-    # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
-    # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
-    # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
+        # for reproducability
+        'seed':              {"type": int, "default": 313, 'lower': None, 'upper': None, 'between': None},
+        # how many steps ahead we want to predict
+        'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},
+        # step size of input data
+        'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
+        # input features in data_frame
+        'inputs':            {"type": list, "default": in_cols, 'lower': None, 'upper': None, 'between': None},
+        # column in dataframe to bse used as output/target
+        'outputs':           {"type": list, "default": ["NDX"], 'lower': None, 'upper': None, 'between': None},
+        # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
+        # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
+        # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
         "intervals":         {"type": tuple, "default": None, 'lower': None, 'upper': None, 'between': None}
     }
 
@@ -304,6 +326,9 @@ def _make_model(**kwargs):
 
         else:
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
+
+    if data_config['ignore_nans']:
+        assert model_config['ml_model'] is not None, f"`ignore_nans` should be True only for deep learning models"
 
     return data_config, model_config
 

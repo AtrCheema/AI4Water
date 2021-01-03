@@ -74,6 +74,8 @@ from dl4seq import InputAttentionModel  # import any of the above model
 df = pd.read_csv('data/data_30min.csv')  # path for data file
 
 model = InputAttentionModel(
+              inputs=['input1', 'input2', 'input3'], # columns in csv file to be used as input
+              outputs=['target7'],        # columns in csv file to be used as output
               batch_size=16,
               lookback=15,
               lr=0.001,

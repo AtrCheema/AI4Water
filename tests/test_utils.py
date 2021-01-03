@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
+import tensorflow as tf
 from dl4seq import Model
 from dl4seq.utils.utils import split_by_indices, train_val_split, stats
 from dl4seq.backend import get_sklearn_models
@@ -28,7 +29,7 @@ in_cols = ['input_'+str(i) for i in range(5)]
 out_cols = ['output']
 cols=  in_cols + out_cols
 
-data = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).transpose(),
+data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).transpose(),
                     columns=cols,
                     index=pd.date_range("20110101", periods=examples, freq="D"))
 
@@ -36,16 +37,21 @@ lookback=7
 batch_size=16
 
 
-def get_missing_df(n=1000, inputs=True, outputs=False, frac=0.8):
+def get_missing_df(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None, input_cols=None):
     np.random.seed(seed)
+
+    if output_cols is None:
+        output_cols=['out1']
+    if input_cols is None:
+        input_cols = ['in1', 'in2']
 
     cols=[]
     if inputs:
-        cols += ['in1', 'in2']
+        cols += input_cols
     if outputs:
-        cols += ['out1']
+        cols += output_cols
 
-    df = pd.DataFrame(np.random.random((n, 3)), columns=['in1', 'in2', 'out1'])
+    df = pd.DataFrame(np.random.random((n, len(input_cols) + len(output_cols))), columns=input_cols + output_cols)
     for col in cols:
         df.loc[df.sample(frac=frac).index, col] = np.nan
 
@@ -75,7 +81,7 @@ def get_layers(o=1, forecast_len=1):
 def build_model(**kwargs):
 
     model = Model(
-        data=data,
+        data=data1,
         verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
@@ -430,7 +436,7 @@ class TestUtils(unittest.TestCase):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
 
         model = Model(
-                      data=data,
+                      data=data1,
                       inputs=in_cols,
                       outputs=out_cols,
                       epochs=2,
@@ -450,11 +456,7 @@ class TestUtils(unittest.TestCase):
     def test_random_idx_with_nan_in_outputs(self):
         # testing that if output contains nans and we use random indices, then correct examples are assinged
         # for training and testing given val_data is 'same'.
-        np.random.seed(seed)
-        n = 1000
-        df = pd.DataFrame(np.random.random((n, 3)), columns=['in1', 'in2', 'out1'])
-        for col in ['out1']:
-            df.loc[df.sample(frac=0.8).index, col] = np.nan
+        df = get_missing_df(inputs=False, outputs=True, frac=0.8)
 
         model = Model(inputs=['in1', 'in2'],
                       outputs=['out1'],
@@ -517,7 +519,6 @@ class TestUtils(unittest.TestCase):
 
         return
 
-
     def test_ffill(self):
         """Test that filling nan by ffill method works"""
         out, _df = make_dummy_model({'fillna': {'method': 'ffill'}})
@@ -525,7 +526,6 @@ class TestUtils(unittest.TestCase):
         self.assertAlmostEqual(sum(out[2:8,1]), 0.1724 * 6, 4)
 
         return
-
 
     def test_interpolate_cubic(self):
         """Test that fill nan by interpolating using cubic method works."""
@@ -541,6 +541,32 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(np.isnan(out).sum(), 0)
 
+        return
+
+    def test_multi_out_nans(self):
+        """
+        Test that when multiple outputs are the target and they contain nans, then we ignore these nans during
+        loss calculation.
+        """
+        df = get_missing_df(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
+
+        layers = {
+            "Flatten": {"config": {}},
+            "Dense": {"config": {"units": 2}},
+            "Reshape": {"config": {"target_shape": (2,1)}}}
+
+        model = Model(ignore_nans=True,
+                      layers=layers,
+                      inputs=['in1', 'in2'],
+                      outputs=['out1', 'out2'],
+                      epochs=10,
+                      verbosity=1,
+                      data=df)
+
+        history = model.fit()
+
+        self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
+        self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
         return
 
 
