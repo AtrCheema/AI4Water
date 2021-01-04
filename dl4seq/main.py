@@ -1705,8 +1705,8 @@ class Model(NN, Plots):
 
         config = dict()
         if history is not None:
-            config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
-            config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
+            config['min_val_loss'] = int(np.nanmin(history['val_loss'])) if 'val_loss' in history else None
+            config['min_loss'] = int(np.nanmin(history['loss'])) if 'val_loss' in history else None
 
         config['model_config'] = self.model_config
         config['data_config'] = self.data_config

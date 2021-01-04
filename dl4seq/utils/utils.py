@@ -328,7 +328,7 @@ def _make_model(**kwargs):
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
     if data_config['ignore_nans']:
-        assert model_config['ml_model'] is not None, f"`ignore_nans` should be True only for deep learning models"
+        assert model_config['ml_model'] is None, f"`ignore_nans` should be True only for deep learning models"
 
     return data_config, model_config
 
