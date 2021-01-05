@@ -72,7 +72,7 @@ class AttentionRaffel(Layer):
     def compute_mask(self, input, input_mask=None):
         return None
 
-    def call(self, x, mask=None):
+    def __call__(self, x, mask=None):
         features_dim = self.features_dim
         step_dim = self.step_dim
 
@@ -210,7 +210,7 @@ class BahdanauAttention(Layer):
         super(BahdanauAttention, self).build(input_shape)
 
 
-    def call(self, inputs, verbose=False):
+    def __call__(self, inputs, verbose=False):
         """
         inputs: [encoder_output_sequence, decoder_output_sequence]
         """
@@ -408,7 +408,7 @@ class HierarchicalAttention(Layer):
         # do not pass the mask to the next layers
         return None
 
-    def call(self, x, mask=None):
+    def __call__(self, x, mask=None):
         uit = dot_product(x, self.W)  # eq 5 in paper
 
         if self.bias:
@@ -614,7 +614,7 @@ class SeqSelfAttention(Layer):
                                       regularizer=self.bias_regularizer,
                                       constraint=self.bias_constraint)
 
-    def call(self, inputs, mask=None, **kwargs):
+    def __call__(self, inputs, mask=None, **kwargs):
         input_len = K.shape(inputs)[1]
 
         if self.attention_type.upper().startswith('ADD'):
@@ -759,7 +759,7 @@ class SeqWeightedAttention(keras.layers.Layer):
                                      initializer=keras.initializers.get('zeros'))
         super(SeqWeightedAttention, self).build(input_shape)
 
-    def call(self, x, mask=None):
+    def __call__(self, x, mask=None):
         logits = K.dot(x, self.W)
         if self.use_bias:
             logits += self.b
@@ -823,7 +823,7 @@ class SnailAttention(Layer):
         self.values_fc.build((None, self.dims))
         self._trainable_weights.extend(self.values_fc.trainable_weights)
 
-    def call(self, inputs, **kwargs):
+    def __call__(self, inputs, **kwargs):
         # check that the implementation matches exactly py torch.
         keys = self.keys_fc(inputs)
         queries = self.queries_fc(inputs)
