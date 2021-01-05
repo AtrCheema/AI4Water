@@ -560,7 +560,7 @@ class TestUtils(unittest.TestCase):
                       inputs=['in1', 'in2'],
                       outputs=['out1', 'out2'],
                       epochs=10,
-                      verbosity=1,
+                      verbosity=0,
                       data=df)
 
         history = model.fit()

@@ -46,7 +46,7 @@ def run_dl4seq(method):
                    "val_data": "same",
                    "test_fraction": 0.3,
                    "ml_model": "xgboostregressor",
-                   "ml_model_args": {'objective': 'reg:squarederror'},
+                   #"ml_model_args": {'objective': 'reg:squarederror'},
                    "transformation": None
                    }
 
@@ -227,7 +227,7 @@ class TestHyperOpt(unittest.TestCase):
                        "val_data": "same",
                        "test_fraction": 0.3,
                        "ml_model": "xgboostregressor",
-                       "ml_model_args": {'objective': 'reg:squarederror'},
+                       #"ml_model_args": {'objective': 'reg:squarederror'}, TODO
                        "transformation": None
                        }
 
@@ -244,7 +244,7 @@ class TestHyperOpt(unittest.TestCase):
                        random_state=2
                        )
 
-        res = opt.fit()
+        opt.fit()
         return
 
     def test_dl4seq_grid(self):

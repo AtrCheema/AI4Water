@@ -15,7 +15,8 @@ dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
-config = make_model(batch_size=16,
+
+model = HARHNModel(batch_size=16,
                     lookback=lookback,
                     lr=0.001,
                     use_predicted_output=True,
@@ -25,10 +26,7 @@ config = make_model(batch_size=16,
                               (625, 821,),
                               (821, 1110),
                               (1110, 1447)),
-                    epochs=epochs)
-
-
-model = HARHNModel(config=config,
+                    epochs=epochs,
                      data=df,
                      )
 
