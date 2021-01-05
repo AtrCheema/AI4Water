@@ -127,7 +127,7 @@ def check_kwargs(**kwargs):
 
     # If learning rate for XGBoost is not provided use same as default for NN
     lr = kwargs["lr"] if "lr" in kwargs else 0.001
-    if "ml_model" in kwargs:
+    if kwargs.get('ml_model', None) is not None:
         if kwargs['ml_model'].upper().startswith("XGB"):
             if "ml_model_args" in kwargs:
                 if "learning_rate" not in kwargs["ml_model_args"]:
@@ -162,7 +162,7 @@ def _make_model(**kwargs):
     kwargs = check_kwargs(**kwargs)
 
     def_prob = "regression"
-    if "ml_model" not in kwargs:
+    if kwargs.get('ml_model', None) is None:
         def_cat = "DL"
         # for DL, the default problem case will be regression
     else:
@@ -324,7 +324,8 @@ def _make_model(**kwargs):
         elif arg_name in data_config:
             update_dict(arg_name, val, data_args, data_config)
 
-        else:
+        # config may contain additional user defined args which will not be checked
+        elif not kwargs.get('ignore_additional_args', False):
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
     if data_config['ignore_nans']:
@@ -347,7 +348,8 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
                 raise TypeError("{} must be any of the type {} but it is of type {}"
                                 .format(key, dtype, type(val)))
         elif not isinstance(val, dtype):
-            raise TypeError(f"{key} must be of type {dtype} but it is of type {type(val)}")
+            if val != dict_to_lookup[key]['default']: # the default value may be None which will be different than dtype
+                raise TypeError(f"{key} must be of type {dtype} but it is of type {type(val)}")
 
     if isinstance(val, int) or isinstance(val, float):
         if low is not None:

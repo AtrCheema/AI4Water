@@ -46,6 +46,7 @@ def run_dl4seq(method):
                    "val_data": "same",
                    "test_fraction": 0.3,
                    "ml_model": "xgboostregressor",
+                   "ml_model_args": {'objective': 'reg:squarederror'},
                    "transformation": None
                    }
 
@@ -165,6 +166,7 @@ class TestHyperOpt(unittest.TestCase):
             inputs.remove('target')
             inputs.remove('target_by_group')
             outputs = ['target']
+            kwargs['objective'] = 'reg:squarederror'
 
             model = Model(
                 inputs=inputs,
@@ -225,6 +227,7 @@ class TestHyperOpt(unittest.TestCase):
                        "val_data": "same",
                        "test_fraction": 0.3,
                        "ml_model": "xgboostregressor",
+                       "ml_model_args": {'objective': 'reg:squarederror'},
                        "transformation": None
                        }
 

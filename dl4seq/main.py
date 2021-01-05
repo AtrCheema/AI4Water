@@ -1734,20 +1734,13 @@ class Model(NN, Plots):
             return self._model.loss.__name__
 
     @classmethod
-    def from_config(cls, config_path: str, data, use_pretrained_model=True):
+    def from_config(cls, config_path: str, data, use_pretrained_model=True, **kwargs):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
         idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
-
-        class MM:
-            def __init__(self):
-                self.data = config['data_config']
-                self.model = config['model_config']
-
-        config = MM()
 
         cls.from_check_point = True
 
@@ -1759,9 +1752,11 @@ class Model(NN, Plots):
             path = os.path.dirname(config_path)
         else:
             path = None
-        return cls(config,
+        return cls(**config['data_config'],
+                   **config['model_config'],
                    data=data,
-                   path=path)
+                   path=path,
+                   **kwargs)
 
     def load_weights(self, weight_file: str):
         """
