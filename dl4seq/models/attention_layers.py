@@ -408,7 +408,7 @@ class HierarchicalAttention(Layer):
         # do not pass the mask to the next layers
         return None
 
-    def __call__(self, x, mask=None):
+    def call(self, x, mask=None):
         uit = dot_product(x, self.W)  # eq 5 in paper
 
         if self.bias:
@@ -614,7 +614,7 @@ class SeqSelfAttention(Layer):
                                       regularizer=self.bias_regularizer,
                                       constraint=self.bias_constraint)
 
-    def __call__(self, inputs, mask=None, **kwargs):
+    def call(self, inputs, mask=None, **kwargs):
         input_len = K.shape(inputs)[1]
 
         if self.attention_type.upper().startswith('ADD'):
@@ -759,7 +759,7 @@ class SeqWeightedAttention(keras.layers.Layer):
                                      initializer=keras.initializers.get('zeros'))
         super(SeqWeightedAttention, self).build(input_shape)
 
-    def __call__(self, x, mask=None):
+    def call(self, x, mask=None):
         logits = K.dot(x, self.W)
         if self.use_bias:
             logits += self.b
@@ -807,9 +807,9 @@ class SnailAttention(Layer):
         self.keys_fc = None
         self.queries_fc = None
         self.values_fc = None
-        super(SnailAttention, self).__init__(**kwargs)
 
-    def build(self, input_shape):
+
+    #def build(self, input_shape):
         # https://stackoverflow.com/questions/54194724/how-to-use-keras-layers-in-custom-keras-layer
         self.keys_fc = Dense(self.k_size,  name="Keys_SnailAttn")
         self.keys_fc.build((None, self.dims))
@@ -822,6 +822,7 @@ class SnailAttention(Layer):
         self.values_fc = Dense(self.v_size,  name="Values_SnailAttn")
         self.values_fc.build((None, self.dims))
         self._trainable_weights.extend(self.values_fc.trainable_weights)
+        super(SnailAttention, self).__init__(**kwargs)
 
     def __call__(self, inputs, **kwargs):
         # check that the implementation matches exactly py torch.

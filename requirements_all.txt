@@ -1,9 +1,9 @@
 # this is list of all libraries, if you want to use all features
-tensorflow <=2.3 # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
+tensorflow <=2.3.1 # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 numpy>=1.16.5
 pandas
 matplotlib
-scikit-learn
+scikit-learn>=0.23
 scikit-optimize  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 seaborn
 TSErrors==1.3
