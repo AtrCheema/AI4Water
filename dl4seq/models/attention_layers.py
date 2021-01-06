@@ -1,6 +1,7 @@
 __all__ = ["attn_layers"]
 
 from tensorflow.keras import initializers, regularizers, constraints
+from tensorflow.python.keras.engine import base_layer_utils
 from tensorflow.keras.layers import Layer
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -73,6 +74,10 @@ class AttentionRaffel(Layer):
         return None
 
     def __call__(self, x, mask=None):
+        # TODO different result when using call()
+        if not self.built:
+            self._maybe_build(x)
+
         features_dim = self.features_dim
         step_dim = self.step_dim
 
@@ -215,6 +220,9 @@ class BahdanauAttention(Layer):
         inputs: [encoder_output_sequence, decoder_output_sequence]
         """
 
+        if not self.built:
+            self._maybe_build(inputs)
+
         assert type(inputs) == list
 
         encoder_out_seq, decoder_out_seq = inputs
@@ -267,7 +275,7 @@ class BahdanauAttention(Layer):
             e_i = K.reshape(K.dot(reshaped_Ws_plus_Uh, self.V_a), (-1, en_seq_len))
 
             # batch_size, en_seq_len
-            e_i = K.softmax(e_i)
+            e_i = K.softmax(e_i, name='softmax')
 
             if verbose:
                 print('ei>', e_i.shape)
@@ -408,7 +416,11 @@ class HierarchicalAttention(Layer):
         # do not pass the mask to the next layers
         return None
 
-    def call(self, x, mask=None):
+    def __call__(self, x, mask=None):
+        # TODO different result when using call()
+        if not self.built:
+            self._maybe_build(x)
+
         uit = dot_product(x, self.W)  # eq 5 in paper
 
         if self.bias:
@@ -614,7 +626,11 @@ class SeqSelfAttention(Layer):
                                       regularizer=self.bias_regularizer,
                                       constraint=self.bias_constraint)
 
-    def call(self, inputs, mask=None, **kwargs):
+    def __call__(self, inputs, mask=None, **kwargs):
+        # TODO different result when using call()
+        if not self.built:
+            self._maybe_build(inputs)
+
         input_len = K.shape(inputs)[1]
 
         if self.attention_type.upper().startswith('ADD'):
@@ -638,8 +654,7 @@ class SeqSelfAttention(Layer):
             e -= 10000.0 * ((1.0 - mask) * (1.0 - K.permute_dimensions(mask, (0, 2, 1))))
 
         # a_{t} = \text{softmax}(e_t)
-        e = K.exp(e - K.max(e, axis=-1, keepdims=True))
-        a = e / K.sum(e, axis=-1, keepdims=True)
+        a = Softmax(axis=-1, name='SeqSelfAttention_Softmax')(e)
 
         # l_t = \sum_{t'} a_{t, t'} x_{t'}
         v = K.batch_dot(a, inputs)
@@ -759,7 +774,11 @@ class SeqWeightedAttention(keras.layers.Layer):
                                      initializer=keras.initializers.get('zeros'))
         super(SeqWeightedAttention, self).build(input_shape)
 
-    def call(self, x, mask=None):
+    def __call__(self, x, mask=None):
+        # TODO different result when using call()
+        if not self.built:
+            self._maybe_build(x)
+
         logits = K.dot(x, self.W)
         if self.use_bias:
             logits += self.b
@@ -807,9 +826,10 @@ class SnailAttention(Layer):
         self.keys_fc = None
         self.queries_fc = None
         self.values_fc = None
+        super(SnailAttention, self).__init__(**kwargs)
 
 
-    #def build(self, input_shape):
+    def build(self, input_shape):
         # https://stackoverflow.com/questions/54194724/how-to-use-keras-layers-in-custom-keras-layer
         self.keys_fc = Dense(self.k_size,  name="Keys_SnailAttn")
         self.keys_fc.build((None, self.dims))
@@ -822,9 +842,13 @@ class SnailAttention(Layer):
         self.values_fc = Dense(self.v_size,  name="Values_SnailAttn")
         self.values_fc.build((None, self.dims))
         self._trainable_weights.extend(self.values_fc.trainable_weights)
-        super(SnailAttention, self).__init__(**kwargs)
+        #super(SnailAttention, self).__init__(**kwargs)
 
     def __call__(self, inputs, **kwargs):
+
+        if not self.built:
+            self._maybe_build(inputs)
+
         # check that the implementation matches exactly py torch.
         keys = self.keys_fc(inputs)
         queries = self.queries_fc(inputs)
@@ -887,7 +911,7 @@ class ChannelAttention(layers.Layer):
                                        kernel_regularizer=regularizers.l2(5e-4),
                                        use_bias=True, name='channe2_attn1')
 
-    def call(self, inputs, *args):
+    def __call__(self, inputs, *args):
         avg = self.avg(inputs)  # [256, 32, 32, 64] -> [256, 64]
         max_pool = self.max(inputs) # [256, 32, 32, 64] -> [256, 64]
         avg = layers.Reshape((*self.axis, avg.shape[1]))(avg)   # shape (None, 1, 1 feature)  # [256, 1, 1, 64]
@@ -921,7 +945,7 @@ class SpatialAttention(layers.Layer):
         self.conv1 = regularized_padded_conv(conv_dim,
                                              1, kernel_size=kernel_size, strides=1, activation=tf.nn.sigmoid, name="spatial_attn")
 
-    def call(self, inputs, *args):
+    def __call__(self, inputs, *args):
         avg_out = tf.reduce_mean(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
         max_out = tf.reduce_max(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
         out = tf.stack([avg_out, max_out], axis=self.axis)             # concat。 -> [256, 32, 32, 2]
