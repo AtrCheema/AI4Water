@@ -1,4 +1,4 @@
-# This code is exact copy and past of keract library except few changes in _get_nodes function where I added one
+# This code is almost exact copy and past of keract library except few changes in _get_nodes function where I added one
 # if else statement
 # The original code at https://github.com/philipperemy/keract has following MIT licence as of 24 Nov 2020.
 """
@@ -36,7 +36,10 @@ from tensorflow.keras.models import Model
 
 
 def n_(node, output_format_, nested=False):
-    node_name = str(node.name)
+    if isinstance(node, list) or isinstance(node, tuple):
+        node_name = '_'.join([str(n.name) for n in node])
+    else:
+        node_name = str(node.name)
     if output_format_ == 'simple':
         if '/' in node_name:
             # This ensures that subnodes get properly named.
@@ -82,7 +85,7 @@ def _evaluate(model: Model, nodes_to_evaluate, x, y=None, auto_compile=False):
 
                 _y = np.random.random((x[0].shape[0] if isinstance(x, list) else x.shape[0], 1))
                 result = K.function(k_inputs, nodes_to_evaluate)((x, _y))  # although works.
-                warnings.warn("using dummy y-data, this may not be correct.", UserWarning)
+                warnings.warn("using dummy y-data, this may not be incorrect.", UserWarning)
             return result
 
     try:
@@ -282,9 +285,20 @@ def get_activations(model, x, layer_names=None, nodes_to_evaluate=None,
     input_layer_outputs = []
     layer_outputs = OrderedDict()
 
+    def is_placeholder(n):
+        return (hasattr(n, '_op') and n._op.type == 'Placeholder') or '_input' in str(n)
+
     for key, node in nodes.items():
-        if node.op.type != 'Placeholder':  # no inputs please.
-            layer_outputs.update({key: node})
+        if isinstance(node, list) or isinstance(node, tuple):
+            for nod in node:
+                if not is_placeholder(nod):
+                    if key not in layer_outputs:
+                        layer_outputs[key] = []
+                    layer_outputs[key].append(nod)
+        else:
+            if not is_placeholder(node):
+                layer_outputs.update({key: node})
+
     if nodes_to_evaluate is None or (layer_names is not None) and \
             any([n.name in layer_names for n in model.inputs]):
         input_layer_outputs = list(model.inputs)

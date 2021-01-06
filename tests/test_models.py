@@ -115,7 +115,7 @@ class TestModels(unittest.TestCase):
         }
 
         prediction = make_and_run(model=Model, layers=lyrs, batch_size=batch_size, batches_per_epoch=5)
-        self.assertAlmostEqual(float(prediction.sum()), 474.2324549024024, 4)
+        self.assertAlmostEqual(float(prediction.sum()), 474.3257980449273, 4)
 
     def test_SeqWeightedAttention(self):
         # SeqWeightedAttention
@@ -127,7 +127,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1479.8865355554844, 2)  # TODO failing with higher precision
+        self.assertAlmostEqual(float(prediction.sum()), 1483.734244648907, 2)  # TODO failing with higher precision
 
     def test_RaffelAttention(self):
         # LSTM  + Raffel Attention
@@ -140,7 +140,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1352.1619190201973, 4)
+        self.assertAlmostEqual(float(prediction.sum()), 1353.11274522034, 4)
 
     def test_SnailAttention(self):  # TODO failing to save model to h5 file on linux
         # LSTM  + Snail Attention
@@ -179,7 +179,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1370.537841767262, 3)
+        self.assertAlmostEqual(float(prediction.sum()), 1376.5340244296872, 3)
 
     def test_CNNModel(self):
         # CNN based model
@@ -196,88 +196,26 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), 1347.498777542553, 4)
 
-    def test_LSTMCNNModel(self):
-        # LSTMCNNModel based model
+    def test_channel_attn(self):
         lyrs = {
-            "LSTM": {'config': {'units': 64, 'return_sequences': True}},
-            "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
-            "dropout": {'config': {'rate': 0.3}},
-            "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
-            "maxpool1d": {'config': {'pool_size': 2}},
+            "Conv1D_9": {'config': {'filters': 8, 'kernel_size': 2}},
+            "ChannelAttention": {'config': {'conv_dim': '1d', 'in_planes': 32}},
             'flatten': {'config': {}},
             'leakyrelu': {'config': {}},
             "Dense": {'config': {'units': outs}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
-                  }
+        }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1416.0948761687332, 2)
-
-    def test_ConvLSTMModel(self):
-        # ConvLSTMModel based model
-        self.lookback = 12
-        sub_seq = 3
-        sub_seq_lens = int(self.lookback / sub_seq)
-        lyrs = {
-            'Input' : {'config': {'shape':(sub_seq, 1, sub_seq_lens, ins)}},
-            'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'}},
-            'flatten': {'config': {}},
-            'repeatvector': {'config': {'n': 1}},
-            'lstm':   {'config': {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 }},
-            'Dense': {'config': {'units': outs}},
-            "Reshape": {"config": {"target_shape": (outs, 1)}}
-        }
-        prediction = make_and_run(Model, layers=lyrs, subsequences=sub_seq, lookback=self.lookback)
-        self.assertAlmostEqual(float(prediction.sum()), 1410.6072313256, 3)  # TODO failing with higher precision
-
-    def test_CNNLSTMModel(self):
-        # CNNLSTM based model
-        subsequences = 3
-        lookback = 12
-        timesteps = lookback // subsequences
-        lyrs = {
-            'Input' : {'config': {'shape':(subsequences, timesteps, ins)}},
-            "TimeDistributed_0": {'config': {}},
-            "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
-            "leakyrelu": {'config': {}},
-            "TimeDistributed_1": {'config': {}},
-            "maxpool1d": {'config': {'pool_size': 2}},
-            "TimeDistributed_2": {'config': {}},
-            'flatten': {'config': {}},
-            'lstm':   {'config': {'units': 64,   'activation': 'relu'}},
-            'Dense': {'config': {'units': outs}},
-            "Reshape": {"config": {"target_shape": (outs, 1)}}
-        }
-        prediction = make_and_run(Model, layers=lyrs, subsequences=subsequences)
-        self.assertAlmostEqual(float(prediction.sum()), 1518.5204820165645, 1)
+        self.assertAlmostEqual(float(prediction.sum()), 1559.654005092702, 4)
         return
 
-    def test_LSTMAutoEncoder(self):
-        # LSTM auto-encoder
+    def test_spatial_attn(self):
         lyrs = {
-            'lstm_0': {'config': {'units': 100,  'recurrent_dropout': 0.4}},
-            "leakyrelu_0": {'config': {}},
-            'RepeatVector': {'config': {'n': 11}},
-            'lstm_1': {'config': {'units': 100,  'dropout': 0.3}},
-            "relu_1": {'config': {}},
-            'Dense': {'config': {'units': outs}},
-            "Reshape": {"config": {"target_shape": (outs, 1)}}
-        }
-        prediction = make_and_run(Model, layers=lyrs, lookback=12)
-        self.assertAlmostEqual(float(prediction.sum()), 1532.7482818552835, 2)
-        return
-
-    def test_TCNModel(self):
-        # TCN based model auto-encoder
-        lyrs = {
-            "tcn":  {'config': {'nb_filters': 64,
-                                'kernel_size': 2,
-                                'nb_stacks': 1,
-                                'dilations': [1, 2, 4, 8, 16, 32],
-                                'padding': 'causal',
-                                'use_skip_connections': True,
-                                'return_sequences': False,
-                                'dropout_rate': 0.0}},
-            'Dense':  {'config': {'units': outs}},
+            "Conv1D_9": {'config': {'filters': 8, 'kernel_size': 2}},
+            "SpatialAttention": {'config': {'conv_dim': '1d'}},
+            'flatten': {'config': {}},
+            'leakyrelu': {'config': {}},
+            "Dense": {'config': {'units': outs}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }
         try:

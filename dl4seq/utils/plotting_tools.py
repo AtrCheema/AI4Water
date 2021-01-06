@@ -191,14 +191,15 @@ class Plots(object):
                    where='activations'):
 
         act_2d = []
-        for i in range(activation.shape[0]):
-            act_2d.append(activation[i, :])
-        activation_2d = np.vstack(act_2d)
+        for i in range(activation.shape[2]):
+            act_2d.append(activation[:, :, i])
+        activation_2d = np.concatenate(act_2d, axis=1)
         self._imshow(activation_2d,
                      lyr_name + " Activations (3d of {})".format(activation.shape),
                      save,
                      lyr_name,
-                     where=where)
+                     where=where,
+                     xlabel=self.in_cols)
         return
 
     def _imshow(self, img,
@@ -207,7 +208,8 @@ class Plots(object):
                 fname=None,
                 interpolation:str='none',
                 where='activations',
-                rnn_args=None):
+                rnn_args=None,
+                **kwargs):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
@@ -226,6 +228,9 @@ class Plots(object):
                 plt.ylabel("Hidden Units")
             else:
                 plt.ylabel("Channel Units")
+        else:
+            plt.ylabel('Examples' if 'weight' not in label.lower() else '')
+            plt.xlabel(kwargs.get('xlabel', ''))
 
         plt.colorbar()
         plt.title(label)
@@ -348,8 +353,8 @@ class Plots(object):
             for en in np.arange(slices, data.shape[slice_dim] + slices, slices):
 
                 if save:
-                    name = name + f"_{st}_{en}"
-                    save = os.path.join(self.act_path, name+".png")
+                    fname = name + f"_{st}_{en}"
+                    save = os.path.join(self.act_path, fname+".png")
                 else:
                     save = None
 
