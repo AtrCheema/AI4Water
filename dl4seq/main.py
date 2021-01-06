@@ -45,7 +45,7 @@ elif torch is not None:  # TODO, what if both tf and torch are installed and we 
 
 class Model(NN, Plots):
     """
-    Model class that implements theme of dl4seq.
+    Model class that implements logic of dl4seq.
 
     data: pd.Dataframe or any other conforming type
     prefix: str, prefix to be used for the folder in which the results are saved
@@ -1734,7 +1734,15 @@ class Model(NN, Plots):
             return self._model.loss.__name__
 
     @classmethod
-    def from_config(cls, config_path: str, data, use_pretrained_model=True, **kwargs):
+    def from_config(cls, config_path: str, data, make_new_path=False, **kwargs):
+        """
+        :param config_path:
+        :param data:
+        :param make_new_path: bool, If true, then it means we want to use the config file, only to build the model and a new
+                              path will be made. We should not load the weights in such a case.
+        :param kwargs:
+        :return:
+        """
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
@@ -1748,10 +1756,13 @@ class Model(NN, Plots):
         cls.test_indices = indices["test_indices"]
         cls.train_indices = indices["train_indices"]
 
-        if use_pretrained_model:
-            path = os.path.dirname(config_path)
+        if make_new_path:
+            cls.allow_weight_loading=False
+            path=None
         else:
-            path = None
+            cls.allow_weight_loading = True
+            path = os.path.dirname(config_path)
+
         return cls(**config['data_config'],
                    **config['model_config'],
                    data=data,
@@ -1763,6 +1774,10 @@ class Model(NN, Plots):
         weight_file: str, name of file which contains parameters of model.
         """
         weight_file = os.path.join(self.w_path, weight_file)
+        if not self.allow_weight_loading:
+            raise ValueError(f"Weights loading not allowed because allow_weight_loading is {self.allow_weight_loading}"
+                             f"and model path is {self.path}")
+
         if self.category == "ML":
             if self.data_config['ml_model'].lower().startswith("xgb"):
                 self._model.load_model(weight_file)

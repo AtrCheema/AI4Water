@@ -193,7 +193,7 @@ def _make_model(**kwargs):
                                 'enc_lstm1_act': None,
                                 'enc_lstm2_act': None,
                                 }, 'lower': None, 'upper': None, 'between': None},
-        'dec_config': {'': dict, 'default': {        # arguments for decoder/outputAttention in Dual stage attention
+        'dec_config': {'type': dict, 'default': {        # arguments for decoder/outputAttention in Dual stage attention
                                             'p': 30,
                                             'n_hde0': 30,
                                             'n_sde0': 30

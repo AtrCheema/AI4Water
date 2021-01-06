@@ -6,6 +6,8 @@ from tensorflow.keras.layers import Layer
 from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow.keras.backend as K
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import array_ops
 from tensorflow.keras.layers import Dense, Lambda, dot, Activation, concatenate, Softmax
 import tensorflow as tf
 import math
@@ -87,16 +89,18 @@ class AttentionRaffel(Layer):
         if self.bias:
             eij += self.b
 
-        eij = K.tanh(eij)
+        eij = tf.tanh(eij, name="AttentionRaffel_tanh")
 
-        a = K.exp(eij)
+        a = math_ops.exp(eij, name="AttentionRaffel_exp")
 
         if mask is not None:
             a *= K.cast(mask, K.floatx())
 
-        a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())
+        a = tf.divide(a, K.cast(math_ops.reduce_sum(a, axis=1, keepdims=True,
+                                                    name="AttentionRaffel_sum") + K.epsilon(), K.floatx()),
+                      name="AttentionRaffel_a")
 
-        a = K.expand_dims(a)
+        a = array_ops.expand_dims(a, axis=-1, name="AttentionRaffel_expand_dims")
         weighted_input = x * a
         return K.sum(weighted_input, axis=1)
 
@@ -439,10 +443,12 @@ class HierarchicalAttention(Layer):
         # in some cases especially in the early stages of training the sum may be almost zero
         # and this results in NaN's. A workaround is to add a very small positive number ε to the sum.
         # a /= K.cast(K.sum(a, axis=1, keepdims=True), K.floatx())
-        a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())  # eq 6 in paper
+        # eq 6 in paper
+        a /= math_ops.cast(math_ops.reduce_sum(a, axis=1, keepdims=True, name="HA_sum") + K.epsilon(), K.floatx(),
+                           name="HA_cast")
 
-        a = K.expand_dims(a)
-        weighted_input = x * a
+        a = array_ops.expand_dims(a, axis=-1, name="HA_expand_dims")
+        weighted_input = tf.math.multiply(x,a,name="HA_weighted_input")  #x * a
         return K.sum(weighted_input, axis=1)  # eq 7 in paper
 
     def compute_output_shape(self, input_shape):
@@ -787,8 +793,11 @@ class SeqWeightedAttention(keras.layers.Layer):
         if mask is not None:
             mask = K.cast(mask, K.floatx())
             logits -= 10000.0 * (1.0 - mask)
-        ai = K.exp(logits - K.max(logits, axis=-1, keepdims=True))
-        att_weights = ai / (K.sum(ai, axis=1, keepdims=True) + K.epsilon())
+        ai = math_ops.exp(logits - K.max(logits, axis=-1, keepdims=True), name="SeqWeightedAttention_exp")
+        #att_weights = ai / (K.sum(ai, axis=1, keepdims=True) + K.epsilon())
+        att_weights = tf.math.divide(ai, (math_ops.reduce_sum(ai, axis=1, keepdims=True,
+                                                              name="SeqWeightedAttention_sum") + K.epsilon()),
+                                     name="SeqWeightedAttention_weights")
         weighted_input = x * K.expand_dims(att_weights)
         result = K.sum(weighted_input, axis=1)
         if self.return_attention:
@@ -919,7 +928,7 @@ class ChannelAttention(layers.Layer):
         avg_out = self.conv2(self.conv1(avg))  # [256, 1, 1, 64] -> [256, 1, 1, 4] -> [256, 1, 1, 64]
         max_out = self.conv2(self.conv1(max_pool))  # [256, 1, 1, 64] -> [256, 1, 1, 4] -> [256, 1, 1, 64]
         out = avg_out + max_out  # [256, 1, 1, 64]
-        out = tf.nn.sigmoid(out, name="channel_attn_sigmoid")  # [256, 1, 1, 64]
+        out = tf.nn.sigmoid(out, name="ChannelAttention_sigmoid")  # [256, 1, 1, 64]
 
         return out
 
@@ -946,9 +955,9 @@ class SpatialAttention(layers.Layer):
                                              1, kernel_size=kernel_size, strides=1, activation=tf.nn.sigmoid, name="spatial_attn")
 
     def __call__(self, inputs, *args):
-        avg_out = tf.reduce_mean(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
-        max_out = tf.reduce_max(inputs, axis=self.axis)  # [256, 32, 32, 64] -> [256, 32, 32]
-        out = tf.stack([avg_out, max_out], axis=self.axis)             # concat。 -> [256, 32, 32, 2]
+        avg_out = tf.reduce_mean(inputs, axis=self.axis, name="SpatialAttention_mean")  # [256, 32, 32, 64] -> [256, 32, 32]
+        max_out = tf.reduce_max(inputs, axis=self.axis, name="SpatialAttention_max")  # [256, 32, 32, 64] -> [256, 32, 32]
+        out = tf.stack([avg_out, max_out], axis=self.axis, name="SpatialAttention_stack")             # concat。 -> [256, 32, 32, 2]
         out = self.conv1(out)  # -> [256, 32, 32, 1]
 
         return out

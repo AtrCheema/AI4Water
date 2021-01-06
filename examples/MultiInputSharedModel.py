@@ -52,7 +52,7 @@ class MultiInputSharedModel(Model):
 
         val_data = self.val_data(st=st, en=en, indices=indices)
 
-        history = self.fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
+        history = self._fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
 
         self.plot_loss(history.history)
 
