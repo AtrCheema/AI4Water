@@ -45,7 +45,9 @@ jobs:
         coverage run -m unittest tests.test_tf_losses
         coverage run -m unittest tests.test_activations
 
-        pip uninstall tensorflow
+    - name: Test with tensorflow_1.14
+      run: |
+        pip uninstall tensorflow -y
         pip install tensorflow==1.14
 
         coverage run -m unittest tests.test_tf_losses
@@ -54,7 +56,9 @@ jobs:
         coverage run -m unittest tests.test_without_eager
         coverage run -m unittest tests.test_models
 
-        pip uninstall tensorflow
+    - name: Test with tensorflow_1.15
+      run: |
+        pip uninstall tensorflow -y
         pip install tensorflow==1.15
 
         coverage run -m unittest tests.test_tf_losses
@@ -63,7 +67,9 @@ jobs:
         coverage run -m unittest tests.test_without_eager
         coverage run -m unittest tests.test_models
 
-        pip uninstall tensorflow
+    - name: Test with tensorflow_2.1
+      run: |
+        pip uninstall tensorflow -y
         pip install tensorflow==2.1
 
         coverage run -m unittest tests.test_tf_losses
@@ -72,7 +78,9 @@ jobs:
         coverage run -m unittest tests.test_without_eager
         coverage run -m unittest tests.test_models
 
-        pip uninstall tensorflow
+    - name: Test with tensorflow_2.3
+      run: |
+        pip uninstall tensorflow -y
         pip install tensorflow==2.3
 
         coverage run -m unittest tests.test_tf_losses
