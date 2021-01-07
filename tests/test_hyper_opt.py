@@ -107,29 +107,29 @@ class TestHyperOpt(unittest.TestCase):
         return clf
 
 
-    def test_bayes(self):
-        # testing for sklearn-based model with gp_min
-        # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
-        X, y = load_iris(True)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
-
-        opt = HyperOpt("bayes",  model=SVC(),
-                       param_space={
-            'C': Real(1e-6, 1e+6, prior='log-uniform'),
-            'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
-            'degree': Integer(1, 8),
-            'kernel': Categorical(['linear', 'poly', 'rbf']),
-            },
-            n_iter=32,
-            random_state=0
-        )
-        # executes bayesian optimization
-        _ = opt.fit(X_train, y_train)
-
-        # model can be saved, used for predictions or scoring
-        np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
-        print("BayesSearchCV test passed")
-        return
+    # def test_bayes(self):
+    #     # testing for sklearn-based model with gp_min
+    #     # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
+    #     X, y = load_iris(True)
+    #     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
+    #
+    #     opt = HyperOpt("bayes",  model=SVC(),
+    #                    param_space={
+    #         'C': Real(1e-6, 1e+6, prior='log-uniform'),
+    #         'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
+    #         'degree': Integer(1, 8),
+    #         'kernel': Categorical(['linear', 'poly', 'rbf']),
+    #         },
+    #         n_iter=32,
+    #         random_state=0
+    #     )
+    #     # executes bayesian optimization
+    #     _ = opt.fit(X_train, y_train)
+    #
+    #     # model can be saved, used for predictions or scoring
+    #     np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
+    #     print("BayesSearchCV test passed")
+    #     return
 
 
     def test_gpmin_skopt(self):
