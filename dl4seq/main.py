@@ -298,6 +298,10 @@ class Model(NN, Plots):
                                       indices.""", UserWarning)
                         to_subtract = self.offset
                         self.nans_removed_4m_st = 0
+                    # we don't want to subtract anything from indices, possibly because the number of nans removed from
+                    # start are > lookback.
+                    elif self.nans_removed_4m_st == -9999:
+                        to_subtract = 0
                     else:
                         # because the x,y,z have some initial values removed
                         to_subtract = self.lookback - 1
@@ -666,8 +670,12 @@ class Model(NN, Plots):
     def get_indices(self, indices=None):
         # returns only train indices if `indices` is None
         if isinstance(indices, str) and indices.upper() == 'RANDOM':
-            if self.data_config['ignore_nans']:
+            if self.data_config['ignore_nans'] == 2:
                 tot_obs = self.data.shape[0]
+            elif self.data_config['ignore_nans'] == 1:
+                label_y = self.data[self.out_cols].values
+                idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
+                tot_obs = np.sum(idx)
             else:
                 if self.outs == 1:
                     # TODO it is being supposed that intervals correspond with Nans. i.e. all values outside intervals
@@ -1292,8 +1300,16 @@ class Model(NN, Plots):
         else:
             nans = np.isnan(df[:, -outs:]) # df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
-            if self.data_config['ignore_nans']:
+            if self.data_config['ignore_nans'] == 2:
                 print("\n{} Ignoring NANs in predictions {}\n".format(10 * '*', 10 * '*'))
+            elif self.data_config['ignore_nans'] == 1:
+                print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
+                idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
+                input_x = input_x[idx]
+                input_y = input_y[idx]
+                label_y = label_y[idx]
+                if int(np.isnan(df[:, -outs:][0:self.lookback]).sum() / self.outs) >= self.lookback:
+                    self.nans_removed_4m_st = -9999
             else:
                 if self.method == 'dual_attention':
                     raise ValueError
