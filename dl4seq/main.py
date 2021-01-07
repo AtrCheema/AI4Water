@@ -22,7 +22,7 @@ from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, d
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
-from dl4seq.custom_training import train_step, test_step
+from dl4seq.models.custom_training import train_step, test_step
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -670,9 +670,9 @@ class Model(NN, Plots):
     def get_indices(self, indices=None):
         # returns only train indices if `indices` is None
         if isinstance(indices, str) and indices.upper() == 'RANDOM':
-            if self.data_config['ignore_nans'] == 2:
+            if self.data_config['allow_nan_labels'] == 2:
                 tot_obs = self.data.shape[0]
-            elif self.data_config['ignore_nans'] == 1:
+            elif self.data_config['allow_nan_labels'] == 1:
                 label_y = self.data[self.out_cols].values
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
                 tot_obs = np.sum(idx)
@@ -1293,16 +1293,16 @@ class Model(NN, Plots):
     def check_nans(self, df, input_x, input_y, label_y, outs):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.
         """
-        # TODO, nans in inputs should be ignored at all cost because this causes error in results, when we set ignore_nans
+        # TODO, nans in inputs should be ignored at all cost because this causes error in results, when we set allow_nan_labels
         # to True, then this should apply only to target/labels, and examples with nans in inputs should still be ignored.
         if isinstance(df, pd.DataFrame):
             nans = df[self.out_cols].isna()
         else:
             nans = np.isnan(df[:, -outs:]) # df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
-            if self.data_config['ignore_nans'] == 2:
+            if self.data_config['allow_nan_labels'] == 2:
                 print("\n{} Ignoring NANs in predictions {}\n".format(10 * '*', 10 * '*'))
-            elif self.data_config['ignore_nans'] == 1:
+            elif self.data_config['allow_nan_labels'] == 1:
                 print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
                 input_x = input_x[idx]
@@ -1437,15 +1437,17 @@ class Model(NN, Plots):
 
             if np.ndim(weight) == 2 and weight.shape[1] > 1:
 
-                self._imshow(weight, title, save, fname, rnn_args=rnn_args)
+                self._imshow(weight, title, save, fname, rnn_args=rnn_args, where='weights')
 
             elif len(weight) > 1 and np.ndim(weight) < 3:
-                self.plot1d(weight, title, save, fname, rnn_args=rnn_args)
+                self.plot1d(weight, title, save, fname, rnn_args=rnn_args, where='weights')
 
             elif "conv" in _name.lower() and np.ndim(weight) == 3:
                 _name = _name.replace("/", "_")
                 _name = _name.replace(":", "_")
-                self.features_2d(data=weight, save=save, name=_name, slices=64, slice_dim=2, tight=True, borderwidth=1, norm=(-.1, .1))
+                self.features_2d(data=weight, save=save, name=_name, where='weights',
+                                 slices=64, slice_dim=2, tight=True, borderwidth=1,
+                                 norm=(-.1, .1))
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 

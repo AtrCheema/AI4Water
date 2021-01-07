@@ -415,7 +415,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                         val_fraction=val_fraction,
                         lookback=lookback,
                         lr=lr,
-                        ignore_nans=True,
+                        allow_nan_labels=1,
                         data=[df_1, df_3, df_8, df_12],
                                          **kwargs,)
         _model.load_weights(weights)
@@ -430,7 +430,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                              val_fraction=val_fraction,
                              lookback=lookback,
                              lr=lr,
-                             ignore_nans=True,
+                             allow_nan_labels=1,
                              **kwargs
                              )
     return _model, _train_idx, _test_idx

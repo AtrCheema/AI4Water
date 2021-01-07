@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-import tensorflow as tf
 from dl4seq import Model
 from dl4seq.utils.utils import split_by_indices, train_val_split, stats
 from dl4seq.backend import get_sklearn_models
@@ -37,7 +36,7 @@ lookback=7
 batch_size=16
 
 
-def get_missing_df(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None, input_cols=None):
+def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None, input_cols=None):
     np.random.seed(seed)
 
     if output_cols is None:
@@ -59,7 +58,7 @@ def get_missing_df(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=Non
 
 
 def make_dummy_model(imputation, inputs=True, frac=0.8):
-    orig_df = get_missing_df(inputs=inputs, frac=frac)
+    orig_df = get_df_with_nans(inputs=inputs, frac=frac)
 
     class DummyModel:
         in_cols = ['in1', 'in2']
@@ -456,7 +455,7 @@ class TestUtils(unittest.TestCase):
     def test_random_idx_with_nan_in_outputs(self):
         # testing that if output contains nans and we use random indices, then correct examples are assinged
         # for training and testing given val_data is 'same'.
-        df = get_missing_df(inputs=False, outputs=True, frac=0.8)
+        df = get_df_with_nans(inputs=False, outputs=True, frac=0.8)
 
         model = Model(inputs=['in1', 'in2'],
                       outputs=['out1'],
@@ -494,7 +493,7 @@ class TestUtils(unittest.TestCase):
         Test that when nans are present in inputs and we use random indices, then x,y data is correctly made.
         """
 
-        df = get_missing_df(inputs=True, frac=0.1)
+        df = get_df_with_nans(inputs=True, frac=0.1)
 
         model = Model(inputs=['in1', 'in2'],
                       outputs=['out1'],
@@ -548,14 +547,14 @@ class TestUtils(unittest.TestCase):
         Test that when multiple outputs are the target and they contain nans, then we ignore these nans during
         loss calculation.
         """
-        df = get_missing_df(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
+        df = get_df_with_nans(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
 
         layers = {
             "Flatten": {"config": {}},
             "Dense": {"config": {"units": 2}},
             "Reshape": {"config": {"target_shape": (2,1)}}}
 
-        model = Model(ignore_nans=True,
+        model = Model(allow_nan_labels=True,
                       layers=layers,
                       inputs=['in1', 'in2'],
                       outputs=['out1', 'out2'],
@@ -569,6 +568,56 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
         return
 
+    def test_nan_labels1(self):
+        df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+
+        layers = {
+            "Flatten": {"config": {}},
+            "Dense": {"config": {"units": 2}},
+            "Reshape": {"config": {"target_shape": (2 ,1)}}}
+
+        model = Model(allow_nan_labels=1,
+                      transformation=None,
+                      layers=layers,
+                      inputs=['in1', 'in2'],
+                      outputs=['out1', 'out2'],
+                      epochs=10,
+                      verbosity=0,
+                      data=df.copy())
+
+        history = model.fit(indices='random')
+
+        self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
+        self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+        return
+
+    def test_ignore_nan1_and_data(self):
+        df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+
+        layers = {
+            "Flatten": {"config": {}},
+            "Dense": {"config": {"units": 2}},
+            "Reshape": {"config": {"target_shape": (2, 1)}}}
+
+        model = Model(allow_nan_labels=1,
+                      transformation=None,
+                      val_data="same",
+                      val_fraction=0.0,
+                      layers=layers,
+                      inputs=['in1', 'in2'],
+                      outputs=['out1', 'out2'],
+                      epochs=10,
+                      verbosity=0,
+                      data=df.copy())
+
+        history = model.fit(indices='random')
+
+        self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+
+        testx, testy = model.test_data(indices=model.test_indices)
+
+        np.allclose(testy[4][0], df[['out1']].iloc[29])
+        return
 
 if __name__ == "__main__":
     unittest.main()

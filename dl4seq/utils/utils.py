@@ -80,10 +80,8 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
         fpath = path
 
     with open(fpath, 'w') as fp:
-        try:
-            json.dump(data, fp, sort_keys=sort_keys, indent=4)
-        except TypeError:
-            json.dump(str(data), fp, sort_keys=sort_keys, indent=4)
+        json.dump(data, fp, sort_keys=sort_keys, indent=4)
+
     return
 
 
@@ -270,7 +268,7 @@ def _make_model(**kwargs):
         # if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
         # will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
         # means for multi-outputs, we can end up having examples whose all labels are nans.
-        'ignore_nans':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
+        'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
         # The following argument determines how to deal with missing values in the input data. The default value
         # is None, which will raise error if missing/nan values are encountered in the input data. The can however
         # specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
@@ -328,11 +326,11 @@ def _make_model(**kwargs):
             update_dict(arg_name, val, data_args, data_config)
 
         # config may contain additional user defined args which will not be checked
-        elif not kwargs.get('ignore_additional_args', False):
+        elif not kwargs.get('accept_additional_args', False):
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
-    if data_config['ignore_nans']>0:
-        assert model_config['ml_model'] is None, f"`ignore_nans` should be > 0 only for deep learning models"
+    if data_config['allow_nan_labels']>0:
+        assert model_config['ml_model'] is None, f"`allow_nan_labels` should be > 0 only for deep learning models"
 
     return data_config, model_config
 
@@ -861,4 +859,4 @@ def stats(feature) ->dict:
     _stats["NaN counts"] = np.isnan(feature).sum()
     _stats['Counts'] = len(feature)
 
-    return _stats
+    return Jsonize(_stats)()

@@ -111,7 +111,7 @@ class MultiInputSharedModel(Model):
 
 def make_multi_model(input_model,  from_config=False, config_path=None, weights=None,
                      prefix=None,
-                     batch_size=8, lookback=19, lr=1.52e-5, ignore_nans=True, **kwargs):
+                     batch_size=8, lookback=19, lr=1.52e-5, allow_nan_labels=1, **kwargs):
 
     fpath = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
@@ -131,7 +131,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                                          batch_size=batch_size,
                                          lookback=lookback,
                                          lr=lr,
-                                         ignore_nans=ignore_nans,
+                                         allow_nan_labels=allow_nan_labels,
                                          inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
                                                  'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3'],
                                          outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
@@ -147,7 +147,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                              batch_size=batch_size,
                              lookback=lookback,
                              lr=lr,
-                             ignore_nans=ignore_nans,
+                             allow_nan_labels=allow_nan_labels,
                              inputs=['tmin', 'tmax', 'slr', 'FLOW_INcms', 'SED_INtons', 'WTEMP(C)',
                                      'CBOD_INppm', 'DISOX_Oppm', 'H20VOLUMEm3'],
                              outputs=['obs_chla_1', 'obs_chla_3', 'obs_chla_8'  # , 'obs_chla_12'
@@ -174,7 +174,7 @@ if __name__ == "__main__":
                              lr=0.000216,
                              layers=_layers,
                              epochs=300,
-                             ignore_nans=False,
+                             allow_nan_labels=False,
                              )
     model.train(st=0, en=5500)
     # model.predict()

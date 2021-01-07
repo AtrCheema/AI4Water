@@ -238,7 +238,7 @@ class Plots(object):
 
         return
 
-    def plot1d(self, array, label: str = '', save=True, fname=None, rnn_args=None):
+    def plot1d(self, array, label: str = '', save=True, fname=None, rnn_args=None, where='activations'):
         plt.close('all')
         plt.style.use('ggplot')
         plt.plot(array)
@@ -254,7 +254,7 @@ class Plots(object):
                      for gate_idx in range(1, rnn_args['n_gates'])]
             plt.xlabel(rnn_args['gate_names_str'])
 
-        self.save_or_show(save, fname, where='activations')
+        self.save_or_show(save, fname, where=where)
 
         return
 
@@ -344,7 +344,7 @@ class Plots(object):
                     self._imshow(inputs, save=save, fname= which + '_data_' + str(idx), where='data')
         return
 
-    def features_2d(self, data, name, save=True, slices=32, slice_dim=0, **kwargs):
+    def features_2d(self, data, name, save=True, slices=32, slice_dim=0, where='activations', **kwargs):
         """Calls the features_2d from see-rnn"""
         st=0
         if features_2D is None:
@@ -354,7 +354,7 @@ class Plots(object):
 
                 if save:
                     fname = name + f"_{st}_{en}"
-                    save = os.path.join(self.act_path, fname+".png")
+                    save = os.path.join(os.path.join(self.path, where), fname+".png")
                 else:
                     save = None
 
