@@ -16,6 +16,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.hyper_opt import HyperOpt
 from dl4seq import Model
+from dl4seq.utils.utils import Jsonize
 
 from inspect import getsourcefile
 from os.path import abspath
@@ -167,6 +168,8 @@ class TestHyperOpt(unittest.TestCase):
             inputs.remove('target_by_group')
             outputs = ['target']
             kwargs['objective'] = 'reg:squarederror'
+
+            kwargs = Jsonize(kwargs)()
 
             model = Model(
                 inputs=inputs,
