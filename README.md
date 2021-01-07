@@ -1,7 +1,6 @@
 # dl4seq
 
-[![Build Status](https://travis-ci.com/AtrCheema/dl4seq.svg?branch=master)](https://travis-ci.com/AtrCheema/dl4seq)  
-[![Build Status]](https://github.com/<AtrCheema>/<dl4seq>/python-package/<Test%20with%20unittest>/badge.svg?branch=exp)
+[![Build Status](https://github.com/{AtrCheema}/{dl4seq}/workflows/{python_versions}/badge.svg)](https://github.com/{AtrCheema}/{dl4seq}/actions)
 
 A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. 
