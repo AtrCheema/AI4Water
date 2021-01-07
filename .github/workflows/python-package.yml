@@ -1,4 +1,4 @@
-on
+on:
   push:
     branches: [ exp ]
   pull_request:
