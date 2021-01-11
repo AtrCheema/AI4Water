@@ -1,4 +1,4 @@
-name: tf20
+name: tf230
 on:
   push:
     branches: [ exp ]
@@ -24,12 +24,6 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements_all.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --exit-zero --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with unittest
       run: |
         conda install pytest
@@ -37,7 +31,7 @@ jobs:
         pip install codecov
         pip install python-coveralls
         pip uninstall tensorflow -y
-        pip install tensorflow==2.0
+        pip install tensorflow==2.3.0
 
         coverage run -m unittest tests.test_tf_losses
         coverage run -m unittest tests.test_activations

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7]
+        python-version: [3.6, 3.7, 3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -44,47 +44,3 @@ jobs:
         coverage run -m unittest tests.test_scalers
         coverage run -m unittest tests.test_tf_losses
         coverage run -m unittest tests.test_activations
-
-    - name: Test with tensorflow_1.14
-      run: |
-        pip uninstall tensorflow -y
-        pip install tensorflow==1.14
-
-        coverage run -m unittest tests.test_tf_losses
-        coverage run -m unittest tests.test_activations
-        coverage run -m unittest tests.test_utils
-        coverage run -m unittest tests.test_without_eager
-        coverage run -m unittest tests.test_models
-
-    - name: Test with tensorflow_1.15
-      run: |
-        pip uninstall tensorflow -y
-        pip install tensorflow==1.15
-
-        coverage run -m unittest tests.test_tf_losses
-        coverage run -m unittest tests.test_activations
-        coverage run -m unittest tests.test_utils
-        coverage run -m unittest tests.test_without_eager
-        coverage run -m unittest tests.test_models
-
-    - name: Test with tensorflow_2.1
-      run: |
-        pip uninstall tensorflow -y
-        pip install tensorflow==2.1
-
-        coverage run -m unittest tests.test_tf_losses
-        coverage run -m unittest tests.test_activations
-        coverage run -m unittest tests.test_utils
-        coverage run -m unittest tests.test_without_eager
-        coverage run -m unittest tests.test_models
-
-    - name: Test with tensorflow_2.3
-      run: |
-        pip uninstall tensorflow -y
-        pip install tensorflow==2.3
-
-        coverage run -m unittest tests.test_tf_losses
-        coverage run -m unittest tests.test_activations
-        coverage run -m unittest tests.test_utils
-        coverage run -m unittest tests.test_without_eager
-        coverage run -m unittest tests.test_models

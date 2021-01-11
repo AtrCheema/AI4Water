@@ -13,14 +13,8 @@ from dl4seq import Model
 from dl4seq.utils import make_model
 
 
-def make_model_local(**kwargs):
-    config = make_model(
-        epochs=2,
-        lookback=1,
-        **kwargs
-    )
-    return config
 
+_ = make_model()
 file_path = abspath(getsourcefile(lambda:0))
 dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
