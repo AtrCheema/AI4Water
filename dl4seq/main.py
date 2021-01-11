@@ -19,7 +19,7 @@ from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from dl4seq.backend import imputations, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
-from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model
+from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, make_3d_batches
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 from dl4seq.models.custom_training import train_step, test_step
@@ -1109,133 +1109,6 @@ class Model(NN, Plots):
         """.format(self.lookback)
         return self.check_nans(df, input_x, input_y, np.expand_dims(label_y, axis=2), outs)
 
-    def make_3d_batches(self, df: np.ndarray, outs:int, lookback:int, in_step:int, forecast_step:int,
-                       forecast_len:int):
-        """
-        data: 2d numpy array whose first `ins` columns are used as inputs while last `outs` number of columns are used as
-               outputs.
-        outs: int, number of columns (from last) in data to be used as output. The input columns will be all from start
-              till outs.
-        lookback: int,  number of previous time-steps to be used at one step
-        in_step: int, number of steps in input data
-        forecast_step: int, >=0, which t value to use as target.
-        forecast_len: int, number of horizons/future values to predict.
-
-        Returns:
-          x: numpy array of shape (examples, lookback, ins) consisting of input examples
-          prev_y: numpy array consisting of previous outputs
-          y: numpy array consisting of target values
-
-        Given following sample consisting of input/output paris
-        input, input, output1, output2, output 3
-        1,     11,     21,       31,     41
-        2,     12,     22,       32,     42
-        3,     13,     23,       33,     43
-        4,     14,     24,       34,     44
-        5,     15,     25,       35,     45
-        6,     16,     26,       36,     46
-        7,     17,     27,       37,     47
-
-        If we used following as input
-        1,     11,     21,
-        2,     12,     22,
-        3,     13,     23,
-        4,     14,     24,
-        5,     15,     25,
-        6,     16,     26,
-        7,     17,     27,
-
-                              ins=3, lookback=7, in_step=1
-        and if we predict
-        27, 37, 47     outs=3, forecast_len=1,  horizon/forecast_step=0,
-
-        if we predict
-        28, 38, 48     outs=3, forecast_length=1,  horizon/forecast_step=1,
-
-        if we predict
-        27, 37, 47
-        28, 38, 48     outs=3, forecast_length=2,  horizon/forecast_step=0,
-
-        if we predict
-        28, 38, 48
-        29, 39, 49   outs=3, forecast_length=3,  horizon/forecast_step=1,
-        30, 40, 50
-
-        if we predict
-        38            outs=1, forecast_length=3, forecast_step=0
-        39
-        40
-
-        if we predict
-        39            outs=1, forecast_length=1, forecast_step=2
-
-        if we predict
-        39            outs=1, forecast_length=3, forecast_step=2
-        40
-        41
-
-        output/target/label shape
-        (examples, outs, forecast_length)
-
-        If we use following as input
-        1,     11,     21,
-        3,     13,     23,
-        5,     15,     25,
-        7,     17,     27,
-
-               then        ins=3, lookback=4, in_step=2
-
-        ----------
-        Example
-        ---------
-        examples = 50
-        data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
-
-        x, prevy, label = make_3d_batches(data, ins=3, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
-
-        >> x[0]
-            array([[  0.,  50., 100.],
-           [  2.,  52., 102.],
-           [  4.,  54., 104.],
-           [  6.,  56., 106.]], dtype=float32)
-
-        >> y[0]
-        array([[158., 159., 160., 161.],
-       [208., 209., 210., 211.]], dtype=float32)
-
-        """
-        if len(df) <= 1:
-            raise ValueError(f"Can not create batches from data with shape {df.shape}")
-        x = []
-        prev_y = []
-        y = []
-
-        row_length = len(df)
-        column_length = df.shape[-1]
-
-        for i in range(row_length - lookback * in_step + 1 - forecast_step - forecast_len + 1):
-            stx, enx = i, i + lookback * in_step
-            x_example = df[stx:enx:in_step, 0:column_length - outs]
-
-            st, en = i, i + (lookback - 1) * in_step
-            y_data = df[st:en:in_step, column_length - outs:]
-
-            sty = enx + forecast_step - in_step
-            eny = sty + forecast_len
-            target = df[sty:eny, column_length - outs:]
-
-            x.append(np.array(x_example))
-            prev_y.append(np.array(y_data))
-            y.append(np.array(target))
-
-        #x = np.array([np.array(i, dtype=np.float32) for i in x], dtype=np.float32)
-        x = np.stack(x)
-        prev_y = np.array([np.array(i, dtype=np.float32) for i in prev_y], dtype=np.float32)
-        # transpose because we want labels to be of shape (examples, outs, forecast_length)
-        y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
-
-        return self.check_nans(df, x, prev_y, y, outs)
-
     def imputation(self, df, ins:int, outs):
 
         if self.data_config['input_nans'] is not None:
@@ -1280,15 +1153,15 @@ class Model(NN, Plots):
             if self.data_config['batches'].upper() == "2D":
                 return self.get_2d_batches(df, ins, outs)
             else:
-                return self.make_3d_batches(df, outs, self.lookback, self.data_config['input_step'],
-                                           self.forecast_step, self.forecast_len)
+                return self.check_nans(df, *make_3d_batches(df, outs, self.lookback, self.data_config['input_step'],
+                                           self.forecast_step, self.forecast_len), outs)
         else:
             if len(self.first_layer_shape()) == 2:
                 return self.get_2d_batches(df, ins, outs)
 
             else:
-                return self.make_3d_batches(df, outs, self.lookback, self.data_config['input_step'],
-                                           self.forecast_step, self.forecast_len)
+                return self.check_nans(df, *make_3d_batches(df, outs, self.lookback, self.data_config['input_step'],
+                                           self.forecast_step, self.forecast_len), outs)
 
     def check_nans(self, df, input_x, input_y, label_y, outs):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.

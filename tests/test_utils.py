@@ -10,7 +10,7 @@ import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq import Model
-from dl4seq.utils.utils import split_by_indices, train_val_split, stats
+from dl4seq.utils.utils import split_by_indices, train_val_split, stats, make_3d_batches
 from dl4seq.backend import get_sklearn_models
 
 seed = 313
@@ -382,13 +382,10 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_make_3d_batches(self):
-        class MyModel:
-            def check_nans(self, xx, _y, y, o):
-                return xx, _y, y
+
         exs = 50
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = Model.make_3d_batches(MyModel, d,outs=2,
-                          lookback=4, in_step=2, forecast_step=2, forecast_len=4)
+        x, prevy, label = make_3d_batches(d, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
         self.assertEqual(x.shape, (38, 4, 3))
         self.assertEqual(label.shape, (38, 2, 4))
         self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
