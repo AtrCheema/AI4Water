@@ -210,9 +210,9 @@ class Transformations(scaler_container):
     @features.setter
     def features(self, x):
         if x is None:
-            self._features = list(self.data.columns)
-        else:
-            self._features = x
+            x = list(self.data.columns)
+        assert len(x) == len(set(x)), "duplicated features are not allowed"
+        self._features = x
 
     @property
     def transformed_features(self):
@@ -428,7 +428,7 @@ class Transformations(scaler_container):
             df = trans_df
 
         if not self.change_dim:
-            assert df.shape == self.initial_shape
+            assert df.shape == self.initial_shape, f"shape changed from {self.initial_shape} to {df.shape}"
         return df
 
     def plot_pca(self, target:np.ndarray, pcs:np.ndarray=None, labels:list=None, save=False, dim="3d"):

@@ -283,8 +283,8 @@ def _make_model(**kwargs):
         # The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
         # providing the above mentioned arguments as dictionary or list.
         # The sklearn based imputation methods can also be used in a similar fashion. For KNN
-        # {'KNNImputer': {'n_neighbors': 3}    or for iterative imputation
-        # {'IterativeImputer': {'n_nearest_features': 2}
+        # {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
+        # {'IterativeImputer': {'n_nearest_features': 2}}
         # For more on sklearn based imputation methods see https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
         'input_nans':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
         # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
@@ -851,12 +851,11 @@ def stats(feature, precision=3) ->dict:
     _stats['Coefficient of Variation'] = np.round(variation(feature), precision)
     _stats['Std'] = np.round(np.nanstd(feature), precision)
     _stats['Non zeros'] = np.round(np.count_nonzero(feature), precision)
-    _stats['10 quant'] = np.round(np.nanquantile(feature, 0.1), precision)
-    _stats['50 quant'] = np.round(np.nanquantile(feature, 0.5), precision)
-    _stats['90 quant'] = np.round(np.nanquantile(feature, 0.9), precision)
-    _stats['25 %ile'] = np.round(np.nanpercentile(feature, 25), precision)
-    _stats['50 %ile'] = np.round(np.nanpercentile(feature, 50), precision)
-    _stats['75 %ile'] = np.round(np.nanpercentile(feature, 75), precision)
+    _stats['10 Percentile'] = np.round(np.nanpercentile(feature, 10), precision)
+    _stats['25 Percentile'] = np.round(np.nanpercentile(feature, 25), precision)
+    _stats['50 Percentile'] = np.round(np.nanpercentile(feature, 50), precision)
+    _stats['75 Percentile'] = np.round(np.nanpercentile(feature, 75), precision)
+    _stats['90 Percentile'] = np.round(np.nanpercentile(feature, 90), precision)
     _stats['Min'] = np.round(np.nanmin(feature), precision)
     _stats['Max'] = np.round(np.nanmax(feature), precision)
     _stats["Negative counts"] = int(np.sum(feature < 0.0))
