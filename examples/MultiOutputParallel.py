@@ -1,4 +1,4 @@
-# This file contruction of different models for multi output with following assumptions.
+# This file shows contruction of different models for multi output with following assumptions.
 # Each output comes from one parallel structure/layer of # NN.
 # Each parallel NN is not connected during forward propagation and each parallel NN receives separate input.
 # The final loss is calculated by adding the loss from each of the parallel NN.
@@ -43,7 +43,7 @@ class MultiOutputParallel(Model):
             self.out_cols = [self.data_config['outputs'][out]]  # because fetch_data depends upon self.outs
             scaler_key = str(out) if 'scaler_key' not in kwargs else kwargs['scaler_key']
             kwargs['scaler_key'] = scaler_key
-            x, _, labels = self.fetch_data(data=self.data[out], **kwargs)
+            x, _, labels = self.fetch_data(data=self.data[out][self.in_cols + self.out_cols], **kwargs)
 
             x_data.append(x)
             y_data.append(labels)
@@ -373,6 +373,8 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
     df_8 = pd.read_csv(os.path.join(fpath, 'data_8.csv'))
     df_12 = pd.read_csv(os.path.join(fpath, 'data_12.csv'))
+
+    assert df_1.shape == df_3.shape == df_8.shape == df_12.shape
 
     chl_1_nonan_idx = df_1[:-lookback][~df_1['obs_chla_1'][:-lookback].isna().values].index  # 175
     chl_3_nonan_idx = df_3[:-lookback][~df_3['obs_chla_3'][:-lookback].isna().values].index  # 181

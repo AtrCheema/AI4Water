@@ -9,12 +9,10 @@ from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precisio
 from sklearn import tree
 from dl4seq.backend import xgboost
 import matplotlib as mpl
-try:
-    import plotly.express as px
-except ModuleNotFoundError:
-    px = None
+import matplotlib.ticker as ticker
 
 from dl4seq.utils.transformations import Transformations
+from dl4seq.utils.utils import _missing_vals
 
 try:
     from dl4seq.utils.utils_from_see_rnn import rnn_histogram
@@ -474,7 +472,7 @@ class Plots(object):
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
 
-    def plot_feature_importance(self, importance=None, save=True, use_xgb=False):
+    def plot_feature_importance(self, importance=None, save=True, use_xgb=False, **kwargs):
 
         if importance is None:
             importance = self.feature_imporance()
@@ -501,9 +499,9 @@ class Plots(object):
             if xgboost is None:
                 warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
             else:
-                xgboost.plot_importance(self._model)
+                xgboost.plot_importance(self._model, **kwargs)
         else:
-            plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance)
+            plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance, **kwargs)
             plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
         self.save_or_show(save, fname="feature_importance.png")
         return
@@ -517,10 +515,62 @@ class Plots(object):
         else:
             self._feature_feature_corr(self.data, cols, save=save, **kwargs)
 
-    def _feature_feature_corr(self, data, cols, prefix='', save=True, **kwargs):
-        corr = data[cols].corr()
-        sns.heatmap(corr, **kwargs)
-        self.save_or_show(save, fname=f"feature_feature_corr_{prefix}", where="data")
+    def _feature_feature_corr(self,
+                              data,
+                              cols,
+                              prefix='',
+                              save=True,
+                              split=None,
+                              threshold=0,
+                              figsize=(20,20),
+                              **kwargs):
+        """
+        split : Optional[str], optional
+        Type of split to be performed {None, "pos", "neg", "high", "low"}, by default None
+        method : str, optional
+                 {"pearson", "spearman", "kendall"}, by default "pearson"
+
+        kwargs
+            * vmax: float, default is calculated from the given correlation \
+                coefficients.
+                Value between -1 or vmin <= vmax <= 1, limits the range of the cbar.
+            * vmin: float, default is calculated from the given correlation \
+                coefficients.
+                Value between -1 <= vmin <= 1 or vmax, limits the range of the cbar.
+        To plot positive correlation only:
+        _feature_feature_corr(model.data, list(model.data.columns), split="pos")
+        To plot negative correlation only
+        _feature_feature_corr(model.data, list(model.data.columns), split="neg")
+        """
+
+        method = kwargs.get('method', 'pearson')
+
+        corr = data[cols].corr(method=method)
+
+        if split == "pos":
+            corr = corr.where((corr >= threshold) & (corr > 0))
+        elif split == "neg":
+            corr = corr.where((corr <= threshold) & (corr < 0))
+
+        mask = np.zeros_like(corr, dtype=np.bool)
+
+        vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
+        vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        _kwargs = dict()
+        _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
+        _kwargs['cmap'] = kwargs.get('cmap', "BrBG")
+        _kwargs['vmax'] = kwargs.get('vmax', vmax)
+        _kwargs['vmin'] = kwargs.get('vmin', vmin)
+        _kwargs['linewidths'] = kwargs.get('linewidths', 0.5)
+        _kwargs['annot_kws'] = kwargs.get('annot_kws', {"size": 10})
+        _kwargs['cbar_kws'] = kwargs.get('cbar_kws', {"shrink": 0.95, "aspect": 30})
+
+        ax = sns.heatmap(corr, center=0, fmt=".2f", ax=ax, **_kwargs)
+        ax.set(frame_on=True)
+        self.save_or_show(save, fname=f"feature_corr_{prefix}", where="data")
         return
 
     def roc_curve(self, x, y, save=True):
@@ -964,15 +1014,51 @@ class Plots(object):
                 self.plot_missing_df(data, prefix=str(idx), save=save, **kwargs)
         return
 
-    def plot_missing_df(self, data:pd.DataFrame, prefix:str='', save:bool=True, **kwargs):
-        gone = data.isnull().sum()
-        if px is None:
-            warnings.warn("install plotly to use the method `plot_missing_df`.", UserWarning)
+    def plot_missing_df(self, data:pd.DataFrame, figsize:tuple=(20,20), fname:str='missing_vals', save:bool=True, **kwargs):
+        # Identify missing values
+        mv_total, mv_rows, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
+
+        if mv_total == 0:
+            print("No missing values found in the dataset.")
         else:
-            fig = px.bar(gone, color=gone.values, title="Total number of missing values for each column", **kwargs)
-            if save:
-                fig.write_image(os.path.join(self.data_path, f"missing_vals_{prefix}.png"))
-            return
+            # Create figure and axes
+            fig = plt.figure(figsize=figsize)
+            gs = fig.add_gridspec(nrows=1, ncols=1, left=0.1, wspace=0.05)
+            ax1 = fig.add_subplot(gs[:1, :5])
+
+            # ax1 - Barplot
+            ax1 = sns.barplot(x=list(data.columns), y=np.round((mv_cols_ratio) * 100, 2), ax=ax1, **kwargs)
+            ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
+            ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)
+            ax1.grid(linestyle=":", linewidth=1)
+            ax1.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+            ax1.set_yticklabels(ax1.get_yticks(),
+                                fontsize="18")
+            ax1.set_ylabel("Missing Percentage", fontsize="24")
+            ax1.set_xticklabels(
+                ax1.get_xticklabels(),
+                horizontalalignment="center",
+                fontweight="light",
+                rotation=90,
+                fontsize="12",
+            )
+            ax1.tick_params(axis="y", colors="#111111", length=1)
+
+            # annotate values on top of the bars
+            for rect, label in zip(ax1.patches, mv_cols):
+                height = rect.get_height()
+                ax1.text(
+                    0.1 + rect.get_x() + rect.get_width() / 2,
+                    height + 0.5,
+                    label,
+                    ha="center",
+                    va="bottom",
+                    rotation="90",
+                    alpha=0.5,
+                    fontsize="11",
+                )
+        self.save_or_show(save=save, fname=fname, where='data', dpi=500)
+        return
 
     def plot_histograms(self, save=True, **kwargs):
         """Plots distribution of data as histogram.
@@ -989,6 +1075,42 @@ class Plots(object):
     def plot_his_df(self, data, prefix='', save=True, **kwargs):
         data.hist(bins=100, figsize=(20, 8), **kwargs)
         self.save_or_show(fname=f"hist_{prefix}", save=save, where='data')
+
+    def data_heatmap(self, **kwargs):
+        if isinstance(self.data, list):
+
+            for idx, data in self.data:
+                self._data_heatmap(data, fname=f"data_heatmap_{idx}", **kwargs)
+        else:
+            self._data_heatmap(self.data, **kwargs)
+
+    def _data_heatmap(self,
+                      data:pd.DataFrame,
+                      figsize: tuple = (20, 20),
+                      spine_color: str = "#EEEEEE",
+                      save=True,
+                      fname="data_heatmap"
+                     ):
+        fig, ax2 = plt.subplots(figsize=figsize)
+        # ax2 - Heatmap
+        sns.heatmap(data.isna(), cbar=False, cmap="binary", ax=ax2)
+        ax2.set_yticks(ax2.get_yticks()[0::5].astype('int'))
+        ax2.set_yticklabels(ax2.get_yticks(),
+                            fontsize="16")
+        ax2.set_xticklabels(
+            ax2.get_xticklabels(),
+            horizontalalignment="center",
+            fontweight="light",
+            fontsize="12",
+        )
+        ax2.tick_params(length=1, colors="#111111")
+        ax2.set_ylabel("Examples", fontsize="24")
+        for _, spine in ax2.spines.items():
+            spine.set_visible(True)
+            spine.set_color(spine_color)
+
+        self.save_or_show(save=save, fname=fname, where='data', dpi=500)
+        return
 
 
 def plot_style(df:pd.DataFrame, **kwargs):

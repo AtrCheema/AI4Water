@@ -123,7 +123,7 @@ class NN(AttributeStore):
                         wrp_layer = LAYERS[lyr_name.upper()]
                         lyr_cache[lyr_name] = wrp_layer
                         continue
-                    elif  lyr_name.upper() == "LAMBDA":
+                    elif  "LAMBDA" in lyr_name.upper():
                         # lyr_config is serialized lambda layer, which needs to be deserialized
                         layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
                         # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
@@ -146,7 +146,7 @@ class NN(AttributeStore):
                     wrp_layer = LAYERS[lyr_name.upper()]
                     lyr_cache[lyr_name] = wrp_layer
                     continue
-                elif lyr_name.upper() == "LAMBDA":
+                elif "LAMBDA" in lyr_name.upper():
                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                     layer_outputs = tf.keras.layers.deserialize(lyr_config)(call_args)
                     layers_config[lyr]['config'] = lyr_config

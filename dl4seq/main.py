@@ -1690,13 +1690,16 @@ class Model(NN, Plots):
         h5.close()
         return
 
-    def eda(self, freq=None):
+    def eda(self, freq=None, **kwargs):
         """Performs comprehensive Exploratory Data Analysis.
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
         `monthly`."""
         # plot number if missing vals
         self.plot_missing()
+
+        # show data as heatmapt
+        self.data_heatmap()
 
         # line plots of input/output data
         self.plot_data(freq=freq, subplots=True, figsize=(12, 14), sharex=True)
@@ -1721,7 +1724,7 @@ class Model(NN, Plots):
 
         return
 
-    def stats(self, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
+    def stats(self, precision=3, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
         """Finds the stats of inputs and outputs and puts them in a json file.
         inputs: bool
         fpath: str, path like
@@ -1749,7 +1752,7 @@ class Model(NN, Plots):
             description = {}
             for col in cols:
                 if col in self.data:
-                    description[col] = stats(self.data[col])
+                    description[col] = stats(self.data[col], precision=precision)
 
             fpath = os.path.join(self.data_path, fname) if fpath is None else fpath
             save_stats(description, fpath)
@@ -1764,7 +1767,7 @@ class Model(NN, Plots):
 
                     for col in cols:
                         if col in data:
-                            _description[col] = stats(data[col])
+                            _description[col] = stats(data[col], precision=precision)
 
                 description['data' + str(idx)] = _description
                 _fpath = os.path.join(self.data_path, fname+f'_{idx}') if fpath is None else fpath

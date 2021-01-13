@@ -13,6 +13,7 @@ import matplotlib as mpl
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 import scipy
 import warnings
+from typing import Any, Dict
 
 
 def maybe_create_path(prefix=None, path=None):
@@ -822,7 +823,7 @@ def post_process_skopt_results(skopt_results, results, opt_path):
     return
 
 
-def stats(feature) ->dict:
+def stats(feature, precision=3) ->dict:
     """Gets all the possible stats about an array like object `feature`.
     `feature: array like
     """
@@ -832,34 +833,70 @@ def stats(feature) ->dict:
         else:
             raise TypeError(f"input must be array like but it is of type {type(feature)}")
 
+    if np.array(feature).dtype.type is np.str_:
+        warnings.warn("columns contains string values")
+        return {}
     _stats = dict()
-    _stats['Skew'] = skew(feature)
-    _stats['Kurtosis'] = kurtosis(feature)
-    _stats['Mean'] = np.nanmean(feature)
-    _stats['Geometric Mean'] = gmean(feature)
+    _stats['Skew'] = np.round(skew(feature), precision)
+    _stats['Kurtosis'] = np.round(kurtosis(feature), precision)
+    _stats['Mean'] = np.round(np.nanmean(feature), precision)
+    _stats['Geometric Mean'] = np.round(gmean(feature), precision)
     try:
-        _stats['Harmonic Mean'] = hmean(feature)
+        _stats['Harmonic Mean'] = np.round(hmean(feature), precision)
     except ValueError:
         warnings.warn("Harmonic mean only defined if all elements greater than or equal to zero", UserWarning)
-    _stats['Standard error of mean'] = scipy.stats.sem(feature)
-    _stats['Median'] = np.nanmedian(feature)
-    _stats['Variance'] = np.nanvar(feature)
-    _stats['Coefficient of Variation'] = variation(feature)
-    _stats['Std'] = np.nanstd(feature)
-    _stats['Non zeros'] = np.count_nonzero(feature)
-    _stats['10 quant'] = np.nanquantile(feature, 0.1)
-    _stats['50 quant'] = np.nanquantile(feature, 0.5)
-    _stats['90 quant'] = np.nanquantile(feature, 0.9)
-    _stats['25 %ile'] = np.nanpercentile(feature, 25)
-    _stats['50 %ile'] = np.nanpercentile(feature, 50)
-    _stats['75 %ile'] = np.nanpercentile(feature, 75)
-    _stats['Min'] = np.nanmin(feature)
-    _stats['Max'] = np.nanmax(feature)
-    _stats["Negative counts"] = float(np.sum(feature < 0.0))
+    _stats['Standard error of mean'] = np.round(scipy.stats.sem(feature), precision)
+    _stats['Median'] = np.round(np.nanmedian(feature), precision)
+    _stats['Variance'] = np.round(np.nanvar(feature), precision)
+    _stats['Coefficient of Variation'] = np.round(variation(feature), precision)
+    _stats['Std'] = np.round(np.nanstd(feature), precision)
+    _stats['Non zeros'] = np.round(np.count_nonzero(feature), precision)
+    _stats['10 quant'] = np.round(np.nanquantile(feature, 0.1), precision)
+    _stats['50 quant'] = np.round(np.nanquantile(feature, 0.5), precision)
+    _stats['90 quant'] = np.round(np.nanquantile(feature, 0.9), precision)
+    _stats['25 %ile'] = np.round(np.nanpercentile(feature, 25), precision)
+    _stats['50 %ile'] = np.round(np.nanpercentile(feature, 50), precision)
+    _stats['75 %ile'] = np.round(np.nanpercentile(feature, 75), precision)
+    _stats['Min'] = np.round(np.nanmin(feature), precision)
+    _stats['Max'] = np.round(np.nanmax(feature), precision)
+    _stats["Negative counts"] = int(np.sum(feature < 0.0))
     _stats["NaN counts"] = np.isnan(feature).sum()
     _stats['Counts'] = len(feature)
 
     return Jsonize(_stats)()
+
+def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Modified after https://github.com/akanz1/klib/blob/main/klib/utils.py#L197
+     Gives metrics of missing values in the dataset.
+    Parameters
+    ----------
+    data : pd.DataFrame
+        2D dataset that can be coerced into Pandas DataFrame
+    Returns
+    -------
+    Dict[str, float]
+        mv_total: float, number of missing values in the entire dataset
+        mv_rows: float, number of missing values in each row
+        mv_cols: float, number of missing values in each column
+        mv_rows_ratio: float, ratio of missing values for each row
+        mv_cols_ratio: float, ratio of missing values for each column
+    """
+
+    data = pd.DataFrame(data).copy()
+    mv_rows = data.isna().sum(axis=1)
+    mv_cols = data.isna().sum(axis=0)
+    mv_total = data.isna().sum().sum()
+    mv_rows_ratio = mv_rows / data.shape[1]
+    mv_cols_ratio = mv_cols / data.shape[0]
+
+    return {
+        "mv_total": mv_total,
+        "mv_rows": mv_rows,
+        "mv_cols": mv_cols,
+        "mv_rows_ratio": mv_rows_ratio,
+        "mv_cols_ratio": mv_cols_ratio,
+    }
 
 
 def make_3d_batches(df: np.ndarray, outs:int, lookback:int, in_step:int, forecast_step:int,
