@@ -698,9 +698,12 @@ class Plots(object):
         i = 1
 
         legends = {
-            'mean_absolute_error': 'MAE',
-            'mean_absolute_percentage_error': 'MAPE',
-            'mean_squared_logarithmic_error': 'MSLE',
+            'mean_absolute_error': 'Mean Absolute Error',
+            'mean_absolute_percentage_error': 'Mean Absolute Percentage Error',
+            'mean_squared_logarithmic_error': 'Mean Squared Logrithmic Error',
+            'pbias': "Percent Bias",
+            "nse": "Nash-Sutcliff Efficiency",
+            "kge": "Kling-Gupta Efficiency"
         }
 
         sub_plots = {1: {'axis': (1,1), 'width': 10, 'height': 10},
@@ -727,17 +730,17 @@ class Plots(object):
                 m_name = '_'.join(m_name)
             if m_name in list(axis_cache.keys()):
                 axis = axis_cache[m_name]
-                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ' + legends.get(m_name, m_name))
+                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ')
                 axis.legend()
             else:
                 axis = fig.add_subplot(*sub_plots[len(history)]['axis'], i)
-                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ' + legends.get(key, key))
+                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ')
                 axis.legend()
                 axis.set_xlabel("Epochs")
                 axis.set_ylabel(legends.get(key, key))
-                axis.set(frame_on=True)
                 axis_cache[key] = axis
                 i += 1
+            axis.set(frame_on=True)
 
         fig.set_figheight(sub_plots[len(history)]['height'])
         fig.set_figwidth(sub_plots[len(history)]['width'])

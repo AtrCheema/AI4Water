@@ -156,3 +156,19 @@ preds, obs = model.predict(st=150, en=220)
 Athough the purpose of this repo is purportedly `all_in_one` model, however there is no `one_for_all` model. For each
 deep learning proble, the model needs to be build accordingly. I made this repo to teach myself deep learning for time
 series prediction. 
+
+#### Related
+
+[sktime: A Unified Interface for Machine Learning with Time Series](https://github.com/alan-turing-institute/sktime)
+
+[Seglearn: A Python Package for Learning Sequences and Time Series](https://github.com/dmbee/seglearn)
+
+[Pastas: Open Source Software for the Analysis of Groundwater Time Series](https://github.com/pastas/pastas)
+
+[Time Series FeatuRe Extraction on basis of Scalable Hypothesis tests (tsfresh -- A Python package)](https://github.com/blue-yonder/tsfresh)
+
+[MLAir](https://gmd.copernicus.org/preprints/gmd-2020-332/)
+
+[pyts: A Python Package for Time Series Classification](https://github.com/johannfaouzi/pyts)
+
+[Tslearn, A Machine Learning Toolkit for Time Series Data](https://github.com/tslearn-team/tslearn)
