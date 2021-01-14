@@ -1133,7 +1133,7 @@ class Model(NN, Plots):
                         kwargs = list(val.values())[0]
                         df[key] = impute_df(pd.DataFrame(df[key]), how, **kwargs)
                 else:
-                    df = impute_df(df, list(self.data_config['input_nans'].keys())[0], **kwargs)
+                    df[self.in_cols] = impute_df(df[self.in_cols], list(self.data_config['input_nans'].keys())[0], **kwargs)
 
             else:
                 raise ValueError(f"Unknown value '{self.data_config['input_nans']} to deal with with nans in inputs")
