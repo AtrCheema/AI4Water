@@ -820,6 +820,8 @@ class Model(NN, Plots):
             if 'tcn' in self.model_config['layers']:
                 tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
 
+        # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
+        self.save_config()
         return
 
     def build_ml_model(self):
