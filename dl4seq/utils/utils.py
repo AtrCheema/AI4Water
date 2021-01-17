@@ -269,6 +269,7 @@ def _make_model(**kwargs):
         # if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
         # will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
         # means for multi-outputs, we can end up having examples whose all labels are nans.
+        # if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
         # The following argument determines how to deal with missing values in the input data. The default value
         # is None, which will raise error if missing/nan values are encountered in the input data. The can however

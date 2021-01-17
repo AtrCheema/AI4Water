@@ -699,7 +699,7 @@ class Plots(object):
 
         legends = {
             'mean_absolute_error': 'Mean Absolute Error',
-            'mean_absolute_percentage_error': 'Mean Absolute Percentage Error',
+            'mape': 'Mean Absolute Percentage Error',
             'mean_squared_logarithmic_error': 'Mean Squared Logrithmic Error',
             'pbias': "Percent Bias",
             "nse": "Nash-Sutcliff Efficiency",

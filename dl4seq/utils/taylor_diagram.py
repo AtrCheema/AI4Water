@@ -6,6 +6,8 @@ import mpl_toolkits.axisartist.grid_finder as GF
 
 from TSErrors import FindErrors
 
+np.random.seed(313)
+
 COLORS = np.array([
        [0.89411765, 0.10196078, 0.10980392, 1.        ],
        [0.21568627, 0.49411765, 0.72156863, 1.        ],
@@ -38,17 +40,19 @@ class TaylorDiagram(object):
                  rect=111,
                  label='_',
                  srange=(0, 1.5),
-                 extend=False):
+                 extend=False,
+                 axis_fontdict:dict=None):
         """
         Set up Taylor diagram axes, i.e. single quadrant polar
         plot, using `mpl_toolkits.axisartist.floating_axes`.
         Parameters:
-        * refstd: reference standard deviation to be compared to
-        * fig: input Figure or None
-        * rect: subplot definition
-        * label: reference label
-        * srange: stddev axis extension, in units of *refstd*
-        * extend: extend diagram to negative correlations
+        :refstd: reference standard deviation to be compared to
+        :fig: input Figure or None
+        :rect: subplot definition
+        :label: reference label
+        :srange: stddev axis extension, in units of *refstd*
+        :extend: extend diagram to negative correlations
+        :param axis_fontdict: dictionary must consist of at least three dictionaries 'left', 'right', 'top'
         """
 
         #self.refstd = refstd            # Reference standard deviation
@@ -90,12 +94,21 @@ class TaylorDiagram(object):
         ax.axis["top"].major_ticklabels.set_axis_direction("top")
         ax.axis["top"].label.set_axis_direction("top")
         ax.axis["top"].label.set_text("Correlation")
+        ax.axis['top'].label.set_fontsize(axis_fontdict['top'].get('fontsize', 18))
+        ax.axis['top'].label.set_color(axis_fontdict['top'].get('color', 'k'))
+        ax.axis['top'].major_ticklabels.set_fontsize(axis_fontdict['top'].get('ticklabel_fs', 10))
 
         ax.axis["left"].set_axis_direction("bottom")  # "X axis"
         ax.axis["left"].label.set_text("Standard deviation")
+        ax.axis['left'].label.set_fontsize(axis_fontdict['bottom'].get('fontsize', 18))
+        ax.axis['left'].label.set_color(axis_fontdict['bottom'].get('color', 'k'))
+        ax.axis['left'].major_ticklabels.set_fontsize(axis_fontdict['bottom'].get('ticklabel_fs', 10))
 
         ax.axis["right"].set_axis_direction("top")    # "Y-axis"
         ax.axis["right"].toggle(ticklabels=True)
+        ax.axis['right'].label.set_fontsize(axis_fontdict['left'].get('fontsize', 18))
+        ax.axis['right'].label.set_color(axis_fontdict['left'].get('color', 'k'))
+        ax.axis['right'].major_ticklabels.set_fontsize(axis_fontdict['left'].get('ticklabel_fs', 10))
         ax.axis["right"].major_ticklabels.set_axis_direction(
             "bottom" if extend else "left")
 
@@ -150,21 +163,56 @@ class TaylorDiagram(object):
         return contours
 
 
-def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
+def plot_taylor(trues:dict,
+                simulations:dict,
+                axis_locs:dict=None,
+                cont_kws:dict=None,
+                grid_kws:dict=None,
+                leg_kws:dict=None,
+                axis_fontdict=None,
+                axis_kws:dict=None,
+                **kwargs):
     """
     :param trues: a dictionary of length > 1, whose keys are scenarios and values represent true/observations at that
                   scenarios.
     :param simulations: A dictionary of length > 1 whose keys are scenarios and whose values are also dictionary. Each
                         sub-dictionary i.e. dictionary of scenario consist of models/simulations.
-    :param rects: dict, dictionary defining axis orientation of figure. For example with two scenarios named 'scenario1'
+    :param axis_locs: dict, dictionary defining axis orientation of figure. For example with two scenarios named 'scenario1'
                   and 'scenario2', if we want to plot two plots in one column, then this argument will be
                   {'scenario1': 211,
                    'scenario2': 212}.
                    Default is None.
+    :param cont_kws: dict, kwargs related to contours. Following args can be used
+        levels: level of contours
+        colors: color of contours
+        label_fs: fontsize of labels
+        label_fmt: format of labels
+        linewidths: float or sequence of floats
+        linestyles: {None, 'solid', 'dashed', 'dashdot', 'dotted'}
+        https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
+
+    :param grid_kws:dict, kwargs related to grid. Following args can be used
+        title_fontsize: int, fontsize of the axis title
+        which: {'major', 'minor', 'both'}
+        axis: {'both', 'x', 'y'},
+        any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
+
+    :param leg_kws: dict, kwargs related to legends
+        position:
+        fontsize: int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
+        numpoints: int, default: rcParams["legend.numpoints"] (default: 1)
+        markerscale: float, default: rcParams["legend.markerscale"] (default: 1.0)
+        https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
+
+    :param axis_fontdict: dict, dictionary defining propertiies of axis labels
+        axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+                         'bottom': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14},
+                         'top': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14}}
+
+    :param axis_kws: dict, dictionary containing general parameters related to axis such as title.
 
     :param kwargs: Following keyword arguments are optional
       - add_ith_interval: bool
-      - add_grid: bool
       - plot_bias: bool, if True, the size of the markers will be used to represent bias. The markers will be
                    triangles with their sides up/down depending upon value of bias.
       - ref_color: str, color of refrence dot
@@ -173,14 +221,31 @@ def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
       - colors: 2d numpy array, defining colors. The first dimension should be equal to number of models.
       - extend: bool, default False, if True, will plot negative correlation
       - save: bool, if True, will save the plot
-      - leg_size: string defining size of legend
       - figsize: tuple defining figsize, default is (11,8).
-    :return:
+    :return: None
+
+    :Example
+    >>>import numpy as np
+    >>>np.random.seed(92)
+    >>>plot_taylor(trues={'site1': np.random.normal(20, 40, 10)},
+                simulations={
+                    "site1":
+                        {"LSTM": np.random.normal(20, 40, 10),
+                         "CNN": np.random.normal(20, 40, 10),
+                         "TCN": np.random.normal(20, 40, 10),
+                         "CNN-LSTM": np.random.normal(20, 40, 10)}
+                },
+                cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
+                grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
+                axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+                         'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+                         'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
+                leg_kws={'fontsize': 16, 'markerscale': 2}
+                )
     """
     scenarios = trues.keys()
 
     add_ith_interval = kwargs.get('add_idth_interval', False)
-    add_grid = kwargs.get('add_grid', True)
     ref_color = kwargs.get('ref_color', 'r')
     intervals = kwargs.get('intervals', [])
     colors = kwargs.get('colors', COLORS)
@@ -188,12 +253,11 @@ def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
     save = kwargs.get('save', True)
     name = kwargs.get('name', 'taylor.png')
     plot_bias = kwargs.get('plot_bias', False)
-    leg_size = kwargs.get('leg_size', 'medium')
     title = kwargs.get('title', "")
     figsize = kwargs.get("figsize", (11, 8))
 
-    if rects is None:
-        rects = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
+    if axis_locs is None:
+        axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
 
     n_plots = len(trues)
     assert n_plots == len(simulations)
@@ -210,8 +274,8 @@ def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
     for scen in scenarios:
         if scen not in simulations:
             raise KeyError(msg(scen))
-        if scen not in rects:
-            raise KeyError(msg(scen, "rects"))
+        if scen not in axis_locs:
+            raise KeyError(msg(scen, "axis_locs"))
 
     def get_marker(er, idx):
         ls = ''
@@ -231,12 +295,19 @@ def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
     fig = plt.figure(figsize=figsize)
     fig.suptitle(title, fontsize=18)
 
+    if axis_fontdict is None:
+        axis_fontdict = {'left': {},
+                         'right': {},
+                         'bottom': {},
+                         'top': {}}
+
     for season in scenarios:
 
         dia = TaylorDiagram(trues[season],
                             fig=fig,
-                            rect=rects[season],
+                            rect=axis_locs[season],
                             label='Reference',
+                            axis_fontdict=axis_fontdict,
                             extend=extend)
 
         dia.samplePoints[0].set_color(ref_color)  # Mark reference point as a red star
@@ -264,27 +335,46 @@ def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
 
             idx += 1
 
+        if cont_kws is None:
+            cont_kws = dict()
+
         # Add RMS contours, and label them
-        contours = dia.add_contours(levels=5, colors='0.5')  # 5 levels
-        dia.ax.clabel(contours, inline=1, fontsize=10, fmt='%.1f')
+        contours = dia.add_contours(levels=cont_kws.get('level', 5), colors=cont_kws.get('colors', '0.5'),
+                                    linewidths=cont_kws.get('linewidths', 1.5),
+                                    linestyles=cont_kws.get('linestyles', None))  # 5 levels
+        dia.ax.clabel(contours, inline=cont_kws.get('inline', 1), fontsize=cont_kws.get('label_fs', 10), fmt='%.1f')
+
+        add_grid = True
+        if grid_kws is None:
+            add_grid = False
+            grid_kws = dict()
 
         if add_grid:
-            dia.add_grid()  # Add grid
+            dia.add_grid(**grid_kws)  # Add grid
             dia._ax.axis[:].major_ticks.set_tick_out(True)  # Put ticks outward
 
+        if axis_kws is None:
+            axis_kws = dict()
+        title_fontsize = axis_kws.pop('title_fontsize') if 'title_fontsize' in axis_kws else 14
         # Tricky: ax is the polar ax (used for plots), _ax is the
         # container (used for layout)
         if len(scenarios) > 1:
-            dia._ax.set_title(season.capitalize(), fontdict={'fontsize':14})
+            dia._ax.set_title(season.capitalize(), fontdict={'fontsize':title_fontsize})
 
     # Add a figure legend and title. For loc option, place x,y tuple inside [ ].
     # Can also use special options here:
     # http://matplotlib.sourceforge.net/users/legend_guide.html
 
-    leg_pos = "center" if len(scenarios) == 4 else "upper right"
+    if leg_kws is None:
+        leg_kws = dict()
+
+    leg_pos = leg_kws.get('position', "center" if len(scenarios) == 4 else "upper right")
     fig.legend(dia.samplePoints,
                [p.get_label() for p in dia.samplePoints],
-               numpoints=1, prop=dict(size=leg_size), loc=leg_pos)
+               numpoints=leg_kws.get('numpoints', 1),
+               fontsize=leg_kws.get('fontsize', 14),
+               markerscale=leg_kws.get('markerscale', 1),
+               loc=leg_pos)
 
     fig.tight_layout()
 
@@ -297,14 +387,14 @@ def plot_taylor(trues:dict, simulations:dict, rects:dict=None, **kwargs):
 
 if __name__ == "__main__":
 
-    trues = {
+    observations = {
         'site1': np.random.normal(20, 40, 10),
         'site2': np.random.normal(20, 40, 10),
         'site3': np.random.normal(20, 40, 10),
         'site4': np.random.normal(20, 40, 10),
     }
 
-    simulations = {
+    simus = {
         "site1": {"LSTM": np.random.normal(20, 40, 10),
                   "CNN": np.random.normal(20, 40, 10),
                   "TCN": np.random.normal(20, 40, 10),
@@ -331,21 +421,19 @@ if __name__ == "__main__":
     x99 = [0.05, 19.0]  # For Prcp, this is for 99th level (r = 0.254)
     y99 = [0.0, 70.0]
 
-    intervals = [[x95, y95], [x99, y99]]
+    _intervals = [[x95, y95], [x99, y99]]
 
     rects = dict(site1=221,
                  site2=222,
                  site3=223,
                  site4=224)
 
-    add_ith_interval = True
-    add_grid = True
-
-    plot_taylor(trues=trues,
-                simulations=simulations,
-                rects=rects,
-                add_grid=add_grid,
+    plot_taylor(trues=observations,
+                simulations=simus,
+                axis_locs=rects,
                 plot_bias=True,
-                add_idth_interval=add_ith_interval,
-                intervals=intervals,
+                add_idth_interval=False,
+                intervals=_intervals,
+                cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
+                grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
                 title="Test")
