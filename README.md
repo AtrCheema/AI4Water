@@ -10,12 +10,17 @@
 
 
 A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
-for time series and 1D data. 
+for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
 
-The purpose of the repository is
-* compliment the functionality of keras by making pre and post processing easeier for time-series prediction problems
+`Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
+ the ability to babysit a large number of experiments at once, staring at plots and tweaking/re-launching what works. 
+ This is necessary, but not sufficient.`"` 
+
+The specific purposes of the repository are
+* compliment the functionality of keras by making pre and post processing easeier for time-series
+  prediction/classification problems (also holds true for any 1D data)
 * save, load/reload or build models from readable json file.
-* both of above functionalities should be available without complicating simple keras implementation.
+* both of above functionalities should be available without complicating keras implementation.
 * provide a uniform `one window` interface for optimizing hyper-parameters using either Bayesian, random or grid search
   for any kind of model using `HyperOpt` class. This class sits on top of [BayesSearchCV](https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html),
   [GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV),
@@ -26,7 +31,7 @@ The purpose of the repository is
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
 This repository provides a framework to build layered models using python dictionary and with several helper tools 
-which fasten the process of  modeling time-series forcasting. The purpose is to cut the time to write boiler plate code
+which fasten the process of  modeling time-series forcasting. The purpose is to cut short the time to write boiler plate code
 in developing deep learning based models.
 
 Most of the models in this repository have been adopted from other repositories in order to create an `all in one` code.

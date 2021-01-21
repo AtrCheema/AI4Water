@@ -33,7 +33,7 @@ model = Model(
               )
 ```
 
-<img src="imgs/mlp.png" width="300" height="400" />
+<img src="imgs/mlp.png" width="500" height="600" />
 
 ### LSTM based model
 
@@ -57,7 +57,7 @@ model = Model(batch_size=16,
               data=df
               )
 ```
-<img src="imgs/lstm.png" width="300" height="400" />
+<img src="imgs/lstm.png" width="500" height="600" />
 
 ### 1d CNN based model
 If a layer does not receive any input arguments for its initialization, still an empty dictioanry must be provided.  
@@ -74,7 +74,7 @@ layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
           }
 ```
 
-<img src="imgs/cnn.png" width="300" height="400" />
+<img src="imgs/cnn.png" width="500" height="600" />
 
 ### LSTM -> CNN based model
 
@@ -89,7 +89,7 @@ layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config': {'units': 1}}
           }
 ```
-<img src="imgs/lstm_cnn.png" width="300" height="400" />
+<img src="imgs/lstm_cnn.png" width="500" height="600" />
 
 ### ConvLSTM based model
 
@@ -101,7 +101,7 @@ layers = {'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activ
           'Dense': {'config': {'units': 1}}
           }
 ```
-<img src="imgs/convlstm.png" width="300" height="400" />
+<img src="imgs/convlstm.png" width="500" height="600" />
 
 ### CNN -> LSTM
 If a layer is to be enclosed in `TimeDistributed` layer, just add the layer followed by `TimeDistributed` as shown below.
@@ -134,7 +134,7 @@ layers = {
     'Dense': {'config': {'units': 1}}
 }
 ```
-<img src="imgs/cnn_lstm.png" width="600" height="700" />
+<img src="imgs/cnn_lstm.png" width="800" height="900" />
 
 ### LSTM based auto-encoder
 ```python
@@ -147,7 +147,7 @@ layers = {
     'Dense': {'config': {'units': 1}}
 }
 ```
-<img src="imgs/lstm_autoenc.png" width="300" height="400" />
+<img src="imgs/lstm_autoenc.png" width="500" height="700" />
 
 ### TCN layer
 You can use third party layers such as [`tcn`](https://github.com/philipperemy/keras-tcn) which is currently not supported by Tensorflow. Provided you have 
@@ -166,7 +166,7 @@ layers = {"tcn": {'config': {'nb_filters': 64,
           }
 ```
 
-<img src="imgs/tcn.png" width="300" height="300" />
+<img src="imgs/tcn.png" width="500" height="700" />
 
 ### Multiple Inputs
 In order to build more complex models, where a layer takes more than one inputs, you can specify the `inputs` key
@@ -206,7 +206,7 @@ layers = {"Input_0": {"config": {"shape": (5, 10), "name": "cont_inputs"}},
 As the above model takes two inputs, we will have to overwrite `run_paras` method in our own class which should inherit
 from `Model` class
 
-<img src="imgs/lstm_dense.png" width="500" height="600" />
+<img src="imgs/lstm_dense.png" width="700" height="800" />
 
 ### Multiple Output Layers
 In some cases a layer returns more than one output and we want to use each of those outputs in a separate layer. Such
@@ -237,7 +237,7 @@ layers = {
 }
 ```
 
-<img src="imgs/multi_output_layer.png" width="400" height="500" />
+<img src="imgs/multi_output_layer.png" width="600" height="700" />
 
 ### Additional call args
 We might be tempted to provide additional call arguments to a layer. For example, in tensorflow's [LSTM layer](https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM#call_arguments_2), we can
@@ -276,7 +276,7 @@ layers ={
               'inputs': "MyConcat"}
 }
 ```
-<img src="imgs/add_call_args.png" width="500" height="600" />
+<img src="imgs/add_call_args.png" width="700" height="800" />
 
 It must be noted that the keys `inputs`, `outputs`, and `call_args` are optional while `config` is mandatory.
 
@@ -300,6 +300,6 @@ config_path = "path like"
 df = pd.read_csv('data/data.csv')
 model = Model.from_config(config_path=config_path, data=df)
 ```
-<img src="imgs/lambda.png" width="300" height="400" />
+<img src="imgs/lambda.png" width="500" height="600" />
 
 For more examples see `examples`.

@@ -14,7 +14,7 @@ from dl4seq import Model
 from dl4seq.utils.utils import post_process_skopt_results
 
 
-# TODO incorporate hyper_opt library
+# TODO incorporate hyper_opt, optuna and RayTune libraries under the hood
 # TODO add generic algorithm, deap/pygad
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
 

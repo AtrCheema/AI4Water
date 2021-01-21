@@ -272,7 +272,7 @@ def _make_model(**kwargs):
         # if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
         # The following argument determines how to deal with missing values in the input data. The default value
-        # is None, which will raise error if missing/nan values are encountered in the input data. The can however
+        # is None, which will raise error if missing/nan values are encountered in the input data. The user can however
         # specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
         # be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
         # forward filling, the user can do as following
@@ -311,7 +311,7 @@ def _make_model(**kwargs):
         # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
         # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
         # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
-        "intervals":         {"type": tuple, "default": None, 'lower': None, 'upper': None, 'between': None}
+        "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None}
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -983,13 +983,13 @@ def make_3d_batches(df: np.ndarray, outs:int, lookback:int, in_step:int, forecas
 
     x, prevy, label = make_3d_batches(data, ins=3, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
 
-    >> x[0]
+    >>>x[0]
         array([[  0.,  50., 100.],
        [  2.,  52., 102.],
        [  4.,  54., 104.],
        [  6.,  56., 106.]], dtype=float32)
 
-    >> y[0]
+    >>>y[0]
     array([[158., 159., 160., 161.],
    [208., 209., 210., 211.]], dtype=float32)
 
@@ -1000,19 +1000,19 @@ def make_3d_batches(df: np.ndarray, outs:int, lookback:int, in_step:int, forecas
     prev_y = []
     y = []
 
-    row_length = len(df)
-    column_length = df.shape[-1]
+    samples = len(df)
+    features = df.shape[1]
 
-    for i in range(row_length - lookback * in_step + 1 - forecast_step - forecast_len + 1):
+    for i in range(samples - lookback * in_step + 1 - forecast_step - forecast_len + 1):
         stx, enx = i, i + lookback * in_step
-        x_example = df[stx:enx:in_step, 0:column_length - outs]
+        x_example = df[stx:enx:in_step, 0:features - outs]
 
         st, en = i, i + (lookback - 1) * in_step
-        y_data = df[st:en:in_step, column_length - outs:]
+        y_data = df[st:en:in_step, features - outs:]
 
         sty = enx + forecast_step - in_step
         eny = sty + forecast_len
-        target = df[sty:eny, column_length - outs:]
+        target = df[sty:eny, features - outs:]
 
         x.append(np.array(x_example))
         prev_y.append(np.array(y_data))

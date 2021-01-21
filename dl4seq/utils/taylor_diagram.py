@@ -203,6 +203,7 @@ def plot_taylor(trues:dict,
         numpoints: int, default: rcParams["legend.numpoints"] (default: 1)
         markerscale: float, default: rcParams["legend.markerscale"] (default: 1.0)
         https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
+        example: leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
     :param axis_fontdict: dict, dictionary defining propertiies of axis labels
         axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
@@ -293,7 +294,8 @@ def plot_taylor(trues:dict,
 
     plt.close('all')
     fig = plt.figure(figsize=figsize)
-    fig.suptitle(title, fontsize=18)
+    if title is not None:
+        fig.suptitle(title, fontsize=18)
 
     if axis_fontdict is None:
         axis_fontdict = {'left': {},
@@ -366,15 +368,14 @@ def plot_taylor(trues:dict,
     # http://matplotlib.sourceforge.net/users/legend_guide.html
 
     if leg_kws is None:
-        leg_kws = dict()
+        leg_pos = leg_kws.get('position', "center" if len(scenarios) == 4 else "upper right")
+        leg_kws = {'loc': leg_pos}
 
-    leg_pos = leg_kws.get('position', "center" if len(scenarios) == 4 else "upper right")
+
+
     fig.legend(dia.samplePoints,
                [p.get_label() for p in dia.samplePoints],
-               numpoints=leg_kws.get('numpoints', 1),
-               fontsize=leg_kws.get('fontsize', 14),
-               markerscale=leg_kws.get('markerscale', 1),
-               loc=leg_pos)
+               **leg_kws)
 
     fig.tight_layout()
 
