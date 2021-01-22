@@ -1,10 +1,12 @@
 from inspect import getsourcefile
 from os.path import abspath
-import pandas as pd
-import numpy as np
+import warnings
 import unittest
 import os
 
+import tensorflow as tf
+import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
@@ -12,6 +14,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 from dl4seq import Model
 from dl4seq.utils.utils import split_by_indices, train_val_split, stats, make_3d_batches
 from dl4seq.backend import get_sklearn_models
+from dl4seq.utils.imputation import Imputation
 
 seed = 313
 np.random.seed(seed)
@@ -56,17 +59,6 @@ def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=N
 
     return df
 
-
-def make_dummy_model(imputation, inputs=True, frac=0.8):
-    orig_df = get_df_with_nans(inputs=inputs, frac=frac)
-
-    class DummyModel:
-        in_cols = ['in1', 'in2']
-        out_cols = ['out1']
-        data_config = {'input_nans': imputation}
-
-    _df = Model.imputation(DummyModel, orig_df, len(in_cols), len(out_cols))
-    return _df, orig_df
 
 def get_layers(o=1, forecast_len=1):
 
@@ -517,25 +509,28 @@ class TestUtils(unittest.TestCase):
 
     def test_ffill(self):
         """Test that filling nan by ffill method works"""
-        out, _df = make_dummy_model({'fillna': {'method': 'ffill'}})
-
-        self.assertAlmostEqual(sum(out[2:8,1]), 0.1724 * 6, 4)
+        orig_df = get_df_with_nans()
+        imputer = Imputation(data=orig_df, method='fillna', imputer_args={'method': 'ffill'})
+        imputed_df = imputer()
+        self.assertAlmostEqual(sum(imputed_df.values[2:8, 1]), 0.1724 * 6, 4)
 
         return
 
     def test_interpolate_cubic(self):
         """Test that fill nan by interpolating using cubic method works."""
-        out, _ = make_dummy_model({'interpolate': {'method': 'cubic'}})
-
-        self.assertAlmostEqual(float(out[8, 0]), 0.6530285703060589, 4)
+        orig_df = get_df_with_nans()
+        imputer = Imputation(data=orig_df, method='interpolate', imputer_args={'method': 'cubic'})
+        imputed_df = imputer()
+        self.assertAlmostEqual(imputed_df.values[8, 0], 0.6530285703060589)
 
         return
 
     def test_knn_imputation(self):
         """Test that knn imputation works seamlessly"""
-        out, _df = make_dummy_model({'KNNImputer': {'n_neighbors': 3}}, frac=0.5)
-
-        self.assertEqual(np.isnan(out).sum(), 0)
+        orig_df = get_df_with_nans(frac=0.5)
+        imputer = Imputation(data=orig_df, method='KNNImputer', imputer_args={'n_neighbors': 3})
+        imputed_df = imputer()
+        self.assertEqual(sum(imputed_df.isna().sum()),  0)
 
         return
 
@@ -544,77 +539,86 @@ class TestUtils(unittest.TestCase):
         Test that when multiple outputs are the target and they contain nans, then we ignore these nans during
         loss calculation.
         """
-        df = get_df_with_nans(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23:
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+        else:
+            df = get_df_with_nans(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
 
-        layers = {
-            "Flatten": {"config": {}},
-            "Dense": {"config": {"units": 2}},
-            "Reshape": {"config": {"target_shape": (2,1)}}}
+            layers = {
+                "Flatten": {"config": {}},
+                "Dense": {"config": {"units": 2}},
+                "Reshape": {"config": {"target_shape": (2,1)}}}
 
-        model = Model(allow_nan_labels=True,
-                      layers=layers,
-                      inputs=['in1', 'in2'],
-                      outputs=['out1', 'out2'],
-                      epochs=10,
-                      verbosity=0,
-                      data=df)
+            model = Model(allow_nan_labels=True,
+                          layers=layers,
+                          inputs=['in1', 'in2'],
+                          outputs=['out1', 'out2'],
+                          epochs=10,
+                          verbosity=0,
+                          data=df)
 
-        history = model.fit()
+            history = model.fit()
 
-        self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
-        self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
-        return
+            self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
+            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+            return
 
     def test_nan_labels1(self):
-        df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23:
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+        else:
+            df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
 
-        layers = {
-            "Flatten": {"config": {}},
-            "Dense": {"config": {"units": 2}},
-            "Reshape": {"config": {"target_shape": (2 ,1)}}}
+            layers = {
+                "Flatten": {"config": {}},
+                "Dense": {"config": {"units": 2}},
+                "Reshape": {"config": {"target_shape": (2 ,1)}}}
 
-        model = Model(allow_nan_labels=1,
-                      transformation=None,
-                      layers=layers,
-                      inputs=['in1', 'in2'],
-                      outputs=['out1', 'out2'],
-                      epochs=10,
-                      verbosity=0,
-                      data=df.copy())
+            model = Model(allow_nan_labels=1,
+                          transformation=None,
+                          layers=layers,
+                          inputs=['in1', 'in2'],
+                          outputs=['out1', 'out2'],
+                          epochs=10,
+                          verbosity=0,
+                          data=df.copy())
 
-        history = model.fit(indices='random')
+            history = model.fit(indices='random')
 
-        self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
-        self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
-        return
+            self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
+            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+            return
 
     def test_ignore_nan1_and_data(self):
-        df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23:
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+        else:
+            df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
 
-        layers = {
-            "Flatten": {"config": {}},
-            "Dense": {"config": {"units": 2}},
-            "Reshape": {"config": {"target_shape": (2, 1)}}}
+            layers = {
+                "Flatten": {"config": {}},
+                "Dense": {"config": {"units": 2}},
+                "Reshape": {"config": {"target_shape": (2, 1)}}}
 
-        model = Model(allow_nan_labels=1,
-                      transformation=None,
-                      val_data="same",
-                      val_fraction=0.0,
-                      layers=layers,
-                      inputs=['in1', 'in2'],
-                      outputs=['out1', 'out2'],
-                      epochs=10,
-                      verbosity=0,
-                      data=df.copy())
+            model = Model(allow_nan_labels=1,
+                          transformation=None,
+                          val_data="same",
+                          val_fraction=0.0,
+                          layers=layers,
+                          inputs=['in1', 'in2'],
+                          outputs=['out1', 'out2'],
+                          epochs=10,
+                          verbosity=0,
+                          data=df.copy())
 
-        history = model.fit(indices='random')
+            history = model.fit(indices='random')
 
-        self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
 
-        testx, testy = model.test_data(indices=model.test_indices)
+            testx, testy = model.test_data(indices=model.test_indices)
 
-        np.allclose(testy[4][0], df[['out1']].iloc[29])
-        return
+            np.allclose(testy[4][0], df[['out1']].iloc[29])
+            return
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,7 @@ from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, d
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, make_3d_batches
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
+from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
 
 def reset_seed(seed):
@@ -294,8 +295,8 @@ class Model(NN, Plots):
                         self.offset = abs(self.lookback + additional - self.nans_removed_4m_st-1)
                         warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
                                       containing values were skipped from start. This may lead to some wrong examples
-                                      at the start or an offset of {self.offset} in
-                                      indices.""", UserWarning)
+                                      at the start or an offset of {self.offset} in indices.""",
+                                      UserWarning)
                         to_subtract = self.offset
                         self.nans_removed_4m_st = 0
                     # we don't want to subtract anything from indices, possibly because the number of nans removed from
@@ -964,6 +965,47 @@ class Model(NN, Plots):
             self.plot_all_qs(true_outputs, predicted)
 
         return true_outputs, predicted
+
+    def impute(self, method, imputer_args=None, inputs=False, outputs=False, cols=None):
+        """impute the missing data. One of either inputs, outputs or cols can be used."""
+        if cols is not None:
+            if not isinstance(cols, list):
+                assert isinstance(cols, str)
+                cols = [cols]
+            assert not inputs and not outputs
+        else:
+            if inputs:
+                cols = self.in_cols
+            elif outputs:
+                cols = self.out_cols
+        # if self.data is dataframe, default
+        if isinstance(self.data, pd.DataFrame):
+            initial_nans = sum(self.data[cols].isna().sum())
+            self.data[cols] = Imputation(self.data[cols], method=method, imputer_args=imputer_args)()
+            if self.verbosity>0:
+                print(f"Number of nans changed from {initial_nans} to {self.data[cols].isna().sum()}")
+        # may be self.data is list of dataframes
+        elif isinstance(self.data, list):
+            data_holder = []
+            for data in self.data:
+                if isinstance(data, pd.DataFrame):
+                    initial_nans = data[cols].isna().sum()
+                    data[cols] = Imputation(data[cols], method=method, imputer_args=imputer_args)()
+                    if self.verbosity > 0:
+                        print(f"Number of nans changed from {initial_nans} to {data[cols].isna().sum()}")
+                data_holder.append(data)
+            self.data = data_holder
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.values():
+                if isinstance(data, pd.DataFrame):
+                    initial_nans = data[cols].isna().sum()
+                    data[cols] = Imputation(data[cols], method=method, imputer_args=imputer_args)()
+                    if self.verbosity > 0:
+                        print(f"Number of nans changed from {initial_nans} to {data[cols].isna().sum()}")
+                    self.data[data_name] = data
+
+        return
 
     def denormalize_data(self, inputs: np.ndarray, predicted: np.ndarray, true: np.ndarray, scaler_key: str):
         """
