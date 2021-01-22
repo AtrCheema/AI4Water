@@ -691,11 +691,42 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
             df = pd.read_csv(fname)
 
             if 'val_loss' in df:
-                min_val_loss = round(float(np.min(df[metric_name])), 6)
+                min_val_loss = round(float(np.nanmin(df[metric_name])), 6)
                 results[min_val_loss] = {'folder': os.path.basename(folder)}
     return results
 
-def clear_weights(opt_dir, results:dict=None, keep=3):
+
+def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5"):
+    """Given weights in w_path, find the best weight."""
+    assert best in ['min', 'max']
+    all_weights = os.listdir(w_path)
+    losses = {}
+    for w in all_weights:
+        wname = w.split(ext)[0]
+        val_loss = str(float(wname.split('_')[2]))  # converting to float so that trailing 0 is removed
+        losses[val_loss] = {'loss': wname.split('_')[2], 'epoch': wname.split('_')[1]}
+
+    loss_array = np.array([float(l) for l in losses.keys()])
+    best_loss = getattr(np, best)(loss_array)
+    best_weight = f"weights_{losses[str(best_loss)]['epoch']}_{losses[str(best_loss)]['loss']}.hdf5"
+    return best_weight
+
+
+def remove_all_but_best_weights(w_path, best:str="min", ext:str=".hdf5"):
+    """removes all the weights from a folder except the best weigtht"""
+    best_weights =  None
+    if os.path.exists(w_path):
+        # remove all but best weight
+        all_weights = os.listdir(w_path)
+        best_weights = find_best_weight(w_path, best=best, ext=ext)
+        ws_to_del = [w for w in all_weights if w != best_weights]
+        for w in ws_to_del:
+            os.remove(os.path.join(w_path, w))
+
+    return best_weights
+
+
+def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
     """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
     of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
 
@@ -707,6 +738,7 @@ def clear_weights(opt_dir, results:dict=None, keep=3):
     od = OrderedDict(sorted(results.items()))
 
     idx = 0
+    best_results = {}
     for k,v in od.items():
         if 'folder' in v:
             folder = v['folder']
@@ -716,26 +748,35 @@ def clear_weights(opt_dir, results:dict=None, keep=3):
             if idx > keep-1:
                 if os.path.exists(w_path):
                     rmtree(w_path)
+            else:
+                best_weights = remove_all_but_best_weights(w_path)
+                best_results[folder] = {'path': _path, 'weights': best_weights}
 
             idx += 1
 
-    # append ranking of models to folder_names
-    idx = 0
-    for k,v in od.items():
-        if 'folder' in v:
-            folder = v['folder']
-            old_path = os.path.join(opt_dir, folder)
-            new_path = os.path.join(opt_dir, str(idx+1) + "_" + folder)
-            os.rename(old_path, new_path)
+    if rename:
+        # append ranking of models to folder_names
+        idx = 0
+        for k,v in od.items():
+            if 'folder' in v:
+                folder = v['folder']
+                old_path = os.path.join(opt_dir, folder)
+                new_path = os.path.join(opt_dir, str(idx+1) + "_" + folder)
+                os.rename(old_path, new_path)
 
-            idx += 1
+                if folder in best_results:
+                    best_results[folder] = {'path': new_path, 'weights': best_results[folder]}
+
+                idx += 1
 
     od = {k:Jsonize(v)() for k,v in od.items()}
 
-    sorted_fname = os.path.join(opt_dir, fname)
-    with open(sorted_fname, 'w') as sfp:
-        json.dump(od, sfp, sort_keys=True, indent=True)
-    return
+    if write:
+        sorted_fname = os.path.join(opt_dir, fname)
+        with open(sorted_fname, 'w') as sfp:
+            json.dump(od, sfp, sort_keys=True, indent=True)
+
+    return best_results
 
 
 def get_attributes(aus, what:str='losses') ->dict:
