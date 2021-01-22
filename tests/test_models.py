@@ -3,6 +3,8 @@ import os
 import unittest
 from sys import platform
 
+import tensorflow as tf
+
 import site  # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
@@ -11,6 +13,8 @@ from os.path import abspath
 
 from dl4seq import Model
 from dl4seq import NBeatsModel
+
+PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
 input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']
@@ -86,7 +90,10 @@ class TestModels(unittest.TestCase):
         }
 
         prediction = make_and_run(Model, lookback=1, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1289.3845434825826, 3)
+        trues = {
+            '21_posix': 1312.3688450753175,
+        }
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1289.3845434825826), 3)
         return
 
     def test_LSTMModel(self):
@@ -98,7 +105,10 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1434.2028425805552, 3)
+        trues = {
+            '21_posix': 1408.9016057021054,
+        }
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1434.2028425805552), 3)
         return
 
     def test_SeqSelfAttention(self):
@@ -139,8 +149,11 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
+        trues = {
+            '21_posix': 1361.6870130712944,
+        }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1353.11274522034, 4)
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1353.11274522034), 4)
 
     def test_SnailAttention(self):  # TODO failing to save model to h5 file on linux
         # LSTM  + Snail Attention
@@ -155,7 +168,10 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }
         prediction = make_and_run(Model, layers=lyrs, save_model=False)
-        self.assertAlmostEqual(float(prediction.sum()), 1356.0140036362777, 2)  # TODO failing with higher precision
+        trues = {
+            '21_posix': 1327.5073743917194,
+        }
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1356.0140036362777), 2)  # TODO failing with higher precision
 
     def test_SelfAttention(self):
         # LSTM + SelfAttention model
@@ -167,7 +183,10 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1534.6699074814169, 4)
+        trues = {
+            '21_posix': 1522.6872986943176,
+        }
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1534.6699074814169), 4)
 
     def test_HierarchicalAttention(self):
         # LSTM + HierarchicalAttention model
@@ -194,7 +213,10 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1347.498777542553, 4)
+        trues = {
+            '21_posix': 1347.4325338505837,
+        }
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1347.498777542553), 4)
 
     def test_channel_attn(self):
         lyrs = {
@@ -206,7 +228,10 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1559.654005092702, 4)
+        trues = {
+            '21_posix': 1548.395502996973,
+        }
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1559.654005092702), 4)
         return
 
     def test_spatial_attn(self):

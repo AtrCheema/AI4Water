@@ -212,7 +212,7 @@ def _make_model(**kwargs):
         'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
         'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},  # to save the best models using checkpoints
         'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},  # used for cnn_lst structure
-        'HARHN_config': {'type': dict, 'default': {'n_conv_lyrs': 3,
+        'harhn_config': {'type': dict, 'default': {'n_conv_lyrs': 3,
                                                   'enc_units': 64,
                                                   'dec_units': 64}, 'lower': None, 'upper': None, 'between': None},
         'nbeats_options': {'type': dict, 'default': {

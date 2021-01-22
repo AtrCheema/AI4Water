@@ -1734,22 +1734,22 @@ class Model(NN, Plots):
         h5.close()
         return
 
-    def eda(self, freq=None, **kwargs):
+    def eda(self, freq=None, cols=None, **kwargs):
         """Performs comprehensive Exploratory Data Analysis.
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
         `monthly`."""
         # plot number if missing vals
-        self.plot_missing()
+        self.plot_missing(cols=cols)
 
         # show data as heatmapt
-        self.data_heatmap()
+        self.data_heatmap(cols=cols)
 
         # line plots of input/output data
-        self.plot_data(freq=freq, subplots=True, figsize=(12, 14), sharex=True)
+        self.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
-        self.plot_feature_feature_corr()
+        self.plot_feature_feature_corr(cols=cols)
 
         # print stats about input/output data
         self.stats()
@@ -1761,10 +1761,10 @@ class Model(NN, Plots):
         self.plot_pcs()
 
         # scatter plots of input/output data
-        self.grouped_scatter()
+        self.grouped_scatter(cols=cols)
 
         # distributions as histograms
-        self.plot_histograms()
+        self.plot_histograms(cols=cols)
 
         return
 

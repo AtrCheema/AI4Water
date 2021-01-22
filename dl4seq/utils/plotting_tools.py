@@ -92,40 +92,62 @@ class Plots(object):
             elif hasattr(self._model, "feature_importances_"):
                 return self._model.feature_importances_
 
-    def plot_data(self, save=True, freq=None, max_subplots=10, **kwargs):
+    def plot_data(self, save=True, freq=None, cols=None, max_subplots=10, **kwargs):
         """
         :param save:
         :param max_subplots: int, number of subplots within one plot. Each feature will be shown in a separate subplot.
         :param kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
         :param freq: str, one of 'daily', 'weekly', 'monthly', 'yearly', determines interval of plot of data. It is
                      valid for only time-series data.
+        :param cols: columns in self.data to plot
         :return:
 
         ------
         examples:
 
-        >>model.plot_input_data(subplots=True, figsize=(12, 14), sharex=True)
-        >>model.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
+        >>>model.plot_data(subplots=True, figsize=(12, 14), sharex=True)
+        >>>model.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         """
         data = self.data
-        if isinstance(data, list):
-            for idx,df in enumerate(data):
-                self.plot_df(df, save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
+        if isinstance(self.data, pd.DataFrame):
+            self.plot_df(data, cols=cols, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self.plot_df(data, cols=cols[idx], save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
         else:
-            self.plot_df(data, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
+            self.plot_df(data, cols=cols, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
         return
 
-    def plot_df(self, df, save=True, freq=None, max_subplots=10, prefix='', **kwargs):
+    def plot_df(self, df, cols=None, save=True, freq=None, max_subplots=10, prefix='',
+                leg_kws=None,
+                label_kws=None,
+                tick_kws=None,
+                **kwargs):
         """Plots each columns of dataframe and saves it if `save` is True.
          max_subplots: determines how many sub_plots are to be plotted within one plot. If dataframe contains columns
-         greater than max_subplots, a separate plot will be generated for remaining columns."""
+         greater than max_subplots, a separate plot will be generated for remaining columns.
+         """
         assert isinstance(df, pd.DataFrame)
+        if leg_kws is None:
+            leg_kws = {'fontsize': 14}
+        if label_kws is None:
+            label_kws = {'fontsize': 14}
+        if tick_kws is None:
+            tick_kws = {'axis':"both", 'which':'major', 'labelsize':12}
+
+        if cols is None:
+            cols = list(df.columns)
+        df = df[cols]
 
         if df.shape[1] <= max_subplots:
 
             if freq is None:
                 kwargs = plot_style(df, **kwargs)
-                df.plot(**kwargs)
+                axis = df.plot(**kwargs)
+                axis.legend(**leg_kws)
+                axis.set_ylabel(axis.get_ylabel(), **label_kws)
+                axis.set_xlabel(axis.get_xlabel(), **label_kws)
+                axis.tick_params(**tick_kws)
                 self.save_or_show(save=save, fname=f"input_{prefix}",  where='data')
             else:
                 self.plot_df_with_freq(df, freq, save, **kwargs)
@@ -138,7 +160,12 @@ class Plots(object):
 
                 if freq is None:
                     kwargs = plot_style(sub_df, **kwargs)
-                    sub_df.plot(**kwargs)
+                    axis = sub_df.plot(**kwargs)
+                    for ax in axis:
+                        ax.legend(**leg_kws)
+                        ax.set_ylabel(ax.get_ylabel(), **label_kws)
+                        ax.set_xlabel(ax.get_xlabel(), **label_kws)
+                        ax.tick_params(**tick_kws)
                     self.save_or_show(save=save, fname=f'input_{prefix}_{st}_{en}', where='data')
                 else:
                     self.plot_df_with_freq(sub_df, freq, save, prefix=f'{prefix}_{st}_{en}', **kwargs)
@@ -506,18 +533,28 @@ class Plots(object):
         self.save_or_show(save, fname="feature_importance.png")
         return
 
-    def plot_feature_feature_corr(self, remove_targets=True, save=True, **kwargs):
-        plt.close('')
-        cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
-        if isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                self._feature_feature_corr(data, cols, prefix=str(idx), save=save, **kwargs)
-        else:
+    def plot_feature_feature_corr(self, cols=None, remove_targets=True, save=True, **kwargs):
+
+        if cols is None:
+            cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
+
+        if isinstance(self.data, pd.DataFrame):
             self._feature_feature_corr(self.data, cols, save=save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                if isinstance(data, pd.DataFrame):
+                    self._feature_feature_corr(data, cols[idx], prefix=str(idx), save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self._feature_feature_corr(data, cols[data_name], prefix=data_name, save=save, **kwargs)
+        return
 
     def _feature_feature_corr(self,
                               data,
-                              cols,
+                              cols=None,
                               prefix='',
                               save=True,
                               split=None,
@@ -542,8 +579,11 @@ class Plots(object):
         To plot negative correlation only
         _feature_feature_corr(model.data, list(model.data.columns), split="neg")
         """
-
+        plt.close('all')
         method = kwargs.get('method', 'pearson')
+
+        if cols is None:
+            cols = data.columns
 
         corr = data[cols].corr(method=method)
 
@@ -570,7 +610,7 @@ class Plots(object):
 
         ax = sns.heatmap(corr, center=0, fmt=".2f", ax=ax, **_kwargs)
         ax.set(frame_on=True)
-        self.save_or_show(save, fname=f"feature_corr_{prefix}", where="data")
+        self.save_or_show(save, fname=f"{split if split else ''}_feature_corr_{prefix}", where="data")
         return
 
     def roc_curve(self, x, y, save=True):
@@ -649,9 +689,10 @@ class Plots(object):
             style = '.' # For Nan values we should be using this style otherwise nothing is plotted.
 
         ms = 4 if style == '.' else 2
-        axis.plot(true, style, color='b', markersize=ms, label='True')
 
-        axis.plot(predicted, style, color='r', label='Prediction')
+        axis.plot(predicted, style, color='r', linestyle='-', marker='', label='Prediction')
+
+        axis.plot(true, style, color='b', marker='o', fillstyle='none',  markersize=ms, label='True')
 
         axis.legend(loc="best", fontsize=22, markerscale=4)
         plt.xticks(fontsize=18)
@@ -747,7 +788,8 @@ class Plots(object):
         self.save_or_show(fname=name, save=True if name is not None else False)
         return
 
-    def box_plot(self, inputs=True,
+    def box_plot(self,
+                 inputs=True,
                  outputs=True,
                  save=True,
                  violen=False,
@@ -795,7 +837,8 @@ class Plots(object):
                            **kwargs)
 
 
-    def _box_plot(self, data, cols, save, normalize, figsize, max_features, show_datapoints, freq,
+    def _box_plot(self, data,
+                  cols, save, normalize, figsize, max_features, show_datapoints, freq,
                   violen=False,
                   prefix='',
                   **kwargs):
@@ -955,6 +998,9 @@ class Plots(object):
         return
 
     def grouped_scatter_plot_df(self, data:pd.DataFrame, max_subplots:int=10, save=True, prefix='', **kwargs):
+        """
+        max_subplots: int, it can be set to large number to show all the scatter plots on one axis.
+        """
         data = data.copy()
         if data.shape[1] <= max_subplots:
             self._grouped_scatter_plot(data, save=save, **kwargs)
@@ -1021,17 +1067,31 @@ class Plots(object):
         self.save_or_show(fname=f"first_{num_pcs}_pcs_{prefix}", save=save, where='data')
         return
 
-    def plot_missing(self, save=True, **kwargs):
+    def plot_missing(self, save=True, cols=None, **kwargs):
 
         if isinstance(self.data, pd.DataFrame):
-            self.plot_missing_df(self.data, save=save, **kwargs)
+            self.plot_missing_df(self.data, cols=cols, save=save, **kwargs)
 
         elif isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self.plot_missing_df(data, prefix=str(idx), save=save, **kwargs)
+                self.plot_missing_df(data, cols=cols[idx], prefix=str(idx), save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.plot_missing_df(data, cols=cols[data_name], prefix=data_name, save=save, **kwargs)
         return
 
-    def plot_missing_df(self, data:pd.DataFrame, figsize:tuple=(20,20), fname:str='missing_vals', save:bool=True, **kwargs):
+    def plot_missing_df(self,
+                        data:pd.DataFrame,
+                        cols=None,
+                        figsize:tuple=(20,20),
+                        fname:str='missing_vals',
+                        save:bool=True,
+                        **kwargs):
+        if cols is None:
+            cols = data.columns
+        data = data[cols]
         # Identify missing values
         mv_total, mv_rows, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
 
@@ -1077,40 +1137,53 @@ class Plots(object):
         self.save_or_show(save=save, fname=fname, where='data', dpi=500)
         return
 
-    def plot_histograms(self, save=True, **kwargs):
+    def plot_histograms(self, save=True, cols=None, **kwargs):
         """Plots distribution of data as histogram.
         kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
         """
         if isinstance(self.data, pd.DataFrame):
-            self.plot_his_df(self.data, save=save, **kwargs)
+            self.plot_his_df(self.data, save=save, cols=cols, **kwargs)
 
         elif isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self.plot_his_df(data, prefix=str(idx), save=save, **kwargs)
+                self.plot_his_df(data, prefix=str(idx), cols=cols, save=save, **kwargs)
         return
 
-    def plot_his_df(self, data, prefix='', save=True, **kwargs):
-        data.hist(bins=100, figsize=(20, 8), **kwargs)
+    def plot_his_df(self, data:pd.DataFrame, prefix='', cols=None, save=True, bins=100, figsize=(20, 14), **kwargs):
+        if cols is None:
+            cols = data.columns
+        data[cols].hist(bins=bins, figsize=figsize, **kwargs)
         self.save_or_show(fname=f"hist_{prefix}", save=save, where='data')
 
-    def data_heatmap(self, **kwargs):
-        if isinstance(self.data, list):
+    def data_heatmap(self, cols=None, **kwargs):
+        if isinstance(self.data, pd.DataFrame):
+            self._data_heatmap(self.data, cols=cols, **kwargs)
 
+        elif isinstance(self.data, list):
             for idx, data in self.data:
-                self._data_heatmap(data, fname=f"data_heatmap_{idx}", **kwargs)
-        else:
-            self._data_heatmap(self.data, **kwargs)
+                if isinstance(data, pd.DataFrame):
+                    self._data_heatmap(data, cols=cols[idx], fname=f"data_heatmap_{idx}", **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self._data_heatmap(self.data, cols[data_name] **kwargs)
+        return
 
     def _data_heatmap(self,
                       data:pd.DataFrame,
+                      cols=None,
                       figsize: tuple = (20, 20),
                       spine_color: str = "#EEEEEE",
                       save=True,
                       fname="data_heatmap"
                      ):
+
+        if cols is None:
+            cols = data.columns
         fig, ax2 = plt.subplots(figsize=figsize)
         # ax2 - Heatmap
-        sns.heatmap(data.isna(), cbar=False, cmap="binary", ax=ax2)
+        sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=ax2)
         ax2.set_yticks(ax2.get_yticks()[0::5].astype('int'))
         ax2.set_yticklabels(ax2.get_yticks(),
                             fontsize="16")
@@ -1129,6 +1202,49 @@ class Plots(object):
         self.save_or_show(save=save, fname=fname, where='data', dpi=500)
         return
 
+    def plot_index(self, save=True, **kwargs):
+        if isinstance(self.data, pd.DataFrame):
+            self._plot_index(self.data, save=save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for data in self.data:
+                if isinstance(data, pd.DataFrame):
+                    self._plot_index(data, save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.values():
+                if isinstance(data, pd.DataFrame):
+                    self._plot_index(data, save=save, **kwargs)
+        return
+
+    def _plot_index(self,
+                    index,
+                    save=True,
+                    fname="index",
+                    figsize=(10,5),
+                    dpi=200,
+                    label_fs=18,
+                    title_fs=20,
+                    leg_fs=14,
+                    leg_ms=4,
+                    color='r',
+                    ):
+        """
+        Plots the index of a datafram.
+        index: can be pandas dataframe or index itself. if dataframe, its index will be used for plotting
+        """
+        plt.close('all')
+        if isinstance(index, pd.DataFrame):
+            index=index.index
+
+        idx = pd.DataFrame(np.ones(len(index)), index=index, columns=['Observations'])
+        axis = idx.plot(linestyle='', marker='.', color=color, figsize=figsize)
+        axis.legend(fontsize=leg_fs, markerscale=leg_ms)
+        axis.set_xlabel(axis.get_xlabel(), fontdict={'fontsize': label_fs})
+        axis.set_title("Temporal distribution of Observations", fontsize=title_fs)
+        axis.get_yaxis().set_visible(False)
+        self.save_or_show(save=save, fname=fname, where='data', dpi=dpi)
+        return
 
 def plot_style(df:pd.DataFrame, **kwargs):
     if 'style' not in kwargs and df.isna().sum().sum() > 0:
