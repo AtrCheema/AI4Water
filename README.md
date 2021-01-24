@@ -133,8 +133,8 @@ history = model.fit(data=data)
 
 ## using for `scikit-learn`/`xgboost`/`lgbm`/`catboost` based models
 The repository can also be used for machine learning based models such as scikit-learn/xgboost based models for both
-classification and regression problems by making use of `ml_model` and `ml_model_args` keyword arguments in `Model` 
-function. However, integration of ML based models is not complete yet.
+classification and regression problems by making use of `model` keyword arguments in `Model` function.
+However, integration of ML based models is not complete yet.
 ```python
 from dl4seq import Model
 import pandas as pd 

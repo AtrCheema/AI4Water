@@ -91,7 +91,7 @@ fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/da
 df = pd.read_csv(fname)  # must be 2d dataframe
 
 
-model = CustomModel(layers=layers,
+model = CustomModel(model={'layers':layers},
                     batch_size=12,
                     lookback=15,
                     lr=8.95e-5,

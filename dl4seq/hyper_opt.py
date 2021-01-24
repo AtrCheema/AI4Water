@@ -112,7 +112,7 @@ class HyperOpt(object):
     >>opt = HyperOpt("grid",
                param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
                             'max_depth': [3, 4, 5, 6]},
-               dl4seq_args={'ml_model': 'xgboost'},
+               dl4seq_args={'model': 'xgboostRegressor'},
                data=data,
                use_named_args=True,
                )
@@ -123,7 +123,7 @@ class HyperOpt(object):
     >>opt = HyperOpt("random",
                param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
                             'max_depth': [3, 4, 5, 6]},
-               dl4seq_args={'ml_model': 'xgboost'},
+               dl4seq_args={'model': 'xgboost'},
                data=data,
                use_named_args=True,
                n_iter=100
@@ -135,7 +135,7 @@ class HyperOpt(object):
     >>opt = HyperOpt("bayes",
                param_space=[Integer(low=1000, high=2000, name='n_estimators',
                             Integer(low=3, high=6, name='max_depth')]
-               dl4seq_args={'ml_model': 'xgboost'},
+               dl4seq_args={'model': 'xgboostRegressor'},
                    data=data,
                    use_named_args=True,
                    n_calls=100,
@@ -249,15 +249,15 @@ class HyperOpt(object):
             self._model = list(_model.keys())[0]
         return kwargs
 
-    # def __getattr__(self, item):
-    #     # TODO, not sure if this is the best way but venturing since it is done by the legend here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
-    #     # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
-    #     # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
-    #     # available with class.
-    #     if hasattr(self.optfn, item):
-    #         return getattr(self.optfn, item)
-    #     else:
-    #         raise AttributeError(f"Attribute {item} not found")
+    def __getattr__(self, item):
+        # TODO, not sure if this is the best way but venturing since it is done by the legend here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
+        # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
+        # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
+        # available with class.
+        if hasattr(self.optfn, item):
+            return getattr(self.optfn, item)
+        else:
+            raise AttributeError(f"Attribute {item} not found")
 
     @property
     def use_sklearn(self):
