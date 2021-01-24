@@ -27,7 +27,7 @@ model = Model(
             batch_size=16,
             lookback=1,
             lr=0.001,
-            layers=layers,
+            model={'layers':layers},
             epochs=2,
               data=df
               )
@@ -52,7 +52,7 @@ df = pd.read_csv("data/all_data_30min.csv")
 model = Model(batch_size=16,
                 lookback=1,
                 lr=0.001,
-                layers=layers,
+                model={'layers':layers},
                 epochs=2,
               data=df
               )

@@ -229,20 +229,20 @@ def plot_taylor(trues:dict,
     >>>import numpy as np
     >>>np.random.seed(92)
     >>>plot_taylor(trues={'site1': np.random.normal(20, 40, 10)},
-                simulations={
-                    "site1":
-                        {"LSTM": np.random.normal(20, 40, 10),
-                         "CNN": np.random.normal(20, 40, 10),
-                         "TCN": np.random.normal(20, 40, 10),
-                         "CNN-LSTM": np.random.normal(20, 40, 10)}
-                },
-                cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
-                grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
-                axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-                         'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-                         'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
-                leg_kws={'fontsize': 16, 'markerscale': 2}
-                )
+    ...            simulations={
+    ...             "site1":
+    ...                    {"LSTM": np.random.normal(20, 40, 10),
+    ...                     "CNN": np.random.normal(20, 40, 10),
+    ...                     "TCN": np.random.normal(20, 40, 10),
+    ...                     "CNN-LSTM": np.random.normal(20, 40, 10)}
+    ...            },
+    ...            cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
+    ...            grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
+    ...            axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+    ...                     'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+    ...                     'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
+    ...            leg_kws={'fontsize': 16, 'markerscale': 2}
+    ...            )
     """
     scenarios = trues.keys()
 
@@ -368,8 +368,8 @@ def plot_taylor(trues:dict,
     # http://matplotlib.sourceforge.net/users/legend_guide.html
 
     if leg_kws is None:
-        leg_pos = leg_kws.get('position', "center" if len(scenarios) == 4 else "upper right")
-        leg_kws = {'loc': leg_pos}
+        position = "center" if len(scenarios) == 4 else "upper right"
+        leg_kws = {'loc': position}
 
 
 

@@ -810,7 +810,7 @@ class Model(NN, Plots):
             print('building {} based model for {} problem'.format(self.category, self.problem))
 
         if self.category.upper() == "DL":
-            inputs, predictions = self.add_layers(self.model_config['layers'])
+            inputs, predictions = self.add_layers(self.model_config['model']['layers'])
 
             self._model = self.compile(inputs, predictions)
 
@@ -818,7 +818,7 @@ class Model(NN, Plots):
             self.build_ml_model()
 
         if self.verbosity > 0:
-            if 'tcn' in self.model_config['layers']:
+            if 'tcn' in self.model_config['model']['layers']:
                 tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
 
         # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
@@ -829,12 +829,16 @@ class Model(NN, Plots):
         """ builds models that follow sklearn api such as xgboost, catboost, lightgbm and obviously sklearn."""
 
         ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
-        regr_name = self.model_config['ml_model'].upper()
+        _model = list(self.model_config['model'].keys())[0]
+        regr_name = _model.upper()
 
-        kwargs = self.model_config['ml_model_args']
+        kwargs = list(self.model_config['model'].values())[0]
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
         else:
+            if regr_name in ['TWEEDIEREGRESSOR', 'POISSONREGRESSOR', 'LGBMREGRESSOR', 'LGBMCLASSIFIER', 'GAMMAREGRESSOR']:
+                if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
+                    raise ValueError(f"{regr_name} is available with sklearn version >= 0.23 but you have {VERSION_INFO['sklearn']}")
             raise ValueError(f"model {regr_name} not found")
 
         self._model = model
@@ -884,12 +888,12 @@ class Model(NN, Plots):
 
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
-
-            fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + self.model_cofig['ml_model'])
+            model_name = list(self.model_config['model'].keys())[0]
+            fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
 
             joblib.dump(self._model, fname)
 
-            if self.model_config['ml_model'].lower().startswith("xgb"):
+            if model_name.lower().startswith("xgb"):
 
                 self._model.save_model(fname + ".json")
 
@@ -1489,7 +1493,7 @@ class Model(NN, Plots):
 
     def view_model(self, **kwargs):
         """ shows all activations, weights and gradients of the keras model."""
-        if self.model_config['ml_model'] is not None:
+        if 'layers' not in self.model_config['model']:
 
             self.plot_feature_importance()
 
@@ -1505,7 +1509,7 @@ class Model(NN, Plots):
                 self.roc_curve(x=x, y=y)
 
 
-            if self.model_config['ml_model'].lower().startswith("xgb"):
+            if list(self.model_config['model'].keys())[0].lower().startswith("xgb"):
                 self.decision_tree(which="xgboost", **kwargs)
 
         if self.category.upper() == "DL":
@@ -1714,7 +1718,7 @@ class Model(NN, Plots):
                              f"and model path is {self.path}")
 
         if self.category == "ML":
-            if self.data_config['ml_model'].lower().startswith("xgb"):
+            if list(self.data_config['model'].keys())[0].lower().startswith("xgb"):
                 self._model.load_model(weight_file)
             else:
                 # for sklearn based models

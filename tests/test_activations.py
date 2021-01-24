@@ -38,7 +38,7 @@ class TestActivations(unittest.TestCase):
 
         model = Model(epochs=2,
                       lookback=1,
-                      layers=layers,
+                      model={'layers': layers},
                       data=df,
                       verbosity=0
                       )
@@ -68,7 +68,7 @@ class TestActivations(unittest.TestCase):
 
         model = Model(epochs=2,
                       lookback=1,
-                      layers=layers,
+                      model={'layers': layers},
                       data=df,
                       verbosity=0
                       )

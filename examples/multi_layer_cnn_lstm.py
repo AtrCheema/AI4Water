@@ -46,7 +46,7 @@ config = make_model(batch_size=16,
                     lookback=lookback,
                     inputs=input_features,
                     outputs=outputs,
-                    layers=layers,
+                    model={'layers':layers},
                     lr=0.0001)
 
 fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
@@ -59,7 +59,7 @@ model = Model(config=config,
                 lookback=lookback,
                 inputs=input_features,
                 outputs=outputs,
-                layers=layers,
+                model={'layers':layers},
                 lr=0.0001
               )
 

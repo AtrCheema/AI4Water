@@ -6,6 +6,7 @@ from sklearn.svm import SVC
 import numpy as np
 np.random.seed(313)
 import os
+import skopt
 from skopt.space import Real, Categorical, Integer
 from TSErrors import FindErrors
 import pandas as pd
@@ -46,8 +47,7 @@ def run_dl4seq(method):
                    "batches": "2d",
                    "val_data": "same",
                    "test_fraction": 0.3,
-                   "ml_model": "xgboostregressor",
-                   #"ml_model_args": {'objective': 'reg:squarederror'},
+                   "model": {"xgboostregressor": {}},
                    "transformation": None
                    }
 
@@ -149,7 +149,10 @@ class TestHyperOpt(unittest.TestCase):
 
         # executes bayesian optimization
         sr = opt.fit()
-        np.testing.assert_almost_equal(-0.909471164417979, sr.fun, 7)  # when called from same file where hyper_opt is saved
+        if int(skopt.__version__.split('.')[1]) < 8:
+            pass
+        else:
+            np.testing.assert_almost_equal(-0.909471164417979, sr.fun, 7)  # when called from same file where hyper_opt is saved
         return
 
     def test_named_custom_bayes(self):
@@ -178,8 +181,7 @@ class TestHyperOpt(unittest.TestCase):
                 batches="2d",
                 val_data="same",
                 test_fraction=0.3,
-                ml_model="xgboostregressor",
-                ml_model_args=kwargs,
+                model={"xgboostregressor": kwargs},
                 transformation=None,
                 data=data,
                 prefix='testing',
@@ -229,7 +231,7 @@ class TestHyperOpt(unittest.TestCase):
                        "batches": "2d",
                        "val_data": "same",
                        "test_fraction": 0.3,
-                       "ml_model": "xgboostregressor",
+                       "model": {"xgboostregressor": {}},
                        #"ml_model_args": {'objective': 'reg:squarederror'}, TODO
                        "transformation": None
                        }

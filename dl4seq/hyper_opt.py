@@ -245,17 +245,19 @@ class HyperOpt(object):
         if "dl4seq_args" in kwargs:
             self.dl4seq_args = kwargs.pop("dl4seq_args")
             self.data = kwargs.pop("data")
+            _model = self.dl4seq_args.pop("model")
+            self._model = list(_model.keys())[0]
         return kwargs
 
-    def __getattr__(self, item):
-        # TODO, not sure if this is the best way but venturing since it is done by the legend here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
-        # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
-        # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
-        # available with class.
-        if hasattr(self.optfn, item):
-            return getattr(self.optfn, item)
-        else:
-            raise AttributeError(f"Attribute {item} not found")
+    # def __getattr__(self, item):
+    #     # TODO, not sure if this is the best way but venturing since it is done by the legend here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
+    #     # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
+    #     # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
+    #     # available with class.
+    #     if hasattr(self.optfn, item):
+    #         return getattr(self.optfn, item)
+    #     else:
+    #         raise AttributeError(f"Attribute {item} not found")
 
     @property
     def use_sklearn(self):
@@ -350,10 +352,10 @@ class HyperOpt(object):
         model = Model(data=self.data,
                       prefix=title,
                       verbosity=1 if pp else 0,
-                      ml_model_args=kwargs,
+                      model={self._model: kwargs},
                       **self.dl4seq_args)
 
-        assert model.model_config["ml_model"] is not None, "Currently supported only for ml models. Make your own" \
+        assert model.model_config["model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " dl4seq model and pass it as custom model."
         model.fit(indices="random")
 

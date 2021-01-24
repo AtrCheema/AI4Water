@@ -122,7 +122,7 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             inputs = in_cols,
             outputs= out_cols,
-            layers=get_layers()
+            model={'layers':get_layers()}
         )
 
         x, y = train_predict(model)
@@ -139,7 +139,7 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             inputs = ['input_0'],
             outputs= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
-            layers=get_layers(5)
+            model={'layers':get_layers(5)}
         )
 
         x, y = train_predict(model)
@@ -160,7 +160,7 @@ class TestUtils(unittest.TestCase):
             inputs = ['input_0', 'input_1', 'input_2',  'input_3', 'input_4'],
             outputs= ['output'],
             forecast_step=1,
-            layers=get_layers()
+            model={'layers':get_layers()}
         )
 
         x, y = train_predict(model)
@@ -179,11 +179,11 @@ class TestUtils(unittest.TestCase):
             inputs = in_cols,
             outputs= out_cols,
             forecast_step=10,
-            layers={
+            model={'layers':{
             "LSTM": {"config": {"units": 1}},
             "Dense": {"config": {"units": 1}},
             "Reshape": {"config": {"target_shape": (1, 1)}}
-        }
+        }}
         )
 
         x, y = train_predict(model)
@@ -195,7 +195,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(int(y[0].sum()), 10026)
         return
 
-
     def test_ForecastStep10_Outs5(self):
         # when we want to predict t+10 given number of inputs are 1 and outputs are > 1
         # forecast_length = 1 i.e we are predicting one horizon
@@ -203,7 +202,7 @@ class TestUtils(unittest.TestCase):
             inputs = ['input_0'],
             outputs= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
             forecast_step=10,
-            layers=get_layers(5)
+            model={'layers':get_layers(5)}
         )
 
         x, y = train_predict(model)
@@ -227,9 +226,8 @@ class TestUtils(unittest.TestCase):
             outputs= out_cols,
             forecast_step=2,
             forecast_length = 3,
-            layers=get_layers(1, 3)
+            model={'layers':get_layers(1, 3)}
         )
-
 
         x, y = train_predict(model)
 
@@ -256,7 +254,7 @@ class TestUtils(unittest.TestCase):
             outputs= ['input_3', 'input_4', 'output'],
             forecast_step=1,
             forecast_length = 3,
-            layers=get_layers(3,3)
+            model={'layers':get_layers(3,3)}
         )
 
 
@@ -284,7 +282,7 @@ class TestUtils(unittest.TestCase):
             forecast_step=2,
             forecast_length = 3,
             input_step=3,
-            layers=get_layers(3,3)
+            model={'layers':get_layers(3,3)}
         )
 
         x, y = train_predict(model)
@@ -308,7 +306,7 @@ class TestUtils(unittest.TestCase):
             forecast_step=10,
             forecast_length = 10,
             input_step=10,
-            layers=get_layers(3,10)
+            model={'layers':get_layers(3,10)}
         )
 
         x,y = train_predict(model)
@@ -428,9 +426,9 @@ class TestUtils(unittest.TestCase):
                       inputs=in_cols,
                       outputs=out_cols,
                       epochs=2,
-                      layers={
+                      model={'layers':{
                           "LSTM": {"config": {"units": 2}},
-                          "Dense": {"config": {"units": 1}}},
+                          "Dense": {"config": {"units": 1}}}},
                       lookback=lookback,
                       verbosity=0)
 
@@ -539,7 +537,7 @@ class TestUtils(unittest.TestCase):
         Test that when multiple outputs are the target and they contain nans, then we ignore these nans during
         loss calculation.
         """
-        if int(''.join(tf.__version__.split('.')[0:2])) < 23:
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
             warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
         else:
             df = get_df_with_nans(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
@@ -550,7 +548,7 @@ class TestUtils(unittest.TestCase):
                 "Reshape": {"config": {"target_shape": (2,1)}}}
 
             model = Model(allow_nan_labels=True,
-                          layers=layers,
+                          model={'layers':layers},
                           inputs=['in1', 'in2'],
                           outputs=['out1', 'out2'],
                           epochs=10,
@@ -564,7 +562,7 @@ class TestUtils(unittest.TestCase):
             return
 
     def test_nan_labels1(self):
-        if int(''.join(tf.__version__.split('.')[0:2])) < 23:
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
             warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
         else:
             df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
@@ -576,7 +574,7 @@ class TestUtils(unittest.TestCase):
 
             model = Model(allow_nan_labels=1,
                           transformation=None,
-                          layers=layers,
+                          model={'layers': layers},
                           inputs=['in1', 'in2'],
                           outputs=['out1', 'out2'],
                           epochs=10,
@@ -590,7 +588,7 @@ class TestUtils(unittest.TestCase):
             return
 
     def test_ignore_nan1_and_data(self):
-        if int(''.join(tf.__version__.split('.')[0:2])) < 23:
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
             warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
         else:
             df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
@@ -604,7 +602,7 @@ class TestUtils(unittest.TestCase):
                           transformation=None,
                           val_data="same",
                           val_fraction=0.0,
-                          layers=layers,
+                          model={'layers':layers},
                           inputs=['in1', 'in2'],
                           outputs=['out1', 'out2'],
                           epochs=10,

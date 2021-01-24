@@ -61,6 +61,7 @@ def make_and_run(
         inputs=inputs,
         outputs = outputs,
         epochs=epochs,
+        model={'layers': kwargs.pop('layers')},
         **kwargs
     )
 
@@ -246,7 +247,10 @@ class TestModels(unittest.TestCase):
         try:
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
-            self.assertAlmostEqual(float(prediction.sum()), 970.6771222840335, 2)  # TODO failing with higher precision
+            trues = {
+                '23_nt': 1459.3191080708255
+            }
+            self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision
         except ModuleNotFoundError:
             print("tcn based model can not be tested as it is not found.")
 

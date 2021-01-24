@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sklearn
 import os
 from sklearn.datasets import load_diabetes, load_breast_cancer
 import unittest
@@ -38,11 +39,10 @@ def run_class_test(method):
             inputs=data_reg['feature_names'] if problem=="regression" else data_class['feature_names'],
             outputs=['target'],
             val_fraction=0.0,
-            ml_model=method,
             problem=problem,
             transformation=None,
             data=df_reg if problem=="regression" else data_class,
-            ml_model_args={'iterations': 2} if "CATBOOST" in method else {},
+            model={method: {'iterations': 2} if "CATBOOST" in method else {}},
             verbosity=0)
 
         return model.fit()
@@ -63,6 +63,74 @@ class TestMLMethods(unittest.TestCase):
 
     def test_XGBOOSTREGRESSOR(self):
         run_class_test("XGBOOSTREGRESSOR")
+        return
+
+    def test_KernelRidge(self):
+        run_class_test('KernelRidge')
+        return
+
+    def test_LassoLars(self):
+        run_class_test("LassoLars")
+        return
+
+    def test_Lars(self):
+        run_class_test("Lars")
+        return
+
+    def test_LarsCV(self):
+        run_class_test("LarsCV")
+        return
+
+    def test_DummyRegressor(self):
+        run_class_test("DummyRegressor")
+        return
+
+    def test_GaussianProcessRegressor(self):
+        run_class_test("GaussianProcessRegressor")
+        return
+
+    def test_OrthogonalMatchingPursuit(self):
+        run_class_test("OrthogonalMatchingPursuit")
+        return
+
+    def test_ElasticNet(self):
+        run_class_test("ElasticNet")
+        return
+
+    def test_Lasso(self):
+        run_class_test("Lasso")
+        return
+
+    def test_NuSVR(self):
+        run_class_test("NuSVR")
+        return
+
+    def test_SVR(self):
+        run_class_test("SVR")
+        return
+
+    def test_LinearSVR(self):
+        run_class_test("LinearSVR")
+        return
+
+    def test_OrthogonalMatchingPursuitCV(self):
+        run_class_test("OrthogonalMatchingPursuitCV")
+        return
+
+    def test_ElasticNetCV(self):
+        run_class_test("ElasticNetCV")
+        return
+
+    def test_LassoCV(self):
+        run_class_test("LassoCV")
+        return
+
+    def test_LassoLarsCV(self):
+        run_class_test("LassoLarsCV")
+        return
+
+    def test_RidgeCV(self):
+        run_class_test("RidgeCV")
         return
 
     def test_EXTRATREEREGRESSOR(self):
@@ -110,7 +178,10 @@ class TestMLMethods(unittest.TestCase):
         return
 
     def test_TWEEDIEREGRESSOR(self):
-        run_class_test("TWEEDIEREGRESSOR")
+        if int(sklearn.__version__.split('.')[1]) < 23:
+            self.assertRaises(ValueError)
+        else:
+            run_class_test("TWEEDIEREGRESSOR")
         return
 
     def test_THEILSENREGRESSOR(self):
@@ -134,11 +205,17 @@ class TestMLMethods(unittest.TestCase):
         return
 
     def test_RANSACREGRESSOR(self):
-        run_class_test("RANSACREGRESSOR")
+        if int(sklearn.__version__.split('.')[1]) < 23:
+            self.assertRaises(ValueError)
+        else:
+            run_class_test("RANSACREGRESSOR")
         return
 
     def test_POISSONREGRESSOR(self):
-        run_class_test("POISSONREGRESSOR")
+        if int(sklearn.__version__.split('.')[1]) < 23:
+            self.assertRaises(ValueError)
+        else:
+            run_class_test("POISSONREGRESSOR")
         return
 
     def test_PASSIVEAGGRESSIVEREGRESSOR(self):
@@ -154,7 +231,10 @@ class TestMLMethods(unittest.TestCase):
         return
 
     def test_LINEARREGRESSION(self):
-        run_class_test("LINEARREGRESSION")
+        if int(sklearn.__version__.split('.')[1]) < 23:
+            self.assertRaises(ValueError)
+        else:
+            run_class_test("LINEARREGRESSION")
         return
 
     def test_HUBERREGRESSOR(self):
@@ -162,7 +242,10 @@ class TestMLMethods(unittest.TestCase):
         return
 
     def test_GAMMAREGRESSOR(self):
-        run_class_test("GAMMAREGRESSOR")
+        if int(sklearn.__version__.split('.')[1]) < 23:
+            self.assertRaises(ValueError)
+        else:
+            run_class_test("GAMMAREGRESSOR")
         return
 
     def test_ARDREGRESSION(self):
@@ -245,7 +328,7 @@ class TestMLMethods(unittest.TestCase):
             test_fraction=0.3,
             category="ML",
             problem="regression",
-            ml_model="xgboostregressor",
+            model={"xgboostregressor": {}},
             transformation=None,
             data=df_reg,
             verbosity=0)

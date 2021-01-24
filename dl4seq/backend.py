@@ -28,6 +28,8 @@ def get_sklearn_models():
         from sklearn.ensemble import HistGradientBoostingRegressor
 
         skl_models = get_attributes(sklearn, "ensemble")
+        skl_models.update(get_attributes(sklearn, "dummy"))
+        skl_models.update(get_attributes(sklearn, "gaussian_process"))
         skl_models.update(get_attributes(sklearn, "linear_model"))
         skl_models.update(get_attributes(sklearn, "multioutput"))
         skl_models.update(get_attributes(sklearn, "neighbors"))
@@ -116,12 +118,12 @@ torch = torch
 tf = tf
 
 VERSION_INFO = {
-    'tensorflow_version': str(tf.__version__) if tf is not None else None,
-    'keras_version': str(keras.__version__) if keras is not None else None,
-    'tcn_version': str(tcn.__version__) if tcn is not None else None,
-    'pytorch_version': str(torch.__version__) if torch is not None else None,
-    'catboost_version': str(catboost.__version__) if catboost is not None else None,
-    'xgboost_version': str(xgboost.__version__) if xgboost is not None else None,
-    'lightgbm_version': str(lightgbm.__version__) if lightgbm is not None else None,
-    'sklearn_version': str(sklearn.__version__) if sklearn is not None else None,
+    'tensorflow': str(tf.__version__) if tf is not None else None,
+    'keras': str(keras.__version__) if keras is not None else None,
+    'tcn': str(tcn.__version__) if tcn is not None else None,
+    'pytorch': str(torch.__version__) if torch is not None else None,
+    'catboost': str(catboost.__version__) if catboost is not None else None,
+    'xgboost': str(xgboost.__version__) if xgboost is not None else None,
+    'lightgbm': str(lightgbm.__version__) if lightgbm is not None else None,
+    'sklearn': str(sklearn.__version__) if sklearn is not None else None,
 }

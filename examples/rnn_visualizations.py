@@ -22,7 +22,7 @@ layers = {
 }
 
 model = Model(
-    layers=layers,
+    model={'layers':layers},
     lookback=lookback,
     epochs=epochs,
     batch_size=batch_size,

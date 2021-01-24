@@ -92,9 +92,12 @@ def skopt_plots(search_result, pref=os.getcwd()):
     _ = plot_evaluations(search_result)
     plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
 
-    plt.close('all')
-    _ = plot_objective(search_result)
-    plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
+    if search_result.space.n_dims == 1:
+        pass
+    else:
+        plt.close('all')
+        _ = plot_objective(search_result)
+        plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
 
     plt.close('all')
     _ = plot_convergence(search_result)
@@ -125,18 +128,19 @@ def check_min_loss(epoch_losses, epoch, msg:str, save_fg:bool, to_save=None):
 def check_kwargs(**kwargs):
 
     # If learning rate for XGBoost is not provided use same as default for NN
-    lr = kwargs["lr"] if "lr" in kwargs else 0.001
-    if kwargs.get('ml_model', None) is not None:
-        if kwargs['ml_model'].upper().startswith("XGB"):
-            if "ml_model_args" in kwargs:
-                if "learning_rate" not in kwargs["ml_model_args"]:
-                    kwargs["ml_model_args"]["learning_rate"] = lr
+    lr = kwargs.get("lr", 0.001)
+    if 'model' in kwargs:
+        model = kwargs['model']
+        if 'layers' not  in model:
+            if list(model.keys())[0].startswith("XGB"):
+                if "learning_rate" not in model:
+                        kwargs["model"]["learning_rate"] = lr
 
-        if "batches" not in kwargs: # for ML, default batches will be 2d unless the user specifies otherwise.
-            kwargs["batches"] = "2d"
+            if "batches" not in kwargs: # for ML, default batches will be 2d unless the user specifies otherwise.
+                kwargs["batches"] = "2d"
 
-        if "lookback" not in kwargs:
-            kwargs["lookback"] = 1
+            if "lookback" not in kwargs:
+                kwargs["lookback"] = 1
 
     return kwargs
 
@@ -158,18 +162,22 @@ def _make_model(**kwargs):
       nn_config: `dict`, contais parameters to build and train the neural network such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
+    default_model = {'layers': {
+        "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
+        "Dense_3": {'config':  {'units': 1}}
+    }}
+
     kwargs = check_kwargs(**kwargs)
 
-    def_prob = "regression"
-    if kwargs.get('ml_model', None) is None:
+    def_prob = "regression"  # default problem
+    model = kwargs.get('model', default_model)
+    if 'layers' in model:
         def_cat = "DL"
         # for DL, the default problem case will be regression
     else:
-        if kwargs["ml_model"].upper().startswith("CLASS"):
+        if list(model.keys())[0].startswith("CLASS"):
             def_prob = "classification"
         def_cat = "ML"
-
-
 
     dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
     fname = os.path.join(dpath, "nasdaq100_padding.csv")
@@ -197,10 +205,7 @@ def _make_model(**kwargs):
                                             'n_hde0': 30,
                                             'n_sde0': 30
                                             }, 'lower': None, 'upper': None, 'between': None},
-        'layers': {'type': dict, 'default': {
-                                "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
-                                "Dense_3": {'config':  {'units': 1}}
-                                 }, 'lower': None, 'upper': None, 'between': None},
+        'model': {'type': dict, 'default': default_model, 'lower': None, 'upper': None, 'between': None},
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},   # for auto-encoders
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
         'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
@@ -224,8 +229,8 @@ def _make_model(**kwargs):
                                         'share_weights_in_stack': True,
                                         'hidden_layer_units': 62
                                     }, 'lower': None, 'upper': None, 'between': None},
-        'ml_model':      {'type': str, 'default': None, 'lower': None, 'upper': None, 'between': None},  # name of machine learning model
-        'ml_model_args': {'type': dict, 'default':{}, 'lower': None, 'upper': None, 'between': None},  # arguments to instantiate/initiate ML model
+        #'ml_model':      {'type': str, 'default': None, 'lower': None, 'upper': None, 'between': None},  # name of machine learning model
+        #'ml_model_args': {'type': dict, 'default':{}, 'lower': None, 'upper': None, 'between': None},  # arguments to instantiate/initiate ML model
         'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]}
     }
@@ -332,7 +337,7 @@ def _make_model(**kwargs):
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
 
     if data_config['allow_nan_labels']>0:
-        assert model_config['ml_model'] is None, f"`allow_nan_labels` should be > 0 only for deep learning models"
+        assert 'layers' in model_config['model'], f"`allow_nan_labels` should be > 0 only for deep learning models"
 
     return data_config, model_config
 
