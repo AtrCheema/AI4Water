@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from TSErrors import FindErrors
 import matplotlib.pyplot as plt
 import matplotlib # for version info
 import os
@@ -24,6 +23,7 @@ from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
+from dl4seq.utils.TSErrors import FindErrors
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -813,6 +813,7 @@ class Model(NN, Plots):
 
         if self.category.upper() == "DL":
             inputs, predictions = self.add_layers(self.config['model']['layers'])
+            self.info['params'] = int(self._model.count_params()) if self._model is not None else None
 
             self._model = self.compile(inputs, predictions)
 
@@ -825,6 +826,12 @@ class Model(NN, Plots):
 
         # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
         self.save_config()
+
+        VERSION_INFO.update({'numpy_version': str(np.__version__),
+                             'pandas_version': str(pd.__version__),
+                             'matplotlib_version': str(matplotlib.__version__)})
+        self.info['version_info'] = VERSION_INFO
+
         return
 
     def build_ml_model(self):
@@ -899,7 +906,8 @@ class Model(NN, Plots):
 
                 self._model.save_model(fname + ".json")
 
-            self.save_config()
+        self.save_config()
+        save_config_file(self.path, self.info, name='info')
 
         self.is_training = False
         return history
@@ -1657,12 +1665,6 @@ class Model(NN, Plots):
 
         if self.category == "DL":
             config['loss'] = self.loss_name()
-            config['params'] = int(self._model.count_params()) if self._model is not None else None,
-
-        VERSION_INFO.update({'numpy_version': str(np.__version__),
-                             'pandas_version': str(pd.__version__),
-                             'matplotlib_version': str(matplotlib.__version__)})
-        config['version_info'] = VERSION_INFO
 
         save_config_file(config=config, path=self.path)
         return config
