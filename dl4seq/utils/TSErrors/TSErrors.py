@@ -107,6 +107,7 @@ class FindErrors(object):
         if len(self.true) <= 1 or len(self.predicted) <= 1:
             raise ValueError(f"""Expect length of true and predicted arrays to be larger than 1 but they are
                             {len(self.true)} and {len(self.predicted)}""")
+        return
 
     def _pre_process(self, true, predicted):
 
@@ -237,7 +238,7 @@ class FindErrors(object):
         Modifying from https://github.com/UBC-MDS/RegscorePy/blob/master/RegscorePy/aic.py
         """
         assert p > 0
-        self.assert_greater_than_one()
+        self.assert_greater_than_one # noac
 
         n = len(self.true)
         resid = np.subtract(self.predicted, self.true)
