@@ -4,7 +4,7 @@ import mpl_toolkits.axisartist.floating_axes as FA
 from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
 
-from TSErrors import FindErrors
+from dl4seq.utils.TSErrors import FindErrors
 
 np.random.seed(313)
 

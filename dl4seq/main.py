@@ -585,7 +585,7 @@ class Model(NN, Plots):
                     nans_in_y_exist=nans_in_y_exist
                          )
 
-        self.info['training_time'] = float(time.time() - st/60.0)
+        self.info['training_time_in_minutes'] = float(time.time() - st)/60.0
 
         return self.post_kfit()
 
@@ -813,9 +813,10 @@ class Model(NN, Plots):
 
         if self.category.upper() == "DL":
             inputs, predictions = self.add_layers(self.config['model']['layers'])
-            self.info['params'] = int(self._model.count_params()) if self._model is not None else None
 
             self._model = self.compile(inputs, predictions)
+
+            self.info['model_parameters'] = int(self._model.count_params()) if self._model is not None else None
 
         else:
             self.build_ml_model()
@@ -890,6 +891,8 @@ class Model(NN, Plots):
 
         inputs, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
 
+        self.info['training_start'] = dateandtime_now()
+
         if self.category.upper() == "DL":
             history = self._fit(inputs, outputs, self.val_data(), **callbacks)
 
@@ -906,8 +909,9 @@ class Model(NN, Plots):
 
                 self._model.save_model(fname + ".json")
 
+        self.info['training_end'] = dateandtime_now()
         self.save_config()
-        save_config_file(self.path, self.info, name='info')
+        save_config_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         self.is_training = False
         return history

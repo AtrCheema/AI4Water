@@ -6,7 +6,7 @@ from skopt.utils import use_named_args
 from skopt.plots import plot_convergence
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 import numpy as np
-from TSErrors import FindErrors
+from dl4seq.utils.TSErrors import FindErrors
 import json
 import matplotlib.pyplot as plt
 
