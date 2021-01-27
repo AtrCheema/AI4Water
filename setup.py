@@ -44,7 +44,7 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
 
-    packages=['dl4seq', 'dl4seq/models', 'dl4seq/utils', 'dl4seq/data'],
+    packages=['dl4seq', 'dl4seq/models', 'dl4seq/utils', 'dl4seq/data', 'dl4seq/utils/TSErrors'],
 
     install_requires=[
         'numpy',
