@@ -818,12 +818,11 @@ class Model(NN, Plots):
 
             self.info['model_parameters'] = int(self._model.count_params()) if self._model is not None else None
 
+            if self.verbosity > 0:
+                if 'tcn' in self.config['model']['layers']:
+                    tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
         else:
             self.build_ml_model()
-
-        if self.verbosity > 0:
-            if 'tcn' in self.config['model']['layers']:
-                tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
 
         # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
         self.save_config()
@@ -1835,7 +1834,7 @@ class Model(NN, Plots):
 
 def impute_df(df:pd.DataFrame, how:str, **kwargs):
     """Given the dataframe df, will input missing values by how e.g. by df.fillna or df.interpolate"""
-    if  how.lower() not in ['fillna', 'interpolate', 'knnimputer', 'iterativeimputer']:
+    if  how.lower() not in ['fillna', 'interpolate', 'knnimputer', 'iterativeimputer', 'simpleimputer']:
         raise ValueError(f"Unknown method to fill missing values `{how}`.")
 
     if how.lower() in ['fillna', 'interpolate']:

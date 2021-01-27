@@ -470,7 +470,7 @@ class FindErrors(object):
         r = np.sum(zx * zy) / (len(self.true) - 1)
         return r ** 2
 
-    def r2_mod(self, weights=None) -> float:
+    def r2_mod(self, weights=None):
         """
         This is not a symmetric function.
         Unlike most other scores, R^2 score may be negative (it need not actually
@@ -494,6 +494,8 @@ class FindErrors(object):
         denominator = (weight * (self.true - np.average(
             self.true, axis=0, weights=weights)) ** 2).sum(axis=0, dtype=np.float64)
 
+        if numerator == 0.0:
+            return None
         output_scores = _foo(denominator, numerator)
 
         return np.average(output_scores, weights=weights)
@@ -900,7 +902,7 @@ class FindErrors(object):
         """
         return np.max(self._ae())
 
-    def exp_var_score(self, weights=None) -> float:
+    def exp_var_score(self, weights=None):
         """
         Explained variance score
         https://stackoverflow.com/questions/24378176/python-sci-kit-learn-metrics-difference-between-r2-score-and-explained-varian
@@ -914,6 +916,8 @@ class FindErrors(object):
         denominator = np.average((self.true - y_true_avg) ** 2,
                                  weights=weights, axis=0)
 
+        if numerator == 0.0:
+            return None
         output_scores = _foo(denominator, numerator)
 
         return np.average(output_scores, weights=weights)
