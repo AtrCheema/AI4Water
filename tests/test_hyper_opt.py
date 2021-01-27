@@ -8,7 +8,6 @@ np.random.seed(313)
 import os
 import skopt
 from skopt.space import Real, Categorical, Integer
-from TSErrors import FindErrors
 import pandas as pd
 import unittest
 
@@ -18,6 +17,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 from dl4seq.hyper_opt import HyperOpt
 from dl4seq import Model
 from dl4seq.utils.utils import Jsonize
+from dl4seq.utils.TSErrors import FindErrors
 
 from inspect import getsourcefile
 from os.path import abspath
