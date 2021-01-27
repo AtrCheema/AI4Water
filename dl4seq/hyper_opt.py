@@ -355,7 +355,7 @@ class HyperOpt(object):
                       model={self._model: kwargs},
                       **self.dl4seq_args)
 
-        assert model.model_config["model"] is not None, "Currently supported only for ml models. Make your own" \
+        assert model.config["model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " dl4seq model and pass it as custom model."
         model.fit(indices="random")
 

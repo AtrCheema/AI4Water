@@ -37,13 +37,12 @@ rnn_info = {"LSTM": {'rnn_type': 'LSTM',
 class Plots(object):
     # TODO initialte this class with at least path
 
-    def __init__(self, path, problem, category, model, data_config, model_config):
+    def __init__(self, path, problem, category, model, config):
         self.path = path
         self.problem = problem
         self.category=category
         self._model = model
-        self.data_config = data_config
-        self.model_cofig = model_config
+        self.config = config
 
 
     @property
@@ -64,28 +63,28 @@ class Plots(object):
 
     @property
     def in_cols(self):
-        return self.data_config['inputs']
+        return self.config['inputs']
 
     @property
     def out_cols(self):
-        return self.data_config['outputs']
+        return self.config['outputs']
 
     @property
     def ins(self):
-        return len(self.data_config['inputs'])
+        return len(self.config['inputs'])
 
     @property
     def outs(self):
-        return self.data_config['outputs']
+        return self.config['outputs']
 
     @property
     def lookback(self):
-        return self.data_config['lookback']
+        return self.config['lookback']
 
     def feature_imporance(self):
         if self.category.upper() == "ML":
 
-            if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
+            if self.config["ml_model"].upper() in ["SVC", "SVR"]:
                 if self._model.kernel == "linear":
                     # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
                     return self._model.coef_
@@ -504,21 +503,21 @@ class Plots(object):
         if importance is None:
             importance = self.feature_imporance()
 
-        if self.category == "ML" and self.model_cofig["ml_model"] is not None:
-            if self.model_cofig["ml_model"].upper() in ["SVC", "SVR"]:
+        if self.category == "ML" and self.config["ml_model"] is not None:
+            if self.config["ml_model"].upper() in ["SVC", "SVR"]:
                 if self._model.kernel == "linear":
                     return self.f_importances_svm(importance, self.in_cols, save=save)
                 else:
-                    warnings.warn(f"for {self._model.kernel} kernels of {self.model_cofig['ml_model']}, feature importance can not be plotted.")
+                    warnings.warn(f"for {self._model.kernel} kernels of {self.config['ml_model']}, feature importance can not be plotted.")
                 return
             return 
 
         if isinstance(importance, np.ndarray):
             assert importance.ndim <= 2
 
-        use_prev = self.data_config['use_predicted_output']
-        all_cols = self.data_config['inputs'] if use_prev else self.data_config['inputs'] + \
-                                                                                self.data_config['outputs']
+        use_prev = self.config['use_predicted_output']
+        all_cols = self.config['inputs'] if use_prev else self.config['inputs'] + \
+                                                                                self.config['outputs']
         plt.close('all')
         plt.figure()
         plt.title("Feature importance")
@@ -648,7 +647,7 @@ class Plots(object):
     def plot_treeviz_leaves(self, save=True, **kwargs):
         """Plots dtreeviz related plots if dtreeviz is installed"""
 
-        model = self.model_cofig['ml_model'].upper()
+        model = self.config['model'].upper()
         if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"] or model.startswith("XGBOOST"):
             if trees is None:
                 print("dtreeviz related plots can not be plotted")
@@ -726,7 +725,7 @@ class Plots(object):
             ax.bar(range(features), self._model.coef_[idx], 0.4)
 
         plt.xticks(ticks=range(features), labels=self.in_cols, rotation=90, fontsize=12)
-        self.save_or_show(save=save, fname=f"{self.model_cofig['ml_model']}_feature_importance")
+        self.save_or_show(save=save, fname=f"{self.config['ml_model']}_feature_importance")
         return
 
     def plot_loss(self, history: dict, name="loss_curve"):
@@ -873,6 +872,9 @@ class Plots(object):
                      freq=None,
                      **kwargs):
 
+        data = data.copy()
+        # if data contains duplicated columns, transformation will not work
+        data = data.loc[:, ~data.columns.duplicated()]
         if normalize:
             transformer = Transformations(data=data)
             data = transformer.transform()
@@ -906,7 +908,8 @@ class Plots(object):
         if violen:
             sns.violinplot(data=data, **kwargs)
         else:
-            ax = sns.boxplot(data=data, **kwargs)
+            axis = sns.boxplot(data=data, **kwargs)
+            axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
 
         if show_datapoints:
             sns.swarmplot(data=data)
@@ -917,7 +920,10 @@ class Plots(object):
     def box_plot_with_freq(self, data, freq,
                            violen=False,
                            show_datapoints=False,
-                           save=True, figsize=(12,8), name='bw', prefix='',
+                           save=True,
+                           figsize=(12,8),
+                           name='bw',
+                           prefix='',
                            **kwargs):
 
         validate_freq(data, freq)

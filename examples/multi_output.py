@@ -19,8 +19,8 @@ class MultiSite(InputAttentionModel):
 
         inputs = [train_x]
         for out in range(self.outs):
-            s0_train = np.zeros((train_x.shape[0], self.model_config['enc_config']['n_s']))
-            h0_train = np.zeros((train_x.shape[0], self.model_config['enc_config']['n_h']))
+            s0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_s']))
+            h0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_h']))
 
             inputs = inputs + [s0_train, h0_train]
 
@@ -36,7 +36,7 @@ class MultiSite(InputAttentionModel):
         inputs = [enc_input]
 
         for out in range(self.outs):
-            lstm_out1, h0, s0 = self._encoder(enc_input, self.model_config['enc_config'], lstm2_seq=False, suf=str(out))
+            lstm_out1, h0, s0 = self._encoder(enc_input, self.config['enc_config'], lstm2_seq=False, suf=str(out))
             act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]

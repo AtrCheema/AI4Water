@@ -41,12 +41,10 @@ class AttributeStore(object):
 class NN(AttributeStore):
 
     def __init__(self,
-                 data_config: dict,
-                 model_config: dict
+                 config: dict,
                  ):
-        self.data_config = data_config
-        self.model_config = model_config
-        self.lookback = self.data_config['lookback']
+        self.config = config
+        self.lookback = self.config['lookback']
 
         super(NN, self).__init__()
 

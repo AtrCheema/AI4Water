@@ -23,14 +23,14 @@ class MultiInputSharedModel(Model):
         y_data = []
         for out in range(2):
 
-            self.out_cols = [self.data_config['outputs'][out]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs'][out]]  # because fetch_data depends upon self.outs
 
             x, _, labels = self.fetch_data(data=self.data[out], **kwargs)
 
             x_data.append(x)
             y_data.append(labels)
 
-        self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+        self.out_cols = self.config['outputs']  # setting the actual output columns back to original
 
         x_data = np.vstack(x_data)
         y_data = np.vstack(y_data)
@@ -39,10 +39,10 @@ class MultiInputSharedModel(Model):
 
     def val_data(self, **kwargs):
 
-        self.out_cols = [self.data_config['outputs'][-1]]  # because fetch_data depends upon self.outs
+        self.out_cols = [self.config['outputs'][-1]]  # because fetch_data depends upon self.outs
         x, _, labels = self.fetch_data(data=self.data[-1], **kwargs)
 
-        self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+        self.out_cols = self.config['outputs']  # setting the actual output columns back to original
 
         return x, labels
 
@@ -67,7 +67,7 @@ class MultiInputSharedModel(Model):
 
         for idx, out in enumerate(out_cols):
 
-            self.out_cols = [self.data_config['outputs'][idx]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs'][idx]]  # because fetch_data depends upon self.outs
             scaler_key = str(idx) + scaler_key
             inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                                    use_datetime_index=use_datetime_index, data=self.data[idx])
@@ -76,14 +76,14 @@ class MultiInputSharedModel(Model):
             first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
             predicted = self._model.predict(x=inputs,
-                                             batch_size=self.data_config['batch_size'],
+                                             batch_size=self.config['batch_size'],
                                              verbose=1)
 
             predicted, true_outputs = self.denormalize_data(inputs[1], predicted, true_outputs[0], scaler_key)
 
-            self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+            self.out_cols = self.config['outputs']  # setting the actual output columns back to original
             
-            horizons = self.data_config['forecast_length']
+            horizons = self.config['forecast_length']
             if self.quantiles is None:
                 true_outputs = pd.DataFrame(true_outputs.reshape(-1, horizons), index=dt_index,
                                             columns=['true_' + str(i) for i in range(horizons)]).sort_index()
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                              batch_size=4,
                              lookback=3,
                              lr=0.000216,
-                             layers=_layers,
+                             model={'layers':_layers},
                              epochs=300,
                              allow_nan_labels=False,
                              )

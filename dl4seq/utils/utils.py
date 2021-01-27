@@ -149,9 +149,7 @@ class make_model(object):
 
     def __init__(self, **kwargs):
 
-        data_config, model_config = _make_model(**kwargs)
-        self.data = data_config
-        self.model = model_config
+        self.config = _make_model(**kwargs)
 
 
 def _make_model(**kwargs):
@@ -339,7 +337,8 @@ def _make_model(**kwargs):
     if data_config['allow_nan_labels']>0:
         assert 'layers' in model_config['model'], f"`allow_nan_labels` should be > 0 only for deep learning models"
 
-    return data_config, model_config
+    data_config.update(model_config)
+    return data_config
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):

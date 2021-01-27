@@ -63,7 +63,7 @@ model = Model(config=config,
                 lr=0.0001
               )
 
-# This model is built only to showcase how to build multi layer model by manipulating nn_config
+# This model is built only to showcase how to build multi layer model by manipulating config
 # history = model.fit(indices='random')
 
 #y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')

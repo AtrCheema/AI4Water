@@ -34,13 +34,13 @@ class MultiOutputParallel(Model):
 
     def train_data(self, **kwargs):
 
-        outs = len(self.data_config['outputs'])
+        outs = len(self.config['outputs'])
 
         x_data = []
         y_data = []
         for out in range(outs):
 
-            self.out_cols = [self.data_config['outputs'][out]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs'][out]]  # because fetch_data depends upon self.outs
             scaler_key = str(out) if 'scaler_key' not in kwargs else kwargs['scaler_key']
             kwargs['scaler_key'] = scaler_key
             x, _, labels = self.fetch_data(data=self.data[out][self.in_cols + self.out_cols], **kwargs)
@@ -48,14 +48,14 @@ class MultiOutputParallel(Model):
             x_data.append(x)
             y_data.append(labels)
 
-        self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+        self.out_cols = self.config['outputs']  # setting the actual output columns back to original
 
         return x_data, y_data
 
     def build(self):
 
-        self.model_config['tr_outs'] = self.tr_outs
-        self.model_config['val_outs'] = self.val_outs
+        self.config['tr_outs'] = self.tr_outs
+        self.config['val_outs'] = self.val_outs
 
         inputs = []
         predictions = []
@@ -63,7 +63,7 @@ class MultiOutputParallel(Model):
         for out in range(self.outs):
 
             site_inputs = keras.layers.Input(shape=(self.lookback, self.ins))
-            _, site_predictions = self.add_layers(self.model_config['layers']['nn_' + str(out)], site_inputs)
+            _, site_predictions = self.add_layers(self.config['model']['layers']['nn_' + str(out)], site_inputs)
 
             inputs.append(site_inputs)
             predictions.append(site_predictions)
@@ -79,20 +79,20 @@ class MultiOutputParallel(Model):
         x, y = self.train_data(st=st, en=en, indices=indices)
 
         (x, y, sample_weights, val_x, val_y, val_sample_weights) = training_utils.split_training_and_validation_data(
-            x, y, None, self.data_config['val_fraction'])
+            x, y, None, self.config['val_fraction'])
 
         return x, y, val_x, val_y
 
     def fit(self, st=0, en=None, indices=None, **callbacks):
         # Instantiate an optimizer.
-        optimizer = keras.optimizers.Adam(learning_rate=self.model_config['lr'])
+        optimizer = keras.optimizers.Adam(learning_rate=self.config['lr'])
         # Instantiate a loss function.
         loss_fn = self.loss
 
         # Prepare the training dataset.
-        batch_size = self.data_config['batch_size']
+        batch_size = self.config['batch_size']
 
-        outs = len(self.data_config['outputs'])
+        outs = len(self.config['outputs'])
 
         x, y, val_x, val_y = self.train_test_split(st, en, indices)
 
@@ -100,8 +100,8 @@ class MultiOutputParallel(Model):
         val_data = tuple(val_x + val_y)
 
         print("{} samples used for training and {} samples for validation".format(x[0].shape[0], val_x[0].shape[0]))
-        self.data_config['train_samples'] = x[0].shape[0]
-        self.data_config['val_samples'] = val_x[0].shape[0]
+        self.info['train_examples'] = x[0].shape[0]
+        self.info['val_examples'] = val_x[0].shape[0]
 
         train_datasets = tf.data.Dataset.from_tensor_slices(train_data)
         train_datasets = train_datasets.shuffle(buffer_size=1024).batch(batch_size)
@@ -178,7 +178,7 @@ class MultiOutputParallel(Model):
 
         start = time.time()
 
-        for epoch in range(self.model_config['epochs']):
+        for epoch in range(self.config['epochs']):
 
             skipped_batches = 0
             tr_batch_losses = {key: [] for key in ['loss']+ ['_'+str(i) for i in range(outs)]}
@@ -227,8 +227,8 @@ class MultiOutputParallel(Model):
                                                                 .format(epoch, np.nanmean(val_batch_losses['loss']))))
             print(epoch, msg)
 
-        self.data_config['training_batches'] = int(tr_step)
-        self.model_config['training_time_in_minutes'] = int( (time.time()-start) / 60.0)
+        self.info['training_batches'] = int(tr_step)
+        self.info['training_time_in_minutes'] = int( (time.time()-start) / 60.0)
         _history = self.at_train_end(skipped_batches, tr_epoch_losses, val_epoch_losses)
 
         print("Training time: {}".format(time.time()-start))
@@ -247,7 +247,7 @@ class MultiOutputParallel(Model):
             val_losses['val_' + k] = v
 
         self.plot_loss(_history)
-        self.model_config['skipped_batches'] = skipped_batches
+        self.info['skipped_batches'] = skipped_batches
 
         self.save_config(_history)
 
@@ -288,16 +288,16 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
 
     def train_data(self, **kwargs):
 
-        outs = len(self.data_config['outputs'])
+        outs = len(self.config['outputs'])
 
         x_data = []
         y_data = []
         for out in range(outs):
 
-            self.out_cols = [self.data_config['outputs'][out]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs'][out]]  # because fetch_data depends upon self.outs
             x, prev_y, labels = self.fetch_data(data=self.data[out], **kwargs)
 
-            sub_seq = self.model_config['subsequences']
+            sub_seq = self.config['subsequences']
             sub_seq_lens = int(self.lookback / sub_seq)
             examples = x.shape[0]
 
@@ -306,7 +306,7 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
             x_data.append(x)
             y_data.append(labels)
 
-        self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+        self.out_cols = self.config['outputs']  # setting the actual output columns back to original
         return x_data, y_data
 
     def build(self):
@@ -314,16 +314,16 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
         inputs = []
         predictions = []
 
-        assert self.lookback % self.model_config['subsequences'] == int(0), """lookback must be multiple of subsequences,
-        lookback is {} while number of subsequences are {}""".format(self.lookback, self.model_config['subsequences'])
+        assert self.lookback % self.config['subsequences'] == int(0), """lookback must be multiple of subsequences,
+        lookback is {} while number of subsequences are {}""".format(self.lookback, self.config['subsequences'])
 
         for out in range(self.outs):
 
-            sub_seq = self.model_config['subsequences']
+            sub_seq = self.config['subsequences']
             sub_seq_lens = int(self.lookback / sub_seq)
 
             site_inputs = keras.layers.Input(shape=(sub_seq, 1, sub_seq_lens, self.ins))
-            _, site_predictions = self.add_layers(self.model_config['layers']['nn_' + str(out)], site_inputs)
+            _, site_predictions = self.add_layers(self.config['layers']['nn_' + str(out)], site_inputs)
 
             inputs.append(site_inputs)
             predictions.append(site_predictions)
@@ -342,13 +342,13 @@ class LSTMAutoEncMultiOutput(MultiOutputParallel):
 
     def train_data(self, **kwargs):
 
-        outs = len(self.data_config['outputs'])
+        outs = len(self.config['outputs'])
 
         x_data = []
         y_data = []
         for out in range(outs):
 
-            self.out_cols = [self.data_config['outputs'][out]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs'][out]]  # because fetch_data depends upon self.outs
             x, train_y_3, labels = self.fetch_data(data=self.data[out], **kwargs)
 
             if self.composite:
@@ -359,7 +359,7 @@ class LSTMAutoEncMultiOutput(MultiOutputParallel):
             x_data.append(x)
             y_data.append(outputs)
 
-        self.out_cols = self.data_config['outputs']  # setting the actual output columns back to original
+        self.out_cols = self.config['outputs']  # setting the actual output columns back to original
         return x_data, y_data
 
 

@@ -26,17 +26,17 @@ class HARHNModel(Model):
 
     @property
     def use_predicted_output(self):
-        return self.data_config['use_predicted_output']
+        return self.config['use_predicted_output']
 
     def build(self):
-        config = self.model_config['HARHN_config']
+        config = self.config['harhn_config']
 
         self.pt_model = HARHN(config['n_conv_lyrs'],
                               self.lookback, self.ins, self.outs,
                               n_units_enc=config['enc_units'],
                               n_units_dec=config['dec_units'],
-                              use_predicted_output=self.data_config['use_predicted_output']).cuda()
-        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.model_config['lr'])
+                              use_predicted_output=self.config['use_predicted_output']).cuda()
+        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.config['lr'])
 
         self.epoch_scheduler = torch.optim.lr_scheduler.StepLR(self.opt, 20, gamma=0.9)
 
@@ -46,7 +46,7 @@ class HARHNModel(Model):
 
     def train_epoch_v2(self, data_loader):
         # using previous predictions as input
-        batch_y_h = torch.zeros(self.data_config['batch_size'], 1)
+        batch_y_h = torch.zeros(self.config['batch_size'], 1)
         mse_train = 0
         for batch_x, _, batch_y in data_loader:
             batch_x = batch_x.cuda()
@@ -100,7 +100,7 @@ class HARHNModel(Model):
         mse_val = 0
         preds = []
         true = []
-        batch_y_h1 = torch.zeros(self.data_config['batch_size'], 1)
+        batch_y_h1 = torch.zeros(self.config['batch_size'], 1)
         for batch_x, _, batch_y in data_loader:
             batch_x = batch_x.cuda()
             batch_y = batch_y.cuda()
@@ -119,7 +119,7 @@ class HARHNModel(Model):
         x, y_his, target = self.prepare_batches(self.data[st:en], '',  self.outs)
 
         x_tr, x_val, y_his_tr, y_his_val, target_tr, target_val = train_test_split(x, y_his, target,
-                                                                                   test_size=self.data_config['val_fraction'])
+                                                                                   test_size=self.config['val_fraction'])
         self.min_max = {
             'x_max': x_tr.max(axis=0),
             'x_min': x_tr.min(axis=0),
@@ -149,17 +149,17 @@ class HARHNModel(Model):
 
         data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, y_his_train_t,
                                                                                        target_train_t), shuffle=True,
-                                                        batch_size=self.data_config['batch_size'])
+                                                        batch_size=self.config['batch_size'])
         data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, y_his_val_t,
                                                                                      target_val_t), shuffle=False,
-                                                      batch_size=self.data_config['batch_size'])
+                                                      batch_size=self.config['batch_size'])
 
-        min_val_loss = self.model_config['min_val_loss']
+        min_val_loss = self.config['min_val_loss']
         counter = 0
         losses = {'train_loss': [],
                   'val_loss': []}
 
-        for i in range(self.model_config['epochs']):
+        for i in range(self.config['epochs']):
             if self.use_predicted_output:
                 mse_train = self.train_epoch_v2(data_train_loader)
             else:
@@ -184,7 +184,7 @@ class HARHNModel(Model):
             else:
                 counter += 1
 
-            if counter == self.model_config['patience']:
+            if counter == self.config['patience']:
                 print("Training is stopped because patience reached")
                 break
             train_loss = (mse_train / len(x_train_t)) ** 0.5
@@ -212,7 +212,7 @@ class HARHNModel(Model):
 
         data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, y_his_test_t,
                                                                                       target_test_t), shuffle=False,
-                                                       batch_size=self.data_config['batch_size'])
+                                                       batch_size=self.config['batch_size'])
 
         self.pt_model.load_state_dict(torch.load(self.saved_model))
 
@@ -246,9 +246,9 @@ class IMVLSTMModel(HARHNModel):
         else:
             ins = self.ins + self.outs
 
-        self.pt_model = IMVTensorLSTM(ins, self.outs, self.data_config['batch_size']).cuda()
+        self.pt_model = IMVTensorLSTM(ins, self.outs, self.config['batch_size']).cuda()
 
-        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.model_config['lr'])
+        self.opt = torch.optim.Adam(self.pt_model.parameters(), lr=self.config['lr'])
 
         self.epoch_scheduler = torch.optim.lr_scheduler.StepLR(self.opt, 20, gamma=0.9)
 
@@ -262,7 +262,7 @@ class IMVLSTMModel(HARHNModel):
 
         if not self.use_predicted_output:
             x = np.dstack([x, y_h])
-        x_train, x_val, target_train, target_val = train_test_split(x, target, test_size=self.data_config['val_fraction'])
+        x_train, x_val, target_train, target_val = train_test_split(x, target, test_size=self.config['val_fraction'])
 
         self.min_max = {
             'x_max': x_train.max(axis=0),
@@ -282,15 +282,15 @@ class IMVLSTMModel(HARHNModel):
         target_val_t = to_torch_tensor(target_val)
 
         data_train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_train_t, target_train_t),
-                                                        shuffle=True, batch_size=self.data_config['batch_size'])
+                                                        shuffle=True, batch_size=self.config['batch_size'])
         data_val_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_val_t, target_val_t),
-                                                      shuffle=False, batch_size=self.data_config['batch_size'])
+                                                      shuffle=False, batch_size=self.config['batch_size'])
 
-        min_val_loss = self.model_config['min_val_loss']
+        min_val_loss = self.config['min_val_loss']
         counter = 0
         losses = {'train_loss': [],
                   'val_loss': []}
-        for epoch in range(self.model_config['epochs']):
+        for epoch in range(self.config['epochs']):
             mse_train = 0
             for batch_x, batch_y in data_train_loader:
                 batch_x = batch_x.cuda()
@@ -318,7 +318,7 @@ class IMVLSTMModel(HARHNModel):
             pred = np.concatenate(preds)
             true = np.concatenate(true)
 
-            if counter == self.model_config['patience']:
+            if counter == self.config['patience']:
                 break
             train_loss = (mse_train / len(x_train_t)) ** 0.5
             val_loss = (mse_val / len(x_val_t)) ** 0.5
@@ -361,7 +361,7 @@ class IMVLSTMModel(HARHNModel):
         target_test_t = to_torch_tensor(target_test)
 
         data_test_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_test_t, target_test_t),
-                                                       shuffle=False, batch_size=self.data_config['batch_size'])
+                                                       shuffle=False, batch_size=self.config['batch_size'])
 
         with torch.no_grad():
             mse_val = 0
@@ -401,7 +401,7 @@ class IMVLSTMModel(HARHNModel):
 
         alphas = alphas.transpose(1, 0)  # (ins, lookback)
 
-        all_cols = self.data_config['inputs'] if self.use_predicted_output else  self.data_config['inputs'] + self.data_config['outputs']
+        all_cols = self.config['inputs'] if self.use_predicted_output else  self.config['inputs'] + self.config['outputs']
         plt.close('all')
         fig, ax = plt.subplots()
         fig.set_figwidth(60)
