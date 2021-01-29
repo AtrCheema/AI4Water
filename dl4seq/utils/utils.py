@@ -333,6 +333,8 @@ def _make_model(**kwargs):
         # config may contain additional user defined args which will not be checked
         elif not kwargs.get('accept_additional_args', False):
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
+        else:
+            data_config[key] = val
 
     if data_config['allow_nan_labels']>0:
         assert 'layers' in model_config['model'], f"`allow_nan_labels` should be > 0 only for deep learning models"
@@ -869,7 +871,7 @@ def post_process_skopt_results(skopt_results, results, opt_path):
     return
 
 
-def stats(feature, precision=3) ->dict:
+def stats(feature, precision=3, name='') ->dict:
     """Gets all the possible stats about an array like object `feature`.
     `feature: array like
     """
@@ -877,11 +879,16 @@ def stats(feature, precision=3) ->dict:
         if hasattr(feature, '__len__'):
             feature = np.array(feature)
         else:
-            raise TypeError(f"input must be array like but it is of type {type(feature)}")
+            raise TypeError(f"{name} must be array like but it is of type {type(feature)}")
 
     if np.array(feature).dtype.type is np.str_:
-        warnings.warn("columns contains string values")
+        warnings.warn(f"{name} contains string values")
         return {}
+
+    if 'int' not in feature.dtype.name:
+        if 'float' not in feature.dtype.name:
+            warnings.warn(f"changing the dtype of {name} from {feature.dtype.name} to float")
+            feature = feature.astype(np.float64)
     _stats = dict()
     _stats['Skew'] = np.round(skew(feature), precision)
     _stats['Kurtosis'] = np.round(kurtosis(feature), precision)
@@ -890,7 +897,8 @@ def stats(feature, precision=3) ->dict:
     try:
         _stats['Harmonic Mean'] = np.round(hmean(feature), precision)
     except ValueError:
-        warnings.warn("Harmonic mean only defined if all elements greater than or equal to zero", UserWarning)
+        warnings.warn(f"""Unable to calculate Harmonic mean for {name}. Harmonic mean only defined if all
+                      elements are greater than or equal to zero""", UserWarning)
     _stats['Standard error of mean'] = np.round(scipy.stats.sem(feature), precision)
     _stats['Median'] = np.round(np.nanmedian(feature), precision)
     _stats['Variance'] = np.round(np.nanvar(feature), precision)
@@ -944,7 +952,7 @@ def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
-def make_3d_batches(df: np.ndarray, outs:int, lookback:int, in_step:int, forecast_step:int,
+def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forecast_step:int,
                    forecast_len:int):
     """
     data: 2d numpy array whose first `ins` columns are used as inputs while last `outs` number of columns are used as
@@ -1039,25 +1047,31 @@ def make_3d_batches(df: np.ndarray, outs:int, lookback:int, in_step:int, forecas
    [208., 209., 210., 211.]], dtype=float32)
 
     """
-    if len(df) <= 1:
-        raise ValueError(f"Can not create batches from data with shape {df.shape}")
+    if not isinstance(data, np.ndarray):
+        if isinstance(data, pd.DataFrame):
+            data = data.values
+        else:
+            raise TypeError(f"unknown data type for data {type(data)}")
+
+    if len(data) <= 1:
+        raise ValueError(f"Can not create batches from data with shape {data.shape}")
     x = []
     prev_y = []
     y = []
 
-    samples = len(df)
-    features = df.shape[1]
+    samples = len(data)
+    features = data.shape[1]
 
     for i in range(samples - lookback * in_step + 1 - forecast_step - forecast_len + 1):
         stx, enx = i, i + lookback * in_step
-        x_example = df[stx:enx:in_step, 0:features - outs]
+        x_example = data[stx:enx:in_step, 0:features - outs]
 
         st, en = i, i + (lookback - 1) * in_step
-        y_data = df[st:en:in_step, features - outs:]
+        y_data = data[st:en:in_step, features - outs:]
 
         sty = enx + forecast_step - in_step
         eny = sty + forecast_len
-        target = df[sty:eny, features - outs:]
+        target = data[sty:eny, features - outs:]
 
         x.append(np.array(x_example))
         prev_y.append(np.array(y_data))
