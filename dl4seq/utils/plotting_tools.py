@@ -84,7 +84,8 @@ class Plots(object):
     def feature_imporance(self):
         if self.category.upper() == "ML":
 
-            if self.config["ml_model"].upper() in ["SVC", "SVR"]:
+            model_name = list(self.config['model'].keys())[0]
+            if model_name.upper() in ["SVC", "SVR"]:
                 if self._model.kernel == "linear":
                     # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
                     return self._model.coef_
@@ -503,12 +504,13 @@ class Plots(object):
         if importance is None:
             importance = self.feature_imporance()
 
-        if self.category == "ML" and self.config["ml_model"] is not None:
-            if self.config["ml_model"].upper() in ["SVC", "SVR"]:
+        if self.category == "ML":
+            model_name = list(self.config['model'].keys())[0]
+            if model_name.upper() in ["SVC", "SVR"]:
                 if self._model.kernel == "linear":
                     return self.f_importances_svm(importance, self.in_cols, save=save)
                 else:
-                    warnings.warn(f"for {self._model.kernel} kernels of {self.config['ml_model']}, feature importance can not be plotted.")
+                    warnings.warn(f"for {self._model.kernel} kernels of {model_name}, feature importance can not be plotted.")
                 return
             return 
 
@@ -647,10 +649,12 @@ class Plots(object):
     def plot_treeviz_leaves(self, save=True, **kwargs):
         """Plots dtreeviz related plots if dtreeviz is installed"""
 
-        model = self.config['model'].upper()
+        model = list(self.config['model'].keys())[0].upper()
         if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"] or model.startswith("XGBOOST"):
             if trees is None:
                 print("dtreeviz related plots can not be plotted")
+            elif model in ['XGBOOSTRFREGRESSOR']:  # dtreeviz doesn't plot this
+                pass
             else:
                 x,y = self.test_data()
 
@@ -725,7 +729,7 @@ class Plots(object):
             ax.bar(range(features), self._model.coef_[idx], 0.4)
 
         plt.xticks(ticks=range(features), labels=self.in_cols, rotation=90, fontsize=12)
-        self.save_or_show(save=save, fname=f"{self.config['ml_model']}_feature_importance")
+        self.save_or_show(save=save, fname=f"{list(self.config['model'].keys())[0]}_feature_importance")
         return
 
     def plot_loss(self, history: dict, name="loss_curve"):
@@ -751,11 +755,11 @@ class Plots(object):
                      3: (1, 2),
                      4: {'axis': (1, 2), 'width': 10, 'height': 10},
                      5: (1, 3),
-                     6: (1, 3),
-                     7: (3, 2),
-                     8: (4, 2),
-                     9: (5, 2),
-                     10: (5, 2),
+                     6: {'axis': (1, 3), 'width': 20, 'height': 20},
+                     7: {'axis': (3, 2), 'width': 20, 'height': 20},
+                     8: {'axis': (4, 2), 'width': 20, 'height': 20},
+                     9: {'axis': (5, 2), 'width': 20, 'height': 20},
+                     10: {'axis': (5, 2), 'width': 20, 'height': 20},
                      12: {'axis': (4, 3), 'width': 20, 'height': 20},
                      }
 
@@ -1080,7 +1084,8 @@ class Plots(object):
 
         elif isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self.plot_missing_df(data, cols=cols[idx], prefix=str(idx), save=save, **kwargs)
+                _cols = cols[idx] if isinstance(cols, list) else None
+                self.plot_missing_df(data, cols=None, prefix=str(idx), save=save, **kwargs)
 
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
