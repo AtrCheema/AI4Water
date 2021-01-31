@@ -308,9 +308,9 @@ def _make_model(**kwargs):
         # step size of input data
         'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
         # input features in data_frame
-        'inputs':            {"type": list, "default": in_cols, 'lower': None, 'upper': None, 'between': None},
+        'inputs':            {"type": None, "default": in_cols, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
-        'outputs':           {"type": list, "default": ["NDX"], 'lower': None, 'upper': None, 'between': None},
+        'outputs':           {"type": None, "default": ["NDX"], 'lower': None, 'upper': None, 'between': None},
         # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
         # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
         # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
@@ -319,7 +319,7 @@ def _make_model(**kwargs):
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
 
-    data_config=  {key:val['default'] for key,val in data_args.items()}
+    config = {key:val['default'] for key,val in data_args.items()}
 
     for key, val in kwargs.items():
         arg_name = key.lower()
@@ -327,20 +327,29 @@ def _make_model(**kwargs):
         if arg_name in model_config:
             update_dict(arg_name, val, model_args, model_config)
 
-        elif arg_name in data_config:
-            update_dict(arg_name, val, data_args, data_config)
+        elif arg_name in config:
+            update_dict(arg_name, val, data_args, config)
 
         # config may contain additional user defined args which will not be checked
         elif not kwargs.get('accept_additional_args', False):
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
         else:
-            data_config[key] = val
+            config[key] = val
 
-    if data_config['allow_nan_labels']>0:
+    if config['allow_nan_labels']>0:
         assert 'layers' in model_config['model'], f"`allow_nan_labels` should be > 0 only for deep learning models"
 
-    data_config.update(model_config)
-    return data_config
+    config.update(model_config)
+
+    assert type(config['inputs']) == type(config['outputs']), f"""
+inputs is of type {type(config['inputs'])} but outputs is of type {type(config['outputs'])}
+"""
+
+    if isinstance(config['inputs'], dict):
+        for data in [config['inputs'], config['outputs']]:
+            for k,v in data.items():
+                assert isinstance(v, list), f"{k} is of type {type(v)} but it must of of type list"
+    return config
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):
@@ -949,15 +958,15 @@ def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
-def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forecast_step:int,
+def make_3d_batches(data: np.ndarray, outputs:int, lookback:int, input_steps:int, forecast_step:int,
                    forecast_len:int):
     """
     data: 2d numpy array whose first `ins` columns are used as inputs while last `outs` number of columns are used as
            outputs.
-    outs: int, number of columns (from last) in data to be used as output. The input columns will be all from start
+    outputs: int, number of columns (from last) in data to be used as output. The input columns will be all from start
           till outs.
     lookback: int,  number of previous time-steps to be used at one step
-    in_step: int, number of steps in input data
+    input_steps: int, number of steps in input data
     forecast_step: int, >=0, which t value to use as target.
     forecast_len: int, number of horizons/future values to predict.
 
@@ -967,7 +976,7 @@ def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forec
       y: numpy array consisting of target values
 
     Given following sample consisting of input/output paris
-    input, input, output1, output2, output 3
+  input1, input2, output1, output2, output 3
     1,     11,     21,       31,     41
     2,     12,     22,       32,     42
     3,     13,     23,       33,     43
@@ -977,40 +986,40 @@ def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forec
     7,     17,     27,       37,     47
 
     If we used following as input
-    1,     11,     21,
-    2,     12,     22,
-    3,     13,     23,
-    4,     14,     24,
-    5,     15,     25,
-    6,     16,     26,
-    7,     17,     27,
+    1,     11,
+    2,     12,
+    3,     13,
+    4,     14,
+    5,     15,
+    6,     16,
+    7,     17,
 
-                          ins=3, lookback=7, in_step=1
+                          input_features=2, lookback=7, input_steps=1
     and if we predict
-    27, 37, 47     outs=3, forecast_len=1,  horizon/forecast_step=0,
+    27, 37, 47     outputs=3, forecast_len=1,  horizon/forecast_step=0,
 
     if we predict
-    28, 38, 48     outs=3, forecast_length=1,  horizon/forecast_step=1,
+    28, 38, 48     outputs=3, forecast_length=1,  horizon/forecast_step=1,
 
     if we predict
     27, 37, 47
-    28, 38, 48     outs=3, forecast_length=2,  horizon/forecast_step=0,
+    28, 38, 48     outputs=3, forecast_length=2,  horizon/forecast_step=0,
 
     if we predict
     28, 38, 48
-    29, 39, 49   outs=3, forecast_length=3,  horizon/forecast_step=1,
+    29, 39, 49   outputs=3, forecast_length=3,  horizon/forecast_step=1,
     30, 40, 50
 
     if we predict
-    38            outs=1, forecast_length=3, forecast_step=0
+    38            outputs=1, forecast_length=3, forecast_step=0
     39
     40
 
     if we predict
-    39            outs=1, forecast_length=1, forecast_step=2
+    39            outputs=1, forecast_length=1, forecast_step=2
 
     if we predict
-    39            outs=1, forecast_length=3, forecast_step=2
+    39            outputs=1, forecast_length=3, forecast_step=2
     40
     41
 
@@ -1023,7 +1032,7 @@ def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forec
     5,     15,     25,
     7,     17,     27,
 
-           then        ins=3, lookback=4, in_step=2
+           then        input_features=2, lookback=4, input_step=2
 
     ----------
     Example
@@ -1031,7 +1040,7 @@ def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forec
     >>>examples = 50
     >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
 
-    >>>x, prevy, label = make_3d_batches(data, ins=3, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
+    >>>x, prevy, label = make_3d_batches(data, outputs=2, lookback=4, input_steps=2, forecast_step=2, forecast_len=4)
     >>>x[0]
        array([[  0.,  50., 100.],
        [  2.,  52., 102.],
@@ -1058,16 +1067,16 @@ def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forec
     samples = len(data)
     features = data.shape[1]
 
-    for i in range(samples - lookback * in_step + 1 - forecast_step - forecast_len + 1):
-        stx, enx = i, i + lookback * in_step
-        x_example = data[stx:enx:in_step, 0:features - outs]
+    for i in range(samples - lookback * input_steps + 1 - forecast_step - forecast_len + 1):
+        stx, enx = i, i + lookback * input_steps
+        x_example = data[stx:enx:input_steps, 0:features - outputs]
 
-        st, en = i, i + (lookback - 1) * in_step
-        y_data = data[st:en:in_step, features - outs:]
+        st, en = i, i + (lookback - 1) * input_steps
+        y_data = data[st:en:input_steps, features - outputs:]
 
-        sty = enx + forecast_step - in_step
+        sty = enx + forecast_step - input_steps
         eny = sty + forecast_len
-        target = data[sty:eny, features - outs:]
+        target = data[sty:eny, features - outputs:]
 
         x.append(np.array(x_example))
         prev_y.append(np.array(y_data))
