@@ -141,9 +141,9 @@ class TestMLMethods(unittest.TestCase):
         run_class_test("LassoLarsIC")
         return
 
-    def test_TransformedTargetRegressor(self):
-        run_class_test("TransformedTargetRegressor")
-        return
+    # def test_TransformedTargetRegressor(self):
+    #     run_class_test("TransformedTargetRegressor")
+    #     return
 
     def test_EXTRATREEREGRESSOR(self):
         run_class_test("EXTRATREEREGRESSOR")

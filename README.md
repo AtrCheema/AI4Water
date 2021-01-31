@@ -7,7 +7,7 @@
 [![Build Status](https://github.com/AtrCheema/dl4seq/workflows/tf20/badge.svg)](https://github.com/AtrCheema/dl4seq/actions)
 [![Build Status](https://github.com/AtrCheema/dl4seq/workflows/tf115/badge.svg)](https://github.com/AtrCheema/dl4seq/actions)
 [![Build Status](https://github.com/AtrCheema/dl4seq/workflows/tf114/badge.svg)](https://github.com/AtrCheema/dl4seq/actions)
-
+[![Build Status](https://github.com/AtrCheema/dl4seq/workflows/tf240/badge.svg)](https://github.com/AtrCheema/dl4seq/actions)
 
 A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
