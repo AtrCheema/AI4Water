@@ -156,18 +156,16 @@ class Model(NN, Plots):
 
     @property
     def ins(self):
-        if isinstance(self.in_cols, list):
-            return [len(inp) for inp in self.in_cols]
-        elif isinstance(self.in_cols, dict):
+
+        if isinstance(self.in_cols, dict):
             return {k:len(inp) for k,inp in self.in_cols.items()}
         else:
             return len(self.in_cols)
 
     @property
     def outs(self):
-        if isinstance(self.out_cols, list):
-            return [len(inp) for inp in self.out_cols]
-        elif isinstance(self.out_cols, dict):
+
+        if isinstance(self.out_cols, dict):
             return {k:len(inp) for k,inp in self.out_cols.items()}
         else:
             return len(self.out_cols)
