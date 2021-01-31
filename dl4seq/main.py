@@ -143,7 +143,7 @@ class Model(NN, Plots):
         return self._in_cols
 
     @in_cols.setter
-    def in_cols(self, x: list):
+    def in_cols(self, x):
         self._in_cols = x
 
     @property
@@ -151,16 +151,26 @@ class Model(NN, Plots):
         return self._out_cols
 
     @out_cols.setter
-    def out_cols(self, x: list):
+    def out_cols(self, x):
         self._out_cols = x
 
     @property
     def ins(self):
-        return len(self.in_cols)
+        if isinstance(self.in_cols, list):
+            return [len(inp) for inp in self.in_cols]
+        elif isinstance(self.in_cols, dict):
+            return {k:len(inp) for k,inp in self.in_cols.items()}
+        else:
+            return len(self.in_cols)
 
     @property
     def outs(self):
-        return len(self.out_cols)
+        if isinstance(self.out_cols, list):
+            return [len(inp) for inp in self.out_cols]
+        elif isinstance(self.out_cols, dict):
+            return {k:len(inp) for k,inp in self.out_cols.items()}
+        else:
+            return len(self.out_cols)
 
     @property
     def loss(self):

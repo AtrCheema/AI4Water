@@ -26,10 +26,12 @@ def get_sklearn_models():
         from sklearn.experimental import enable_hist_gradient_boosting
         from sklearn.ensemble import HistGradientBoostingClassifier
         from sklearn.ensemble import HistGradientBoostingRegressor
+        from sklearn.compose import TransformedTargetRegressor
 
         skl_models = get_attributes(sklearn, "ensemble")
         skl_models.update(get_attributes(sklearn, "dummy"))
         skl_models.update(get_attributes(sklearn, "gaussian_process"))
+        skl_models.update(get_attributes(sklearn, "compose"))
         skl_models.update(get_attributes(sklearn, "linear_model"))
         skl_models.update(get_attributes(sklearn, "multioutput"))
         skl_models.update(get_attributes(sklearn, "neighbors"))
