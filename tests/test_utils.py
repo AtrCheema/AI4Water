@@ -346,6 +346,15 @@ class TestUtils(unittest.TestCase):
         np.allclose(tr_y[0], tr_indices)
         np.allclose(tr_x1, tr_x2[0])
 
+    def test_make_3d_batches(self):
+
+        exs = 50
+        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
+        x, prevy, label = make_3d_batches(d, outputs=2, lookback=4, input_steps=2, forecast_step=2, forecast_len=4)
+        self.assertEqual(x.shape, (38, 4, 3))
+        self.assertEqual(label.shape, (38, 2, 4))
+        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
+                                                        [208., 209., 210., 211.]])))
         return
 
     def test_same_test_val_data_train_random(self):
@@ -428,9 +437,12 @@ class TestUtils(unittest.TestCase):
                       epochs=2,
                       model={'layers':{
                           "LSTM": {"config": {"units": 2}},
-                          "Dense": {"config": {"units": 1}}}},
+                          "Dense": {"config": {"units": 1}},
+                          "Reshape": {"config": {"target_shape": (1, 1)}}
+                      }
+                      },
                       lookback=lookback,
-                      verbosity=0)
+                      verbosity=2)
 
         model.fit(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
