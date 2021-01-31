@@ -519,6 +519,14 @@ class Model(NN, Plots):
 
         _monitor = 'val_loss' if val_data_present else 'loss'
         fname = "{val_loss:.5f}.hdf5" if val_data_present else "{loss:.5f}.hdf5"
+
+        if int(''.join(tf.__version__.split('.')[0:2])) <= 115:
+            for lyr_name in self.layer_names:
+                if 'HA_weighted_input' in lyr_name or 'SeqWeightedAttention_weights' in lyr_name:
+                    self.config['save_model'] = False
+
+                    warnings.warn("Can not save Heirarchical model with tf<= 1.15")
+
         if self.config['save_model']:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
                 filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
