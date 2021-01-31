@@ -380,16 +380,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(x[0]), len(y))
         return
 
-    def test_make_3d_batches(self):
-
-        exs = 50
-        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = make_3d_batches(d, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
-        self.assertEqual(x.shape, (38, 4, 3))
-        self.assertEqual(label.shape, (38, 2, 4))
-        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
-                                                        [208., 209., 210., 211.]])))
-        return
 
     def test_train_val_split(self):
         # This should raise error
@@ -442,7 +432,7 @@ class TestUtils(unittest.TestCase):
                       }
                       },
                       lookback=lookback,
-                      verbosity=2)
+                      verbosity=0)
 
         model.fit(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
