@@ -76,7 +76,6 @@ class Model(NN, Plots):
         #super(Model, self).__init__(**config)
         NN.__init__(self, config=config.config)
 
-
         self.intervals = config.config['intervals']
         self.data = data
         self.in_cols = self.config['inputs']
@@ -258,9 +257,8 @@ class Model(NN, Plots):
         # # add random noise in the data
         df = self.add_noise(data, noise)
 
-
         if self.config['transformation']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
-            df, _ = self.normalize(df, scaler_key)
+            df, _ = self.normalize(df, scaler_key, self.config['transformation'])
 
         # indexification should happen after transformation, because datetime column should not be transformed.
         df = self.indexify_data(df, use_datetime_index)
@@ -354,7 +352,7 @@ class Model(NN, Plots):
 
         return x, y, label
 
-    def indexify_data(self, data, use_datetime_index):
+    def indexify_data(self, data, use_datetime_index:bool):
 
         if use_datetime_index:
             assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
@@ -386,10 +384,10 @@ class Model(NN, Plots):
 
         return df
 
-    def normalize(self, df, key):
+    def normalize(self, df, key, transformation):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
         scaler = None
-        transformation = self.config['transformation']
+
         if transformation is not None:
 
             if isinstance(transformation, dict):
@@ -456,7 +454,6 @@ class Model(NN, Plots):
             for ex in range(len(x)):
 
                 _x[ex][batch] = x[ex][st:en, :]
-
 
             _prev_y[batch] = prev_y[st:en, :]
             _y[batch] = y[st:en, :]
@@ -635,19 +632,51 @@ class Model(NN, Plots):
             self.info['val_examples'] = len(y_val)
             print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
 
-        train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
+        if self.num_input_layers == 1:
+            train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
+        elif self.num_input_layers > 1 and isinstance(x_train, list):
+            assert len(self._model.outputs) == 1
+            def train_generator():
+                for idx, l in enumerate(y_train):
+                    x = [x_train[i][idx] for i in range(len(x_train))]
+                    yield {inp_name:inp for inp_name, inp in zip(self.input_layer_names, x)}, l
+
+            inp_lyr_shapes = [self.layers_out_shapes[inp_name][0][1:] for inp_name in self.input_layer_names]
+            # assuming that there is only one output
+            out_lyr_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
+            train_dataset = tf.data.Dataset.from_generator(
+                train_generator,
+                output_shapes=({inp_name: inp_shp for inp_name, inp_shp in zip(self.input_layer_names, inp_lyr_shapes)},
+                               out_lyr_shape),
+                output_types=({inp_name: tf.float32 for inp_name in self.input_layer_names}, tf.float32))
+        else:
+            raise NotImplementedError
 
         if self.config['shuffle']:
             train_dataset = train_dataset.shuffle(self.config['buffer_size'])
         train_dataset = train_dataset.batch(self.config['batch_size'],
                                              drop_remainder=self.config['drop_remainder'])
-
         if x_val is not None:
-            assert self.num_input_layers == 1
-            if isinstance(x_val, list):
-                x_val = x_val[0]
-            assert isinstance(x_val, np.ndarray)
-            val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
+            if self.num_input_layers == 1:
+                if isinstance(x_val, list):
+                    x_val = x_val[0]
+                assert isinstance(x_val, np.ndarray)
+                val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
+            else:
+                def val_generator():
+                    for idx, l in enumerate(y_val):
+                        x = [x_val[i][idx] for i in range(len(x_val))]
+                        yield {inp_name:inp for inp_name, inp in zip(self.input_layer_names, x)}, l
+
+                inp_lyr_shapes = [self.layers_out_shapes[inp_name][0][1:] for inp_name in self.input_layer_names]
+                # assuming that there is only one output
+                out_lyr_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
+                val_dataset = tf.data.Dataset.from_generator(
+                    val_generator,
+                    output_shapes=({inp_name: inp_shp for inp_name, inp_shp in zip(self.input_layer_names, inp_lyr_shapes)},
+                               out_lyr_shape),
+                    output_types=({inp_name: tf.float32 for inp_name in self.input_layer_names}, tf.float32))
+
             val_dataset = val_dataset.batch(self.config['batch_size'],
                                                 drop_remainder=self.config['drop_remainder'])
         else:
@@ -744,11 +773,21 @@ class Model(NN, Plots):
             label = label.reshape(-1,)
 
         if self.verbosity > 0:
-            print('input_X shape:', x.shape)
-            print('prev_Y shape:', y.shape)
-            print('label shape:', label.shape)
+            print_something(x, "input_x")
+            print_something(y, "input_y")
+            print_something(label, "label")
 
-        return [x], label
+        if isinstance(x, np.ndarray):
+            return [x], label
+
+        elif isinstance(x, list):
+            return x, label
+
+        elif isinstance(x, dict):
+            return x, label
+
+        else:
+            raise ValueError
 
     def maybe_not_3d_data(self, true, predicted):
         if true.ndim < 3:
@@ -803,7 +842,6 @@ class Model(NN, Plots):
                 errs[out + 'predicted_stats_' + str(h)] = stats(p)
 
                 save_config_file(fpath, errors=errs, name=prefix)
-
         return
 
     def build(self):
@@ -842,13 +880,21 @@ class Model(NN, Plots):
         regr_name = _model.upper()
 
         kwargs = list(self.config['model'].values())[0]
+
+        if regr_name in ['HISTGRADIENTBOOSTINGREGRESSOR', 'SGDREGRESSOR', 'MLPREGRESSOR']:
+            kwargs.update({'validation_fraction': self.config['val_fraction']})
+
+        # some algorithms allow detailed output during training, this is allowed when self.verbosity is > 1
+        if regr_name in ['ONECLASSSVM']:
+            kwargs.update({'verbose': True if self.verbosity>1 else False})
+
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
         else:
             if regr_name in ['TWEEDIEREGRESSOR', 'POISSONREGRESSOR', 'LGBMREGRESSOR', 'LGBMCLASSIFIER', 'GAMMAREGRESSOR']:
                 if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
                     raise ValueError(f"{regr_name} is available with sklearn version >= 0.23 but you have {VERSION_INFO['sklearn']}")
-            raise ValueError(f"model {regr_name} not found")
+            raise ValueError(f"model {regr_name} not found. {VERSION_INFO}")
 
         self._model = model
 
@@ -1021,7 +1067,6 @@ class Model(NN, Plots):
                     if self.verbosity > 0:
                         print(f"Number of nans changed from {initial_nans} to {data[cols].isna().sum()}")
                     self.data[data_name] = data
-
         return
 
     def denormalize_data(self, inputs: np.ndarray, predicted: np.ndarray, true: np.ndarray, scaler_key: str):
@@ -1083,7 +1128,10 @@ class Model(NN, Plots):
         return predicted, true
 
     def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
-
+        """Removes the index columns from inputs. If inputs is a list then it removes index column from each
+        of the input in inputs. Index column is usually datetime column. It is added to keep track of indices of
+        input data.
+        """
         first_input = inputs[0]
         dt_index = np.arange(len(first_input))
         new_inputs = inputs
@@ -1159,16 +1207,22 @@ class Model(NN, Plots):
                     metrics.append(METRICS[m.upper()])
                 else:
                     metrics.append(m)
-
         return metrics
 
-    def get_2d_batches(self, df, ins, outs):
+    def get_2d_batches(self, data, ins, outs):
+        if not isinstance(data, np.ndarray):
+            if isinstance(data, pd.DataFrame):
+                data = data.values
+            else:
+                raise TypeError(f"unknown data type for data {type(data)}")
+
         # for case when there is not lookback, i.e first layer is dense layer and takes 2D input
-        input_x, input_y, label_y = df[:, 0:ins], df[:, -outs:], df[:, -outs:]
+        input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
 
         assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
         """.format(self.lookback)
-        return self.check_nans(df, input_x, input_y, np.expand_dims(label_y, axis=2), outs)
+        return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
+                               self.config['allow_nan_labels'])
 
     def imputation(self, df, ins:int, outs):
 
@@ -1215,34 +1269,37 @@ class Model(NN, Plots):
                 return self.get_2d_batches(df, ins, outs)
             else:
                 return self.check_nans(df, *make_3d_batches(df, outs, self.lookback, self.config['input_step'],
-                                           self.forecast_step, self.forecast_len), outs)
+                                           self.forecast_step, self.forecast_len), outs, self.lookback,
+                                       self.config['allow_nan_labels'])
         else:
             if len(self.first_layer_shape()) == 2:
                 return self.get_2d_batches(df, ins, outs)
 
             else:
                 return self.check_nans(df, *make_3d_batches(df, outs, self.lookback, self.config['input_step'],
-                                           self.forecast_step, self.forecast_len), outs)
+                                           self.forecast_step, self.forecast_len), outs, self.lookback,
+                                       self.config['allow_nan_labels'])
 
-    def check_nans(self, df, input_x, input_y, label_y, outs):
+    def check_nans(self, data, input_x, input_y, label_y, outs, lookback, allow_nan_labels, allow_input_nans=False):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.
         """
         # TODO, nans in inputs should be ignored at all cost because this causes error in results, when we set allow_nan_labels
         # to True, then this should apply only to target/labels, and examples with nans in inputs should still be ignored.
-        if isinstance(df, pd.DataFrame):
-            nans = df[self.out_cols].isna()
+        if isinstance(data, pd.DataFrame):
+            nans = data[self.out_cols].isna()
+            data = data.values
         else:
-            nans = np.isnan(df[:, -outs:]) # df[self.out_cols].isna().sum()
+            nans = np.isnan(data[:, -outs:]) # df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
-            if self.config['allow_nan_labels'] == 2:
+            if allow_nan_labels == 2:
                 print("\n{} Ignoring NANs in predictions {}\n".format(10 * '*', 10 * '*'))
-            elif self.config['allow_nan_labels'] == 1:
+            elif allow_nan_labels == 1:
                 print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
                 input_x = input_x[idx]
                 input_y = input_y[idx]
                 label_y = label_y[idx]
-                if int(np.isnan(df[:, -outs:][0:self.lookback]).sum() / self.outs) >= self.lookback:
+                if int(np.isnan(data[:, -outs:][0:lookback]).sum() / outs) >= lookback:
                     self.nans_removed_4m_st = -9999
             else:
                 if self.method == 'dual_attention':
@@ -1253,10 +1310,10 @@ class Model(NN, Plots):
 
                 if self.verbosity > 0:
                     print('\n{} Removing Samples with nan labels  {}\n'.format(10 * '*', 10 * '*'))
-                if self.outs == 1:
-                    # find out how many nans were present from start of df until lookback, these nans will be removed
-                    self.nans_removed_4m_st = np.isnan(df[:, -outs:][0:self.lookback]).sum()
-                nan_idx = np.isnan(label_y) if self.outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
+                if outs == 1:
+                    # find out how many nans were present from start of data until lookback, these nans will be removed
+                    self.nans_removed_4m_st = np.isnan(data[:, -outs:][0:lookback]).sum()
+                nan_idx = np.isnan(label_y) if outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]
                 # non_nan_idx = ~nan_idx_t.values
                 non_nan_idx = ~nan_idx.reshape(-1, )
@@ -1268,7 +1325,8 @@ class Model(NN, Plots):
 
         assert input_x.shape[0] == input_y.shape[0] == label_y.shape[0], "shapes are not same"
 
-        assert np.isnan(input_x).sum() == 0, "input still contains {} nans".format(np.isnan(input_x).sum())
+        if not allow_input_nans:
+            assert np.isnan(input_x).sum() == 0, "input still contains {} nans".format(np.isnan(input_x).sum())
 
         return input_x, input_y, label_y
 
@@ -1455,6 +1513,7 @@ class Model(NN, Plots):
             else:
                 print("ignoring weight gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
                                                                                            np.ndim(gradient)))
+            return
 
     def plot_act_grads(self, save: bool = True, **kwargs):
         """ plots activations of intermediate layers except input and output"""
@@ -1475,8 +1534,6 @@ class Model(NN, Plots):
 
                 if gradient.ndim == 2:
                     self.features_0d(gradient, name=fname, title=title, save=save)
-
-
 
             elif np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
@@ -1503,7 +1560,6 @@ class Model(NN, Plots):
             else:
                 print("ignoring activation gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
                                                                                                np.ndim(gradient)))
-
     def view_model(self, **kwargs):
         """ shows all activations, weights and gradients of the keras model."""
         if 'layers' not in self.config['model']:
@@ -1805,7 +1861,7 @@ class Model(NN, Plots):
             description = {}
             for col in cols:
                 if col in self.data:
-                    description[col] = stats(self.data[col], precision=precision)
+                    description[col] = stats(self.data[col], precision=precision, name=col)
 
             fpath = os.path.join(self.data_path, fname) if fpath is None else fpath
             save_stats(description, fpath)
@@ -1820,7 +1876,7 @@ class Model(NN, Plots):
 
                     for col in cols:
                         if col in data:
-                            _description[col] = stats(data[col], precision=precision)
+                            _description[col] = stats(data[col], precision=precision, name=col)
 
                 description['data' + str(idx)] = _description
                 _fpath = os.path.join(self.data_path, fname+f'_{idx}') if fpath is None else fpath
@@ -1852,3 +1908,13 @@ def unison_shuffled_copies(a, b, c):
     assert len(a) == len(b) == len(c)
     p = np.random.permutation(len(a))
     return a[p], b[p], c[p]
+
+
+def print_something(something, prefix=''):
+    """prints shape of some python object"""
+    if isinstance(something, np.ndarray):
+        print(f"{prefix} shape: ", something.shape)
+    elif isinstance(something, list):
+        print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
+    elif isinstance(something, dict):
+        print(f"{prefix} shape: ", [thing.shape for thing in something.values() if isinstance(thing, np.ndarray)])

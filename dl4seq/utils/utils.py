@@ -535,8 +535,6 @@ class SerializeSKOptResults(object):
             _x.append(Jsonize(para)())
         return _x
 
-
-
     def x0(self):
         _x0 = []
 
@@ -561,7 +559,6 @@ class SerializeSKOptResults(object):
             return _y0
 
         return Jsonize(self.results['specs']['args']['y0'])()
-
 
     def fun(self):
         return float(self.results['fun'])
@@ -619,7 +616,6 @@ class SerializeSKOptResults(object):
         """Serializes product kernel"""
         kernel = {}
         for _k,v in k.__dict__.items():
-
 
             kernel[_k] = self.singleton_kernel(v)
 
@@ -918,6 +914,7 @@ def stats(feature, precision=3, name='') ->dict:
 
     return Jsonize(_stats)()
 
+
 def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
     """
     Modified after https://github.com/akanz1/klib/blob/main/klib/utils.py#L197
@@ -1031,20 +1028,19 @@ def make_3d_batches(data: np.ndarray, outs:int, lookback:int, in_step:int, forec
     ----------
     Example
     ---------
-    examples = 50
-    data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
+    >>>examples = 50
+    >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
 
-    x, prevy, label = make_3d_batches(data, ins=3, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
-
+    >>>x, prevy, label = make_3d_batches(data, ins=3, outs=2, lookback=4, in_step=2, forecast_step=2, forecast_len=4)
     >>>x[0]
-        array([[  0.,  50., 100.],
+       array([[  0.,  50., 100.],
        [  2.,  52., 102.],
        [  4.,  54., 104.],
        [  6.,  56., 106.]], dtype=float32)
 
     >>>y[0]
-    array([[158., 159., 160., 161.],
-   [208., 209., 210., 211.]], dtype=float32)
+       array([[158., 159., 160., 161.],
+       [208., 209., 210., 211.]], dtype=float32)
 
     """
     if not isinstance(data, np.ndarray):
