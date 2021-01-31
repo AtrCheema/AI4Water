@@ -44,7 +44,6 @@ class Plots(object):
         self._model = model
         self.config = config
 
-
     @property
     def train_data(self):
         raise AttributeError
@@ -389,7 +388,6 @@ class Plots(object):
                     # assuming it will always be the last dim if not first
                     features_2D(data[..., st:en], savepath=save, **kwargs)
                 st=en
-
         return
 
     def features_1d(self, data, save=True, name='', **kwargs):
@@ -447,7 +445,6 @@ class Plots(object):
             plt.legend(loc="best")
             self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
         return
-
 
     def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
         plt.close('all')
@@ -839,7 +836,6 @@ class Plots(object):
                            violen=violen,
                            **kwargs)
 
-
     def _box_plot(self, data,
                   cols, save, normalize, figsize, max_features, show_datapoints, freq,
                   violen=False,
@@ -1020,7 +1016,6 @@ class Plots(object):
                 st, en = tot_plots[i], tot_plots[i + 1]
                 sub_df = data.iloc[:, st:en]
                 self._grouped_scatter_plot(sub_df, name=f'grouped_scatter_{prefix}_{st}_{en}', **kwargs)
-
         return
 
     def _grouped_scatter_plot(self, df, save=True, name='grouped_scatter', **kwargs):

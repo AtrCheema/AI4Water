@@ -1691,7 +1691,7 @@ class Model(NN, Plots):
         prev_y = prev_y[self.lookback:-fl, :]
         y = _y[self.lookback:-fl, :].reshape(-1, outs, self.forecast_len)
 
-        return self.check_nans(df, input_x, prev_y, y, outs)
+        return self.check_nans(df, input_x, prev_y, y, outs, self.lookback, self.config['allow_nan_labels'])
 
     def save_indices(self):
         indices={}

@@ -38,7 +38,7 @@ def run_class_test(method):
         model = Model(
             inputs=data_reg['feature_names'] if problem=="regression" else data_class['feature_names'],
             outputs=['target'],
-            val_fraction=0.0,
+            val_fraction=0.2,
             problem=problem,
             transformation=None,
             data=df_reg if problem=="regression" else data_class,
