@@ -223,14 +223,15 @@ class DualAttentionModel(Model):
 
     def train_data(self, data=None, **kwargs):
 
-        x, prev_y, labels = self.fetch_data(self.data, **kwargs)
+        x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
+                                          transformation=self.config['transformation'], **kwargs)
 
         s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
         h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
 
         h_de0 = s_de0 = np.zeros((x.shape[0], self.config['dec_config']['p']))
 
-        return [x, prev_y, s0, h0, h_de0, s_de0], labels
+        return [x, prev_y, s0, h0, h_de0, s_de0], prev_y, labels
 
 class InputAttentionModel(DualAttentionModel):
 
@@ -253,12 +254,13 @@ class InputAttentionModel(DualAttentionModel):
         return
 
     def train_data(self, data=None, **kwargs):
-        x, y, labels = self.fetch_data(self.data, **kwargs)
+        x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
+                                          transformation=self.config['transformation'], **kwargs)
 
         s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
         h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
 
-        return [x, s0, h0], labels
+        return [x, s0, h0], prev_y, labels
 
 
 class OutputAttentionModel(DualAttentionModel):

@@ -231,7 +231,13 @@ class Model(NN, Plots):
 
         return [lyr.name.split(':')[0] for lyr in self._model.inputs]
 
-    def fetch_data(self, data: pd.DataFrame, st: int = 0, en=None,
+    def fetch_data(self,
+                   data: pd.DataFrame,
+                   inps,
+                   outs,
+                   transformation=None,
+                   st: int = 0,
+                   en=None,
                    shuffle: bool = False,  # TODO, is this arg requried?
                    write_data=False,
                    noise: int = 0,
@@ -240,6 +246,9 @@ class Model(NN, Plots):
                    use_datetime_index=False):
         """
         :param data:
+        :param inps,
+        :param outs
+        :param transformation:
         :param st:
         :param en:
         :param shuffle:
@@ -265,8 +274,8 @@ class Model(NN, Plots):
         # # add random noise in the data
         df = self.add_noise(data, noise)
 
-        if self.config['transformation']:  # TODO when train_dataand test_data are externally set, normalization can't be done.
-            df, _ = self.normalize(df, scaler_key, self.config['transformation'])
+        if transformation:  # TODO when train_dataand test_data are externally set, normalization can't be done.
+            df, _ = self.normalize(df, scaler_key, transformation)
 
         # indexification should happen after transformation, because datetime column should not be transformed.
         df = self.indexify_data(df, use_datetime_index)
@@ -274,10 +283,12 @@ class Model(NN, Plots):
         if self.intervals is None:
 
             df = df[st:en]
+            if isinstance(df, pd.DataFrame):
+                df = df.values
 
-            x, y, label = self.get_batches(df.values,
-                                           len(self.in_cols),
-                                           len(self.out_cols)
+            x, y, label = self.get_batches(df,
+                                           len(inps),
+                                           len(outs)
                                            )
             if indices is not None and not isinstance(indices, str):
 
@@ -426,7 +437,12 @@ class Model(NN, Plots):
         steps_per_epoch = self.config['batches_per_epoch']
         if steps_per_epoch is None:
 
-            examples = x[0].shape[0] if isinstance(x, list) else x.shape[0]
+            if isinstance(x, list):
+                examples = x[0].shape[0]
+            elif isinstance(x, dict):
+                examples = list(x.values())[0].shape[0]
+            else:
+                examples =  x.shape[0]
 
             if self.config['drop_remainder']:
                 iterations = math.floor(examples/self.config['batch_size'])
@@ -438,6 +454,8 @@ class Model(NN, Plots):
              return self._check_batches(x, prev_y, y, steps_per_epoch)
 
     def _check_batches(self, x, prev_y, y, iterations):
+        if isinstance(x, dict):
+            raise NotImplementedError
 
         if self.verbosity > 0:
             print(f"Number of total batches are {iterations}")
@@ -501,7 +519,10 @@ class Model(NN, Plots):
     def first_layer_shape(self):
         """ instead of tuple, returning a list so that it can be moified if needed"""
         if self.num_input_layers > 1:
-            return None
+            shapes = {}
+            for lyr in self._model.inputs:
+                shapes[lyr.name] = lyr.shape
+            return shapes
         shape = []
         for idx, d in enumerate(self._model.layers[0].input.shape):
             if int(tf.__version__[0]) == 1:
@@ -574,8 +595,17 @@ class Model(NN, Plots):
     def _fit(self, inputs, outputs, validation_data, **callbacks):
 
         nans_in_y_exist = False
-        if np.isnan(outputs).sum()>0:
-            nans_in_y_exist=True
+        if isinstance(outputs, np.ndarray):
+            if np.isnan(outputs).sum()>0:
+                nans_in_y_exist=True
+        elif isinstance(outputs, list):
+            for out_array in outputs:
+                if np.isnan(out_array).sum()>0:
+                    nans_in_y_exist = True
+        elif isinstance(outputs, dict):
+            for out_name, out_array in outputs.items():
+                if np.isnan(out_array).sum()>0:
+                    nans_in_y_exist = True
 
         inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
 
@@ -716,6 +746,13 @@ class Model(NN, Plots):
         return history
 
     def get_indices(self, indices=None):
+        if isinstance(self.data, dict):
+            key = list(self.out_cols.keys())[0]
+            data = self.data[key]
+            out_cols =self.out_cols[key]
+        else:
+            data = self.data
+            out_cols = self.out_cols
         # returns only train indices if `indices` is None
         if isinstance(indices, str) and indices.upper() == 'RANDOM':
             if self.config['allow_nan_labels'] == 2:
@@ -733,12 +770,12 @@ class Model(NN, Plots):
                     # creates problems when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide
                     # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
                     more = len(self.intervals) * self.lookback if self.intervals is not None else 0 #self.lookback
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum()) - more
+                    tot_obs = data.shape[0] - int(data[out_cols].isna().sum()) - more
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
-                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
-                    nans = self.data[self.out_cols].isna().sum()
-                    assert np.all(nans.values == int(nans.sum() / self.outs)), f"toal nan values in data are {nans}."
+                    tot_obs = data.shape[0] - int(data[out_cols[0]].isna().sum())
+                    nans = data[out_cols].isna().sum()
+                    assert np.all(nans.values == int(nans.sum() / len(out_cols))), f"toal nan values in data are {nans}."
 
             idx = np.arange(tot_obs)
             train_indices, test_idx = train_test_split(idx, test_size=self.config['test_fraction'],
@@ -781,26 +818,44 @@ class Model(NN, Plots):
         if data is not None:
             return data
 
-        x, y, label = self.fetch_data(self.data, **kwargs)
+        transformation = self.config['transformation']
+        if isinstance(self.data, dict):
+            x, prev_y, label = {}, {}, {}
+            for k, data in self.data.items():
+                _x, _y, _label = self.fetch_data(data, self.in_cols[k],  self.out_cols.get(k, []),
+                                                 transformation=transformation[k] if transformation else transformation,
+                                                 **kwargs)
+                x[k] = _x
+                prev_y[k] = _y
+                if _label.sum() != 0.0:
+                    label[k] = _label
+        else:
+            x, prev_y, label = self.fetch_data(self.data, self.in_cols, self.out_cols,
+                                          transformation=self.config['transformation'], **kwargs)
 
-        x, y, label = self.check_batches(x, y, label)
+        x, prev_y, label = self.check_batches(x, prev_y, label)
+
+        if isinstance(label, dict):
+            assert len(self._model.outputs) == len(label)
+            if len(label) ==1:
+                label = list(label.values())[0]
 
         if self.category.upper() == "ML" and self.outs == 1:
             label = label.reshape(-1,)
 
         if self.verbosity > 0:
             print_something(x, "input_x")
-            print_something(y, "input_y")
+            print_something(prev_y, "input_y")
             print_something(label, "label")
 
         if isinstance(x, np.ndarray):
-            return [x], label
+            return [x], prev_y, label
 
         elif isinstance(x, list):
-            return x, label
+            return x, prev_y, label
 
         elif isinstance(x, dict):
-            return x, label
+            return x, prev_y, label
 
         else:
             raise ValueError
@@ -829,7 +884,8 @@ class Model(NN, Plots):
         # for cases if they are 2D/1D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
-        for idx, out in enumerate(self.out_cols):
+        out_cols = list(self.out_cols.values())[0] if isinstance(self.out_cols, dict) else self.out_cols
+        for idx, out in enumerate(out_cols):
             for h in range(self.forecast_len):
 
                 errs = dict()
@@ -842,7 +898,7 @@ class Model(NN, Plots):
                 p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
-                fname = prefix + '_' + out + '_' + str(h) +  ".csv"
+                fname = prefix + out + '_' + str(h) +  ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='time')
 
                 self.plot_results(t, p, name=prefix + out + '_' + str(h), where=fpath)
@@ -933,7 +989,8 @@ class Model(NN, Plots):
                 assert self.config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.config['test_fraction']}"
 
                 if hasattr(self, 'test_indices'):
-                    x, prev_y, label = self.fetch_data(data=self.data, indices=self.test_indices)
+                    x, prev_y, label = self.fetch_data(self.data,  self.in_cols, self.out_cols,
+                                          transformation=self.config['transformation'],  indices=self.test_indices)
 
                     if self.category.upper() == "ML" and self.outs == 1:
                         label = label.reshape(-1, )
@@ -950,7 +1007,15 @@ class Model(NN, Plots):
         self.is_training = True
         indices = self.get_indices(indices)
 
-        inputs, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
+        inputs, _, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
+
+        if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
+            if isinstance(self._model.outputs, list):
+                assert len(self._model.outputs) == 1
+                model_output_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
+                assert model_output_shape == outputs.shape[1:], f"""
+ShapeMismatchError: Shape of model's output is {model_output_shape}
+while the targets in prepared have shape {outputs.shape[1:]}."""
 
         self.info['training_start'] = dateandtime_now()
 
@@ -1019,7 +1084,7 @@ class Model(NN, Plots):
         if scaler_key is None:
             scaler_key = '5'
 
-        inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, data=data,
+        inputs, _, true_outputs = self.test_data(st=st, en=en, indices=indices, data=data,
                                               scaler_key=scaler_key,
                                               use_datetime_index=use_datetime_index)
 
@@ -1030,7 +1095,18 @@ class Model(NN, Plots):
         if self.problem.upper().startswith("CLASS"):
             self.roc_curve(inputs, true_outputs)
 
-        predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs, scaler_key)
+        if self.config['transformation']:
+            transformation = self.config['transformation']
+            if isinstance(self.out_cols, dict):
+                assert len(self.out_cols) == 1
+                for k, out_cols in self.out_cols.items():
+                    predicted, true_outputs = self.denormalize_data(inputs[k], predicted, true_outputs,
+                                                                    self.in_cols[k], out_cols,
+                                                                    scaler_key, transformation[k])
+            else:
+                predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs,
+                                                                self.in_cols, self.out_cols,
+                                                                scaler_key, self.config['transformation'])
 
         if self.quantiles is None:
 
@@ -1085,16 +1161,19 @@ class Model(NN, Plots):
                     self.data[data_name] = data
         return
 
-    def denormalize_data(self, inputs: np.ndarray, predicted: np.ndarray, true: np.ndarray, scaler_key: str):
+    def denormalize_data(self,
+                         inputs: np.ndarray,
+                         predicted: np.ndarray,
+                         true: np.ndarray,
+                         in_cols, out_cols,
+                         scaler_key: str, transformation=None):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
         # for cases if they are 2D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
-        transformation = self.config['transformation']
-
-        if transformation is not None:
+        if transformation:
             if np.ndim(inputs) == 4:
                 inputs = inputs[:, -1, 0, :]
             elif np.ndim(inputs) == 5:
@@ -1115,8 +1194,8 @@ class Model(NN, Plots):
                 in_obs = np.hstack([inputs, t])
                 in_pred = np.hstack([inputs, p])
 
-                in_obs = pd.DataFrame(in_obs, columns=self.in_cols + self.out_cols)
-                in_pred = pd.DataFrame(in_pred, columns=self.in_cols + self.out_cols)
+                in_obs = pd.DataFrame(in_obs, columns=in_cols + out_cols)
+                in_pred = pd.DataFrame(in_pred, columns=in_cols + out_cols)
                 if isinstance(transformation, list):  # for cases when we used multiple transformatinos
                     for trans in transformation:
                         if trans['method'] is not None:
@@ -1135,8 +1214,8 @@ class Model(NN, Plots):
 
                 in_obs_den = in_obs.values
                 in_pred_den = in_pred.values
-                true_denorm[:, :, h] = in_obs_den[:, -self.outs:]
-                pred_denorm[:, :, h] = in_pred_den[:, -self.outs:]
+                true_denorm[:, :, h] = in_obs_den[:, -len(out_cols):]
+                pred_denorm[:, :, h] = in_pred_den[:, -len(out_cols):]
 
             predicted = pred_denorm
             true = true_denorm
@@ -1148,7 +1227,15 @@ class Model(NN, Plots):
         of the input in inputs. Index column is usually datetime column. It is added to keep track of indices of
         input data.
         """
-        first_input = inputs[0]
+
+        # `first_input` is only used to extract datetime_index.
+        if isinstance(inputs, list):
+            first_input = inputs[0]
+        elif isinstance(inputs, dict):
+            first_input = list(inputs.values())[0]
+        else:
+            raise NotImplementedError
+
         dt_index = np.arange(len(first_input))
         new_inputs = inputs
 
@@ -1166,11 +1253,20 @@ class Model(NN, Plots):
             if sort:
                 first_input =first_input[np.argsort(dt_index.to_pydatetime())]
 
-            new_inputs = []
-            for _input in inputs:
-                if sort:
-                    _input = _input[np.argsort(dt_index.to_pydatetime())]
-                new_inputs.append(_input[..., 1:])
+            if isinstance(inputs, list):
+                new_inputs = []
+                for _input in inputs:
+                    if sort:
+                        _input = _input[np.argsort(dt_index.to_pydatetime())]
+                    new_inputs.append(_input[..., 1:])
+            elif isinstance(inputs, dict):
+                new_inputs = {}
+                for inp_name, _inp in inputs.values():
+                    if sort:
+                        _inp = _inp[np.argsort(dt_index.to_pydatetime())]
+                    new_inputs[inp_name] = _inp[..., 1:]
+            else:
+                raise NotImplementedError
 
         return first_input, new_inputs, dt_index
 
@@ -1211,10 +1307,11 @@ class Model(NN, Plots):
                 assert isinstance(_metrics, str)
                 _metrics = [_metrics]
 
-            from dl4seq.utils.tf_losses import nse, kge, pbias
+            from dl4seq.utils.tf_losses import nse, kge, pbias, tf_r2
 
             METRICS = {'NSE': nse,
                        'KGE': kge,
+                       "R2": tf_r2,
                        'PBIAS': pbias}
 
             metrics = []
@@ -1284,16 +1381,26 @@ class Model(NN, Plots):
             if self.config['batches'].upper() == "2D":
                 return self.get_2d_batches(df, ins, outs)
             else:
-                return self.check_nans(df, *make_3d_batches(df, outs, self.lookback, self.config['input_step'],
-                                           self.forecast_step, self.forecast_len), outs, self.lookback,
+                return self.check_nans(df, *make_3d_batches(df,
+                                                            num_outputs=outs,
+                                                            lookback_steps=self.lookback,
+                                                            input_steps=self.config['input_step'],
+                                                            forecast_step=self.forecast_step,
+                                                            forecast_len=self.forecast_len),
+                                       outs, self.lookback,
                                        self.config['allow_nan_labels'])
         else:
             if len(self.first_layer_shape()) == 2:
                 return self.get_2d_batches(df, ins, outs)
 
             else:
-                return self.check_nans(df, *make_3d_batches(df, outs, self.lookback, self.config['input_step'],
-                                           self.forecast_step, self.forecast_len), outs, self.lookback,
+                return self.check_nans(df, *make_3d_batches(df,
+                                                            num_outputs=outs,
+                                                            lookback_steps=self.lookback,
+                                                            input_steps=self.config['input_step'],
+                                                            forecast_step=self.forecast_step,
+                                                            forecast_len=self.forecast_len),
+                                       outs, self.lookback,
                                        self.config['allow_nan_labels'])
 
     def check_nans(self, data, input_x, input_y, label_y, outs, lookback, allow_nan_labels, allow_input_nans=False):
@@ -1348,7 +1455,7 @@ class Model(NN, Plots):
 
     def activations(self, layer_names=None, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
-        inputs, _ = self.test_data(**kwargs)
+        inputs, _, _ = self.test_data(**kwargs)
 
         # samples/examples in inputs may not be ordered/sorted so we should order them
         # remvoe the first column from x data
@@ -1369,7 +1476,7 @@ class Model(NN, Plots):
 
     def gradients_of_weights(self, **kwargs) -> dict:
 
-        x, y = self.test_data(**kwargs)
+        x, _, y = self.test_data(**kwargs)
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
@@ -1377,7 +1484,7 @@ class Model(NN, Plots):
 
     def gradients_of_activations(self, st=0, en=None, indices=None, data=None, layer_name=None, **kwargs) -> dict:
 
-        x, y = self.test_data(st=st, en=en, indices=indices, data=data)
+        x, _, y = self.test_data(st=st, en=en, indices=indices, data=data)
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
@@ -1588,7 +1695,7 @@ class Model(NN, Plots):
                 self.plot_treeviz_leaves()
                 self.decision_tree(which="sklearn", **kwargs)
 
-                x, y = self.test_data()
+                x, _, y = self.test_data()
                 self.confusion_matrx(x=x, y=y)
                 self.precision_recall_curve(x=x, y=y)
                 self.roc_curve(x=x, y=y)

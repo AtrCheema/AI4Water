@@ -86,7 +86,7 @@ def build_model(**kwargs):
 
 def train_predict(model):
 
-    x, y = model.train_data(st=10, en=500)
+    x, _, y = model.train_data(st=10, en=500)
 
     model.fit()
     model.predict()
@@ -105,7 +105,7 @@ def run_same_train_val_data(**kwargs):
 
     model.fit(**kwargs)
 
-    x, y = model.train_data(indices=model.train_indices)
+    x, _, y = model.train_data(indices=model.train_indices)
     return x, y
 
 
@@ -350,7 +350,7 @@ class TestUtils(unittest.TestCase):
 
         exs = 50
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = make_3d_batches(d, outputs=2, lookback=4, input_steps=2, forecast_step=2, forecast_len=4)
+        x, prevy, label = make_3d_batches(d, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
         self.assertEqual(x.shape, (38, 4, 3))
         self.assertEqual(label.shape, (38, 2, 4))
         self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
@@ -459,7 +459,7 @@ class TestUtils(unittest.TestCase):
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
         self.assertTrue(np.allclose(idx5, model.train_indices[-8:]))
 
-        x,y = model.train_data(indices=model.train_indices)
+        x, _, y = model.train_data(indices=model.train_indices)
 
         eighth_non_nan_val_4m_st = df['out1'][df['out1'].notnull()].iloc[8]
         # the last training index is 8, so the last y value must be 8th non-nan value
@@ -470,7 +470,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[86], eighth_non_nan_val_4m_st))
         self.assertTrue(np.allclose(x[0][-1, -1], eighth_non_nan_val_4m_st))
 
-        xx,yy  = model.test_data(indices=model.test_indices)
+        xx, _, yy  = model.test_data(indices=model.test_indices)
         # the second test index is 9, so second value of yy must be 9th non-nan value
         self.assertEqual(model.test_indices[2], 9)
         self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[9])
@@ -496,7 +496,7 @@ class TestUtils(unittest.TestCase):
 
         model.fit(indices='random')
 
-        x,y = model.train_data(indices=model.train_indices)
+        x, _, y = model.train_data(indices=model.train_indices)
 
         for i in range(100):
             idx = model.train_indices[i]
@@ -615,10 +615,18 @@ class TestUtils(unittest.TestCase):
 
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
 
-            testx, testy = model.test_data(indices=model.test_indices)
+            testx, _, testy = model.test_data(indices=model.test_indices)
 
             np.allclose(testy[4][0], df[['out1']].iloc[29])
             return
+
+    def test_prepare_data_no_outputs(self):
+        """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
+        exs = 100
+        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
+        x, prevy, label = make_3d_batches(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
+        self.assertEqual(label.sum(), 0.0)
+        return
 
 if __name__ == "__main__":
     unittest.main()

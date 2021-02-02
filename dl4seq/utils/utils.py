@@ -162,7 +162,9 @@ def _make_model(**kwargs):
     """
     default_model = {'layers': {
         "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
-        "Dense_3": {'config':  {'units': 1}}
+        "Flatten": {"config": {}},
+        "Dense_3": {'config':  {'units': 1}},
+        "Reshape": {"config": {"target_shape": (1, 1)}}
     }}
 
     kwargs = check_kwargs(**kwargs)
@@ -958,24 +960,36 @@ def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
-def make_3d_batches(data: np.ndarray, outputs:int, lookback:int, input_steps:int, forecast_step:int,
-                   forecast_len:int):
+def make_3d_batches(data: np.ndarray,
+                    lookback_steps:int,
+                    num_inputs:int=None,
+                    num_outputs:int=None,
+                    input_steps:int=1,
+                    forecast_step:int=0,
+                    forecast_len:int=1,
+                    output_steps=1):
     """
-    data: 2d numpy array whose first `ins` columns are used as inputs while last `outs` number of columns are used as
-           outputs.
-    outputs: int, number of columns (from last) in data to be used as output. The input columns will be all from start
-          till outs.
-    lookback: int,  number of previous time-steps to be used at one step
-    input_steps: int, number of steps in input data
-    forecast_step: int, >=0, which t value to use as target.
-    forecast_len: int, number of horizons/future values to predict.
+    :param data: nd numpy array whose first dimension represents the number of examples and
+                 the second dimension represents the number of features. Some of those features
+                 will be used as inputs and some will be considered as outputs depending upon
+                 the values of `num_inputs` and `num_outputs`.
+    :param num_inputs: int, default None, number of input features in data. If None,
+                       it will be calculated as features-outputs. The input data will be all from start
+                       till num_outputs in second dimension.
+    :param num_outputs: int, number of columns (from last) in data to be used as output.
+                        If None, it will be caculated as features-inputs.
+    :param lookback_steps: int,  number of previous steps/values to be used at one step.
+    :param input_steps: int, number of steps in input data
+    :param forecast_step: int, >=0, which t value to use as target.
+    :param forecast_len: int, number of horizons/future values to predict.
+    :param output_steps: step size in outputs. If =2, it means we want to predict every second value from the targets
 
     Returns:
       x: numpy array of shape (examples, lookback, ins) consisting of input examples
       prev_y: numpy array consisting of previous outputs
       y: numpy array consisting of target values
 
-    Given following sample consisting of input/output paris
+    Given following sample consisting of input/output pairs
   input1, input2, output1, output2, output 3
     1,     11,     21,       31,     41
     2,     12,     22,       32,     42
@@ -985,7 +999,7 @@ def make_3d_batches(data: np.ndarray, outputs:int, lookback:int, input_steps:int
     6,     16,     26,       36,     46
     7,     17,     27,       37,     47
 
-    If we used following as input
+    If we use following 2 time series as input
     1,     11,
     2,     12,
     3,     13,
@@ -1026,13 +1040,13 @@ def make_3d_batches(data: np.ndarray, outputs:int, lookback:int, input_steps:int
     output/target/label shape
     (examples, outs, forecast_length)
 
-    If we use following as input
-    1,     11,     21,
-    3,     13,     23,
-    5,     15,     25,
-    7,     17,     27,
+    If we use following two time series as input
+    1,     11,
+    3,     13,
+    5,     15,
+    7,     17,
 
-           then        input_features=2, lookback=4, input_step=2
+           then        input_features=2, lookback=4, input_steps=2
 
     ----------
     Example
@@ -1058,6 +1072,20 @@ def make_3d_batches(data: np.ndarray, outputs:int, lookback:int, input_steps:int
         else:
             raise TypeError(f"unknown data type for data {type(data)}")
 
+    if num_inputs is None and num_outputs is None:
+        raise ValueError("""
+Either of num_inputs or num_outputs must be provided.
+""")
+
+    features = data.shape[1]
+    if num_outputs is None:
+        num_outputs = features - num_inputs
+
+    if num_inputs is None:
+        num_inputs = features - num_outputs
+
+    assert num_inputs + num_outputs == features
+
     if len(data) <= 1:
         raise ValueError(f"Can not create batches from data with shape {data.shape}")
     x = []
@@ -1065,18 +1093,18 @@ def make_3d_batches(data: np.ndarray, outputs:int, lookback:int, input_steps:int
     y = []
 
     samples = len(data)
-    features = data.shape[1]
 
-    for i in range(samples - lookback * input_steps + 1 - forecast_step - forecast_len + 1):
-        stx, enx = i, i + lookback * input_steps
-        x_example = data[stx:enx:input_steps, 0:features - outputs]
 
-        st, en = i, i + (lookback - 1) * input_steps
-        y_data = data[st:en:input_steps, features - outputs:]
+    for i in range(samples - lookback_steps * input_steps + 1 - forecast_step - forecast_len + 1):
+        stx, enx = i, i + lookback_steps * input_steps
+        x_example = data[stx:enx:input_steps, 0:features - num_outputs]
+
+        st, en = i, i + (lookback_steps - 1) * input_steps
+        y_data = data[st:en:input_steps, features - num_outputs:]
 
         sty = enx + forecast_step - input_steps
         eny = sty + forecast_len
-        target = data[sty:eny, features - outputs:]
+        target = data[sty:eny, features - num_outputs:]
 
         x.append(np.array(x_example))
         prev_y.append(np.array(y_data))
