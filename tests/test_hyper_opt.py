@@ -7,14 +7,13 @@ import numpy as np
 np.random.seed(313)
 import os
 import skopt
-from skopt.space import Real, Categorical, Integer
 import pandas as pd
 import unittest
 
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.hyper_opt import HyperOpt
+from dl4seq.hyper_opt import HyperOpt, Real, Categorical, Integer
 from dl4seq import Model
 from dl4seq.utils.utils import Jsonize
 from dl4seq.utils.TSErrors import FindErrors
@@ -71,6 +70,41 @@ def run_dl4seq(method):
 
 
 class TestHyperOpt(unittest.TestCase):
+
+    def test_real_num_samples(self):
+        r = Real(low=10, high=100, num_samples=20)
+        grit = r.grid
+        assert grit.shape == (20,)
+
+    def test_real_steps(self):
+        r = Real(low=10, high=100, step=20)
+        grit = r.grid
+        assert grit.shape == (5,)
+
+    def test_real_grid(self):
+        grit = [1,2,3,4,5]
+        r = Real(grid=grit)
+        np.testing.assert_array_equal(grit, r.grid)
+
+    def test_integer_num_samples(self):
+        r = Integer(low=10, high=100, num_samples=20)
+        grit = r.grid
+        assert grit.shape == (20,)
+
+    def test_integer_steps(self):
+        r = Integer(low=10, high=100, step=20)
+        grit = r.grid
+        grit.shape = (5,)
+
+    def test_integer_grid(self):
+        grit = [1, 2, 3, 4, 5]
+        r = Integer(grid=grit)
+        np.testing.assert_array_equal(grit, r.grid)
+
+    def test_categorical(self):
+        cats = ['a', 'b', 'c']
+        c = Categorical(cats)
+        assert len(cats) == len(c.grid)
 
     def test_random(self):
         # testing for sklearn-based model with random search
@@ -153,6 +187,23 @@ class TestHyperOpt(unittest.TestCase):
             pass
         else:
             np.testing.assert_almost_equal(-0.909471164417979, sr.fun, 7)  # when called from same file where hyper_opt is saved
+        return
+
+    def test_grid_custom_model(self):
+        # testing grid search algorithm for custom model
+        def f(x, noise_level=0.1):
+            return np.sin(5 * x) * (1 - np.tanh(x ** 2)) \
+                   + np.random.randn() * noise_level
+
+        opt = HyperOpt("grid",
+                       model=f,
+                       param_space=[Real(low=-2.0, high=2.0, num_samples=20)],
+                       n_calls=15,  # the number of evaluations of f
+                       )
+
+        # executes bayesian optimization
+        sr = opt.fit()
+        assert len(sr) == 20
         return
 
     def test_named_custom_bayes(self):

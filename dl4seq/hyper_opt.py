@@ -1,22 +1,123 @@
-from skopt import BayesSearchCV
 import os
+import json
+
+from skopt import BayesSearchCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from skopt import gp_minimize
 from skopt.utils import use_named_args
 from skopt.plots import plot_convergence
 from sklearn.model_selection import ParameterGrid, ParameterSampler
+from skopt.space import Real, Categorical, Integer
+from skopt.space.space import Dimension
 import numpy as np
-from dl4seq.utils.TSErrors import FindErrors
-import json
 import matplotlib.pyplot as plt
 
+from dl4seq.utils.TSErrors import FindErrors
 from dl4seq import Model
-from dl4seq.utils.utils import post_process_skopt_results
+from dl4seq.utils.utils import post_process_skopt_results, Jsonize
 
 
 # TODO incorporate hyper_opt, optuna and RayTune libraries under the hood
 # TODO add generic algorithm, deap/pygad
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
+# TODO add post processing results for all optimizations
+
+class Counter:
+    counter = 0
+
+class Real(Real, Counter):
+    """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
+    algorithm to create grid space.
+    num_samples: int, if given, it will be used to create grid space using the formula"""
+    def __init__(self,
+                 low=None,
+                 high=None,
+                 num_samples:int=None,
+                 step:int=None,
+                 grid=None,
+                 *args,
+                 **kwargs
+                 ):
+
+        if low is None:
+            assert grid is not None
+            low = grid[0]
+            high = grid[-1]
+
+        self.counter += 1
+        if 'name' not in kwargs:
+            kwargs['name'] = f'real_{self.counter}'
+
+        self.num_samples = num_samples
+        self.step = step
+        super().__init__(low=low, high=high, *args, **kwargs)
+        self.grid = grid
+
+    @property
+    def grid(self):
+        return self._grid
+
+    @grid.setter
+    def grid(self, x):
+        if x is None:
+            if self.num_samples:
+                self._grid = np.linspace(self.low, self.high, self.num_samples)
+            elif self.step:
+                self._grid = np.arange(self.low, self.high, self.step)
+        else:
+            self._grid = np.array(x)
+
+
+class Integer(Integer, Counter):
+    """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
+    algorithm to create grid space.
+    num_samples: int, if given, it will be used to create grid space using the formula"""
+    def __init__(self,
+                 low=None,
+                 high=None,
+                 num_samples:int=None,
+                 step:int=None,
+                 grid=None,
+                 *args,
+                 **kwargs
+                 ):
+
+        if low is None:
+            assert grid is not None
+            low = grid[0]
+            high = grid[-1]
+
+        self.counter += 1
+        if 'name' not in kwargs:
+            kwargs['name'] = f'integer_{self.counter}'
+
+        self.num_samples = num_samples
+        self.step = step
+        super().__init__(low=low, high=high, *args, **kwargs)
+        self.grid = grid
+
+    @property
+    def grid(self):
+        return self._grid
+
+    @grid.setter
+    def grid(self, x):
+        if x is None:
+            if self.num_samples:
+                self._grid = np.linspace(self.low, self.high, self.num_samples, dtype=np.int32)
+            elif self.step:
+                self._grid = np.arange(self.low, self.high, self.step, dtype=np.int32)
+        else:
+            assert hasattr(x, '__len__'), f"unacceptable type of grid {type(x)}"
+            self._grid = np.array(x)
+
+
+class Categorical(Categorical):
+
+    @property
+    def grid(self):
+        return self.categories
+
 
 class HyperOpt(object):
     """
@@ -242,11 +343,13 @@ class HyperOpt(object):
         if "use_named_args" in kwargs:
             self.use_named_args = kwargs.pop("use_named_args")
 
+        self.use_dl4seq_model = False
         if "dl4seq_args" in kwargs:
             self.dl4seq_args = kwargs.pop("dl4seq_args")
             self.data = kwargs.pop("data")
             _model = self.dl4seq_args.pop("model")
             self._model = list(_model.keys())[0]
+            self.use_dl4seq_model = True
         return kwargs
 
     def __getattr__(self, item):
@@ -258,6 +361,33 @@ class HyperOpt(object):
             return getattr(self.optfn, item)
         else:
             raise AttributeError(f"Attribute {item} not found")
+
+    @property
+    def param_space(self):
+        return self._param_space
+
+    @param_space.setter
+    def param_space(self, x):
+        if self.method == "bayes":
+            assert isinstance(x, list)
+            for space in x:
+                # each element in the list can be a tuple of lower and and upper bounds
+                if not isinstance(space, tuple):
+                    assert isinstance(space, Dimension), f"""
+param space must be one of Integer, Real or Categorical
+but it is of type {type(space)}"""
+            _param_space = x
+
+        elif self.method in ["random", "grid"]:
+            if isinstance(x, dict):
+                _param_space = x
+            elif isinstance(x, list):
+                _param_space = {}
+                for _space in x:
+                    assert isinstance(_space, Dimension)
+                    _param_space[_space.name] = _space.grid
+
+        self._param_space = _param_space
 
     @property
     def use_sklearn(self):
@@ -377,10 +507,7 @@ class HyperOpt(object):
         return error
 
     def dims(self):
-
-        if isinstance(self.param_space, dict):
-            return list(self.param_space.values())
-
+        # this will be used for gp_minimize
         return list(self.param_space)
 
     def model_for_gpmin(self):
@@ -433,15 +560,24 @@ class HyperOpt(object):
         print(f"total number of iterations: {len(params)}")
         for para in params:
 
-            err = self.dl4seq_model(**para)
+            if self.use_dl4seq_model:
+                err = self.dl4seq_model(**para)
+            elif self.use_named_args:  # model is external but uses kwargs
+                err = self.model(**para)
+            else: # model is external and does not uses keywork arguments
+                err = self.model(*list(para.values()))
             err = round(err, 6)
 
-            if self.dl4seq_args is not None:
-                self.results[str(err)] = para
+            #if self.dl4seq_args is not None:
+            self.results[str(err)] = para
 
         fname = os.path.join(self.opt_path, "eval_results.json")
+        jsonized_results = {}
+        for res, val in self.results.items():
+            jsonized_results[res] = Jsonize(val)()
         with open(fname, "w") as fp:
-            json.dump(self.results, fp, sort_keys=True, indent=4)
+            json.dump(jsonized_results, fp, sort_keys=True, indent=4)
+
 
         self._plot_convergence()
 

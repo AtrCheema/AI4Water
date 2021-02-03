@@ -80,6 +80,13 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
         data = others
         fpath = path
 
+    if 'config' in data:
+        if 'model' in data['config']:
+            model = data['config']['model']
+            if 'layers' not in model:  # because ML args which come algorithms may not be of json serializable.
+                model = Jsonize(model)()
+                data['config']['model'] = model
+
     with open(fpath, 'w') as fp:
         json.dump(data, fp, sort_keys=sort_keys, indent=4)
 
