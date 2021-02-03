@@ -106,6 +106,14 @@ try:
 except ModuleNotFoundError:
     lightgbm = None
 
+tpot_models = {}
+try:
+    import tpot
+    from tpot import TPOTRegressor, TPOTClassifier
+    tpot_models.update({'TPOTREGRESSOR': TPOTRegressor,
+                       'TPOTCLASSIFIER': TPOTClassifier})
+except ModuleNotFoundError:
+    tpot = None
 
 sklearn_models = get_sklearn_models()
 
@@ -128,4 +136,5 @@ VERSION_INFO = {
     'xgboost': str(xgboost.__version__) if xgboost is not None else None,
     'lightgbm': str(lightgbm.__version__) if lightgbm is not None else None,
     'sklearn': str(sklearn.__version__) if sklearn is not None else None,
+    'tpot': str(tpot.__version__) if tpot else None
 }

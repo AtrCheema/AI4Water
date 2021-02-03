@@ -16,6 +16,7 @@ import time
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
+from dl4seq.backend import tpot_models
 from dl4seq.backend import imputations, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, make_3d_batches
@@ -947,7 +948,7 @@ class Model(NN, Plots):
     def build_ml_model(self):
         """ builds models that follow sklearn api such as xgboost, catboost, lightgbm and obviously sklearn."""
 
-        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
+        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models, **tpot_models}
         _model = list(self.config['model'].keys())[0]
         regr_name = _model.upper()
 
@@ -959,6 +960,10 @@ class Model(NN, Plots):
         # some algorithms allow detailed output during training, this is allowed when self.verbosity is > 1
         if regr_name in ['ONECLASSSVM']:
             kwargs.update({'verbose': True if self.verbosity>1 else False})
+
+        if regr_name in ['TPOTREGRESSOR', 'TPOTCLASSIFIER']:
+            if 'verbosity' not in kwargs:
+                kwargs.update({'verbosity': self.verbosity})
 
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
@@ -1029,7 +1034,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             model_name = list(self.config['model'].keys())[0]
             fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
 
-            joblib.dump(self._model, fname)
+            if "TPOT" not in model_name.upper():
+                joblib.dump(self._model, fname)
 
             if model_name.lower().startswith("xgb"):
 

@@ -14,3 +14,4 @@ see-rnn   # for rnn visualizations
 lightgbm
 catboost
 plotly
+tpot

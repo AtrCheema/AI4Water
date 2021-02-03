@@ -1,14 +1,14 @@
-import pandas as pd
-import numpy as np
-import sklearn
 import os
-from sklearn.datasets import load_diabetes, load_breast_cancer
 import unittest
-
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq import Model
+
+import pandas as pd
+import numpy as np
+import sklearn
+from sklearn.datasets import load_diabetes, load_breast_cancer
 
 seed = 313
 np.random.seed(seed)
@@ -33,6 +33,12 @@ def run_class_test(method):
                       "CLASSIFIERMIXIN", "MULTIOUTPUTCLASSIFIER", "CHECK_CLASSIFICATION_TARGETS", "IS_CLASSIFIER"
                       ]:
 
+        kwargs = {}
+        if "CATBOOST" in method:
+            kwargs = {'iterations': 2}
+        elif "TPOT" in method.upper():
+            kwargs = {'generations': 2, 'population_size': 2}
+
         print(f"testing {method}")
 
         model = Model(
@@ -42,10 +48,11 @@ def run_class_test(method):
             problem=problem,
             transformation=None,
             data=df_reg if problem=="regression" else data_class,
-            model={method: {'iterations': 2} if "CATBOOST" in method else {}},
+            model={method: kwargs},
             verbosity=0)
 
         return model.fit()
+
 
 class TestMLMethods(unittest.TestCase):
 
@@ -326,6 +333,14 @@ class TestMLMethods(unittest.TestCase):
 
     def test_HISTGRADIENTBOOSTINGREGRESSOR(self):
         run_class_test("HISTGRADIENTBOOSTINGREGRESSOR")
+        return
+
+    def test_tpot_TPOTRegressor(self):
+        run_class_test("TPOTRegressor")
+        return
+
+    def test_tpot_TPOTCLASSIFIER(self):
+        run_class_test("TPOTCLASSIFIER")
         return
 
     def test_ml_random_indices(self):
