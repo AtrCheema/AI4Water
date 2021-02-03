@@ -4,6 +4,35 @@
 # https://data.mendeley.com/datasets/5vzp6svhwh/4
 # https://zenodo.org/record/4218413#.YA6w7BZS-Uk
 # https://www.sciencedirect.com/search?qs=time%20series&pub=Data%20in%20Brief&cid=311593
+# https://doi.pangaea.de/10.1594/PANGAEA.898217
+# https://doi.pangaea.de/10.1594/PANGAEA.882613
+# https://doi.pangaea.de/10.1594/PANGAEA.879494
+# https://doi.pangaea.de/10.1594/PANGAEA.831196
+# https://doi.pangaea.de/10.1594/PANGAEA.919103
+# https://doi.pangaea.de/10.1594/PANGAEA.919104
+# https://doi.pangaea.de/10.1594/PANGAEA.909880
+# https://doi.pangaea.de/10.1594/PANGAEA.908290
+# https://doi.pangaea.de/10.1594/PANGAEA.892384
+# https://doi.pangaea.de/10.1594/PANGAEA.883587
+# https://doi.pangaea.de/10.1594/PANGAEA.882178
+# https://doi.pangaea.de/10.1594/PANGAEA.811992
+# https://doi.pangaea.de/10.1594/PANGAEA.807883
+# https://doi.pangaea.de/10.1594/PANGAEA.778629
+# https://doi.pangaea.de/10.1594/PANGAEA.774595
+# https://doi.pangaea.de/10.1594/PANGAEA.746240
+# https://doi.pangaea.de/10.1594/PANGAEA.226925
+# https://doi.pangaea.de/10.1594/PANGAEA.905446
+# https://doi.pangaea.de/10.1594/PANGAEA.900958
+# https://doi.pangaea.de/10.1594/PANGAEA.890070
+# https://doi.pangaea.de/10.1594/PANGAEA.882611
+# https://doi.pangaea.de/10.1594/PANGAEA.879507
+# https://doi.pangaea.de/10.1594/PANGAEA.842446
+# https://doi.pangaea.de/10.1594/PANGAEA.841977
+# https://doi.pangaea.de/10.1594/PANGAEA.831193
+# https://doi.pangaea.de/10.1594/PANGAEA.811072
+# https://doi.pangaea.de/10.1594/PANGAEA.811076
+# https://doi.pangaea.de/10.1594/PANGAEA.912582
+
 
 import os
 import glob
@@ -28,16 +57,42 @@ CAMELS_GB_files = [
     'CAMELS_GB_landcover_attributes.csv',
     'CAMELS_GB_soil_attributes.csv',
     'CAMELS_GB_topographic_attributes.csv'
-            ]
+]
 
+CAMELS_AUS_files = [
+    "01_id_name_metadata.zip",
+    "02_location_boundary_area.zip",
+    "03_streamflow.zip",
+    "04_attributes.zip",
+    "05_hydrometeorology.zip",
+    "CAMELS_AUS_Attributes-Indices_MasterTable.csv"
+]
+
+CAMELS_CL_FILES = [
+    '10_CAMELScl_tmean_cr2met.zip',
+    '11_CAMELScl_pet_8d_modis.zip',
+    '12_CAMELScl_pet_hargreaves.zip',
+    '13_CAMELScl_swe.zip',
+    '14_CAMELScl_catch_hierarchy.zip',
+    '1_CAMELScl_attributes.zip',
+    '2_CAMELScl_streamflow_m3s.zip',
+    '3_CAMELScl_streamflow_mm.zip',
+    '4_CAMELScl_precip_cr2met.zip',
+    '5_CAMELScl_precip_chirps.zip',
+    '6_CAMELScl_precip_mswep.zip',
+    '7_CAMELScl_precip_tmpa.zip',
+    '8_CAMELScl_tmin_cr2met.zip',
+    '9_CAMELScl_tmax_cr2met.zip',
+    'CAMELScl_catchment_boundaries.zip'
+]
 
 def gb_message():
     link = "https://doi.org/10.5285/8344e4f3-d2ea-44f5-8afa-86d2987543a9"
     raise ValueError(f"Dwonlaoad the data from {link} and provide the directory path as dataset=Camels(data=data)")
 
 
-def sanity_check(dataet_name, path):
-    if dataet_name == 'CAMELS-GB':
+def sanity_check(dataset_name, path):
+    if dataset_name == 'CAMELS-GB':
         if not os.path.exists(os.path.join(path, 'data')):
             raise FileNotFoundError(f"No folder named `path` exists inside {path}")
         else:
@@ -67,6 +122,26 @@ class Datasets(object):
     def DATASETS(self):
         raise NotImplementedError
 
+    @property
+    def location(self):  # geographical location of data
+        raise NotImplementedError
+
+    @property
+    def num_points(self):  # number of points in the data
+        raise NotImplementedError
+
+    @property
+    def start(self):  # start of data
+        raise NotImplementedError
+
+    @property
+    def end(self):  # end of data
+        raise NotImplementedError
+
+    def plot(self, points):
+        # this function should be implemented to either plot data of all points/stations or of selected points/stations.
+        raise NotImplementedError
+
     def _download(self, overwrite=False):
         """Downloads the dataset. If already downloaded, then"""
         if os.path.exists(self.ds_dir):
@@ -91,9 +166,12 @@ class Datasets(object):
         """unzip all the zipped files in a directory"""
         all_files = glob.glob(f"{self.ds_dir}/*.zip")
         for f in all_files:
-            print(f"unziping {os.path.join(self.ds_dir, f)} to {os.path.join(self.ds_dir, f.split('.zip')[0])}")
-            with zipfile.ZipFile(os.path.join(self.ds_dir, f), 'r') as zip_ref:
-                zip_ref.extractall(os.path.join(self.ds_dir, f.split('.zip')[0]))
+            src = os.path.join(self.ds_dir, f)
+            trgt = os.path.join(self.ds_dir, f.split('.zip')[0])
+            if not os.path.exists(trgt):
+                print(f"unziping {src} to {trgt}")
+                with zipfile.ZipFile(os.path.join(self.ds_dir, f), 'r') as zip_ref:
+                    zip_ref.extractall(os.path.join(self.ds_dir, f.split('.zip')[0]))
         return
 
 
@@ -118,7 +196,7 @@ class Camels(Datasets):
                It can also be used to fetch all attributes of a number of stations ids either by providing their
                guage_id or by just saying that we need data of 20 stations which will then be chosen randomly.
 
-        fetch_dynamic_attributes: fetches speficied dynamic attributes of a specified station. If the dynamic attribute
+        fetch_dynamic_attributes: fetches speficied dynamic attributes of one specified station. If the dynamic attribute
                                   is not specified, all dynamic attributes will be fetched for the specified station.
                                   If station is not specified, the specified dynamic attributes will be fetched for all
                                   stations.
@@ -129,13 +207,29 @@ class Camels(Datasets):
     """
 
     DATASETS = {
-        'CAMELS_BR': {'url': "https://zenodo.org/record/3964745#.YA6rUxZS-Uk",
+        'CAMELS-BR': {'url': "https://zenodo.org/record/3964745#.YA6rUxZS-Uk",
                       'dynamic_attributes': ['streamflow_m3s', 'streamflow_mm', 'streamflow_simulated',
                                              'precipitation_cpc', 'precipitation_mswep', 'precipitation_chirps',
                                              'evapotransp_gleam', 'evapotransp_mgb', 'potential_evapotransp_gleam',
                                              'temperature_min_cpc', 'temperature_mean', 'temperature_max']},
-        'CAMELS_GB': {'url': gb_message},
-        'CAMELS_CL': {'url': ''}
+        'CAMELS-GB': {'url': gb_message},
+        'CAMELS-CL': {'url': 'https://doi.pangaea.de/10.1594/PANGAEA.894885?format=html#download',
+                      'dynamic_attributes': ['streamflow_m3s', 'streamflow_mm',
+                                             'precip_cr2met', 'precip_chirps', 'precip_mswep', 'precip_tmpa',
+                                             'tmin_cr2met', 'tmax_cr2met', 'tmean_cr2met',
+                                             'pet_8d_modis', 'pet_hargreaves',
+                                             'swe']},
+
+        'CAMELS-AUS': {'url': 'https://doi.pangaea.de/10.1594/PANGAEA.921850',
+                       'dynamic_attributes': ['streamflow_MLd', 'streamflow_MLd_inclInfilled', 'streamflow_mmd.csv'
+                                             'et_morton', 'et_morton_point_SILO', 'et_morton_wet_SILO',
+                                             'et_short_crop_SILO', 'et_tall_crop_SILO', 'evap_morton_lake_SILO',
+                                             'evap_pan_SILO', 'evap_syn_SILO',
+                                             'precipitation_AWAP', 'precipitation_SILO', 'precipitation_var_SWAP',
+                                             'solarrad_AWAP', 'tmax_AWAP', 'tmin_AWAP', 'vprp_AWAP',
+                                             'mslp_SILO', 'radiation_SILO', 'rh_tmax_SILO', 'rh_tmin_SILO',
+                                             'tmax_SILO', 'tmin_SILO', 'vp_deficit_SILO', 'vp_SILO'
+                                             ]},
     }
 
     def stations(self):
@@ -176,13 +270,13 @@ class Camels(Datasets):
                          user want data for this number of stations/gauge_ids. If None (default), then attributes
                          of all available stations. If float, it will be supposed that the user wants data
                          of this fraction of stations.
-        :param dynamic_attributes: list default(None), If not None, then it is the attribues to be fetched.
-                                   If None, then all available attribues are fetched
+        :param dynamic_attributes: list default(None), If not None, then it is the attributes to be fetched.
+                                   If None, then all available attributes are fetched
         :param categories: list/str
         :param static_attributes: list
 
         returns:
-            dictionary whose keys are station/gauge_ids and values are the attribues and dataframes.
+            dictionary whose keys are station/gauge_ids and values are the attributes and dataframes.
 
         """
         if isinstance(stations, int):
@@ -224,10 +318,10 @@ class Camels(Datasets):
                                  categories='all',
                                  static_attributes='all',
                                  as_ts=False,
-                                 **kwargs):
-        """Fetches attribues for one station.
+                                 **kwargs)->pd.DataFrame:
+        """Fetches attributes for one station.
         Return:
-            dataframe if as_ts is True else it returns a dictionary of static and dynamic attribues for
+            dataframe if as_ts is True else it returns a dictionary of static and dynamic attributes for
             a station/gauge_id
             """
         station_df = pd.DataFrame()
@@ -326,7 +420,10 @@ class CAMELS_BR(Camels):
 
         return list(set.intersection(*map(set, list(stations.values()) )))
 
-    def fetch_dynamic_attributes(self, stn_id,  attribute, **kwargs)->pd.DataFrame:
+    def fetch_dynamic_attributes(self,
+                                 stn_id,
+                                 attributes='all',
+                                 **kwargs)->pd.DataFrame:
         """
         returns the dynamic/time series attribute/attributes for one station id.
         >>>dataset = CAMELS_BR()
@@ -338,14 +435,14 @@ class CAMELS_BR(Camels):
         if not kwargs:
             kwargs = {'sep': ' '}
 
-        if attribute == 'all':
-            attribute = self.dynamic_attributes
-        elif not isinstance(attribute, list):
-            assert isinstance(attribute, str)
-            attribute = [attribute]
+        if attributes == 'all':
+            attributes = self.dynamic_attributes
+        elif not isinstance(attributes, list):
+            assert isinstance(attributes, str)
+            attributes = [attributes]
 
         data = pd.DataFrame()
-        for attr in attribute:
+        for attr in attributes:
 
             for _dir in self._all_dirs:
                 if attr in _dir:
@@ -362,45 +459,66 @@ class CAMELS_BR(Camels):
                     else:
                         raise FileNotFoundError(f"file {fname} not found at {path}")
                 else:
-                    ValueError(f"{attribute} is not a valid dynamic attribute for {self.name}. Choose any of"
+                    ValueError(f"{attributes} is not a valid dynamic attribute for {self.name}. Choose any of"
                            f" { self.DATASETS[self.name]['dynamic_attributes']}")
         return data
 
-    def fetch_static_attributes(self, stn_id, category,  attribute=None, index_col_name='gauge_id', **kwargs):
+    def fetch_static_attributes(self,
+                                stn_id,
+                                categories='all',
+                                attributes=None,
+                                index_col_name='gauge_id',
+                                as_ts=False,
+                                **kwargs)->pd.DataFrame:
         """
         :param stn_id: int, station id whose attribute to fetch
-        :param category: str, represents the type of static attribute to fetch e.g. climate, the one of the file
+        :param categories: str, represents the type of static attribute to fetch e.g. climate, the one of the file
                               name must have this in its name, otherwise this function will return None.
-        :param attribute: str, list, name of attribute to fetch. Default is None, which will return all the
+        :param attributes: str, list, name of attribute to fetch. Default is None, which will return all the
                                attributes for a particular station of the specified category.
         :param index_col_name: str, name of column containing station names
         :param kwargs: keyword arguments to be passed to pd.read_csv to read files.
+        :param as_ts:
         >>>dataset = Camels('CAMELS-BR')
         >>>df = dataset.fetch_static_attributes(11500000, 'climate')
         """
         if not kwargs:
             kwargs = {'sep': ' '}
 
-        assert isinstance(category, str)
+        if categories == 'all':
+            categories = self.static_attribute_categories
+        elif isinstance(categories, str):
+            categories = [categories]
 
-        for f in self.static_files:
-            if category in f:
-                df = pd.read_csv(os.path.join(self.static_dir, f), **kwargs)
+        df = pd.DataFrame()
 
-                if attribute is None:
-                    attribute = df.columns
-                elif not isinstance(attribute, list):
-                    assert isinstance(attribute, str)
+        for category in categories:
+            fname = None
+            for f in self.static_files:
+                if category in f:
+                    fname = os.path.join(self.static_dir, f)
+                    break
+            _df = pd.read_csv(fname, **kwargs)
 
-                return df.loc[df[index_col_name] == int(stn_id)][attribute]
+            if attributes != 'all':
+                if isinstance(attributes, str):
+                    _attributes = [attributes]
+                else:
+                    _attributes = attributes
             else:
-                return None
+                _attributes = list(_df.columns)
+
+            _df = _df.loc[_df[index_col_name] == int(stn_id)][_attributes]
+
+            df[_attributes] = _df
+
+        return df
 
 
 class CAMELS_GB(Camels):
 
     def __init__(self, path=None):
-
+        super().__init__(name="CAMELS-GB")
         self.ds_dir = path
 
     @property
@@ -432,9 +550,11 @@ class CAMELS_GB(Camels):
 
         return gauge_ids
 
-
-    def fetch_dynamic_attributes(self, stn_id,  attribute='all', **kwargs) ->pd.DataFrame:
-        """Fetches dynamic attribues of one station."""
+    def fetch_dynamic_attributes(self,
+                                 stn_id,
+                                 attributes='all',
+                                 **kwargs) ->pd.DataFrame:
+        """Fetches dynamic attribute/attributes of one station."""
         path = os.path.join(self.ds_dir, f"data\\timeseries")
         fname = None
         for f in os.listdir(path):
@@ -448,8 +568,8 @@ class CAMELS_GB(Camels):
         df = pd.read_csv(os.path.join(path, fname), **kwargs)
         df.index = pd.to_datetime(df.index)
         df.index.freq = pd.infer_freq(df.index)
-        if attribute != 'all':
-            return df[attribute]
+        if attributes != 'all':
+            return df[attributes]
         else:
             return df
 
@@ -458,7 +578,7 @@ class CAMELS_GB(Camels):
                                 categories='all',
                                 attribute='all',
                                 **kwargs)->pd.DataFrame:
-        """Fetches static attribues of one station for one or more category as dataframe."""
+        """Fetches static attributes of one station for one or more category as dataframe."""
 
         if categories == 'all':
             categories = self.static_attribute_categories
@@ -499,6 +619,231 @@ class CAMELS_GB(Camels):
 
     def _to_ts(self, df):
         return df
+
+
+class CAMELS_AUS(Camels):
+    """
+    Arguments:
+        path: path where the CAMELS-AUS dataset has been downloaded. This path must
+              contain five zip files and one xlsx file.
+    """
+    def __init__(self, path=None):
+        super().__init__(name="CAMELS-AUS")
+        self.ds_dir = path
+        self._unzip()
+
+    @property
+    def ds_dir(self):
+        """Directory where a particular dataset will be saved. """
+        return self._ds_dir
+
+    @ds_dir.setter
+    def ds_dir(self, x):
+        sanity_check(self.name, x)
+        self._ds_dir = x
+
+    @property
+    def dynamic_attributes(self):
+        return self.DATASETS[self.name]['dynamic_attributes']
+
+    def stations(self, as_list=True):
+        fname = os.path.join(self.ds_dir, "01_id_name_metadata\\01_id_name_metadata\\id_name_metadata.csv")
+        df = pd.read_csv(fname)
+        if as_list:
+            return df['station_id'].to_list()
+        else:
+            return df
+
+    @property
+    def static_attribute_categories(self):
+        attributes = []
+        path = os.path.join(self.ds_dir, '04_attributes\\04_attributes')
+        for f in os.listdir(path):
+            if os.path.isfile(os.path.join(path, f)) and f.endswith('csv'):
+                f = str(f.split('.csv')[0])
+                attributes.append(''.join(f.split('_')[2:]))
+        return attributes
+
+    def fetch_dynamic_attributes(self,
+                                 stn_id,
+                                 attributes='all',
+                                 **kwargs) ->pd.DataFrame:
+
+        if attributes == 'all':
+            attributes = self.dynamic_attributes
+
+        assert isinstance(stn_id, str), f"provide only one station_id. You provided{stn_id}"
+
+        df = pd.DataFrame()
+
+        def populate_df(_path):
+            for attr in attributes:
+                fname = os.path.join(_path, attr + ".csv")
+                if os.path.exists(fname):
+                    _df = pd.read_csv(fname, usecols=[stn_id, 'year', 'month', 'day'], **kwargs)
+                    _df.index = pd.to_datetime(_df[['year', 'month', 'day']].astype(str).apply(' '.join, 1))
+                    df[attr] = _df[stn_id]
+
+        if any(['SILO' in i for i in attributes]):
+            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\SILO")
+            populate_df(path)
+
+        if any(['AWAP' in i for i in attributes]):
+            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\AWAP")
+            populate_df(path)
+
+        if any(['et_' in i for i in attributes]) or any(['evap_' in i for i in attributes]):
+            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\02_EvaporativeDemand_timeseries")
+            populate_df(path)
+
+        if any(['precipitation_' in i for i in attributes]):
+            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\01_precipitation_timeseries")
+            populate_df(path)
+
+        if any(['streamflow_' in i for i in attributes]):
+            path = os.path.join(self.ds_dir, "03_streamflow\\03_streamflow")
+            populate_df(path)
+
+        return df
+
+    def fetch_static_attributes(self,
+                                stn_id,
+                                categories='all',
+                                attribute='all',
+                                **kwargs)->pd.DataFrame:
+        """Fetches static attribuets of one station for one or more category as dataframe."""
+
+        if categories == 'all':
+            categories = self.static_attribute_categories
+        elif isinstance(categories, str):
+            categories = [categories]
+
+        df = pd.DataFrame()
+        for category in categories:
+            cat_df = self.fetch_static_attribute(stn_id, category, **kwargs)
+            df = pd.concat([cat_df, df], axis=1)
+
+        return df
+
+    def fetch_static_attribute(self,
+                               stn_id,
+                               category,
+                               attribute='all',
+                               index_col_name='station_id',
+                               as_ts=False,
+                               **kwargs)->pd.DataFrame:
+
+        path = os.path.join(self.ds_dir, "04_attributes\\04_attributes")
+        fname = None
+        for f in os.listdir(path):
+            if category in f:
+                fname = f
+                break
+        df = pd.read_csv(os.path.join(path, fname), **kwargs)
+        if attribute == 'all':
+            df = df.loc[df[index_col_name] == stn_id]
+        else:
+            df = df.loc[df[index_col_name] == int(stn_id)][attribute]
+        if as_ts:
+            return self._to_ts(df)
+        else:
+            return df
+
+
+class CAMELS_CL(Camels):
+    """
+    Arguments:
+        path: path where the CAMELS-AUS dataset has been downloaded. This path must
+              contain five zip files and one xlsx file.
+    """
+    def __init__(self, path=None):
+        super().__init__(name="CAMELS-CL")
+        self.ds_dir = path
+        self._unzip()
+
+    @property
+    def ds_dir(self):
+        """Directory where a particular dataset will be saved. """
+        return self._ds_dir
+
+    @ds_dir.setter
+    def ds_dir(self, x):
+        sanity_check(self.name, x)
+        self._ds_dir = x
+
+    @property
+    def dynamic_attributes(self):
+        return self.DATASETS[self.name]['dynamic_attributes']
+
+    @property
+    def _all_dirs(self):
+        """All the folders in the dataset_directory"""
+        return  [f for f in os.listdir(self.ds_dir) if os.path.isdir(os.path.join(self.ds_dir, f))]
+
+    @property
+    def static_attribute_categories(self):
+        path = os.path.join(self.ds_dir, "1_CAMELScl_attributes\\1_CAMELScl_attributes.txt")
+        df = pd.read_csv(path, sep='\t', index_col='gauge_id')
+        return df.index.to_list()
+
+    def stations(self)->list:
+        """Tells all station ids for which a data of a specific attribute is available."""
+        _stations = {}
+        for dyn_attr in self.dynamic_attributes:
+            for _dir in self._all_dirs:
+                if dyn_attr in _dir:
+                    fname = os.path.join(self.ds_dir, f"{_dir}\\{_dir}.txt")
+                    df = pd.read_csv(fname, sep='\t', nrows=2, index_col='gauge_id')
+                    _stations[dyn_attr] = list(df.columns)
+
+        return list(set.intersection(*map(set, list(_stations.values()) )))
+
+    def fetch_dynamic_attributes(self,
+                                 stn_id,
+                                 attributes='all',
+                                 **kwargs)->pd.DataFrame:
+        """Fetches dynamic attribute/attributes of one station."""
+        if attributes == 'all':
+            attributes = self.dynamic_attributes
+
+        assert isinstance(stn_id, str), f"provide only one station_id. You provided {stn_id}"
+
+        df = pd.DataFrame(columns=attributes)
+
+        fname = None
+        for attr in attributes:
+            for f in self._all_dirs:
+                if attr in f:
+                    fname = f
+                    break
+            fpath = os.path.join(self.ds_dir, f"{fname}\\{fname}.txt")
+            _df = pd.read_csv(fpath, sep='\t', index_col='gauge_id', na_values=['" "', '', ' '])
+            _df.index = pd.to_datetime(_df.index)
+            df[attr] = _df[stn_id]
+
+        return df
+
+    def fetch_static_attributes(self,
+                                station,
+                                categories=None,
+                                static_attributes=None,
+                                as_ts=False
+                                ):
+        if categories == 'all':
+            attributes = self.static_attribute_categories
+        elif categories:
+            attributes = categories
+
+        if static_attributes == 'all':
+            attributes = self.static_attribute_categories
+
+        path = os.path.join(self.ds_dir, "1_CAMELScl_attributes\\1_CAMELScl_attributes.txt")
+        try:
+            df = pd.read_csv(path, sep='\t', index_col='gauge_id', usecols=[' ' + station, 'gauge_id']).transpose()
+        except ValueError:
+            df = pd.read_csv(path, sep='\t', index_col='gauge_id', usecols=[station, 'gauge_id']).transpose()
+
+        return df[attributes]
 
 
 class ETP_CHN_SEBAL(Datasets):
