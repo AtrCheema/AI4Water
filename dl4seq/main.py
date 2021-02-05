@@ -996,8 +996,9 @@ class Model(NN, Plots):
                 if hasattr(self, 'test_indices'):
                     if self.test_indices is not None:
                         x, prev_y, label = self.fetch_data(data=self.data,
-                                                           inps=self.ins,
-                                                           outs=self.outs,
+                                                           inps=self.in_cols,
+                                                           outs=self.out_cols,
+                                                           transformation=self.config['transformation'],
                                                            indices=self.test_indices)
 
                         if self.category.upper() == "ML" and self.outs == 1:
