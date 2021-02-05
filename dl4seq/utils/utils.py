@@ -346,7 +346,12 @@ def _make_model(**kwargs):
             config[key] = val
 
     if config['allow_nan_labels']>0:
-        assert 'layers' in model_config['model'], f"`allow_nan_labels` should be > 0 only for deep learning models"
+        assert 'layers' in model_config['model'], f"""
+The model appears to be deep learning based because 
+the argument `model` does not have layers. But you are
+allowing nan labels in the targets.
+However, `allow_nan_labels` should be > 0 only for deep learning models
+"""
 
     config.update(model_config)
 
@@ -1091,7 +1096,8 @@ Either of num_inputs or num_outputs must be provided.
     if num_inputs is None:
         num_inputs = features - num_outputs
 
-    assert num_inputs + num_outputs == features
+    assert num_inputs + num_outputs == features, f"""
+num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}"""
 
     if len(data) <= 1:
         raise ValueError(f"Can not create batches from data with shape {data.shape}")

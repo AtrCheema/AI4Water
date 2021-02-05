@@ -55,7 +55,7 @@ class Experiments(object):
             opt_method="bayes",
             n_calls=12,
             include=None,
-            exclude='model_TPOTREGRESSOR',
+            exclude='',
             post_optimize='eval_best',
             hpo_kws: dict = None):
         """
@@ -76,6 +76,8 @@ class Experiments(object):
         assert run_type in ['optimize', 'dry_run']
         assert post_optimize in ['eval_best', 'train_best']
 
+        if exclude == '': exclude = []
+
         predict = False
         if run_type == 'dry_run':
             predict = True
@@ -87,7 +89,11 @@ class Experiments(object):
             include = self.models
         else:  # make sure that include contains same elements which are present in models
             include = ['model_' + _model if not _model.startswith('model_') else _model for _model in include ]
-            assert all(elem in self.models for elem in include)
+            assert all(elem in self.models for elem in include), f"""
+One or more models to `include` are not available.
+Available cases are {self.models} and you wanted to include
+{include}
+"""
 
         if exclude is None:
             exclude = []
@@ -95,7 +101,10 @@ class Experiments(object):
             exclude = [exclude]
 
             exclude = ['model_' + _model if not _model.startswith('model_') else _model for _model in exclude ]
-            assert all(elem in self.models for elem in exclude)
+            assert all(elem in self.models for elem in exclude), f"""
+One or more models to `exclude` are not available.
+Available cases are {self.models} and you wanted to exclude
+{exclude}"""
 
         self.trues = {'train': None,
                       'test': None}
@@ -120,7 +129,7 @@ class Experiments(object):
                     else:
                         raise TypeError
 
-                    return self.build_and_run(predict=predict, title=f"{self.exp_name}\\{model_name}", **config)
+                    return self.build_and_run(predict=predict, title=f"{self.exp_name}\\{model_name}", **config, **kwargs)
 
                 if run_type == 'dry_run':
                     train_results, test_results = objective_fn()
@@ -145,11 +154,11 @@ class Experiments(object):
 
                     if post_optimize == 'eval_best':
                         self.eval_best(model_name, opt_dir)
-                    else:
+                    elif post_optimize=='train_best':
                         self.train_best(model_name)
         return
 
-    def eval_best(self, model_type, opt_dir):
+    def eval_best(self, model_type, opt_dir, **kwargs):
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
 
@@ -157,7 +166,7 @@ class Experiments(object):
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
 
-            train_results, test_results = self.build_from_config(mod_path, mod_weights)
+            train_results, test_results = self.build_from_config(mod_path, mod_weights, **kwargs)
 
             if mod.startswith('1_'):
                 self._populate_results(model_type, train_results, test_results)
@@ -262,7 +271,8 @@ class Experiments(object):
 
         if len(models) <=1:
             warnings.warn(f"Comparison can not be plotted because the obtained models are <=1 {models}", UserWarning)
-            return None
+            return models
+
         plt.close('all')
         fig, axis = plt.subplots(1, 2, sharey='all')
         fig.set_figheight(kwargs.get('fig_heigt', 8))
@@ -1228,3 +1238,89 @@ class MLClassificationExperiments(Experiments):
         ]
         self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
         return {'model': {'TPOTCLASSIFIER': kwargs}}
+
+
+class TransformationExperiments(Experiments):
+    """Helper to conduct experiments with different transformations"""
+
+    kernel_regularizer=None
+    recurrent_regularizer=None
+
+    def __init__(self, data, dims=None, x0=None,  cases=None, exp_name='TransformationExperiments',
+                 dl4seq_model=None,
+                 **model_kws):
+        self.data = data
+        self.dims = dims
+        self.x0 = x0
+        self.model_kws = model_kws
+        self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
+
+        super().__init__(cases=cases, exp_name=exp_name)
+
+    def update_paras(self, **kwargs):
+        layers = {
+            "LSTM": {"config": {"units": int(kwargs.get('lstm_units', 64)), "activation": kwargs.get('lstm_actfn', 'tanh'),
+                                "dropout": 0.2,
+                                "recurrent_dropout": 0.3,
+                                "kernel_regularizer": self.kernel_regularizer,
+                                "recurrent_regularizer": self.recurrent_regularizer}},
+            "Dense": {"config": {"units": 1, "activation": kwargs.get('dense_actfn', 'relu')}},
+            "reshape": {"config": {"target_shape": (1, 1)}}
+        }
+        return {'model': {'layers': layers},
+                'lookback': kwargs['lookback'],
+                'lr': kwargs['learning_rate'],
+                'batch_size': kwargs['batch_size'],
+                'transformation': kwargs['transformation']}
+        
+    def build_and_run(self, predict=False, title=None, **suggested_paras):
+
+        model = self.dl4seq_model(
+            data=self.data,
+            prefix=title,
+            **self.update_paras(**suggested_paras),
+            **self.model_kws
+        )
+
+        #model.impute('interpolate', {'method': 'cubic'}, cols=self.model_kws['inputs'])
+        #model.impute(cols=self.model_kws['inputs'], method='SimpleImputer', imputer_args= {})
+
+        history = model.fit()
+
+        if predict:
+            trt, trp = model.predict(st=0, en=500, use_datetime_index=True, pref='train')
+            testt, testp = model.predict(st=500, use_datetime_index=True, pref='test')
+
+            model.config['allow_nan_labels'] = 2
+            model.predict(use_datetime_index=True, pref='all')
+            model.plot_train_data()
+            return (trt, trp), (testt, testp)
+
+        target_matric_array = history.history['val_loss']
+
+        if all(np.isnan(target_matric_array)):
+            raise ValueError(f"""
+Validation loss during all the epochs is NaN. Suggested parameters were
+{suggested_paras}
+""")
+
+        return np.nanmin(target_matric_array)
+
+    def build_from_config(self, config_path, weight_file, **kwargs):
+        model = self.dl4seq_model.from_config(config_path=config_path,
+                                  data=self.data)
+        model.load_weights(weight_file=weight_file)
+
+        # model.impute('interpolate', {'method': 'cubic'}, cols=self.inputs)
+        # model.impute(cols=self.inputs, method='SimpleImputer', imputer_args= {})
+
+        train_true, train_pred = model.predict(st=0, en=500, use_datetime_index=True, pref='train')
+        test_true, test_pred = model.predict(st=500, use_datetime_index=True, pref='test')
+
+        model.data['allow_nan_labels'] = 1
+        model.predict(use_datetime_index=True, pref='all')
+
+        #model.plot_layer_outputs()
+        #model.plot_weights()
+
+        return (train_true, train_pred), (test_true, test_pred)

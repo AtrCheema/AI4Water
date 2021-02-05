@@ -1172,7 +1172,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                          predicted: np.ndarray,
                          true: np.ndarray,
                          in_cols, out_cols,
-                         scaler_key: str, transformation=None):
+                         scaler_key: str,
+                         transformation=None):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
@@ -1842,8 +1843,15 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         config = dict()
         if history is not None:
-            config['min_val_loss'] = int(np.nanmin(history['val_loss'])) if 'val_loss' in history else None
-            config['min_loss'] = int(np.nanmin(history['loss'])) if 'val_loss' in history else None
+            config['min_loss'] = None
+            config['min_val_loss'] = None
+            min_loss_array = history.get('min_loss_array', None)
+            val_loss_array = history.get('val_loss', None)
+            
+            if val_loss_array is not None and not all(np.isnan(val_loss_array)):
+                config['min_val_loss'] = np.nanmin(val_loss_array)
+            if min_loss_array is not None and not all(np.isnan(min_loss_array)):
+                config['min_loss'] = np.nanmin(min_loss_array)
 
         config['config'] = self.config
         config['method'] = self.method
