@@ -994,13 +994,22 @@ class Model(NN, Plots):
                 assert self.config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.config['test_fraction']}"
 
                 if hasattr(self, 'test_indices'):
-                    x, prev_y, label = self.fetch_data(self.data,  self.in_cols, self.out_cols,
-                                          transformation=self.config['transformation'],  indices=self.test_indices)
+                    if self.test_indices is not None:
+                        x, prev_y, label = self.fetch_data(data=self.data,
+                                                           inps=self.in_cols,
+                                                           outs=self.out_cols,
+                                                           transformation=self.config['transformation'],
+                                                           indices=self.test_indices)
 
-                    if self.category.upper() == "ML" and self.outs == 1:
-                        label = label.reshape(-1, )
-                    return x, label
-                return self.config['val_data']
+                        if self.category.upper() == "ML" and self.outs == 1:
+                            label = label.reshape(-1, )
+                        return x, label
+                    else:   # indices are not set and we need to divide data into test and validation
+                        return self.config['val_data']
+                else:
+                    # validation data needs to be fetched based upon fraction from self.data
+
+                    return self.config['val_data']
             else:
                 # `val_data` might have been provided (then use it as it is) or it is None
                 val_data = self.config['val_data']
