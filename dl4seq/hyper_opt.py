@@ -1,5 +1,6 @@
 import os
 import json
+import traceback
 
 from skopt import BayesSearchCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
@@ -539,9 +540,18 @@ but it is of type {type(space)}"""
 
     def own_fit(self):
 
-        search_result = gp_minimize(func=self.model_for_gpmin(),
-                                    dimensions=self.dims(),
-                                    **self.gpmin_args)
+        try:
+            search_result = gp_minimize(func=self.model_for_gpmin(),
+                                        dimensions=self.dims(),
+                                        **self.gpmin_args)
+        except ValueError:
+            raise ValueError(f"""
+For bayesian optimization, If your sklearn version is below 0.23,
+then this error may be related to 
+https://github.com/kiudee/bayes-skopt/issues/90 .
+Try to lower the sklearn version to 0.22 and run again.
+{traceback.print_stack()}
+""")
 
         self.gpmin_results = search_result
 

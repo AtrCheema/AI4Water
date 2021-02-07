@@ -1,4 +1,5 @@
 import os
+import json
 import warnings
 
 import numpy as np
@@ -129,7 +130,7 @@ Available cases are {self.models} and you wanted to exclude
                     else:
                         raise TypeError
 
-                    return self.build_and_run(predict=predict, title=f"{self.exp_name}\\{model_name}", **config, **kwargs)
+                    return self.build_and_run(predict=predict, title=f"{self.exp_name}\\{model_name}", **config)
 
                 if run_type == 'dry_run':
                     train_results, test_results = objective_fn()
@@ -161,7 +162,7 @@ Available cases are {self.models} and you wanted to exclude
     def eval_best(self, model_type, opt_dir, **kwargs):
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
-
+        # TODO for ML, best_models is empty
         for mod, props in best_models.items():
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
@@ -295,7 +296,6 @@ Available cases are {self.models} and you wanted to exclude
         return models
 
 
-
 class MLRegressionExperiments(Experiments):
     """
     Compares peformance of around 42 machine learning models for regression problem. The experiment consists of
@@ -366,6 +366,7 @@ class MLRegressionExperiments(Experiments):
         return FindErrors(t, p).mse()
 
     def model_ADABOOSTREGRESSOR(self, **kwargs):
+        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
         self.dims = [
             Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),
             Real(low=0.001, high=1.0, name='learning_rate', num_samples=self.num_samples)
@@ -444,9 +445,13 @@ class MLRegressionExperiments(Experiments):
     def model_DummyRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/classes.html
         self.dims = [
-            Categorical(categories=['mean', 'median', 'quantile', 'constant'], name='strategy')
+            Categorical(categories=['mean', 'median', 'quantile'], name='strategy')
         ]
-        self.x0 = ['None']
+
+        kwargs.update({'constant': 0.2,
+                'quantile': 0.2})
+
+        self.x0 = ['quantile']
         return {'model': {'DummyRegressor': kwargs}}
 
     def model_ElasticNet(self, **kwargs):
@@ -458,6 +463,7 @@ class MLRegressionExperiments(Experiments):
             Integer(low=500, high=5000, name='max_iter', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-3, name='tol', num_samples=self.num_samples)
         ]
+        self.x0 = [2.0, 0.2, True, 1000, 1e-4]
         return {'model': {'ElasticNet': kwargs}}
 
     def model_ElasticNetCV(self, **kwargs):
@@ -496,17 +502,17 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'ExtraTreesRegressor': kwargs}}
 
 
-    def model_GammaRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.GammaRegressor.html?highlight=gammaregressor
-        self.dims = [
-            Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
-            Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
-            Real(low= 1e-6, high= 1e-2, name='tol', num_samples=self.num_samples),
-            Categorical(categories=[True, False], name='warm_start'),
-            Categorical(categories=[True, False], name='fit_intercept')
-        ]
-        self.x0 = [0.5, 100,1e-6, True, True]
-        return {'model': {'GammaRegressor': kwargs}}
+    # def model_GammaRegressor(self, **kwargs):
+    #     ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.GammaRegressor.html?highlight=gammaregressor
+    #     self.dims = [
+    #         Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
+    #         Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
+    #         Real(low= 1e-6, high= 1e-2, name='tol', num_samples=self.num_samples),
+    #         Categorical(categories=[True, False], name='warm_start'),
+    #         Categorical(categories=[True, False], name='fit_intercept')
+    #     ]
+    #     self.x0 = [0.5, 100,1e-6, True, True]
+    #     return {'model': {'GammaRegressor': kwargs}}
 
 
     def model_GaussianProcessRegressor(self, **kwargs):
@@ -688,9 +694,9 @@ class MLRegressionExperiments(Experiments):
         self.dims = [
             Real(low=0.5,high=0.9, name='nu', num_samples=self.num_samples),
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
-            Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel')
+            Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid'], name='kernel')
         ]
-        self.x0 = [0.5, 1.0, 'precomputed']
+        self.x0 = [0.5, 1.0, 'sigmoid']
         return {'model': {'NuSVR': kwargs}}
 
     def model_OrthogonalMatchingPursuit(self, **kwargs):
@@ -726,10 +732,10 @@ class MLRegressionExperiments(Experiments):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html
         self.dims = [
             Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
-            Categorical(categories=[True, False], name='fit_intercept'),
+            #Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
         ]
-        self.x0 = [0.5, True, 100]
+        self.x0 = [0.5, 100]
         return {'model': {'POISSONREGRESSOR': kwargs}}
 
     def model_RidgeCV(self, **kwargs):
@@ -793,17 +799,18 @@ class MLRegressionExperiments(Experiments):
             Integer(low=500, high=5000, name='max_iter', num_samples=self.num_samples),
             Categorical(categories=['constant', 'optimal', 'invscaling', 'adaptive'], name='learning_rate')
         ]
-        self.x0 = ['l2', 0.00001, True, 1000, 'invscaling']
+        self.x0 = ['l2', 0.1, True, 1000, 'invscaling']
         return {'model': {'SGDREGRESSOR': kwargs}}
 
-    def model_TransformedTargetRegressor(self, **kwargs):
-        self.dims = [
-            Categorical(categories=[None], name='regressor'),
-            Categorical(categories=[None], name='transformer'),
-            Categorical(categories=[None], name='func')
-        ]
-        self.x0 = [None, None, None]
-        return {'model': {'TransformedTargetRegressor': kwargs}}
+    # def model_TransformedTargetRegressor(self, **kwargs):
+    #     ## https://scikit-learn.org/stable/modules/generated/sklearn.compose.TransformedTargetRegressor.html
+    #     self.dims = [
+    #         Categorical(categories=[None], name='regressor'),
+    #         Categorical(categories=[None], name='transformer'),
+    #         Categorical(categories=[None], name='func')
+    #     ]
+    #     self.x0 = [None, None, None]
+    #     return {'model': {'TransformedTargetRegressor': kwargs}}
 
     def model_TPOTREGRESSOR(self, **kwargs):
         ## http://epistasislab.github.io/tpot/api/#regression
@@ -836,6 +843,7 @@ class MLRegressionExperiments(Experiments):
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
             ## Integer(low=self.data.shape[1]+1, high=len(self.data), name='n_subsamples')
         ]
+        self.x0 = [True, 50, 0.001]
         return {'model': {'THEILSENREGRESSOR': kwargs}}
 
     # TODO
@@ -860,8 +868,8 @@ class MLRegressionExperiments(Experiments):
             # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
             # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [10, 3, 0.0001, 'gbtree', 0.1, 0.1, 0.1, 0.1,
-                   0.1, 0.1, 0.1, 0.1, 0.1
+        self.x0 = [10, 3, 0.001, 'gbtree', 0.1, 0.1, 0.1, 0.1,
+                   #0.1, 0.1, 0.1, 0.1, 0.1
                    ]
         return {'model': {'XGBOOSTRFREGRESSOR': kwargs}}
 
@@ -882,7 +890,7 @@ class MLRegressionExperiments(Experiments):
             # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
             # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [10, 5, 5, 'gbtree', 0.2, 0.2, 0.2,
+        self.x0 = [10, 5, 0.5, 'gbtree', 0.2, 0.2, 0.2,
                    #0.2, 0.2, 0.2, 0.2, 0.2, 0.2
                    ]
         return {'model': {'XGBOOSTREGRESSOR': kwargs}}
@@ -1257,21 +1265,12 @@ class TransformationExperiments(Experiments):
 
         super().__init__(cases=cases, exp_name=exp_name)
 
-    def update_paras(self, **kwargs):
-        layers = {
-            "LSTM": {"config": {"units": int(kwargs.get('lstm_units', 64)), "activation": kwargs.get('lstm_actfn', 'tanh'),
-                                "dropout": 0.2,
-                                "recurrent_dropout": 0.3,
-                                "kernel_regularizer": self.kernel_regularizer,
-                                "recurrent_regularizer": self.recurrent_regularizer}},
-            "Dense": {"config": {"units": 1, "activation": kwargs.get('dense_actfn', 'relu')}},
-            "reshape": {"config": {"target_shape": (1, 1)}}
-        }
-        return {'model': {'layers': layers},
-                'lookback': kwargs['lookback'],
-                'lr': kwargs['learning_rate'],
-                'batch_size': kwargs['batch_size'],
-                'transformation': kwargs['transformation']}
+    def update_paras(self, **suggested_paras):
+        raise NotImplementedError(f"""
+You must write the method `update_paras` which should build the Model with suggested parameters
+and return the keyword arguments including `model`. These keyword arguments will then
+will used to build dl5seq's Model class.
+""")
         
     def build_and_run(self, predict=False, title=None, **suggested_paras):
 
@@ -1282,14 +1281,13 @@ class TransformationExperiments(Experiments):
             **self.model_kws
         )
 
-        #model.impute('interpolate', {'method': 'cubic'}, cols=self.model_kws['inputs'])
-        #model.impute(cols=self.model_kws['inputs'], method='SimpleImputer', imputer_args= {})
+        model = self.process_model_before_fit(model)
 
         history = model.fit()
 
         if predict:
-            trt, trp = model.predict(st=0, en=500, use_datetime_index=True, pref='train')
-            testt, testp = model.predict(st=500, use_datetime_index=True, pref='test')
+            trt, trp = model.predict(st=0, en=175, use_datetime_index=True, pref='train')
+            testt, testp = model.predict(st=175, use_datetime_index=True, pref='test')
 
             model.config['allow_nan_labels'] = 2
             model.predict(use_datetime_index=True, pref='all')
@@ -1303,7 +1301,6 @@ class TransformationExperiments(Experiments):
 Validation loss during all the epochs is NaN. Suggested parameters were
 {suggested_paras}
 """)
-
         return np.nanmin(target_matric_array)
 
     def build_from_config(self, config_path, weight_file, **kwargs):
@@ -1311,16 +1308,31 @@ Validation loss during all the epochs is NaN. Suggested parameters were
                                   data=self.data)
         model.load_weights(weight_file=weight_file)
 
-        # model.impute('interpolate', {'method': 'cubic'}, cols=self.inputs)
-        # model.impute(cols=self.inputs, method='SimpleImputer', imputer_args= {})
+        odel = self.process_model_before_fit(model)
 
         train_true, train_pred = model.predict(st=0, en=500, use_datetime_index=True, pref='train')
         test_true, test_pred = model.predict(st=500, use_datetime_index=True, pref='test')
 
-        model.data['allow_nan_labels'] = 1
-        model.predict(use_datetime_index=True, pref='all')
+        #model.data['allow_nan_labels'] = 1
+        #model.predict(use_datetime_index=True, pref='all')
 
         #model.plot_layer_outputs()
         #model.plot_weights()
 
         return (train_true, train_pred), (test_true, test_pred)
+
+    def process_model_before_fit(self, model):
+        """So that the user can perform procesisng of the model by overwriting this method"""
+        return model
+
+    @classmethod
+    def from_config(cls, config_path, data, **kwargs):
+        if config_path.endswith('.json'):
+            raise ValueError(f"""
+{config_path} is not a json file
+""")
+
+        with open(config_path, 'r') as fp:
+            config = json.load(fp)
+
+        return cls(data=data, **config, **kwargs)
