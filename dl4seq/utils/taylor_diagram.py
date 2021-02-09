@@ -18,6 +18,13 @@ COLORS = np.array([
        [0.17877267, 0.78893675, 0.92613355, 1.        ],
        [0.38079258, 0.17830983, 0.78165943, 1.        ],
        [0.13778617, 0.06228198, 0.33547859, 1.        ],
+       [0.96707953, 0.46268314, 0.45772886, 1.],
+       [0.17221373, 0.53023578, 0.96788307, 1.],
+        [0.92875036, 0.09364162, 0.33348078, 1.],  
+        [0.93950089, 0.64582256, 0.16928645, 1.],    
+        [0.06802773, 0.46382623, 0.49007703, 1.],   
+        [0.13684922, 0.98802401, 0.34518303, 1.],   
+        [0.54829269, 0.15069842, 0.06147751, 1.],    
        [0.6       , 0.6       , 0.6       , 1.        ]])
 
 RECTS = {1: (111,),
@@ -255,7 +262,8 @@ def plot_taylor(trues:dict,
     name = kwargs.get('name', 'taylor.png')
     plot_bias = kwargs.get('plot_bias', False)
     title = kwargs.get('title', "")
-    figsize = kwargs.get("figsize", (11, 8))
+    figsize = kwargs.get("figsize", (11, 8))  # widht and heigt respectively
+    bbox_inches=kwargs.get("bbox_inches", None)
 
     if axis_locs is None:
         axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
@@ -380,7 +388,7 @@ def plot_taylor(trues:dict,
     fig.tight_layout()
 
     if save:
-        plt.savefig(name, dpi=400)
+        plt.savefig(name, dpi=400, bbox_inches=bbox_inches)
     plt.show()
     plt.close('all')
     return

@@ -338,21 +338,21 @@ class Plots(object):
 
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
-        x,y = self.train_data(**kwargs)
+        x, _, y = self.train_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='training')
 
         return
 
     def plot_val_data(self, how='3d', save=True,  **kwargs):
 
-        x,y = self.val_data(**kwargs)
+        x, _, y = self.val_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='validation')
 
         return
 
     def plot_test_data(self, how='3d', save=True,  **kwargs):
 
-        x,y = self.test_data(**kwargs)
+        x, _, y = self.test_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='test')
 
         return
@@ -653,7 +653,7 @@ class Plots(object):
             elif model in ['XGBOOSTRFREGRESSOR']:  # dtreeviz doesn't plot this
                 pass
             else:
-                x,y = self.test_data()
+                x, _, y = self.test_data()
 
                 if np.ndim(y) > 2:
                     y = np.squeeze(y, axis=2)

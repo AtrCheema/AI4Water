@@ -12,6 +12,7 @@ from skopt.space import Real, Categorical, Integer
 from skopt.space.space import Dimension
 import numpy as np
 import matplotlib.pyplot as plt
+import sklearn
 
 from dl4seq.utils.TSErrors import FindErrors
 from dl4seq import Model
@@ -545,13 +546,16 @@ but it is of type {type(space)}"""
                                         dimensions=self.dims(),
                                         **self.gpmin_args)
         except ValueError:
-            raise ValueError(f"""
+            if int(''.join(sklearn.__version__.split('.')[1:]))>22:
+                raise ValueError(f"""
 For bayesian optimization, If your sklearn version is below 0.23,
 then this error may be related to 
 https://github.com/kiudee/bayes-skopt/issues/90 .
 Try to lower the sklearn version to 0.22 and run again.
 {traceback.print_stack()}
 """)
+            else:
+                raise ValueError(traceback.print_stack())
 
         self.gpmin_results = search_result
 

@@ -1,18 +1,18 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib # for version info
-import os
-from types import MethodType
-
-from sklearn.model_selection import train_test_split
 import json
 import joblib
-import h5py
+import os
+from types import MethodType
 import random
 import math
 import warnings
 import time
+
+from sklearn.model_selection import train_test_split
+import h5py
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib # for version info
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models

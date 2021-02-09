@@ -1,19 +1,21 @@
-import matplotlib.pyplot as plt
-import numpy as np
+import warnings
+from typing import Any, Dict
 from collections import OrderedDict
 import os
 from shutil import rmtree
 import datetime
 import json
+from pickle import PicklingError
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 from skopt.utils import dump
-from pickle import PicklingError
 import matplotlib as mpl
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 import scipy
-import warnings
-from typing import Any, Dict
+
 
 
 def maybe_create_path(prefix=None, path=None):
@@ -1106,7 +1108,6 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     y = []
 
     samples = len(data)
-
 
     for i in range(samples - lookback_steps * input_steps + 1 - forecast_step - forecast_len + 1):
         stx, enx = i, i + lookback_steps * input_steps

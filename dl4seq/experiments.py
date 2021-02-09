@@ -11,7 +11,7 @@ from dl4seq.utils.taylor_diagram import plot_taylor
 from dl4seq import Model
 from dl4seq.hyper_opt import HyperOpt
 from dl4seq.hyper_opt import Real, Categorical, Integer
-from dl4seq.utils.utils import clear_weights
+from dl4seq.utils.utils import clear_weights, dateandtime_now
 
 
 
@@ -26,7 +26,7 @@ class Experiments(object):
         self.simulations  = {}
         self.opt_results = None
         self.optimizer = None
-        self.exp_name=exp_name
+        self.exp_name=exp_name + '_' + str(dateandtime_now())
         self.num_samples = 10
 
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
@@ -39,8 +39,7 @@ class Experiments(object):
     def build_and_run(self):
         return NotImplementedError
 
-    @property
-    def build_from_config(self):
+    def build_from_config(self, config_path, weights, **kwargs):
         return NotImplementedError
 
     @property
@@ -95,7 +94,6 @@ One or more models to `include` are not available.
 Available cases are {self.models} and you wanted to include
 {include}
 """
-
         if exclude is None:
             exclude = []
         elif isinstance(exclude, str):
@@ -176,7 +174,7 @@ Available cases are {self.models} and you wanted to exclude
     def train_best(self, model_type):
         """Train the best model."""
         train_results, test_results = self.build_and_run(predict=True,
-                                                         view=True,
+                                                         #view=True,
                                                          model={model_type: self.optimizer.best_paras_kw()},
                                                          title=f"{self.exp_name}\\{model_type}\\best")
 
@@ -251,7 +249,7 @@ Available cases are {self.models} and you wanted to exclude
 
         train_matrics = []
         test_matrics = []
-        models = []
+        models = {}
 
         for mod in self.models:
             mod = mod.split('model_')[1]
@@ -259,15 +257,17 @@ Available cases are {self.models} and you wanted to exclude
                 test_matric = find_matric_array(self.trues['test'], self.simulations['test'][mod])
                 if test_matric is not None:
                     test_matrics.append(test_matric)
-                    models.append(mod)
+                    models[mod] = {'test': test_matric}
 
                     train_matric = find_matric_array(self.trues['train'], self.simulations['train'][mod])
                     if train_matric is None:
                         train_matric = np.nan
                     train_matrics.append(train_matric)
+                    models[mod] = {'train': train_matric}
 
         labels = {
-            'r2': "$R^{2}$"
+            'r2': "$R^{2}$",
+            'nse': 'NSE'
         }
 
         if len(models) <=1:
@@ -279,12 +279,11 @@ Available cases are {self.models} and you wanted to exclude
         fig.set_figheight(kwargs.get('fig_heigt', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
-
-        ax = sns.barplot(y=models, x=train_matrics, orient='h', ax=axis[0])
+        ax = sns.barplot(y=list(models.keys()), x=train_matrics, orient='h', ax=axis[0])
         ax.set_title("Train", fontdict={'fontsize': kwargs.get('title_fs', 20)})
         ax.set_xlabel(labels.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
 
-        ax = sns.barplot(y=models, x=test_matrics, orient='h', ax=axis[1])
+        ax = sns.barplot(y=list(models.keys()), x=test_matrics, orient='h', ax=axis[1])
         ax.get_yaxis().set_visible(False)
         ax.set_xlabel(labels.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
         ax.set_title("Test", fontdict={'fontsize': kwargs.get('title_fs', 20)})
@@ -294,6 +293,17 @@ Available cases are {self.models} and you wanted to exclude
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
         return models
+
+    @classmethod
+    def from_config(cls, config_path, **kwargs):
+        if config_path.endswith('.json'):
+            raise ValueError(f"""
+{config_path} is not a json file
+""")
+        with open(config_path, 'r') as fp:
+            config = json.load(fp)
+
+        return cls(**config, **kwargs)
 
 
 class MLRegressionExperiments(Experiments):
@@ -318,13 +328,15 @@ class MLRegressionExperiments(Experiments):
         model_kwargs: keyword arguments which are to be passed to `Model` and are not optimized.
     Examples:
     --------
-    >>>import pandas as pd
+    >>>from dl4seq.data import load_30min
+    >>>from dl4seq.experiments import MLRegressionExperiments
     >>> # first compare the performance of all available models without optimizing their parameters
-    >>>data = pd.read_csv('FileName')  # read data file
-    >>>inputs, outputs = [], []  # define input and output columns in data
+    >>>data = load_30min()  # read data file, in this case load the default data
+    >>>inputs = [inp for inp in data.columns if inp.startswith('input')]  # define input and output columns in data
+    >>>outputs = ['target5']
     >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
     ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-    >>>comparisons.fit(run_type="dry_run")
+    >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTREGRESSOR'])
     >>>comparisons.compare_errors('r2')
     >>> # find out the models which resulted in r2> 0.5
     >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.5)
@@ -333,20 +345,28 @@ class MLRegressionExperiments(Experiments):
     ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
     >>>comparisons.fit(run_type="optimize", include=best_models)
     >>>comparisons.compare_errors('r2')
-    >>>comparisons.plot_taylor()
+    >>>comparisons.plot_taylor()  # see help(comparisons.plot_taylor()) to tweak the taylor plot
     """
 
-    def __init__(self, dimensions=None, x0=None, data=None, cases=None, exp_name='MLExperiments', **model_kwargs):
+    def __init__(self,
+                 dimensions=None,
+                 x0=None,
+                 data=None,
+                 cases=None,
+                 dl4seq_model=None,
+                 exp_name='MLExperiments',
+                 **model_kwargs):
         self.dims = dimensions
         self.x0 = x0
         self.data = data
         self.model_kws = model_kwargs
+        self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
         super().__init__(cases=cases, exp_name=exp_name)
 
     def build_and_run(self, predict=False, view=False, title=None, **kwargs):
 
-        model = Model(
+        model = self.dl4seq_model(
             data=self.data,
             prefix=title,
             **self.model_kws,
@@ -421,7 +441,7 @@ class MLRegressionExperiments(Experiments):
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples), # Used for reducing the gradient step.
             Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=self.num_samples),   # Coefficient at the L2 regularization term of the cost function.
             Real(low=0.1, high=10, name='model_size_reg', num_samples=self.num_samples),  # arger the value, the smaller the model size.
-            Real(low=0.0, high=0.99, name='rsm', num_samples=self.num_samples),  # percentage of features to use at each split selection, when features are selected over again at random.
+            Real(low=0.1, high=0.95, name='rsm', num_samples=self.num_samples),  # percentage of features to use at each split selection, when features are selected over again at random.
             Integer(low=32, high=1032, name='border_count', num_samples=self.num_samples),  # number of splits for numerical features
             Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles', # The quantization mode for numerical features.
                                     'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')  # The quantization mode for numerical features.
@@ -542,7 +562,7 @@ class MLRegressionExperiments(Experiments):
         self.dims = [
             Real(low=0.0001, high=0.9, name='learning_rate', num_samples=self.num_samples),  # Used for reducing the gradient step.
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),  # maximum number of trees.
-            Integer(low=1, high=100, name='max_depth', num_samples=self.num_samples),  # maximum number of trees.
+            Integer(low=2, high=100, name='max_depth', num_samples=self.num_samples),  # maximum number of trees.
             Integer(low=10, high=100, name='max_leaf_nodes', num_samples=self.num_samples),  # maximum number of leaves for each tree
             Integer(low=10, high=100, name='min_samples_leaf', num_samples=self.num_samples),  # minimum number of samples per leaf
             Real(low=00, high=0.5, name='l2_regularization', num_samples=self.num_samples),  # Used for reducing the gradient step.
@@ -572,8 +592,9 @@ class MLRegressionExperiments(Experiments):
 
     def model_KNEIGHBORSREGRESSOR(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
+        train_data_length = self.dl4seq_model.config['train_fraction'] * len(self.data)
         self.dims = [
-            Integer(low=3, high=len(self.data), name='n_neighbors', num_samples=self.num_samples),
+            Integer(low=3, high=train_data_length, name='n_neighbors', num_samples=self.num_samples),
             Categorical(categories=['uniform', 'distance'], name='weights'),
             Categorical(categories=['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
             Integer(low=10, high=100, name='leaf_size', num_samples=self.num_samples),
@@ -898,19 +919,27 @@ class MLRegressionExperiments(Experiments):
 
 
 class MLClassificationExperiments(Experiments):
-    """Runs classification models for comparison, with or without optimizing hyperparameters."""
+    """Runs classification models for comparison, with or without optimization of hyperparameters."""
 
-    def __init__(self, dimensions=None, x0=None, data=None, cases=None, exp_name='MLExperiments', **model_kwargs):
+    def __init__(self,
+                 dimensions=None,
+                 x0=None,
+                 data=None,
+                 cases=None,
+                 exp_name='MLExperiments',
+                 dl4seq_model=None,
+                 **model_kwargs):
         self.dims = dimensions
         self.x0 = x0
         self.data = data
         self.model_kws = model_kwargs
+        self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
         super().__init__(cases=cases, exp_name=exp_name)
 
     def build_and_run(self, predict=False, view=False, title=None, **kwargs):
 
-        model = Model(
+        model = self.dl4seq_model(
             data=self.data,
             prefix=title,
             **self.model_kws,
@@ -1045,7 +1074,7 @@ class MLClassificationExperiments(Experiments):
     def model_LabelSpreading(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelSpreading.html?highlight=labelspreading
         self.dims = [
-            Categorical(categories=['knn', 'rbf'], name='kernel', num_samples=self.num_samples),
+            Categorical(categories=['knn', 'rbf'], name='kernel'),
             Integer(low=5, high=10, name='n_neighbors', num_samples=self.num_samples),
             Integer(low=10, high=100, name='max_iter', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='alpha', num_samples=self.num_samples),
@@ -1249,10 +1278,28 @@ class MLClassificationExperiments(Experiments):
 
 
 class TransformationExperiments(Experiments):
-    """Helper to conduct experiments with different transformations"""
-
-    kernel_regularizer=None
-    recurrent_regularizer=None
+    """Helper to conduct experiments with different transformations
+    Examples
+    --------
+    >>>from dl4seq.data import load_u1
+    >>>from dl4seq.experiments import TransformationExperiments
+    >>>class MyTransformationExperiments(TransformationExperiments):
+    ...
+    ...    def update_paras(self, **kwargs):
+    ...        _layers = {
+    ...            "LSTM": {"config": {"units": int(kwargs.get('lstm_units', 64))}},
+    ...            "Dense": {"config": {"units": 1, "activation": kwargs.get('dense_actfn', 'relu')}},
+    ...            "reshape": {"config": {"target_shape": (1, 1)}}
+    ...        }
+    ...        return {'model': {'layers': _layers},
+    ...                'lookback': int(kwargs.get('lookback', 10)),
+    ...                'batch_size': int(kwargs.get('batch_size', 16)),
+    ...                'lr': kwargs.get('lr', 0.001)}
+    >>>data = load_u1()
+    >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
+    >>>outputs = ['target']
+    >>>experiment = TransformationExperiments(inputs=inputs, outputs=outputs, data=data, exp_name="testing")
+    """
 
     def __init__(self, data, dims=None, x0=None,  cases=None, exp_name='TransformationExperiments',
                  dl4seq_model=None,
@@ -1304,11 +1351,11 @@ Validation loss during all the epochs is NaN. Suggested parameters were
         return np.nanmin(target_matric_array)
 
     def build_from_config(self, config_path, weight_file, **kwargs):
-        model = self.dl4seq_model.from_config(config_path=config_path,
-                                  data=self.data)
+        model = self.dl4seq_model.from_config(config_path=config_path, data=self.data
+                                              )
         model.load_weights(weight_file=weight_file)
 
-        odel = self.process_model_before_fit(model)
+        model = self.process_model_before_fit(model)
 
         train_true, train_pred = model.predict(st=0, en=500, use_datetime_index=True, pref='train')
         test_true, test_pred = model.predict(st=500, use_datetime_index=True, pref='test')
@@ -1324,15 +1371,3 @@ Validation loss during all the epochs is NaN. Suggested parameters were
     def process_model_before_fit(self, model):
         """So that the user can perform procesisng of the model by overwriting this method"""
         return model
-
-    @classmethod
-    def from_config(cls, config_path, data, **kwargs):
-        if config_path.endswith('.json'):
-            raise ValueError(f"""
-{config_path} is not a json file
-""")
-
-        with open(config_path, 'r') as fp:
-            config = json.load(fp)
-
-        return cls(data=data, **config, **kwargs)

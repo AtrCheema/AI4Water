@@ -1,4 +1,5 @@
 import warnings
+
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, PowerTransformer,\
     QuantileTransformer, FunctionTransformer
@@ -118,6 +119,14 @@ class Transformations(scaler_container):
       or using one liner
         normalized_df, scaler = Scalers(data=df, method=method, features=cols)('normalize')
     where `method` can be any of the above mentioned methods.
+
+    Examples:
+    --------
+    >>>from dl4seq.data import load_u1
+    >>>data = load_u1()
+    >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
+    >>>transformer = Transformations(data=data[inputs], method='pca', n_components=10)
+    >>>new_data = transformer.transform()
     """
 
     available_scalers = {
