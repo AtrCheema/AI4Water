@@ -16,7 +16,7 @@ import sklearn
 
 from dl4seq.utils.TSErrors import FindErrors
 from dl4seq import Model
-from dl4seq.utils.utils import post_process_skopt_results, Jsonize
+from dl4seq.utils.utils import post_process_skopt_results, Jsonize, dateandtime_now
 
 
 # TODO incorporate hyper_opt, optuna and RayTune libraries under the hood
@@ -340,6 +340,14 @@ class HyperOpt(object):
             else:
                 self.fit = self.random_search
 
+    @property
+    def title(self):
+        return self._title
+
+    @title.setter
+    def title(self, x):
+        self._title = x + '_' + str(dateandtime_now())
+
     def check_args(self, **kwargs):
         kwargs = kwargs.copy()
         if "use_named_args" in kwargs:
@@ -371,7 +379,8 @@ class HyperOpt(object):
     @param_space.setter
     def param_space(self, x):
         if self.method == "bayes":
-            assert isinstance(x, list)
+            assert isinstance(x, list), f"""
+param space must be list of parameters but it is of type {type(x)}"""
             for space in x:
                 # each element in the list can be a tuple of lower and and upper bounds
                 if not isinstance(space, tuple):
@@ -388,6 +397,10 @@ but it is of type {type(space)}"""
                 for _space in x:
                     assert isinstance(_space, Dimension)
                     _param_space[_space.name] = _space.grid
+            else:
+                raise ValueError
+        else:
+            raise ValueError
 
         self._param_space = _param_space
 
@@ -560,7 +573,7 @@ Try to lower the sklearn version to 0.22 and run again.
         self.gpmin_results = search_result
 
         if len(self.results) < 1:
-            self.results = {str(round(k, 5)): self.to_kw(v) for k, v in zip(search_result.func_vals, search_result.x_iters)}
+            self.results = {str(round(k, 8)): self.to_kw(v) for k, v in zip(search_result.func_vals, search_result.x_iters)}
 
         post_process_skopt_results(search_result, self.results, self.opt_path)
 
@@ -572,18 +585,24 @@ Try to lower the sklearn version to 0.22 and run again.
     def eval_sequence(self, params):
 
         print(f"total number of iterations: {len(params)}")
-        for para in params:
+        for idx, para in enumerate(params):
 
             if self.use_dl4seq_model:
                 err = self.dl4seq_model(**para)
             elif self.use_named_args:  # model is external but uses kwargs
                 err = self.model(**para)
             else: # model is external and does not uses keywork arguments
-                err = self.model(*list(para.values()))
-            err = round(err, 6)
+                try:
+                    err = self.model(*list(para.values()))
+                except TypeError:
+                    raise TypeError(f"""
+use_named_args argument is set to {self.use_named_args}. If your
+objective function/model takes key word arguments, make sure that
+this argument is set to True during initiatiation of HyperOpt.""")
+            err = round(err, 8)
 
             #if self.dl4seq_args is not None:
-            self.results[str(err)] = para
+            self.results[f'{err}_{idx}'] = para
 
         fname = os.path.join(self.opt_path, "eval_results.json")
         jsonized_results = {}
@@ -591,7 +610,6 @@ Try to lower the sklearn version to 0.22 and run again.
             jsonized_results[res] = Jsonize(val)()
         with open(fname, "w") as fp:
             json.dump(jsonized_results, fp, sort_keys=True, indent=4)
-
 
         self._plot_convergence()
 
@@ -629,10 +647,11 @@ Try to lower the sklearn version to 0.22 and run again.
     def _plot_convergence(self):
         class sr:
             def __init__(self, results):
-                self.x_iters = list(results.values())
+                self.x_iters = [list(_iter.values()) for _iter in results.values()]
                 self.func_vals = np.array(list(results.keys()), dtype=np.float32)
 
         res = sr(self.results)
+        plt.close('all')
         plot_convergence([res])
 
         fname = os.path.join(self.opt_path, "convergence.png")
