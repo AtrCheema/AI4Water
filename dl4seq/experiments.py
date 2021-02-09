@@ -21,13 +21,13 @@ class Experiments(object):
     The core idea of of `Experiments` is `model`. An experiment consists of one or more models. The models differ from
     each other in their structure/idea/concept. When fit() is called, each model is trained.
     """
-    def __init__(self, cases=None, exp_name='Experiments'):
+    def __init__(self, cases=None, exp_name='Experiments', num_samples=5):
         self.trues = {}
         self.simulations  = {}
         self.opt_results = None
         self.optimizer = None
         self.exp_name=exp_name + '_' + str(dateandtime_now())
-        self.num_samples = 10
+        self.num_samples = num_samples
 
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
         if cases is None:
@@ -35,12 +35,11 @@ class Experiments(object):
         self.cases = cases
         self.models = self.models + list(cases.keys())
 
-    @property
-    def build_and_run(self):
-        return NotImplementedError
+    def build_and_run(self, predict=False, title=None, **kwargs):
+        raise NotImplementedError
 
     def build_from_config(self, config_path, weights, **kwargs):
-        return NotImplementedError
+        raise NotImplementedError
 
     @property
     def num_samples(self):
@@ -53,7 +52,7 @@ class Experiments(object):
     def fit(self,
             run_type="dry_run",
             opt_method="bayes",
-            n_calls=12,
+            num_iterations=12,
             include=None,
             exclude='',
             post_optimize='eval_best',
@@ -63,7 +62,7 @@ class Experiments(object):
                               if `optimize`, then hyperparameters of all the models will be optimized.
         :param opt_method: str, which optimization method to use. options are `bayes`, `random`, `grid`. ONly valid if
                            `run_type` is `optimize`
-        :param n_calls: int, number of iterations for optimization. Only valid if `run_type` is `optimize`.
+        :param num_iterations: int, number of iterations for optimization. Only valid if `run_type` is `optimize`.
         :param include: list, name of models to included. If None, all the models found will be trained and or optimized.
         :param exclude: list, name of `models` to be excluded
         :param post_optimize: str, one of `eval_best` or `train_best`. If eval_best, the weights from the best models
@@ -141,10 +140,10 @@ Available cases are {self.models} and you wanted to exclude
                     opt_dir = os.path.join(os.getcwd(), f"results\\{self.exp_name}\\{model_name}")
                     self.optimizer = HyperOpt(opt_method,
                                               model=objective_fn,
-                                              param_space=self.dims,
+                                              param_space=self.dimensions,
                                               use_named_args=True,
                                               opt_path=opt_dir,
-                                              n_calls=n_calls,  # number of iterations
+                                              n_calls=num_iterations,  # number of iterations
                                               x0=self.x0,
                                               **hpo_kws
                                               )
@@ -355,14 +354,15 @@ class MLRegressionExperiments(Experiments):
                  cases=None,
                  dl4seq_model=None,
                  exp_name='MLExperiments',
+                 num_samples=10,
                  **model_kwargs):
-        self.dims = dimensions
+        self.dimensions = dimensions
         self.x0 = x0
         self.data = data
         self.model_kws = model_kwargs
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
-        super().__init__(cases=cases, exp_name=exp_name)
+        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
     def build_and_run(self, predict=False, view=False, title=None, **kwargs):
 
@@ -387,7 +387,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_ADABOOSTREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),
             Real(low=0.001, high=1.0, name='learning_rate', num_samples=self.num_samples)
         ]
@@ -396,7 +396,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_ARDREGRESSION(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1e-7, high=1e-5, name='alpha_1', num_samples=self.num_samples),
             Real(low=1e-7, high=1e-5, name='alpha_2', num_samples=self.num_samples),
             Real(low=1e-7, high=1e-5, name='lambda_1', num_samples=self.num_samples),
@@ -409,7 +409,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_BAGGINGREGRESSOR(self, **kwargs):
 
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='max_samples', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='max_features', num_samples=self.num_samples),
@@ -423,7 +423,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_BayesianRidge(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.BayesianRidge.html
-        self.dims = [
+        self.dimensions = [
             Integer(low=40, high=1000, name='n_iter', num_samples=self.num_samples),
             Real(low=1e-7, high=1e-5, name='alpha_1', num_samples=self.num_samples),
             Real(low=1e-7, high=1e-5, name='alpha_2', num_samples=self.num_samples),
@@ -436,7 +436,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_CATBOOSTREGRESSOR(self, **kwargs):
         # https://catboost.ai/docs/concepts/python-reference_parameters-list.html
-        self.dims = [
+        self.dimensions = [
             Integer(low=500, high=5000, name='iterations', num_samples=self.num_samples),  # maximum number of trees that can be built
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples), # Used for reducing the gradient step.
             Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=self.num_samples),   # Coefficient at the L2 regularization term of the cost function.
@@ -451,7 +451,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_DECISIONTREEREGRESSOR(self, **kwargs):
         # TODO not converging
-        self.dims = [
+        self.dimensions = [
             Categorical(["best", "random"], name='splitter'),
             Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
             #Real(low=1, high=5, name='min_samples_leaf'),
@@ -464,7 +464,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_DummyRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/classes.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['mean', 'median', 'quantile'], name='strategy')
         ]
 
@@ -476,7 +476,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_ElasticNet(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='l1_ratio', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -488,7 +488,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_ElasticNetCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNetCV.html
-        self.dims = [
+        self.dimensions = [
             Real(low=0.1, high=1.0, name='l1_ratio', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-2, name='eps', num_samples=self.num_samples),
             Integer(low=10, high=1000, name='n_alphas', num_samples=self.num_samples),
@@ -499,7 +499,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'ElasticNetCV': kwargs}}
 
     def model_ExtraTreeRegressor(self, **kwargs):
-        self.dims = [
+        self.dimensions = [
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Real(low=0.1, high=0.5, name='min_samples_split', num_samples=self.num_samples),
             Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=self.num_samples),
@@ -509,7 +509,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'ExtraTreeRegressor': kwargs}}
 
     def model_ExtraTreesRegressor(self, **kwargs):
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Real(low=0.1, high=0.5, name='min_samples_split', num_samples=self.num_samples),
@@ -524,7 +524,7 @@ class MLRegressionExperiments(Experiments):
 
     # def model_GammaRegressor(self, **kwargs):
     #     ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.GammaRegressor.html?highlight=gammaregressor
-    #     self.dims = [
+    #     self.dimensions = [
     #         Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
     #         Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
     #         Real(low= 1e-6, high= 1e-2, name='tol', num_samples=self.num_samples),
@@ -537,7 +537,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_GaussianProcessRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.gaussian_process.GaussianProcessRegressor.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1e-10, high=1e-7, name='alpha', num_samples=self.num_samples),
             Integer(low=0, high=5, name='n_restarts_optimizer', num_samples=self.num_samples)
         ]
@@ -546,7 +546,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_GRADIENTBOOSTINGREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),  # number of boosting stages to perform
             Real(low=0.001, high=1.0, name='learning_rate', num_samples=self.num_samples),   #  shrinks the contribution of each tree
             Real(low=0.0, high=1.0, name='subsample', num_samples=self.num_samples),  # fraction of samples to be used for fitting the individual base learners
@@ -559,7 +559,7 @@ class MLRegressionExperiments(Experiments):
     def model_HISTGRADIENTBOOSTINGREGRESSOR(self, **kwargs):
         ### https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html
         # TODO not hpo not converging
-        self.dims = [
+        self.dimensions = [
             Real(low=0.0001, high=0.9, name='learning_rate', num_samples=self.num_samples),  # Used for reducing the gradient step.
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),  # maximum number of trees.
             Integer(low=2, high=100, name='max_depth', num_samples=self.num_samples),  # maximum number of trees.
@@ -572,7 +572,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_HUBERREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='epsilon', num_samples=self.num_samples),
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-2, name='alpha', num_samples=self.num_samples),
@@ -583,7 +583,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_KernelRidge(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.kernel_ridge.KernelRidge.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples)
  #           Categorical(categories=['poly', 'linear', name='kernel'])
         ]
@@ -593,7 +593,7 @@ class MLRegressionExperiments(Experiments):
     def model_KNEIGHBORSREGRESSOR(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
         train_data_length = self.dl4seq_model.config['train_fraction'] * len(self.data)
-        self.dims = [
+        self.dimensions = [
             Integer(low=3, high=train_data_length, name='n_neighbors', num_samples=self.num_samples),
             Categorical(categories=['uniform', 'distance'], name='weights'),
             Categorical(categories=['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
@@ -605,7 +605,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_LassoLars(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLars.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='fit_intercept')
         ]
@@ -614,7 +614,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_Lars(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lars.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=100, high=1000, name='n_nonzero_coefs', num_samples=self.num_samples)
         ]
@@ -622,7 +622,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'Lars': kwargs}}
 
     def model_LarsCV(self, **kwargs):
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=100, high=1000, name='max_iter', num_samples=self.num_samples),
             Integer(low=100, high=5000, name='max_n_alphas', num_samples=self.num_samples)
@@ -632,7 +632,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_LinearSVR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVR.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Real(low=0.01, high=0.9, name='epsilon', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
@@ -643,7 +643,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_Lasso(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='fit_intercept'),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples)
@@ -653,7 +653,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_LassoCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoCV.html
-        self.dims = [
+        self.dimensions = [
             Real(low=1e-5, high=1e-2, name='eps', num_samples=self.num_samples),
             Integer(low=10, high=1000, name='n_alphas', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -664,7 +664,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_LassoLarsCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsCV.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=500, high=5000, name='max_n_alphas', num_samples=self.num_samples)
         ]
@@ -673,7 +673,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_LassoLarsIC(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsIC.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Categorical(categories=['bic', 'aic'], name='criterion')
         ]
@@ -682,7 +682,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_LGBMREGRESSOR(self, **kwargs):
      ## https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
             Integer(low=10, high=200, name='num_leaves', num_samples=self.num_samples),
             Real(low=0.0001, high=0.1, name='learning_rate', num_samples=self.num_samples),
@@ -692,14 +692,14 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LGBMREGRESSOR': kwargs}}
 
     def model_LINEARREGRESSION(self, **kwargs):
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept')
         ]
         self.x0 = [True]
         return {'model': {'LINEARREGRESSION': kwargs}}
 
     def model_MLPREGRESSOR(self, **kwargs):
-        self.dims = [
+        self.dimensions = [
             Integer(low=10, high=500, name='hidden_layer_sizes', num_samples=self.num_samples),
             Categorical(categories=['identity', 'logistic', 'tanh', 'relu'], name='activation'),
             Categorical(categories=['lbfgs', 'sgd', 'adam'], name='solver'),
@@ -712,7 +712,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_NuSVR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVR.html
-        self.dims = [
+        self.dimensions = [
             Real(low=0.5,high=0.9, name='nu', num_samples=self.num_samples),
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid'], name='kernel')
@@ -722,7 +722,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_OrthogonalMatchingPursuit(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuit.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Real(low=0.1, high=10, name='tol', num_samples=self.num_samples)
         ]
@@ -731,7 +731,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_OrthogonalMatchingPursuitCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuitCV.html
-        self.dims = [
+        self.dimensions = [
             # Integer(low=10, high=100, name='max_iter'),
             Categorical(categories=[True, False], name='fit_intercept')
         ]
@@ -741,7 +741,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_ONECLASSSVM(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel'),
             Real(low=0.1, high=0.9, name='nu', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='shrinking'),
@@ -751,7 +751,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_POISSONREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html
-        self.dims = [
+        self.dimensions = [
             Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
             #Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
@@ -761,7 +761,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_RidgeCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeCV.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Categorical(categories=['auto', 'svd', 'eigen'], name='gcv_mode'),
         ]
@@ -770,7 +770,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_RADIUSNEIGHBORSREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.RadiusNeighborsRegressor.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['uniform', 'distance'], name='weights'),
             Categorical(categories=['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
             Integer(low=10, high=300, name='leaf_size', num_samples=self.num_samples),
@@ -780,7 +780,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'RADIUSNEIGHBORSREGRESSOR': kwargs}}
 
     def model_RANSACREGRESSOR(self, **kwargs):
-        self.dims = [
+        self.dimensions = [
             Integer(low=10, high=1000, name='max_trials'),
             Real(low=0.01, high=0.99, name='min_samples', num_samples=self.num_samples)
         ]
@@ -789,7 +789,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_RANDOMFORESTREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Real(low=0.1, high=0.5, name='min_samples_split', num_samples=self.num_samples),
@@ -803,7 +803,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_SVR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel'),
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Real(low=0.01, high=0.9, name='epsilon', num_samples=self.num_samples)
@@ -813,7 +813,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_SGDREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['l1', 'l2', 'elasticnet'], name='penalty'),
             Real(low=0.01, high=1.0, name='alpha', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -825,7 +825,7 @@ class MLRegressionExperiments(Experiments):
 
     # def model_TransformedTargetRegressor(self, **kwargs):
     #     ## https://scikit-learn.org/stable/modules/generated/sklearn.compose.TransformedTargetRegressor.html
-    #     self.dims = [
+    #     self.dimensions = [
     #         Categorical(categories=[None], name='regressor'),
     #         Categorical(categories=[None], name='transformer'),
     #         Categorical(categories=[None], name='func')
@@ -835,7 +835,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_TPOTREGRESSOR(self, **kwargs):
         ## http://epistasislab.github.io/tpot/api/#regression
-        self.dims = [
+        self.dimensions = [
             Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
             Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
             Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
@@ -848,7 +848,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_TWEEDIEREGRESSOR(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TweedieRegressor.html
-        self.dims = [
+        self.dimensions = [
             Real(low=0.0, high=5.0, name='alpha', num_samples=self.num_samples),
             Categorical(categories=['auto', 'identity', 'log'], name='link'),
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples)
@@ -858,7 +858,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_THEILSENREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=30, high=1000, name='max_iter', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
@@ -874,7 +874,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_XGBOOSTRFREGRESSOR(self, **kwargs):
         ## https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFRegressor
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
@@ -896,7 +896,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_XGBOOSTREGRESSOR(self, **kwargs):
         # ##https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
@@ -928,14 +928,15 @@ class MLClassificationExperiments(Experiments):
                  cases=None,
                  exp_name='MLExperiments',
                  dl4seq_model=None,
+                 num_samples=5,
                  **model_kwargs):
-        self.dims = dimensions
+        self.dimensions = dimensions
         self.x0 = x0
         self.data = data
         self.model_kws = model_kwargs
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
-        super().__init__(cases=cases, exp_name=exp_name)
+        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
     def build_and_run(self, predict=False, view=False, title=None, **kwargs):
 
@@ -960,7 +961,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_AdaBoostClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
-        self.dims = [
+        self.dimensions = [
             Integer(low=10, high=500, name='n_estimators', num_samples=self.num_samples),
             Real(low=1.0, high=5.0, name='learning_rate', num_samples=self.num_samples),
             Categorical(categories=['SAMME', 'SAMME.R'], name='algorithm')
@@ -971,7 +972,7 @@ class MLClassificationExperiments(Experiments):
     def model_BaggingClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.BaggingClassifier.html?highlight=baggingclassifier
 
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='max_samples', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='max_features', num_samples=self.num_samples),
@@ -985,7 +986,7 @@ class MLClassificationExperiments(Experiments):
     def model_BernoulliNB(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.BernoulliNB.html?highlight=bernoullinb
 
-        self.dims = [
+        self.dimensions = [
             Real(low=0.1, high=1.0, name='alpha', num_samples=self.num_samples),
             Real(low=0.0, high=1.0, name='binarize', num_samples=self.num_samples)
         ]
@@ -994,7 +995,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_CalibratedClassifierCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html?highlight=calibratedclassifiercv
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['sigmoid', 'isotonic'], name='method'),
             Integer(low=5, high=50, name='n_jobs', num_samples=self.num_samples)
         ]
@@ -1006,7 +1007,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_DecisionTreeClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html?highlight=decisiontreeclassifier#sklearn.tree.DecisionTreeClassifier
-        self.dims = [
+        self.dimensions = [
             Categorical(["best", "random"], name='splitter'),
             Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
             #Real(low=1, high=5, name='min_samples_leaf'),
@@ -1018,7 +1019,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_DummyClassifier(self, **kwargs):
         ##  https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html?highlight=dummyclassifier
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['stratified', 'most_frequent', 'prior', 'uniform', 'constant'], name='strategy')
         ]
         self.x0 = ['prior']
@@ -1026,7 +1027,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_ExtraTreeClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeClassifier.html?highlight=extratreeclassifier
-        self.dims = [
+        self.dimensions = [
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Real(low=0.1, high=0.5, name='min_samples_split', num_samples=self.num_samples),
             Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=self.num_samples),
@@ -1037,7 +1038,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_ExtraTreesClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html?highlight=extratreesclassifier
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Real(low=0.1, high=0.5, name='min_samples_split', num_samples=self.num_samples),
@@ -1049,7 +1050,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_KNeighborsClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html?highlight=kneighborsclassifier#sklearn.neighbors.KNeighborsClassifier
-        self.dims = [
+        self.dimensions = [
             Integer(low=3, high=5, name='n_neighbors', num_samples=self.num_samples),
             Categorical(categories=['uniform', 'distance'], name='weights'),
             Categorical(categories=['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
@@ -1061,7 +1062,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_LabelPropagation(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelPropagation.html?highlight=labelpropagation
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['knn', 'rbf'], name='kernel'),
             Integer(low=5, high=10, name='n_neighbors', num_samples=self.num_samples),
             Integer(low=50, high=1000, name='max_iter', num_samples=self.num_samples),
@@ -1073,7 +1074,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_LabelSpreading(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelSpreading.html?highlight=labelspreading
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['knn', 'rbf'], name='kernel'),
             Integer(low=5, high=10, name='n_neighbors', num_samples=self.num_samples),
             Integer(low=10, high=100, name='max_iter', num_samples=self.num_samples),
@@ -1086,7 +1087,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_LGBMClassifier(self, **kwargs):
         ## https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
             Integer(low=10, high=200, name='num_leaves', num_samples=self.num_samples),
             Real(low=0.0001, high=0.1, name='learning_rate', num_samples=self.num_samples),
@@ -1098,7 +1099,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_LinearDiscriminantAnalysis(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[False, True], name='store_covariance'),
             Integer(low=2, high=100, name='n_components', num_samples=self.num_samples),
             Real(low=1e-6, high=1e-2, name='tol', num_samples=self.num_samples)
@@ -1108,7 +1109,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_LinearSVC(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html?highlight=linearsvc#sklearn.svm.LinearSVC
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='dual'),
             Real(low=1.0, high=5.0, name='C', num_samples=10),
             Integer(low=100, high=1000, name='max_iter', num_samples=self.num_samples),
@@ -1120,7 +1121,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_LogisticRegression(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html?highlight=logisticregression#sklearn.linear_model.LogisticRegression
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[True, False], name='dual'),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
             Real(low=0.5, high=5.0, name='C', num_samples=self.num_samples),
@@ -1133,7 +1134,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_NearestCentroid(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestCentroid.html?highlight=nearestcentroid
-        self.dims = [
+        self.dimensions = [
             Real(low=1, high=50, name='shrink_threshold', num_samples=self.num_samples)
         ]
         self.x0 = [5]
@@ -1141,7 +1142,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_NuSVC(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVC.html?highlight=nusvc
-        self.dims = [
+        self.dimensions = [
             Real(low=0.5, high=0.9, name='nu', num_samples=self.num_samples),
             Integer(low=100, high=1000, name='max_iter', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
@@ -1152,7 +1153,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_PassiveAggressiveClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PassiveAggressiveClassifier.html?highlight=passiveaggressiveclassifier
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='validation_fraction', num_samples=self.num_samples),
             Real(low=1e-4, high=1e-1, name='tol', num_samples=self.num_samples),
@@ -1164,7 +1165,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_Perceptron(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Perceptron.html?highlight=perceptron#sklearn.linear_model.Perceptron
-        self.dims = [
+        self.dimensions = [
             Real(low=1e-6, high=1e-2, name='alpha', num_samples=self.num_samples),
             Real(low=0.1, high=1.0, name='validation_fraction', num_samples=self.num_samples),
             Real(low=1e-4, high=1e-1, name='tol', num_samples=self.num_samples),
@@ -1176,7 +1177,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_QuadraticDiscriminantAnalysis(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html?highlight=quadraticdiscriminantanalysis
-        self.dims = [
+        self.dimensions = [
             Real(low=0.0, high=1.0, name='reg_param', num_samples=self.num_samples),
             Real(low=1e-4, high=1e-1, name='tol', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='store_covariance')
@@ -1186,7 +1187,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_RandomForestClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html?highlight=randomforestclassifier#sklearn.ensemble.RandomForestClassifier
-        self.dims = [
+        self.dimensions = [
             Integer(low=50, high=1000, name='n_estimators', num_samples=self.num_samples),
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
@@ -1198,7 +1199,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_RidgeClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifier.html?highlight=ridgeclassifier#sklearn.linear_model.RidgeClassifier
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
             Real(low=1e-4, high=1e-1, name='tol', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='normalize'),
@@ -1209,7 +1210,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_RidgeClassifierCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifierCV.html?highlight=ridgeclassifier#sklearn.linear_model.RidgeClassifierCV
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=[1e-3, 1e-2, 1e-1, 1], name='alphas'),
             Categorical(categories=[True, False], name='normalize'),
             Categorical(categories=[True, False], name='fit_intercept')
@@ -1219,7 +1220,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_SGDClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html?highlight=sgdclassifier#sklearn.linear_model.SGDClassifier
-        self.dims = [
+        self.dimensions = [
             Categorical(categories=['l1', 'l2', 'elasticnet'], name='penalty'),
             Real(low=1e-6, high=1e-2, name='alpha', num_samples=self.num_samples),
             Real(low=0.0, high=1.0, name='eta0', num_samples=self.num_samples),
@@ -1232,7 +1233,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_SVC(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html?highlight=svc#sklearn.svm.SVC
-        self.dims = [
+        self.dimensions = [
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
             Real(low=200, high=1000, name='cache_size', num_samples=self.num_samples)
@@ -1242,7 +1243,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_XGBClassifier(self, **kwargs):
         ## https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
-        self.dims = [
+        self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  # Number of gradient boosted trees
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),  # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),  #
@@ -1265,7 +1266,7 @@ class MLClassificationExperiments(Experiments):
 
     def model_TPOTCLASSIFIER(self, **kwargs):
         ## http://epistasislab.github.io/tpot/api/#regression
-        self.dims = [
+        self.dimensions = [
             Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
             Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
             Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
@@ -1301,16 +1302,22 @@ class TransformationExperiments(Experiments):
     >>>experiment = TransformationExperiments(inputs=inputs, outputs=outputs, data=data, exp_name="testing")
     """
 
-    def __init__(self, data, dims=None, x0=None,  cases=None, exp_name='TransformationExperiments',
+    def __init__(self,
+                 data,
+                 dimensions=None,
+                 x0=None,
+                 cases=None,
+                 exp_name='TransformationExperiments',
+                 num_samples=5,
                  dl4seq_model=None,
                  **model_kws):
         self.data = data
-        self.dims = dims
+        self.dimensions = dimensions
         self.x0 = x0
         self.model_kws = model_kws
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
-        super().__init__(cases=cases, exp_name=exp_name)
+        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
     def update_paras(self, **suggested_paras):
         raise NotImplementedError(f"""
