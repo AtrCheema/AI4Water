@@ -675,7 +675,7 @@ class Plots(object):
         """
 
         self.regplot_using_searborn(true, predicted, save=save, name=name, where=where)
-
+        plt.close('all')
         mpl.rcParams.update(mpl.rcParamsDefault)
 
         fig, axis = plt.subplots()
@@ -704,6 +704,11 @@ class Plots(object):
 
     def regplot_using_searborn(self, true, pred, save, name, where='plots'):
         # https://seaborn.pydata.org/generated/seaborn.regplot.html
+        if any([isinstance(true, _type) for _type in [float, int]]):
+            true = true.values.reshape(-1,)
+        if any([isinstance(pred, _type) for _type in [float, int]]):
+            pred = pred.values.reshape(-1,)
+
         plt.close('all')
         sns.regplot(x=true, y=pred, color="g")
         plt.xlabel('Observed', fontsize=14)
