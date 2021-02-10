@@ -179,7 +179,7 @@ class NN(AttributeStore):
             # since the model is not build yet and we have access to only output tensors of each list, this is probably
             # the only way to know that how many `Input` layers were encountered during the run of this method. Each
             # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
-            if int(''.join(tf.__version__.split('.')[0:3])) < 240:
+            if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
                 if k.upper() != "TIMEDISTRIBUTED" and hasattr(v, 'op'):
                     if hasattr(v.op, 'inputs'):
                         _ins = v.op.inputs
@@ -193,7 +193,7 @@ class NN(AttributeStore):
 
         # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
         # {Input_1, Input -> Dense }, thus it makes Dense as output and first 2 as inputs, so throwing warning
-        if int(''.join(tf.__version__.split('.')[0:2])) < 24:
+        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
             if len(layer_outputs.op.inputs) < 1:
                 print("Warning: the output is of Input tensor class type")
         else:
