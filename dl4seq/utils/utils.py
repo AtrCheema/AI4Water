@@ -936,6 +936,7 @@ def stats(feature, precision=3, name='') ->dict:
     _stats["Negative counts"] = int(np.sum(feature < 0.0))
     _stats["NaN counts"] = np.isnan(feature).sum()
     _stats['Counts'] = len(feature)
+    _stats['shannon_entropy'] = np.round(scipy.stats.entropy(pd.Series(feature).value_counts()), precision)
 
     return Jsonize(_stats)()
 
