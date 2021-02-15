@@ -1,6 +1,6 @@
 import pandas as pd
 
-from models import HARHNModel
+from models import Model, InputAttentionModel
 
 def make_model(**kwargs):
     """ This functions fills the default arguments needed to run all the models. The input parameters for each
@@ -57,9 +57,9 @@ def make_model(**kwargs):
     _nn_config['lr'] = 0.0001
     _nn_config['optimizer'] = 'adam'
     _nn_config['loss'] = 'mse'
-    _nn_config['epochs'] = 40
-    _nn_config['min_val_loss'] = 9999
-    _nn_config['patience'] = 15
+    _nn_config['epochs'] = 500
+    _nn_config['min_val_loss'] = 0.00001
+    _nn_config['patience'] = 1000
 
     _nn_config['subsequences'] = 3  # used for cnn_lst structure
 
@@ -87,8 +87,9 @@ def make_model(**kwargs):
 
 
     # input features in data_frame
-    _data_config['inputs'] = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
-                      'rel_hum']
+    _data_config['inputs'] = ['tide_cm', 'wat_temp_c', 'sal_psu',
+                              'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
+                              'wind_dir_deg', 'air_p_hpa', 'rel_hum']
     # column in dataframe to bse used as output/target
     _data_config['outputs'] = ['blaTEM_coppml']
 
@@ -111,29 +112,54 @@ def make_model(**kwargs):
     return _data_config, _nn_config, _total_intervals
 
 if __name__=="__main__":
-    input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
-                      'rel_hum']
+    input_features = ['tide_cm', 'wat_temp_c', 'sal_psu',
+                      'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
+                      'wind_dir_deg', 'air_p_hpa', 'rel_hum']
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml']
 
-    data_config, nn_config, total_intervals = make_model(batch_size=16,
-                                                         lookback=15,
-                                                         inputs = input_features,
-                                                         outputs = outputs,
-                                                         lr=0.001)
-
-    df = pd.read_csv('data/all_data_30min.csv')
-
-    model = HARHNModel(data_config=data_config,
-                  nn_config=nn_config,
-                  data=df,
-                  intervals=total_intervals
-                  )
-
-
-    model.build_nn()
-
-    history = model.train_nn(indices='random')
+    # data_config, nn_config, total_intervals = make_model(batch_size=12,
+    #                                                      lookback=18,
+    #                                                      inputs = input_features,
+    #                                                      outputs = outputs,
+    #                                                      lr=0.00029613909)
+    #
+    df = pd.read_excel('data/all_data_30min.xlsx')
+    df.index = pd.to_datetime(df['Date_Time2'])
+    # #
+    # model = Model(data_config=data_config,
+    #               nn_config=nn_config,
+    #               data=df,
+    #               intervals=total_intervals
+    #               )
+    #
+    #
+    # model.build_nn()
+    #
+    # history = model.train_nn(indices='random')
 
     # y, obs = model.predict()
-    acts = model.activations(st=0, en=1400)
+    # acts = model.activations(st=0, en=1400)
+
+    cpath = "D:\\experiements\\exp\\dl_ts_prediction\\results\\AttnRNN_single_blaTEM_real\\20200917_1243\\config.json"
+    model = InputAttentionModel.from_config(config_path=cpath, data=df)
+    model.build_nn()
+    model.load_weights("weights_182_0.0107.hdf5")
+
+
+    # tr_y, tr_obs = model.predict(indices=model.train_indices,
+    #                        pref='train_',
+    #                        # use_datetime_index=False
+    #                              )
+    # test_y, test_obs = model.predict(indices=model.test_indices,
+    #                        pref='test_',
+    #                        # use_datetime_index=False
+    #                              )
+
+    model.data_config['ignore_nans'] = False
+    y, obs = model.predict(pref='all_',
+                           # use_datetime_index=False
+                                 )
+
+    acts = model.activations(st=0, en=1447)
+    model.plot_act_along_inputs(st=0, en=1447, layer_name='attn_weight_131', name='blaTEM_ub_')

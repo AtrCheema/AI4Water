@@ -21,13 +21,14 @@ keras = keras
 torch = torch
 tf = tf
 
-ACTIVATIONS = {'LeakyRelu': lambda name='leaky_relu': keras.layers.LeakyReLU(name=name),
+ACTIVATIONS = {'LeakyRelu': keras.layers.LeakyReLU(),
                'PRelu': lambda name='p_relu': keras.layers.PReLU(name=name),  # https://arxiv.org/pdf/1502.01852v1.pdf
-               'relu': lambda name='relu': keras.layers.Activation('relu', name=name),
-               'tanh': lambda name='tanh': keras.layers.Activation('tanh', name=name),
-               'elu': lambda name='elu': keras.layers.ELU(name=name),
+               'relu': keras.layers.Activation('relu', name='relu'),
+               'tanh': keras.layers.Activation('tanh', name='tanh'),
+               'elu': keras.layers.ELU(name='elu'),
                'TheresholdRelu': lambda name='threshold_relu': keras.layers.ThresholdedReLU(name=name),
                # 'SRelu': layers.advanced_activations.SReLU()
+               None: None
                }
 
 

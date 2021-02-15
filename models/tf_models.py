@@ -135,7 +135,8 @@ class DualAttentionModel(Model):
     def _encoder(self,enc_inputs, config, lstm2_seq=True, suf:str = '1'):
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We'+suf)
-        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=config['enc_lstm1_act'],
+        activation = ACTIVATIONS[config['enc_lstm1_act']]
+        self.en_LSTM_cell = layers.LSTM(config['n_h'], return_state=True, activation=activation,
                                         name='encoder_LSTM'+suf)
 
         # initialize the first cell state
@@ -147,7 +148,8 @@ class DualAttentionModel(Model):
         print('encoder attention output:', enc_attn_out)
         enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input'+suf)(enc_attn_out)
         print('input to encoder LSTM:', enc_lstm_in)
-        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=config['enc_lstm2_act'],
+        activation = ACTIVATIONS[config['enc_lstm2_act']]
+        enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=activation,
                                    name='LSTM_after_encoder'+suf)(enc_lstm_in)  # h_en_all
         print('Output from LSTM out: ', enc_lstm_out)
         return enc_lstm_out, h0, s0
@@ -293,45 +295,45 @@ class DualAttentionModel(Model):
 
         return
 
-    def train_nn(self, st=0, en=None, indices=None, **callbacks):
-
-        indices = self.get_indices(indices)
-
-        train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
-                                                        cache_data=self.data_config['CACHEDATA'],
-                                                        indices=indices)
-
-        s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
-
-        h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.nn_config['dec_config']['p']))
-
-        inputs = [train_x, train_y, s0_train, h0_train, s_de0_train, h_de0_train]
-        history = self.fit(inputs, train_label, **callbacks)
-
-        plot_loss(history)
-
-        return history
-
-    def predict(self, st=0, ende=None, indices=None):
-
-        setattr(self, 'predict_indices', indices)
-
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
-
-        h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
-        s0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_s']))
-        h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
-
-        predicted = self.k_model.predict([test_x, test_y, s0_test, h0_test, s_de0_test, h_de0_test],
-                                         batch_size=test_x.shape[0],
-                                         verbose=1)
-
-        self.process_results(test_label, predicted, str(st) + '_' + str(ende))
-
-        return predicted, test_label
+    # def train_nn(self, st=0, en=None, indices=None, **callbacks):
+    #
+    #     indices = self.get_indices(indices)
+    #
+    #     train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
+    #                                                     cache_data=self.data_config['CACHEDATA'],
+    #                                                     indices=indices)
+    #
+    #     s0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_s']))
+    #     h0_train = np.zeros((train_x.shape[0], self.nn_config['enc_config']['n_h']))
+    #
+    #     h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.nn_config['dec_config']['p']))
+    #
+    #     inputs = [train_x, train_y, s0_train, h0_train, s_de0_train, h_de0_train]
+    #     history = self.fit(inputs, train_label, **callbacks)
+    #
+    #     plot_loss(history)
+    #
+    #     return history
+    #
+    # def predict(self, st=0, ende=None, indices=None):
+    #
+    #     setattr(self, 'predict_indices', indices)
+    #
+    #     test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
+    #                                                  cache_data=False,
+    #                                                  indices=indices)
+    #
+    #     h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
+    #     s0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_s']))
+    #     h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.nn_config['dec_config']['p']))
+    #
+    #     predicted = self.k_model.predict([test_x, test_y, s0_test, h0_test, s_de0_test, h_de0_test],
+    #                                      batch_size=test_x.shape[0],
+    #                                      verbose=1)
+    #
+    #     self.process_results(test_label, predicted, str(st) + '_' + str(ende))
+    #
+    #     return predicted, test_label
 
 
 class TCNModel(Model):
@@ -457,28 +459,29 @@ class InputAttentionModel(DualAttentionModel):
 
         history = self.fit(inputs, outputs, **callbacks)
 
+
         plot_loss(history)
 
         return history
 
-    def predict(self, st=0, ende=None, indices=None):
-
-        setattr(self, 'predict_indices', indices)
-
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
-                                                     cache_data=False,
-                                                     indices=indices)
-
-        h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
-        s0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_s']))
-
-        predicted = self.k_model.predict([test_x, s0_test, h0_test],
-                                         batch_size=test_x.shape[0],
-                                         verbose=1)
-
-        self.process_results(test_label, predicted, str(st) + '_' + str(ende))
-
-        return predicted, test_label
+    # def predict(self, st=0, ende=None, indices=None):
+    #
+    #     setattr(self, 'predict_indices', indices)
+    #
+    #     test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=ende, shuffle=False,
+    #                                                  cache_data=False,
+    #                                                  indices=indices)
+    #
+    #     h0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_h']))
+    #     s0_test = np.zeros((test_x.shape[0], self.nn_config['enc_config']['n_s']))
+    #
+    #     predicted = self.k_model.predict([test_x, s0_test, h0_test],
+    #                                      batch_size=test_x.shape[0],
+    #                                      verbose=1)
+    #
+    #     self.process_results(test_label, predicted, str(st) + '_' + str(ende))
+    #
+    #     return predicted, test_label
 
 
 class OutputAttentionModel(DualAttentionModel):

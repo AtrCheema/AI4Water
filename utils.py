@@ -14,13 +14,21 @@ def _plot(*args, **kwargs):
     return
 
 
-def plot_results(true, predicted, name=None):
+def plot_results(true, predicted, name=None, **kwargs):
+    """
+    # kwargs can be any/all of followings
+        # fillstyle:
+        # marker:
+        # linestyle:
+        # markersize:
+        # color:
+    """
 
     regplot_using_searborn(true, predicted, name)
     fig, axis = plt.subplots()
     set_fig_dim(fig, 12, 8)
-    axis.plot(true, '-', label='True')
-    axis.plot(predicted, '-', label='predicted')
+    axis.plot(true, **kwargs, label='True')
+    axis.plot(predicted, **kwargs, label='predicted')
     axis.legend(loc="best", fontsize=22, markerscale=4)
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=18)
@@ -128,11 +136,11 @@ def dateandtime_now():
 
     return datum + '_' + stunde + str(minute)
 
-def save_config_file(path, config=None, errors=None):
+def save_config_file(path, config=None, errors=None, pref=''):
 
     if errors is not None:
         suffix = dateandtime_now()
-        fpath = path + "/errors" + suffix + ".json"
+        fpath = path + "/errors" + pref + suffix + ".json"
         data = errors
     elif config is not None:
         fpath = path + "/config.json"

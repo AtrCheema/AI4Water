@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 import json
 
 import keract_mod as keract
-from models.global_variables import keras
+from models.global_variables import keras, tf
 from utils import plot_results, plot_loss, maybe_create_path, save_config_file
 from models.global_variables import LOSSES, ACTIVATIONS
 #
@@ -19,8 +19,14 @@ from models.global_variables import LOSSES, ACTIVATIONS
 KModel = keras.models.Model
 layers = keras.layers
 
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # tf.enable_eager_execution()
+
+np.random.seed(313)
+if int(tf.__version__[0]) == 1:
+    tf.compat.v1.set_random_seed(313)
+elif int(tf.__version__[0]) > 1:
+    tf.random.set_seed(313)
 
 
 class AttributeNotSetYet:
@@ -49,6 +55,13 @@ class AttributeStore(object):
     test_indices = None
     train_indices = None
     run_paras = AttributeNotSetYet("You must define the `run_paras` method first")
+    scalers = {}
+    cnn_counter = 0
+    lstm_counter = 0
+    act_counter = 0
+    time_dist_counter = 0
+    conv2d_lstm_counter = 0
+    dense_counter = 0
 
 
 class Model(AttributeStore):
@@ -64,9 +77,27 @@ class Model(AttributeStore):
         self.data = data[data_config['inputs'] + data_config['outputs']]
         self.ins = len(self.data_config['inputs'])
         self.outs = len(self.data_config['outputs'])
+        self.in_cols = self.data_config['inputs']
+        self.out_cols = self.data_config['outputs']
         self.loss = LOSSES[self.nn_config['loss']]
         self.KModel = KModel
         self.path = maybe_create_path(path=path)
+
+    @property
+    def in_cols(self):
+        return self._in_cols
+
+    @in_cols.setter
+    def in_cols(self, x: list):
+        self._in_cols = x
+
+    @property
+    def out_cols(self):
+        return self._out_cols
+
+    @out_cols.setter
+    def out_cols(self, x: list):
+        self._out_cols = x
 
     @property
     def lookback(self):
@@ -117,7 +148,23 @@ class Model(AttributeStore):
                    shuffle: bool = True,
                    cache_data=True,
                    noise: int = 0,
-                   indices: list = None):
+                   indices: list = None,
+                   scaler_key: str = '0',
+                   return_dt_index=False):
+        """
+        :param data:
+        :param st:
+        :param en:
+        :param shuffle:
+        :param cache_data:
+        :param noise:
+        :param indices:
+        :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
+                   MinMaxScaler object and can be saved with a unique key in memory.
+        :param return_dt_index: if True, first value in returned `x` will be datetime index. This can be used when
+                                fetching data during predict but must be separated before feeding in NN for prediction.
+        :return:
+        """
 
         if indices is not None:
             assert isinstance(indices, list), "indices must be list"
@@ -125,24 +172,42 @@ class Model(AttributeStore):
                 raise ValueError
 
         df = data
+        dt_index = None
+        if return_dt_index:
+            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
+             pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
+            `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
+            If the data file already contains `datetime` column, then use following command
+            `data.index = pd.to_datetime(data['datetime'])`
+            or use set `use_datetime_index` in `predict` method to False.
+            """
+            dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
 
         # # add random noise in the data
         if noise > 0:
             x = pd.DataFrame(np.random.randint(0, 1, (len(df), noise)))
             df = pd.concat([df, x], axis=1)
-            prev_inputs = self.data_config['inputs']
-            self.data_config['inputs'] = prev_inputs + list(x.columns)
+            prev_inputs = self.in_cols
+            self.in_cols = prev_inputs + list(x.columns)
             ys = []
-            for y in self.data_config['outputs']:
+            for y in self.out_cols:
                 ys.append(df.pop(y))
-            df[self.data_config['outputs']] = ys
+            df[self.out_cols] = ys
 
-        cols = self.data_config['inputs'] + self.data_config['outputs']
+        cols = self.in_cols + self.out_cols
         df = df[cols]
 
         scaler = MinMaxScaler()
         data = scaler.fit_transform(df)
         df = pd.DataFrame(data)
+
+        if return_dt_index:
+            # pandas will add the 'datetime' column as first column. This columns will only be used to keep
+            # track of indices of train and test data.
+            df.insert(0, 'dt_index', dt_index)
+            self.in_cols = ['dt_index'] + self.in_cols
+
+        self.scalers['scaler_' + scaler_key] = scaler
 
         if en is None:
             en = df.shape[0]
@@ -150,13 +215,16 @@ class Model(AttributeStore):
         if self.intervals is None:
 
             df = df[st:en]
-            df.columns = self.data_config['inputs'] + self.data_config['outputs']
+            df.columns = self.in_cols + self.out_cols
 
             x, y, label = self.get_data(df,
-                                        len(self.data_config['inputs']),
-                                        len(self.data_config['outputs'])
+                                        len(self.in_cols),
+                                        len(self.out_cols)
                                         )
             if indices is not None:
+                # because the x,y,z have some initial values removed
+                indices = np.subtract(np.array(indices), self.lookback - 1).tolist()
+
                 # if indices are given then this should be done after `get_data` method
                 x = x[indices]
                 y = y[indices]
@@ -166,11 +234,13 @@ class Model(AttributeStore):
             for _st, _en in self.intervals:
                 df1 = df[_st:_en]
 
-                df.columns = self.data_config['inputs'] + self.data_config['outputs']
-                df1.columns = self.data_config['inputs'] + self.data_config['outputs']
+                df.columns = self.in_cols + self.out_cols
+                df1.columns = self.in_cols + self.out_cols
 
                 if df1.shape[0] > 0:
-                    x, y, label = self.get_data(df1, len(self.data_config['inputs']), len(self.data_config['outputs']))
+                    x, y, label = self.get_data(df1,
+                                                len(self.in_cols),
+                                                len(self.out_cols))
                     xs.append(x)
                     ys.append(y)
                     labels.append(label)
@@ -205,6 +275,11 @@ class Model(AttributeStore):
         print('input_Y shape:', y.shape)
         print('label_Y shape:', label.shape)
 
+        if return_dt_index:
+            self.in_cols.remove("dt_index")
+        else:
+            x = x.astype(np.float32)
+
         return x, y, label
 
     def fit(self, inputs, outputs, **callbacks):
@@ -233,19 +308,28 @@ class Model(AttributeStore):
                          )
         history = self.k_model.history
 
-        self.save_config()
+        self.save_config(history.history['val_loss'])
+
+        # save all the losses or performance metrics
+        df = pd.DataFrame.from_dict(history.history)
+        df.to_csv(os.path.join(self.path, "losses.csv"))
 
         return history
 
     def get_indices(self, indices=None):
+        # returns only train indices if `indices` is None
         if isinstance(indices, str) and indices.upper() == 'RANDOM':
             if self.data_config['ignore_nans']:
                 tot_obs = self.data.shape[0]
             else:
                 if self.outs == 1:
-                    tot_obs = self.data.shape[0] - int(self.data[self.data_config['outputs']].isna().sum())
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols].isna().sum())  # self.data_config['bs']
                 else:
-                    raise ValueError
+                    # data contains nans and target series are > 1, we want to make sure that they have same nan counts
+                    tot_obs = self.data.shape[0] - int(self.data[self.out_cols[0]].isna().sum())
+                    nans = self.data[self.out_cols].isna().sum()
+                    assert np.all(nans.values == int(nans.sum() / self.outs))
+
             idx = np.arange(tot_obs - self.lookback)
             train_indices, test_idx = train_test_split(idx, test_size=self.data_config['val_fraction'], random_state=313)
             setattr(self, 'test_indices', list(test_idx))
@@ -255,11 +339,23 @@ class Model(AttributeStore):
 
         return indices
 
+    # def run_paras(self, **kwargs):
+    #
+    #     train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
+    #     return train_x, train_label
     def run_paras(self, **kwargs):
 
+        outputs = []
         train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
-        return train_x, train_label
+        inputs = [train_x]
+        for out in range(self.outs):
+            config0 = self.nn_config['enc_config']['enc_config_' + str(out)]
+            s0_train = np.zeros((train_x.shape[0], config0['n_s']))
+            h0_train = np.zeros((train_x.shape[0], config0['n_h']))
+            inputs = inputs + [s0_train, h0_train]
+            outputs.append(train_label[:, out])
 
+        return inputs, outputs
 
     def train_nn(self, st=0, en=None, indices=None, **callbacks):
 
@@ -273,32 +369,110 @@ class Model(AttributeStore):
 
         return history
 
-    def predict(self, st=0, en=None, indices=None):
+    def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
+                use_datetime_index=True, **plot_args):
+        """
+        scaler_key: if None, the data will not be indexed along date_time index.
+        """
 
-        setattr(self, 'predict_indices', indices)
+        if indices is not None:
+            setattr(self, 'predict_indices', indices)
 
-        inputs, outputs = self.run_paras(st=st, en=en, indices=indices)
+        inputs, true_outputs = self.run_paras(st=st, en=en, indices=indices, scaler_key=scaler_key,
+                                              return_dt_index=use_datetime_index)
+
+        first_input = inputs[0]
+        dt_index = np.arange(len(first_input))  # default case when datetime_index is not present in input data
+        if use_datetime_index:
+            # remove the first of first inputs which is datetime index
+            dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
+            first_input1 = first_input[:, :, 1:].astype(np.float32)
+            inputs[0] = first_input1
 
         predicted = self.k_model.predict(x=inputs,
                                          batch_size=self.data_config['batch_size'],
                                          verbose=1)
 
-        self.process_results(outputs, predicted, str(st) + '_' + str(en))
+        if self.outs == 1:
+            # denormalize the data
+            if np.ndim(first_input) > 3:
+                first_input = first_input[:, -1, 0, :]
+            elif np.ndim(first_input) == 3:
+                if self.method == 'input_attention':
+                    first_input = first_input[:, -1, 0:-1]
+                else:
+                    first_input = first_input[:, -1, :]
 
-        return predicted, outputs
+            in_obs = np.hstack([first_input, true_outputs])
+            in_pred = np.hstack([first_input, predicted])
+            scaler = self.scalers['scaler_'+scaler_key]
+            in_obs_den = scaler.inverse_transform(in_obs)
+            in_pred_den = scaler.inverse_transform(in_pred)
+            true_outputs = in_obs_den[:, -self.outs]
+            predicted = in_pred_den[:, -self.outs]
+        else:
+            if np.ndim(first_input) == 3 and self.method == 'input_attention':
+                first_input = first_input[:, -1, 0:-1]
 
-    def process_results(self, true, predicted, name=None):
+            y = np.stack(true_outputs, axis=1)
+            in_obs = np.hstack([first_input, y])
+            y = np.stack(predicted, axis=1).reshape(-1, self.outs)
+            in_pred = np.hstack([first_input, y])
+            scaler = self.scalers['scaler_'+scaler_key]
+            in_obs_den = scaler.inverse_transform(in_obs)
+            in_pred_den = scaler.inverse_transform(in_pred)
+            true_outputs = in_obs_den[:, -self.outs:]
+            predicted = in_pred_den[:, -self.outs:]
+            true_outputs = [true_outputs[:, i] for i in range(self.outs)]
+            predicted = [predicted[:, i] for i in range(self.outs)]
 
-        if np.isnan(true).sum() > 0:
-            mask = np.invert(np.isnan(true.reshape(-1,)))
-            true = true[mask]
-            predicted = predicted[mask]
 
-        errors = FindErrors(true, predicted)
-        for er in ['mse', 'rmse', 'r2', 'nse', 'kge', 'rsr', 'percent_bias']:
-            print(er, getattr(errors, er)())
+        if not isinstance(true_outputs, list):
+            true_outputs = [true_outputs]
+        if not isinstance(predicted, list):
+            predicted = [predicted]
 
-        plot_results(true, predicted, name=os.path.join(self.path, name))
+        # convert each output in ture_outputs and predicted lists as pd.Series with datetime indices sorted
+        true_outputs = [pd.Series(t_out.reshape(-1,), index=dt_index).sort_index() for t_out in true_outputs]
+        predicted = [pd.Series(p_out.reshape(-1,), index=dt_index).sort_index() for p_out in predicted]
+
+        # save the results
+        for idx, out in enumerate(self.out_cols):
+            p = predicted[idx]
+            t = true_outputs[idx]
+            # df = pd.DataFrame(np.stack([p, t], axis=1), columns=['true_' + str(out), 'pred_' + str(out)],
+            #                   #index=dt_index
+            #                   )
+            df = pd.concat([t, p], axis=1)
+            df.columns = ['true_' + str(out), 'pred_' + str(out)]
+            df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
+
+        self.process_results(true_outputs, predicted, pref+'_', **plot_args)
+
+        return predicted, true_outputs
+
+    def process_results(self, true: list, predicted: list, name=None, **plot_args):
+
+        errs = dict()
+        for out in range(self.outs):
+
+            t = true[out]
+            p = predicted[out]
+
+            if np.isnan(t).sum() > 0:
+                mask = np.invert(np.isnan(t))
+                t = t[mask]
+                p = p[mask]
+
+            errors = FindErrors(t, p)
+            errs['out_errors'] = errors.calculate_all()
+            # errs['out_stats'] = errors.stats()
+
+            plot_results(t, p, name=os.path.join(self.path, name + self.data_config['outputs'][out]),
+                         **plot_args)
+
+        save_config_file(self.path, errors=errs, pref=name)
+
         return
 
     def build_nn(self):
@@ -306,7 +480,7 @@ class Model(AttributeStore):
 
         # lstm = self.nn_config['lstm_config']
 
-        inputs = layers.Input(shape=(self.lookback, self.ins))
+        inputs = keras.layers.Input(shape=(self.lookback, self.ins))
 
         lstm_activations = self.add_LSTM(inputs, self.nn_config['lstm_config'])
 
@@ -316,7 +490,7 @@ class Model(AttributeStore):
 
         return
 
-    def add_LSTM(self, inputs, config, seq=False):
+    def add_LSTM(self, inputs, config, seq=False, **kwargs):
 
         if 'name' in config:
             name = config['name']
@@ -330,9 +504,9 @@ class Model(AttributeStore):
                                return_sequences=seq,
                                name=name)(inputs)
 
-        if  config['act_fn'] is not None:
+        if config['act_fn'] is not None:
             name = 'lstm_act_' + str(np.random.randint(100))
-            lstm_activations = ACTIVATIONS[config['act_fn']](name=name)(lstm_activations)
+            lstm_activations = ACTIVATIONS[config['act_fn']](lstm_activations)
 
         return lstm_activations
 
@@ -523,6 +697,11 @@ class Model(AttributeStore):
 
         pred, obs = self.predict(**kwargs)
 
+        if isinstance(pred, list):
+            pred = pred[0]
+        if isinstance(obs, list):
+            obs = obs[0]
+
         activation, data = self.activations(layer_names=layer_name, **kwargs)
 
         if isinstance(data, list):
@@ -536,6 +715,7 @@ class Model(AttributeStore):
         plt.close('all')
 
         for idx in range(self.ins):
+            plt.close('all')
 
             fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
             fig.set_figheight(10)
@@ -545,14 +725,14 @@ class Model(AttributeStore):
             ax1.set_title('activations w.r.t ' + self.data_config['inputs'][idx])
             ax1.set_ylabel(self.data_config['inputs'][idx])
 
-            ax2.plot(pred, label='Prediction')
-            ax2.plot(obs, label='Observed')
+            ax2.plot(pred.values, label='Prediction')
+            ax2.plot(obs.values, '.', label='Observed')
             ax2.legend()
 
             im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto')
             ax3.set_ylabel('lookback')
             ax3.set_xlabel('samples')
-            fig.colorbar(im)
+            fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             if name is not None:
                 plt.savefig(os.path.join(self.path, name) + str(idx), dpi=400, bbox_inches='tight')
@@ -561,14 +741,14 @@ class Model(AttributeStore):
 
         return
 
-    def plot2d_act_for_a_sample(self, activations, sample=0, name:str=None):
+    def plot2d_act_for_a_sample(self, activations, sample=0, name: str = None):
         fig, axis = plt.subplots()
         fig.set_figheight(8)
         # for idx, ax in enumerate(axis):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
         axis.set_xlabel('lookback')
         axis.set_ylabel('inputs')
-        print(self.data_config['inputs'])
+        print(self.in_cols)
         axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
         fig.colorbar(im)
         if name is not None:
@@ -613,17 +793,15 @@ class Model(AttributeStore):
 
         return x, y, target
 
-    def _imshow(self, img, label, save=False, fname=None):
+    def _imshow(self, img, label: str = '', save=True, fname=None):
+        assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
         plt.close('all')
         plt.imshow(img, aspect='auto')
         plt.colorbar()
         plt.title(label)
-        if save:
-            plt.savefig(os.path.join(self.path, fname))
-        else:
-            plt.show()
+        self.save_or_show(save, fname)
 
-    def _imshow_3d(self, activation, lyr_name, save=False):
+    def _imshow_3d(self, activation, lyr_name, save=True):
         act_2d = []
         for i in range(activation.shape[0]):
             act_2d.append(activation[i, :])
@@ -631,17 +809,33 @@ class Model(AttributeStore):
         self._imshow(activation_2d, lyr_name + " Activations (3d of {})".format(activation.shape),
                      save, os.path.join(self.path, lyr_name))
 
-    def save_config(self):
+    def plot1d(self, array, label: str = '', save=True, fname=None):
+        plt.close('all')
+        plt.plot(array, '.')
+        plt.title(label)
+        self.save_or_show(save, fname)
+
+    def save_or_show(self, save: bool = True, fname=None):
+        if save:
+            assert isinstance(fname, str)
+            if "/" in fname:
+                fname = fname.replace("/", "_")
+            plt.savefig(os.path.join(self.path, fname))
+        else:
+            plt.show()
+
+    def save_config(self, history: dict):
+
+        test_indices = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
+        train_indices = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
 
         config = dict()
-        config['min_val_loss'] = np.min(
-            self.k_model.history.history['val_loss']) if 'val_loss' in self.k_model.history.history else None
-        config['min_loss'] = np.min(
-            self.k_model.history.history['loss']) if 'val_loss' in self.k_model.history.history else None
+        config['min_val_loss'] = int(np.min(history['val_loss'])) if 'val_loss' in history else None
+        config['min_loss'] = int(np.min(history['loss'])) if 'val_loss' in history else None
         config['nn_config'] = self.nn_config
         config['data_config'] = self.data_config
-        config['test_indices'] = np.array(self.test_indices, dtype=int).tolist() if self.test_indices is not None else None
-        config['train_indices'] = np.array(self.train_indices, dtype=int).tolist() if self.train_indices is not None else None
+        config['test_indices'] = test_indices
+        config['train_indices'] = train_indices
         config['intervals'] = self.intervals
         config['method'] = self.method
 
@@ -649,7 +843,7 @@ class Model(AttributeStore):
         return config
 
     @classmethod
-    def from_config(cls, config_path:str, data):
+    def from_config(cls, config_path: str, data):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
@@ -660,10 +854,36 @@ class Model(AttributeStore):
         else:
             intervals = None
 
-        return cls(data_config=data_config, nn_config=nn_config, data=data, intervals=intervals)
+        cls.from_check_point = True
+
+        # These paras neet to be set here because they are not withing init method
+        cls.test_indices = config["test_indices"]
+        cls.train_indices = config["train_indices"]
+
+        return cls(data_config=data_config,
+                   nn_config=nn_config,
+                   data=data,
+                   intervals=intervals,
+                   path=os.path.dirname(config_path))
+
+    def load_weights(self, w_file: str):
+        # loads the weights of keras model from weight file `w_file`.
+        cpath = os.path.join(self.path, w_file)
+        self.k_model.load_weights(cpath)
+        print("congratualtions, model loaded from weights")
+        return
 
 def unison_shuffled_copies(a, b, c):
     """makes sure that all the arrays are permuted similarly"""
     assert len(a) == len(b) == len(c)
     p = np.random.permutation(len(a))
     return a[p], b[p], c[p]
+
+
+def get_index(idx_array, fmt='%Y%m%d%H%M'):
+    """ converts a numpy 1d array into pandas DatetimeIndex type."""
+
+    if not isinstance(idx_array, np.ndarray):
+        raise TypeError
+
+    return pd.to_datetime(idx_array.astype(str), format=fmt)
