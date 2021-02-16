@@ -7,6 +7,7 @@ import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils.transformations import Transformations
+from dl4seq import Model
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
@@ -304,6 +305,42 @@ class test_Scalers(unittest.TestCase):
         run_log_methods("log", True, insert_nans=True, insert_zeros=True, assert_equality=False)
 
         return
+
+    def test_multiple_transformations(self):
+        """Test when we want to apply multiple transformations on one or more features"""
+        inputs = ['in1', 'inp1']
+        outputs = ['out1']
+
+        data = pd.DataFrame(np.random.random((100, 3)), columns=inputs+outputs)
+
+        transformation = [
+            {"method": "log", "replace_nans": True, "replace_zeros": True, "features": outputs},
+            {"method": "minmax", "features": inputs + outputs}
+                          ]
+
+        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation)
+        tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
+
+        pred, true = model.denormalize_data(inputs=tr_data[inputs],
+                                            true=tr_data[outputs],
+                                            predicted=tr_data[outputs],
+                                            scaler_key='5',
+                                            in_cols=model.in_cols,
+                                            out_cols=model.out_cols,
+                                            transformation=model.config['transformation'])
+
+        for i,j in zip(data['out1'], pred):
+            self.assertAlmostEqual(i, float(j), 5)
+
+        return
+
+    def test_multiple_transformation_multiple_inputs(self):
+        # TODO
+        return
+
+    def test_multile_transformations_multile_outputs(self):
+        # TODO
+        return 
 
 
 if __name__ == "__main__":

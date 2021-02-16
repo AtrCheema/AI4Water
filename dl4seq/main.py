@@ -1213,7 +1213,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 in_obs = pd.DataFrame(in_obs, columns=in_cols + out_cols)
                 in_pred = pd.DataFrame(in_pred, columns=in_cols + out_cols)
                 if isinstance(transformation, list):  # for cases when we used multiple transformatinos
-                    for trans in transformation:
+                    for trans in reversed(transformation):
                         if trans['method'] is not None:
                             scaler = self.scalers[scaler_key + trans['method']]['scaler']
                             in_obs = Transformations(data=in_obs, **trans)(what='inverse', scaler=scaler)

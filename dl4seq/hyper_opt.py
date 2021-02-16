@@ -559,7 +559,7 @@ but it is of type {type(space)}"""
                                         dimensions=self.dims(),
                                         **self.gpmin_args)
         except ValueError:
-            if int(''.join(sklearn.__version__.split('.')[1:]))>22:
+            if int(''.join(sklearn.__version__.split('.')[1]))>22:
                 raise ValueError(f"""
 For bayesian optimization, If your sklearn version is below 0.23,
 then this error may be related to 
