@@ -262,7 +262,7 @@ Available cases are {self.models} and you wanted to exclude
                     if train_matric is None:
                         train_matric = np.nan
                     train_matrics.append(train_matric)
-                    models[mod] = {'train': train_matric}
+                    models[mod] = {'train': train_matric, 'test': test_matric}
 
         labels = {
             'r2': "$R^{2}$",
