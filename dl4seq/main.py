@@ -19,7 +19,7 @@ from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models,
 from dl4seq.backend import tpot_models
 from dl4seq.backend import imputations, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
-from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, make_3d_batches
+from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, prepare_data
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
@@ -1397,7 +1397,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if self.config['batches'].upper() == "2D":
                 return self.get_2d_batches(df, ins, outs)
             else:
-                return self.check_nans(df, *make_3d_batches(df,
+                return self.check_nans(df, *prepare_data(df,
                                                             num_outputs=outs,
                                                             lookback_steps=self.lookback,
                                                             input_steps=self.config['input_step'],
@@ -1410,7 +1410,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 return self.get_2d_batches(df, ins, outs)
 
             else:
-                return self.check_nans(df, *make_3d_batches(df,
+                return self.check_nans(df, *prepare_data(df,
                                                             num_outputs=outs,
                                                             lookback_steps=self.lookback,
                                                             input_steps=self.config['input_step'],

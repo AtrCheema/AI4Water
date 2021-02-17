@@ -987,15 +987,19 @@ def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
     }
 
 
-def make_3d_batches(data: np.ndarray,
-                    lookback_steps:int,
-                    num_inputs:int=None,
-                    num_outputs:int=None,
-                    input_steps:int=1,
-                    forecast_step:int=0,
-                    forecast_len:int=1,
-                    output_steps=1):
+def prepare_data(
+        data: np.ndarray,
+        lookback_steps:int,
+        num_inputs:int=None,
+        num_outputs:int=None,
+        input_steps:int=1,
+        forecast_step:int=0,
+        forecast_len:int=1,
+        known_future_inputs:bool=False,
+        output_steps=1
+):
     """
+    converts a numpy nd array into a supervised machine learning problem.
     :param data: nd numpy array whose first dimension represents the number of examples and
                  the second dimension represents the number of features. Some of those features
                  will be used as inputs and some will be considered as outputs depending upon
@@ -1006,9 +1010,12 @@ def make_3d_batches(data: np.ndarray,
     :param num_outputs: int, number of columns (from last) in data to be used as output.
                         If None, it will be caculated as features-inputs.
     :param lookback_steps: int,  number of previous steps/values to be used at one step.
-    :param input_steps: int, number of steps in input data
-    :param forecast_step: int, >=0, which t value to use as target.
+    :param input_steps: int, strides/number of steps in input data
+    :param forecast_step: int, >=0, which t+ith value to use as target where i is the horizon.
+                          For time series prediction, we can say, which horizon to predict.
     :param forecast_len: int, number of horizons/future values to predict.
+    :param known_future_inputs: bool, Only useful if `forecast_len`>1. If True, this means, we know and use
+                                'future inputs' while making predictions at t>0
     :param output_steps: step size in outputs. If =2, it means we want to predict every second value from the targets
 
     Returns:
@@ -1034,7 +1041,6 @@ def make_3d_batches(data: np.ndarray,
     5,     15,
     6,     16,
     7,     17,
-
                           input_features=2, lookback=7, input_steps=1
     and if we predict
     27, 37, 47     outputs=3, forecast_len=1,  horizon/forecast_step=0,
@@ -1064,9 +1070,6 @@ def make_3d_batches(data: np.ndarray,
     40
     41
 
-    output/target/label shape
-    (examples, outs, forecast_length)
-
     If we use following two time series as input
     1,     11,
     3,     13,
@@ -1075,23 +1078,70 @@ def make_3d_batches(data: np.ndarray,
 
            then        input_features=2, lookback=4, input_steps=2
 
+    If the input is
+    1,     11,
+    2,     12,
+    3,     13,
+    4,     14,
+    5,     15,
+    6,     16,
+    7,     17,
+
+    and target/output is
+    25, 35, 45
+    26, 36, 46
+    27, 37, 47
+    This means we make use of 'known future inputs'. This can be achieved using following configuration
+    num_inputs=2, num_outputs=3, lookback_steps=4, forecast_len=3, forecast_step=1, known_future_inputs=True
+
+    The general shape of output/target/label is
+    (examples, num_outputs, forecast_length)
+
+    The general shape of inputs/x is
+    (examples, lookback_steps+forecast_len-1, ....num_inputs)
+
     ----------
-    Example
+    Examples
     ---------
+    >>>import numpy as np
     >>>examples = 50
     >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
-
-    >>>x, prevy, label = make_3d_batches(data, outputs=2, lookback=4, input_steps=2, forecast_step=2, forecast_len=4)
+    >>>data[0:10]
+        array([[  0,  50, 100, 150, 200],
+               [  1,  51, 101, 151, 201],
+               [  2,  52, 102, 152, 202],
+               [  3,  53, 103, 153, 203],
+               [  4,  54, 104, 154, 204],
+               [  5,  55, 105, 155, 205],
+               [  6,  56, 106, 156, 206],
+               [  7,  57, 107, 157, 207],
+               [  8,  58, 108, 158, 208],
+               [  9,  59, 109, 159, 209]])
+    >>>x, prevy, label = make_3d_batches(data, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2,
+    ...                  forecast_len=4)
     >>>x[0]
        array([[  0.,  50., 100.],
-       [  2.,  52., 102.],
-       [  4.,  54., 104.],
-       [  6.,  56., 106.]], dtype=float32)
-
+              [  2.,  52., 102.],
+              [  4.,  54., 104.],
+              [  6.,  56., 106.]], dtype=float32)
     >>>y[0]
        array([[158., 159., 160., 161.],
-       [208., 209., 210., 211.]], dtype=float32)
+              [208., 209., 210., 211.]], dtype=float32)
 
+    >>>x, prevy, label = make_3d_batches(data, num_outputs=2, lookback_steps=4, forecast_len=3,
+    ...                  known_future_inputs=True)
+    >>>x[0]
+        array([[  0,  50, 100],
+               [  1,  51, 101],
+               [  2,  52, 102],
+               [  3,  53, 103],
+               [  4,  54, 104],
+               [  5,  55, 105],
+               [  6,  56, 106]])       # (7, 3)
+    >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
+    >>>y[0]
+        array([[154., 155., 156.],
+               [204., 205., 206.]], dtype=float32)  # (2, 3)
     """
     if not isinstance(data, np.ndarray):
         if isinstance(data, pd.DataFrame):
@@ -1116,6 +1166,16 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
 
     if len(data) <= 1:
         raise ValueError(f"Can not create batches from data with shape {data.shape}")
+
+    time_steps = lookback_steps
+    if known_future_inputs:
+        lookback_steps = lookback_steps + forecast_len
+        assert forecast_len>1, f"""
+known_futre_inputs should be True only when making predictions at multiple 
+horizons i.e. when forecast length/number of horizons to predict is > 1.
+known_future_inputs: {known_future_inputs}
+forecast_len: {forecast_len}"""
+
     x = []
     prev_y = []
     y = []
@@ -1129,7 +1189,7 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
         st, en = i, i + (lookback_steps - 1) * input_steps
         y_data = data[st:en:input_steps, features - num_outputs:]
 
-        sty = enx + forecast_step - input_steps
+        sty = (i + time_steps * input_steps) + forecast_step - input_steps
         eny = sty + forecast_len
         target = data[sty:eny, features - num_outputs:]
 

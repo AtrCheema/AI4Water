@@ -12,7 +12,7 @@ import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq import Model
-from dl4seq.utils.utils import split_by_indices, train_val_split, stats, make_3d_batches, Jsonize
+from dl4seq.utils.utils import split_by_indices, train_val_split, stats, prepare_data, Jsonize
 from dl4seq.backend import get_sklearn_models
 from dl4seq.utils.imputation import Imputation
 
@@ -350,7 +350,7 @@ class TestUtils(unittest.TestCase):
 
         exs = 50
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = make_3d_batches(d, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
+        x, prevy, label = prepare_data(d, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
         self.assertEqual(x.shape, (38, 4, 3))
         self.assertEqual(label.shape, (38, 2, 4))
         self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
@@ -624,7 +624,7 @@ class TestUtils(unittest.TestCase):
         """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
         exs = 100
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = make_3d_batches(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
+        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
         self.assertEqual(label.sum(), 0.0)
         return
 
@@ -647,6 +647,14 @@ class TestUtils(unittest.TestCase):
         b = Jsonize(a)()
         self.assertTrue(isinstance(b, list))
         self.assertTrue(isinstance(b[0], type(None)))
+        return
+
+    def test_make_batches_with_known_inputs(self):
+        data = np.arange(int(50*5)).reshape(-1,50).transpose()
+        x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4, forecast_len=3,
+                                          known_future_inputs = True)
+
+        self.assertAlmostEqual(y[0].sum(), 1080.0, 6)
         return
 
 if __name__ == "__main__":
