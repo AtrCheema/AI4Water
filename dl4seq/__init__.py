@@ -17,4 +17,4 @@ try:
 except AttributeError:
     print("\n{}Tensorflow models could not be imported {}\n".format(10 * '*', 10 * '*'))
 
-__version__ = '1.0'
+__version__ = '1.02'

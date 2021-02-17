@@ -67,9 +67,9 @@ using setup file, go to folder where repo is downloaded
 
     python setup.py install
 
-The latest code however (possibly with less bugs and more features) can be insalled from `exp` branch instead
+The latest code however (possibly with less bugs and more features) can be insalled from `dev` branch instead
 
-    python -m pip install git+https://github.com/AtrCheema/dl4seq.git@exp
+    python -m pip install git+https://github.com/AtrCheema/dl4seq.git@dev
 
 ## How to use
 
