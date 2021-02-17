@@ -704,9 +704,9 @@ class Plots(object):
 
     def regplot_using_searborn(self, true, pred, save, name, where='plots'):
         # https://seaborn.pydata.org/generated/seaborn.regplot.html
-        if any([isinstance(true, _type) for _type in [float, int]]):
+        if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
             true = true.values.reshape(-1,)
-        if any([isinstance(pred, _type) for _type in [float, int]]):
+        if any([isinstance(pred, _type) for _type in [pd.DataFrame, pd.Series]]):
             pred = pred.values.reshape(-1,)
 
         plt.close('all')
