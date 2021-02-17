@@ -416,10 +416,10 @@ class Model(NN, Plots):
 
             # we want to apply multiple transformations
             elif isinstance(transformation, list):
-                for trans in transformation:
+                for idx, trans in enumerate(transformation):
                     if trans['method'] is not None:
                         df, scaler = Transformations(data=df, **trans)('transformation', return_key=True)
-                        self.scalers[key+str(trans['method'])] = scaler
+                        self.scalers[f'{key}_{trans["method"]}_{idx}'] = scaler
             else:
                 assert isinstance(transformation, str)
                 df, scaler = Transformations(data=df, method=transformation)('transformation', return_key=True)
@@ -1213,9 +1213,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 in_obs = pd.DataFrame(in_obs, columns=in_cols + out_cols)
                 in_pred = pd.DataFrame(in_pred, columns=in_cols + out_cols)
                 if isinstance(transformation, list):  # for cases when we used multiple transformatinos
-                    for trans in reversed(transformation):
+                    for idx, trans in reversed(list(enumerate(transformation))):  # idx and trans both in reverse form
                         if trans['method'] is not None:
-                            scaler = self.scalers[scaler_key + trans['method']]['scaler']
+                            scaler = self.scalers[f'{scaler_key}_{trans["method"]}_{idx}']['scaler']
                             in_obs = Transformations(data=in_obs, **trans)(what='inverse', scaler=scaler)
                             in_pred = Transformations(data=in_pred, **trans)(what='inverse', scaler=scaler)
                 elif isinstance(transformation, dict):
@@ -1431,7 +1431,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             nans = np.isnan(data[:, -outs:]) # df[self.out_cols].isna().sum()
         if int(nans.sum()) > 0:
             if allow_nan_labels == 2:
-                print("\n{} Ignoring NANs in predictions {}\n".format(10 * '*', 10 * '*'))
+                print("\n{} Allowing NANs in predictions {}\n".format(10 * '*', 10 * '*'))
             elif allow_nan_labels == 1:
                 print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])

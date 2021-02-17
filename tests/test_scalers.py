@@ -334,6 +334,32 @@ class test_Scalers(unittest.TestCase):
 
         return
 
+    def test_multiple_same_transformations(self):
+        """Test when we want to apply multiple transformations on one or more features"""
+        inputs = ['in1', 'inp1']
+        outputs = ['out1']
+
+        data = pd.DataFrame(np.random.random((100, 3)), columns=inputs+outputs)
+
+        transformation = [
+            {"method": "robust", "features": outputs},
+            {"method": "robust", "features": inputs + outputs}
+                          ]
+        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation)
+        tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
+
+        pred, true = model.denormalize_data(inputs=tr_data[inputs],
+                                            true=tr_data[outputs],
+                                            predicted=tr_data[outputs],
+                                            scaler_key='5',
+                                            in_cols=model.in_cols,
+                                            out_cols=model.out_cols,
+                                            transformation=model.config['transformation'])
+
+        for i,j in zip(data['out1'], pred):
+            self.assertAlmostEqual(i, float(j), 5)
+        return
+
     def test_multiple_transformation_multiple_inputs(self):
         # TODO
         return

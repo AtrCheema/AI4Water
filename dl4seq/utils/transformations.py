@@ -16,6 +16,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from dl4seq.utils.utils import dateandtime_now
 
 # TODO add logistic, tanh and more scalers.
+# rpca
 # which transformation to use? Some related articles/posts
 # https://scikit-learn.org/stable/modules/preprocessing.html
 # http://www.faqs.org/faqs/ai-faq/neural-nets/part2/section-16.html
