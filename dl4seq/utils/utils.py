@@ -412,7 +412,18 @@ def get_index(idx_array, fmt='%Y%m%d%H%M'):
 
 
 class Jsonize(object):
-    """Converts the objects to basic python types so that they can be written to json files."""
+    """Converts the objects to basic python types so that they can be written to json files.
+    Examples:
+    ---------
+    >>>import numpy as np
+    >>>from dl4seq.utils.utils import Jsonize
+    >>>a = np.array([2.0])
+    >>>b = Jsonize(a)(a)
+    >>>type(b)  # int
+    """
+    # TODO, repeating code in __call__ and stage2
+    # TODO, stage2 not considering tuple
+
     def __init__(self, obj):
         self.obj = obj
 
@@ -428,26 +439,27 @@ class Jsonize(object):
             return [self.stage2(i) for i in self.obj]
         return str(self.obj)
 
-
     def stage2(self, obj):
         """Serializes one object"""
+        if obj is None:
+            return obj
         if 'int' in obj.__class__.__name__:
             return int(obj)
         if 'float' in obj.__class__.__name__:
             return float(obj)
-        if isinstance(obj, dict):
-            return {k:self.stage_last(v) for k,v in obj.items()}
-        if hasattr(obj, '__len__') and not isinstance(obj, str):
-            return [self.stage_last(i) for i in obj]
-        return str(obj)
+        if isinstance(obj, dict):  # iterate over obj until it is a dictionary
+            return {k: self.stage2(v) for k, v in obj.items()}
 
-    @staticmethod
-    def stage_last(_obj):
-        if 'int' in _obj.__class__.__name__:
-            return int(_obj)
-        if 'float' in _obj.__class__.__name__:
-            return float(_obj)
-        return str(_obj)
+        if hasattr(obj, '__len__') and not isinstance(obj, str):
+            if len(obj) > 1:  # it is a list like with length greater than 1
+                return [self.stage2(i) for i in obj]
+            elif isinstance(obj, list):  # for cases like obj is [np.array([1.0])] -> [1.0]
+                return [self.stage2(obj[0])]
+            else:  # for cases like obj is np.array([1.0])
+                return self.stage2(obj[0])
+
+        # last solution, it must be of of string type
+        return str(obj)
 
 
 class SerializeSKOptResults(object):
