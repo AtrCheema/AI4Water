@@ -1,9 +1,9 @@
 name: tf230
 on:
   push:
-    branches: [ exp ]
+    branches: [ master ]
   pull_request:
-    branches: [ exp ]
+    branches: [ master ]
 
 jobs:
   build:
