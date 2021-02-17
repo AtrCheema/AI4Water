@@ -12,7 +12,7 @@ import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq import Model
-from dl4seq.utils.utils import split_by_indices, train_val_split, stats, make_3d_batches
+from dl4seq.utils.utils import split_by_indices, train_val_split, stats, make_3d_batches, Jsonize
 from dl4seq.backend import get_sklearn_models
 from dl4seq.utils.imputation import Imputation
 
@@ -626,6 +626,27 @@ class TestUtils(unittest.TestCase):
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
         x, prevy, label = make_3d_batches(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
         self.assertEqual(label.sum(), 0.0)
+        return
+
+    def test_jsonize(self):
+        a = [np.array([2.0])]
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, list))
+        self.assertTrue(isinstance(b[0], float))
+        return
+
+    def test_jsonize_nested_dict(self):
+        a = {'a': {'b': {'c': {'d': {'e': np.array([2])}}}}}
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, dict))
+        self.assertTrue(isinstance(b['a']['b']['c']['d']['e'], int))
+        return
+
+    def test_jsonize_none(self):
+        a = [None]
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, list))
+        self.assertTrue(isinstance(b[0], type(None)))
         return
 
 if __name__ == "__main__":
