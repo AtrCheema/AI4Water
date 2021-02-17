@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 import json
 
-from dl4seq.utils.utils import stats, dateandtime_now
+from dl4seq.utils.utils import stats
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute
@@ -165,7 +165,7 @@ class FindErrors(object):
                 assert isinstance(name, str)
                 fname = name
             else:
-                fname = str(dateandtime_now())
+                fname = 'errors'
 
             with open(fname + ".json", 'w') as fp:
                 json.dump(errors, fp, sort_keys=True, indent=4)
@@ -890,7 +890,7 @@ class FindErrors(object):
         """
         return float(np.median(np.abs(self.predicted - self.true), axis=0))
 
-    def mean_square_log_error(self, weights=None) -> float:
+    def msle(self, weights=None) -> float:
         """
         mean square logrithmic error
         """
