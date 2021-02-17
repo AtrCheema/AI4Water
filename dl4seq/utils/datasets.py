@@ -43,6 +43,8 @@ import random
 import pandas as pd
 
 from dl4seq.utils.download_zenodo import download_from_zenodo
+from dl4seq.utils.download_pangaea import PanDataSet
+from dl4seq.utils.spatial_utils import plot_shapefile
 
 
 DATASETS = ['ISWDC', 'SEBAL_ET_CHINA']
@@ -116,7 +118,10 @@ class Datasets(object):
 
     @property
     def ds_dir(self):
-        raise NotImplementedError
+        _dir = os.path.join(self.base_ds_dir, self.__class__.__name__)
+        if not os.path.exists(_dir):
+            os.makedirs(_dir)
+        return _dir
 
     @property
     def DATASETS(self):
@@ -429,7 +434,7 @@ class CAMELS_BR(Camels):
         >>>dataset = CAMELS_BR()
         >>>pcp = dataset.fetch_dynamic_attributes('10500000', 'precipitation_cpc')
         ...# fetch all time series data associated with a station.
-        >>>x =   dataset.fetch_dynamic_attributes('51560000', dataset.dynamic_attributes)
+        >>>x = dataset.fetch_dynamic_attributes('51560000', dataset.dynamic_attributes)
         """
 
         if not kwargs:
@@ -664,11 +669,95 @@ class CAMELS_AUS(Camels):
                 attributes.append(''.join(f.split('_')[2:]))
         return attributes
 
+    def fetch_stations_attributes(self,
+                                  stations:list,
+                                  dynamic_attributes='all',
+                                  categories=None,
+                                  static_attributes='all',
+                                  **kwargs) ->dict:
+
+        stns = {}
+
+        dyn_attrs = {}
+
+        def populate_dynattr(_path, attr):
+            fname = os.path.join(_path, attr + ".csv")
+            if os.path.exists(fname):
+                df = pd.read_csv(fname, **kwargs)
+                df.index = pd.to_datetime(df[['year', 'month', 'day']])
+                [df.pop(col) for col in ['year', 'month', 'day']]
+                dyn_attrs[attr] = df
+
+        if dynamic_attributes is not None:
+            if dynamic_attributes == 'all':
+                dynamic_attributes = self.dynamic_attributes
+            elif isinstance(dynamic_attributes, str):
+                assert dynamic_attributes in self.dynamic_attributes
+                dynamic_attributes = [dynamic_attributes]
+            elif isinstance(dynamic_attributes, list):
+                assert all(attr in self.dynamic_attributes for attr in dynamic_attributes)
+                dynamic_attributes = dynamic_attributes
+
+
+            for attr in dynamic_attributes:
+                if 'SILO' in attr:
+                    path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\SILO")
+                    populate_dynattr(path, attr)
+
+                if 'AWAP' in attr:
+                    path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\AWAP")
+                    populate_dynattr(path, attr)
+
+                if 'et_' in attr or 'evap_' in attr:
+                    path = os.path.join(self.ds_dir,
+                                        "05_hydrometeorology\\05_hydrometeorology\\02_EvaporativeDemand_timeseries")
+                    populate_dynattr(path, attr)
+
+                if 'precipitation_' in attr:
+                    path = os.path.join(self.ds_dir,
+                                        "05_hydrometeorology\\05_hydrometeorology\\01_precipitation_timeseries")
+                    populate_dynattr(path, attr)
+
+                if 'streamflow_' in attr:
+                    path = os.path.join(self.ds_dir, "03_streamflow\\03_streamflow")
+                    populate_dynattr(path, attr)
+
+            # making one separate dataframe for one statino
+            for stn in stations:
+                stn_df = pd.DataFrame()
+                for attr, attr_df in dyn_attrs.items():
+                    if attr in dynamic_attributes:
+                        stn_df[attr] = attr_df[stn]
+                stns[stn] = stn_df
+
+        if categories is not None and dynamic_attributes is None:
+            return self._read_static(stations)
+
+        return stns
+
+    def _read_static(self, stations, categories):
+        df_categories = {}
+        path = os.path.join(self.ds_dir, "04_attributes\\04_attributes")
+        for category in categories:
+            for fname in os.listdir(path):
+                if category in fname:
+                    _fname = os.path.join(path, category)
+                    df_categories[category] = pd.read_csv(_fname, index_col=['station_id'])
+
+        stn_categories = {}
+        for stn in stations:
+            stn_df = pd.DataFrame()
+            for cat, cat_df in df_categories.items():
+                stn_df[cat] = df_categories[cat]
+            stn_categories[stn] = stn_df
+
+        return
+
     def fetch_dynamic_attributes(self,
                                  stn_id,
                                  attributes='all',
                                  **kwargs) ->pd.DataFrame:
-
+        """Fetches all or selected dynamic attributes of one station."""
         if attributes == 'all':
             attributes = self.dynamic_attributes
 
@@ -749,6 +838,12 @@ class CAMELS_AUS(Camels):
         else:
             return df
 
+    def plot(self, what, stations=None):
+        assert what in ['outlets', 'boundaries']
+        f1 = os.path.join(self.ds_dir, f'02_location_boundary_area\\02_location_boundary_area\\shp\\CAMELS_AUS_BasinOutlets_adopted.shp')
+        f2 = os.path.join(self.ds_dir, f'02_location_boundary_area\\02_location_boundary_area\\shp\\bonus data\\Australia_boundaries.shp')
+        plot_shapefile([f1, f2])
+        return
 
 class CAMELS_CL(Camels):
     """
@@ -798,11 +893,70 @@ class CAMELS_CL(Camels):
 
         return list(set.intersection(*map(set, list(_stations.values()) )))
 
+    def fetch_stations_attributes(self,
+                                  stations:list,
+                                  dynamic_attributes='all',
+                                  categories=None,
+                                  static_attributes='all',
+                                  **kwargs) ->dict:
+        """Overwitten for speed"""
+        stns = {}
+
+        assert all(stn in self.stations() for stn in stations)
+
+        if dynamic_attributes is not None:
+            if dynamic_attributes == 'all':
+                dynamic_attributes = self.dynamic_attributes
+            elif isinstance(dynamic_attributes, str):
+                assert dynamic_attributes in self.dynamic_attributes
+                dynamic_attributes = [dynamic_attributes]
+            elif isinstance(dynamic_attributes, list):
+                assert all(attr in self.dynamic_attributes for attr in dynamic_attributes)
+                dynamic_attributes = dynamic_attributes
+
+            # since one file contains data for one dynamic attribute for all stations, thus if we need data
+            # for one station only, we will have to read all the files. So we first read all the files
+
+            # reading all dynnamic attributes
+            dyn_attrs = {}
+            for attr in dynamic_attributes:
+                fname = [f for f in self._all_dirs if '_'+attr in f][0]
+                fname = os.path.join(self.ds_dir, f'{fname}\\{fname}.txt')
+                dyn_attrs[attr] = pd.read_csv(fname, sep='\t', index_col=['gauge_id'])
+
+            # making one separate dataframe for one statino
+            for stn in stations:
+                stn_df = pd.DataFrame()
+                for attr, attr_df in dyn_attrs.items():
+                    if attr in dynamic_attributes:
+                        stn_df[attr] = attr_df[stn]
+                stns[stn] = stn_df
+
+        if categories is not None and dynamic_attributes is None:
+            return self._read_static(stations)
+
+        return stns
+
+    def _read_static(self, stations):
+        # overwritten for speed
+        df = pd.DataFrame()
+        path = os.path.join(self.ds_dir, "1_CAMELScl_attributes\\1_CAMELScl_attributes.txt")
+        _df = pd.read_csv(path, sep='\t', index_col='gauge_id')
+
+        for stn in stations:
+            if stn in _df:
+                df[stn] = _df[stn]
+            elif ' ' + stn in _df:
+                df[stn] = _df[' ' + stn]
+
+        return df.to_dict('series')
+
     def fetch_dynamic_attributes(self,
                                  stn_id,
                                  attributes='all',
                                  **kwargs)->pd.DataFrame:
-        """Fetches dynamic attribute/attributes of one station."""
+        """Fetches dynamic attribute/attributes of one station.
+        This is provided for homogenity otherwise fetching for single station is very slow this way."""
         if attributes == 'all':
             attributes = self.dynamic_attributes
 
@@ -844,6 +998,36 @@ class CAMELS_CL(Camels):
             df = pd.read_csv(path, sep='\t', index_col='gauge_id', usecols=[station, 'gauge_id']).transpose()
 
         return df[attributes]
+
+
+class Weisssee(Datasets):
+
+    DATASETS = {'Weisssee': {'url': '10.1594/PANGAEA.898217',
+                             'dynamic_attributes': ['Precipitation_measurements',
+                                                    'long_wave_upward_radiation',
+                                                    'snow_density_at_30cm',
+                                                    'long_wave_downward_radiation'
+                                                    ]
+                             }
+                }
+
+    def __init__(self):
+        super().__init__('Weisssee')
+        self._download()
+
+    def _download(self, overwrite=False):
+        self.fnames = []
+        ds = PanDataSet('10.1594/PANGAEA.898217')
+        kids = ds.children()
+        if len(kids) > 1:
+            for kid in kids:
+                kid_ds = PanDataSet(kid)
+                self.fnames.append(kid_ds.download(self.ds_dir))
+
+        else:
+            self.fnames.append(ds.download(self.ds_dir))
+
+        return
 
 
 class ETP_CHN_SEBAL(Datasets):
