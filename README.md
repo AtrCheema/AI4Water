@@ -8,7 +8,7 @@ for time series and 1D data. To put into Andrej Karapathy's [words](https://twit
 
 `Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
  the ability to babysit a large number of experiments at once, staring at plots and tweaking/re-launching what works. 
- This is necessary, but not sufficient.`"` 
+ This is necessary, but not sufficient.` 
 
 The specific purposes of the repository are
 * compliment the functionality of keras by making pre and post processing easeier for time-series

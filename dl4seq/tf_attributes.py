@@ -9,6 +9,8 @@ import dl4seq.utils.tf_losses as tf_losses
 from dl4seq.nbeats_keras import NBeats
 import dl4seq.models.attention_layers as attns
 from dl4seq.utils.utils import get_attributes
+from dl4seq.models.tft_layer import TemporalFusionTransformer
+
 try:
     from .private_layers import PrivateLayers
 except (ModuleNotFoundError, ImportError):
@@ -33,6 +35,7 @@ LAYERS = {
     # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
     "CONCAT": keras.layers.Concatenate,
     "NBEATS": NBeats,
+    "TEMPORALFUSIONTRANSFORMER": TemporalFusionTransformer,
 }
 
 LAYERS.update(get_attributes(aus=tf.keras, what='layers'))
