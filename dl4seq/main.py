@@ -1,5 +1,4 @@
 import json
-import joblib
 import os
 from types import MethodType
 import random
@@ -13,6 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib # for version info
+import joblib
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
@@ -25,6 +25,7 @@ from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
 from dl4seq.utils.TSErrors import FindErrors
+
 
 def reset_seed(seed):
     np.random.seed(seed)
@@ -1985,7 +1986,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         fpath: str, path like
         out_fmt: str, in which format to save. csv or json"""
         cols = []
-        fname = "description_"
+        fname = "data_description_"
         if inputs:
             cols += self.in_cols
             fname += "inputs_"
@@ -2026,6 +2027,17 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
                 description['data' + str(idx)] = _description
                 _fpath = os.path.join(self.data_path, fname+f'_{idx}') if fpath is None else fpath
+                save_stats(_description, _fpath)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                _description = {}
+                if isinstance(data, pd.DataFrame):
+                    for col in data.columns:
+                        _description[col] = stats(data[col], precision=precision, name=col)
+
+                description[f'data_{data_name}'] = _description
+                _fpath = os.path.join(self.data_path, fname + f'_{data_name}') if fpath is None else fpath
                 save_stats(_description, _fpath)
         else:
             print(f"description can not be found for data type of {type(self.data)}")

@@ -15,3 +15,12 @@ lightgbm
 catboost
 plotly
 tpot
+joblib
+
+# for dataset
+wget
+
+# spatial processing
+imageio
+# shapely manually download the wheel file and install
+pyshp

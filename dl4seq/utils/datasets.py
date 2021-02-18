@@ -46,6 +46,7 @@ from dl4seq.utils.download_zenodo import download_from_zenodo
 from dl4seq.utils.download_pangaea import PanDataSet
 from dl4seq.utils.spatial_utils import plot_shapefile
 
+# TODO, add visualization
 
 DATASETS = ['ISWDC', 'SEBAL_ET_CHINA']
 
@@ -145,7 +146,7 @@ class Datasets(object):
 
     def plot(self, points):
         # this function should be implemented to either plot data of all points/stations or of selected points/stations.
-        raise NotImplementedError
+        raise NotImplementedError(f'The method plot should be written for the class {self.name}')
 
     def _download(self, overwrite=False):
         """Downloads the dataset. If already downloaded, then"""
@@ -155,8 +156,10 @@ class Datasets(object):
                 shutil.rmtree(self.ds_dir)
                 self._download_and_unzip()
             else:
-                print(f"""The directory {self.ds_dir} already exists.
-                          Use overwrite=True to remove previously saved files and download again""")
+                print(f"""
+Not downloading the data since the directory 
+{self.ds_dir} already exists.
+Use overwrite=True to remove previously saved files and download again""")
         else:
             self._download_and_unzip()
         return
@@ -277,7 +280,8 @@ class Camels(Datasets):
                          of this fraction of stations.
         :param dynamic_attributes: list default(None), If not None, then it is the attributes to be fetched.
                                    If None, then all available attributes are fetched
-        :param categories: list/str
+        :param categories: list/str, Categories of static attributes to be fetched.If None, then static attributes will
+                           not be fetched.
         :param static_attributes: list
 
         returns:
@@ -310,6 +314,13 @@ class Camels(Datasets):
                                   **kwargs)->dict:
         """fetches attributes of multiple stations."""
         assert isinstance(stations, list)
+
+        # static attributes should not be None, if we want to fetch some categories.
+        if categories:
+            assert static_attributes, f"""
+static_static attributes can not be {static_attributes}
+when categorices is {categories}"""
+
         stations_attributes = {}
         for station in stations:
             stations_attributes[station] = self.fetch_station_attributes(
@@ -469,7 +480,7 @@ class CAMELS_BR(Camels):
         return data
 
     def fetch_static_attributes(self,
-                                stn_id,
+                                stn_id:int,
                                 categories='all',
                                 attributes=None,
                                 index_col_name='gauge_id',
@@ -679,6 +690,8 @@ class CAMELS_AUS(Camels):
         stns = {}
 
         dyn_attrs = {}
+        if isinstance(categories, str):
+            categories = [categories]
 
         def populate_dynattr(_path, attr):
             fname = os.path.join(_path, attr + ".csv")
@@ -731,7 +744,7 @@ class CAMELS_AUS(Camels):
                 stns[stn] = stn_df
 
         if categories is not None and dynamic_attributes is None:
-            return self._read_static(stations)
+            return self._read_static(stations, categories)
 
         return stns
 
@@ -851,7 +864,8 @@ class CAMELS_CL(Camels):
         path: path where the CAMELS-AUS dataset has been downloaded. This path must
               contain five zip files and one xlsx file.
     """
-    def __init__(self, path=None):
+    def __init__(self,
+                 path=None):
         super().__init__(name="CAMELS-CL")
         self.ds_dir = path
         self._unzip()

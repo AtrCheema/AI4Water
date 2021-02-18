@@ -1,20 +1,20 @@
 import warnings
-from typing import Any, Dict
-from collections import OrderedDict
 import os
-from shutil import rmtree
-import datetime
 import json
+import datetime
+from shutil import rmtree
+from typing import Any, Dict
 from pickle import PicklingError
+from collections import OrderedDict
 
-import matplotlib.pyplot as plt
+import scipy
 import numpy as np
 import pandas as pd
-from skopt.plots import plot_evaluations, plot_objective, plot_convergence
-from skopt.utils import dump
 import matplotlib as mpl
+from skopt.utils import dump
+import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
-import scipy
+from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 
 
 
@@ -40,13 +40,13 @@ def maybe_create_path(prefix=None, path=None):
     return save_dir
 
 
-def dateandtime_now():
-    """ returns the datetime in following format
+def dateandtime_now()->str:
+    """ returns the datetime in following format as string
     YYYYMMDD_HHMMSS
     """
     jetzt = datetime.datetime.now()
-    dt = str(jetzt.year)
-    for time in ['month', 'day', 'hour', 'minute', 'second']:
+    dt = ''
+    for time in ['year', 'month', 'day', 'hour', 'minute', 'second']:
         _time = str(getattr(jetzt, time))
         if len(_time) < 2:
             _time = '0' + _time
@@ -293,7 +293,7 @@ def _make_model(**kwargs):
         # {'fillna': {'method': 'ffill'}}
         # For details about fillna keyword options see https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
         # For `interpolate`, the user can specify  the type of interpolation for example
-        # {'interpolate': {'method': 'spline': 'order': 2}} will perform spline interpolation with 2nd order.
+        # {'interpolate': {'method': 'spline', 'order': 2}} will perform spline interpolation with 2nd order.
         # For other possible options/keyword arguments for interpolate see https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
         # The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
         # providing the above mentioned arguments as dictionary or list.
@@ -1117,7 +1117,7 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-    >>>x, prevy, label = make_3d_batches(data, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2,
+    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2,
     ...                  forecast_len=4)
     >>>x[0]
        array([[  0.,  50., 100.],
@@ -1128,7 +1128,7 @@ def prepare_data(
        array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-    >>>x, prevy, label = make_3d_batches(data, num_outputs=2, lookback_steps=4, forecast_len=3,
+    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4, forecast_len=3,
     ...                  known_future_inputs=True)
     >>>x[0]
         array([[  0,  50, 100],

@@ -1,15 +1,20 @@
 import warnings
+import os
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import seaborn as sns
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 from sklearn import tree
 from dl4seq.backend import xgboost
 import matplotlib as mpl
 import matplotlib.ticker as ticker
+
+try:
+    from dtreeviz import trees
+except ModuleNotFoundError:
+    trees = None
 
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.utils import _missing_vals
@@ -21,10 +26,7 @@ except ModuleNotFoundError:
     rnn_histogram = None
     features_0D, features_1D, features_2D = None, None, None
 
-try:
-    from dtreeviz import trees
-except ModuleNotFoundError:
-    trees = None
+
 
 rnn_info = {"LSTM": {'rnn_type': 'LSTM',
                      'gate_names': ['INPUT', 'FORGET', 'CELL', 'OUTPUT'],
@@ -107,17 +109,21 @@ class Plots(object):
         >>>model.plot_data(subplots=True, figsize=(12, 14), sharex=True)
         >>>model.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         """
-        data = self.data
         if isinstance(self.data, pd.DataFrame):
-            self.plot_df(data, cols=cols, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
+            self.plot_df(self.data, cols=cols, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
+
         if isinstance(self.data, list):
             for idx, data in enumerate(self.data):
                 self.plot_df(data, cols=cols[idx], save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
-        else:
-            self.plot_df(data, cols=cols, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.plot_df(data, cols=cols, prefix=data_name, save=save, freq=freq, max_subplots=max_subplots,
+                                 **kwargs)
         return
 
-    def plot_df(self, df, cols=None, save=True, freq=None, max_subplots=10, prefix='',
+    def plot_df(self, df, cols=None, save=True, freq=None, max_subplots=10,
+                prefix='',
                 leg_kws=None,
                 label_kws=None,
                 tick_kws=None,
@@ -143,10 +149,12 @@ class Plots(object):
             if freq is None:
                 kwargs = plot_style(df, **kwargs)
                 axis = df.plot(**kwargs)
-                axis.legend(**leg_kws)
-                axis.set_ylabel(axis.get_ylabel(), **label_kws)
-                axis.set_xlabel(axis.get_xlabel(), **label_kws)
-                axis.tick_params(**tick_kws)
+                if isinstance(axis, np.ndarray):
+                    for ax in axis:
+                        set_axis_paras(ax, leg_kws, label_kws, tick_kws)
+                else:
+                    set_axis_paras(axis, leg_kws, label_kws, tick_kws)
+
                 self.save_or_show(save=save, fname=f"input_{prefix}",  where='data')
             else:
                 self.plot_df_with_freq(df, freq, save, **kwargs)
@@ -547,7 +555,7 @@ class Plots(object):
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
-                    self._feature_feature_corr(data, cols[data_name], prefix=data_name, save=save, **kwargs)
+                    self._feature_feature_corr(data, cols, prefix=data_name, save=save, **kwargs)
         return
 
     def _feature_feature_corr(self,
@@ -835,6 +843,14 @@ class Plots(object):
                                violen=violen,
                                prefix=str(idx),
                                **kwargs)
+
+        elif isinstance(data, dict):
+            for data_name, _data in data.items():
+                self._box_plot(_data, list(_data.columns), save, normalize, figsize, max_features, show_datapoints,
+                               freq,
+                               violen=violen,
+                               prefix=data_name,
+                               **kwargs)
         else:
             cols = cols + self.out_cols if outputs else cols
             self._box_plot(data, cols, save, normalize, figsize, max_features, show_datapoints, freq,
@@ -1006,6 +1022,12 @@ class Plots(object):
                 if isinstance(data, pd.DataFrame):
                     _cols = cols + [self.out_cols[idx]] if outputs else cols
                     self.grouped_scatter_plot_df(data[_cols], max_subplots, save=save, prefix=str(idx), **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.grouped_scatter_plot_df(data, max_subplots, save=save, prefix=data_name,
+                                                 **kwargs)
         return
 
     def grouped_scatter_plot_df(self, data:pd.DataFrame, max_subplots:int=10, save=True, prefix='', **kwargs):
@@ -1014,7 +1036,7 @@ class Plots(object):
         """
         data = data.copy()
         if data.shape[1] <= max_subplots:
-            self._grouped_scatter_plot(data, save=save, **kwargs)
+            self._grouped_scatter_plot(data, save=save,name=f'grouped_scatter_{prefix}',  **kwargs)
         else:
             tot_plots = find_tot_plots(data.shape[1], max_subplots)
             for i in range(len(tot_plots) - 1):
@@ -1037,6 +1059,12 @@ class Plots(object):
             for idx, data in enumerate(self.data):
                 self._plot_pcs(data[self.in_cols], num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
                                hue=self.out_cols[idx], figsize=figsize, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                self._plot_pcs(data[self.in_cols], num_pcs, save=save, prefix=data_name, save_as_csv=save_as_csv,
+                               hue=self.out_cols,
+                               figsize=figsize, **kwargs)
         else:
             self._plot_pcs(self.data[self.in_cols], num_pcs, save=save, save_as_csv=save_as_csv, hue=self.out_cols,
                            figsize=figsize, **kwargs)
@@ -1090,14 +1118,15 @@ class Plots(object):
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
-                    self.plot_missing_df(data, cols=cols[data_name], prefix=data_name, save=save, **kwargs)
+                    _cols = cols[data_name] if cols else None
+                    self.plot_missing_df(data, cols=_cols, fname=data_name, save=save, **kwargs)
         return
 
     def plot_missing_df(self,
                         data:pd.DataFrame,
                         cols=None,
                         figsize:tuple=(20,20),
-                        fname:str='missing_vals',
+                        fname:str='',
                         save:bool=True,
                         **kwargs):
         if cols is None:
@@ -1132,7 +1161,7 @@ class Plots(object):
             )
             ax1.tick_params(axis="y", colors="#111111", length=1)
 
-            # annotate values on top of the bars
+            # annotate missing values on top of the bars
             for rect, label in zip(ax1.patches, mv_cols):
                 height = rect.get_height()
                 ax1.text(
@@ -1145,7 +1174,7 @@ class Plots(object):
                     alpha=0.5,
                     fontsize="11",
                 )
-        self.save_or_show(save=save, fname=fname, where='data', dpi=500)
+        self.save_or_show(save=save, fname=fname+'_missing_vals', where='data', dpi=500)
         return
 
     def plot_histograms(self, save=True, cols=None, **kwargs):
@@ -1158,6 +1187,11 @@ class Plots(object):
         elif isinstance(self.data, list):
             for idx, data in enumerate(self.data):
                 self.plot_his_df(data, prefix=str(idx), cols=cols, save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.plot_his_df(data, prefix=data_name, save=save, **kwargs)
         return
 
     def plot_his_df(self, data:pd.DataFrame, prefix='', cols=None, save=True, bins=100, figsize=(20, 14), **kwargs):
@@ -1178,7 +1212,8 @@ class Plots(object):
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
-                    self._data_heatmap(self.data, cols[data_name] **kwargs)
+                    _cols = cols[data_name] if cols is not None else None
+                    self._data_heatmap(data, _cols, fname=data_name, **kwargs)
         return
 
     def _data_heatmap(self,
@@ -1187,7 +1222,7 @@ class Plots(object):
                       figsize: tuple = (20, 20),
                       spine_color: str = "#EEEEEE",
                       save=True,
-                      fname="data_heatmap"
+                      fname=""
                      ):
 
         if cols is None:
@@ -1210,7 +1245,7 @@ class Plots(object):
             spine.set_visible(True)
             spine.set_color(spine_color)
 
-        self.save_or_show(save=save, fname=fname, where='data', dpi=500)
+        self.save_or_show(save=save, fname=fname+'_heat_map', where='data', dpi=500)
         return
 
     def plot_index(self, save=True, **kwargs):
@@ -1257,16 +1292,19 @@ class Plots(object):
         self.save_or_show(save=save, fname=fname, where='data', dpi=dpi)
         return
 
+
 def plot_style(df:pd.DataFrame, **kwargs):
     if 'style' not in kwargs and df.isna().sum().sum() > 0:
         kwargs['style'] = ['.' for _ in range(df.shape[1])]
     return kwargs
+
 
 def validate_freq(df, freq):
     assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
     assert freq in ["weekly", "monthly",
                     "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
     return
+
 
 def find_tot_plots(features, max_subplots):
 
@@ -1275,6 +1313,7 @@ def find_tot_plots(features, max_subplots):
     # converting each value to int because linspace can return array containing floats if features is odd
     tot_plots = [int(i) for i in tot_plots]
     return tot_plots
+
 
 def set_fig_dim(fig, width, height):
     fig.set_figwidth(width)
@@ -1292,3 +1331,11 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
+
+
+def set_axis_paras(axis, leg_kws, label_kws, tick_kws):
+    axis.legend(**leg_kws)
+    axis.set_ylabel(axis.get_ylabel(), **label_kws)
+    axis.set_xlabel(axis.get_xlabel(), **label_kws)
+    axis.tick_params(**tick_kws)
+    return
