@@ -320,7 +320,19 @@ class Transformations(scaler_container):
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
 
+        to_transform = self.get_features()  #TODO, shouldn't kwargs go here as input?
+
         if self.method.lower() == "log":
+
+            if (to_transform.values < 0).any():
+                raise InvalidValueError(self.method, "negative")
+
+            if (np.isnan(to_transform.values).sum() > 0).any():
+                raise InvalidValueError(self.method, "NaN")
+
+            if 0 in to_transform.values:
+                raise InvalidValueError(self.method, "zero")
+
             scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
         elif self.method.lower() == "tan":
             scaler = FunctionTransformer(func=np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
@@ -329,8 +341,6 @@ class Transformations(scaler_container):
                                          kw_args={"axis": 0}, inv_kw_args={"axis": 0, "append": 0})
         else:
             scaler = self.get_scaler()(**self.kwargs)
-
-        to_transform = self.get_features()  #TODO, shouldn't kwargs go here as input?
 
         data = scaler.fit_transform(to_transform, **kwargs)
 
@@ -523,3 +533,15 @@ def end_fig(save):
         plt.show()
     plt.close('all')
     return
+
+
+class InvalidValueError(Exception):
+    def __init__(self, method, reason):
+        self.method = method
+        self.reason = reason
+
+    def __str__(self):
+        return (f"""
+Input data contains {self.reason} values so {self.method} transformation
+can not be applied.
+""")
