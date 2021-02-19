@@ -14,6 +14,8 @@ from dl4seq.hyper_opt import Real, Categorical, Integer
 from dl4seq.utils.utils import clear_weights, dateandtime_now
 
 
+# TODO, when predicting, use best saved weights instead of last state of weights
+# TODO, show loss curve of different models in an Experiment
 
 class Experiments(object):
     """Base class for all the experiments.
@@ -32,13 +34,13 @@ class Experiments(object):
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
         if cases is None:
             cases = {}
-        self.cases = cases
-        self.models = self.models + list(cases.keys())
+        self.cases = {'model_'+key if not key.startswith('model_') else key:val for key,val in cases.items()}
+        self.models = self.models + list(self.cases.keys())
 
-    def build_and_run(self, predict=False, title=None, **kwargs):
+    def build_and_run(self, predict=False, title=None, fit_kws=None, **kwargs):
         raise NotImplementedError
 
-    def build_from_config(self, config_path, weights, **kwargs):
+    def build_from_config(self, config_path, weights, fit_kws, **kwargs):
         raise NotImplementedError
 
     @property
@@ -56,9 +58,11 @@ class Experiments(object):
             include=None,
             exclude='',
             post_optimize='eval_best',
+            fit_kws=None,
+            predict_kws=None,
             hpo_kws: dict = None):
         """
-        :param run_type: str, One of `dry_run` or `bayes`. If `dry_run`, the all the `models` will be trained only once.
+        :param run_type: str, One of `dry_run` or `optimize`. If `dry_run`, the all the `models` will be trained only once.
                               if `optimize`, then hyperparameters of all the models will be optimized.
         :param opt_method: str, which optimization method to use. options are `bayes`, `random`, `grid`. ONly valid if
                            `run_type` is `optimize`
@@ -69,6 +73,8 @@ class Experiments(object):
                               will be uploaded again and the model will be evaluated on train, test and all the data.
                               if `train_best`, then a new model will be built and trained using the parameters of the
                               best model.
+        :param fit_kws: dict,  key word arguments that will be passed to dl4seq's model.fit
+        :param predict_kws: dict, key word arguments that will be passed to dl4seq's model.predict
         :param hpo_kws: keyword arguments for `HyperOpt` class.
         """
 
@@ -86,9 +92,9 @@ class Experiments(object):
 
         if include is None:
             include = self.models
-        else:  # make sure that include contains same elements which are present in models
-            include = ['model_' + _model if not _model.startswith('model_') else _model for _model in include ]
-            assert all(elem in self.models for elem in include), f"""
+        # make sure that include contains same elements which are present in models
+        include = ['model_' + _model if not _model.startswith('model_') else _model for _model in include ]
+        assert all(elem in self.models for elem in include), f"""
 One or more models to `include` are not available.
 Available cases are {self.models} and you wanted to include
 {include}
@@ -127,7 +133,10 @@ Available cases are {self.models} and you wanted to exclude
                     else:
                         raise TypeError
 
-                    return self.build_and_run(predict=predict, title=f"{self.exp_name}\\{model_name}", **config)
+                    return self.build_and_run(predict=predict,
+                                              title=f"{self.exp_name}\\{model_name}",
+                                              fit_kws=fit_kws,
+                                              **config)
 
                 if run_type == 'dry_run':
                     train_results, test_results = objective_fn()
@@ -151,12 +160,12 @@ Available cases are {self.models} and you wanted to exclude
                     self.opt_results = self.optimizer.fit()
 
                     if post_optimize == 'eval_best':
-                        self.eval_best(model_name, opt_dir)
+                        self.eval_best(model_name, opt_dir, fit_kws)
                     elif post_optimize=='train_best':
                         self.train_best(model_name)
         return
 
-    def eval_best(self, model_type, opt_dir, **kwargs):
+    def eval_best(self, model_type, opt_dir, fit_kws, **kwargs):
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
         # TODO for ML, best_models is empty
@@ -164,16 +173,17 @@ Available cases are {self.models} and you wanted to exclude
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
 
-            train_results, test_results = self.build_from_config(mod_path, mod_weights, **kwargs)
+            train_results, test_results = self.build_from_config(mod_path, mod_weights, fit_kws, **kwargs)
 
             if mod.startswith('1_'):
                 self._populate_results(model_type, train_results, test_results)
         return
 
-    def train_best(self, model_type):
+    def train_best(self, model_type, fit_kws=None):
         """Train the best model."""
         train_results, test_results = self.build_and_run(predict=True,
                                                          #view=True,
+                                                         fit_kws=fit_kws,
                                                          model={model_type: self.optimizer.best_paras_kw()},
                                                          title=f"{self.exp_name}\\{model_type}\\best")
 
@@ -266,7 +276,12 @@ Available cases are {self.models} and you wanted to exclude
 
         labels = {
             'r2': "$R^{2}$",
-            'nse': 'NSE'
+            'nse': 'NSE',
+            'rmse': 'RMSE',
+            'mse': 'MSE',
+            'msle': 'MSLE',
+            'nrmse': 'Normalized RMSE',
+            'mape': 'MAPE'
         }
 
         if len(models) <=1:
@@ -364,7 +379,12 @@ class MLRegressionExperiments(Experiments):
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
-    def build_and_run(self, predict=False, view=False, title=None, **kwargs):
+    def build_and_run(self, predict=False, view=False, title=None,
+                      fit_kws=None,
+                      **kwargs):
+
+        if fit_kws is None:
+            fit_kws = {'indices': 'random'}
 
         model = self.dl4seq_model(
             data=self.data,
@@ -372,15 +392,17 @@ class MLRegressionExperiments(Experiments):
             **self.model_kws,
             **kwargs
         )
-        model.fit(indices='random')
+        model.fit(**fit_kws)
 
-        t, p = model.predict(indices=model.train_indices, pref='train')
+        indices = model.train_indices if 'indices' in fit_kws else None
+        en = fit_kws.get('en', None)
+        t, p = model.predict(en=en, indices=indices, prefix='train')
 
         if view:
             model.view_model()
 
         if predict:
-            tt, tp = model.predict(indices=model.test_indices, pref='test')
+            tt, tp = model.predict(indices=model.test_indices, prefix='test')
             return (t,p), (tt, tp)
 
         return FindErrors(t, p).mse()
@@ -592,7 +614,11 @@ class MLRegressionExperiments(Experiments):
 
     def model_KNEIGHBORSREGRESSOR(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
-        train_data_length = self.dl4seq_model.config['train_fraction'] * len(self.data)
+        if hasattr(self.dl4seq_model, 'config'):
+            train_frac = self.dl4seq_model.config['train_fraction']
+        else:
+            train_frac = self.model_kws.get('train_fraction', 0.2)
+        train_data_length = train_frac * len(self.data)
         self.dimensions = [
             Integer(low=3, high=train_data_length, name='n_neighbors', num_samples=self.num_samples),
             Categorical(categories=['uniform', 'distance'], name='weights'),
@@ -938,7 +964,10 @@ class MLClassificationExperiments(Experiments):
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
-    def build_and_run(self, predict=False, view=False, title=None, **kwargs):
+    def build_and_run(self, predict=False, view=False, title=None, fit_kws=None, **kwargs):
+
+        if fit_kws is None:
+            fit_kws = {'indices': 'random'}
 
         model = self.dl4seq_model(
             data=self.data,
@@ -946,15 +975,19 @@ class MLClassificationExperiments(Experiments):
             **self.model_kws,
             **kwargs
         )
-        model.fit(indices='random')
 
-        t, p = model.predict(indices=model.train_indices, pref='train')
+        model.fit(**fit_kws)
+
+        indices = model.train_indices if 'indices' in fit_kws else None
+        en = fit_kws.get('en', None)
+        t, p = model.predict(en=en, indices=indices, prefix='train')
 
         if view:
             model.view_model()
 
         if predict:
-            tt, tp = model.predict(indices=model.test_indices, pref='test')
+            indices = model.test_indices if 'indices' in fit_kws else None
+            tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
             return (t, p), (tt, tp)
 
         return FindErrors(t, p).mse()
@@ -1295,7 +1328,8 @@ class TransformationExperiments(Experiments):
     ...        return {'model': {'layers': _layers},
     ...                'lookback': int(kwargs.get('lookback', 10)),
     ...                'batch_size': int(kwargs.get('batch_size', 16)),
-    ...                'lr': kwargs.get('lr', 0.001)}
+    ...                'lr': kwargs.get('lr', 0.001),
+    ...                'transformation': kwargs['transformation']}
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>outputs = ['target']
@@ -1323,10 +1357,17 @@ class TransformationExperiments(Experiments):
         raise NotImplementedError(f"""
 You must write the method `update_paras` which should build the Model with suggested parameters
 and return the keyword arguments including `model`. These keyword arguments will then
-will used to build dl5seq's Model class.
+will used to build dl4seq's Model class.
 """)
         
-    def build_and_run(self, predict=False, title=None, **suggested_paras):
+    def build_and_run(self,
+                      predict=False,
+                      title=None,
+                      fit_kws=None,
+                      **suggested_paras):
+
+        if fit_kws is None:
+            fit_kws = {}
 
         model = self.dl4seq_model(
             data=self.data,
@@ -1337,15 +1378,19 @@ will used to build dl5seq's Model class.
 
         model = self.process_model_before_fit(model)
 
-        history = model.fit()
+        history = model.fit(**fit_kws)
 
         if predict:
-            trt, trp = model.predict(st=0, en=175, use_datetime_index=True, pref='train')
-            testt, testp = model.predict(st=175, use_datetime_index=True, pref='test')
+            indices = model.train_indices if 'indices' in fit_kws else None
+            en = fit_kws.get('en', None)
+            trt, trp = model.predict(en=en, indices=indices, prefix='train')
+
+            indices = model.test_indices if 'indices' in fit_kws else None
+            testt, testp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
 
             model.config['allow_nan_labels'] = 2
-            model.predict(use_datetime_index=True, pref='all')
-            model.plot_train_data()
+            model.predict(prefix='all')
+            # model.plot_train_data()
             return (trt, trp), (testt, testp)
 
         target_matric_array = history.history['val_loss']
@@ -1357,18 +1402,26 @@ Validation loss during all the epochs is NaN. Suggested parameters were
 """)
         return np.nanmin(target_matric_array)
 
-    def build_from_config(self, config_path, weight_file, **kwargs):
+    def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
+
+        if fit_kws is None:
+            fit_kws = {}
+
         model = self.dl4seq_model.from_config(config_path=config_path, data=self.data
                                               )
         model.load_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict(st=0, en=500, use_datetime_index=True, pref='train')
-        test_true, test_pred = model.predict(st=500, use_datetime_index=True, pref='test')
+        indices = model.train_indices if 'indices' in fit_kws else None
+        en = fit_kws.get('en', None)
+        train_true, train_pred = model.predict(en=en, indices=indices, prefix='train')
 
-        #model.data['allow_nan_labels'] = 1
-        #model.predict(use_datetime_index=True, pref='all')
+        indices = model.test_indices if 'indices' in fit_kws else None
+        test_true, test_pred = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
+
+        model.data['allow_nan_labels'] = 1
+        model.predict(prefix='all')
 
         #model.plot_layer_outputs()
         #model.plot_weights()
