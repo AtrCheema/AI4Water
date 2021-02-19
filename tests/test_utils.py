@@ -1,20 +1,20 @@
-from inspect import getsourcefile
-from os.path import abspath
+import os
 import warnings
 import unittest
-import os
-
-import tensorflow as tf
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
+from os.path import abspath
+from inspect import getsourcefile
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
 from dl4seq import Model
-from dl4seq.utils.utils import split_by_indices, train_val_split, stats, prepare_data, Jsonize
 from dl4seq.backend import get_sklearn_models
 from dl4seq.utils.imputation import Imputation
+from dl4seq.utils.utils import split_by_indices, train_val_split, stats, prepare_data, Jsonize
 
 seed = 313
 np.random.seed(seed)
@@ -31,6 +31,7 @@ in_cols = ['input_'+str(i) for i in range(5)]
 out_cols = ['output']
 cols=  in_cols + out_cols
 
+data2 = np.arange(int(50 * 5)).reshape(-1, 50).transpose()
 data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).transpose(),
                     columns=cols,
                     index=pd.date_range("20110101", periods=examples, freq="D"))
@@ -346,17 +347,6 @@ class TestUtils(unittest.TestCase):
         np.allclose(tr_y[0], tr_indices)
         np.allclose(tr_x1, tr_x2[0])
 
-    def test_make_3d_batches(self):
-
-        exs = 50
-        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = prepare_data(d, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
-        self.assertEqual(x.shape, (38, 4, 3))
-        self.assertEqual(label.shape, (38, 2, 4))
-        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
-                                                        [208., 209., 210., 211.]])))
-        return
-
     def test_same_test_val_data_train_random(self):
         #TODO not a good test, must check that individual elements in returned arrayare correct
 
@@ -620,14 +610,6 @@ class TestUtils(unittest.TestCase):
             np.allclose(testy[4][0], df[['out1']].iloc[29])
             return
 
-    def test_prepare_data_no_outputs(self):
-        """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
-        exs = 100
-        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
-        self.assertEqual(label.sum(), 0.0)
-        return
-
     def test_jsonize(self):
         a = [np.array([2.0])]
         b = Jsonize(a)()
@@ -649,13 +631,69 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(isinstance(b[0], type(None)))
         return
 
-    def test_make_batches_with_known_inputs(self):
-        data = np.arange(int(50*5)).reshape(-1,50).transpose()
-        x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4, forecast_len=3,
-                                          known_future_inputs = True)
+    def test_prepare_data0(self):
+        # vanilla case of time series forecasting
+        x, _, y = prepare_data(data2,
+                               num_outputs=2,
+                               lookback_steps=4,
+                               forecast_step=1)
+        self.assertAlmostEqual(y[0].sum(), 358.0, 6)
+        return
 
+    def test_prepare_data1(self):
+        # multi_step ahead at multiple horizons with known future inputs
+        x, prevy, y = prepare_data(data2,
+                                   num_outputs=2,
+                                   lookback_steps=4,
+                                   forecast_len=3,
+                                   forecast_step=1,
+                                   known_future_inputs = True)
         self.assertAlmostEqual(y[0].sum(), 1080.0, 6)
         return
+
+    def test_prepare_data2(self):
+        # multi_step ahead at multiple horizons without known_future_inputs
+        x, prevy, y = prepare_data(data2,
+                                   num_outputs=2,
+                                   lookback_steps=4,
+                                   forecast_len=3,
+                                   forecast_step=1,
+                                   known_future_inputs=False)
+        self.assertAlmostEqual(y[0].sum(), 1080.0, 6)
+        return
+
+    def test_prepare_data3(self):
+        # multistep ahead at single horizon
+        x, prevy, y = prepare_data(data2,
+                                   num_outputs=2,
+                                   lookback_steps=4,
+                                   forecast_len=1,
+                                   forecast_step=3)
+        self.assertAlmostEqual(y[0].sum(), 362.0, 6)
+        return
+
+    def test_prepare_data4(self):
+        # multi output, with strides in input, multi step ahead at multiple horizons without future inputs
+        x, prevy, label = prepare_data(data2,
+                                       num_outputs=2,
+                                       lookback_steps=4,
+                                       input_steps=2,
+                                       forecast_step=2,
+                                       forecast_len=4)
+        self.assertEqual(x.shape, (38, 4, 3))
+        self.assertEqual(label.shape, (38, 2, 4))
+        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
+                                                        [208., 209., 210., 211.]])))
+        return
+
+    def test_prepare_data_no_outputs(self):
+        """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
+        exs = 100
+        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
+        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
+        self.assertEqual(label.sum(), 0.0)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()
