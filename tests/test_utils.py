@@ -690,7 +690,8 @@ class TestUtils(unittest.TestCase):
         """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
         exs = 100
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
+        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2,
+                                       forecast_len=4)
         self.assertEqual(label.sum(), 0.0)
         return
 
