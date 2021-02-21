@@ -269,7 +269,7 @@ class Model(NN, Plots):
         if indices is not None:
             assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
             if en is not None or st != 0:
-                raise ValueError
+                raise ValueError(f'When using indices, st and en can not be used. while st:{st}, and en:{en}')
         if en is None:
             en = data.shape[0]
 
@@ -749,9 +749,9 @@ class Model(NN, Plots):
 
     def get_indices(self, indices=None):
         if isinstance(self.data, dict):
-            key = list(self.out_cols.keys())[0]
+            key = list(self.out_cols.keys())[0] if isinstance(self.out_cols, dict) else self.out_cols[0]
             data = self.data[key]
-            out_cols =self.out_cols[key]
+            out_cols =self.out_cols[key] if isinstance(self.out_cols, dict) else self.out_cols
         else:
             data = self.data
             out_cols = self.out_cols
@@ -812,25 +812,48 @@ class Model(NN, Plots):
 
         return interval_length
 
-    def train_data(self, data=None, **kwargs):
-        """ prepare data on which to train the NN."""
+    def train_data(self, data=None, data_keys=None, **kwargs):
+        """ prepare data on which to train the NN.
+        It is possible that self.data is dictionary but self.ins and self.outs are not dictionaries.
+        This means same in_cols and out_cols exist in all dataframes of self.data.
+        """
 
-        # For cases we don't want to use any of data-preprocessing utils, the train_data can be called directly with 'data'
+        # For cases we don't want to use any of data-preprocessing utils,
+        # the train_data can be called directly with 'data'
         # keyword argumentnt, and that will be returned.
         if data is not None:
             return data
 
+        if data_keys:  # if data_keys is provided
+            assert isinstance(self.data, dict)  # self.data must be a dictionary
+            assert isinstance(data_keys, list)  # data_keys must be a list
+            assert all(data_name in self.data for data_name in data_keys)  # all keys in data_keys must be valid
+        else:
+            # use all the keys unless the user has requested for some
+            data_keys = self.data.keys() if isinstance(self.data, dict) else None
+
         transformation = self.config['transformation']
         if isinstance(self.data, dict):
             x, prev_y, label = {}, {}, {}
-            for k, data in self.data.items():
-                _x, _y, _label = self.fetch_data(data, self.in_cols[k],  self.out_cols.get(k, []),
-                                                 transformation=transformation[k] if transformation else transformation,
-                                                 **kwargs)
+            for k in data_keys:
+                data = self.data[k]
+
+                _x, _y, _label = self.fetch_data(
+                    data,
+                    self.in_cols[k] if isinstance(self.in_cols, dict) else self.in_cols,
+                    self.out_cols.get(k, []) if isinstance(self.out_cols, dict) else self.out_cols,
+                    transformation=transformation[k] if isinstance(transformation, dict) else transformation,
+                    **kwargs)
                 x[k] = _x
                 prev_y[k] = _y
                 if _label.sum() != 0.0:
                     label[k] = _label
+
+            if self.num_input_layers==1:
+                # tile all the arrays in x and label
+                x = np.concatenate(list(x.values()))
+                prev_y = np.concatenate(list(prev_y.values()))
+                label = np.concatenate(list(label.values()))
         else:
             x, prev_y, label = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
@@ -863,14 +886,17 @@ class Model(NN, Plots):
             raise ValueError
 
     def maybe_not_3d_data(self, true, predicted):
+
         if true.ndim < 3:
             assert self.forecast_len == 1
             axis = 2 if true.ndim == 2 else (1, 2)
             true = np.expand_dims(true, axis=axis)
+
         if predicted.ndim < 3:
             assert self.forecast_len == 1
             axis = 2 if predicted.ndim == 2 else (1,2)
             predicted = np.expand_dims(predicted, axis=axis)
+
         return true, predicted
 
     def process_results(self,
@@ -1017,17 +1043,29 @@ class Model(NN, Plots):
 
         return val_data
 
-    def fit(self, st=0, en=None, indices=None, data=None, **callbacks):
-        """data: if not None, it will directlry passed to fit."""
+    def fit(self,
+            st=0,
+            en=None,
+            indices=None,
+            data=None,
+            data_keys=None,
+            **callbacks):
+        """data: if not None, it will directlry passed to fit.
+        data_keys: allowed only if self.data is a dictionary. You can decided which to use
+                   use for training by specifying the keys of self.data dictionary"""
         self.is_training = True
-        indices = self.get_indices(indices)
+        if data_keys is not None and self.num_input_layers==1:
+            pass
+        else:
+            indices = self.get_indices(indices)
 
-        inputs, _, outputs = self.train_data(st=st, en=en, indices=indices, data=data)
+        inputs, _, outputs = self.train_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
 
         if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
             if isinstance(self._model.outputs, list):
                 assert len(self._model.outputs) == 1
                 model_output_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
+
                 assert model_output_shape == outputs.shape[1:], f"""
 ShapeMismatchError: Shape of model's output is {model_output_shape}
 while the targets in prepared have shape {outputs.shape[1:]}."""
@@ -1076,7 +1114,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return predicted
 
-    def predict(self, st=0, en=None, indices=None, data=None, scaler_key: str = None, pref: str = 'test',
+    def predict(self, st=0, en=None, indices=None, data=None, scaler_key: str = None, prefix: str = 'test',
                 use_datetime_index=False, pp=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
@@ -1127,7 +1165,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         if self.quantiles is None:
 
             if pp:
-                self.process_results(true_outputs, predicted, prefix=pref + '_', index=dt_index, **plot_args)
+                self.process_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index, **plot_args)
 
         else:
             assert self.outs == 1
