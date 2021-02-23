@@ -221,7 +221,7 @@ class DualAttentionModel(Model):
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
-    def train_data(self, data=None, **kwargs):
+    def train_data(self, data=None, data_keys=None, **kwargs):
 
         x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
@@ -253,7 +253,7 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
-    def train_data(self, data=None, **kwargs):
+    def train_data(self, data=None, data_keys=None, **kwargs):
         x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
 
@@ -345,7 +345,7 @@ class NBeatsModel(Model):
     must be used with normalization
     """
 
-    def train_data(self, data=None, **kwargs):
+    def train_data(self, data=None, data_keys=None, **kwargs):
 
         exo_x, x, label = self.fetch_data(data=self.data, **kwargs)
 
