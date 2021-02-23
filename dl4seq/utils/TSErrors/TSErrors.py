@@ -13,10 +13,25 @@ from dl4seq.utils.utils import stats
 # TODO standardized residual sum of squares
 # http://documentation.sas.com/?cdcId=fscdc&cdcVersion=15.1&docsetId=fsug&docsetTarget=n1sm8nk3229ttun187529xtkbtpu.htm&locale=en
 # https://arxiv.org/ftp/arxiv/papers/1809/1809.03006.pdf
+# https://www.researchgate.net/profile/Mark-Tschopp/publication/322147437_Quantifying_Similarity_and_Distance_Measures_for_Vector-Based_Datasets_Histograms_Signals_and_Probability_Distribution_Functions/links/5a48089ca6fdcce1971c8142/Quantifying-Similarity-and-Distance-Measures-for-Vector-Based-Datasets-Histograms-Signals-and-Probability-Distribution-Functions.pdf
 # maximum absolute error
+# relative mean absolute error
+# relative rmse
+# Log mse
+# Jeffreys Divergence
+# kullback-Leibler divergence
+#
 # Legates׳s coefficient of efficiency
 EPS = 1e-10  # epsilon
 
+# TODO classification metrics
+# cross entropy
+
+# TODO probability losses
+# log normal loss
+# skill score
+
+# TODO multi horizon metrics
 
 class FindErrors(object):
     """
@@ -378,14 +393,17 @@ class FindErrors(object):
         """
         return np.sqrt(np.median(np.square(self._percentage_error()))) * 100.0
 
+    def rse(self):
+        """Relative Squared Error"""
+        return np.sum(np.square(self.true - self.predicted)) / np.sum(np.square(self.true - np.mean(self.true)))
+
     def inrse(self):
         """ Integral Normalized Root Squared Error """
         return np.sqrt(np.sum(np.square(self._error())) / np.sum(np.square(self.true - np.mean(self.true))))
 
     def rrse(self):
         """ Root Relative Squared Error """
-        return np.sqrt(
-            np.sum(np.square(self.true - self.predicted)) / np.sum(np.square(self.true - np.mean(self.true))))
+        return np.sqrt(self.rse())
 
     def mda(self):
         """ Mean Directional Accuracy
