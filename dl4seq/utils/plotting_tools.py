@@ -18,6 +18,7 @@ except ModuleNotFoundError:
 
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.utils import _missing_vals
+from dl4seq.utils.TSErrors import FindErrors
 
 try:
     from dl4seq.utils.utils_from_see_rnn import rnn_histogram
@@ -26,6 +27,8 @@ except ModuleNotFoundError:
     rnn_histogram = None
     features_0D, features_1D, features_2D = None, None, None
 
+# TODO
+# rank histogram, reliability diagram, ROC curve
 
 
 rnn_info = {"LSTM": {'rnn_type': 'LSTM',
@@ -710,7 +713,7 @@ class Plots(object):
         self.save_or_show(save=save, fname=name, close=False, where=where)
         return
 
-    def regplot_using_searborn(self, true, pred, save, name, where='plots'):
+    def regplot_using_searborn(self, true, pred, save, name, where='plots', **kwargs):
         # https://seaborn.pydata.org/generated/seaborn.regplot.html
         if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
             true = true.values.reshape(-1,)
@@ -718,7 +721,22 @@ class Plots(object):
             pred = pred.values.reshape(-1,)
 
         plt.close('all')
-        sns.regplot(x=true, y=pred, color="g")
+
+        s = kwargs.get('s', 20)
+        cmap = kwargs.get('cmap', 'Spectral')
+        figsize = kwargs.get('figsize', (8, 5.5))
+
+        plt.figure(figsize=figsize)
+        points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
+
+        if kwargs.get('annotate', True):
+            plt.annotate(f'$R^{2}$: {round(FindErrors(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
+                     horizontalalignment='right', verticalalignment='top', fontsize=16)
+
+        if kwargs.get('colorbar', False):
+            plt.colorbar(points)
+
+        sns.regplot(x=true, y=pred, scatter=False, color=".1")
         plt.xlabel('Observed', fontsize=14)
         plt.ylabel('Predicted', fontsize=14)
 
