@@ -59,6 +59,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         self.num_heads = int(raw_params['num_heads'])
 
         self.future_inputs = raw_params.get('future_inputs', False)
+        self.return_attention_components = raw_params.get('return_attention_components', False)
 
         super().__init__(**kwargs)
 
@@ -279,7 +280,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             future_lstm = get_lstm(return_state=False)(
                 future_features, initial_state=[state_h, state_c])
             # future_lstm = (?, 24, hidden_units)
-            lstm_layer = concatenate([history_lstm, future_lstm], axis=1)  # (?, time_steps, hidden_units)
+            lstm_layer = concatenate([history_lstm, future_lstm], axis=1, name='history_plus_future_lstm')  # (?, time_steps, hidden_units)
             # Apply gated skip connection
             input_embeddings = concatenate([historical_features, future_features], axis=1, name="history_plus_future_embeddings"
                                            )  # (?, time_steps, hidden_units)
@@ -331,17 +332,20 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         # (?, time_steps, hidden_units)
         transformer_layer = add_and_norm([decoder, temporal_feature_layer])
 
-        # # Attention components for explainability
-        # attention_components = {
-        #     # Temporal attention weights
-        #     'decoder_self_attn': self_att,  # (4, ?, time_steps, time_steps)
-        #     # Static variable selection weights
-        #     'static_flags': static_weights[Ellipsis, 0] if static_weights is not None else None,  # (?, 1)
-        #     # Variable selection weights of past inputs
-        #     'historical_flags': historical_flags[Ellipsis, 0, :],
-        #     # Variable selection weights of future inputs
-        #     'future_flags': future_flags[Ellipsis, 0, :] if future_flags is not None else None
-        # }
+        # Attention components for explainability
+        attention_components = {
+            # Temporal attention weights
+            'decoder_self_attn': self_att,  # (4, ?, time_steps, time_steps)
+            # Static variable selection weights
+            'static_flags': static_weights[Ellipsis, 0] if static_weights is not None else None,  # (?, 1)
+            # Variable selection weights of past inputs
+            'historical_flags': historical_flags[Ellipsis, 0, :],
+            # Variable selection weights of future inputs
+            'future_flags': future_flags[Ellipsis, 0, :] if future_flags is not None else None
+        }
+
+        if self.return_attention_components:
+            return transformer_layer, attention_components
 
         return transformer_layer
 
@@ -481,5 +485,3 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         known_combined_layer = stack(known_regular_inputs + known_categorical_inputs, axis=-1)
 
         return unknown_inputs, known_combined_layer, obs_inputs, static_inputs
-
-
