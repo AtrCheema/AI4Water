@@ -561,7 +561,7 @@ but it is of type {type(space)}"""
         except ValueError:
             if int(''.join(sklearn.__version__.split('.')[1]))>22:
                 raise ValueError(f"""
-For bayesian optimization, If your sklearn version is below 0.23,
+For bayesian optimization, If your sklearn version is above 0.23,
 then this error may be related to 
 https://github.com/kiudee/bayes-skopt/issues/90 .
 Try to lower the sklearn version to 0.22 and run again.
