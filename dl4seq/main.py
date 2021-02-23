@@ -18,7 +18,7 @@ from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from dl4seq.backend import tpot_models
 from dl4seq.backend import imputations, sklearn_models
-from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
+from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now, Jsonize
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, prepare_data
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
@@ -962,8 +962,9 @@ class Model(NN, Plots):
         else:
             self.build_ml_model()
 
-        # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
-        self.save_config()
+        if not getattr(self, 'from_check_point', False):
+            # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
+            self.save_config()
 
         VERSION_INFO.update({'numpy_version': str(np.__version__),
                              'pandas_version': str(pd.__version__),
@@ -1096,13 +1097,13 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         self.is_training = False
         return history
 
-    def test_data(self, scaler_key='5', **kwargs):
+    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
         """ just providing it so that it can be overwritten in sub-classes."""
         if 'data' in kwargs:
             if kwargs['data'] is not None:
                 return kwargs['data']
 
-        return self.train_data(scaler_key=scaler_key, **kwargs)
+        return self.train_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
 
     def prediction_step(self, inputs):
         if self.category.upper() == "DL":
@@ -1114,7 +1115,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return predicted
 
-    def predict(self, st=0, en=None, indices=None, data=None, scaler_key: str = None, prefix: str = 'test',
+    def predict(self, st=0, en=None, indices=None, data=None, data_keys=None,
+                scaler_key: str = None,
+                prefix: str = 'test',
                 use_datetime_index=False, pp=True, **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
@@ -1140,6 +1143,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         inputs, _, true_outputs = self.test_data(st=st, en=en, indices=indices, data=data,
                                               scaler_key=scaler_key,
+                                              data_keys=data_keys,
                                               use_datetime_index=use_datetime_index)
 
         first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
@@ -1177,6 +1181,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def impute(self, method, imputer_args=None, inputs=False, outputs=False, cols=None):
         """impute the missing data. One of either inputs, outputs or cols can be used."""
+        # TODO, put it in config
         if cols is not None:
             if not isinstance(cols, list):
                 assert isinstance(cols, str)
@@ -1206,7 +1211,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             self.data = data_holder
 
         elif isinstance(self.data, dict):
-            for data_name, data in self.data.values():
+            for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
                     initial_nans = data[cols].isna().sum()
                     data[cols] = Imputation(data[cols], method=method, imputer_args=imputer_args)()
@@ -1437,11 +1442,12 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 return self.get_2d_batches(df, ins, outs)
             else:
                 return self.check_nans(df, *prepare_data(df,
-                                                            num_outputs=outs,
-                                                            lookback_steps=self.lookback,
-                                                            input_steps=self.config['input_step'],
-                                                            forecast_step=self.forecast_step,
-                                                            forecast_len=self.forecast_len),
+                                                         num_outputs=outs,
+                                                         lookback_steps=self.lookback,
+                                                         input_steps=self.config['input_step'],
+                                                         forecast_step=self.forecast_step,
+                                                         forecast_len=self.forecast_len,
+                                                         known_future_inputs=self.config['known_future_inputs']),
                                        outs, self.lookback,
                                        self.config['allow_nan_labels'])
         else:
@@ -1450,11 +1456,12 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
             else:
                 return self.check_nans(df, *prepare_data(df,
-                                                            num_outputs=outs,
-                                                            lookback_steps=self.lookback,
-                                                            input_steps=self.config['input_step'],
-                                                            forecast_step=self.forecast_step,
-                                                            forecast_len=self.forecast_len),
+                                                         num_outputs=outs,
+                                                         lookback_steps=self.lookback,
+                                                         input_steps=self.config['input_step'],
+                                                         forecast_step=self.forecast_step,
+                                                         forecast_len=self.forecast_len,
+                                                         known_future_inputs=self.config['known_future_inputs']),
                                        outs, self.lookback,
                                        self.config['allow_nan_labels'])
 
@@ -1901,7 +1908,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if min_loss_array is not None and not all(np.isnan(min_loss_array)):
                 config['min_loss'] = np.nanmin(min_loss_array)
 
-        config['config'] = self.config
+        config['config'] = Jsonize(self.config)()
         config['method'] = self.method
         config['category'] = self.category
         config['problem'] = self.problem

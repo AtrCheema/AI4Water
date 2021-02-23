@@ -318,6 +318,8 @@ def _make_model(**kwargs):
         'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},
         # step size of input data
         'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
+        # whether to use future input data for multi horizon prediction or not
+        'known_future_inputs': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
         # input features in data_frame
         'inputs':            {"type": None, "default": in_cols, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
@@ -453,10 +455,12 @@ class Jsonize(object):
         if hasattr(obj, '__len__') and not isinstance(obj, str):
             if len(obj) > 1:  # it is a list like with length greater than 1
                 return [self.stage2(i) for i in obj]
-            elif isinstance(obj, list):  # for cases like obj is [np.array([1.0])] -> [1.0]
+            elif isinstance(obj, list) and len(obj)>0:  # for cases like obj is [np.array([1.0])] -> [1.0]
                 return [self.stage2(obj[0])]
-            else:  # for cases like obj is np.array([1.0])
+            elif len(obj)==1:  # for cases like obj is np.array([1.0])
                 return self.stage2(obj[0])
+            else: # when object is []
+                return obj
 
         # last solution, it must be of of string type
         return str(obj)
