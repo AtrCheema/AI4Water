@@ -398,14 +398,17 @@ class MLRegressionExperiments(Experiments):
         en = fit_kws.get('en', None)
         t, p = model.predict(en=en, indices=indices, prefix='train')
 
+        indices = model.test_indices if 'indices' in fit_kws else None
+        tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
+
         if view:
             model.view_model()
 
         if predict:
-            tt, tp = model.predict(indices=model.test_indices, prefix='test')
+
             return (t,p), (tt, tp)
 
-        return FindErrors(t, p).mse()
+        return FindErrors(tt, tp).mse()
 
     def model_ADABOOSTREGRESSOR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
@@ -985,12 +988,12 @@ class MLClassificationExperiments(Experiments):
         if view:
             model.view_model()
 
+        indices = model.test_indices if 'indices' in fit_kws else None
+        tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
         if predict:
-            indices = model.test_indices if 'indices' in fit_kws else None
-            tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
             return (t, p), (tt, tp)
 
-        return FindErrors(t, p).mse()
+        return FindErrors(tt, tp).mse()
 
     def model_AdaBoostClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html

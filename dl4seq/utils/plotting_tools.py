@@ -723,7 +723,7 @@ class Plots(object):
         plt.close('all')
 
         s = kwargs.get('s', 20)
-        cmap = kwargs.get('cmap', 'Spectral')
+        cmap = kwargs.get('cmap', 'winter')  # https://matplotlib.org/stable/tutorials/colors/colormaps.html
         figsize = kwargs.get('figsize', (8, 5.5))
 
         plt.figure(figsize=figsize)

@@ -2,6 +2,7 @@ import os
 import json
 import traceback
 
+import skopt
 from skopt import BayesSearchCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from skopt import gp_minimize
@@ -43,6 +44,7 @@ class Real(Real, Counter):
 
         if low is None:
             assert grid is not None
+            assert hasattr(grid, '__len__')
             low = grid[0]
             high = grid[-1]
 
@@ -86,6 +88,7 @@ class Integer(Integer, Counter):
 
         if low is None:
             assert grid is not None
+            assert hasattr(grid, '__len__')
             low = grid[0]
             high = grid[-1]
 
@@ -360,6 +363,15 @@ class HyperOpt(object):
             _model = self.dl4seq_args.pop("model")
             self._model = list(_model.keys())[0]
             self.use_dl4seq_model = True
+
+        if 'n_initial_points' in kwargs:
+            if int(''.join(skopt.__version__.split('.')[1])) < 8:
+                raise ValueError(f"""
+'n_initial_points' argument is not available in skopt version < 0.8.
+However you are using skopt version {skopt.__version__} .
+See https://scikit-optimize.github.io/stable/modules/generated/skopt.gp_minimize.html#skopt.gp_minimize
+for more details.
+""""")
         return kwargs
 
     def __getattr__(self, item):
