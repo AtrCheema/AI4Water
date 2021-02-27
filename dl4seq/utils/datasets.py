@@ -5,18 +5,9 @@
 # https://zenodo.org/record/4218413#.YA6w7BZS-Uk
 # https://www.sciencedirect.com/search?qs=time%20series&pub=Data%20in%20Brief&cid=311593
 # https://doi.pangaea.de/10.1594/PANGAEA.898217
-# https://doi.pangaea.de/10.1594/PANGAEA.908290
-# https://doi.pangaea.de/10.1594/PANGAEA.883587
-# https://doi.pangaea.de/10.1594/PANGAEA.882178
-# https://doi.pangaea.de/10.1594/PANGAEA.811992
-# https://doi.pangaea.de/10.1594/PANGAEA.807883
-# https://doi.pangaea.de/10.1594/PANGAEA.778629
-# https://doi.pangaea.de/10.1594/PANGAEA.774595
-# https://doi.pangaea.de/10.1594/PANGAEA.746240
-# https://doi.pangaea.de/10.1594/PANGAEA.226925
+# https://doi.pangaea.de/10.1594/PANGAEA.811992  # protected
 # https://doi.pangaea.de/10.1594/PANGAEA.905446
 # https://doi.pangaea.de/10.1594/PANGAEA.900958
-# https://doi.pangaea.de/10.1594/PANGAEA.842446
 # https://doi.pangaea.de/10.1594/PANGAEA.831193
 
 
@@ -1171,3 +1162,63 @@ class RiverTempEroo(Weisssee):
     """Water temperature records in the Eroo River and some tributaries (Selenga River basin, Mongolia, 2011-2012)"""
     url = "10.1594/PANGAEA.890070"
     DATASETS = ['RiverTempEroo']
+
+
+class HoloceneTemp(Weisssee):
+    """Holocene temperature reconstructions for northeastern North America and the northwestern Atlantic,
+     core Big_Round_Lake."""
+    url = "10.1594/PANGAEA.905446"
+    DATASETS = ["HoloceneTemp"]
+
+
+class FlowTetRiver(Weisssee):
+    """Daily mean river discharge at meteorological station Perpignan upstream, Têt basin France from 1980
+    to 2000."""
+    url = "10.1594/PANGAEA.226925"
+    DATASETS = ['FlowTetRiver']
+
+
+class SedimentAmersee(Weisssee):
+    """Occurence of flood laminae in sediments of Ammersee"""
+    url = "10.1594/PANGAEA.746240"
+    DATASETS = ["SedimentAmersee"]
+
+
+class HydrocarbonsGabes(Weisssee):
+    """Concentration and geological parameters of n-alkanes and n-alkenes in surface sediments from the Gulf of Gabes,
+     Tunisia"""
+    url = "10.1594/PANGAEA.774595"
+    DATASETS = ["HydrocarbonsGabes"]
+
+
+class WaterChemEcuador(Weisssee):
+    """weekly and biweekly Water chemistry of cloud forest streams at baseflow conditions,
+     Rio San Francisco, Ecuador"""
+    url = "10.1594/PANGAEA.778629"
+    DATASETS = ['WaterChemEcuador']
+
+
+class WaterChemVictoriaLakes(Weisssee):
+    """Surface water chemistry of northern Victoria Land lakes"""
+    url = "10.1594/PANGAEA.807883"
+    DATASETS = ['WaterChemVictoriaLakes']
+
+
+class HydroChemJava(Weisssee):
+    """Hydrochemical data from subsurface rivers, coastal and submarine springsin a karstic region
+     in southern Java."""
+    url = "10.1594/PANGAEA.882178"
+    DATASETS = ['HydroChemJava']
+
+
+class PrecipBerlin(Weisssee):
+    """Sub-hourly Berlin Dahlem precipitation time-series 2001-2013"""
+    url = "10.1594/PANGAEA.883587"
+    DATASETS = ['PrecipBerlin']
+
+
+class GeoChemMatane(Weisssee):
+    """Geochemical data collected in shallow groundwater and river water in a subpolar environment
+     (Matane river, QC, Canada)."""
+    url = "10.1594/PANGAEA.908290"
+    DATASETS = ["GeoChemMatane"]
