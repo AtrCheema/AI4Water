@@ -14,13 +14,17 @@
 # HYSETS https://osf.io/rpc3w/  https://www.nature.com/articles/s41597-020-00583-2
 
 
-import os
 import glob
 import zipfile
-import shutil
 import random
+import urllib.request as ulib
+import sys, shutil, os
+import urllib.parse as urlparse
+import tempfile
+from typing import Union
 
 import pandas as pd
+import numpy as np
 
 from dl4seq.utils.download_zenodo import download_from_zenodo
 from dl4seq.utils.download_pangaea import PanDataSet
@@ -40,33 +44,6 @@ CAMELS_GB_files = [
     'CAMELS_GB_landcover_attributes.csv',
     'CAMELS_GB_soil_attributes.csv',
     'CAMELS_GB_topographic_attributes.csv'
-]
-
-CAMELS_AUS_files = [
-    "01_id_name_metadata.zip",
-    "02_location_boundary_area.zip",
-    "03_streamflow.zip",
-    "04_attributes.zip",
-    "05_hydrometeorology.zip",
-    "CAMELS_AUS_Attributes-Indices_MasterTable.csv"
-]
-
-CAMELS_CL_FILES = [
-    '10_CAMELScl_tmean_cr2met.zip',
-    '11_CAMELScl_pet_8d_modis.zip',
-    '12_CAMELScl_pet_hargreaves.zip',
-    '13_CAMELScl_swe.zip',
-    '14_CAMELScl_catch_hierarchy.zip',
-    '1_CAMELScl_attributes.zip',
-    '2_CAMELScl_streamflow_m3s.zip',
-    '3_CAMELScl_streamflow_mm.zip',
-    '4_CAMELScl_precip_cr2met.zip',
-    '5_CAMELScl_precip_chirps.zip',
-    '6_CAMELScl_precip_mswep.zip',
-    '7_CAMELScl_precip_tmpa.zip',
-    '8_CAMELScl_tmin_cr2met.zip',
-    '9_CAMELScl_tmax_cr2met.zip',
-    'CAMELScl_catchment_boundaries.zip'
 ]
 
 def gb_message():
@@ -90,8 +67,6 @@ class Datasets(object):
     def __init__(self, name=None):
         if name is None:
             name = self.__class__.__name__
-        if name not in self.DATASETS:
-            raise ValueError(f"unknown dataset {name}. Available datasets are \n{self.DATASETS.keys()}")
         self.name = name
 
     @property
@@ -152,16 +127,58 @@ Use overwrite=True to remove previously saved files and download again""")
         self._unzip()
         return
 
-    def _unzip(self):
+    def _unzip(self, dirname=None):
         """unzip all the zipped files in a directory"""
-        all_files = glob.glob(f"{self.ds_dir}/*.zip")
+        if dirname is None:
+            dirname = self.ds_dir
+
+        all_files = glob.glob(f"{dirname}/*.zip")
         for f in all_files:
-            src = os.path.join(self.ds_dir, f)
-            trgt = os.path.join(self.ds_dir, f.split('.zip')[0])
+            src = os.path.join(dirname, f)
+            trgt = os.path.join(dirname, f.split('.zip')[0])
             if not os.path.exists(trgt):
                 print(f"unziping {src} to {trgt}")
-                with zipfile.ZipFile(os.path.join(self.ds_dir, f), 'r') as zip_ref:
-                    zip_ref.extractall(os.path.join(self.ds_dir, f.split('.zip')[0]))
+                with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
+                    try:
+                        zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
+                    except OSError:
+                        filelist = zip_ref.filelist
+                        for _file in filelist:
+                            if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
+                                zip_ref.extract(_file)
+        return
+
+    def download_from_pangaea(self, overwrite=False):
+
+        if os.path.exists(self.ds_dir):
+            if overwrite:
+                print("removing previously downloaded data and downloading again")
+            else:
+                print(f"The path {self.ds_dir} already exists.")
+                self.data_files = [f for f in os.listdir(self.ds_dir) if f.endswith('.txt')]
+                self.metadata_files = [f for f in os.listdir(self.ds_dir) if f.endswith('.json')]
+                if len(self.data_files) == 0:
+                    print(f"The path {self.ds_dir} is empty so downloading the files again")
+                    self._download_from_pangaea()
+        else:
+            self._download_from_pangaea()
+        return
+
+    def _download_from_pangaea(self):
+        self.data_files = []
+        self.metadata_files = []
+        ds = PanDataSet(self.url)
+        kids = ds.children()
+        if len(kids) > 1:
+            for kid in kids:
+                kid_ds = PanDataSet(kid)
+                fname = kid_ds.download(self.ds_dir)
+                self.metadata_files.append(fname + '._metadata.json')
+                self.data_files.append(fname + '.txt')
+        else:
+            fname = ds.download(self.ds_dir)
+            self.metadata_files.append(fname + '._metadata.json')
+            self.data_files.append(fname + '.txt')
         return
 
 
@@ -170,8 +187,6 @@ class Camels(Datasets):
     """Get CAMELS dataset.
     This class first downloads the CAMELS dataset if it is not already downloaded. Then the selected attribute
     for a selected id are fetched and provided to the user using the method `fetch`.
-    Arguments:
-        name: str, name of the CAMELS dataset. See Camels.DATASETS for available dataset names.
 
     Attributes
         ds_dir: diretory of the dataset
@@ -198,28 +213,8 @@ class Camels(Datasets):
 
     DATASETS = {
         'CAMELS-BR': {'url': "https://zenodo.org/record/3964745#.YA6rUxZS-Uk",
-                      'dynamic_attributes': ['streamflow_m3s', 'streamflow_mm', 'streamflow_simulated',
-                                             'precipitation_cpc', 'precipitation_mswep', 'precipitation_chirps',
-                                             'evapotransp_gleam', 'evapotransp_mgb', 'potential_evapotransp_gleam',
-                                             'temperature_min_cpc', 'temperature_mean', 'temperature_max']},
+                      },
         'CAMELS-GB': {'url': gb_message},
-        'CAMELS-CL': {'url': 'https://doi.pangaea.de/10.1594/PANGAEA.894885?format=html#download',
-                      'dynamic_attributes': ['streamflow_m3s', 'streamflow_mm',
-                                             'precip_cr2met', 'precip_chirps', 'precip_mswep', 'precip_tmpa',
-                                             'tmin_cr2met', 'tmax_cr2met', 'tmean_cr2met',
-                                             'pet_8d_modis', 'pet_hargreaves',
-                                             'swe']},
-
-        'CAMELS-AUS': {'url': 'https://doi.pangaea.de/10.1594/PANGAEA.921850',
-                       'dynamic_attributes': ['streamflow_MLd', 'streamflow_MLd_inclInfilled', 'streamflow_mmd.csv'
-                                             'et_morton', 'et_morton_point_SILO', 'et_morton_wet_SILO',
-                                             'et_short_crop_SILO', 'et_tall_crop_SILO', 'evap_morton_lake_SILO',
-                                             'evap_pan_SILO', 'evap_syn_SILO',
-                                             'precipitation_AWAP', 'precipitation_SILO', 'precipitation_var_SWAP',
-                                             'solarrad_AWAP', 'tmax_AWAP', 'tmin_AWAP', 'vprp_AWAP',
-                                             'mslp_SILO', 'radiation_SILO', 'rh_tmax_SILO', 'rh_tmin_SILO',
-                                             'tmax_SILO', 'tmin_SILO', 'vp_deficit_SILO', 'vp_SILO'
-                                             ]},
     }
 
     def stations(self):
@@ -240,6 +235,21 @@ class Camels(Datasets):
         return os.path.join(self.base_ds_dir, "CAMELS")
 
     @property
+    def ds_dir(self):
+        """Directory where a particular dataset will be saved. """
+        return self._ds_dir
+
+    @ds_dir.setter
+    def ds_dir(self, x):
+        if x is None:
+            x = os.path.join(self.camels_dir, self.__class__.__name__)
+
+        if not os.path.exists(x):
+            os.makedirs(x)
+        #sanity_check(self.name, x)
+        self._ds_dir = x
+
+    @property
     def common_index(self):
         """
         It is possible that multiple data are available during different time-periods.
@@ -253,6 +263,7 @@ class Camels(Datasets):
 
 
     def fetch(self, stations=None, dynamic_attributes='all', categories='all', static_attributes='all',
+              st: Union[None, str] = None, en: Union[None, str] = None,
               **kwargs)->dict:
         """
         Fetches the attributes of one or more stations.
@@ -266,6 +277,10 @@ class Camels(Datasets):
         :param categories: list/str, Categories of static attributes to be fetched.If None, then static attributes will
                            not be fetched.
         :param static_attributes: list
+        :param st: str, starting date of data to be returned. If None,
+                        the data will be returned from where it is available
+        :param en: str, end date of data to be returned. If None, then the data will be returned till the
+                        date data is available.
         :param kwargs: keyword arguments to read the files
 
         returns:
@@ -288,7 +303,9 @@ class Camels(Datasets):
         else:
             raise TypeError(f"Unknown value provided for stations {stations}")
 
-        return self.fetch_stations_attributes(stations, dynamic_attributes, categories, static_attributes, **kwargs)
+        return self.fetch_stations_attributes(stations, dynamic_attributes, categories, static_attributes,
+                                              st=st, en=en,
+                                              **kwargs)
 
     def fetch_stations_attributes(self,
                                   stations:list,
@@ -318,15 +335,22 @@ when categorices is {categories}"""
                                  categories='all',
                                  static_attributes='all',
                                  as_ts=False,
+                                 st=None,
+                                 en=None,
                                  **kwargs)->pd.DataFrame:
         """Fetches attributes for one station.
         Return:
             dataframe if as_ts is True else it returns a dictionary of static and dynamic attributes for
             a station/gauge_id
             """
+        if st is None:
+            st = self.start
+        if en is None:
+            en = self.end
+
         station_df = pd.DataFrame()
         if dynamic_attributes:
-            dynamic = self.fetch_dynamic_attributes(station, dynamic_attributes, **kwargs)
+            dynamic = self.fetch_dynamic_attributes(station, dynamic_attributes, st=st, en=en, **kwargs)
             station_df = pd.concat([station_df, dynamic])
 
         if categories:
@@ -335,15 +359,131 @@ when categorices is {categories}"""
 
             static = self.fetch_static_attributes(station, categories, static_attributes, as_ts=as_ts)
             if as_ts:
-                raise NotImplementedError
+                idx = pd.date_range(st, en, freq='D')
+                static = pd.DataFrame(np.repeat(static.values, len(idx), axis=0), index=idx)
+                station_df = pd.concat([station_df, static], axis=1)
+
             else:
                 station_df = pd.concat([station_df, static])
 
         return station_df
 
 
-class CAMELS_BR(Camels):
+class CAMELS_US(Camels):
+    """Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
+    from https://ral.ucar.edu/solutions/products/camels
+    """
+    DATASETS = ['CAMELS_US']
+    url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
+    catchment_attr_url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/camels_attributes_v2.0.zip"
 
+    folders = {'basin_mean_daymet': 'basin_mean_forcing\\daymet',
+             'basin_mean_maurer': 'basin_mean_forcing\\maurer',
+             'basin_mean_nldas': 'basin_mean_forcing\\nldas',
+             'elev_bands': 'elev\\daymet',
+             'hru': 'hru_forcing\\daymet'}
+
+    def __init__(self):
+
+        super().__init__("CAMELS_US")
+
+        if os.path.exists(self.ds_dir):
+            print(f"dataset is already downloaded at {self.ds_dir}")
+        else:
+            download(self.url, os.path.join(self.camels_dir, 'CAMELS_US\\CAMELS_US.zip'))
+            download(self.catchment_attr_url, os.path.join(self.camels_dir, "CAMELS_US\\catchment_attrs.zip"))
+            self._unzip()
+
+        self.attr_dir = os.path.join(self.ds_dir, 'catchment_attrs\\camels_attributes_v2.0')
+        self.dataset_dir = os.path.join(self.ds_dir, 'CAMELS_US\\basin_dataset_public_v1p2')
+
+    @property
+    def ds_dir(self):
+        """Directory where a particular dataset will be saved. """
+        return os.path.join(self.camels_dir, self.name)
+
+    @property
+    def start(self):
+        return "19800101"
+
+    @property
+    def end(self):
+        return "20141231"
+
+    def stations(self)->list:
+        stns = []
+        for _dir in os.listdir(os.path.join(self.dataset_dir, 'usgs_streamflow')):
+            cat = os.path.join(self.dataset_dir, f'usgs_streamflow\\{_dir}')
+            stns += [fname.split('_')[0] for fname in os.listdir(cat)]
+
+        return stns
+
+    def fetch_station_attributes(self,
+                                 station,
+                                 dynamic_attributes='all',
+                                 categories='all',
+                                 static_attributes='all',
+                                 forcing='basin_mean_daymet',
+                                 as_ts=False,
+                                 **kwargs) -> pd.DataFrame:
+
+        return self.fetch_dynamic_attributes(station,
+                                             forcing=forcing,
+                                             as_ts=as_ts,
+                                             **kwargs)
+
+    def fetch_dynamic_attributes(self,
+                                 station,
+                                 dynamic_attributes='all',
+                                 forcing='basin_mean_daymet',
+                                 st=None,
+                                 en=None,
+                                 **kwargs):
+        if st is None:
+            st = self.start
+
+        if en is None:
+            en = self.end
+
+        assert isinstance(station, str)
+        df = None
+        df1 = None
+        dir_name = self.folders[forcing]
+        for cat in os.listdir(os.path.join(self.dataset_dir, dir_name)):
+            cat_dirs = os.listdir(os.path.join(self.dataset_dir, f'{dir_name}\\{cat}'))
+            stn_file = f'{station}_lump_cida_forcing_leap.txt'
+            if stn_file in cat_dirs:
+                df = pd.read_csv(os.path.join(self.dataset_dir, f'{dir_name}\\{cat}\\{stn_file}'),
+                                 sep="\s+|;|:",
+                                 skiprows=4,
+                                 engine='python',
+                                 names=['Year', 'Mnth', 'Day', 'Hr', 'dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
+                                        'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)'],
+                                 )
+                df.index = pd.to_datetime(df['Year'].map(str) + '-' + df['Mnth'].map(str) + '-' + df['Day'].map(str))
+
+        flow_dir = os.path.join(self.dataset_dir, 'usgs_streamflow')
+        for cat in os.listdir(flow_dir):
+            cat_dirs = os.listdir(os.path.join(flow_dir, cat))
+            stn_file = f'{station}_streamflow_qc.txt'
+            if stn_file in cat_dirs:
+                fpath = os.path.join(flow_dir, f'{cat}\\{stn_file}')
+                df1 = pd.read_csv(fpath,  sep="\s+|;|:'", names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'], engine='python')
+                df1.index = pd.to_datetime(
+                    df1['Year'].map(str) + '-' + df1['Month'].map(str) + '-' + df1['Day'].map(str))
+
+        out_df = pd.concat([df[['prcp(mm/day)', 'srad(W/m2)', 'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)']], df1['Flow']],
+                           axis=1)
+        return  out_df[st:en]
+
+
+class CAMELS_BR(Camels):
+    """Downloads and processes CAMELS dataset of Brazil"""
+
+    dynamic_attributes = ['streamflow_m3s', 'streamflow_mm', 'streamflow_simulated',
+                           'precipitation_cpc', 'precipitation_mswep', 'precipitation_chirps',
+                           'evapotransp_gleam', 'evapotransp_mgb', 'potential_evapotransp_gleam',
+                           'temperature_min_cpc', 'temperature_mean', 'temperature_max']
     def __init__(self):
 
         super().__init__("CAMELS-BR")
@@ -379,9 +519,12 @@ class CAMELS_BR(Camels):
         return static_attrs
 
     @property
-    def dynamic_attributes(self):
-        return self.DATASETS[self.name]['dynamic_attributes']
+    def start(self):
+        return "19800101"
 
+    @property
+    def end(self):
+        return "20181231"
 
     def all_stations(self, attribute)->list:
         """Tells all station ids for which a data of a specific attribute is available."""
@@ -423,6 +566,8 @@ class CAMELS_BR(Camels):
     def fetch_dynamic_attributes(self,
                                  stn_id,
                                  attributes='all',
+                                 st=None,
+                                 en=None,
                                  **kwargs)->pd.DataFrame:
         """
         returns the dynamic/time series attribute/attributes for one station id.
@@ -431,6 +576,11 @@ class CAMELS_BR(Camels):
         ...# fetch all time series data associated with a station.
         >>>x = dataset.fetch_dynamic_attributes('51560000', dataset.dynamic_attributes)
         """
+
+        if st is None:
+            st = self.start
+        if en is None:
+            en = self.end
 
         if not kwargs:
             kwargs = {'sep': ' '}
@@ -454,13 +604,14 @@ class CAMELS_BR(Camels):
                         df = pd.read_csv(os.path.join(path, fname), **kwargs)
                         df.index = pd.to_datetime(df[['year', 'month', 'day']])
                         df.index.freq = pd.infer_freq(df.index)
+                        df = df[st:en]
                         [df.pop(item) for item in ['year', 'month', 'day']]
-                        data = pd.concat([data, df])
+                        data = pd.concat([data, df], axis=1)
                     else:
                         raise FileNotFoundError(f"file {fname} not found at {path}")
-                else:
-                    ValueError(f"{attributes} is not a valid dynamic attribute for {self.name}. Choose any of"
-                           f" { self.DATASETS[self.name]['dynamic_attributes']}")
+                # else:
+                #     ValueError(f"{attributes} is not a valid dynamic attribute for {self.name}. Choose any of"
+                #            f" { self.DATASETS[self.name]['dynamic_attributes']}")
         return data
 
     def fetch_static_attributes(self,
@@ -541,6 +692,14 @@ class CAMELS_GB(Camels):
 
         return attributes
 
+    @property
+    def start(self):
+        return "19701001"
+
+    @property
+    def end(self):
+        return "20150930"
+
     def stations(self, to_exclude=None):
         # CAMELS_GB_hydromet_timeseries_StationID_number
         path = os.path.join(self.ds_dir, 'data\\timeseries')
@@ -553,8 +712,15 @@ class CAMELS_GB(Camels):
     def fetch_dynamic_attributes(self,
                                  stn_id,
                                  attributes='all',
+                                 st=None,
+                                 en=None,
                                  **kwargs) ->pd.DataFrame:
         """Fetches dynamic attribute/attributes of one station."""
+        if st is None:
+            st = self.start
+        if en is None:
+            en = self.end
+
         path = os.path.join(self.ds_dir, f"data\\timeseries")
         fname = None
         for f in os.listdir(path):
@@ -568,6 +734,7 @@ class CAMELS_GB(Camels):
         df = pd.read_csv(os.path.join(path, fname), **kwargs)
         df.index = pd.to_datetime(df.index)
         df.index.freq = pd.infer_freq(df.index)
+        df = df[st:en]
         if attributes != 'all':
             return df[attributes]
         else:
@@ -627,24 +794,54 @@ class CAMELS_AUS(Camels):
         path: path where the CAMELS-AUS dataset has been downloaded. This path must
               contain five zip files and one xlsx file.
     """
+    url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
+    urls = {
+        "01_id_name_metadata.zip":"https://download.pangaea.de/dataset/921850/files/",
+        "02_location_boundary_area.zip":"https://download.pangaea.de/dataset/921850/files/",
+        "03_streamflow.zip":"https://download.pangaea.de/dataset/921850/files/",
+        "04_attributes.zip":"https://download.pangaea.de/dataset/921850/files/",
+        "05_hydrometeorology.zip":"https://download.pangaea.de/dataset/921850/files/",
+        "CAMELS_AUS_Attributes-Indices_MasterTable.csv":"https://download.pangaea.de/dataset/921850/files/",
+        "Units_01_TimeseriesData.pdf": "https://download.pangaea.de/dataset/921850/files/",
+        "Units_02_AttributeMasterTable.pdf":"https://download.pangaea.de/dataset/921850/files/",
+    }
+
+    dynamic_attributes = ['streamflow_MLd', 'streamflow_MLd_inclInfilled', 'streamflow_mmd.csv'
+                          'et_morton', 'et_morton_point_SILO',
+                          'et_morton_wet_SILO',
+                          'et_short_crop_SILO', 'et_tall_crop_SILO', 'evap_morton_lake_SILO',
+                          'evap_pan_SILO', 'evap_syn_SILO',
+                          'precipitation_AWAP', 'precipitation_SILO', 'precipitation_var_SWAP',
+                          'solarrad_AWAP', 'tmax_AWAP', 'tmin_AWAP', 'vprp_AWAP',
+                          'mslp_SILO', 'radiation_SILO', 'rh_tmax_SILO', 'rh_tmin_SILO',
+                          'tmax_SILO', 'tmin_SILO', 'vp_deficit_SILO', 'vp_SILO'
+                           ]
+
     def __init__(self, path=None):
-        super().__init__(name="CAMELS-AUS")
         self.ds_dir = path
+
+        super().__init__()
+        if not os.path.exists(self.ds_dir):
+            os.makedirs(self.ds_dir)
+
+        for _file, url in self.urls.items():
+            fpath = os.path.join(self.ds_dir, _file)
+            if not os.path.exists(fpath):
+                download(url + _file, fpath)
+
         self._unzip()
 
     @property
-    def ds_dir(self):
-        """Directory where a particular dataset will be saved. """
-        return self._ds_dir
-
-    @ds_dir.setter
-    def ds_dir(self, x):
-        sanity_check(self.name, x)
-        self._ds_dir = x
+    def start(self):
+        return "19570101"
 
     @property
-    def dynamic_attributes(self):
-        return self.DATASETS[self.name]['dynamic_attributes']
+    def end(self):
+        return "20181231"
+
+    @property
+    def location(self):
+        return "Australia"
 
     def stations(self, as_list=True):
         fname = os.path.join(self.ds_dir, "01_id_name_metadata\\01_id_name_metadata\\id_name_metadata.csv")
@@ -669,11 +866,19 @@ class CAMELS_AUS(Camels):
                                   dynamic_attributes='all',
                                   categories=None,
                                   static_attributes='all',
+                                  st=None,
+                                  en=None,
+                                  as_ts=False,
                                   **kwargs) ->dict:
-
         stns = {}
-
         dyn_attrs = {}
+
+        if st is None:
+            st = self.start
+
+        if en is None:
+            en = self.end
+
         if isinstance(categories, str):
             if categories == 'all':
                 categories = self.static_attribute_categories
@@ -683,7 +888,7 @@ class CAMELS_AUS(Camels):
         def populate_dynattr(_path, attr):
             fname = os.path.join(_path, attr + ".csv")
             if os.path.exists(fname):
-                df = pd.read_csv(fname, **kwargs)
+                df = pd.read_csv(fname, na_values=['-99.99'], **kwargs)
                 df.index = pd.to_datetime(df[['year', 'month', 'day']])
                 [df.pop(col) for col in ['year', 'month', 'day']]
                 dyn_attrs[attr] = df
@@ -697,7 +902,6 @@ class CAMELS_AUS(Camels):
             elif isinstance(dynamic_attributes, list):
                 assert all(attr in self.dynamic_attributes for attr in dynamic_attributes)
                 dynamic_attributes = dynamic_attributes
-
 
             for attr in dynamic_attributes:
                 if 'SILO' in attr:
@@ -722,20 +926,27 @@ class CAMELS_AUS(Camels):
                     path = os.path.join(self.ds_dir, "03_streamflow\\03_streamflow")
                     populate_dynattr(path, attr)
 
-            # making one separate dataframe for one statino
+            # making one separate dataframe for one station
             for stn in stations:
                 stn_df = pd.DataFrame()
                 for attr, attr_df in dyn_attrs.items():
                     if attr in dynamic_attributes:
-                        stn_df[attr] = attr_df[stn]
+                        stn_df[attr] = attr_df[stn][st:en]
                 stns[stn] = stn_df
 
-        if categories is not None and dynamic_attributes is None:
-            return self._read_static(stations, categories, static_attributes)
+            if categories is not None:
+                static = self._read_static(stations, categories, static_attributes, st,en, True)
+                for k, v in stns.items():
+                    stns[k] = pd.concat([stns[k], static[k]], axis=1)
+
+        elif categories is not None:
+            return self._read_static(stations, categories, static_attributes, st, en, as_ts=as_ts)
 
         return stns
 
-    def _read_static(self, stations, categories, attributes):
+    def _read_static(self, stations, categories, attributes,
+                     st=None, en=None, as_ts=False)->dict:
+
         df_categories = {}
         path = os.path.join(self.ds_dir, "04_attributes\\04_attributes")
         for category in categories:
@@ -750,17 +961,33 @@ class CAMELS_AUS(Camels):
             for cat, cat_df in df_categories.items():
                 stn_df = pd.concat([stn_df, cat_df.loc[cat_df.index==stn]], axis=1)
             if attributes == 'all':
-                stn_categories[stn] = stn_df.transpose()
+                stn_categories[stn] = self.to_ts(stn_df, st, en, to_ts=as_ts)
             else:
-                stn_categories[stn] = stn_df[attributes]
+                stn_categories[stn] = self.to_ts(stn_df[attributes], st, en, to_ts=as_ts)
 
         return stn_categories
+
+    def to_ts(self, df:pd.DataFrame, st, en, to_ts=False):
+        if to_ts:
+            idx = pd.date_range(st, en, freq='D')
+            return pd.DataFrame(np.repeat(df.values, len(idx), axis=0), index=idx)
+        else:
+            return df
 
     def fetch_dynamic_attributes(self,
                                  stn_id,
                                  attributes='all',
+                                 st=None,
+                                 en=None,
                                  **kwargs) ->pd.DataFrame:
         """Fetches all or selected dynamic attributes of one station."""
+
+        if st is None:
+            st = self.start
+
+        if en is None:
+            en = self.end
+
         if attributes == 'all':
             attributes = self.dynamic_attributes
 
@@ -772,9 +999,9 @@ class CAMELS_AUS(Camels):
             for attr in attributes:
                 fname = os.path.join(_path, attr + ".csv")
                 if os.path.exists(fname):
-                    _df = pd.read_csv(fname, usecols=[stn_id, 'year', 'month', 'day'], **kwargs)
+                    _df = pd.read_csv(fname, usecols=[stn_id, 'year', 'month', 'day'], na_values=['-99.99'], **kwargs)
                     _df.index = pd.to_datetime(_df[['year', 'month', 'day']].astype(str).apply(' '.join, 1))
-                    df[attr] = _df[stn_id]
+                    df[attr] = _df[stn_id][st:en]
 
         if any(['SILO' in i for i in attributes]):
             path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\SILO")
@@ -848,7 +1075,33 @@ class CAMELS_AUS(Camels):
 
         return plot_shapefile(f1, bbox_shp=f2, recs=stations, rec_idx=0, **kwargs)
 
+
 class CAMELS_CL(Camels):
+    """Downloads and processes CAMELS dataset of Chile"""
+
+    urls = {
+        "1_CAMELScl_attributes.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "2_CAMELScl_streamflow_m3s.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "3_CAMELScl_streamflow_mm.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "4_CAMELScl_precip_cr2met.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "5_CAMELScl_precip_chirps.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "6_CAMELScl_precip_mswep.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "7_CAMELScl_precip_tmpa.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "8_CAMELScl_tmin_cr2met.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "9_CAMELScl_tmax_cr2met.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "10_CAMELScl_tmean_cr2met.zip": "https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "11_CAMELScl_pet_8d_modis.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "12_CAMELScl_pet_hargreaves.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "13_CAMELScl_swe.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "14_CAMELScl_catch_hierarchy.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+        "CAMELScl_catchment_boundaries.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
+    }
+
+    dynamic_attributes = ['streamflow_m3s', 'streamflow_mm',
+                           'precip_cr2met', 'precip_chirps', 'precip_mswep', 'precip_tmpa',
+                           'tmin_cr2met', 'tmax_cr2met', 'tmean_cr2met',
+                           'pet_8d_modis', 'pet_hargreaves',
+                           'swe']
     """
     Arguments:
         path: path where the CAMELS-AUS dataset has been downloaded. This path must
@@ -856,28 +1109,30 @@ class CAMELS_CL(Camels):
     """
     def __init__(self,
                  path=None):
-        super().__init__(name="CAMELS-CL")
         self.ds_dir = path
+        super().__init__()
+
+        if not os.path.exists(self.ds_dir):
+            os.makedirs(self.ds_dir)
+
+        for _file, url in self.urls.items():
+            fpath = os.path.join(self.ds_dir, _file)
+            if not os.path.exists(fpath):
+                download(url+_file, fpath)
         self._unzip()
-
-    @property
-    def ds_dir(self):
-        """Directory where a particular dataset will be saved. """
-        return self._ds_dir
-
-    @ds_dir.setter
-    def ds_dir(self, x):
-        sanity_check(self.name, x)
-        self._ds_dir = x
-
-    @property
-    def dynamic_attributes(self):
-        return self.DATASETS[self.name]['dynamic_attributes']
 
     @property
     def _all_dirs(self):
         """All the folders in the dataset_directory"""
         return  [f for f in os.listdir(self.ds_dir) if os.path.isdir(os.path.join(self.ds_dir, f))]
+
+    @property
+    def start(self):
+        return "19130215"
+
+    @property
+    def end(self):
+        return "20180309"
 
     @property
     def static_attribute_categories(self):
@@ -902,9 +1157,15 @@ class CAMELS_CL(Camels):
                                   dynamic_attributes='all',
                                   categories=None,
                                   static_attributes='all',
+                                  st=None,
+                                  en=None,
                                   **kwargs) ->dict:
         """Overwitten for speed"""
         stns = {}
+        if st is None:
+            st = self.start
+        if en is None:
+            en = self.end
 
         assert all(stn in self.stations() for stn in stations)
 
@@ -926,7 +1187,9 @@ class CAMELS_CL(Camels):
             for attr in dynamic_attributes:
                 fname = [f for f in self._all_dirs if '_'+attr in f][0]
                 fname = os.path.join(self.ds_dir, f'{fname}\\{fname}.txt')
-                dyn_attrs[attr] = pd.read_csv(fname, sep='\t', index_col=['gauge_id'])
+                _df = pd.read_csv(fname, sep='\t', index_col=['gauge_id'])
+                _df.index=  pd.to_datetime(_df.index)
+                dyn_attrs[attr] = _df
 
             # making one separate dataframe for one statino
             for stn in stations:
@@ -934,7 +1197,7 @@ class CAMELS_CL(Camels):
                 for attr, attr_df in dyn_attrs.items():
                     if attr in dynamic_attributes:
                         stn_df[attr] = attr_df[stn]
-                stns[stn] = stn_df
+                stns[stn] = stn_df[st:en]
 
         if categories is not None and dynamic_attributes is None:
             return self._read_static(stations)
@@ -961,9 +1224,17 @@ class CAMELS_CL(Camels):
     def fetch_dynamic_attributes(self,
                                  stn_id,
                                  attributes='all',
+                                 st=None,
+                                 en=None,
                                  **kwargs)->pd.DataFrame:
         """Fetches dynamic attribute/attributes of one station.
         This is provided for homogenity otherwise fetching for single station is very slow this way."""
+
+        if st is None:
+            st = self.start
+        if en is None:
+            en = self.end
+
         if attributes == 'all':
             attributes = self.dynamic_attributes
 
@@ -980,7 +1251,7 @@ class CAMELS_CL(Camels):
             fpath = os.path.join(self.ds_dir, f"{fname}\\{fname}.txt")
             _df = pd.read_csv(fpath, sep='\t', index_col='gauge_id', na_values=['" "', '', ' '])
             _df.index = pd.to_datetime(_df.index)
-            df[attr] = _df[stn_id]
+            df[attr] = _df[stn_id][st:en]
 
         return df
 
@@ -1009,18 +1280,16 @@ class CAMELS_CL(Camels):
 
 class Weisssee(Datasets):
 
-    DATASETS = {'Weisssee': {'url': '10.1594/PANGAEA.898217',
-                             'dynamic_attributes': ['Precipitation_measurements',
-                                                    'long_wave_upward_radiation',
-                                                    'snow_density_at_30cm',
-                                                    'long_wave_downward_radiation'
-                                                    ]
-                             },
-                }
+    dynamic_attributes = ['Precipitation_measurements',
+                           'long_wave_upward_radiation',
+                           'snow_density_at_30cm',
+                           'long_wave_downward_radiation'
+                           ]
+
     url = '10.1594/PANGAEA.898217'
 
     def fetch(self, **kwargs):
-        self._download()
+        self.download_from_pangaea()
         data = {}
         for f in self.data_files:
             fpath = os.path.join(self.ds_dir, f)
@@ -1034,89 +1303,44 @@ class Weisssee(Datasets):
         return data
 
 
-    def _download(self, overwrite=False):
-
-        if os.path.exists(self.ds_dir):
-            if overwrite:
-                print("removing previously downloaded data and downloading again")
-            else:
-                print(f"The path {self.ds_dir} already exists.")
-                self.data_files = [f for f in os.listdir(self.ds_dir) if f.endswith('.txt')]
-                self.metadata_files = [f for f in os.listdir(self.ds_dir) if f.endswith('.json')]
-                if len(self.data_files) == 0:
-                    print(f"The path {self.ds_dir} is empty so downloading the files again")
-                    self.download_from_pangaea()
-        else:
-            self.download_from_pangaea()
-        return
-
-    def download_from_pangaea(self):
-        self.data_files = []
-        self.metadata_files = []
-        ds = PanDataSet(self.url)
-        kids = ds.children()
-        if len(kids) > 1:
-            for kid in kids:
-                kid_ds = PanDataSet(kid)
-                fname = kid_ds.download(self.ds_dir)
-                self.metadata_files.append(fname + '._metadata.json')
-                self.data_files.append(fname + '.txt')
-        else:
-            fname = ds.download(self.ds_dir)
-            self.metadata_files.append(fname + '._metadata.json')
-            self.data_files.append(fname + '.txt')
-        return
-
-
 class ETP_CHN_SEBAL(Datasets):
-    DATASETS = {
-        'ETP_CHN_SEBAL': {'url': "https://zenodo.org/record/4218413#.YBNhThZS-Ul"}
-    }
-    pass
+
+    url = "https://zenodo.org/record/4218413#.YBNhThZS-Ul"
 
 
 class ISWDC(Datasets):
 
-    DATASETS = {
-        'ISWDC': {'url': "https://zenodo.org/record/2616035#.YBNl5hZS-Uk"}
-    }
+    url = "https://zenodo.org/record/2616035#.YBNl5hZS-Uk"
 
 
 class WQJordan(Weisssee):
     """Jordan River water quality data of 9 variables for two variables."""
-
-    DATASETS = ['WQJordan']
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.919103'
 
 
 class WQJordan2(Weisssee):
     """Stage and Turbidity data of Jordan River"""
-    DATASETS = ['WQJordan2']
     url = '10.1594/PANGAEA.919104'
 
 
 class YamaguchiClimateJp(Weisssee):
     """Daily climate and flow data of Japan from 2006 2018"""
-    DATASETS = ['YamaguchiClimateJp']
     url = "https://doi.pangaea.de/10.1594/PANGAEA.909880"
 
 
 class FlowBenin(Weisssee):
      """Flow data"""
-     DATASETS = ['FlowBenin']
      url = "10.1594/PANGAEA.831196"
 
 
 class HydrometricParana(Weisssee):
     """Daily and monthly water level and flow data of Parana river Argentina
     from 1875 to 2017."""
-    DATASETS = ['HydrometricParana']
     url = "https://doi.pangaea.de/10.1594/PANGAEA.882613"
 
 
 class RiverTempSpain(Weisssee):
     """Daily mean stream temperatures in Central Spain for different periods."""
-    DATASETS = ['RiverTempSpain']
     url = "https://doi.pangaea.de/10.1594/PANGAEA.879494"
 
 
@@ -1124,101 +1348,189 @@ class WQCantareira(Weisssee):
     """Water quality and quantity primary data from field campaigns in the Cantareira Water Supply System,
      period Oct. 2013 - May 2014"""
     url="https://doi.pangaea.de/10.1594/PANGAEA.892384"
-    DATASETS = ['WQCantareira']
 
 
 class RiverIsotope(Weisssee):
     """399 δ18O and δD values in river surface waters of Indian River"""
     url = "https://doi.pangaea.de/10.1594/PANGAEA.912582"
-    DATASETS = ['RiverIsotope']
 
 
 class EtpPcpSamoylov(Weisssee):
     """Evpotranspiration and Precipitation at station TOWER on Samoylov Island Russia
      from 20110524 to 20110819 with 30 minute frequency"""
     url = "10.1594/PANGAEA.811076"
-    DATASETS = ['EtpPcpSamoylov']
 
 class FlowSamoylov(Weisssee):
     """Net lateral flow at station INT2 on Samoylov Island Russia
     from 20110612 to 20110819 with 30 minute frequency"""
     url = "10.1594/PANGAEA.811072"
-    DATASETS = ['FlowSamoylov']
 
 
 class FlowSedDenmark(Weisssee):
     """Flow and suspended sediment concentration fields over tidal bedforms, ADCP profile"""
     url = "10.1594/PANGAEA.841977"
-    DATASETS = ['FlowSedDenmark']
 
 
 class StreamTempSpain(Weisssee):
     """Daily Mean Stream Temperature at station Tormes3, Central Spain from 199711 to 199906."""
     url = "https://doi.pangaea.de/10.1594/PANGAEA.879507"
-    DATASETS = ['StreamTempSpain']
 
 
 class RiverTempEroo(Weisssee):
     """Water temperature records in the Eroo River and some tributaries (Selenga River basin, Mongolia, 2011-2012)"""
     url = "10.1594/PANGAEA.890070"
-    DATASETS = ['RiverTempEroo']
 
 
 class HoloceneTemp(Weisssee):
     """Holocene temperature reconstructions for northeastern North America and the northwestern Atlantic,
      core Big_Round_Lake."""
     url = "10.1594/PANGAEA.905446"
-    DATASETS = ["HoloceneTemp"]
 
 
 class FlowTetRiver(Weisssee):
     """Daily mean river discharge at meteorological station Perpignan upstream, Têt basin France from 1980
     to 2000."""
     url = "10.1594/PANGAEA.226925"
-    DATASETS = ['FlowTetRiver']
 
 
 class SedimentAmersee(Weisssee):
     """Occurence of flood laminae in sediments of Ammersee"""
     url = "10.1594/PANGAEA.746240"
-    DATASETS = ["SedimentAmersee"]
 
 
 class HydrocarbonsGabes(Weisssee):
     """Concentration and geological parameters of n-alkanes and n-alkenes in surface sediments from the Gulf of Gabes,
      Tunisia"""
     url = "10.1594/PANGAEA.774595"
-    DATASETS = ["HydrocarbonsGabes"]
 
 
 class WaterChemEcuador(Weisssee):
     """weekly and biweekly Water chemistry of cloud forest streams at baseflow conditions,
      Rio San Francisco, Ecuador"""
     url = "10.1594/PANGAEA.778629"
-    DATASETS = ['WaterChemEcuador']
 
 
 class WaterChemVictoriaLakes(Weisssee):
     """Surface water chemistry of northern Victoria Land lakes"""
     url = "10.1594/PANGAEA.807883"
-    DATASETS = ['WaterChemVictoriaLakes']
 
 
 class HydroChemJava(Weisssee):
     """Hydrochemical data from subsurface rivers, coastal and submarine springsin a karstic region
      in southern Java."""
     url = "10.1594/PANGAEA.882178"
-    DATASETS = ['HydroChemJava']
 
 
 class PrecipBerlin(Weisssee):
     """Sub-hourly Berlin Dahlem precipitation time-series 2001-2013"""
     url = "10.1594/PANGAEA.883587"
-    DATASETS = ['PrecipBerlin']
 
 
 class GeoChemMatane(Weisssee):
     """Geochemical data collected in shallow groundwater and river water in a subpolar environment
      (Matane river, QC, Canada)."""
     url = "10.1594/PANGAEA.908290"
-    DATASETS = ["GeoChemMatane"]
+
+
+
+def download(url, out=None):
+    """High level function, which downloads URL into tmp file in current
+    directory and then renames it to filename autodetected from either URL
+    or HTTP headers.
+
+    :param url:
+    :param out: output filename or directory
+    :return:    filename where URL is downloaded to
+    """
+    # detect of out is a directory
+    if out is not None:
+        outdir = os.path.dirname(out)
+        out_filename = os.path.basename(out)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+    else:
+        outdir = os.getcwd()
+        out_filename = None
+
+    # get filename for temp file in current directory
+    prefix = filename_from_url(url)
+    (fd, tmpfile) = tempfile.mkstemp(".tmp", prefix=prefix, dir=".")
+    os.close(fd)
+    os.unlink(tmpfile)
+
+    # set progress monitoring callback
+    def callback_charged(blocks, block_size, total_size):
+        # 'closure' to set bar drawing function in callback
+        callback_progress(blocks, block_size, total_size, bar_function=bar)
+
+    callback = callback_charged
+
+
+    # Python 3 can not quote URL as needed
+    binurl = list(urlparse.urlsplit(url))
+    binurl[2] = urlparse.quote(binurl[2])
+    binurl = urlparse.urlunsplit(binurl)
+
+    (tmpfile, headers) = ulib.urlretrieve(binurl, tmpfile, callback)
+    filename = filename_from_url(url)
+
+    if out_filename:
+        filename = out_filename
+
+    filename = outdir + "/" + filename
+
+    # add numeric ' (x)' suffix if filename already exists
+    if os.path.exists(filename):
+        filename = filename + '1'
+    shutil.move(tmpfile, filename)
+
+    #print headers
+    return filename
+
+
+__current_size = 0
+
+def callback_progress(blocks, block_size, total_size, bar_function):
+    """callback function for urlretrieve that is called when connection is
+    created and when once for each block
+
+    draws adaptive progress bar in terminal/console
+
+    use sys.stdout.write() instead of "print,", because it allows one more
+    symbol at the line end without linefeed on Windows
+
+    :param blocks: number of blocks transferred so far
+    :param block_size: in bytes
+    :param total_size: in bytes, can be -1 if server doesn't return it
+    :param bar_function: another callback function to visualize progress
+    """
+    global __current_size
+
+    width = 100
+
+    if sys.version_info[:3] == (3, 3, 0):  # regression workaround
+        if blocks == 0:  # first call
+            __current_size = 0
+        else:
+            __current_size += block_size
+        current_size = __current_size
+    else:
+        current_size = min(blocks * block_size, total_size)
+    progress = bar_function(current_size, total_size, width)
+    if progress:
+        sys.stdout.write("\r" + progress)
+
+
+def filename_from_url(url):
+    """:return: detected filename as unicode or None"""
+    # [ ] test urlparse behavior with unicode url
+    fname = os.path.basename(urlparse.urlparse(url).path)
+    if len(fname.strip(" \n\t.")) == 0:
+        return None
+    return fname
+
+def bar(current_size, total_size, width):
+    percent = current_size/total_size * 100
+    if round(percent % 1, 4) == 0.0:
+        print(f"{round(percent)}% of {round(total_size*1e-6, 2)} MB downloaded")
+    return
