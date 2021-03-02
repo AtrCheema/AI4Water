@@ -20,6 +20,7 @@ from dl4seq.backend import tpot_models
 from dl4seq.backend import imputations, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now, Jsonize
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, prepare_data
+from dl4seq.utils.utils import find_best_weight
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
@@ -1077,6 +1078,11 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             history = self._fit(inputs, outputs, self.val_data(), **callbacks)
 
             self.plot_loss(history.history)
+
+            # load the best weights so that the best weights can be used during model.predict calls
+            best_weights = find_best_weight(os.path.join(self.path, 'weights'))
+            self.allow_weight_loading = True
+            self.load_weights(best_weights)
 
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
