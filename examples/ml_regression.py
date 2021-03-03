@@ -17,11 +17,10 @@ model = Model(
               lookback=1,
               batches="2d",
               val_fraction=0.0,
-              ml_model='DecisionTreeRegressor',
-              ml_model_args={"max_depth": 3, "criterion": "mae"},
+              model= {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}},
               transformation=None
               )
 
 h = model.fit()
 
-x,y = model.train_data()
+x, _, y = model.train_data()

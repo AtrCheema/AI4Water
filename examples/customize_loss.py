@@ -6,16 +6,22 @@
 import numpy as np
 import pandas as pd
 
-from dl4seq import Model
 import tensorflow as tf
 from tensorflow import keras
 
+from dl4seq import Model
 
 class QuantileModel(Model):
 
-    def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
+    def denormalize_data(self,
+                         inputs: np.ndarray,
+                         predicted: np.ndarray,
+                         true: np.ndarray,
+                         in_cols, out_cols,
+                         scaler_key: str,
+                         transformation=None):
 
-        return predicted, true_outputs
+        return predicted, true
 
 
 def qloss(y_true, y_pred):
@@ -50,7 +56,7 @@ model = QuantileModel(
     inputs=['input_' + str(i) for i in range(cols - 1)],
     outputs=['input_' + str(cols - 1)],
     lookback=1,
-    layers=layers,
+    model={'layers':layers},
     epochs=100,
     data=data,
     quantiles=quantiles)

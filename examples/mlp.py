@@ -1,10 +1,14 @@
 # this file shows how to build a simple dense layer based model
 # the input_features and outputs are columns and are present in the file
-
-import pandas as pd
 import os
 
+import pandas as pd
+import tensorflow as tf
+
 from dl4seq import Model
+
+tf.compat.v1.disable_eager_execution()
+
 
 if __name__ == "__main__":
     input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',

@@ -593,7 +593,7 @@ class SerializeSKOptResults(object):
         __y0 = self.results['specs']['args']['y0']
         if __y0 is None:
             return __y0
-        if isinstance(list, __y0):
+        if isinstance(__y0, list):
             _y0 = []
             for y in self.results['specs']['args']['y0']:
                 _y0.append(Jsonize(y)())

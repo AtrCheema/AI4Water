@@ -1071,14 +1071,18 @@ class Model(NN, Plots):
         else:
             indices = self.get_indices(indices)
 
-        inputs, _, outputs = self.train_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
+        train_data = self.train_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
+        inputs, outputs = maybe_three_outputs(train_data)
 
         if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
             if isinstance(self._model.outputs, list):
                 assert len(self._model.outputs) == 1
                 model_output_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
 
-                assert model_output_shape == outputs.shape[1:], f"""
+                if getattr(self, 'quantiles', None) is not None:
+                    assert model_output_shape[0] == len(self.quantiles) * self.outs
+                else:
+                    assert model_output_shape == outputs.shape[1:], f"""
 ShapeMismatchError: Shape of model's output is {model_output_shape}
 while the targets in prepared have shape {outputs.shape[1:]}."""
 
@@ -1507,6 +1511,11 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             else:
                 if self.method == 'dual_attention':
                     raise ValueError
+                for out in range(outs):
+                    assert nans[:, out].sum() == int(nans.sum()/outs), f"""
+                    output columns {out} contains {nans[:, out].sum()} nans while the average nans are {int(nans.sum()/outs)}.
+                    This means output columns contains nan values at different indices
+                    """
                 if outs > 1:
                     assert np.all(nans == int(nans.sum() / outs)), """output columns contains nan values at
                      different indices"""
@@ -1535,7 +1544,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def activations(self, layer_names=None, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
-        inputs, _, _ = self.test_data(**kwargs)
+        data = self.test_data(**kwargs)
+        inputs, _ = maybe_three_outputs(data)
 
         # samples/examples in inputs may not be ordered/sorted so we should order them
         # remvoe the first column from x data
@@ -1556,7 +1566,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def gradients_of_weights(self, **kwargs) -> dict:
 
-        x, _, y = self.test_data(**kwargs)
+        data = self.test_data(**kwargs)
+        x, y = maybe_three_outputs(data)
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
@@ -1564,7 +1575,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def gradients_of_activations(self, st=0, en=None, indices=None, data=None, layer_name=None, **kwargs) -> dict:
 
-        x, _, y = self.test_data(st=st, en=en, indices=indices, data=data)
+        data = self.test_data(st=st, en=en, indices=indices, data=data)
+        x, y = maybe_three_outputs(data)
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
@@ -1775,7 +1787,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 self.plot_treeviz_leaves()
                 self.decision_tree(which="sklearn", **kwargs)
 
-                x, _, y = self.test_data()
+                data = self.test_data()
+                x, y = maybe_three_outputs(data)
                 self.confusion_matrx(x=x, y=y)
                 self.precision_recall_curve(x=x, y=y)
                 self.roc_curve(x=x, y=y)
@@ -2139,3 +2152,14 @@ def print_something(something, prefix=''):
         print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
     elif isinstance(something, dict):
         print(f"{prefix} shape: ", [thing.shape for thing in something.values() if isinstance(thing, np.ndarray)])
+
+
+def maybe_three_outputs(data, num_outputs=2):
+    """num_outputs: how many outputs from data we want"""
+    if num_outputs==2:
+        if len(data)==2:
+            return data[0], data[1]
+        elif len(data)==3:
+            return data[0], data[2]
+    elif num_outputs==3:
+        return data[0], data[1], data[2]

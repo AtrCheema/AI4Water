@@ -16,14 +16,14 @@ layers = {
 
     "Flatten": {"config": {}},
     "Dense": {"config": {"units": 1}},
-    "reshape": {"config": {"target_shape": (1,1)}}
+    "Reshape": {"config": {"target_shape": (1,1)}}
 }
 
 model = Model(
-    layers=layers,
+    model={'layers':layers},
     lookback=10,
     inputs=inputs,
     outputs=outputs,
     data=load_30min())
 
-#history = model.fit(indices="random")
+history = model.fit(indices="random")
