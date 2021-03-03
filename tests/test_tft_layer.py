@@ -7,7 +7,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 import tensorflow as tf
 import numpy as np
 
-from dl4seq.models.tft_as_layer import TemporalFusionTransformer
+from dl4seq.models.tft_layer import TemporalFusionTransformer
 from dl4seq import Model
 
 tf.compat.v1.disable_eager_execution()

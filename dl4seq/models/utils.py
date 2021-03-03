@@ -44,7 +44,9 @@ def concatenate(tensors, axis=-1, name="concat"):
 def linear_layer(size,
                  activation=None,
                  use_time_distributed=False,
-                 use_bias=True):
+                 use_bias=True,
+                 name=None
+                 ):
   """Returns simple Keras linear layer.
 
   Args:
@@ -52,8 +54,9 @@ def linear_layer(size,
     activation: Activation function to apply if required
     use_time_distributed: Whether to apply layer across time
     use_bias: Whether bias should be included in layer
+    name:
   """
-  linear = tf.keras.layers.Dense(size, activation=activation, use_bias=use_bias)
+  linear = tf.keras.layers.Dense(size, activation=activation, use_bias=use_bias, name=name)
   if use_time_distributed:
     linear = TimeDistributed(linear)
   return linear
@@ -62,51 +65,54 @@ def linear_layer(size,
 def apply_gating_layer(x,
                        hidden_layer_size,
                        dropout_rate=None,
-                       use_time_distributed=True,
-                       activation=None):
+                       use_time_distributed=False,
+                       activation=None,
+                       name=None):
   """Applies a Gated Linear Unit (GLU) to an input.
 
   Args:
-    x: Input to gating layer
+    x: Input to gating layer having shape (num_examples, hidden_units)
     hidden_layer_size: Dimension of GLU
     dropout_rate: Dropout rate to apply if any
     use_time_distributed: Whether to apply across time
     activation: Activation function to apply to the linear feature transform if
       necessary
+    name: name of encompassing layers
 
   Returns:
-    Tuple of tensors for: (GLU output, gate)
+    Tuple of tensors for: (GLU output, gate) where GLU output has the shape (num_examples, hidden_units)
   """
 
   if dropout_rate is not None:
-    x = Dropout(dropout_rate)(x)
+    x = Dropout(dropout_rate, name=f'Dopout_{name}')(x)
 
   if use_time_distributed:
-    activation_layer = TimeDistributed(Dense(hidden_layer_size, activation=activation))(x)
+    activation_layer = TimeDistributed(Dense(hidden_layer_size, activation=activation, name=f'gating_act_{name}'))(x)
     gated_layer = TimeDistributed(
-        Dense(hidden_layer_size, activation='sigmoid'))(x)
+        Dense(hidden_layer_size, activation='sigmoid', name=f'gating_{name}'))(x)
   else:
     activation_layer = Dense(
-        hidden_layer_size, activation=activation)(
+        hidden_layer_size, activation=activation, name=f'gating_act_{name}')(
             x)
     gated_layer = Dense(
-        hidden_layer_size, activation='sigmoid')(
+        hidden_layer_size, activation='sigmoid', name=f'gating_{name}')(
             x)
 
-  return Multiply()([activation_layer, gated_layer]), gated_layer
+  return Multiply(name=f'MulGating_{name}')([activation_layer, gated_layer]), gated_layer
 
 
-def add_and_norm(x_list):
+def add_and_norm(x_list, name=None):
     """Applies skip connection followed by layer normalisation.
 
     Args:
     x_list: List of inputs to sum for skip connection
+    name:
 
     Returns:
     Tensor output from layer.
     """
-    tmp = Add()(x_list)
-    tmp = LayerNorm()(tmp)
+    tmp = Add(name=f'add_{name}')(x_list)
+    tmp = LayerNorm(name=f'norm_{name}')(tmp)
     return tmp
 
 
@@ -116,7 +122,8 @@ def gated_residual_network(x,
                            dropout_rate=None,
                            use_time_distributed=True,
                            additional_context=None,
-                           return_gate=False):
+                           return_gate=False,
+                           name='GRN'):
   """Applies the gated residual network (GRN) as defined in paper.
 
   Args:
@@ -127,6 +134,7 @@ def gated_residual_network(x,
     use_time_distributed: Whether to apply network across time dimension
     additional_context: Additional context vector to use if relevant
     return_gate: Whether to return GLU gate for diagnostic purposes
+    name: name of all layers
 
   Returns:
     Tuple of tensors for: (GRN output, GLU gate)
@@ -137,7 +145,7 @@ def gated_residual_network(x,
     output_size = hidden_layer_size
     skip = x
   else:
-    linear = Dense(output_size)
+    linear = Dense(output_size, name=f'skip_connection_{name}')
     if use_time_distributed:
       linear = TimeDistributed(linear)
     skip = linear(x)
@@ -146,20 +154,26 @@ def gated_residual_network(x,
   hidden = linear_layer(
       hidden_layer_size,
       activation=None,
-      use_time_distributed=use_time_distributed)(
+      use_time_distributed=use_time_distributed,
+      name=f"ff_{name}"
+  )(
           x)
   if additional_context is not None:
     hidden = hidden + linear_layer(
         hidden_layer_size,
         activation=None,
         use_time_distributed=use_time_distributed,
-        use_bias=False)(
+        use_bias=False,
+        name=f'addition_cntxt_{name}'
+    )(
             additional_context)
-  hidden = Activation('elu')(hidden)
+  hidden = Activation('elu', name=f'{name}_elu')(hidden)
   hidden = linear_layer(
       hidden_layer_size,
       activation=None,
-      use_time_distributed=use_time_distributed)(
+      use_time_distributed=use_time_distributed,
+      name=f'{name}_LastDense'
+  )(
           hidden)
 
   gating_layer, gate = apply_gating_layer(
@@ -167,12 +181,14 @@ def gated_residual_network(x,
       output_size,
       dropout_rate=dropout_rate,
       use_time_distributed=use_time_distributed,
-      activation=None)
+      activation=None,
+      name=name
+  )
 
   if return_gate:
-    return add_and_norm([skip, gating_layer]), gate
+    return add_and_norm([skip, gating_layer], name=name), gate
   else:
-    return add_and_norm([skip, gating_layer])
+    return add_and_norm([skip, gating_layer], name=name)
 
 
 # Attention Components.
@@ -220,7 +236,7 @@ class ScaledDotProductAttention(tf.keras.layers.Layer):
     if mask is not None:
       mmask = Lambda(lambda x: (-1e+9) * (1. - K.cast(x, 'float32')), name=f"ScaledDotProdAttenLambdaMask{idx}")(
           mask)  # setting to infinity
-      attn = Add()([attn, mmask])
+      attn = Add(name=f'SDPA_ADD_{idx}')([attn, mmask])
     attn = self.activation(attn)
     attn = self.dropout(attn)
     output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name=f"ScaledDotProdAttenOutput{idx}")([attn, v])
