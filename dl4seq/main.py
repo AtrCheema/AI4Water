@@ -749,6 +749,13 @@ class Model(NN, Plots):
         return history
 
     def get_indices(self, indices=None):
+        # return the indices if it indices are list or array like
+        if not isinstance(indices, str):
+            if hasattr(indices, '__len__'):
+                if self.is_training:
+                    setattr(self, 'train_indices', indices)
+                return indices
+
         if isinstance(self.data, dict):
             key = list(self.out_cols.keys())[0] if isinstance(self.out_cols, dict) else self.out_cols[0]
             data = self.data[key]
@@ -984,7 +991,10 @@ class Model(NN, Plots):
         kwargs = list(self.config['model'].values())[0]
 
         if regr_name in ['HISTGRADIENTBOOSTINGREGRESSOR', 'SGDREGRESSOR', 'MLPREGRESSOR']:
-            kwargs.update({'validation_fraction': self.config['val_fraction']})
+            if self.config['val_fraction']>0.0:
+                kwargs.update({'validation_fraction': self.config['val_fraction']})
+            elif self.config['test_fraction']>0.0:
+                kwargs.update({'validation_fraction': self.config['test_fraction']})
 
         # some algorithms allow detailed output during training, this is allowed when self.verbosity is > 1
         if regr_name in ['ONECLASSSVM']:
@@ -1299,6 +1309,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             first_input = inputs[0]
         elif isinstance(inputs, dict):
             first_input = list(inputs.values())[0]
+        elif isinstance(inputs, np.ndarray):
+            first_input = inputs
         else:
             raise NotImplementedError
 
@@ -1572,7 +1584,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """Finds names of lstm layers in model"""
 
         lstm_names = []
-        for lyr, config in self.config['layers'].items():
+        for lyr, config in self.config['model']['layers'].items():
             if "LSTM" in lyr.upper():
 
                 prosp_name = config["config"]['name'] if "name" in config['config'] else lyr
