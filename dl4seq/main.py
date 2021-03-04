@@ -1365,14 +1365,14 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return first_input, new_inputs, dt_index
 
-    def compile(self, model_inputs, outputs):
+    def compile(self, model_inputs, outputs, **compile_args):
 
         k_model = self.KModel(inputs=model_inputs, outputs=outputs)
 
         opt_args = self.get_opt_args()
         optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
 
-        k_model.compile(loss=self.loss, optimizer=optimizer, metrics=self.get_metrics())
+        k_model.compile(loss=self.loss, optimizer=optimizer, metrics=self.get_metrics(), **compile_args)
 
         if self.verbosity > 0:
             k_model.summary()
@@ -1949,7 +1949,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if min_loss_array is not None and not all(np.isnan(min_loss_array)):
                 config['min_loss'] = np.nanmin(min_loss_array)
 
-        config['config'] = Jsonize(self.config)()
+        config['config'] = self.config
         config['method'] = self.method
         config['category'] = self.category
         config['problem'] = self.problem

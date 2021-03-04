@@ -818,6 +818,9 @@ class CAMELS_AUS(Camels):
                            ]
 
     def __init__(self, path=None):
+        if path is not None:
+            if not os.path.exists(path) or len(os.listdir(path))<2:
+                raise FileNotFoundError(f"The path {path} does not exist")
         self.ds_dir = path
 
         super().__init__()

@@ -443,7 +443,7 @@ class Jsonize(object):
 
     def stage2(self, obj):
         """Serializes one object"""
-        if obj is None:
+        if any([isinstance(obj, _type) for _type in [bool, set, type(None)]]) or callable(obj):
             return obj
         if 'int' in obj.__class__.__name__:
             return int(obj)
