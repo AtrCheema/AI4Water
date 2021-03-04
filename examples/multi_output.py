@@ -2,10 +2,12 @@
 # All outputs are modelled by a separate parallel NN(InputAttention in this case).
 # All outputs are different and their losses are summed to be used as final loss for back-propagation.
 # Each of the parallel NN receives same input.
+# The loss function is also customized although it is not necessary
+
+import os
 
 import pandas as pd
 import numpy as np
-import os
 from tensorflow import keras
 
 from dl4seq import InputAttentionModel
@@ -14,8 +16,13 @@ from dl4seq import InputAttentionModel
 class MultiSite(InputAttentionModel):
     """ This is only for two outputs currently. """
 
-    def train_data(self, **kwargs):
-        train_x, train_y, train_label = self.fetch_data(self.data, **kwargs)
+    def train_data(self, data=None, data_keys=None, **kwargs):
+        data= self.data if data is None else data
+        train_x, train_y, train_label = self.fetch_data(data,
+                                                        inps=self.in_cols,
+                                                        outs=self.out_cols,
+                                                        transformation=self.config['transformation'],
+                                                        **kwargs)
 
         inputs = [train_x]
         for out in range(self.outs):
@@ -24,7 +31,7 @@ class MultiSite(InputAttentionModel):
 
             inputs = inputs + [s0_train, h0_train]
 
-        return inputs, [train_label[:, 0], train_label[:, 1]]
+        return inputs, train_label
 
     def build(self):
 
@@ -40,6 +47,9 @@ class MultiSite(InputAttentionModel):
             act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]
+
+        predictions = keras.layers.Concatenate()(predictions)
+        predictions = keras.layers.Reshape(target_shape=(2, 1))(predictions)
 
         print('predictions: ', predictions)
 
@@ -59,16 +69,17 @@ if __name__ == "__main__":
     df.index = pd.to_datetime(df['Date_Time2'])
 
     model = MultiSite(
-                      data=df,
-                      batch_size=4,
-                      lookback=15,
-                      inputs=input_features,
-                      outputs=outputs,
-                      lr=0.0001,
-                      epochs=20,
-                      val_fraction=0.3,  # TODO why less than 0.3 give error here?
-                      test_fraction=0.3
-                      )
+        data=df,
+        batch_size=4,
+        lookback=15,
+        inputs=input_features,
+        outputs=outputs,
+        lr=0.0001,
+        epochs=2,
+        val_fraction=0.3,  # TODO why less than 0.3 give error here?
+        test_fraction=0.3,
+        steps_per_epoch=38
+    )
 
 
     def loss(x, _y):
@@ -83,4 +94,4 @@ if __name__ == "__main__":
     history = model.fit(indices='random', tensorboard=True)
 
     y, obs = model.predict()
-    # acts = model.activations(st=0, en=1400)
+    activations, given_inputs = model.activations(st=0, en=1400)
