@@ -750,6 +750,8 @@ def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5"):
         losses[val_loss] = {'loss': wname.split('_')[2], 'epoch': wname.split('_')[1]}
 
     loss_array = np.array([float(l) for l in losses.keys()])
+    if len(loss_array)==0:
+        return None
     best_loss = getattr(np, best)(loss_array)
     best_weight = f"weights_{losses[str(best_loss)]['epoch']}_{losses[str(best_loss)]['loss']}.hdf5"
     return best_weight

@@ -1104,8 +1104,11 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
             # load the best weights so that the best weights can be used during model.predict calls
             best_weights = find_best_weight(os.path.join(self.path, 'weights'))
-            self.allow_weight_loading = True
-            self.load_weights(best_weights)
+            if best_weights is None:
+                warnings.warn("best weights could not be found and are not loaded", UserWarning)
+            else:
+                self.allow_weight_loading = True
+                self.load_weights(best_weights)
 
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
@@ -1524,7 +1527,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                     for out in range(outs):
                         assert nans[:, out].sum() == int(nans.sum() / outs), f"""
                         output columns {out} contains {nans[:, out].sum()} nans while the average nans are {int(nans.sum() / outs)}.
-                        This means output columns contains nan values at different indices
+                        This means output columns contains nan values at different indices. Try `allow_nan_labels`>0.
                         """
 
                 if self.verbosity > 0:
