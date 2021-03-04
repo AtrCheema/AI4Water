@@ -6,20 +6,21 @@
 # This means the different target values are present at different time stamps.
 # The number of inputs and outputs to and from each NN are equal (but not same)
 
-from dl4seq import Model
-from dl4seq.utils.utils import check_min_loss
-from examples import LSTMAutoEnc_Config
-
-from tensorflow.python.keras.engine import training_utils
-
 import os
 import time
-import pandas as pd
-from sklearn.model_selection import train_test_split
+
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
+from sklearn.model_selection import train_test_split
+from tensorflow.python.keras.engine import training_utils
 
+from dl4seq import Model
+from examples import LSTMAutoEnc_Config
+from dl4seq.utils.utils import check_min_loss
+
+# TODO, failing in tf1 due to different dtype of tf.keras.model and inputs
 
 class MultiOutputParallel(Model):
     """
@@ -29,8 +30,6 @@ class MultiOutputParallel(Model):
 
     def __init__(self, **kwargs):
         super(MultiOutputParallel, self).__init__(**kwargs)
-        self.tr_outs = [True for _ in range(self.outs)]
-        self.val_outs = [True for _ in range(self.outs)]
 
     def train_data(self, **kwargs):
 
@@ -53,7 +52,8 @@ class MultiOutputParallel(Model):
         return x_data, y_data
 
     def build(self):
-
+        self.tr_outs = [True for _ in range(self.outs)]
+        self.val_outs = [True for _ in range(self.outs)]
         self.config['tr_outs'] = self.tr_outs
         self.config['val_outs'] = self.val_outs
 
@@ -334,11 +334,11 @@ class ConvLSTMMultiOutput(MultiOutputParallel):
 
 class LSTMAutoEncMultiOutput(MultiOutputParallel):
 
-    def __init__(self, nn_config, **kwargs):
+    def __init__(self, **kwargs):
         # because composite attribute is used in this Model
-        self.composite = nn_config['composite']
+        self.composite = False # nn_config['composite']
 
-        super(LSTMAutoEncMultiOutput, self).__init__(nn_config=nn_config, **kwargs)
+        super(LSTMAutoEncMultiOutput, self).__init__(**kwargs)
 
     def train_data(self, **kwargs):
 
@@ -349,7 +349,10 @@ class LSTMAutoEncMultiOutput(MultiOutputParallel):
         for out in range(outs):
 
             self.out_cols = [self.config['outputs'][out]]  # because fetch_data depends upon self.outs
-            x, train_y_3, labels = self.fetch_data(data=self.data[out], **kwargs)
+            x, train_y_3, labels = self.fetch_data(data=self.data[out][self.in_cols + self.out_cols],
+                                                   inps=self.in_cols,
+                                                   outs=self.out_cols,
+                                                   **kwargs)
 
             if self.composite:
                 outputs = [x, labels]
@@ -368,7 +371,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
 
     val_fraction = 0.2
 
-    fpath = os.path.join(os.path.dirname(os.getcwd()), 'data')
+    fpath = os.path.join(os.path.dirname(os.getcwd()), 'dl4seq\\data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
     df_8 = pd.read_csv(os.path.join(fpath, 'data_8.csv'))
@@ -417,7 +420,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                         val_fraction=val_fraction,
                         lookback=lookback,
                         lr=lr,
-                        allow_nan_labels=1,
+                        allow_nan_labels=2,
                         data=[df_1, df_3, df_8, df_12],
                                          **kwargs,)
         _model.load_weights(weights)
@@ -432,7 +435,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
                              val_fraction=val_fraction,
                              lookback=lookback,
                              lr=lr,
-                             allow_nan_labels=1,
+                             allow_nan_labels=2,
                              **kwargs
                              )
     return _model, _train_idx, _test_idx
@@ -441,11 +444,11 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
 if __name__ == "__main__":
 
     model, train_idx, test_idx = make_multi_model(LSTMAutoEncMultiOutput,
-                                                  layers=LSTMAutoEnc_Config,
+                                                  model={'layers':LSTMAutoEnc_Config},
                                                   batch_size=12,
                                                   lookback=3,
                                                   lr=0.00047681,
-                                                  epochs=2)
+                                                  epochs=20)
     history = model.fit(indices=train_idx)
 
     # cpath = "D:\\playground\\paper_with_codes\\dl_ts_prediction\\results\\convlstm_parallel\\20200918_1549\\config.json"

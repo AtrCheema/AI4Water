@@ -779,10 +779,10 @@ class Plots(object):
         }
 
         sub_plots = {1: {'axis': (1,1), 'width': 10, 'height': 10},
-                     2: (1, 1),
-                     3: (1, 2),
+                     2: {'axis': (1, 1), 'width': 10, 'height': 10},
+                     3: {'axis': (1, 2), 'wdith': 10, 'height': 10},
                      4: {'axis': (1, 2), 'width': 10, 'height': 10},
-                     5: (1, 3),
+                     5: {'axis': (1, 3), 'width': 15, 'height': 10},
                      6: {'axis': (1, 3), 'width': 20, 'height': 20},
                      7: {'axis': (3, 2), 'width': 20, 'height': 20},
                      8: {'axis': (4, 2), 'width': 20, 'height': 20},
