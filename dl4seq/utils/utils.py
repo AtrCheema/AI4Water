@@ -1210,3 +1210,17 @@ forecast_len: {forecast_len}"""
     y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
 
     return x, prev_y, y
+
+
+def find_tot_plots(features, max_subplots):
+
+    tot_plots = np.linspace(0, features, int(features / max_subplots) + 1 if features % max_subplots == 0 else int(
+        features / max_subplots) + 2)
+    # converting each value to int because linspace can return array containing floats if features is odd
+    tot_plots = [int(i) for i in tot_plots]
+    return tot_plots
+
+
+def set_fig_dim(fig, width, height):
+    fig.set_figwidth(width)
+    fig.set_figheight(height)

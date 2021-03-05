@@ -26,7 +26,7 @@ from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
 from dl4seq.utils.TSErrors import FindErrors
-from dl4seq.visualizations import Visualizations
+from dl4seq.utils.visualizations import Visualizations
 
 
 def reset_seed(seed):
@@ -38,7 +38,6 @@ def reset_seed(seed):
             tf.compat.v1.random.set_random_seed(seed)
         elif int(tf.__version__.split('.')[0]) > 1:
             tf.random.set_seed(seed)
-
 
 LOSSES = {}
 if tf is not None:
@@ -2048,17 +2047,19 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
         `monthly`."""
+        visualizer = Visualizations(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols)
+
         # plot number if missing vals
-        self.plot_missing(cols=cols)
+        visualizer.plot_missing(cols=cols)
 
         # show data as heatmapt
-        self.data_heatmap(cols=cols)
+        visualizer.data_heatmap(cols=cols)
 
         # line plots of input/output data
         self.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
-        self.plot_feature_feature_corr(cols=cols)
+        visualizer.plot_feature_feature_corr(cols=cols)
 
         # print stats about input/output data
         self.stats()
@@ -2067,13 +2068,13 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         self.box_plot(freq=freq)
 
         # principle components
-        self.plot_pcs()
+        visualizer.plot_pcs()
 
         # scatter plots of input/output data
-        self.grouped_scatter(cols=cols)
+        visualizer.grouped_scatter(cols=cols)
 
         # distributions as histograms
-        self.plot_histograms(cols=cols)
+        visualizer.plot_histograms(cols=cols)
 
         return
 

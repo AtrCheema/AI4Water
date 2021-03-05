@@ -133,7 +133,9 @@ class NN(AttributeStore):
                             wrp_layer = None
                         else:
                             add_args = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
-                            layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(layer_outputs, **add_args)
+                            layer_initialized = LAYERS[lyr_name.upper()](**lyr_config)
+                            layer_outputs = layer_initialized(layer_outputs, **add_args)
+                            self.get_and_set_attrs(layer_initialized)
 
             else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                 # it is an executable
@@ -155,7 +157,9 @@ class NN(AttributeStore):
                         wrp_layer = None
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)(call_args, **add_args)
+                        layer_initialized = LAYERS[lyr_name.upper()](**lyr_config)
+                        layer_outputs = layer_initialized(call_args, **add_args)
+                        self.get_and_set_attrs(layer_initialized)
 
             if activation is not None:  # put the string back to dictionary to be saved in config file
                 lyr_config['activation'] = activation
@@ -246,6 +250,13 @@ class NN(AttributeStore):
             raise ValueError(f"The layer name '{lyr}' you specified, does not exist")
 
         return layer_name
+
+    def get_and_set_attrs(self, layer):
+        if layer.__class__.__name__ == "TemporalFusionTransformer":  # check the type without importing the layer
+            # use layer name as there can be more than one layers from same class.
+            setattr(self, f'{layer.name}_attentions', layer.attention_components)
+        return
+
 
 def check_act_fn(config: dict):
     """ it is possible that the config file does not have activation argument or activation is None"""

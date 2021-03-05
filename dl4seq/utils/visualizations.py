@@ -6,8 +6,12 @@ import pandas as pd
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.utils import _missing_vals
+from dl4seq.utils.utils import find_tot_plots, set_fig_dim
+from dl4seq.utils.transformations import Transformations
 
 
 class Intrepretation(object):
@@ -196,11 +200,13 @@ def scatter_numpy(self, dim, index, src):
 
 class Visualizations(object):
 
-    def __init__(self, config: dict=None, data=None, path=None, dpi=300):
+    def __init__(self, config: dict=None, data=None, path=None, dpi=300, in_cols=None, out_cols=None):
         self.config = config
         self.data=data
         self.path = path
         self.dpi = dpi
+        self.in_cols = in_cols
+        self.out_cols = out_cols
 
     @property
     def config(self):
@@ -400,8 +406,377 @@ class Visualizations(object):
         self.save_or_show(fname=name, save=True if name is not None else False)
         return
 
+    def plot_index(self, save=True, **kwargs):
+        """plots the datetime index of dataframe"""
+        if isinstance(self.data, pd.DataFrame):
+            self._plot_index(self.data, save=save, **kwargs)
 
+        elif isinstance(self.data, list):
+            for data in self.data:
+                if isinstance(data, pd.DataFrame):
+                    self._plot_index(data, save=save, **kwargs)
 
-def set_fig_dim(fig, width, height):
-    fig.set_figwidth(width)
-    fig.set_figheight(height)
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.values():
+                if isinstance(data, pd.DataFrame):
+                    self._plot_index(data, save=save, **kwargs)
+        return
+
+    def _plot_index(self,
+                    index,
+                    save=True,
+                    fname="index",
+                    figsize=(10,5),
+                    dpi=200,
+                    label_fs=18,
+                    title_fs=20,
+                    leg_fs=14,
+                    leg_ms=4,
+                    color='r',
+                    ):
+        """
+        Plots the index of a datafram.
+        index: can be pandas dataframe or index itself. if dataframe, its index will be used for plotting
+        """
+        plt.close('all')
+        if isinstance(index, pd.DataFrame):
+            index=index.index
+
+        idx = pd.DataFrame(np.ones(len(index)), index=index, columns=['Observations'])
+        axis = idx.plot(linestyle='', marker='.', color=color, figsize=figsize)
+        axis.legend(fontsize=leg_fs, markerscale=leg_ms)
+        axis.set_xlabel(axis.get_xlabel(), fontdict={'fontsize': label_fs})
+        axis.set_title("Temporal distribution of Observations", fontsize=title_fs)
+        axis.get_yaxis().set_visible(False)
+        self.save_or_show(save=save, fname=fname, where='data', dpi=dpi)
+        return
+
+    def data_heatmap(self, cols=None, **kwargs):
+        if isinstance(self.data, pd.DataFrame):
+            self._data_heatmap(self.data, cols=cols, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in self.data:
+                if isinstance(data, pd.DataFrame):
+                    self._data_heatmap(data, cols=cols[idx], fname=f"data_heatmap_{idx}", **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    _cols = cols[data_name] if cols is not None else None
+                    self._data_heatmap(data, _cols, fname=data_name, **kwargs)
+        return
+
+    def _data_heatmap(self,
+                      data:pd.DataFrame,
+                      cols=None,
+                      figsize: tuple = (20, 20),
+                      spine_color: str = "#EEEEEE",
+                      save=True,
+                      fname=""
+                     ):
+
+        if cols is None:
+            cols = data.columns
+        fig, ax2 = plt.subplots(figsize=figsize)
+        # ax2 - Heatmap
+        sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=ax2)
+        ax2.set_yticks(ax2.get_yticks()[0::5].astype('int'))
+        ax2.set_yticklabels(ax2.get_yticks(),
+                            fontsize="16")
+        ax2.set_xticklabels(
+            ax2.get_xticklabels(),
+            horizontalalignment="center",
+            fontweight="light",
+            fontsize="12",
+        )
+        ax2.tick_params(length=1, colors="#111111")
+        ax2.set_ylabel("Examples", fontsize="24")
+        for _, spine in ax2.spines.items():
+            spine.set_visible(True)
+            spine.set_color(spine_color)
+
+        self.save_or_show(save=save, fname=fname+'_heat_map', where='data', dpi=500)
+        return
+
+    def plot_missing(self, save=True, cols=None, **kwargs):
+
+        if isinstance(self.data, pd.DataFrame):
+            self.plot_missing_df(self.data, cols=cols, save=save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                _cols = cols[idx] if isinstance(cols, list) else None
+                self.plot_missing_df(data, cols=None, prefix=str(idx), save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    _cols = cols[data_name] if cols else None
+                    self.plot_missing_df(data, cols=_cols, fname=data_name, save=save, **kwargs)
+        return
+
+    def plot_missing_df(self,
+                        data:pd.DataFrame,
+                        cols=None,
+                        figsize:tuple=(20,20),
+                        fname:str='',
+                        save:bool=True,
+                        **kwargs):
+        if cols is None:
+            cols = data.columns
+        data = data[cols]
+        # Identify missing values
+        mv_total, mv_rows, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
+
+        if mv_total == 0:
+            print("No missing values found in the dataset.")
+        else:
+            # Create figure and axes
+            fig = plt.figure(figsize=figsize)
+            gs = fig.add_gridspec(nrows=1, ncols=1, left=0.1, wspace=0.05)
+            ax1 = fig.add_subplot(gs[:1, :5])
+
+            # ax1 - Barplot
+            ax1 = sns.barplot(x=list(data.columns), y=np.round(mv_cols_ratio * 100, 2), ax=ax1, **kwargs)
+            ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
+            ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)
+            ax1.grid(linestyle=":", linewidth=1)
+            ax1.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+            ax1.set_yticklabels(ax1.get_yticks(),
+                                fontsize="18")
+            ax1.set_ylabel("Missing Percentage", fontsize="24")
+            ax1.set_xticklabels(
+                ax1.get_xticklabels(),
+                horizontalalignment="center",
+                fontweight="light",
+                rotation=90,
+                fontsize="12",
+            )
+            ax1.tick_params(axis="y", colors="#111111", length=1)
+
+            # annotate missing values on top of the bars
+            for rect, label in zip(ax1.patches, mv_cols):
+                height = rect.get_height()
+                ax1.text(
+                    0.1 + rect.get_x() + rect.get_width() / 2,
+                    height + 0.5,
+                    label,
+                    ha="center",
+                    va="bottom",
+                    rotation="90",
+                    alpha=0.5,
+                    fontsize="11",
+                )
+        self.save_or_show(save=save, fname=fname+'_missing_vals', where='data', dpi=500)
+        return
+
+    def plot_histograms(self, save=True, cols=None, **kwargs):
+        """Plots distribution of data as histogram.
+        kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
+        """
+        if isinstance(self.data, pd.DataFrame):
+            self.plot_his_df(self.data, save=save, cols=cols, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self.plot_his_df(data, prefix=str(idx), cols=cols, save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.plot_his_df(data, prefix=data_name, save=save, **kwargs)
+        return
+
+    def plot_his_df(self, data:pd.DataFrame, prefix='', cols=None, save=True, bins=100, figsize=(20, 14), **kwargs):
+        if cols is None:
+            cols = data.columns
+        data[cols].hist(bins=bins, figsize=figsize, **kwargs)
+        self.save_or_show(fname=f"hist_{prefix}", save=save, where='data')
+        return
+
+    def plot_feature_feature_corr(self, cols=None, remove_targets=True, save=True, **kwargs):
+
+        if cols is None:
+            cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
+
+        if isinstance(self.data, pd.DataFrame):
+            self._feature_feature_corr(self.data, cols, save=save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                if isinstance(data, pd.DataFrame):
+                    self._feature_feature_corr(data, cols[idx], prefix=str(idx), save=save, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self._feature_feature_corr(data, cols, prefix=data_name, save=save, **kwargs)
+        return
+
+    def _feature_feature_corr(self,
+                              data,
+                              cols=None,
+                              prefix='',
+                              save=True,
+                              split=None,
+                              threshold=0,
+                              figsize=(20,20),
+                              **kwargs):
+        """
+        split : Optional[str], optional
+        Type of split to be performed {None, "pos", "neg", "high", "low"}, by default None
+        method : str, optional
+                 {"pearson", "spearman", "kendall"}, by default "pearson"
+
+        kwargs
+            * vmax: float, default is calculated from the given correlation \
+                coefficients.
+                Value between -1 or vmin <= vmax <= 1, limits the range of the cbar.
+            * vmin: float, default is calculated from the given correlation \
+                coefficients.
+                Value between -1 <= vmin <= 1 or vmax, limits the range of the cbar.
+        To plot positive correlation only:
+        _feature_feature_corr(model.data, list(model.data.columns), split="pos")
+        To plot negative correlation only
+        _feature_feature_corr(model.data, list(model.data.columns), split="neg")
+        """
+        plt.close('all')
+        method = kwargs.get('method', 'pearson')
+
+        if cols is None:
+            cols = data.columns
+
+        corr = data[cols].corr(method=method)
+
+        if split == "pos":
+            corr = corr.where((corr >= threshold) & (corr > 0))
+        elif split == "neg":
+            corr = corr.where((corr <= threshold) & (corr < 0))
+
+        mask = np.zeros_like(corr, dtype=np.bool)
+
+        vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
+        vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        _kwargs = dict()
+        _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
+        _kwargs['cmap'] = kwargs.get('cmap', "BrBG")
+        _kwargs['vmax'] = kwargs.get('vmax', vmax)
+        _kwargs['vmin'] = kwargs.get('vmin', vmin)
+        _kwargs['linewidths'] = kwargs.get('linewidths', 0.5)
+        _kwargs['annot_kws'] = kwargs.get('annot_kws', {"size": 10})
+        _kwargs['cbar_kws'] = kwargs.get('cbar_kws', {"shrink": 0.95, "aspect": 30})
+
+        ax = sns.heatmap(corr, center=0, fmt=".2f", ax=ax, **_kwargs)
+        ax.set(frame_on=True)
+        self.save_or_show(save, fname=f"{split if split else ''}_feature_corr_{prefix}", where="data")
+        return
+
+    def grouped_scatter(self, inputs=True, outputs=True, cols=None, save=True, max_subplots=8, **kwargs):
+
+        fname = "scatter_plot_"
+
+        if cols is None:
+            cols = []
+
+            if inputs:
+                cols += self.in_cols
+                fname += "inputs_"
+            if outputs:
+                fname += "outptuts_"
+        else:
+            assert isinstance(cols, list)
+
+        if isinstance(self.data, pd.DataFrame):
+            self.grouped_scatter_plot_df(self.data[cols], max_subplots, save, **kwargs)
+
+        elif isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                if isinstance(data, pd.DataFrame):
+                    _cols = cols + [self.out_cols[idx]] if outputs else cols
+                    self.grouped_scatter_plot_df(data[_cols], max_subplots, save=save, prefix=str(idx), **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.grouped_scatter_plot_df(data, max_subplots, save=save, prefix=data_name,
+                                                 **kwargs)
+        return
+
+    def grouped_scatter_plot_df(self, data:pd.DataFrame, max_subplots:int=10, save=True, prefix='', **kwargs):
+        """
+        max_subplots: int, it can be set to large number to show all the scatter plots on one axis.
+        """
+        data = data.copy()
+        if data.shape[1] <= max_subplots:
+            self._grouped_scatter_plot(data, save=save,name=f'grouped_scatter_{prefix}',  **kwargs)
+        else:
+            tot_plots = find_tot_plots(data.shape[1], max_subplots)
+            for i in range(len(tot_plots) - 1):
+                st, en = tot_plots[i], tot_plots[i + 1]
+                sub_df = data.iloc[:, st:en]
+                self._grouped_scatter_plot(sub_df, name=f'grouped_scatter_{prefix}_{st}_{en}', **kwargs)
+        return
+
+    def _grouped_scatter_plot(self, df, save=True, name='grouped_scatter', **kwargs):
+        plt.close('all')
+        sns.set()
+        sns.pairplot(df, size=2.5, **kwargs)
+        self.save_or_show(fname=name, save=save, where='data')
+        return
+
+    def plot_pcs(self, num_pcs=None, save=True, save_as_csv=False, figsize=(12, 8), **kwargs):
+        """Plots principle components.
+        kwargs will go to sns.pairplot."""
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self._plot_pcs(data[self.in_cols], num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
+                               hue=self.out_cols[idx], figsize=figsize, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                self._plot_pcs(data[self.in_cols], num_pcs, save=save, prefix=data_name, save_as_csv=save_as_csv,
+                               hue=self.out_cols,
+                               figsize=figsize, **kwargs)
+        else:
+            self._plot_pcs(self.data[self.in_cols], num_pcs, save=save, save_as_csv=save_as_csv, hue=self.out_cols,
+                           figsize=figsize, **kwargs)
+        return
+
+    def _plot_pcs(self, data, num_pcs, save=True, prefix='', save_as_csv=False, hue=None, figsize=(12,8), **kwargs):
+
+        if num_pcs is None:
+            num_pcs = int(data.shape[1]/2)
+
+        #df_pca = data[self.in_cols]
+        #pca = PCA(n_components=num_pcs).fit(df_pca)
+        #df_pca = pd.DataFrame(pca.transform(df_pca))
+
+        transformer = Transformations(data=data, method='pca', n_components=num_pcs, replace_nans=True)
+        df_pca = transformer.transform()
+
+        pcs = ['pc' + str(i + 1) for i in range(num_pcs)]
+        df_pca.columns = pcs
+
+        if hue is not None:
+            if isinstance(hue, list):
+                hue = hue[0]
+            if hue in data:
+                df_pca[hue] = data[hue]
+
+                if df_pca[hue].isna().sum() > 0: # output columns contains nans, so don't use it as hue.
+                    hue = None
+            else: # ignore it
+                hue = None
+
+        if save_as_csv:
+            df_pca.to_csv(os.path.join(self.path, f"data\\first_{num_pcs}_pcs_{prefix}"))
+
+        plt.close('all')
+        plt.figure(figsize=figsize)
+        sns.pairplot(data=df_pca, vars=pcs, hue=hue, **kwargs)
+        self.save_or_show(fname=f"first_{num_pcs}_pcs_{prefix}", save=save, where='data')
+        return
