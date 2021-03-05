@@ -18,7 +18,6 @@ except ModuleNotFoundError:
 
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.utils import _missing_vals
-from dl4seq.utils.TSErrors import FindErrors
 
 try:
     from dl4seq.utils.utils_from_see_rnn import rnn_histogram
@@ -675,74 +674,6 @@ class Plots(object):
                 trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
                 self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
 
-    def plot_results(self, true, predicted:pd.DataFrame, save=True, name=None, where=None):
-        """
-        # kwargs can be any/all of followings
-            # fillstyle:
-            # marker:
-            # linestyle:
-            # markersize:
-            # color:
-        """
-
-        self.regplot_using_searborn(true, predicted, save=save, name=name, where=where)
-        plt.close('all')
-        mpl.rcParams.update(mpl.rcParamsDefault)
-
-        fig, axis = plt.subplots()
-        set_fig_dim(fig, 12, 8)
-
-        # it is quite possible that when data is datetime indexed, then it is not equalidistant and large amount of graph
-        # will have not data in that case lines plot will create a lot of useless interpolating lines where no data is present.
-        style = '.' if isinstance(true.index, pd.DatetimeIndex) else '-'
-
-        if np.isnan(true.values).sum() > 0:
-            style = '.' # For Nan values we should be using this style otherwise nothing is plotted.
-
-        ms = 4 if style == '.' else 2
-
-        axis.plot(predicted, style, color='r', linestyle='-', marker='', label='Prediction')
-
-        axis.plot(true, style, color='b', marker='o', fillstyle='none',  markersize=ms, label='True')
-
-        axis.legend(loc="best", fontsize=22, markerscale=4)
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-        plt.xlabel("Time", fontsize=18)
-
-        self.save_or_show(save=save, fname=name, close=False, where=where)
-        return
-
-    def regplot_using_searborn(self, true, pred, save, name, where='plots', **kwargs):
-        # https://seaborn.pydata.org/generated/seaborn.regplot.html
-        if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
-            true = true.values.reshape(-1,)
-        if any([isinstance(pred, _type) for _type in [pd.DataFrame, pd.Series]]):
-            pred = pred.values.reshape(-1,)
-
-        plt.close('all')
-
-        s = kwargs.get('s', 20)
-        cmap = kwargs.get('cmap', 'winter')  # https://matplotlib.org/stable/tutorials/colors/colormaps.html
-        figsize = kwargs.get('figsize', (8, 5.5))
-
-        plt.figure(figsize=figsize)
-        points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
-
-        if kwargs.get('annotate', True):
-            plt.annotate(f'$R^{2}$: {round(FindErrors(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
-                     horizontalalignment='right', verticalalignment='top', fontsize=16)
-
-        if kwargs.get('colorbar', False):
-            plt.colorbar(points)
-
-        sns.regplot(x=true, y=pred, scatter=False, color=".1")
-        plt.xlabel('Observed', fontsize=14)
-        plt.ylabel('Predicted', fontsize=14)
-
-        self.save_or_show(save=save, fname=name + "_reg", close=False, where=where)
-        return
-
     def f_importances_svm(self, coef, names, save):
 
         plt.close('all')
@@ -758,65 +689,6 @@ class Plots(object):
 
         plt.xticks(ticks=range(features), labels=self.in_cols, rotation=90, fontsize=12)
         self.save_or_show(save=save, fname=f"{list(self.config['model'].keys())[0]}_feature_importance")
-        return
-
-    def plot_loss(self, history: dict, name="loss_curve"):
-
-
-        plt.clf()
-        plt.close('all')
-        fig = plt.figure()
-        plt.style.use('ggplot')
-        i = 1
-
-        legends = {
-            'mean_absolute_error': 'Mean Absolute Error',
-            'mape': 'Mean Absolute Percentage Error',
-            'mean_squared_logarithmic_error': 'Mean Squared Logrithmic Error',
-            'pbias': "Percent Bias",
-            "nse": "Nash-Sutcliff Efficiency",
-            "kge": "Kling-Gupta Efficiency"
-        }
-
-        sub_plots = {1: {'axis': (1,1), 'width': 10, 'height': 10},
-                     2: {'axis': (1, 1), 'width': 10, 'height': 10},
-                     3: {'axis': (1, 2), 'wdith': 10, 'height': 10},
-                     4: {'axis': (1, 2), 'width': 10, 'height': 10},
-                     5: {'axis': (1, 3), 'width': 15, 'height': 10},
-                     6: {'axis': (1, 3), 'width': 20, 'height': 20},
-                     7: {'axis': (3, 2), 'width': 20, 'height': 20},
-                     8: {'axis': (4, 2), 'width': 20, 'height': 20},
-                     9: {'axis': (5, 2), 'width': 20, 'height': 20},
-                     10: {'axis': (5, 2), 'width': 20, 'height': 20},
-                     12: {'axis': (4, 3), 'width': 20, 'height': 20},
-                     }
-
-        epochs = range(1, len(history['loss']) + 1)
-        axis_cache = {}
-
-        for key, val in history.items():
-
-            m_name = key.split('_')[1:] if 'val' in key and '_' in key else key
-
-            if isinstance(m_name, list):
-                m_name = '_'.join(m_name)
-            if m_name in list(axis_cache.keys()):
-                axis = axis_cache[m_name]
-                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ')
-                axis.legend()
-            else:
-                axis = fig.add_subplot(*sub_plots[len(history)]['axis'], i)
-                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ')
-                axis.legend()
-                axis.set_xlabel("Epochs")
-                axis.set_ylabel(legends.get(key, key))
-                axis_cache[key] = axis
-                i += 1
-            axis.set(frame_on=True)
-
-        fig.set_figheight(sub_plots[len(history)]['height'])
-        fig.set_figwidth(sub_plots[len(history)]['width'])
-        self.save_or_show(fname=name, save=True if name is not None else False)
         return
 
     def box_plot(self,

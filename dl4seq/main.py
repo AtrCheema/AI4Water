@@ -26,6 +26,7 @@ from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
 from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.visualizations import Visualizations
 
 
 def reset_seed(seed):
@@ -923,11 +924,15 @@ class Model(NN, Plots):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
+        visualizer = Visualizations(path=self.path)
+
         # for cases if they are 2D/1D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
         out_cols = list(self.out_cols.values())[0] if isinstance(self.out_cols, dict) else self.out_cols
         for idx, out in enumerate(out_cols):
+
+            horizon_errors = {metric_name:[] for metric_name in ['nse', 'rmse']}
             for h in range(self.forecast_len):
 
                 errs = dict()
@@ -943,7 +948,7 @@ class Model(NN, Plots):
                 fname = prefix + out + '_' + str(h) + ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='time')
 
-                self.plot_results(t, p, name=prefix + out + '_' + str(h), where=fpath)
+                visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=fpath)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -956,6 +961,11 @@ class Model(NN, Plots):
                 errs[out + 'predicted_stats_' + str(h)] = stats(p)
 
                 save_config_file(fpath, errors=errs, name=prefix)
+
+                [horizon_errors[p].append(getattr(errors, p)()) for p in horizon_errors.keys()]
+
+            if self.forecast_len>1:
+                visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
         return
 
     def build(self):
@@ -1074,6 +1084,7 @@ class Model(NN, Plots):
         """data: if not None, it will directlry passed to fit.
         data_keys: allowed only if self.data is a dictionary. You can decided which to use
                    use for training by specifying the keys of self.data dictionary"""
+        visualizer = Visualizations(path=self.path)
         self.is_training = True
         if data_keys is not None and self.num_input_layers == 1:
             pass
@@ -1100,7 +1111,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         if self.category.upper() == "DL":
             history = self._fit(inputs, outputs, self.val_data(), **callbacks)
 
-            self.plot_loss(history.history)
+            visualizer.plot_loss(history.history)
 
             # load the best weights so that the best weights can be used during model.predict calls
             best_weights = find_best_weight(os.path.join(self.path, 'weights'))

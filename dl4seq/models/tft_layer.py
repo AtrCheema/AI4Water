@@ -378,6 +378,8 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             'future_flags': future_flags[Ellipsis, 0, :] if future_flags is not None else None
         }
 
+        self.attention_components = attention_components
+
         if self.return_attention_components:
             return transformer_layer, attention_components
 
