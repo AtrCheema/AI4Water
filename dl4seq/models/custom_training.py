@@ -9,6 +9,7 @@ def train_step(keras_model, data):
     # Unpack the data. Its structure depends on your model and
     # on what you pass to `fit()`.
     x, y = data
+    # TODO, in graph mode, masking of nans does not work
 
     with tf.GradientTape() as tape:
         y_pred = keras_model(x, training=True)  # Forward pass

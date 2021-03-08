@@ -1,24 +1,24 @@
 import json
 import os
-from types import MethodType
-import random
 import math
-import warnings
 import time
+import random
+import warnings
+from types import MethodType
 
-from sklearn.model_selection import train_test_split
 import h5py
+import joblib
+import matplotlib  # for version info
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib  # for version info
-import joblib
+from sklearn.model_selection import train_test_split
 
 from dl4seq.nn_tools import NN
 from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from dl4seq.backend import tpot_models
 from dl4seq.backend import imputations, sklearn_models
-from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now, Jsonize
+from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
 from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, prepare_data
 from dl4seq.utils.utils import find_best_weight
 from dl4seq.utils.plotting_tools import Plots
@@ -67,7 +67,7 @@ class Model(NN, Plots):
                  data=None,
                  prefix: str = None,
                  path: str = None,
-                 verbosity=1,
+                 verbosity:int=1,
                  **kwargs):
 
         config = make_model(**kwargs)
@@ -591,6 +591,9 @@ class Model(NN, Plots):
         """If nans are present in y, then tf.keras.model.fit is called as it is otherwise it is called with custom
         train_step and test_step which avoids calculating loss at points containing nans."""
         if kwargs.pop('nans_in_y_exist'):
+            y = kwargs['y']
+            assert np.isnan(y).sum() > 0
+            kwargs['y'] = np.nan_to_num(y)  # In graph mode, masking of nans does not work
             self._model.train_step = MethodType(train_step, self._model)
             self._model.test_step = MethodType(test_step, self._model)
 
@@ -688,27 +691,10 @@ class Model(NN, Plots):
             train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
         elif self.num_input_layers > 1 and isinstance(x_train, list):
             assert len(self._model.outputs) == 1
-
-            def train_generator():
-                for idx, l in enumerate(y_train):
-                    x = [x_train[i][idx] for i in range(len(x_train))]
-                    yield {inp_name: inp for inp_name, inp in zip(self.input_layer_names, x)}, l
-
-            inp_lyr_shapes = [self.layers_out_shapes[inp_name][0][1:] for inp_name in self.input_layer_names]
-            # assuming that there is only one output
-            out_lyr_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
-            train_dataset = tf.data.Dataset.from_generator(
-                train_generator,
-                output_shapes=({inp_name: inp_shp for inp_name, inp_shp in zip(self.input_layer_names, inp_lyr_shapes)},
-                               out_lyr_shape),
-                output_types=({inp_name: tf.float32 for inp_name in self.input_layer_names}, tf.float32))
+            train_dataset = make_dataset(self, x_train, y_train, shuffle=self.config['suffle'])
         else:
             raise NotImplementedError
 
-        if self.config['shuffle']:
-            train_dataset = train_dataset.shuffle(self.config['buffer_size'])
-        train_dataset = train_dataset.batch(self.config['batch_size'],
-                                            drop_remainder=self.config['drop_remainder'])
         if x_val is not None:
             if self.num_input_layers == 1:
                 if isinstance(x_val, list):
@@ -716,23 +702,7 @@ class Model(NN, Plots):
                 assert isinstance(x_val, np.ndarray)
                 val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
             else:
-                def val_generator():
-                    for idx, l in enumerate(y_val):
-                        x = [x_val[i][idx] for i in range(len(x_val))]
-                        yield {inp_name: inp for inp_name, inp in zip(self.input_layer_names, x)}, l
-
-                inp_lyr_shapes = [self.layers_out_shapes[inp_name][0][1:] for inp_name in self.input_layer_names]
-                # assuming that there is only one output
-                out_lyr_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
-                val_dataset = tf.data.Dataset.from_generator(
-                    val_generator,
-                    output_shapes=(
-                    {inp_name: inp_shp for inp_name, inp_shp in zip(self.input_layer_names, inp_lyr_shapes)},
-                    out_lyr_shape),
-                    output_types=({inp_name: tf.float32 for inp_name in self.input_layer_names}, tf.float32))
-
-            val_dataset = val_dataset.batch(self.config['batch_size'],
-                                            drop_remainder=self.config['drop_remainder'])
+                val_dataset = make_dataset(self, x_val, y_val, shuffle=False)
         else:
             val_dataset = val_data
 
@@ -1267,7 +1237,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                          inputs: np.ndarray,
                          predicted: np.ndarray,
                          true: np.ndarray,
-                         in_cols, out_cols,
+                         in_cols,
+                         out_cols,
                          scaler_key: str,
                          transformation=None):
         """
@@ -2094,12 +2065,12 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         fname += str(dateandtime_now())
 
-        def save_stats(_description, fpath):
+        def save_stats(_description, _fpath):
 
             if out_fmt == "csv":
-                pd.DataFrame.from_dict(_description).to_csv(fpath + ".csv")
+                pd.DataFrame.from_dict(_description).to_csv(_fpath + ".csv")
             else:
-                save_config_file(others=_description, path=fpath + ".json")
+                save_config_file(others=_description, path=_fpath + ".json")
 
         description = {}
         if isinstance(self.data, pd.DataFrame):
@@ -2184,3 +2155,30 @@ def maybe_three_outputs(data, num_outputs=2):
             return data[0], data[2]
     elif num_outputs == 3:
         return data[0], data[1], data[2]
+
+
+def make_dataset(model, x, y, shuffle):
+    """
+    Makes dataset for more than one inputs.
+    model: dl4seq's instance."""
+    def train_generator():
+        for idx, l in enumerate(y):
+            _x = [x[i][idx] for i in range(len(x))]
+            yield {inp_name: inp for inp_name, inp in zip(model.input_layer_names, _x)}, l
+
+    inp_lyr_shapes = [model.layers_out_shapes[inp_name][0][1:] for inp_name in model.input_layer_names]
+    # assuming that there is only one output
+    out_lyr_shape = tuple(model._model.outputs[0].shape.as_list()[1:])
+
+    dataset = tf.data.Dataset.from_generator(
+        train_generator,
+        output_shapes=({inp_name: inp_shp for inp_name, inp_shp in zip(model.input_layer_names, inp_lyr_shapes)},
+                       out_lyr_shape),
+        output_types=({inp_name: tf.float32 for inp_name in model.input_layer_names}, tf.float32))
+
+    if shuffle:
+        dataset = dataset.shuffle(model.config['buffer_size'])
+
+    dataset = dataset.batch(model.config['batch_size'],
+                                    drop_remainder=model.config['drop_remainder'])
+    return dataset

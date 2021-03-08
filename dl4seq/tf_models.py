@@ -301,7 +301,12 @@ class OutputAttentionModel(DualAttentionModel):
 
     def train(self, st=0, en=None, indices=None, **callbacks):
 
-        train_x, train_y, train_label = self.fetch_data(self.data, st=st, en=en, shuffle=True,
+        train_x, train_y, train_label = self.fetch_data(self.data,
+                                                        st=st,
+                                                        en=en,
+                                                        inps=self.in_cols,
+                                                        outs=self.out_cols,
+                                                        shuffle=True,
                                                         write_data=self.config['CACHEDATA'],
                                                         indices=indices)
 
@@ -324,8 +329,12 @@ class OutputAttentionModel(DualAttentionModel):
                 **plot_args):
         setattr(self, 'predict_indices', indices)
 
-        test_x, test_y, test_label = self.fetch_data(self.data, st=st, en=en, shuffle=False,
+        test_x, test_y, test_label = self.fetch_data(self.data,
+                                                     st=st,
+                                                     en=en, shuffle=False,
                                                      write_data=False,
+                                                     inps=self.in_cols,
+                                                     outs=self.out_cols,
                                                      indices=indices)
 
         h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.config['dec_config']['p']))
