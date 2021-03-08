@@ -4,6 +4,7 @@ from typing import Any, Callable, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -35,17 +36,33 @@ class Intrepretation(object):
 
         """
 
+    def tft_attention_components(self, model=None, **train_data_args):
+        """
+        Gets attention components of tft layer from dl4seq's Model.
+        model: a dl4seq's Model instance.
+        train_data_args: keyword arguments which will passed to train_data method to fetch processed input data"""
+        if model is None:
+            model = self.model
+
+        x, _, _ = model.train_data(**train_data_args)
+        attention_components = {}
+
+        for k, v in model.TemporalFusionTransformer_attentions.items():
+            if v is not None:
+                temp_model = tf.keras.Model(inputs=model._model.inputs,
+                                            outputs=v)
+                attention_components[k] = temp_model.predict(x=x, verbose=1, steps=1)
+        return attention_components
+
     def interpret_tft(self, outputs:dict, tft_params:dict, reduction: Union[None, str]=None):
         """
         inspired from  `interpret_output` of PyTorchForecasting
         :param outputs: outputs from tft model. It is expected to have following keys and their values as np.ndarrays
             prediction: (num_examples, forecast_len, outs/quantiles)
             attention: (num_examples, forecast_len, num_heads, total_sequence_length)
-            static_variables: (num_examples, 1, 7)
-            encoder_variables: (batch_size, encoder_length, 1, 13)
-            decoder_variables: (batch_size, decoder_steps, 1, 6)
-            encoder_lengths: (num_examples,)
-            decoder_lengths: (num_examples,)
+            static_variable_selection_weights: (num_examples, 1, num_static_inputs)
+            encoder_variable_selection_weights: (batch_size, encoder_length, 1, num_enocder_inputs)
+            decoder_variable_selection_weights: (batch_size, decoder_steps, 1, num_decoder_inputs)
             groups: (num_examples, num_groups)
             decoder_time_index: (num_examples, forecast_len)
         :param tft_params: parameters which were used to build tft layer
@@ -60,27 +77,30 @@ class Intrepretation(object):
                 encoder_length_histogram: (encoder_length+1)
                 decoder_length_histogram: (decoder_length,)
         """
+        num_examples = outputs['predictions'].shape[0]
+        encoder_lengths = np.full(num_examples, tft_params['num_encoder_steps'])
+        decoder_lengths = np.full(num_examples, tft_params['total_time_steps'] - tft_params['num_encoder_steps'])
 
         # histogram of decode and encode lengths
-        encoder_length_histogram = integer_histogram(outputs["encoder_lengths"], _min=0, _max=tft_params['max_encoder_length'])
+        encoder_length_histogram = integer_histogram(encoder_lengths, _min=0, _max=tft_params['max_encoder_length'])
         decoder_length_histogram = integer_histogram(
-            outputs["decoder_lengths"], _min=1, _max=outputs["decoder_variables"].size(1)
+            decoder_lengths, _min=1, _max=decoder_lengths.size(1)
         )
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = outputs["encoder_variables"].squeeze(-2)
-        encode_mask = create_mask(encoder_variables.size(1), outputs["encoder_lengths"])
+        encode_mask = create_mask(encoder_variables.size(1), encoder_lengths)
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             outputs["encoder_lengths"]
-            .where(outputs["encoder_lengths"] > 0, np.ones_like(outputs["encoder_lengths"]))
+            .where(encoder_lengths > 0, np.ones_like(encoder_lengths))
             .unsqueeze(-1)
         )
 
-        decoder_variables = outputs["decoder_variables"].squeeze(-2)
-        decode_mask = create_mask(decoder_variables.size(1), outputs["decoder_lengths"])
+        decoder_variables = decoder_lengths.squeeze(-2)
+        decode_mask = create_mask(decoder_variables.size(1), decoder_lengths)
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
-        decoder_variables /= outputs["decoder_lengths"].unsqueeze(-1)
+        decoder_variables /= decoder_lengths.unsqueeze(-1)
 
         if reduction is not None:  # if to average over batches
             assert reduction in ['mean', 'sum']

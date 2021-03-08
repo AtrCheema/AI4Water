@@ -20,46 +20,80 @@ stack = tf.keras.backend.stack
 
 class TemporalFusionTransformer(tf.keras.layers.Layer):
     """
+    Implements the model of https://arxiv.org/pdf/1912.09363.pdf
+    This layer applies variable selection three times. First on static inputs, then on encoder inputs and then
+    on decoder inputs. The corresponding weights are called `static_weights`, `historical_weights` and `future_weights`
+    respectively.
+
     1, 11, 21, 31, a
     2, 12, 22, 32, b
     3, 13, 23, 33, c
     4, 14, 24, 34, d
 
-    known_categorical_inputs: a,b,c
-    obs_inputs
-    unknown_inputs
-    static_inputs
-    time_steps: int, lookback + horizons. Total number of input time steps per forecast date
-    input_size: int, number of input features
-    _static_input_loc: None/list, location of static inputs
-    known_categorical_inputs: list,
-    future_inputs=bool, default False, whether we have future data as input or not.
-    category_counts: list, Number of categories per categorical variable
-    _static_input_loc: list
-    use_cudnn: Whether to use Keras CuDNNLSTM or standard LSTM layers
-    hidden_units: Internal state size of TFT
+    Arguments:
+        hidden_units: int, determines the depth/weight matrices size in TemporalFusionTransformer.
+        num_encoder_steps: int, lookback steps used in the model.
+        num_heads: int, >=1, number of attention heads to be used in MultiheadAttention layer.
+        num_inputs: int, number of input features
+        total_time_steps: int, > num_encoder_steps, This is sum of lookback steps + forecast length. Forecast length
+                          is the number of horizons to be predicted.
+        known_categorical_inputs: list, a,b,c
+        obs_inputs
+        unknown_inputs
+        static_inputs
+        static_input_loc: None/list, location of static inputs
+        category_counts: list, Number of categories per categorical variable
+        use_cudnn: bool, default False, Whether to use Keras CuDNNLSTM or standard LSTM layers
+        dropout_rate: float, default 0.1, >=0 and <=1 amount of dropout to be used at GRNs.
+        future_inputs: bool, whether the given data contains futre known observations or not.
+        return_attention_components: bool, If True, then this layer (upon its call) will return outputs + attention
+                                     componnets. Attention components are dictionary consisting of following keys
+                                     and their values as numpy arrays.
+
+        return_sequences: bool, if True, then output and attention weights will consist of encoder_lengths/lookback
+                          and decoder_length/forecast_len. Otherwise predictions for only decoder_length will be
+                          returned.
 
 
     """
-    def __init__(self, raw_params:dict, **kwargs):
+    def __init__(self,
+                 hidden_units:int,
+                 num_encoder_steps:int,
+                 num_heads:int,
+                 num_inputs:int,
+                 total_time_steps:int,
+                 known_regular_inputs,
+                 input_obs_loc,
+                 static_input_loc,
+                 category_counts,
+                 known_categorical_inputs,
+                 stack_size:int = 1,
+                 use_cudnn:bool = False,
+                 dropout_rate:float = 0.1,
+                 future_inputs:bool = False,
+                 return_attention_components:bool = False,
+                 return_sequences:bool=False,
+                 **kwargs):
 
-        self.time_steps = int(raw_params['total_time_steps'])
-        self.input_size = int(raw_params['num_inputs'])
-        self._known_regular_input_idx = raw_params['known_regular_inputs']  # [1,2,3]
-        self._input_obs_loc = raw_params['input_obs_loc'] # [0]
-        self._static_input_loc = raw_params['static_input_loc']  #[3,4]
-        self.category_counts = raw_params['category_counts'] #[2, 2]
-        self._known_categorical_input_idx = raw_params['known_categorical_inputs']
+        self.time_steps = total_time_steps
+        self.input_size = num_inputs
+        self._known_regular_input_idx = known_regular_inputs  # [1,2,3]
+        self._input_obs_loc = input_obs_loc # [0]
+        self._static_input_loc = static_input_loc  #[3,4]
+        self.category_counts = category_counts #[2, 2]
+        self._known_categorical_input_idx = known_categorical_inputs
 
         # Network params
-        self.use_cudnn = raw_params['use_cudnn']  # Whether to use GPU optimised LSTM
-        self.hidden_units = int(raw_params['hidden_units'])
-        self.dropout_rate = float(raw_params['dropout_rate'])
-        self.encoder_steps = int(raw_params['num_encoder_steps'])  # historical steps/lookback steps
-        self.num_heads = int(raw_params['num_heads'])
+        self.use_cudnn = use_cudnn  # Whether to use GPU optimised LSTM
+        self.hidden_units = int(hidden_units)
+        self.dropout_rate = float(dropout_rate)
+        self.encoder_steps = num_encoder_steps  # historical steps/lookback steps
+        self.num_heads = int(num_heads)
+        self.num_stacks= int(stack_size)
 
-        self.future_inputs = raw_params.get('future_inputs', False)
-        self.return_attention_components = raw_params.get('return_attention_components', False)
+        self.future_inputs = future_inputs
+        self.return_attention_components = return_attention_components
+        self.return_sequences=return_sequences
 
         super().__init__(**kwargs)
 
@@ -72,9 +106,9 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
 
         unknown_inputs, known_combined_layer, obs_inputs, static_inputs = self.get_tft_embeddings(alle_inputs)
 
-        # known_combined_layer.shape = (?, time_steps, hidden_units, num_outputs)
-        # obs_inputs.shape = (?, time_steps, hidden_units, 1)
-        # static_inputs.shape = (?, num_cat_variables, hidden_units)
+        # known_combined_layer.shape = (num_examples, time_steps, hidden_units, num_outputs)
+        # obs_inputs.shape = (num_examples, time_steps, hidden_units, 1)
+        # static_inputs.shape = (num_examples, num_cat_variables, hidden_units)
 
         # Isolate known and observed historical inputs.
         if unknown_inputs is not None:
@@ -86,7 +120,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         else:
             if obs_inputs is not None:
                 # we are extracting only historical data i.e. lookback from obs_inputs
-                # (?, encoder_steps, hidden_units, 4) <- (?, encoder_steps, hidden_units, num_outputs) | (?, encoder_steps, hidden_units, 1)
+                # (num_examples, encoder_steps, hidden_units, 4) <- (num_examples, encoder_steps, hidden_units, num_outputs) | (num_examples, encoder_steps, hidden_units, 1)
                 historical_inputs = concatenate([
                     known_combined_layer[:, :encoder_steps, :],
                     obs_inputs[:, :encoder_steps, :]], axis=-1, name="historical_inputs")
@@ -96,7 +130,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         if self.future_inputs:
             assert self.time_steps - self.encoder_steps > 0
             # Isolate only known future inputs.
-            future_inputs = known_combined_layer[:, encoder_steps:, :]  # (?, 24, hidden_units, num_outputs)
+            future_inputs = known_combined_layer[:, encoder_steps:, :]  # (num_examples, 24, hidden_units, num_outputs)
         else:
             future_inputs=None
 
@@ -104,7 +138,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             """Applies variable selection network to static inputs.
 
             Args:
-              embedding: Transformed static inputs (?, num_cat_variables, 160)
+              embedding: Transformed static inputs (num_examples, num_cat_variables, hidden_units)
 
             Returns:
               Tensor output for variable selection network
@@ -113,10 +147,10 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             # Add temporal features
             _, num_static, _ = embedding.get_shape().as_list()
 
-            flatten = tf.keras.layers.Flatten()(embedding)  # (?, hidden_units*num_cat_variables)
+            flatten = tf.keras.layers.Flatten()(embedding)  # (num_examples, hidden_units*num_cat_variables)
 
             # Nonlinear transformation with gated residual network.
-            mlp_outputs = gated_residual_network(  # (?, num_cat_variables)
+            mlp_outputs = gated_residual_network(  # (num_examples, num_cat_variables)
                 flatten,
                 self.hidden_units,
                 output_size=num_static,
@@ -126,13 +160,13 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                 name='GRN_static'
             )
 
-            # (?, num_cat_variables)
-            sparse_weights = tf.keras.layers.Activation('softmax', name='sparse_weights')(mlp_outputs)
-            sparse_weights = K.expand_dims(sparse_weights, axis=-1)  # (?, num_cat_variables, 1)
+            # (num_examples, num_cat_variables)
+            sparse_weights = tf.keras.layers.Activation('softmax', name='sparse_static_weights')(mlp_outputs)
+            sparse_weights = K.expand_dims(sparse_weights, axis=-1)  # (num_examples, num_cat_variables, 1)
 
             trans_emb_list = []
             for i in range(num_static):
-                e = gated_residual_network(  # e.shape = (?, 1, hidden_units)
+                e = gated_residual_network(  # e.shape = (num_examples, 1, hidden_units)
                     embedding[:, i:i + 1, :],
                     self.hidden_units,
                     dropout_rate=self.dropout_rate,
@@ -141,13 +175,13 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                 )
                 trans_emb_list.append(e)
 
-            # (?, num_cat_variables, hidden_units)
+            # (num_examples, num_cat_variables, hidden_units)
             transformed_embedding = concatenate(trans_emb_list, axis=1, name="transfomred_embedds")
 
-            combined = tf.keras.layers.Multiply()(  # (?, num_cat_variables, hidden_units)
+            combined = tf.keras.layers.Multiply(name="StaticWStaticEmb")(  # (num_examples, num_cat_variables, hidden_units)
                 [sparse_weights, transformed_embedding])
 
-            static_vec = K.sum(combined, axis=1)  # (?, hidden_units)
+            static_vec = K.sum(combined, axis=1)  # (num_examples, hidden_units)
 
             return static_vec, sparse_weights
 
@@ -160,30 +194,30 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         if static_inputs is not None:
             static_encoder, static_weights = static_combine_and_mask(static_inputs)
 
-            # static_encoder.shape = (?, hidden_units)
-            # static_weights.shape = (?, num_cat_variables, 1)
-            static_context_variable_selection = gated_residual_network(  # (?, hidden_units)
+            # static_encoder.shape = (num_examples, hidden_units)
+            # static_weights.shape = (num_examples, num_cat_variables, 1)
+            static_context_variable_selection = gated_residual_network(  # (num_examples, hidden_units)
                 static_encoder,
                 self.hidden_units,
                 dropout_rate=self.dropout_rate,
                 use_time_distributed=False,
                 name="GNR_st_cntxt_var_select"
             )
-            static_context_enrichment = gated_residual_network(  # (?, hidden_units)
+            static_context_enrichment = gated_residual_network(  # (num_examples, hidden_units)
                 static_encoder,
                 self.hidden_units,
                 dropout_rate=self.dropout_rate,
                 use_time_distributed=False,
                 name="GRN_st_cntxt_enrich"
             )
-            static_context_state_h = gated_residual_network(  # (?, hidden_units)
+            static_context_state_h = gated_residual_network(  # (num_examples, hidden_units)
                 static_encoder,
                 self.hidden_units,
                 dropout_rate=self.dropout_rate,
                 use_time_distributed=False,
                 name="GRN_st_cntxt_h"
             )
-            static_context_state_c = gated_residual_network(  # (?, hidden_units)
+            static_context_state_c = gated_residual_network(  # (num_examples, hidden_units)
                 static_encoder,
                 self.hidden_units,
                 dropout_rate=self.dropout_rate,
@@ -195,7 +229,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             """Apply temporal variable selection networks.
 
             Args:
-              embedding: Transformed inputs. (?, encoder_steps, hidden_units, 4)
+              embedding: Transformed inputs. (num_examples, encoder_steps, hidden_units, 4)
               static_context:
               _name: name of encompassing layers
 
@@ -206,11 +240,11 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             # Add temporal features
             _, time_steps, embedding_dim, num_inputs = embedding.get_shape().as_list()
 
-            flatten = K.reshape(embedding,  # (?, encoder_steps, 640)
+            flatten = K.reshape(embedding,  # (num_examples, encoder_steps, 640)
                                 [-1, time_steps, embedding_dim * num_inputs])
 
             if static_context is not None:
-                _expanded_static_context = K.expand_dims(  # (?, 1, hidden_units)
+                _expanded_static_context = K.expand_dims(  # (num_examples, 1, hidden_units)
                     static_context, axis=1)
             else:
                 _expanded_static_context = None
@@ -227,12 +261,12 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                 name=f'GRN_with_{_name}'
             )
 
-            # mlp_outputs.shape (?, encoder_steps, 4)
-            # static_gate.shape (?, encoder_steps, 4)
-            # sparse_weights (?, 1, 1)
+            # mlp_outputs.shape (num_examples, encoder_steps, 4)
+            # static_gate.shape (num_examples, encoder_steps, 4)
+            # sparse_weights (num_examples, 1, 1)
             sparse_weights = tf.keras.layers.Activation('softmax',
-                                                        name=f'sparse_{_name}_weights_softmax')(mlp_outputs)  # (?, encoder_steps, 4)
-            sparse_weights = tf.expand_dims(sparse_weights, axis=2)  # (?, encoder_steps, 1, 4)
+                                                        name=f'sparse_{_name}_weights_softmax')(mlp_outputs)  # (num_examples, encoder_steps, 4)
+            sparse_weights = tf.expand_dims(sparse_weights, axis=2)  # (num_examples, encoder_steps, 1, 4)
 
             # Non-linear Processing & weight application
             trans_emb_list = []
@@ -246,28 +280,28 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                 )
                 trans_emb_list.append(grn_output)
 
-            transformed_embedding = stack(trans_emb_list, axis=-1)  # (?, encoder_steps, hidden_units, 4)
+            transformed_embedding = stack(trans_emb_list, axis=-1)  # (num_examples, encoder_steps, hidden_units, 4)
 
-            combined = tf.keras.layers.Multiply(name=f'sparse_and_transform_{_name}')(  # (?, encoder_steps, hidden_units, 4)
+            combined = tf.keras.layers.Multiply(name=f'sparse_and_transform_{_name}')(  # (num_examples, encoder_steps, hidden_units, 4)
                 [sparse_weights, transformed_embedding])
-            temporal_ctx = K.sum(combined, axis=-1)  # (?, encoder_steps, hidden_units)
+            temporal_ctx = K.sum(combined, axis=-1)  # (num_examples, encoder_steps, hidden_units)
 
             return temporal_ctx, sparse_weights, static_gate
 
-        historical_features, historical_flags, _ = lstm_combine_and_mask(historical_inputs,
+        historical_features, historical_weights, historical_gate = lstm_combine_and_mask(historical_inputs,
                                                                          static_context_variable_selection,
                                                                          _name='history')
-        # historical_features.shape = (?, encoder_steps, hidden_units)
-        # historical_flags (?, encoder_steps, 1, 4)
+        # historical_features.shape = (num_examples, encoder_steps, hidden_units)
+        # historical_flags (num_examples, encoder_steps, 1, 4)
         future_features = None
-        future_flags = None
+        future_weights = None
         if future_inputs is not None:
-            future_features, future_flags, _ = lstm_combine_and_mask(future_inputs,
+            future_features, future_weights, future_gate = lstm_combine_and_mask(future_inputs,
                                                                      static_context_variable_selection,
                                                                      _name='future')
 
-        # future_features = (?, 24, hidden_units)
-        # future_flags = (?, 24, 1, num_outputs)
+        # future_features = (num_examples, decoder_length, hidden_units)
+        # future_flags = (num_examples, decoder_length, 1, num_outputs)
 
         # LSTM layer
         def get_lstm(return_state, _name=None):
@@ -300,31 +334,31 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         initial_states = [static_context_state_h, static_context_state_c] if static_context_state_h is not None else None
         history_lstm, state_h, state_c = get_lstm(return_state=True, _name='history')(historical_features,
                                                                      initial_state=initial_states)
-        # history_lstm = (?, encoder_steps, hidden_units)
+        # history_lstm = (num_examples, encoder_steps, hidden_units)
 
         if future_features is not None:
             future_lstm = get_lstm(return_state=False, _name='future')(
                 future_features, initial_state=[state_h, state_c])
-            # future_lstm = (?, 24, hidden_units)
-            lstm_layer = concatenate([history_lstm, future_lstm], axis=1, name='history_plus_future_lstm')  # (?, time_steps, hidden_units)
+            # future_lstm = (num_examples, decoder_length, hidden_units)
+            lstm_output = concatenate([history_lstm, future_lstm], axis=1, name='history_plus_future_lstm')  # (num_examples, time_steps, hidden_units)
             # Apply gated skip connection
             input_embeddings = concatenate([historical_features, future_features], axis=1, name="history_plus_future_embeddings"
-                                           )  # (?, time_steps, hidden_units)
+                                           )  # (num_examples, time_steps, hidden_units)
         else:
-            lstm_layer = history_lstm
+            lstm_output = history_lstm
             input_embeddings = historical_features
 
-        lstm_layer, _ = apply_gating_layer(  # (?, time_steps, hidden_units)
-            lstm_layer, self.hidden_units, self.dropout_rate, activation=None, name='GatingOnLSTM')
-        # (?, time_steps, hidden_units)
-        temporal_feature_layer = add_and_norm([lstm_layer, input_embeddings], name='AfterLSTM')
+        lstm_output, _ = apply_gating_layer(  # (num_examples, time_steps, hidden_units)
+            lstm_output, self.hidden_units, self.dropout_rate, activation=None, name='GatingOnLSTM')
+        # (num_examples, time_steps, hidden_units)
+        temporal_feature_layer = add_and_norm([lstm_output, input_embeddings], name='AfterLSTM')
 
         # Static enrichment layers
         expanded_static_context = None
         if static_context_enrichment is not None:
-            expanded_static_context = K.expand_dims(static_context_enrichment, axis=1)  # (?, 1, hidden_units)
+            expanded_static_context = K.expand_dims(static_context_enrichment, axis=1)  # (num_examples, 1, hidden_units)
 
-        enriched, _ = gated_residual_network(  # (?, time_steps, hidden_units)
+        atten_input, _ = gated_residual_network(  # (num_examples, time_steps, hidden_units)
             temporal_feature_layer,
             self.hidden_units,
             dropout_rate=self.dropout_rate,
@@ -338,21 +372,30 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         self_attn_layer = InterpretableMultiHeadAttention(
             self.num_heads, self.hidden_units, dropout=self.dropout_rate, name="InterpMultiHeadAtten")
 
-        mask = get_decoder_mask(enriched)
-        x, self_att = self_attn_layer(enriched, enriched, enriched, mask=mask)
-        # x =  (?, time_steps, hidden_units)
-        x, _ = apply_gating_layer(  # # x =  (?, time_steps, hidden_units)
-            x,
+        mask = get_decoder_mask(atten_input)
+        # in some implementation cases, queries contain only decoder_length part but since official google repo
+        # used all the inputs i.e. encoder+decoder part, we are doing so as well.
+        # This is more useful in cases since transformer layer can be used as many to many.
+        # Thus current behaviour is similar to `return_sequences=True` of LSTM.
+        if self.return_sequences:
+            queries=atten_input
+        else:
+            queries=atten_input[:, self.encoder_steps:]
+        atten_output, self_att = self_attn_layer(queries,
+                                                 atten_input, atten_input, mask=mask)
+        # x =  (num_examples, time_steps, hidden_units)
+        atten_output, _ = apply_gating_layer(  # # x =  (num_examples, time_steps, hidden_units)
+            atten_output,
             self.hidden_units,
             dropout_rate=self.dropout_rate,
             activation=None,
             name="GatingOnX"
         )
-        x = add_and_norm([x, enriched], name="XAndEnriched")  # # x =  (?, time_steps, hidden_units)
+        atten_output = add_and_norm([atten_output, queries], name="XAndEnriched")  # # x =  (num_examples, time_steps, hidden_units)
 
         # Nonlinear processing on outputs
-        decoder = gated_residual_network(  # # x =  (?, time_steps, hidden_units)
-            x,
+        decoder = gated_residual_network(  # # x =  (num_examples, time_steps, hidden_units)
+            atten_output,
             self.hidden_units,
             dropout_rate=self.dropout_rate,
             use_time_distributed=False,
@@ -361,29 +404,30 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
 
         # Final skip connection
         decoder, _ = apply_gating_layer(decoder, self.hidden_units, activation=None,
-                                        name="FinalSkip")  # # x =  (?, time_steps, hidden_units)
+                                        name="FinalSkip")  # # x =  (num_examples, time_steps, hidden_units)
 
-        # (?, time_steps, hidden_units)
-        transformer_layer = add_and_norm([decoder, temporal_feature_layer], name="DecoderAndTempFeature")
+        # (num_examples, time_steps, hidden_units)
+        transformer_output = add_and_norm([decoder, temporal_feature_layer], name="DecoderAndTempFeature")
 
         # Attention components for explainability
         attention_components = {
             # Temporal attention weights
-            'decoder_self_attn': self_att,  # (4, ?, time_steps, time_steps)
+            'decoder_self_attn': self_att,  # (num_atten_heads, num_examples, time_steps, time_steps)
             # Static variable selection weights
-            'static_flags': static_weights[Ellipsis, 0] if static_weights is not None else None,  # (?, 1)
-            # Variable selection weights of past inputs
-            'historical_flags': historical_flags[Ellipsis, 0, :],
+            'static_variable_selection_weights': static_weights[Ellipsis, 0] if static_weights is not None else None,  # (num_examples, 1)
+            # Variable selection weights of past inputs  # (num_examples, encoder_steps, input_features)
+            'encoder_variable_selection_weights': historical_weights[Ellipsis, 0, :],
             # Variable selection weights of future inputs
-            'future_flags': future_flags[Ellipsis, 0, :] if future_flags is not None else None
+            # (num_examples, decoder_steps, input_features)
+            'decoder_variable_selection_weights': future_weights[Ellipsis, 0, :] if future_weights is not None else None
         }
 
         self.attention_components = attention_components
 
         if self.return_attention_components:
-            return transformer_layer, attention_components
+            return transformer_output, attention_components
 
-        return transformer_layer
+        return transformer_output
 
     def get_tft_embeddings(self, all_inputs):
         """Transforms raw inputs to embeddings.
@@ -443,9 +487,9 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             regular_inputs, categorical_inputs = all_inputs[:, :, :num_regular_variables], \
                                                  all_inputs[:, :, num_regular_variables:]
 
-            # regular_inputs (?, time_steps, 4)
-            # categorical_inputs (?, time_steps, num_static_inputs)
-            # list of lengnth=(num_static_inputs) with shape (?, time_steps, hidden_units)
+            # regular_inputs (num_examples, time_steps, 4)
+            # categorical_inputs (num_examples, time_steps, num_static_inputs)
+            # list of lengnth=(num_static_inputs) with shape (num_examples, time_steps, hidden_units)
             embedded_inputs = [
                 embeddings[i](categorical_inputs[Ellipsis, i])
                 for i in range(num_categorical_variables)
@@ -464,7 +508,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                    for i in range(num_categorical_variables)
                    if i + num_regular_variables in self._static_input_loc]
 
-            # (?, num_cat_variables, hidden_units) <-  [(?, hidden_units)]
+            # (num_examples, num_cat_variables, hidden_units) <-  [(num_examples, hidden_units)]
             static_inputs = stack(static_inputs, axis=1)
 
         else:  # there are not static inputs
@@ -477,7 +521,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         # whether we have and want to use target observations as inputs or not?
         if len(self._input_obs_loc) > 0:
             # Targets
-            obs_inputs = stack([          # (?, time_steps, hidden_units, 1)
+            obs_inputs = stack([          # (num_examples, time_steps, hidden_units, 1)
                 convert_real_to_embedding(regular_inputs[Ellipsis, i:i + 1], _name='InputObsDense')
                 for i in self._input_obs_loc],axis=-1)
         else:
@@ -506,7 +550,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
           unknown_inputs = None
 
         # A priori known inputs
-        known_regular_inputs = [  # list of num_outputs all of shape (?, time_steps, hidden_units)
+        known_regular_inputs = [  # list of num_outputs all of shape (num_examples, time_steps, hidden_units)
             convert_real_to_embedding(regular_inputs[Ellipsis, i:i + 1], _name=f'KnownRegularInputs')
             for i in self._known_regular_input_idx
             if i not in self._static_input_loc
@@ -517,7 +561,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             if i + num_regular_variables not in self._static_input_loc
         ]
 
-        # (?, time_steps, hidden_units, num_outputs)
+        # (num_examples, time_steps, hidden_units, num_outputs)
         known_combined_layer = stack(known_regular_inputs + known_categorical_inputs, axis=-1)
 
         return unknown_inputs, known_combined_layer, obs_inputs, static_inputs

@@ -285,7 +285,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
       self.vs_layers.append(vs_layer)  # use same vs_layer
 
     self.attention = ScaledDotProductAttention(name="ScaledDotProdAtten")
-    self.w_o = Dense(d_model, use_bias=False)
+    self.w_o = Dense(d_model, use_bias=False, name="MH_atten_output")
 
     super().__init__(**kwargs)
 
@@ -321,7 +321,7 @@ class InterpretableMultiHeadAttention(tf.keras.layers.Layer):
 
     _outputs = K.mean(head, axis=0) if n_head > 1 else head
     _outputs = self.w_o(_outputs)
-    _outputs = Dropout(self.dropout)(_outputs)  # output dropout
+    _outputs = Dropout(self.dropout, name="MHA_output_do")(_outputs)  # output dropout
 
     return _outputs, attn
 
