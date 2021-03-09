@@ -15,6 +15,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
 
+try:
+    from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+except ImportError:
+    hyperopt = None
+
 from dl4seq.utils.TSErrors import FindErrors
 from dl4seq import Model
 from dl4seq.utils.utils import post_process_skopt_results, Jsonize, dateandtime_now
@@ -126,6 +131,11 @@ class Categorical(Categorical):
 
 class HyperOpt(object):
     """
+    This purpose of this class is to provide a uniform and simplifed interface to use Hyperopt, optuna, scikit-optimize
+    and scikit-learn based RandomizeSearchCV, GridSearchCV. Thus this class sits on top of hyperopt, optuna,
+    scikit-optimize and scikit-learn. Ideally this class should provide all the functionalities
+    of beforementioned libaries with a uniform interface. It however also complements these libraries by combining
+    their functionalities and adding some additional functionalities to them.
     Combines the power of sklearn based GridSeearchCV, RandomizeSearchCV and skopt based BayeSearchCV.
     Sklearn is great but
       - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
@@ -304,15 +314,17 @@ class HyperOpt(object):
                  param_space,
                  model=None,
                  eval_on_best=False,
+                 backend=None,
                  **kwargs
                  ):
 
-        if method not in ["random", "grid", "bayes"]:
-            raise ValueError("method must be one of random, grid or bayes.")
+        if method not in ["random", "grid", "bayes", "tpe"]:
+            raise ValueError("method must be one of random, grid, bayes or tpe.")
 
         self.model = model
         self.method = method
         self.param_space=param_space
+        self.backend=backend
         self.dl4seq_args = None
         self.use_named_args = False
         self.title = self.method
@@ -340,8 +352,31 @@ class HyperOpt(object):
             self.predict = self._predict
             if self.method == "grid":
                 self.fit = self.grid_search
-            else:
+            elif self.method == 'random':
                 self.fit = self.random_search
+            elif self.method == 'tpe':
+                self.fit = self.fmin
+        else:
+            raise NotImplementedError
+
+    @property
+    def backend(self):
+        return self._backend
+
+    @backend.setter
+    def backend(self, x):
+        if x is not None:
+            assert x in ['optuna', 'hyperopt', 'sklearn'], f"""
+Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
+        if self.method == 'tpe':
+            if x is None:
+                x = 'optuna'
+            assert x in ['optuna', 'hyperopt']
+        elif self.method == 'random':
+            if x is None:
+                x = 'sklearn'
+            assert x in ['optuna', 'hyperopt', 'sklearn']
+        self._backend = x
 
     @property
     def title(self):
@@ -411,6 +446,8 @@ but it is of type {type(space)}"""
                     _param_space[_space.name] = _space.grid
             else:
                 raise ValueError
+        elif self.method == 'tpe':
+            _param_space = x
         else:
             raise ValueError
 
@@ -442,6 +479,13 @@ but it is of type {type(space)}"""
         return False
 
     @property
+    def use_tpe(self):
+        if self.method == 'tpe':
+            return True
+        else:
+            return False
+
+    @property
     def use_own(self):
         # return True, we have to build our own optimization method.
         if not self.use_sklearn and not self.use_skopt_bayes and not self.use_skopt_gpmin:
@@ -458,6 +502,10 @@ but it is of type {type(space)}"""
 
     @property
     def iters(self):
+        if self.method == 'tpe':
+            return self.gpmin_args.get('max_evals', 9223372036854775807)
+        elif 'n_calls' in self.gpmin_args:
+            return self.gpmin_args['n_calls']
         return self.gpmin_args['n_iter']
 
     @property
@@ -467,6 +515,8 @@ but it is of type {type(space)}"""
             func_vals = self.gpmin_results['func_vals']
             idx = np.argmin(func_vals)
             paras = x_iters[idx]
+        elif self.use_tpe:
+            paras = self.trials.best_trial['misc']['vals']
         else:
             fun = list(sorted(self.results.keys()))[0]
             paras = self.results[fun]
@@ -645,6 +695,23 @@ this argument is set to True during initiatiation of HyperOpt.""")
 
         return self.eval_sequence(param_list)
 
+    def fmin(self, **kwargs):
+        trials = Trials()
+        best = fmin(self.model,
+                    space=self.param_space,
+                    algo=tpe.suggest,
+                    trials=trials,
+                    **kwargs,
+                    **self.gpmin_args)
+
+        with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
+            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4)
+
+        setattr(self, 'trials', trials)
+        self._plot_convergence()
+
+        return best
+
     def _predict(self, *args, **params):
 
         if self.use_named_args and self.dl4seq_args is not None:
@@ -657,10 +724,18 @@ this argument is set to True during initiatiation of HyperOpt.""")
             return self.model(*args)
 
     def _plot_convergence(self):
+        method = self.method
+        trials = self.trials if self.method == 'tpe' else None
+        iters = self.iters
+
         class sr:
             def __init__(self, results):
-                self.x_iters = [list(_iter.values()) for _iter in results.values()]
-                self.func_vals = np.array(list(results.keys()), dtype=np.float32)
+                if method == 'tpe':
+                    self.x_iters = [[val[0] for val in list(trials.trials[i]['misc']['vals'].values())] for i in range(iters)]
+                    self.func_vals = [trials.results[i]['loss'] for i in range(iters)]
+                else:
+                    self.x_iters = [list(_iter.values()) for _iter in results.values()]
+                    self.func_vals = np.array(list(results.keys()), dtype=np.float32)
 
         res = sr(self.results)
         plt.close('all')

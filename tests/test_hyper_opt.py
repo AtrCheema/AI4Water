@@ -1,30 +1,34 @@
+import os
+import time
+import pickle
+import unittest
+from os.path import abspath
+from inspect import getsourcefile
+import site   # so that dl4seq directory is in path
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+
+import skopt
+import numpy as np
+import pandas as pd
+from sklearn.svm import SVC
+from scipy.stats import uniform
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from scipy.stats import uniform
-from sklearn.svm import SVC
-import numpy as np
-np.random.seed(313)
-import os
-import skopt
-import pandas as pd
-import unittest
+from hyperopt import hp, STATUS_OK, fmin, tpe, Trials
 
-import site   # so that dl4seq directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+np.random.seed(313)
 
 from dl4seq.hyper_opt import HyperOpt, Real, Categorical, Integer
 from dl4seq import Model
 from dl4seq.utils.utils import Jsonize
 from dl4seq.utils.TSErrors import FindErrors
 
-from inspect import getsourcefile
-from os.path import abspath
-
 
 file_path = abspath(getsourcefile(lambda:0))
 dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
 fname = os.path.join(dpath, "input_target_u1.csv")
+
 
 def run_dl4seq(method):
     dims = {'n_estimators': [1000,  2000],
@@ -65,7 +69,7 @@ def run_dl4seq(method):
                    )
 
     # executes bayesian optimization
-    sr = opt.fit()
+    opt.fit()
     return
 
 
@@ -312,6 +316,95 @@ class TestHyperOpt(unittest.TestCase):
         print("dl4seq for random passing")
         return
 
+    def test_hyperopt_basic(self):
+        # https://github.com/hyperopt/hyperopt/blob/master/tutorial/01.BasicTutorial.ipynb
+        def objective(x):
+            return {
+                'loss': x ** 2,
+                'status': STATUS_OK,
+                # -- store other results like this
+                'eval_time': time.time(),
+                'other_stuff': {'type': None, 'value': [0, 1, 2]},
+                # -- attachments are handled differently
+                'attachments':
+                    {'time_module': pickle.dumps(time.time)}
+                }
+
+        optimizer = HyperOpt('tpe', model=objective, param_space=hp.uniform('x', -10, 10), max_evals=100)
+        best = optimizer.fit()
+        self.assertGreater(len(best), 0)
+        return
+
+    def test_hyperopt_multipara(self):
+        # https://github.com/hyperopt/hyperopt/blob/master/tutorial/02.MultipleParameterTutorial.ipynb
+        def objective(params):
+            x, y = params['x'], params['y']
+            return np.sin(np.sqrt(x**2 + y**2))
+
+        space = {
+            'x': hp.uniform('x', -6, 6),
+            'y': hp.uniform('y', -6, 6)
+        }
+
+        optimizer = HyperOpt('tpe', model=objective, param_space=space, max_evals=100)
+        best = optimizer.fit()
+        self.assertEqual(len(best), 2)
+
+    def test_hyperopt_multipara_multispace(self):
+        def f(params):
+            x1, x2 = params['x1'], params['x2']
+            if x1 == 'james':
+                return -1 * x2
+            if x1 == 'max':
+                return 2 * x2
+            if x1 == 'wansoo':
+                return -3 * x2
+
+        search_space = {
+            'x1': hp.choice('x1', ['james', 'max', 'wansoo']),
+            'x2': hp.randint('x2', -5, 5)
+        }
+
+        optimizer = HyperOpt('tpe', model=f, param_space=search_space, max_evals=100)
+        best = optimizer.fit()
+        self.assertEqual(len(best), 2)
+
+    def test_dl4seqModel_with_hyperopt(self):
+        def fn(suggestion):
+
+            data = pd.read_csv(fname)
+
+            inputs = list(data.columns)
+            inputs.remove('index')
+            inputs.remove('target')
+            inputs.remove('target_by_group')
+            outputs = ['target']
+
+            model = Model(
+                inputs=inputs,
+                outputs=outputs,
+                model={"xgboostregressor": suggestion},
+                data=data,
+                prefix='test_tpe_xgboost',
+                verbosity=0)
+
+            model.fit(indices="random")
+
+            t, p = model.predict(indices=model.test_indices, pref='test')
+            mse = FindErrors(t, p).mse()
+            print(f"Validation mse {mse}")
+
+            return mse
+
+        search_space = {
+            'booster': hp.choice('booster', ['gbtree', 'dart']),
+            'n_estimators': hp.randint('n_estimators', low=1000, high=2000),
+            'learning_rate': hp.uniform('learning_rate', low=1e-5, high=0.1)
+        }
+        optimizer = HyperOpt('tpe', model=fn, param_space=search_space, max_evals=20,
+                             opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
+        optimizer.fit()
+        self.assertEqual(len(optimizer.trials.trials), 20)
 
 
 if __name__ == "__main__":

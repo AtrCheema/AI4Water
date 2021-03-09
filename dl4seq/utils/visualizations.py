@@ -82,14 +82,14 @@ class Intrepretation(object):
         decoder_lengths = np.full(num_examples, tft_params['total_time_steps'] - tft_params['num_encoder_steps'])
 
         # histogram of decode and encode lengths
-        encoder_length_histogram = integer_histogram(encoder_lengths, _min=0, _max=tft_params['max_encoder_length'])
+        encoder_length_histogram = integer_histogram(encoder_lengths, _min=0, _max=tft_params['num_encoder_steps'])
         decoder_length_histogram = integer_histogram(
-            decoder_lengths, _min=1, _max=decoder_lengths.size(1)
+            decoder_lengths, _min=1, _max=decoder_lengths.shape[1]
         )
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = outputs["encoder_variables"].squeeze(-2)
-        encode_mask = create_mask(encoder_variables.size(1), encoder_lengths)
+        encode_mask = create_mask(encoder_variables.shape[1], encoder_lengths)
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             outputs["encoder_lengths"]

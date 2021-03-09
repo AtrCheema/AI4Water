@@ -171,3 +171,5 @@ series prediction.
 [pyts: A Python Package for Time Series Classification](https://github.com/johannfaouzi/pyts)
 
 [Tslearn, A Machine Learning Toolkit for Time Series Data](https://github.com/tslearn-team/tslearn)
+
+[Catalyst](https://github.com/catalyst-team/catalyst)
