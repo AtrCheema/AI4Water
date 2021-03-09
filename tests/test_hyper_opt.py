@@ -8,6 +8,7 @@ import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import skopt
+import sklearn
 import numpy as np
 import pandas as pd
 from sklearn.svm import SVC
@@ -144,31 +145,33 @@ class TestHyperOpt(unittest.TestCase):
         print("GridSearchCV test passed")
         return clf
 
+    def test_bayes(self):
+        # testing for sklearn-based model with gp_min
+        # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
+        X, y = load_iris(True)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
+        if int(''.join(sklearn.__version__.split('.')[1])) > 22:
+            # https://github.com/scikit-optimize/scikit-optimize/issues/978
+            pass
+        else:
+            opt = HyperOpt("bayes",  model=SVC(),
+                           param_space={
+                'C': Real(1e-6, 1e+6, prior='log-uniform'),
+                'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
+                'degree': Integer(1, 8),
+                'kernel': Categorical(['linear', 'poly', 'rbf']),
+                },
+                n_iter=32,
+                random_state=0
+            )
 
-    # def test_bayes(self):
-    #     # testing for sklearn-based model with gp_min
-    #     # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
-    #     X, y = load_iris(True)
-    #     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
-    #
-    #     opt = HyperOpt("bayes",  model=SVC(),
-    #                    param_space={
-    #         'C': Real(1e-6, 1e+6, prior='log-uniform'),
-    #         'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
-    #         'degree': Integer(1, 8),
-    #         'kernel': Categorical(['linear', 'poly', 'rbf']),
-    #         },
-    #         n_iter=32,
-    #         random_state=0
-    #     )
-    #     # executes bayesian optimization
-    #     _ = opt.fit(X_train, y_train)
-    #
-    #     # model can be saved, used for predictions or scoring
-    #     np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
-    #     print("BayesSearchCV test passed")
-    #     return
+            # executes bayesian optimization
+            _ = opt.fit(X_train, y_train)
 
+            # model can be saved, used for predictions or scoring
+            np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
+        print("BayesSearchCV test passed")
+        return
 
     def test_gpmin_skopt(self):
         # testing for custom model with gp_min

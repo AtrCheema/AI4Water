@@ -426,15 +426,21 @@ for more details.
     @param_space.setter
     def param_space(self, x):
         if self.method == "bayes":
-            assert isinstance(x, list), f"""
+            if isinstance(x, dict):
+                _param_space = []
+                for k,v in x.items():
+                    assert isinstance(v, Dimension)
+                    _param_space.append(v)
+            else:
+                assert isinstance(x, list), f"""
 param space must be list of parameters but it is of type {type(x)}"""
-            for space in x:
-                # each element in the list can be a tuple of lower and and upper bounds
-                if not isinstance(space, tuple):
-                    assert isinstance(space, Dimension), f"""
+                for space in x:
+                    # each element in the list can be a tuple of lower and and upper bounds
+                    if not isinstance(space, tuple):
+                        assert isinstance(space, Dimension), f"""
 param space must be one of Integer, Real or Categorical
 but it is of type {type(space)}"""
-            _param_space = x
+                _param_space = x
 
         elif self.method in ["random", "grid"]:
             if isinstance(x, dict):
