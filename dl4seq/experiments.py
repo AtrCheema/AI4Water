@@ -1,6 +1,7 @@
 import os
 import json
 import warnings
+from typing import Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -55,8 +56,8 @@ class Experiments(object):
             run_type="dry_run",
             opt_method="bayes",
             num_iterations=12,
-            include=None,
-            exclude='',
+            include: Union[None, list] = None,
+            exclude: Union[None, list, str] = '',
             post_optimize='eval_best',
             fit_kws=None,
             predict_kws=None,
@@ -148,7 +149,7 @@ Available cases are {self.models} and you wanted to exclude
 
                     opt_dir = os.path.join(os.getcwd(), f"results\\{self.exp_name}\\{model_name}")
                     self.optimizer = HyperOpt(opt_method,
-                                              model=objective_fn,
+                                              objective_fn=objective_fn,
                                               param_space=self.dimensions,
                                               use_named_args=True,
                                               opt_path=opt_dir,
@@ -214,10 +215,12 @@ Available cases are {self.models} and you wanted to exclude
     def compare_errors(
             self,
             matric_name: str,
-            cutoff_val:float=None,
+            cutoff_val:float = None,
             cutoff_type:str=None,
-            save=False,
-            name='ErrorComparison',
+            save:bool = False,
+            sort_by: str = 'test',
+            ignore_nans: bool = True,
+            name:str = 'ErrorComparison',
             **kwargs
     ):
         """Plots a specific performance matric for all the models which were
@@ -229,6 +232,11 @@ Available cases are {self.models} and you wanted to exclude
                             Criteria to determine cutoff_val. For example if we want to
                             show only those models whose r2 is > 0.5, it will be 'max'.
         :param save: bool, whether to save the plot or not
+        :param sort_by: str, either 'test' or 'train'. How to sort the results for plotting. If 'test', then test
+                         performance matrics will be sorted otherwise train performance matrics will be sorted.
+        :param ignore_nans: bool, default True, if True, then performance matrics with nans are ignored otherwise
+                            nans/empty bars will be shown to depict which models have resulted in nans for the given
+                            performance matric.
         :param name: str, name of the saved file.
         kwargs are:
             fig_height:
@@ -238,7 +246,12 @@ Available cases are {self.models} and you wanted to exclude
 
         Example
         -----------
-        >>>experiment = Experiments()
+        >>>from dl4seq.data import load_30min
+        >>>data = load_30min()
+        >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
+        >>>outputs = ['target5']
+        >>>experiment = Experiments(data=data, inputs=inputs, outputs=outputs)
+        >>>experiment.fit(exclude=['model_TPOTREGRESSOR'])
         >>>experiment.compare_errors('mse')
         >>>experiment.compare_errors('r2', 0.5, 'greater')
         """
@@ -288,22 +301,42 @@ Available cases are {self.models} and you wanted to exclude
             warnings.warn(f"Comparison can not be plotted because the obtained models are <=1 {models}", UserWarning)
             return models
 
+        if sort_by == 'test':
+            if ignore_nans:
+                d = {key: [a, _name] for key, a, _name in zip(test_matrics, train_matrics, list(models.keys())) if
+                     not np.isnan(key)}
+            else:
+                d = {key: [a, _name] for key, a, _name in zip(test_matrics, train_matrics, list(models.keys()))}
+        elif sort_by == 'train':
+            if ignore_nans:
+                d = {key: [a, _name] for key, a, _name in zip(train_matrics, test_matrics, list(models.keys())) if
+                     not np.isnan(key)}
+            else:
+                d = {key: [a, _name] for key, a, _name in zip(train_matrics, test_matrics, list(models.keys()))}
+        else:
+            raise ValueError(f'sort_by must be either train or test but it is {sort_by}')
+
+        models = dict(sorted(d.items(), reverse=True))
+        names = [i[1] for i in models.values()]
+        test_matrics = list(models.keys())
+        train_matrics = [i[0] for i in models.values()]
+
         plt.close('all')
         fig, axis = plt.subplots(1, 2, sharey='all')
-        fig.set_figheight(kwargs.get('fig_heigt', 8))
+        fig.set_figheight(kwargs.get('fig_height', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
-        ax = sns.barplot(y=list(models.keys()), x=train_matrics, orient='h', ax=axis[0])
+        ax = sns.barplot(y=names, x=train_matrics, orient='h', ax=axis[0])
         ax.set_title("Train", fontdict={'fontsize': kwargs.get('title_fs', 20)})
         ax.set_xlabel(labels.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
 
-        ax = sns.barplot(y=list(models.keys()), x=test_matrics, orient='h', ax=axis[1])
+        ax = sns.barplot(y=names, x=test_matrics, orient='h', ax=axis[1])
         ax.get_yaxis().set_visible(False)
         ax.set_xlabel(labels.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
         ax.set_title("Test", fontdict={'fontsize': kwargs.get('title_fs', 20)})
 
         if save:
-            fname = f'{name}_{matric_name}.png'
+            fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}{name}_{matric_name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
         return models
@@ -410,7 +443,7 @@ class MLRegressionExperiments(Experiments):
 
         return FindErrors(tt, tp).mse()
 
-    def model_ADABOOSTREGRESSOR(self, **kwargs):
+    def model_ADABoostRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
         self.dimensions = [
             Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),
@@ -419,7 +452,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [50, 1.0]
         return {'model': {'ADABOOSTREGRESSOR': kwargs}}
 
-    def model_ARDREGRESSION(self, **kwargs):
+    def model_ARDRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html
         self.dimensions = [
             Real(low=1e-7, high=1e-5, name='alpha_1', num_samples=self.num_samples),
@@ -432,7 +465,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [1e-7, 1e-7, 1e-7, 1e-7, 1000, True]
         return {'model': {'ARDREGRESSION': kwargs}}
 
-    def model_BAGGINGREGRESSOR(self, **kwargs):
+    def model_BaggingRegressor(self, **kwargs):
 
         self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
@@ -459,7 +492,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [40, 1e-7, 1e-7, 1e-7, 1e-7, True]
         return {'model': {'BayesianRidge': kwargs}}
 
-    def model_CATBOOSTREGRESSOR(self, **kwargs):
+    def model_CATBoostRegressor(self, **kwargs):
         # https://catboost.ai/docs/concepts/python-reference_parameters-list.html
         self.dimensions = [
             Integer(low=500, high=5000, name='iterations', num_samples=self.num_samples),  # maximum number of trees that can be built
@@ -474,7 +507,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [1000, 0.01, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']
         return {'model': {'CATBOOSTREGRESSOR': kwargs}}
 
-    def model_DECISIONTREEREGRESSOR(self, **kwargs):
+    def model_DecisionTreeRegressor(self, **kwargs):
         # TODO not converging
         self.dimensions = [
             Categorical(["best", "random"], name='splitter'),
@@ -569,7 +602,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [1e-10, 1]
         return {'model': {'GaussianProcessRegressor': kwargs}}
 
-    def model_GRADIENTBOOSTINGREGRESSOR(self, **kwargs):
+    def model_GradientBoostingRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
         self.dimensions = [
             Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),  # number of boosting stages to perform
@@ -581,7 +614,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [5, 0.001, 1, 0.1, 3]
         return {'model': {'GRADIENTBOOSTINGREGRESSOR': kwargs}}
 
-    def model_HISTGRADIENTBOOSTINGREGRESSOR(self, **kwargs):
+    def model_HistGradientBoostingRegressor(self, **kwargs):
         ### https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html
         # TODO not hpo not converging
         self.dimensions = [
@@ -595,7 +628,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [0.1, 100, 10, 31, 20, 0.0]
         return {'model': {'HISTGRADIENTBOOSTINGREGRESSOR':kwargs}}
 
-    def model_HUBERREGRESSOR(self, **kwargs):
+    def model_HuberRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
         self.dimensions = [
             Real(low=1.0, high=5.0, name='epsilon', num_samples=self.num_samples),
@@ -615,7 +648,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [1.0] #, 'linear']
         return {'model': {'KernelRidge': kwargs}}
 
-    def model_KNEIGHBORSREGRESSOR(self, **kwargs):
+    def model_KNeighborsRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
         if hasattr(self.dl4seq_model, 'config'):
             train_frac = self.dl4seq_model.config['train_fraction']
@@ -709,7 +742,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [True, 'bic']
         return {'model': {'LassoLarsIC': kwargs}}
 
-    def model_LGBMREGRESSOR(self, **kwargs):
+    def model_LGBMRegressor(self, **kwargs):
      ## https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html
         self.dimensions = [
             Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
@@ -720,14 +753,14 @@ class MLRegressionExperiments(Experiments):
         self.x0 = ['gbdt', 50, 0.001, 20]
         return {'model': {'LGBMREGRESSOR': kwargs}}
 
-    def model_LINEARREGRESSION(self, **kwargs):
+    def model_LinearRegression(self, **kwargs):
         self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept')
         ]
         self.x0 = [True]
         return {'model': {'LINEARREGRESSION': kwargs}}
 
-    def model_MLPREGRESSOR(self, **kwargs):
+    def model_MLPRegressor(self, **kwargs):
         self.dimensions = [
             Integer(low=10, high=500, name='hidden_layer_sizes', num_samples=self.num_samples),
             Categorical(categories=['identity', 'logistic', 'tanh', 'relu'], name='activation'),
@@ -768,7 +801,7 @@ class MLRegressionExperiments(Experiments):
             True]
         return {'model': {'OrthogonalMatchingPursuitCV': kwargs}}
 
-    def model_ONECLASSSVM(self, **kwargs):
+    def model_OneClassSVM(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html
         self.dimensions = [
             Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel'),
@@ -778,7 +811,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = ['rbf', 0.1, True]
         return {'model': {'ONECLASSSVM': kwargs}}
 
-    def model_POISSONREGRESSOR(self, **kwargs):
+    def model_PoissonRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html
         self.dimensions = [
             Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
@@ -787,6 +820,16 @@ class MLRegressionExperiments(Experiments):
         ]
         self.x0 = [0.5, 100]
         return {'model': {'POISSONREGRESSOR': kwargs}}
+
+    def model_Ridge(self, **kwargs):
+        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
+        self.dimensions = [
+            Real(low=0.0, high=3.0, name='alpha', num_samples=self.num_samples),
+            Categorical(categories=[True, False], name='fit_intercept'),
+            Categorical(categories=['auto', 'svd', 'cholesky', 'saga'], name='solver'),
+        ]
+        self.x0 = [1.0, True, 'auto']
+        return {'model': {'Ridge': kwargs}}
 
     def model_RidgeCV(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeCV.html
@@ -797,7 +840,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [True, 'auto']
         return {'model': {'RidgeCV': kwargs}}
 
-    def model_RADIUSNEIGHBORSREGRESSOR(self, **kwargs):
+    def model_RadiusNeighborsRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.RadiusNeighborsRegressor.html
         self.dimensions = [
             Categorical(categories=['uniform', 'distance'], name='weights'),
@@ -808,7 +851,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = ['uniform', 'auto', 10, 1]
         return {'model': {'RADIUSNEIGHBORSREGRESSOR': kwargs}}
 
-    def model_RANSACREGRESSOR(self, **kwargs):
+    def model_RANSACRegressor(self, **kwargs):
         self.dimensions = [
             Integer(low=10, high=1000, name='max_trials'),
             Real(low=0.01, high=0.99, name='min_samples', num_samples=self.num_samples)
@@ -816,7 +859,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [10, 0.01]
         return {'model': {'RANSACREGRESSOR': kwargs}}
 
-    def model_RANDOMFORESTREGRESSOR(self, **kwargs):
+    def model_RandomForestRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
         self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
@@ -840,7 +883,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = ['rbf',1.0, 0.01]
         return {'model': {'SVR': kwargs}}
 
-    def model_SGDREGRESSOR(self, **kwargs):
+    def model_SGDRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html
         self.dimensions = [
             Categorical(categories=['l1', 'l2', 'elasticnet'], name='penalty'),
@@ -862,7 +905,7 @@ class MLRegressionExperiments(Experiments):
     #     self.x0 = [None, None, None]
     #     return {'model': {'TransformedTargetRegressor': kwargs}}
 
-    def model_TPOTREGRESSOR(self, **kwargs):
+    def model_TPOTRegressor(self, **kwargs):
         ## http://epistasislab.github.io/tpot/api/#regression
         self.dimensions = [
             Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
@@ -875,7 +918,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
         return {'model': {'TPOTREGRESSOR': kwargs}}
 
-    def model_TWEEDIEREGRESSOR(self, **kwargs):
+    def model_TweedieRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TweedieRegressor.html
         self.dimensions = [
             Real(low=0.0, high=5.0, name='alpha', num_samples=self.num_samples),
@@ -885,7 +928,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = [1.0, 'auto',100]
         return {'model': {'TWEEDIEREGRESSOR': kwargs}}
 
-    def model_THEILSENREGRESSOR(self, **kwargs):
+    def model_TheilsenRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
         self.dimensions = [
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -901,7 +944,7 @@ class MLRegressionExperiments(Experiments):
     #     # ValueError: Some value(s) of y are out of the valid range for family GammaDistribution
     #     return {'GAMMAREGRESSOR': {}}
 
-    def model_XGBOOSTRFREGRESSOR(self, **kwargs):
+    def model_XGBoostRFRegressor(self, **kwargs):
         ## https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFRegressor
         self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
@@ -923,7 +966,7 @@ class MLRegressionExperiments(Experiments):
                    ]
         return {'model': {'XGBOOSTRFREGRESSOR': kwargs}}
 
-    def model_XGBOOSTREGRESSOR(self, **kwargs):
+    def model_XGBoostRegressor(self, **kwargs):
         # ##https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor
         self.dimensions = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
