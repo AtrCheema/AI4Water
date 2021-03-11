@@ -16,7 +16,7 @@ from scipy.stats import uniform
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from hyperopt import hp, STATUS_OK, fmin, tpe, Trials
+from hyperopt import hp, STATUS_OK
 
 np.random.seed(313)
 
@@ -29,6 +29,12 @@ from dl4seq.utils.TSErrors import FindErrors
 file_path = abspath(getsourcefile(lambda:0))
 dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
 fname = os.path.join(dpath, "input_target_u1.csv")
+data = pd.read_csv(fname)
+inputs = list(data.columns)
+inputs.remove('index')
+inputs.remove('target')
+inputs.remove('target_by_group')
+outputs = ['target']
 
 
 def run_dl4seq(method):
@@ -36,14 +42,6 @@ def run_dl4seq(method):
             'max_depth': [3,  6],
             'learning_rate': [0.1,  0.0005],
             'booster': ["gbtree", "dart"]}
-
-
-    data = pd.read_csv(fname)
-    inputs = list(data.columns)
-    inputs.remove('index')
-    inputs.remove('target')
-    inputs.remove('target_by_group')
-    outputs = ['target']
 
     dl4seq_args = {"inputs": inputs,
                    "outputs": outputs,
@@ -120,7 +118,7 @@ class TestHyperOpt(unittest.TestCase):
         distributions1 = dict(C=uniform(loc=0, scale=4),
                              penalty=['l2', 'l1'])
 
-        clf = HyperOpt('random', model=logistic, param_space=distributions1, random_state=0)
+        clf = HyperOpt('random', objective_fn=logistic, param_space=distributions1, random_state=0)
 
         search = clf.fit(iris.data, iris.target)
         np.testing.assert_almost_equal(search.best_params_['C'], 2.195254015709299, 5)
@@ -135,7 +133,7 @@ class TestHyperOpt(unittest.TestCase):
         iris = load_iris()
         parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
         svc = SVC()
-        clf = HyperOpt("grid", model=svc, param_space=parameters)
+        clf = HyperOpt("grid", objective_fn=svc, param_space=parameters)
         search = clf.fit(iris.data, iris.target)
 
         sorted(clf.cv_results_.keys())
@@ -154,7 +152,7 @@ class TestHyperOpt(unittest.TestCase):
             # https://github.com/scikit-optimize/scikit-optimize/issues/978
             pass
         else:
-            opt = HyperOpt("bayes",  model=SVC(),
+            opt = HyperOpt("bayes",  objective_fn=SVC(),
                            param_space={
                 'C': Real(1e-6, 1e+6, prior='log-uniform'),
                 'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
@@ -180,7 +178,7 @@ class TestHyperOpt(unittest.TestCase):
             return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) \
                    + np.random.randn() * noise_level
 
-        opt = HyperOpt("bayes", model=f, param_space=[(-2.0, 2.0)],
+        opt = HyperOpt("bayes", objective_fn=f, param_space=[(-2.0, 2.0)],
                        acq_func="EI",  # the acquisition function
                        n_calls=15,  # the number of evaluations of f
                        n_random_starts=5,  # the number of random initialization points
@@ -203,7 +201,7 @@ class TestHyperOpt(unittest.TestCase):
                    + np.random.randn() * noise_level
 
         opt = HyperOpt("grid",
-                       model=f,
+                       objective_fn=f,
                        param_space=[Real(low=-2.0, high=2.0, num_samples=20)],
                        n_calls=15,  # the number of evaluations of f
                        )
@@ -221,13 +219,7 @@ class TestHyperOpt(unittest.TestCase):
                 ]
 
         def f(**kwargs):
-            data = pd.read_csv(fname)
 
-            inputs = list(data.columns)
-            inputs.remove('index')
-            inputs.remove('target')
-            inputs.remove('target_by_group')
-            outputs = ['target']
             kwargs['objective'] = 'reg:squarederror'
 
             kwargs = Jsonize(kwargs)()
@@ -254,7 +246,7 @@ class TestHyperOpt(unittest.TestCase):
             return mse
 
         opt = HyperOpt("bayes",
-                       model=f,
+                       objective_fn=f,
                        param_space=dims,
                        use_named_args=True,
                        acq_func='EI',  # Expected Improvement.
@@ -265,9 +257,8 @@ class TestHyperOpt(unittest.TestCase):
                        random_state=2
                        )
 
-        res = opt.fit()
+        opt.fit()
         return
-
 
     def test_dl4seq_bayes(self):
         dims = [Integer(low=1000, high=2000, name='n_estimators'),
@@ -275,13 +266,6 @@ class TestHyperOpt(unittest.TestCase):
                 Real(low=1e-5, high=0.1, name='learning_rate'),
                 Categorical(categories=["gbtree", "dart"], name="booster")
                 ]
-
-        data = pd.read_csv(fname)
-        inputs = list(data.columns)
-        inputs.remove('index')
-        inputs.remove('target')
-        inputs.remove('target_by_group')
-        outputs = ['target']
 
         dl4seq_args = {"inputs": inputs,
                        "outputs": outputs,
@@ -333,7 +317,7 @@ class TestHyperOpt(unittest.TestCase):
                     {'time_module': pickle.dumps(time.time)}
                 }
 
-        optimizer = HyperOpt('tpe', model=objective, param_space=hp.uniform('x', -10, 10), max_evals=100)
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=hp.uniform('x', -10, 10), max_evals=100)
         best = optimizer.fit()
         self.assertGreater(len(best), 0)
         return
@@ -349,7 +333,7 @@ class TestHyperOpt(unittest.TestCase):
             'y': hp.uniform('y', -6, 6)
         }
 
-        optimizer = HyperOpt('tpe', model=objective, param_space=space, max_evals=100)
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, max_evals=100)
         best = optimizer.fit()
         self.assertEqual(len(best), 2)
 
@@ -368,20 +352,12 @@ class TestHyperOpt(unittest.TestCase):
             'x2': hp.randint('x2', -5, 5)
         }
 
-        optimizer = HyperOpt('tpe', model=f, param_space=search_space, max_evals=100)
+        optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, max_evals=100)
         best = optimizer.fit()
         self.assertEqual(len(best), 2)
 
     def test_dl4seqModel_with_hyperopt(self):
-        def fn(suggestion):
-
-            data = pd.read_csv(fname)
-
-            inputs = list(data.columns)
-            inputs.remove('index')
-            inputs.remove('target')
-            inputs.remove('target_by_group')
-            outputs = ['target']
+        def fn(**suggestion):
 
             model = Model(
                 inputs=inputs,
@@ -404,7 +380,8 @@ class TestHyperOpt(unittest.TestCase):
             'n_estimators': hp.randint('n_estimators', low=1000, high=2000),
             'learning_rate': hp.uniform('learning_rate', low=1e-5, high=0.1)
         }
-        optimizer = HyperOpt('tpe', model=fn, param_space=search_space, max_evals=20,
+        optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=20,
+                             use_named_args=True,
                              opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
         optimizer.fit()
         self.assertEqual(len(optimizer.trials.trials), 20)

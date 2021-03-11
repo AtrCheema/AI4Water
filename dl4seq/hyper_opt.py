@@ -20,8 +20,8 @@ try:
 except ImportError:
     hyperopt = None
 
-from dl4seq.utils.TSErrors import FindErrors
 from dl4seq import Model
+from dl4seq.utils.TSErrors import FindErrors
 from dl4seq.utils.utils import post_process_skopt_results, Jsonize, dateandtime_now
 
 
@@ -76,10 +76,13 @@ class Real(Real, Counter):
         else:
             self._grid = np.array(x)
 
+    def as_hp(self):
+        return hp.uniform(self.name, low=self.low, high=self.high)
+
 
 class Integer(Integer, Counter):
     """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
-    algorithm to create grid space.
+    algorithm to create grid space. Moreover it also generates optuna and hyperopt compatible/equivalent instances.
     num_samples: int, if given, it will be used to create grid space using the formula"""
     def __init__(self,
                  low=None,
@@ -121,6 +124,9 @@ class Integer(Integer, Counter):
             assert hasattr(x, '__len__'), f"unacceptable type of grid {type(x)}"
             self._grid = np.array(x)
 
+    def as_hp(self):
+        return hp.uniform(self.name, low=self.low, high=self.high)
+
 
 class Categorical(Categorical):
 
@@ -128,15 +134,31 @@ class Categorical(Categorical):
     def grid(self):
         return self.categories
 
+    def as_hp(self):
+        return hp.choice(self.name, self.categories)
+
+
+ALGORITHMS = {
+    'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
+    'forest': {'name': 'decision_tree', 'backend': ['skopt']},
+    'gbrt': {'name': 'gradient-boosted-tree regression', 'backend': ['skopt']},
+    'tpe': {'name': 'Tree of Parzen Estimators', 'backend': ['hyperopt', 'optuna']},
+    'atpe': {'name': 'Adaptive Tree of Parzen Estimators', 'backend': ['hyperopt']},
+    'random': {'name': 'random search', 'backend': ['sklearn', 'optuna', 'hyperopt']},
+    'grid': {'name': 'grid search', 'backend': ['sklearn', 'optuna']},
+    'cmaes': {'name': 'Covariance Matrix Adaptation Evolution Strategy', 'backend': ['optuna']}
+}
 
 class HyperOpt(object):
     """
-    This purpose of this class is to provide a uniform and simplifed interface to use Hyperopt, optuna, scikit-optimize
+    The purpose of this class is to provide a uniform and simplifed interface to use hyperopt, optuna, scikit-optimize
     and scikit-learn based RandomizeSearchCV, GridSearchCV. Thus this class sits on top of hyperopt, optuna,
     scikit-optimize and scikit-learn. Ideally this class should provide all the functionalities
     of beforementioned libaries with a uniform interface. It however also complements these libraries by combining
-    their functionalities and adding some additional functionalities to them.
-    Combines the power of sklearn based GridSeearchCV, RandomizeSearchCV and skopt based BayeSearchCV.
+    their functionalities and adding some additional functionalities to them. On the other hand this class should not
+    limit or complicate the use of its underlying libraries. This means all the functionalities of underlying libraries
+    are available in this class as well. Moreover, you can use this class just as you use one of its underlying library.
+
     Sklearn is great but
       - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
       - sklearn does not provide Bayesian optimization
@@ -146,19 +168,13 @@ class HyperOpt(object):
       - The gp_minimize function from skopt allows application of Bayesian on any regressor/classifier/model, but in that
         case this will only be Bayesian
 
-    We wish to make a class which allows application of any of the three optimization methods on any type of model/classifier/regressor.
-    If the classifier/regressor is of sklearn-based, then for random search, we use RanddomSearchCV, for grid search,
+    We wish to make a class which allows application of any of the three optimization methods on any type of
+    model/classifier/regressor. If the classifier/regressor is of sklearn-based, then for random search, we use RanddomSearchCV, for grid search,
     we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the other hand, if the model is not sklearn-based,
     you will still be able to implement any of the three methods. In such case, the bayesian will be implemented using
     gp_minimize. Random search and grid search will be done by simple iterating over the sample space generated as in
     sklearn based samplers. However, the post-processing of the results is (supposed to be) done same as done in
     RandomSearchCV and GridSearchCV.
-
-    Thus one motivation of this class is to unify GridSearchCV, RandomSearchCV and BayesSearchCV by complimenting each other.
-    The second motivation is to extend their abilities.
-
-    All of the above is done (in theory at least) without limiting the capabilities of GridSearchCV, RandomSearchCV and
-    BayesSearchCV or complicating their use.
 
     The class should pass all the tests written in sklearn or skopt for corresponding classes.
 
@@ -174,30 +190,24 @@ class HyperOpt(object):
 
     :parameters
     --------------
-    method: str, must be one of "random", "grid" and "bayes", defining which optimization method to use.
-    model: callable, It can be either sklearn/xgboost based regressor/classifier or any function whose returned values
-                     can act as objective function for the optimization problem.
-    param_space: list/dict, the parameters to be optimized. Based upon above scenarios
-                   - For scenario 1, if `method` is "grid", then this argument will be passed to GridSearchCV of sklearn
-                       as `param_grid`.  If `method` is "random", then these arguments will be passed to RandomizeSearchCV
-                       of sklearn as `param_distribution`.  If `method` is "bayes",  then this must be a
-                       dictionary of parameter spaces and this argument will be passed to `BayesSearchCV` as
-                       `search_spaces`.
-                   - For scenario 2, and "method` is "bayes", then this must be either  dictionary of parameter spaces or
-                     a list of tuples defining upper and lower bounds of each parameter of the custom function which you
-                     used as `model`. These tuples must follow the same sequence as the order of input parameters in
-                     your custom model/function. This argument will then be provided to `gp_minnimize` function of skopt.
-                     This case will the :ref:`<example>(4) in skopt.
-                   - For scenario 3,  if method is grid or random then this argument should be same as in scenario 1. If method
-                     is 'bayes', then this must be list of Integer/Categorical/Real skopt.space instances..
+    algorithm: str, must be one of "random", "grid" "bayes" and "tpe", defining which optimization algorithm to use.
+    objective_fn: callable, It can be either sklearn/xgboost based regressor/classifier or any function whose returned
+                  values can act as objective function for the optimization problem.
+    param_space: list/dict, the space parameters to be optimized. We recommend the use of Real, Integer and categorical
+                 classes from dl4seq/hyper_opt (not from skopt.space). These classes allow a uniform way of defining
+                 the parameter space for all the underlying libraries. However, to make this class work exactly similar
+                 to its underlying libraries, the user can also define parameter space as is defined in its underlying
+                 libraries. For example, for hyperopt based method like 'tpe' the parameter space can be specified as
+                 in the examples of hyperopt library. In case the code breaks, please report.
+                  Based upon above scenarios
 
-    eval_on_best: bool, if True, then after optimization, the model will be evaluated on best parameters and the results
+    eval_on_best: bool, if True, then after optimization, the objective_fn will be evaluated on best parameters and the results
                   will be stored in the folder named "best" inside `title` folder.
     kwargs: dict, For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
                   passed to initialize dl4seq's Model class. The choice of kwargs depends whether you are using this class
                   For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
                   For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
-                  For scenario 2, f your custom model/function accepts named arguments, then an argument `use_named_args`
+                  For scenario 2, f your custom objective_fn/function accepts named arguments, then an argument `use_named_args`
                   must be passed as True. This must also be passed if you are using in-built `dl4seq_model` as objective
                   function.
 
@@ -211,93 +221,92 @@ class HyperOpt(object):
     - results: dict
     - gpmin_results: dict
     - paam_grid: dict, only for scenario 3.
-    - title: str, name of the folder in which all results will be saved. By default this is same as name of `method`. For
+    - title: str, name of the folder in which all results will be saved. By default this is same as name of `algorithm`. For
              `dl4seq` based models, this is more detailed, containing problem type etc.
 
 
     Methods
     -----------------
     best_paras_kw: returns the best parameters as dictionary.
-    eval_with_best: evaluates the model on best parameters
+    eval_with_best: evaluates the objective_fn on best parameters
 
 
     Examples
     ---------------
     ```python
     # using grid search with dl4seq
-    >>opt = HyperOpt("grid",
-               param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
-                            'max_depth': [3, 4, 5, 6]},
-               dl4seq_args={'model': 'xgboostRegressor'},
-               data=data,
-               use_named_args=True,
-               )
-    >>opt.fit()
-
+    >>>from dl4seq.data import load_u1
+    >>>data = load_u1()
+    >>>opt = HyperOpt("grid",
+    ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+    ...                        'max_depth': [3, 4, 5, 6]},
+    ...           dl4seq_args={'model': 'xgboostRegressor'},
+    ...           data=data,
+    ...           use_named_args=True,
+    ...           )
+    >>>opt.fit()
 
     #using random search with dl4seq
-    >>opt = HyperOpt("random",
-               param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
-                            'max_depth': [3, 4, 5, 6]},
-               dl4seq_args={'model': 'xgboost'},
-               data=data,
-               use_named_args=True,
-               n_iter=100
-               )
-    >>sr = opt.fit()
-
+    >>>opt = HyperOpt("random",
+    ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+    ...                        'max_depth': [3, 4, 5, 6]},
+    ...           dl4seq_args={'model': 'xgboost'},
+    ...           data=data,
+    ...           use_named_args=True,
+    ...           n_iter=100
+    ...           )
+    >>>sr = opt.fit()
 
     # using Bayesian with dl4seq
-    >>opt = HyperOpt("bayes",
-               param_space=[Integer(low=1000, high=2000, name='n_estimators',
-                            Integer(low=3, high=6, name='max_depth')]
-               dl4seq_args={'model': 'xgboostRegressor'},
-                   data=data,
-                   use_named_args=True,
-                   n_calls=100,
-                   x0=[1000, 3],
-                   n_random_starts=3,  # the number of random initialization points
-                   random_state=2)
-    >>sr = opt.fit()
+    >>>from dl4seq.hyper_opt import Integer
+    >>>opt = HyperOpt("bayes",
+    ...           param_space=[Integer(low=1000, high=2000, name='n_estimators'),
+    ...                        Integer(low=3, high=6, name='max_depth')],
+    ...           dl4seq_args={'model': 'xgboostRegressor'},
+    ...               data=data,
+    ...               use_named_args=True,
+    ...               n_calls=100,
+    ...               x0=[1000, 3],
+    ...               n_random_starts=3,  # the number of random initialization points
+    ...               random_state=2)
+    >>>sr = opt.fit()
 
 
-    # using Bayesian with custom model
-    >>def f(x, noise_level=0.1):
-          return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) \
-                   + np.random.randn() * noise_level
+    # using Bayesian with custom objective_fn
+    >>>def f(x, noise_level=0.1):
+    ...      return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
+    ...
+    >>>opt = HyperOpt("bayes",
+    ...           objective_fn=f,
+    ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
+    ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
+    ...                        ],
+    ...           acq_func='EI',  # Expected Improvement.
+    ...           n_calls=50,     #number of iterations
+    ...           x0=[32, "relu"],  # inital value of optimizing parameters
+    ...           n_random_starts=3,  # the number of random initialization points
+    ...           )
+    >>>opt_results = opt.fit()
 
-    >>opt = HyperOpt("bayes",
-               model=objective_fn,
-               param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-                            Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-                            ],
-               acq_func='EI',  # Expected Improvement.
-               n_calls=50,     #number of iterations
-               x0=[32, "relu"],  # inital value of optimizing parameters
-               n_random_starts=3,  # the number of random initialization points
-               )
-    >>opt_results = opt.fit()
+    # using Bayesian with custom objective_fn and named args
+    >>>
+    >>>def f(noise_level=0.1, **kwargs):
+    ...    x = kwargs['x']
+    ...    return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
 
-
-    # using Bayesian with custom model and named args
-    >>def f(noise_level=0.1, **kwargs):
-          x = kwargs['x']
-          return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) \
-                   + np.random.randn() * noise_level
-
-    >>opt = HyperOpt("bayes",
-               model=objective_fn,
-               param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-                            Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-                            ],
-               use_named_args=True,
-               acq_func='EI',  # Expected Improvement.
-               n_calls=50,     #number of iterations
-               x0=[32, "relu"],  # inital value of optimizing parameters
-               n_random_starts=3,  # the number of random initialization points
-               random_state=2
-               )
-    >>opt_results = opt.fit()
+    >>>opt = HyperOpt("bayes",
+    ...           objective_fn=f,
+    ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
+    ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
+    ...                        ],
+    ...           use_named_args=True,
+    ...           acq_func='EI',  # Expected Improvement.
+    ...           n_calls=50,     #number of iterations
+    ...           x0=[32, "relu"],  # inital value of optimizing parameters
+    ...           n_random_starts=3,  # the number of random initialization points
+    ...           random_state=2
+    ...           )
+    >>>opt_results = opt.fit()
     ```
 
     References
@@ -310,24 +319,24 @@ class HyperOpt(object):
     """
 
     def __init__(self,
-                 method:str, *,
+                 algorithm:str, *,
                  param_space,
-                 model=None,
+                 objective_fn=None,
                  eval_on_best=False,
                  backend=None,
                  **kwargs
                  ):
 
-        if method not in ["random", "grid", "bayes", "tpe"]:
-            raise ValueError("method must be one of random, grid, bayes or tpe.")
+        if algorithm not in ["random", "grid", "bayes", "tpe"]:
+            raise ValueError("algorithm must be one of random, grid, bayes or tpe.")
 
-        self.model = model
-        self.method = method
+        self.objective_fn = objective_fn
+        self.algorithm = algorithm
         self.param_space=param_space
         self.backend=backend
         self.dl4seq_args = None
         self.use_named_args = False
-        self.title = self.method
+        self.title = self.algorithm
         self.results = {}  # internally stored results
         self.gpmin_results = None  #
         self.data = None
@@ -337,24 +346,24 @@ class HyperOpt(object):
         self.gpmin_args = self.check_args(**kwargs)
 
         if self.use_sklearn:
-            if self.method == "random":
-                self.optfn = RandomizedSearchCV(estimator=model, param_distributions=param_space, **kwargs)
+            if self.algorithm == "random":
+                self.optfn = RandomizedSearchCV(estimator=objective_fn, param_distributions=param_space, **kwargs)
             else:
-                self.optfn = GridSearchCV(estimator=model, param_grid=param_space, **kwargs)
+                self.optfn = GridSearchCV(estimator=objective_fn, param_grid=param_space, **kwargs)
 
         elif self.use_skopt_bayes:
-            self.optfn = BayesSearchCV(estimator=model, search_spaces=param_space, **kwargs)
+            self.optfn = BayesSearchCV(estimator=objective_fn, search_spaces=param_space, **kwargs)
 
         elif self.use_skopt_gpmin:
             self.fit = self.own_fit
 
         elif self.use_own:
             self.predict = self._predict
-            if self.method == "grid":
+            if self.algorithm == "grid":
                 self.fit = self.grid_search
-            elif self.method == 'random':
+            elif self.algorithm == 'random':
                 self.fit = self.random_search
-            elif self.method == 'tpe':
+            elif self.algorithm == 'tpe':
                 self.fit = self.fmin
         else:
             raise NotImplementedError
@@ -368,11 +377,11 @@ class HyperOpt(object):
         if x is not None:
             assert x in ['optuna', 'hyperopt', 'sklearn'], f"""
 Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
-        if self.method == 'tpe':
+        if self.algorithm == 'tpe':
             if x is None:
                 x = 'optuna'
             assert x in ['optuna', 'hyperopt']
-        elif self.method == 'random':
+        elif self.algorithm == 'random':
             if x is None:
                 x = 'sklearn'
             assert x in ['optuna', 'hyperopt', 'sklearn']
@@ -407,6 +416,8 @@ However you are using skopt version {skopt.__version__} .
 See https://scikit-optimize.github.io/stable/modules/generated/skopt.gp_minimize.html#skopt.gp_minimize
 for more details.
 """"")
+        if 'x0' in kwargs and self.algorithm in ['tpe', 'atpe', 'random', 'grid', 'cmaes']:
+            kwargs.pop('x0')
         return kwargs
 
     def __getattr__(self, item):
@@ -425,7 +436,7 @@ for more details.
 
     @param_space.setter
     def param_space(self, x):
-        if self.method == "bayes":
+        if self.algorithm == "bayes":
             if isinstance(x, dict):
                 _param_space = []
                 for k,v in x.items():
@@ -442,7 +453,7 @@ param space must be one of Integer, Real or Categorical
 but it is of type {type(space)}"""
                 _param_space = x
 
-        elif self.method in ["random", "grid"]:
+        elif self.algorithm in ["random", "grid"]:
             if isinstance(x, dict):
                 _param_space = x
             elif isinstance(x, list):
@@ -452,8 +463,18 @@ but it is of type {type(space)}"""
                     _param_space[_space.name] = _space.grid
             else:
                 raise ValueError
-        elif self.method == 'tpe':
-            _param_space = x
+        elif self.algorithm == 'tpe':
+            if isinstance(x, list):
+                _param_space = {}
+                for space in x:
+                    if isinstance(space, Dimension):
+                        _param_space[space.name] = space.as_hp()
+                    else:
+                        raise ValueError
+            elif isinstance(x, Dimension):
+                _param_space = x.as_hp()
+            else:
+                _param_space = x
         else:
             raise ValueError
 
@@ -462,14 +483,14 @@ but it is of type {type(space)}"""
     @property
     def use_sklearn(self):
         # will return True if we are to use sklearn's GridSearchCV or RandomSearchCV
-        if self.method in ["random", "grid"] and "sklearn" in str(type(self.model)):
+        if self.algorithm in ["random", "grid"] and "sklearn" in str(type(self.objective_fn)):
             return True
         return False
 
     @property
     def use_skopt_bayes(self):
         # will return true if we have to use skopt based BayesSearchCV
-        if self.method=="bayes" and "sklearn" in str(type(self.model)):
+        if self.algorithm=="bayes" and "sklearn" in str(type(self.objective_fn)):
             assert not self.use_sklearn
             return True
         return False
@@ -478,7 +499,7 @@ but it is of type {type(space)}"""
     def use_skopt_gpmin(self):
         # will return True if we have to use skopt based gp_minimize function. This is to implement Bayesian on
         # non-sklearn based models
-        if self.method == "bayes" and "sklearn" not in str(type(self.model)):
+        if self.algorithm == "bayes" and "sklearn" not in str(type(self.objective_fn)):
             assert not self.use_sklearn
             assert not self.use_skopt_bayes
             return True
@@ -486,7 +507,7 @@ but it is of type {type(space)}"""
 
     @property
     def use_tpe(self):
-        if self.method == 'tpe':
+        if self.algorithm == 'tpe':
             return True
         else:
             return False
@@ -498,7 +519,6 @@ but it is of type {type(space)}"""
             return True
         return False
 
-
     @property
     def random_state(self):
         if "random_state" not in self.gpmin_args:
@@ -507,10 +527,12 @@ but it is of type {type(space)}"""
             return np.random.RandomState(self.gpmin_args['random_state'])
 
     @property
-    def iters(self):
-        if self.method == 'tpe':
+    def num_iterations(self):
+        if 'num_iterations' in self.gpmin_args:
+            return self.gpmin_args['num_iterations']
+        if self.algorithm == 'tpe':
             return self.gpmin_args.get('max_evals', 9223372036854775807)
-        elif 'n_calls' in self.gpmin_args:
+        if 'n_calls' in self.gpmin_args:
             return self.gpmin_args['n_calls']
         return self.gpmin_args['n_iter']
 
@@ -595,20 +617,20 @@ but it is of type {type(space)}"""
 
     def model_for_gpmin(self):
         """This function can be called in two cases:
-            - The user has made its own model.
-            - We make model using dl4seq and return the error.
+            - The user has made its own objective_fn.
+            - We make objective_fn using dl4seq and return the error.
           In first case, we just return what user has provided.
           """
-        if callable(self.model) and not self.use_named_args:
+        if callable(self.objective_fn) and not self.use_named_args:
             # external function for bayesian but this function does not require named args.
-            return self.model
+            return self.objective_fn
 
         dims = self.dims()
         if self.use_named_args and self.dl4seq_args is None:
             # external function and this function accepts named args.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
-                return self.model(**kwargs)
+                return self.objective_fn(**kwargs)
             return fitness
 
         if self.use_named_args and self.dl4seq_args is not None:
@@ -621,11 +643,14 @@ but it is of type {type(space)}"""
         raise ValueError(f"used named args is {self.use_named_args}")
 
     def own_fit(self):
+        kwargs = self.gpmin_args
+        if 'num_iterations' in kwargs:
+            kwargs['n_calls'] = kwargs.pop('num_iterations')
 
         try:
             search_result = gp_minimize(func=self.model_for_gpmin(),
                                         dimensions=self.dims(),
-                                        **self.gpmin_args)
+                                        **kwargs)
         except ValueError:
             if int(''.join(sklearn.__version__.split('.')[1]))>22:
                 raise ValueError(f"""
@@ -657,15 +682,15 @@ Try to lower the sklearn version to 0.22 and run again.
 
             if self.use_dl4seq_model:
                 err = self.dl4seq_model(**para)
-            elif self.use_named_args:  # model is external but uses kwargs
-                err = self.model(**para)
-            else: # model is external and does not uses keywork arguments
+            elif self.use_named_args:  # objective_fn is external but uses kwargs
+                err = self.objective_fn(**para)
+            else: # objective_fn is external and does not uses keywork arguments
                 try:
-                    err = self.model(*list(para.values()))
+                    err = self.objective_fn(*list(para.values()))
                 except TypeError:
                     raise TypeError(f"""
 use_named_args argument is set to {self.use_named_args}. If your
-objective function/model takes key word arguments, make sure that
+objective function takes key word arguments, make sure that
 this argument is set to True during initiatiation of HyperOpt.""")
             err = round(err, 8)
 
@@ -695,7 +720,7 @@ this argument is set to True during initiatiation of HyperOpt.""")
 
     def random_search(self):
 
-        param_list = list(ParameterSampler(self.param_space, n_iter=self.iters,
+        param_list = list(ParameterSampler(self.param_space, n_iter=self.num_iterations,
                                            random_state=self.random_state))
         self.param_grid = param_list
 
@@ -703,17 +728,30 @@ this argument is set to True during initiatiation of HyperOpt.""")
 
     def fmin(self, **kwargs):
         trials = Trials()
-        best = fmin(self.model,
+        model_kws = self.gpmin_args
+        if 'num_iterations' in model_kws:
+            model_kws['max_evals'] = model_kws.pop('num_iterations')
+
+        if self.use_named_args:
+            def objective_fn(kws):
+                # the objective function in hyperopt library receives a dictionary
+                return self.objective_fn(**kws)
+            objective_f = objective_fn
+        else:
+            objective_f = self.objective_fn
+
+        best = fmin(objective_f,
                     space=self.param_space,
                     algo=tpe.suggest,
                     trials=trials,
                     **kwargs,
-                    **self.gpmin_args)
+                    **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
             json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4)
 
         setattr(self, 'trials', trials)
+        self.results = trials.results
         self._plot_convergence()
 
         return best
@@ -724,21 +762,21 @@ this argument is set to True during initiatiation of HyperOpt.""")
             return self.dl4seq_model(pp=True, **params)
 
         if self.use_named_args and self.dl4seq_args is None:
-            return self.model(**params)
+            return self.objective_fn(**params)
 
-        if callable(self.model) and not self.use_named_args:
-            return self.model(*args)
+        if callable(self.objective_fn) and not self.use_named_args:
+            return self.objective_fn(*args)
 
     def _plot_convergence(self):
-        method = self.method
-        trials = self.trials if self.method == 'tpe' else None
-        iters = self.iters
+        algorithm = self.algorithm
+        trials = self.trials if self.algorithm == 'tpe' else None
+        num_iterations = self.num_iterations
 
         class sr:
             def __init__(self, results):
-                if method == 'tpe':
-                    self.x_iters = [[val[0] for val in list(trials.trials[i]['misc']['vals'].values())] for i in range(iters)]
-                    self.func_vals = [trials.results[i]['loss'] for i in range(iters)]
+                if algorithm == 'tpe':
+                    self.x_iters = [[val[0] for val in list(trials.trials[i]['misc']['vals'].values())] for i in range(num_iterations)]
+                    self.func_vals = [trials.results[i]['loss'] for i in range(num_iterations)]
                 else:
                     self.x_iters = [list(_iter.values()) for _iter in results.values()]
                     self.func_vals = np.array(list(results.keys()), dtype=np.float32)
@@ -794,8 +832,8 @@ this argument is set to True during initiatiation of HyperOpt.""")
     def eval_with_best(self,
                        view_model=True,
                        return_model=False):
-        """Find the best parameters and evaluate the model on them."""
-        print("Evaluting model's performance on best set of parameters.")
+        """Find the best parameters and evaluate the objective_fn on them."""
+        print("Evaluting objective_fn on best set of parameters.")
         x = self.best_paras
 
         if self.use_named_args:
@@ -809,9 +847,9 @@ this argument is set to True during initiatiation of HyperOpt.""")
                                      **x)
 
         if self.use_named_args and self.dl4seq_args is None:
-            return self.model(**x)
+            return self.objective_fn(**x)
 
-        if callable(self.model) and not self.use_named_args:
-            return self.model(x)
+        if callable(self.objective_fn) and not self.use_named_args:
+            return self.objective_fn(x)
 
         raise NotImplementedError
