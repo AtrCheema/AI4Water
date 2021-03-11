@@ -8,7 +8,6 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq import Model
 
-import tensorflow as tf
 import numpy as np
 import pandas as pd
 
@@ -20,9 +19,8 @@ w = 5
 h = 5
 
 # input for 2D data, radar images
-pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h) #5 rows 5 columns, and 100 images
+pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h)  # 5 rows 5 columns, and 100 images
 lai = np.random.randint(6, 10, examples*w*h).reshape(examples, w, h)
-
 
 data_2d = np.full((len(pcp), len(inp_2d), w, h), np.nan) #np.shape(data)==(100,5,5,5); 5 rows, 5 columns, 5 variables, and 100 images in each variable
 
@@ -72,10 +70,11 @@ def build_and_run(outputs, transformation=None, indices=None):
         verbosity=0
     )
 
-    hist = model.fit(indices=indices)
+    model.fit(indices=indices)
     return model.predict(indices=model.test_indices if indices else None)
 
 class test_MultiInputModels(unittest.TestCase):
+
     def test_with_no_transformation(self):
         outputs = {"inp_1d": ['flow']}
         build_and_run(outputs, transformation=None)
@@ -95,6 +94,34 @@ class test_MultiInputModels(unittest.TestCase):
     def test_with_multiple_outputs(self):
         outputs = {'inp_1d': ['flow', 'suro']}
         build_and_run(outputs)
+        return
+
+    def test_add_output_layer1(self):
+        # check if it adds both dense and reshapes it correctly or not
+        model = Model(model={'layers': {'lstm': {'config': {'units': 64}}}})
+
+        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
+        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+
+        return
+
+    def test_add_output_layer2(self):
+        # check if it reshapes the output correctly
+        model = Model(model={'layers': {'lstm': {'config': {'units': 64}},
+                                        'Dense': {'config': {'units': 1}}}})
+
+        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
+        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        return
+
+    def test_add_no_output_layer(self):
+        # check if it does not add layers when it does not have to
+        model = Model(model={'layers': {'lstm': {'config': {'units': 64}},
+                                        'Dense': {'config': {'units': 1}},
+                                        'Reshape': {'config': {'target_shape': (1,1)}}}})
+
+        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
+        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
         return
 
 if __name__ == "__main__":

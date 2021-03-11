@@ -178,6 +178,8 @@ class NN(AttributeStore):
             self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
             first_layer = False
 
+        layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
+
         inputs = []
         for k,v in lyr_cache.items():
             # since the model is not build yet and we have access to only output tensors of each list, this is probably
@@ -205,6 +207,37 @@ class NN(AttributeStore):
                 print("Warning: the output is of Input tensor class type")
 
         return inputs, layer_outputs
+
+    def maybe_add_output_layer(self, current_outputs, lyr_cache:dict):
+        """
+        If the shape of the last layer in the NN structure does not
+        matches with the number of outputs/self.outs, then this layer
+        automatically a dense layer matching the number of outputs and
+        then reshapes it to match the following dimention (outs, forecast_len/horizons)
+        """
+        new_outputs = current_outputs
+        shape = current_outputs.shape
+        if len(shape) < 3:  # the output is not of shape (?, num_outputs, horizons)
+
+            if shape[-1] != self.outs:  # we add a Dense layer followed by reshaping it
+
+                dense = tf.keras.layers.Dense(self.outs)
+                dense_out = dense(current_outputs)
+                self.update_cache(lyr_cache, dense.name, dense)
+                reshape = tf.keras.layers.Reshape(target_shape=(self.outs, self.forecast_len))
+                new_outputs = reshape(dense_out)
+                self.update_cache(lyr_cache, reshape.name, reshape)
+
+            else:  # just reshape the output to match (?, num_outputs, horizons)
+                reshape = tf.keras.layers.Reshape(target_shape=(self.outs, self.forecast_len))
+                new_outputs = reshape(current_outputs)
+                self.update_cache(lyr_cache, reshape.name, reshape)
+        elif len(shape) > 3:
+            raise NotImplementedError  # let's raise the error now and see where it should not
+        else:
+            pass # currently not checking 3d output and supposing it is of currect shape
+
+        return new_outputs
 
     def update_cache(self, cache:dict, key, value):
         if key in cache:
