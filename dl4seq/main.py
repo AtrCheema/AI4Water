@@ -2001,7 +2001,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         else:
             # loads the weights of keras model from weight file `w_file`.
             self._model.load_weights(weight_file)
-        print("{} Successfully loaded weights {}".format('*' * 10, '*' * 10))
+        if self.verbosity > 0:
+            print("{} Successfully loaded weights {}".format('*' * 10, '*' * 10))
         return
 
     def write_cache(self, _fname, input_x, input_y, label_y):
@@ -2027,7 +2028,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         visualizer.data_heatmap(cols=cols)
 
         # line plots of input/output data
-        self.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
+        visualizer.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
         visualizer.plot_feature_feature_corr(cols=cols)

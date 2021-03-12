@@ -14,6 +14,7 @@ from dl4seq.utils.utils import _missing_vals
 from dl4seq.utils.utils import find_tot_plots, set_fig_dim
 from dl4seq.utils.transformations import Transformations
 
+# TODO add Murphy's plot as shown in MLAir
 
 class Intrepretation(object):
 
@@ -385,9 +386,9 @@ class Visualizations(object):
             "kge": "Kling-Gupta Efficiency"
         }
 
-        sub_plots = {1: {'axis': (1,1), 'width': 10, 'height': 7},
-                     2: {'axis': (1, 1), 'width': 10, 'height': 7},
-                     3: {'axis': (1, 2), 'wdith': 10, 'height': 10},
+        sub_plots = {1: {'axis': (1,1), 'width': 9, 'height': 6},
+                     2: {'axis': (1, 1), 'width': 9, 'height': 6},
+                     3: {'axis': (1, 2), 'wdith': 9, 'height': 6},
                      4: {'axis': (1, 2), 'width': 10, 'height': 10},
                      5: {'axis': (1, 3), 'width': 15, 'height': 10},
                      6: {'axis': (1, 3), 'width': 20, 'height': 20},
@@ -493,28 +494,32 @@ class Visualizations(object):
                       figsize: tuple = (20, 20),
                       spine_color: str = "#EEEEEE",
                       save=True,
+                      title=None,
+                      title_fs=16,
                       fname=""
                      ):
 
         if cols is None:
             cols = data.columns
-        fig, ax2 = plt.subplots(figsize=figsize)
+        fig, axis = plt.subplots(figsize=figsize)
         # ax2 - Heatmap
-        sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=ax2)
-        ax2.set_yticks(ax2.get_yticks()[0::5].astype('int'))
-        ax2.set_yticklabels(ax2.get_yticks(),
+        sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=axis)
+        axis.set_yticks(axis.get_yticks()[0::5].astype('int'))
+        axis.set_yticklabels(axis.get_yticks(),
                             fontsize="16")
-        ax2.set_xticklabels(
-            ax2.get_xticklabels(),
+        axis.set_xticklabels(
+            axis.get_xticklabels(),
             horizontalalignment="center",
             fontweight="light",
             fontsize="12",
         )
-        ax2.tick_params(length=1, colors="#111111")
-        ax2.set_ylabel("Examples", fontsize="24")
-        for _, spine in ax2.spines.items():
+        axis.tick_params(length=1, colors="#111111")
+        axis.set_ylabel("Examples", fontsize="24")
+        for _, spine in axis.spines.items():
             spine.set_visible(True)
             spine.set_color(spine_color)
+        if title is not None:
+            axis.set_title(title, fontsize=title_fs)
 
         self.save_or_show(save=save, fname=fname+'_heat_map', where='data', dpi=500)
         return
@@ -800,3 +805,149 @@ class Visualizations(object):
         sns.pairplot(data=df_pca, vars=pcs, hue=hue, **kwargs)
         self.save_or_show(fname=f"first_{num_pcs}_pcs_{prefix}", save=save, where='data')
         return
+
+    def plot_data(self, save=True, freq=None, cols=None, max_subplots=10, **kwargs):
+        """
+        :param save:
+        :param max_subplots: int, number of subplots within one plot. Each feature will be shown in a separate subplot.
+        :param kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
+        :param freq: str, one of 'daily', 'weekly', 'monthly', 'yearly', determines interval of plot of data. It is
+                     valid for only time-series data.
+        :param cols: columns in self.data to plot
+        :return:
+
+        ------
+        examples:
+
+        >>>model.plot_data(subplots=True, figsize=(12, 14), sharex=True)
+        >>>model.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
+        """
+        # TODO, this method should be available from `model` as well
+        if isinstance(self.data, pd.DataFrame):
+            self.plot_df(self.data, cols=cols, save=save, freq=freq, max_subplots=max_subplots, **kwargs)
+
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self.plot_df(data, cols=cols[idx], save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                if isinstance(data, pd.DataFrame):
+                    self.plot_df(data, cols=cols, prefix=data_name, save=save, freq=freq, max_subplots=max_subplots,
+                                 **kwargs)
+        return
+
+    def plot_df(self, df, cols=None, save=True, freq=None, max_subplots=10,
+                prefix='',
+                leg_kws=None,
+                label_kws=None,
+                tick_kws=None,
+                **kwargs):
+        """Plots each columns of dataframe and saves it if `save` is True.
+         max_subplots: determines how many sub_plots are to be plotted within one plot. If dataframe contains columns
+         greater than max_subplots, a separate plot will be generated for remaining columns.
+         """
+        assert isinstance(df, pd.DataFrame)
+        if leg_kws is None:
+            leg_kws = {'fontsize': 14}
+        if label_kws is None:
+            label_kws = {'fontsize': 14}
+        if tick_kws is None:
+            tick_kws = {'axis':"both", 'which':'major', 'labelsize':12}
+
+        if cols is None:
+            cols = list(df.columns)
+        df = df[cols]
+
+        if df.shape[1] <= max_subplots:
+
+            if freq is None:
+                kwargs = plot_style(df, **kwargs)
+                axis = df.plot(**kwargs)
+                if isinstance(axis, np.ndarray):
+                    for ax in axis:
+                        set_axis_paras(ax, leg_kws, label_kws, tick_kws)
+                else:
+                    set_axis_paras(axis, leg_kws, label_kws, tick_kws)
+
+                self.save_or_show(save=save, fname=f"input_{prefix}",  where='data')
+            else:
+                self.plot_df_with_freq(df, freq, save, **kwargs)
+        else:
+            tot_plots = find_tot_plots(df.shape[1], max_subplots)
+
+            for i in range(len(tot_plots) - 1):
+                st, en = tot_plots[i], tot_plots[i + 1]
+                sub_df = df.iloc[:, st:en]
+
+                if freq is None:
+                    kwargs = plot_style(sub_df, **kwargs)
+                    axis = sub_df.plot(**kwargs)
+                    for ax in axis:
+                        ax.legend(**leg_kws)
+                        ax.set_ylabel(ax.get_ylabel(), **label_kws)
+                        ax.set_xlabel(ax.get_xlabel(), **label_kws)
+                        ax.tick_params(**tick_kws)
+                    self.save_or_show(save=save, fname=f'input_{prefix}_{st}_{en}', where='data')
+                else:
+                    self.plot_df_with_freq(sub_df, freq, save, prefix=f'{prefix}_{st}_{en}', **kwargs)
+        return
+
+    def plot_df_with_freq(self, df:pd.DataFrame, freq:str, save:bool=True, prefix:str='', **kwargs):
+        """Plots a dataframe which has data as time-series and its index is pd.DatetimeIndex"""
+
+        validate_freq(df, freq)
+
+        st_year = df.index[0].year
+        en_year = df.index[-1].year
+
+        for yr in range(st_year, en_year + 1):
+
+            _df = df[df.index.year == yr]
+
+            if freq == 'yearly':
+                kwargs = plot_style(_df, **kwargs)
+                _df.plot(**kwargs)
+                self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)}', where='data')
+
+            elif freq == 'monthly':
+                st_mon = _df.index[0].month
+                en_mon = _df.index[-1].month
+
+                for mon in range(st_mon, en_mon+1):
+
+                    __df = _df[_df.index.month == mon]
+                    kwargs = plot_style(__df, **kwargs)
+                    __df.plot(**kwargs)
+                    self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(mon)}', where='data/monthly')
+
+            elif freq == 'weekly':
+                st_week = _df.index[0].isocalendar()[1]
+                en_week = _df.index[-1].isocalendar()[1]
+
+                for week in range(st_week, en_week+1):
+                    __df = _df[_df.index.week == week]
+                    kwargs = plot_style(__df, **kwargs)
+                    __df.plot(**kwargs)
+                    self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(week)}', where='data/weely')
+        return
+
+
+def set_axis_paras(axis, leg_kws, label_kws, tick_kws):
+    axis.legend(**leg_kws)
+    axis.set_ylabel(axis.get_ylabel(), **label_kws)
+    axis.set_xlabel(axis.get_xlabel(), **label_kws)
+    axis.tick_params(**tick_kws)
+    return
+
+
+def plot_style(df:pd.DataFrame, **kwargs):
+    if 'style' not in kwargs and df.isna().sum().sum() > 0:
+        kwargs['style'] = ['.' for _ in range(df.shape[1])]
+    return kwargs
+
+
+def validate_freq(df, freq):
+    assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
+    assert freq in ["weekly", "monthly",
+                    "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
+    return
