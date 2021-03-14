@@ -241,6 +241,7 @@ def plot_shapefile(shp_files,
     #shp_reader.close()
     return
 
+
 def plot_polygon_feature(feature, n, bbox):
     f_if = feature.shape.__geo_interface__
     polys = len(f_if['coordinates'])

@@ -20,7 +20,7 @@ from dl4seq.utils.utils import stats
 # Log mse
 # Jeffreys Divergence
 # kullback-Leibler divergence
-#
+# Peak flow ratio https://hess.copernicus.org/articles/24/869/2020/
 # Legates׳s coefficient of efficiency
 EPS = 1e-10  # epsilon
 

@@ -10,6 +10,7 @@ import shapefile
 from dl4seq.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
 from dl4seq.utils.spatial_utils import get_total_area, get_lu_paras, GifUtil
 from dl4seq.utils.spatial_utils import find_records
+from dl4seq.utils.spatial_utils import plot_shapefile
 
 
 M2ToAcre = 0.0002471     # meter square to Acre
@@ -482,6 +483,43 @@ class MakeHRUs(object):
         plt.show()
         return
 
+    def draw_pie(self, year, n_merge, title=False, save=False, name=None):
+        """Draws a pie chart showing relative area of HRUs for a particular year.
+        Since the hrus can change with time, selecting one year is based on supposition
+        that area of hrus remain constant during the whole year.
+        year: int, the year for which area of hrus will be used.
+        title: bool,
+        save: bool,
+        name: str
+        """
+        idx = str(year) + '-01-31'
+        area_unsort = self.area.loc[idx]
+        area = area_unsort.sort_values()
+        merged = area[area.index[0]:area.index[n_merge-1]]
+        rest = area[area.index[n_merge]:]
+
+        merged_vals = sum(merged.values)
+        vals = list(rest.values) + [merged_vals]
+        labels = list(rest.keys())  + ['{} HRUs'.format(n_merge)]
+        explode = [0 for _ in range(len(vals))]
+        explode[-1] = 0.1
+
+        labels_n = []
+        for l in labels:
+            labels_n.append(l.replace('lu_', ''))
+
+        fig1, ax1 = plt.subplots()
+        ax1.pie(vals,explode=tuple(explode), labels=labels_n, autopct='%1.1f%%',
+                shadow=True, startangle=90)
+        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        if title:
+            plt.title('Areas of HRUs for year {}'.format(year), fontsize=20)
+        if save:
+            if name is None: name = self.hru_definition
+            plt.savefig(f'{len(self.hru_names)}hrus_for_{year}_{name}.png', dpi=300)
+        plt.show()
+        return
+
 
 if __name__=="__main__":
 
@@ -501,9 +539,10 @@ if __name__=="__main__":
             2014:"D:\\Laos\\data\\landuse\\shapefiles\\LU2014.shp",
             2015:"D:\\Laos\\data\\landuse\\shapefiles\\LU2015.shp"
              }
-    hru_object = MakeHRUs('unique_lu_sub',
+    hru_object = MakeHRUs('unique_lu_soil',
                           index=years,
                           subbasins_shape=SubBasin_shp,
                           soil_shape=Soil_shp,
                           slope_shape=slope_shp)
     hru_object.get()
+    hru_object.draw_pie(2011, n_merge=25, title=False)
