@@ -152,10 +152,10 @@ class TestCamelsBR(unittest.TestCase):
         test_stations(ds_br, 593)  # check length of stations
 
     def test_fetch_dynamic_attributes(self):
-        test_fetch_dynamic_attributes(ds_br, '64620000', 17)  # make sure dynamic data from one station have 10 attributes
+        test_fetch_dynamic_attributes(ds_br, '64620000', 17)  # make sure dynamic data from one station have 17 attributes
 
     def test_fetch_dynamic_multiple_stations(self):
-        test_fetch_dynamic_multiple_stations(ds_br, 3, 17)  # make sure that dynamic data from 3 stations each have 10 attributes
+        test_fetch_dynamic_multiple_stations(ds_br, 3, 17)  # make sure that dynamic data from 3 stations each have 17 attributes
 
     def test_fetch_static_attribue(self):
         test_fetch_static_attribue(ds_br, '64620000', 68)  # make sure that static data from one station can be retrieved

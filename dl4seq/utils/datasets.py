@@ -9,20 +9,176 @@
 # https://doi.pangaea.de/10.1594/PANGAEA.905446
 # https://doi.pangaea.de/10.1594/PANGAEA.900958
 # https://doi.pangaea.de/10.1594/PANGAEA.831193
-
+# https://data.world/datagov-uk/223a8f60-e3ac-4a25-987d-587cc3a92fa1
+# https://www.bafg.de/GRDC/EN/04_spcldtbss/41_ARDB/arcticHycos.html?nn=201574 flow dataset
 
 # HYSETS https://osf.io/rpc3w/  https://www.nature.com/articles/s41597-020-00583-2
 
+# https://zenodo.org/record/3712407#.YExYDtyRWUk
+# https://zenodo.org/record/3844201#.YExYi9yRWUk
+# https://zenodo.org/record/1471322#.YExYftyRWUk
+# https://zenodo.org/record/3961605#.YExYcdyRWUk
+# https://zenodo.org/record/1452383#.YExZRdyRWUk
+# https://zenodo.org/record/4428151#.YExZPdyRWUk
+# https://zenodo.org/record/3903238#.YExZItyRWUk
+# https://zenodo.org/record/3670864#.YExZFdyRWUk
+# https://zenodo.org/record/3834623#.YExY7tyRWUk
+# https://zenodo.org/record/4029572#.YExY5NyRWUk
+# https://zenodo.org/record/4552842#.YExaR9yRWUk
+# https://zenodo.org/record/3466097#.YExaQ9yRWUk
+# https://zenodo.org/record/4327078#.YExaCdyRWUk
+# https://zenodo.org/record/3712397#.YExbsdyRWUk
+# https://zenodo.org/record/3560706#.YExeztyRWUk
+# https://zenodo.org/record/3698998#.YExekdyRWUk
+# https://zenodo.org/record/3564237#.YExlh9yRWUl
+# https://zenodo.org/record/581145#.YExeV9yRWUk
+# https://zenodo.org/record/3978225#.YExeEtyRWUk
+# https://zenodo.org/record/3763766#.YExdntyRWUk
+# https://zenodo.org/record/3744217#.YExdi9yRWUk
+# https://zenodo.org/record/3948568#.YExdeNyRWUk
+# https://zenodo.org/record/3538207#.YExdbtyRWUk
+# https://zenodo.org/record/1486058#.YExc-dyRWUk
+# https://zenodo.org/record/3561032#.YExc7tyRWUk
+# https://zenodo.org/record/1466038#.YExc3dyRWUk
+# https://zenodo.org/record/581186#.YExcz9yRWUk
+# https://zenodo.org/record/4572636#.YExcwNyRWUk
+# https://zenodo.org/record/1267837#.YExcZNyRWUk
+# https://zenodo.org/record/3808223#.YExcX9yRWUk
+# https://zenodo.org/record/4447435#.YExcWtyRWUk
+# https://zenodo.org/record/1300354#.YExcVdyRWUk
+# https://zenodo.org/record/4308036#.YExcJdyRWUk
+# https://zenodo.org/record/3459610#.YExhNNyRWUk
+# https://zenodo.org/record/3763342#.YExhCdyRWUk
+# https://zenodo.org/record/4559571#.YExhBNyRWUk
+# https://zenodo.org/record/3663630#.YExg89yRWUk
+# https://zenodo.org/record/4382937#.YExg7dyRWUk
+# https://zenodo.org/record/3876148#.YExgUdyRWUk
+# https://zenodo.org/record/3982962#.YExgTdyRWUk
+# https://zenodo.org/record/2559480#.YExvWtyRWUk
+# https://zenodo.org/record/4094684#.YExvS9yRWUk
+# https://zenodo.org/record/2596929#.YExvP9yRWUk
+# https://zenodo.org/record/977773#.YExvEtyRWUk
+# https://zenodo.org/record/3520146#.YExu_tyRWUk
+# https://zenodo.org/record/3836648#.YExu09yRWUk
+# https://zenodo.org/record/4290294#.YExo5tyRWUk
+# https://zenodo.org/record/2728636#.YEx4EdyRWUk
+# https://zenodo.org/record/581435#.YEx4KNyRWUk  HYPE
+# https://zenodo.org/record/4029572#.YEx5HNyRWUk  HYPE
+# https://zenodo.org/record/4029572#.YEx6Z9yRWUk  HYPE
+# https://zenodo.org/record/3581187#.YEx5CNyRWUk
+# https://zenodo.org/record/3946242#.YEx5FtyRWUk
+# https://zenodo.org/record/883100#.YEx5L9yRWUk
+# https://zenodo.org/record/3239401#.YEx5gtyRWUk
+# https://zenodo.org/record/4183611#.YEx5vNyRWUk
+# https://zenodo.org/record/4559696#.YEx5xdyRWUk
+# https://zenodo.org/record/3776011#.YEx6YdyRWUk
+# https://zenodo.org/record/4315647#.YEx6v9yRWUk
+# https://zenodo.org/record/1185084#.YEx77NyRWUk
+# https://zenodo.org/record/4271209#.YEx7z9yRWUk
+# https://zenodo.org/record/4570780#.YEx7y9yRWUk
+# https://zenodo.org/record/3593395#.YEx7x9yRWUk
+# https://zenodo.org/record/3632501#.YEx7qtyRWUk
+# https://zenodo.org/record/1122635#.YEx7ndyRWUk
+# https://zenodo.org/record/3893897#.YEx7gNyRWUk
+# https://zenodo.org/record/4395737#.YEx7a9yRWUk
+# https://zenodo.org/record/3779473#.YEx7aNyRWUk
+# https://zenodo.org/record/1226394#.YEx7O9yRWUk
+# https://zenodo.org/record/4391461#.YEx7MtyRWUk
+# https://zenodo.org/record/4247833#.YEx7HtyRWUk
+# https://zenodo.org/record/1486058#.YEx7G9yRWUk
+# https://zenodo.org/record/3928587#.YEx7E9yRWUk
+# https://zenodo.org/record/4341521#.YEx7DdyRWUk
+# https://zenodo.org/record/3974871#.YEx7CdyRWUk
+# https://zenodo.org/record/1298526#.YEx7B9yRWUk
+# https://zenodo.org/record/57293#.YEx6_dyRWUk
+# https://zenodo.org/record/4268711#.YEx6-9yRWUk
+# https://zenodo.org/record/322827#.YEx69tyRWUk
+# https://zenodo.org/record/1050301#.YEx6y9yRWUk
+
+
+# ETP
+# https://zenodo.org/record/4038399#.YEx6INyRWUk
+# https://zenodo.org/record/4601596#.YEx6M9yRWUk
+# https://zenodo.org/record/3981919#.YEx6ONyRWUk
+# https://zenodo.org/record/4271331#.YEx6PdyRWUk
+# https://zenodo.org/record/3726856#.YEx6RdyRWUk
+# https://zenodo.org/record/4580292#.YEx6TtyRWUk
+# https://zenodo.org/record/1044306#.YEx6UNyRWUk
+# https://zenodo.org/record/3891936#.YEx7S9yRWUk
+# https://zenodo.org/record/4060319#.YEx7QtyRWUk
+
+
+# rr
+# https://zenodo.org/record/3341592#.YEx5RtyRWUk
+# https://zenodo.org/record/4539986#.YEx5T9yRWUk
+# https://zenodo.org/record/3931582#.YEx5W9yRWUk
+# https://zenodo.org/record/3528098#.YEx64NyRWUk
+
+
+# air
+# https://zenodo.org/record/4311854#.YExpwNyRWUk
+# https://zenodo.org/record/4281271#.YExpYNyRWUk
+
+
+# ocean
+# https://zenodo.org/record/4600696#.YExpSdyRWUk
+
+
+# Water Quality
+# https://zenodo.org/record/1495558#.YExqFtyRWUk
+
+
+# Flow
+# https://zenodo.org/record/3941890#.YExp5NyRWUk
+# https://zenodo.org/record/1206188#.YExn-dyRWUk
+# https://zenodo.org/record/4394503#.YEx6ndyRWUk
+# https://zenodo.org/record/3240954#.YEx6s9yRWUk
+
+
+# Groundwater
+# https://zenodo.org/record/3887120#.YExq1tyRWUk
+# https://zenodo.org/record/3928587#.YExnztyRWUk
+# https://zenodo.org/record/1158631#.YEx7ZdyRWUk
+# https://zenodo.org/record/4139912#.YEx7XdyRWUk
+
+
+# Weather
+# https://zenodo.org/record/3678799#.YExsP9yRWUk
+# https://zenodo.org/record/3679247#.YExsOdyRWUk
+# https://zenodo.org/record/3678789#.YExsN9yRWUk
+# https://zenodo.org/record/4567325#.YExqjtyRWUk
+# https://zenodo.org/record/3549899#.YExqNdyRWUk
+# https://zenodo.org/record/4319773#.YExoq9yRWUk
+# https://zenodo.org/record/4319770#.YExooNyRWUk
+# https://zenodo.org/record/4319756#.YExnl9yRWUk
+# https://zenodo.org/record/854619#.YExnityRWUk
+
+
+# geologic
+# https://zenodo.org/record/4536561#.YExpQNyRWUk
+# https://zenodo.org/record/2549499#.YExo09yRWUk
+
+
+# 2D time series datasets
+# https://zenodo.org/record/1135230#.YExYotyRWUk
+# https://zenodo.org/record/2630456#.YExb4tyRWUk
+# https://zenodo.org/record/4559368#.YExd1NyRWUk
+# https://zenodo.org/record/4542076#.YExuxtyRWUk
+# https://zenodo.org/record/4489056#.YExoBtyRWUk
+# https://zenodo.org/record/1157344#.YExnqNyRWUk
+
 
 import glob
-import zipfile
 import random
-import urllib.request as ulib
-import sys, shutil, os
-import urllib.parse as urlparse
+import zipfile
+import requests
 import tempfile
+import sys, shutil, os
 from typing import Union
+import urllib.request as ulib
+import urllib.parse as urlparse
 
+import bs4
 import pandas as pd
 import numpy as np
 
@@ -32,7 +188,34 @@ from dl4seq.utils.spatial_utils import plot_shapefile
 
 # TODO, add visualization
 
-DATASETS = ['ISWDC', 'SEBAL_ET_CHINA']
+# TODO all available datasets should be available using a single interface instead of importing each separately
+DATASETS = [
+    'ISWDC',
+    'SEBAL_ET_CHINA',
+    'GeoChemMatane',
+    'PrecipBerlin',
+    'HydroChemJava',
+    'WaterChemVictoriaLakes',
+    'WaterChemEcuador',
+    'HydrocarbonsGabes',
+    'SedimentAmersee',
+    'FlowTetRiver',
+    'HoloceneTemp',
+    'RiverTempEroo',
+    'StreamTempSpain',
+    'FlowSedDenmark',
+    'FlowSamoylov',
+    'EtpPcpSamoylov',
+    'RiverIsotope',
+    'WQCantareira',
+    'RiverTempSpain',
+    'HydrometricParana',
+    'FlowBenin',
+    'YamaguchiClimateJp',
+    'WQJordan2',
+    'WQJordan',
+    'Weisssee'
+            ]
 
 # following files must exist withing data folder for CAMELS-GB data
 CAMELS_GB_files = [
@@ -44,6 +227,20 @@ CAMELS_GB_files = [
     'CAMELS_GB_landcover_attributes.csv',
     'CAMELS_GB_soil_attributes.csv',
     'CAMELS_GB_topographic_attributes.csv'
+]
+
+# following files must exist in a folder containing HYSETS dataset.
+HYSETS_FILES = [
+    'HYSETS_2020_ERA5.nc',
+    'HYSETS_2020_ERA5Land.nc',
+    'HYSETS_2020_ERA5Land_SWE.nc',
+    'HYSETS_2020_Livneh.nc',
+    'HYSETS_2020_nonQC_stations.nc',
+    'HYSETS_2020_SCDNA.nc',
+    'HYSETS_2020_SNODAS_SWE.nc',
+    'HYSETS_elevation_bands_100m.csv',
+    'HYSETS_watershed_boundaries.zip',
+    'HYSETS_watershed_properties.txt'
 ]
 
 def gb_message():
@@ -1281,6 +1478,14 @@ class CAMELS_CL(Camels):
         return df[attributes]
 
 
+class HYSETS(Camels):
+    """
+    database for hydrometeorological modeling of 14,425 North American watersheds
+    from 1950-2018.
+    """
+    doi = "https://doi.org/10.1038/s41597-020-00583-2"
+    url = "https://osf.io/rpc3w/"
+
 class Weisssee(Datasets):
 
     dynamic_attributes = ['Precipitation_measurements',
@@ -1435,6 +1640,33 @@ class GeoChemMatane(Weisssee):
     url = "10.1594/PANGAEA.908290"
 
 
+class HydroMeteorAndes(Datasets):
+    """Hydrometeriological dataset of tropical Andes region"""
+    urll = ["https://springernature.figshare.com/ndownloader/files/10514506",
+            "https://springernature.figshare.com/ndownloader/files/10514509"]
+
+
+class WeatherJena(Datasets):
+    """10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
+    from 2002 onwards."""
+    url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
+    def __init__(self):
+        super().__init__()
+        download_all_http_directory(self.url, self.ds_dir, filetypes=None)
+
+
+def download_all_http_directory(url, outpath=None, filetypes=None):
+    """Download all the files which are of category filetypes at the location of outpath."""
+    page = list(urlparse.urlsplit(url))[2].split('/')[-1]
+    basic_url = url.split(page)[0]
+
+    r = requests.get(url)
+    data = bs4.BeautifulSoup(r.text, "html.parser")
+    for l in data.find_all("a"):
+        r = requests.get(url + l["href"])
+        if l["href"].endswith(".zip"):
+            download(basic_url + l["href"])
+            print(r.status_code, l["href"], )
 
 def download(url, out=None):
     """High level function, which downloads URL into tmp file in current
@@ -1531,6 +1763,7 @@ def filename_from_url(url):
     if len(fname.strip(" \n\t.")) == 0:
         return None
     return fname
+
 
 def bar(current_size, total_size, width):
     percent = current_size/total_size * 100

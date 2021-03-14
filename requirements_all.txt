@@ -24,3 +24,6 @@ wget
 imageio
 # shapely manually download the wheel file and install
 pyshp
+
+optuna
+hyperopt
