@@ -316,10 +316,11 @@ class Model(NN, Plots):
                     if getattr(self, 'nans_removed_4m_st', 0) > 0:
                         additional = self.config['forecast_length'] + 1 if self.config['forecast_length'] > 1 else 0
                         self.offset = abs(self.lookback + additional - self.nans_removed_4m_st - 1)
-                        warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
-                                      containing values were skipped from start. This may lead to some wrong examples
-                                      at the start or an offset of {self.offset} in indices.""",
-                                      UserWarning)
+                        if self.lookback > 1:
+                            warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
+                                          containing values were skipped from start. This may lead to some wrong examples
+                                          at the start or an offset of {self.offset} in indices.""",
+                                          UserWarning)
                         to_subtract = self.offset
                         self.nans_removed_4m_st = 0
                     # we don't want to subtract anything from indices, possibly because the number of nans removed from
