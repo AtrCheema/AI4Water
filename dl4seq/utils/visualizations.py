@@ -15,6 +15,10 @@ from dl4seq.utils.utils import find_tot_plots, set_fig_dim
 from dl4seq.utils.transformations import Transformations
 
 # TODO add Murphy's plot as shown in MLAir
+# https://robjhyndman.com/hyndsight/murphy-diagrams/
+# competitive skill score plot/ bootstrap skill score plot as in MLAir
+# rank histogram and reliability diagram for probabilitic forecasting model.
+# show availability plot of data
 
 class Intrepretation(object):
 
