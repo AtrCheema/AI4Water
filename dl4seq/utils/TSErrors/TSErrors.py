@@ -22,6 +22,11 @@ from dl4seq.utils.utils import stats
 # kullback-Leibler divergence
 # Peak flow ratio https://hess.copernicus.org/articles/24/869/2020/
 # Legates׳s coefficient of efficiency
+# outliear percentage : pysteps
+# mean squared error skill score, mean absolute error skill score, https://doi.org/10.1016/j.ijforecast.2018.11.010
+# root mean quartic error, Kolmogorov–Smirnov test integral, OVERPer, Rényi entropy, 95th percentile: https://doi.org/10.1016/j.solener.2014.10.016
+# Friedman test: https://doi.org/10.1016/j.solener.2014.10.016
+
 EPS = 1e-10  # epsilon
 
 # TODO classification metrics
@@ -70,7 +75,12 @@ class FindErrors(object):
         self.all_methods = [method for method in dir(self) if callable(getattr(self, method)) if
                             not method.startswith('_') if method not in ['calculate_all',
                                                                          'stats',
-                                                                         "treat_arrays"]]
+                                                                         "treat_arrays",
+                                                                         "scale_free_metrics",
+                                                                         "scale_dependent_metrics",
+                                                                         "composite_metrics",
+                                                                         "relative_metrics",
+                                                                         "percentage_metrics"]]
 
         # if arrays contain negative values, following three errors can not be computed
         for array in [self.true, self.predicted]:
@@ -301,8 +311,7 @@ class FindErrors(object):
 
     def bias(self) -> float:
         """
-        Bias as shown in Gupta in Sorooshian (1998), Toward improved calibration of hydrologic models:
-        Multiple  and noncommensurable measures of information, Water Resources Research
+        Bias as shown in  https://doi.org/10.1029/97WR03495
             .. math::
             Bias=\\frac{1}{N}\\sum_{i=1}^{N}(e_{i}-s_{i})
         """
@@ -369,6 +378,9 @@ class FindErrors(object):
         """
         correlation_coefficient = np.corrcoef(self.true, self.predicted)[0, 1]
         return correlation_coefficient
+
+    def composite_metrics(self):
+            pass
 
     def covariance(self) -> float:
         """
@@ -769,6 +781,8 @@ class FindErrors(object):
         Mean Absolute Scaled Error
         Baseline (benchmark) is computed with naive forecasting (shifted by @seasonality)
         modified after https://gist.github.com/bshishov/5dc237f59f019b26145648e2124ca1c9
+        Hyndman, R. J. (2006). Another look at forecast-accuracy metrics for intermittent demand.
+        Foresight: The International Journal of Applied Forecasting, 4(4), 43-46.
         """
         return self.mae() / self.mae(self.true[seasonality:], self._naive_prognose(seasonality))
 
@@ -786,8 +800,9 @@ class FindErrors(object):
 
     def mb_r(self):
         """Mielke-Berry R value.
-        Mielke and Berry., 2007.
         Berry and Mielke, 1988.
+        Mielke, P. W., & Berry, K. J. (2007). Permutation methods: a distance function approach.
+         Springer Science & Business Media.
         """
         # Calculate metric
         n = self.predicted.size
@@ -1020,6 +1035,55 @@ class FindErrors(object):
 
         return nse_c2m_
 
+    def log_nse(self, epsilon=0.0) -> float:
+        """
+        log Nash-Sutcliffe model efficiency
+            .. math::
+            NSE = 1-\\frac{\\sum_{i=1}^{N}(log(e_{i})-log(s_{i}))^2}{\\sum_{i=1}^{N}(log(e_{i})-log(\\bar{e})^2}-1)*-1
+        """
+        s, o = self.predicted + epsilon, self.true + epsilon
+        return float(1 - sum((np.log(o) - np.log(o)) ** 2) / sum((np.log(o) - np.mean(np.log(o))) ** 2))
+
+    def log_prob(self) -> float:
+        """
+        Logarithmic probability distribution
+        """
+        scale = np.mean(self.true) / 10
+        if scale < .01:
+            scale = .01
+        y = (self.true - self.predicted) / scale
+        normpdf = -y ** 2 / 2 - np.log(np.sqrt(2 * np.pi))
+        return float(np.mean(normpdf))
+
+    def pbias(self) -> float:
+        """ Percent Bias.
+        It determine how well the model simulates the average magnitudes for the output response of interest. It can
+        also determine over and under-prediction. It cannot be used (1) for single-event simula-tions to identify
+        differences in timing and magnitude of peak flows and the shape of recession curves nor (2) to determine how
+        well the model simulates residual variations and/or trends for the output response of interest. It can  give a
+        deceiving rating of model performance if the model overpredicts as much as it underpredicts, in which case
+        PBIAS will be close to zero even though the model simulation is poor. [1]
+        [1] Moriasi et al., 2015
+        """
+        return 100.0 * sum(self.predicted - self.true) / sum(self.true)  # percent bias
+
+    def pearson_r(self):
+        """Pearson correlation coefficient.
+        Measures linear correlatin. Sensitive to outliers.
+        Reference: Pearson, K 1895.
+        """
+        sim_mean = np.mean(self.predicted)
+        obs_mean = np.mean(self.true)
+
+        top = np.sum((self.true - obs_mean) * (self.predicted - sim_mean))
+        bot1 = np.sqrt(np.sum((self.true - obs_mean) ** 2))
+        bot2 = np.sqrt(np.sum((self.predicted - sim_mean) ** 2))
+
+        return top / (bot1 * bot2)
+
+    def percentage_metrics(self):
+            pass
+
     def rmsle(self):
         """Root mean square log error. Compared to RMSE, RMSLE only considers the relative error between predicted and
          actual values, and the scale of the error is nullified by the log-transformation. Furthermore, RMSLE penalizes
@@ -1125,55 +1189,14 @@ class FindErrors(object):
         return np.sqrt(np.mean(np.square(((self.true - self.predicted) / self.true)), axis=0))
 
     def rsr(self) -> float:
-        """It incorporates the benefits of error index statistics andincludes a scaling/normalization factor,
+        """
+        Moriasi et al., 2007.
+        It incorporates the benefits of error index statistics andincludes a scaling/normalization factor,
         so that the resulting statistic and reported values can apply to various constitu-ents."""
         return self.rmse() / np.std(self.true)
 
-    def log_nse(self, epsilon=0.0) -> float:
-        """
-        log Nash-Sutcliffe model efficiency
-            .. math::
-            NSE = 1-\\frac{\\sum_{i=1}^{N}(log(e_{i})-log(s_{i}))^2}{\\sum_{i=1}^{N}(log(e_{i})-log(\\bar{e})^2}-1)*-1
-        """
-        s, o = self.predicted + epsilon, self.true + epsilon
-        return float(1 - sum((np.log(o) - np.log(o)) ** 2) / sum((np.log(o) - np.mean(np.log(o))) ** 2))
-
-    def log_prob(self) -> float:
-        """
-        Logarithmic probability distribution
-        """
-        scale = np.mean(self.true) / 10
-        if scale < .01:
-            scale = .01
-        y = (self.true - self.predicted) / scale
-        normpdf = -y ** 2 / 2 - np.log(np.sqrt(2 * np.pi))
-        return float(np.mean(normpdf))
-
-    def pbias(self) -> float:
-        """ Percent Bias.
-        It determine how well the model simulates the average magnitudes for the output response of interest. It can
-        also determine over and under-prediction. It cannot be used (1) for single-event simula-tions to identify
-        differences in timing and magnitude of peak flows and the shape of recession curves nor (2) to determine how
-        well the model simulates residual variations and/or trends for the output response of interest. It can  give a
-        deceiving rating of model performance if the model overpredicts as much as it underpredicts, in which case
-        PBIAS will be close to zero even though the model simulation is poor. [1]
-        [1] Moriasi et al., 2015
-        """
-        return 100.0 * sum(self.predicted - self.true) / sum(self.true)  # percent bias
-
-    def pearson_r(self):
-        """Pearson correlation coefficient.
-        Measures linear correlatin. Sensitive to outliers.
-        Reference: Pearson, K 1895.
-        """
-        sim_mean = np.mean(self.predicted)
-        obs_mean = np.mean(self.true)
-
-        top = np.sum((self.true - obs_mean) * (self.predicted - sim_mean))
-        bot1 = np.sqrt(np.sum((self.true - obs_mean) ** 2))
-        bot2 = np.sqrt(np.sum((self.predicted - sim_mean) ** 2))
-
-        return top / (bot1 * bot2)
+    def relative_metrics(self):
+            pass
 
     def rmsse(self, seasonality: int = 1):
         """ Root Mean Squared Scaled Error """
@@ -1198,6 +1221,12 @@ class FindErrors(object):
         c = np.linalg.norm(self.predicted - np.mean(self.predicted))
         e = b * c
         return np.arccos(a / e)
+
+    def scale_free_metrics(self):
+            pass
+
+    def scale_dependent_metrics(self):
+            pass
 
     def stats(self, verbose: bool = False) -> dict:
         """ returs some important stats about true and predicted values."""
@@ -1295,9 +1324,11 @@ class FindErrors(object):
 
         SDEV^2 = sum_(n=1)^N [r_n - mean(r)]^2/(N-1)
 
-        where p is the predicted values, r is the reference values, and
-        N is the total number of values in p & r. Note that p & r must
-        have the same number of values.
+        where p is the predicted values, r is the reference values, and N is the total number of values in p & r.
+        Note that p & r must have the same number of values. A positive skill score can be interpreted as the percentage
+        of improvement of the new model forecast in comparison to the reference. On the other hand, a negative skill
+        score denotes that the forecast of interest is worse than the referencing forecast. Consequently, a value of
+        zero denotes that both forecasts perform equally [MLAir, 2020].
 
         Output:
         SS : skill score
