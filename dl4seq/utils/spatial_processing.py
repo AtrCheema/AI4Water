@@ -1,16 +1,19 @@
 import os
-import random
 from collections import OrderedDict
 
+
+import shapefile
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import shapefile
+import matplotlib.dates as mdates
 
-from dl4seq.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
-from dl4seq.utils.spatial_utils import get_total_area, get_lu_paras, GifUtil
+
 from dl4seq.utils.spatial_utils import find_records
 from dl4seq.utils.spatial_utils import plot_shapefile
+from dl4seq.utils.spatial_utils import get_total_area, get_lu_paras, GifUtil
+from dl4seq.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
+from dl4seq.utils.utils import process_axis
 
 
 M2ToAcre = 0.0002471     # meter square to Acre
@@ -152,7 +155,7 @@ class MakeHRUs(object):
 
         elif self.hru_definition == 'unique_lu':
             for lu in range(len(lu_reader.shapes())):
-                code = self.get_hru_paras(year, lu_shp_geom_list_new, lu)
+                code = self.get_hru_paras(year, lu_shp_geom_list_new, lu, lu_shp=_lu_name)
                 hru_paras[code] = {'yearless_key': code[2:]}
 
         elif self.hru_definition == 'unique_sub':
@@ -179,7 +182,7 @@ class MakeHRUs(object):
             for j in range(len(soil_reader.shapes())):
                 for lu in range(len(lu_reader.shapes())):
                     code = self.get_hru_paras(year, soil_shp_geom_list_new, j, lu_shp_geom_list_new, lu,
-                                              j)
+                                              j, lu_shp=_lu_name)
                     hru_paras[code] = {'yearless_key': code[2:]}
 
         # for the case when an HRU is unique lu in unique soil but within a unique sub-basin/soil
@@ -224,10 +227,10 @@ class MakeHRUs(object):
         else:
             if self.hru_definition == 'unique_lu':
                 code = self.get_code(year=year, lu_feature=first_shps[first_shp_idx],
-                                     lu_feat_ind=first_shp_idx)
+                                     lu_feat_ind=first_shp_idx, lu_shp=lu_shp)
 
             elif self.hru_definition == 'unique_sub':
-                code = self.get_code(year=year, sub_feat=first_shps[first_shp_idx],
+                code, _ = self.get_code(year=year, sub_feat=first_shps[first_shp_idx],
                                      sub_feat_ind=first_shp_idx)
             else:
                 raise ValueError
@@ -283,7 +286,7 @@ class MakeHRUs(object):
 
         elif self.hru_definition == 'unique_sub':
             if self.use_sub:
-                sub_code = sub_feat.find_records('Subbasin', sub_feat_ind)
+                sub_code = find_records(self.subbasins_shape, 'Subbasin', sub_feat_ind)
                 sub_code = '_sub_' + str(sub_code)
             else:
                 sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
@@ -292,14 +295,23 @@ class MakeHRUs(object):
 
         elif self.hru_definition == 'unique_lu':
             ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
-            lu_code = lu_feature.find_records(ina, inb)
+            lu_code = find_records(lu_shp, ina, inb)
+            return str(year) + "_lu_" + lu_code
+
+        elif self.hru_definition == 'unique_slope':
+            ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
+            lu_code = find_records(self.slope_shape, ina, sub_feat_ind)
+            return str(year) + "_lu_" + lu_code
+
+        elif self.hru_definition == 'unique_soil':
+            lu_code = find_records(self.soil_shape, "SOIL_GROUP", sub_feat_ind)
             return str(year) + "_lu_" + lu_code
 
         elif self.hru_definition == 'unique_soil_sub':
             ina, inb = 'SOIL_GROUP', lu_feat_ind
-            soil_code = lu_feature.find_records(ina, inb)
+            soil_code = find_records(self.soil_shape, ina, inb)
             if self.use_sub:
-                sub_code = sub_feat.find_records('Subbasin', sub_feat_ind)
+                sub_code = find_records(self.subbasins_shape, 'Subbasin', sub_feat_ind)
                 sub_code = '_sub_' + str(sub_code)
             else:
                 sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
@@ -308,10 +320,10 @@ class MakeHRUs(object):
 
         elif self.hru_definition == 'unique_lu_soil':
             ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
-            lu_code = lu_feature.find_records(ina, inb)
+            lu_code = find_records(lu_shp, ina, inb)
             ina = 'SOIL_GROUP'
-            soil_code = sub_feat.find_records(ina, sub_feat_ind)
-            return str(year) + '_soil_' + str(soil_code) + '_lu_' + lu_code, soil_code
+            soil_code = find_records(self.soil_shape, ina, sub_feat_ind)
+            return f'{year}_{soil_code}_{lu_code}', soil_code
 
         elif self.hru_definition == 'unique_lu_soil_sub':
             if self.use_sub:
@@ -325,7 +337,6 @@ class MakeHRUs(object):
             soil_code = find_records(self.soil_shape, ina, sub_feat_ind)
 
             return str(year) + sub_code + '_soil_' + str(soil_code) + '_lu_' + lu_code, soil_code
-
 
     def plot_hrus(self, year, bbox, _polygon_dict, annotate=False, nrows=3,
                   ncols=4, save=False, name='',
@@ -399,11 +410,46 @@ class MakeHRUs(object):
             plt.savefig('plots/' + name)
         plt.show()
 
-    def plot_as_ts(self, legend=False, **kwargs):
+    def plot_as_ts(self, save=False, name=None, **kwargs):
+        """hru_object.plot_as_ts(save=True, min_xticks=3, max_xticks=4"""
+
+        figsize = kwargs.get('figsize', (12, 6))
+        bbox_inches = kwargs.get('bbox_inches', 'tight')
+        tick_fs = kwargs.get('tick_fs', 14)
+        axis_label_fs = kwargs.get('axis_label_fs', 18)
+        bbox_to_anchor = kwargs.get('bbox_to_anchor', (1.1, 0.99))
+        leg_fs = kwargs.get('leg_fs', 14)
+        markerscale = kwargs.get('markerscale', 2)
+        style=  kwargs.get('style', '-s')
+        title = kwargs.get('title', False)
+        min_xticks = kwargs.get('min_xticks', None)
+        max_xticks = kwargs.get('max_xticks', None)
+
         plt.close('all')
-        axis = self.area.plot(legend=legend, title='Variation of Area (acre) of HRUs with time', **kwargs)
-        axis.legend(bbox_to_anchor=(1.1, 0.99))
+        fig, axis = plt.subplots(figsize=figsize)
+        for area in self.area:
+            axis.plot(self.area[area], style, label=area)
+        axis.legend(fontsize=leg_fs, markerscale=markerscale, bbox_to_anchor=bbox_to_anchor)
+        axis.set_xlabel('Time', fontsize=axis_label_fs)
+        axis.set_ylabel('Area (Acres)', fontsize=axis_label_fs)
+        axis.tick_params(axis="x", which='major', labelsize=tick_fs)
+        axis.tick_params(axis="y", which='major', labelsize=tick_fs)
+
+        if min_xticks is not None:
+            assert isinstance(min_xticks, int)
+            assert isinstance(max_xticks, int)
+            loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
+            axis.xaxis.set_major_locator(loc)
+            fmt = mdates.AutoDateFormatter(loc)
+            axis.xaxis.set_major_formatter(fmt)
+        if title:
+            plt.suptitle('Variation of Area (acre) of HRUs with time')
+        if save:
+            if name is None:
+                name = self.hru_definition
+            plt.savefig(f'{name}_hru_as_ts.png', dpi=300, bbox_inches=bbox_inches)
         plt.show()
+
         return
 
     def plot_hru_evolution(self, hru_name, make_gif=False):
@@ -483,8 +529,11 @@ class MakeHRUs(object):
         plt.show()
         return
 
-    def draw_pie(self, year, n_merge, title=False, save=False, name=None):
-        """Draws a pie chart showing relative area of HRUs for a particular year.
+    def draw_pie(self, year, n_merge, title=False, save=False, name=None, **kwargs):
+        """
+        todo draw nested pie chart for all years
+        https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.pie.html
+        Draws a pie chart showing relative area of HRUs for a particular year.
         Since the hrus can change with time, selecting one year is based on supposition
         that area of hrus remain constant during the whole year.
         year: int, the year for which area of hrus will be used.
@@ -492,6 +541,11 @@ class MakeHRUs(object):
         save: bool,
         name: str
         """
+        shadow = kwargs.get('shadow', True)
+        startangle = kwargs.get('startangle', 90)
+        autopct = kwargs.get('autopct', '%1.1f%%')
+        textprops = kwargs.get('textprops', {})
+
         idx = str(year) + '-01-31'
         area_unsort = self.area.loc[idx]
         area = area_unsort.sort_values()
@@ -509,8 +563,9 @@ class MakeHRUs(object):
             labels_n.append(l.replace('lu_', ''))
 
         fig1, ax1 = plt.subplots()
-        ax1.pie(vals,explode=tuple(explode), labels=labels_n, autopct='%1.1f%%',
-                shadow=True, startangle=90)
+        ax1.pie(vals, explode=tuple(explode), labels=labels_n, autopct=autopct,
+                shadow=shadow, startangle=startangle,
+                textprops=textprops)
         ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
         if title:
             plt.title('Areas of HRUs for year {}'.format(year), fontsize=20)
@@ -537,12 +592,13 @@ if __name__=="__main__":
             2012:"D:\\Laos\\data\\landuse\\shapefiles\\LU2012.shp",
             2013:"D:\\Laos\\data\\landuse\\shapefiles\\LU2013.shp",
             2014:"D:\\Laos\\data\\landuse\\shapefiles\\LU2014.shp",
-            2015:"D:\\Laos\\data\\landuse\\shapefiles\\LU2015.shp"
+           # 2015:"D:\\Laos\\data\\landuse\\shapefiles\\LU2015.shp"
              }
-    hru_object = MakeHRUs('unique_lu_soil',
+    hru_object = MakeHRUs('unique_lu_soil',    # unique_lu_soil:3
                           index=years,
                           subbasins_shape=SubBasin_shp,
                           soil_shape=Soil_shp,
                           slope_shape=slope_shp)
     hru_object.get()
-    hru_object.draw_pie(2011, n_merge=25, title=False)
+    for yr in years:
+        hru_object.draw_pie(yr,  title=False, n_merge=4, save=True, textprops={'fontsize': '12'})
