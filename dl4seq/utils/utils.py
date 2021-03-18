@@ -3,6 +3,7 @@ import os
 import json
 import datetime
 from shutil import rmtree
+from copy import deepcopy
 from typing import Any, Dict
 from pickle import PicklingError
 from collections import OrderedDict
@@ -13,6 +14,7 @@ import pandas as pd
 import matplotlib as mpl
 from skopt.utils import dump
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 from skopt.plots import plot_evaluations, plot_objective, plot_convergence
 
@@ -913,6 +915,7 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 def stats(feature, precision=3, name='') ->dict:
     """Gets all the possible stats about an array like object `feature`.
     `feature: array like
+    # information holding degree
     """
     if not isinstance(feature, np.ndarray):
         if hasattr(feature, '__len__'):
@@ -1224,3 +1227,124 @@ def find_tot_plots(features, max_subplots):
 def set_fig_dim(fig, width, height):
     fig.set_figwidth(width)
     fig.set_figheight(height)
+
+
+def process_axis(axis,
+                 data,
+                 marker='.',
+                 fillstyle=None,
+                 linestyle='',
+                 c=None,
+                 ms=0.5,  # markersize
+                 label=None,  # legend
+                 leg_pos="best",
+                 leg_fs=12,
+                 leg_ms=1,  # legend scale
+                 ylim=None,  # limit for y axis
+                 x_label=None,
+                 xl_fs=12,
+                 y_label=None,
+                 yl_fs=12,  # ylabel font size
+                 yl_c='k',  # y label color, if 'same', c will be used else black
+                 xtp_ls=10,  # x tick_params labelsize
+                 ytp_ls=10,  # x tick_params labelsize
+                 xtp_c='k',  # x tick colors if 'same' c will be used else black
+                 ytp_c='k',  # y tick colors, if 'same', c will be used else else black
+                 log=False,
+                 show_xaxis=True,
+                 top_spine=True,
+                 bottom_spine=True,
+                 invert_yaxis=False,
+                 max_xticks=None,
+                 min_xticks=None,
+                 title=None,
+                 log_nz=False,
+                 conv_fac=1.0):
+
+    """Purpose to act as a middle man between axis.plot/plt.plot.
+    Returns:
+        axis
+        """
+    # TODO
+    # default fontsizes should be same as used by matplotlib
+    # should not complicate plt.plot or axis.plto
+    # allow multiple plots on same axis
+
+    data = deepcopy(data)
+
+    data = data * conv_fac
+
+    if log and log_nz:
+        raise ValueError
+
+    if log_nz:
+        _data = data.values
+        d_nz_idx = np.where(_data > 0.0)
+        data_nz = _data[d_nz_idx]
+        d_nz_log = np.log(data_nz)
+        _data[d_nz_idx] = d_nz_log
+        _data = np.where(_data < 0.0, 0.0, _data)
+        data = pd.Series(_data, index=data.index)
+
+    if log:
+        _data = np.where(data.values < 0.0, 0.0, data.values)
+        print(len(_data[np.where(_data < 0.0)]))
+        data = pd.Series(_data, index=data.index)
+
+    axis.plot(data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
+
+    ylc = c
+    if yl_c != 'same':
+        ylc = 'k'
+
+    if label is not None or label != "__nolabel__":
+        axis.legend(loc=leg_pos, fontsize=leg_fs, markerscale=leg_ms)
+
+    if y_label is not None:
+        axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
+
+    if log:
+        axis.set_yscale('log')
+
+    if invert_yaxis:
+        axis.set_ylim(axis.get_ylim()[::-1])
+
+    if ylim is not None:
+        if not isinstance(ylim, tuple):
+            raise TypeError("ylim must be tuple {} provided".format(ylim))
+        axis.set_ylim(ylim)
+
+    xtpc = c
+    if xtp_c != 'same':
+        xtpc = 'k'
+
+    ytpc = c
+    if ytp_c != 'same':
+        ytpc = 'k'
+
+    if x_label is not None: # better not change these paras if user has not defined any x_label
+        axis.tick_params(axis="x", which='major', labelsize=xtp_ls, colors=xtpc)
+
+    if y_label is not None:
+        axis.tick_params(axis="y", which='major', labelsize=ytp_ls, colors=ytpc)
+
+    axis.get_xaxis().set_visible(show_xaxis)
+
+    if x_label is not None:
+        axis.set_xlabel(x_label, fontsize=xl_fs)
+
+    axis.spines['top'].set_visible(top_spine)
+    axis.spines['bottom'].set_visible(bottom_spine)
+
+    if min_xticks is not None:
+        assert isinstance(min_xticks, int)
+        assert isinstance(max_xticks, int)
+        loc = mdates.AutoDateLocator(minticks=min_xticks, maxticks=max_xticks)
+        axis.xaxis.set_major_locator(loc)
+        fmt = mdates.AutoDateFormatter(loc)
+        axis.xaxis.set_major_formatter(fmt)
+
+    if title is not None:
+        axis.set_title(title)
+
+    return axis
