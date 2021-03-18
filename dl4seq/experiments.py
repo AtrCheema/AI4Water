@@ -4,19 +4,21 @@ import warnings
 from typing import Union
 
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
 
-from dl4seq.utils.TSErrors import FindErrors
-from dl4seq.utils.taylor_diagram import plot_taylor
 from dl4seq import Model
 from dl4seq.hyper_opt import HyperOpt
+from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.taylor_diagram import plot_taylor
 from dl4seq.hyper_opt import Real, Categorical, Integer
 from dl4seq.utils.utils import clear_weights, dateandtime_now
 
 
 # TODO, when predicting, use best saved weights instead of last state of weights
 # TODO, show loss curve of different models in an Experiment
+# todo plots comparing different models in following youtube videos at 6:30 and 8:00 minutes.
+# https://www.youtube.com/watch?v=QrJlj0VCHys
 
 class Experiments(object):
     """Base class for all the experiments.
@@ -63,6 +65,7 @@ class Experiments(object):
             predict_kws=None,
             hpo_kws: dict = None):
         """
+        todo, post_optimize not working for 'eval_best' with ML methods.
         :param run_type: str, One of `dry_run` or `optimize`. If `dry_run`, the all the `models` will be trained only once.
                               if `optimize`, then hyperparameters of all the models will be optimized.
         :param opt_method: str, which optimization method to use. options are `bayes`, `random`, `grid`. ONly valid if
@@ -91,15 +94,8 @@ class Experiments(object):
         if hpo_kws is None:
             hpo_kws = {}
 
-        if include is None:
-            include = self.models
-        # make sure that include contains same elements which are present in models
-        include = ['model_' + _model if not _model.startswith('model_') else _model for _model in include ]
-        assert all(elem in self.models for elem in include), f"""
-One or more models to `include` are not available.
-Available cases are {self.models} and you wanted to include
-{include}
-"""
+        include = self.check_include_arg(include)
+
         if exclude is None:
             exclude = []
         elif isinstance(exclude, str):
@@ -148,16 +144,17 @@ Available cases are {self.models} and you wanted to exclude
                         getattr(self, model_type)()
 
                     opt_dir = os.path.join(os.getcwd(), f"results\\{self.exp_name}\\{model_name}")
+                    print(f"optimizing  {model_type} using {opt_method} method")
                     self.optimizer = HyperOpt(opt_method,
                                               objective_fn=objective_fn,
                                               param_space=self.dimensions,
                                               use_named_args=True,
                                               opt_path=opt_dir,
-                                              n_calls=num_iterations,  # number of iterations
+                                              num_iterations=num_iterations,  # number of iterations
                                               x0=self.x0,
                                               **hpo_kws
                                               )
-                    print('optimizing ', model_type)
+
                     self.opt_results = self.optimizer.fit()
 
                     if post_optimize == 'eval_best':
@@ -195,22 +192,64 @@ Available cases are {self.models} and you wanted to exclude
         self.trues['train'] = train_results[0]
         self.trues['test'] = test_results[0]
 
+        if not model_type.startswith('model_'):  # internally we always use model_ at the start.
+            model_type = f'model_{model_type}'
         self.simulations['train'][model_type] = train_results[1]
         self.simulations['test'][model_type] = test_results[1]
         return
 
-    def plot_taylor(self, plot_pbias=True, fig_size=(9,7), add_grid=True, **kwargs):
+    def plot_taylor(self,
+                     include: Union[None, list] = None,
+                     exclude: Union[None, list] = None,
+                     figsize: tuple = (9, 7),
+                     **kwargs):
+        """
+        include: if not None, must a list of models which will be included. None will result in plotting all the models.
+        exclude: if not None, must be a list of models which will excluded. None will result in no exclusion
+        kwargs are all the keyword arguments from plot_taylor()."""
+
+        include = self.check_include_arg(include)
+        simulations = {'train': {},
+                       'test': {}}
+        for m in include:
+            if m in self.simulations['train']:
+                simulations['train'][m.split('model_')[1]] = self.simulations['train'][m]
+                simulations['test'][m.split('model_')[1]] = self.simulations['test'][m]
+
+        if exclude is not None:
+            exclude = ['model_' + _model if not _model.startswith('model_') else _model for _model in exclude]
+            assert all(elem in self.models for elem in exclude), f"""
+    One or more models to `exclude` are not available.
+    Available cases are {self.models} and you wanted to exclude
+    {exclude}
+    """
+            for m in exclude:
+                simulations['train'].pop(m[0])
+                simulations['test'].pop(m[0])
+
+        fname = kwargs.get('name', 'taylor.png')
+        fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}\\{fname}.png')
 
         plot_taylor(
             trues=self.trues,
-            simulations=self.simulations,
-            add_grid=add_grid,
-            plot_bias=plot_pbias,
-            figsize=fig_size,
-            save=True,
+            simulations=simulations,
+            figsize=figsize,
+            name=fname,
             **kwargs
         )
         return
+
+    def check_include_arg(self, include):
+        if include is None:
+            include = self.models
+        include = ['model_' + _model if not _model.startswith('model_') else _model for _model in include]
+        # make sure that include contains same elements which are present in models
+        assert all(elem in self.models for elem in include), f"""
+One or more models to `include` are not available.
+Available cases are {self.models} and you wanted to include
+{include}
+"""
+        return include
 
     def compare_errors(
             self,
@@ -274,18 +313,18 @@ Available cases are {self.models} and you wanted to exclude
         models = {}
 
         for mod in self.models:
-            mod = mod.split('model_')[1]
+            # find the models which have been run
             if mod in self.simulations['test']:  # maybe we have not done some models by using include/exclude
                 test_matric = find_matric_array(self.trues['test'], self.simulations['test'][mod])
                 if test_matric is not None:
                     test_matrics.append(test_matric)
-                    models[mod] = {'test': test_matric}
+                    models[mod.split('model_')[1]] = {'test': test_matric}
 
                     train_matric = find_matric_array(self.trues['train'], self.simulations['train'][mod])
                     if train_matric is None:
                         train_matric = np.nan
                     train_matrics.append(train_matric)
-                    models[mod] = {'train': train_matric, 'test': test_matric}
+                    models[mod.split('model_')[1]] = {'train': train_matric, 'test': test_matric}
 
         labels = {
             'r2': "$R^{2}$",
@@ -336,7 +375,7 @@ Available cases are {self.models} and you wanted to exclude
         ax.set_title("Test", fontdict={'fontsize': kwargs.get('title_fs', 20)})
 
         if save:
-            fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}{name}_{matric_name}.png')
+            fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}\\{name}_{matric_name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
         return models
@@ -427,9 +466,7 @@ class MLRegressionExperiments(Experiments):
         )
         model.fit(**fit_kws)
 
-        indices = model.train_indices if 'indices' in fit_kws else None
         en = fit_kws.get('en', None)
-        t, p = model.predict(en=en, indices=indices, prefix='train')
 
         indices = model.test_indices if 'indices' in fit_kws else None
         tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
@@ -438,6 +475,8 @@ class MLRegressionExperiments(Experiments):
             model.view_model()
 
         if predict:
+            indices = model.train_indices if 'indices' in fit_kws else None
+            t, p = model.predict(en=en, indices=indices, prefix='train')
 
             return (t,p), (tt, tp)
 
@@ -607,7 +646,7 @@ class MLRegressionExperiments(Experiments):
         self.dimensions = [
             Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),  # number of boosting stages to perform
             Real(low=0.001, high=1.0, name='learning_rate', num_samples=self.num_samples),   #  shrinks the contribution of each tree
-            Real(low=0.0, high=1.0, name='subsample', num_samples=self.num_samples),  # fraction of samples to be used for fitting the individual base learners
+            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples),  # fraction of samples to be used for fitting the individual base learners
             Real(low=0.1, high=0.9, name='min_samples_split', num_samples=self.num_samples),
             Integer(low=2, high=30, name='max_depth', num_samples=self.num_samples),
         ]
@@ -745,7 +784,7 @@ class MLRegressionExperiments(Experiments):
     def model_LGBMRegressor(self, **kwargs):
      ## https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html
         self.dimensions = [
-            Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
+            Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),  # todo, during optimization not working with 'rf'
             Integer(low=10, high=200, name='num_leaves', num_samples=self.num_samples),
             Real(low=0.0001, high=0.1, name='learning_rate', num_samples=self.num_samples),
             Integer(low=20, high=500, name='n_estimators', num_samples=self.num_samples)
@@ -876,7 +915,8 @@ class MLRegressionExperiments(Experiments):
     def model_SVR(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
         self.dimensions = [
-            Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel'),
+            # https://stackoverflow.com/questions/60015497/valueerror-precomputed-matrix-must-be-a-square-matrix-input-is-a-500x29243-mat
+            Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid'], name='kernel'), # todo, optimization not working with 'precomputed'
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Real(low=0.01, high=0.9, name='epsilon', num_samples=self.num_samples)
         ]

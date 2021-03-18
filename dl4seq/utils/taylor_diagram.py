@@ -311,6 +311,11 @@ def plot_taylor(trues:dict,
                          'bottom': {},
                          'top': {}}
 
+    add_grid = True
+    if grid_kws is None:
+        add_grid = False
+        grid_kws = dict()
+
     for season in scenarios:
 
         dia = TaylorDiagram(trues[season],
@@ -353,11 +358,6 @@ def plot_taylor(trues:dict,
                                     linewidths=cont_kws.get('linewidths', 1.5),
                                     linestyles=cont_kws.get('linestyles', None))  # 5 levels
         dia.ax.clabel(contours, inline=cont_kws.get('inline', 1), fontsize=cont_kws.get('label_fs', 10), fmt='%.1f')
-
-        add_grid = True
-        if grid_kws is None:
-            add_grid = False
-            grid_kws = dict()
 
         if add_grid:
             dia.add_grid(**grid_kws)  # Add grid
