@@ -545,6 +545,8 @@ but it is of type {type(space)}"""
             paras = x_iters[idx]
         elif self.use_tpe:
             paras = self.trials.best_trial['misc']['vals']
+            paras = {k:v[0] for k,v in paras.items()}
+            # todo, for string paras, it does not return actual parameter but the index
         else:
             fun = list(sorted(self.results.keys()))[0]
             paras = self.results[fun]
