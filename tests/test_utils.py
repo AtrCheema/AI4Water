@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from dl4seq import Model
 from dl4seq.backend import get_sklearn_models
 from dl4seq.utils.imputation import Imputation
-from dl4seq.utils.utils import split_by_indices, train_val_split, stats, prepare_data, Jsonize
+from dl4seq.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
 seed = 313
 np.random.seed(seed)
@@ -393,18 +393,35 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_stats(self):
-        d = stats(np.random.random(10))
+        d = ts_features(np.random.random(10))
         self.assertGreater(len(d), 1)
         return
 
     def test_stats_pd(self):
-        d = stats(pd.Series(np.random.random(10)))
+        d = ts_features(pd.Series(np.random.random(10)))
         self.assertGreater(len(d), 1)
         return
 
     def test_stats_list(self):
-        d = stats(np.random.random(10).tolist())
+        d = ts_features(np.random.random(10).tolist())
         self.assertGreater(len(d), 1)
+        return
+
+    def test_stats_slice(self):
+        d = ts_features(np.random.random(100), st=10, en=50)
+        self.assertEqual(d['Counts'], 40)
+        return
+
+    def test_ts_features_numbers(self):
+        # test that all the features are calculated
+        d = ts_features(np.random.random(100))
+        self.assertEqual(len(d), 21)
+        return
+
+    def test_ts_features_single_feature(self):
+        # test that only one feature can be calculated
+        d = ts_features(np.random.random(10), features=['Shannon entropy'])
+        self.assertEqual(len(d), 1)
         return
 
     def test_datetimeindex(self):

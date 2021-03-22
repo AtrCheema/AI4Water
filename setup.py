@@ -52,7 +52,6 @@ setup(
         'scikit-learn',
         'pandas',
         'matplotlib',
-        'scikit-optimize',
-        'TSErrors',
+        'scikit-optimize'
     ],
 )

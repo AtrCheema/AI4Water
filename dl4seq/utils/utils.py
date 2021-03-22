@@ -2,6 +2,7 @@ import warnings
 import os
 import json
 import datetime
+from typing import Union
 from shutil import rmtree
 from copy import deepcopy
 from typing import Any, Dict
@@ -911,55 +912,95 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
     return
 
-
-def stats(feature, precision=3, name='') ->dict:
-    """Gets all the possible stats about an array like object `feature`.
-    `feature: array like
+def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
+          precision:int=3,
+          name:str='',
+          st: int = 0,
+          en: int = None,
+          features: Union[list, str] = None
+          ) ->dict:
+    """
+    Extracts features from 1d time series data. Features can be
+        * point, one integer or float point value for example mean
+        * 1D, 1D array for example sin(data)
+        * 2D, 2D array for example wavelent transform
+    Arguments:
+        Gets all the possible stats about an array like object `data`.
+        data: array like
+        precision: number of significant figures
+        name: str, only for erro or warning messages
+        st: str/int, starting index of data to be considered.
+        en: str/int, end index of data to be considered.
+        features: name/names of features to extract from data.
     # information holding degree
     """
-    if not isinstance(feature, np.ndarray):
-        if hasattr(feature, '__len__'):
-            feature = np.array(feature)
-        else:
-            raise TypeError(f"{name} must be array like but it is of type {type(feature)}")
+    point_features = {
+        'Skew': skew,
+        'Kurtosis': kurtosis,
+        'Mean': np.nanmean,
+        'Geometric Mean': gmean,
+        'Standard error of mean': scipy.stats.sem,
+        'Median': np.nanmedian,
+        'Variance': np.nanvar,
+        'Coefficient of Variation': variation,
+        'Std': np.nanstd,
+        'Non Zeros': np.count_nonzero,
+        'Min': np.nanmin,
+        'Max': np.nanmax,
+        'Sum': np.nansum,
+        'Counts': np.size
+    }
 
-    if np.array(feature).dtype.type is np.str_:
+    point_features_lambda = {
+        'Shannon entropy': lambda x: np.round(scipy.stats.entropy(pd.Series(x).value_counts()), precision),
+        'Negative counts': lambda x: int(np.sum(x < 0.0)),
+        '90th percentile': lambda x: np.round(np.nanpercentile(x, 90), precision),
+        '75th percentile': lambda x: np.round(np.nanpercentile(x, 75), precision),
+        '50th percentile': lambda x: np.round(np.nanpercentile(x, 50), precision),
+        '25th percentile': lambda x: np.round(np.nanpercentile(x, 25), precision),
+        '10th percentile': lambda x: np.round(np.nanpercentile(x, 10), precision),
+    }
+
+    if not isinstance(data, np.ndarray):
+        if hasattr(data, '__len__'):
+            data = np.array(data)
+        else:
+            raise TypeError(f"{name} must be array like but it is of type {type(data)}")
+
+    if np.array(data).dtype.type is np.str_:
         warnings.warn(f"{name} contains string values")
         return {}
 
-    if 'int' not in feature.dtype.name:
-        if 'float' not in feature.dtype.name:
-            warnings.warn(f"changing the dtype of {name} from {feature.dtype.name} to float")
-            feature = feature.astype(np.float64)
-    _stats = dict()
-    _stats['Skew'] = np.round(skew(feature), precision)
-    _stats['Kurtosis'] = np.round(kurtosis(feature), precision)
-    _stats['Mean'] = np.round(np.nanmean(feature), precision)
-    _stats['Geometric Mean'] = np.round(gmean(feature), precision)
-    try:
-        _stats['Harmonic Mean'] = np.round(hmean(feature), precision)
-    except ValueError:
-        warnings.warn(f"""Unable to calculate Harmonic mean for {name}. Harmonic mean only defined if all
-                      elements are greater than or equal to zero""", UserWarning)
-    _stats['Standard error of mean'] = np.round(scipy.stats.sem(feature), precision)
-    _stats['Median'] = np.round(np.nanmedian(feature), precision)
-    _stats['Variance'] = np.round(np.nanvar(feature), precision)
-    _stats['Coefficient of Variation'] = np.round(variation(feature), precision)
-    _stats['Std'] = np.round(np.nanstd(feature), precision)
-    _stats['Non zeros'] = np.round(np.count_nonzero(feature), precision)
-    _stats['10 Percentile'] = np.round(np.nanpercentile(feature, 10), precision)
-    _stats['25 Percentile'] = np.round(np.nanpercentile(feature, 25), precision)
-    _stats['50 Percentile'] = np.round(np.nanpercentile(feature, 50), precision)
-    _stats['75 Percentile'] = np.round(np.nanpercentile(feature, 75), precision)
-    _stats['90 Percentile'] = np.round(np.nanpercentile(feature, 90), precision)
-    _stats['Min'] = np.round(np.nanmin(feature), precision)
-    _stats['Max'] = np.round(np.nanmax(feature), precision)
-    _stats["Negative counts"] = int(np.sum(feature < 0.0))
-    _stats["NaN counts"] = np.isnan(feature).sum()
-    _stats['Counts'] = len(feature)
-    _stats['shannon_entropy'] = np.round(scipy.stats.entropy(pd.Series(feature).value_counts()), precision)
+    if 'int' not in data.dtype.name:
+        if 'float' not in data.dtype.name:
+            warnings.warn(f"changing the dtype of {name} from {data.dtype.name} to float")
+            data = data.astype(np.float64)
 
-    return Jsonize(_stats)()
+    assert data.size == len(data), f"""
+data must be 1 dimensional array but it has shape {np.shape(data)}
+"""
+    data = data[st:en]
+    stats = dict()
+
+    if features is None:
+        features = list(point_features.keys()) + list(point_features_lambda.keys())
+    elif isinstance(features, str):
+        features = [features]
+
+    for feat in features:
+        if feat in point_features:
+            stats[feat] = np.round(point_features[feat](data), precision)
+        elif feat in point_features_lambda:
+            stats[feat] = point_features_lambda[feat](data)
+
+    if 'Harmonic Mean' in features:
+        try:
+            stats['Harmonic Mean'] = np.round(hmean(data), precision)
+        except ValueError:
+            warnings.warn(f"""Unable to calculate Harmonic mean for {name}. Harmonic mean only defined if all
+                          elements are greater than or equal to zero""", UserWarning)
+
+    return Jsonize(stats)()
 
 
 def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
@@ -1230,12 +1271,13 @@ def set_fig_dim(fig, width, height):
 
 
 def process_axis(axis,
-                 data,
+                 data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+                 x: Union[list, np.ndarray] = None,  # array to plot as x
                  marker='.',
                  fillstyle=None,
                  linestyle='',
                  c=None,
-                 ms=0.5,  # markersize
+                 ms=6.0,  # markersize
                  label=None,  # legend
                  leg_pos="best",
                  leg_fs=12,
@@ -1259,7 +1301,7 @@ def process_axis(axis,
                  min_xticks=None,
                  title=None,
                  log_nz=False,
-                 conv_fac=1.0):
+                 ):
 
     """Purpose to act as a middle man between axis.plot/plt.plot.
     Returns:
@@ -1270,14 +1312,11 @@ def process_axis(axis,
     # should not complicate plt.plot or axis.plto
     # allow multiple plots on same axis
 
-    data = deepcopy(data)
-
-    data = data * conv_fac
-
     if log and log_nz:
         raise ValueError
 
     if log_nz:
+        data = deepcopy(data)
         _data = data.values
         d_nz_idx = np.where(_data > 0.0)
         data_nz = _data[d_nz_idx]
@@ -1287,18 +1326,23 @@ def process_axis(axis,
         data = pd.Series(_data, index=data.index)
 
     if log:
+        data = deepcopy(data)
         _data = np.where(data.values < 0.0, 0.0, data.values)
         print(len(_data[np.where(_data < 0.0)]))
         data = pd.Series(_data, index=data.index)
 
-    axis.plot(data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
+    if x is not None:
+        axis.plot(x, data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
+    else:
+        axis.plot(data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
 
     ylc = c
     if yl_c != 'same':
         ylc = 'k'
 
-    if label is not None or label != "__nolabel__":
-        axis.legend(loc=leg_pos, fontsize=leg_fs, markerscale=leg_ms)
+    if label is not None:
+        if label != "__nolabel__":
+            axis.legend(loc=leg_pos, fontsize=leg_fs, markerscale=leg_ms)
 
     if y_label is not None:
         axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
@@ -1348,3 +1392,13 @@ def process_axis(axis,
         axis.set_title(title)
 
     return axis
+
+def plot(*args, **kwargs):
+    """one liner plot function."""
+    plt.close('all')
+    fig, axis = plt.subplots()
+    process_axis(axis, *args, **kwargs)
+    if kwargs.get('save', False):
+        plt.savefig(f"{kwargs.get('name', 'fig.png')}")
+    plt.show()
+    return
