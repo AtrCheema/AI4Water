@@ -45,6 +45,7 @@ def linear_layer(size,
                  activation=None,
                  use_time_distributed=False,
                  use_bias=True,
+                 kernel_constraint=None,
                  name=None
                  ):
   """Returns simple Keras linear layer.
@@ -54,11 +55,13 @@ def linear_layer(size,
     activation: Activation function to apply if required
     use_time_distributed: Whether to apply layer across time
     use_bias: Whether bias should be included in layer
+    kernel_constraint:
     name:
   """
-  linear = tf.keras.layers.Dense(size, activation=activation, use_bias=use_bias, name=name)
+  linear = tf.keras.layers.Dense(size, activation=activation, use_bias=use_bias, name=name,
+                                 kernel_constraint=kernel_constraint)
   if use_time_distributed:
-    linear = TimeDistributed(linear)
+    linear = TimeDistributed(linear, name=name)
   return linear
 
 
@@ -67,6 +70,8 @@ def apply_gating_layer(x,
                        dropout_rate=None,
                        use_time_distributed=False,
                        activation=None,
+                       activation_kernel_constraint=None,
+                       gating_kernel_constraint=None,
                        name=None):
   """Applies a Gated Linear Unit (GLU) to an input.
 
@@ -78,30 +83,45 @@ def apply_gating_layer(x,
     activation: Activation function to apply to the linear feature transform if
       necessary
     name: name of encompassing layers
+    activation_kernel_constraint:
+    gating_kernel_constraint
 
   Returns:
     Tuple of tensors for: (GLU output, gate) where GLU output has the shape (num_examples, hidden_units)
   """
 
   if dropout_rate is not None:
-    x = Dropout(dropout_rate, name=f'Dopout_{name}')(x)
+    x = Dropout(dropout_rate, name=f'Dropout_{name}')(x)
 
   if use_time_distributed:
-    activation_layer = TimeDistributed(Dense(hidden_layer_size, activation=activation, name=f'gating_act_{name}'))(x)
+    activation_layer = TimeDistributed(Dense(hidden_layer_size,
+                                             kernel_constraint=activation_kernel_constraint,
+                                             activation=activation,
+                                             name=f'gating_act_{name}'),
+                                       name=f'gating_act_{name}')(x)
+
     gated_layer = TimeDistributed(
-        Dense(hidden_layer_size, activation='sigmoid', name=f'gating_{name}'))(x)
+        Dense(hidden_layer_size,
+              activation='sigmoid',
+              kernel_constraint=gating_kernel_constraint,
+              name=f'gating_{name}'),
+    name=f'gating_{name}')(x)
   else:
     activation_layer = Dense(
-        hidden_layer_size, activation=activation, name=f'gating_act_{name}')(
-            x)
+        hidden_layer_size, activation=activation,
+        kernel_constraint=activation_kernel_constraint,
+        name=f'gating_act_{name}')(x)
     gated_layer = Dense(
-        hidden_layer_size, activation='sigmoid', name=f'gating_{name}')(
+        hidden_layer_size,
+        activation='sigmoid',
+        kernel_constraint=gating_kernel_constraint,
+        name=f'gating_{name}')(
             x)
 
   return Multiply(name=f'MulGating_{name}')([activation_layer, gated_layer]), gated_layer
 
 
-def add_and_norm(x_list, name=None):
+def add_and_norm(x_list, name=None, norm=True):
     """Applies skip connection followed by layer normalisation.
 
     Args:
@@ -112,18 +132,28 @@ def add_and_norm(x_list, name=None):
     Tensor output from layer.
     """
     tmp = Add(name=f'add_{name}')(x_list)
-    tmp = LayerNorm(name=f'norm_{name}')(tmp)
+    if norm:
+        tmp = LayerNorm(name=f'norm_{name}')(tmp)
     return tmp
 
 
-def gated_residual_network(x,
-                           hidden_layer_size,
-                           output_size=None,
-                           dropout_rate=None,
-                           use_time_distributed=True,
-                           additional_context=None,
-                           return_gate=False,
-                           name='GRN'):
+def gated_residual_network(
+        x,
+        hidden_layer_size,
+        output_size=None,
+        dropout_rate=None,
+        use_time_distributed=True,
+        additional_context=None,
+        return_gate=False,
+        activation:str='elu',
+        kernel_constraint1=None,
+        kernel_constraint2=None,
+        kernel_constraint3=None,
+        gating_kernel_constraint1=None,
+        gating_kernel_constraint2=None,
+        norm=True,
+        name='GRN'
+):
   """Applies the gated residual network (GRN) as defined in paper.
 
   Args:
@@ -135,6 +165,12 @@ def gated_residual_network(x,
     additional_context: Additional context vector to use if relevant
     return_gate: Whether to return GLU gate for diagnostic purposes
     name: name of all layers
+    activation: the kind of activation function to use
+    kernel_constraint1: kernel constranint to be applied on skip_connection layer
+    kernel_constraint2: kernel constranint to be applied on 1st linear layer before activation
+    kernel_constraint3: kernel constranint to be applied on 2nd linear layer after activation
+    gating_kernel_constraint1: kernel constraint for activation in gating layer
+    gating_kernel_constraint2: kernel constaint for gating layer
 
   Returns:
     Tuple of tensors for: (GRN output, GLU gate)
@@ -145,9 +181,9 @@ def gated_residual_network(x,
     output_size = hidden_layer_size
     skip = x
   else:
-    linear = Dense(output_size, name=f'skip_connection_{name}')
+    linear = Dense(output_size, name=f'skip_connection_{name}', kernel_constraint=kernel_constraint1)
     if use_time_distributed:
-      linear = TimeDistributed(linear)
+      linear = TimeDistributed(linear, name=f'skip_connection_{name}')
     skip = linear(x)
 
   # Apply feedforward network
@@ -155,9 +191,10 @@ def gated_residual_network(x,
       hidden_layer_size,
       activation=None,
       use_time_distributed=use_time_distributed,
+      kernel_constraint=kernel_constraint2,
       name=f"ff_{name}"
-  )(
-          x)
+  )(x)
+
   if additional_context is not None:
     hidden = hidden + linear_layer(
         hidden_layer_size,
@@ -165,12 +202,13 @@ def gated_residual_network(x,
         use_time_distributed=use_time_distributed,
         use_bias=False,
         name=f'addition_cntxt_{name}'
-    )(
-            additional_context)
-  hidden = Activation('elu', name=f'{name}_elu')(hidden)
+    )(additional_context)
+
+  hidden = Activation(activation, name=f'{name}_{activation}')(hidden)
   hidden = linear_layer(
       hidden_layer_size,
       activation=None,
+      kernel_constraint=kernel_constraint3,
       use_time_distributed=use_time_distributed,
       name=f'{name}_LastDense'
   )(
@@ -182,13 +220,15 @@ def gated_residual_network(x,
       dropout_rate=dropout_rate,
       use_time_distributed=use_time_distributed,
       activation=None,
+      activation_kernel_constraint=gating_kernel_constraint1,
+      gating_kernel_constraint=gating_kernel_constraint2,
       name=name
   )
 
   if return_gate:
-    return add_and_norm([skip, gating_layer], name=name), gate
+    return add_and_norm([skip, gating_layer], name=name, norm=norm), gate
   else:
-    return add_and_norm([skip, gating_layer], name=name)
+    return add_and_norm([skip, gating_layer], name=name, norm=norm)
 
 
 # Attention Components.

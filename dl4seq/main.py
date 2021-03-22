@@ -19,7 +19,7 @@ from dl4seq.backend import tf, keras, tcn, torch, VERSION_INFO, catboost_models,
 from dl4seq.backend import tpot_models
 from dl4seq.backend import imputations, sklearn_models
 from dl4seq.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
-from dl4seq.utils.utils import train_val_split, split_by_indices, stats, make_model, prepare_data
+from dl4seq.utils.utils import train_val_split, split_by_indices, ts_features, make_model, prepare_data
 from dl4seq.utils.utils import find_best_weight
 from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
@@ -204,6 +204,14 @@ class Model(NN, Plots):
         for layer in self._model.layers:
             _all_layers.append(layer.name)
         return _all_layers
+
+    @property
+    def weights(self):
+        """Returns names of weights in model."""
+        _ws = []
+        for w in self._model.weights:
+            _ws.append(w.name)
+        return _ws
 
     @property
     def layers_in_shapes(self) -> dict:
@@ -690,9 +698,14 @@ class Model(NN, Plots):
 
         if self.num_input_layers == 1:
             train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
+            if self.config['shuffle']:
+                train_dataset = train_dataset.shuffle(self.config['buffer_size'])
+
+            train_dataset = train_dataset.batch(self.config['batch_size'],
+                                    drop_remainder=self.config['drop_remainder'])
         elif self.num_input_layers > 1 and isinstance(x_train, list):
             assert len(self._model.outputs) == 1
-            train_dataset = make_dataset(self, x_train, y_train, shuffle=self.config['suffle'])
+            train_dataset = make_dataset(self, x_train, y_train, shuffle=self.config['shuffle'])
         else:
             raise NotImplementedError
 
@@ -702,6 +715,11 @@ class Model(NN, Plots):
                     x_val = x_val[0]
                 assert isinstance(x_val, np.ndarray)
                 val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
+                if self.config['shuffle']:
+                    val_dataset = val_dataset.shuffle(self.config['buffer_size'])
+
+                val_dataset = val_dataset.batch(self.config['batch_size'],
+                                                    drop_remainder=self.config['drop_remainder'])
             else:
                 val_dataset = make_dataset(self, x_val, y_val, shuffle=False)
         else:
@@ -855,8 +873,8 @@ class Model(NN, Plots):
 
         if self.verbosity > 0:
             print_something(x, "input_x")
-            print_something(prev_y, "input_y")
-            print_something(label, "label")
+            print_something(prev_y, "prev_y")
+            print_something(label, "target")
 
         if isinstance(x, np.ndarray):
             return [x], prev_y, label
@@ -927,8 +945,8 @@ class Model(NN, Plots):
 
                 errors = FindErrors(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
-                errs[out + 'true_stats_' + str(h)] = stats(t)
-                errs[out + 'predicted_stats_' + str(h)] = stats(p)
+                errs[out + 'true_stats_' + str(h)] = ts_features(t)
+                errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
 
                 save_config_file(fpath, errors=errs, name=prefix)
 
@@ -1575,7 +1593,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return keract.get_gradients_of_activations(self._model, x, y, layer_names=layer_name)
 
-    def trainable_weights(self):
+    def trainable_weights(self, weights:list=None):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
         for weight in self._model.trainable_weights:
@@ -1615,8 +1633,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return lstm_weights
 
-    def plot_weights(self, save=True):
-        weights = self.trainable_weights()
+    def plot_weights(self, weights=None, save=True):
+        weights = self.trainable_weights(weights=weights)
 
         if self.verbosity > 0:
             print("Plotting trainable weights of layers of the model.")
@@ -1650,9 +1668,10 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
-    def plot_layer_outputs(self, save: bool = True, **kwargs):
+    def plot_layer_outputs(self, save: bool = True, lstm_activations=False, **kwargs):
         """Plots outputs of intermediate layers except input and output.
-        If called without any arguments then it will plot outputs of all layers."""
+        If called without any arguments then it will plot outputs of all layers.
+        By default do not plot LSTM activations."""
         activations, _ = self.activations(**kwargs)
 
         if self.verbosity > 0:
@@ -1668,9 +1687,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                     self._plot_layer_outputs(act, lyr_name, save)
         return
 
-    def _plot_layer_outputs(self, activation, lyr_name, save):
+    def _plot_layer_outputs(self, activation, lyr_name, save, lstm_activations=False):
 
-        if "LSTM" in lyr_name.upper() and np.ndim(activation) in (2, 3):
+        if "LSTM" in lyr_name.upper() and np.ndim(activation) in (2, 3) and lstm_activations:
 
             self.features_2d(activation, save=save, name=lyr_name + "_outputs", title="Outputs", norm=(-1, 1))
 
@@ -1988,22 +2007,22 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """
         weight_file: str, name of file which contains parameters of model.
         """
-        weight_file = os.path.join(self.w_path, weight_file)
+        weight_file_path = os.path.join(self.w_path, weight_file)
         if not self.allow_weight_loading:
             raise ValueError(f"Weights loading not allowed because allow_weight_loading is {self.allow_weight_loading}"
                              f"and model path is {self.path}")
 
         if self.category == "ML":
             if list(self.config['model'].keys())[0].lower().startswith("xgb"):
-                self._model.load_model(weight_file)
+                self._model.load_model(weight_file_path)
             else:
                 # for sklearn based models
-                self._model = joblib.load(weight_file)
+                self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.
-            self._model.load_weights(weight_file)
+            self._model.load_weights(weight_file_path)
         if self.verbosity > 0:
-            print("{} Successfully loaded weights {}".format('*' * 10, '*' * 10))
+            print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
         return
 
     def write_cache(self, _fname, input_x, input_y, label_y):
@@ -2079,7 +2098,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             description = {}
             for col in cols:
                 if col in self.data:
-                    description[col] = stats(self.data[col], precision=precision, name=col)
+                    description[col] = ts_features(self.data[col], precision=precision, name=col)
 
             fpath = os.path.join(self.data_path, fname) if fpath is None else fpath
             save_stats(description, fpath)
@@ -2094,7 +2113,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
                     for col in cols:
                         if col in data:
-                            _description[col] = stats(data[col], precision=precision, name=col)
+                            _description[col] = ts_features(data[col], precision=precision, name=col)
 
                 description['data' + str(idx)] = _description
                 _fpath = os.path.join(self.data_path, fname + f'_{idx}') if fpath is None else fpath
@@ -2105,7 +2124,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 _description = {}
                 if isinstance(data, pd.DataFrame):
                     for col in data.columns:
-                        _description[col] = stats(data[col], precision=precision, name=col)
+                        _description[col] = ts_features(data[col], precision=precision, name=col)
 
                 description[f'data_{data_name}'] = _description
                 _fpath = os.path.join(self.data_path, fname + f'_{data_name}') if fpath is None else fpath
