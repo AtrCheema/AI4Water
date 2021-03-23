@@ -387,15 +387,16 @@ class Visualizations(object):
             'mean_squared_logarithmic_error': 'Mean Squared Logrithmic Error',
             'pbias': "Percent Bias",
             "nse": "Nash-Sutcliff Efficiency",
-            "kge": "Kling-Gupta Efficiency"
+            "kge": "Kling-Gupta Efficiency",
+            "tf_r2": "$R^{2}$"
         }
 
         sub_plots = {1: {'axis': (1,1), 'width': 9, 'height': 6},
                      2: {'axis': (1, 1), 'width': 9, 'height': 6},
                      3: {'axis': (1, 2), 'wdith': 9, 'height': 6},
-                     4: {'axis': (1, 2), 'width': 10, 'height': 10},
-                     5: {'axis': (1, 3), 'width': 15, 'height': 10},
-                     6: {'axis': (1, 3), 'width': 20, 'height': 20},
+                     4: {'axis': (1, 2), 'width': 9, 'height': 6},
+                     5: {'axis': (3, 1), 'width': 8, 'height': 12},
+                     6: {'axis': (3, 1), 'width': 8, 'height': 12},
                      7: {'axis': (3, 2), 'width': 20, 'height': 20},
                      8: {'axis': (4, 2), 'width': 20, 'height': 20},
                      9: {'axis': (5, 2), 'width': 20, 'height': 20},
