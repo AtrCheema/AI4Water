@@ -698,30 +698,37 @@ class Model(NN, Plots):
 
         if self.num_input_layers == 1:
             train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
-            if self.config['shuffle']:
-                train_dataset = train_dataset.shuffle(self.config['buffer_size'])
 
-            train_dataset = train_dataset.batch(self.config['batch_size'],
-                                    drop_remainder=self.config['drop_remainder'])
+        # x_train contains more than one input
         elif self.num_input_layers > 1 and isinstance(x_train, list):
             assert len(self._model.outputs) == 1
-            train_dataset = make_dataset(self, x_train, y_train, shuffle=self.config['shuffle'])
+            train_dataset = tf.data.Dataset.from_tensor_slices((
+                {k: v for k, v in zip(self.input_layer_names, x_train)}, y_train
+            ))
         else:
             raise NotImplementedError
 
+        if self.config['shuffle']:
+            train_dataset = train_dataset.shuffle(self.config['buffer_size'])
+
+        train_dataset = train_dataset.batch(self.config['batch_size'],
+                                drop_remainder=self.config['drop_remainder'])
         if x_val is not None:
             if self.num_input_layers == 1:
                 if isinstance(x_val, list):
                     x_val = x_val[0]
                 assert isinstance(x_val, np.ndarray)
                 val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
-                if self.config['shuffle']:
-                    val_dataset = val_dataset.shuffle(self.config['buffer_size'])
-
-                val_dataset = val_dataset.batch(self.config['batch_size'],
-                                                    drop_remainder=self.config['drop_remainder'])
             else:
-                val_dataset = make_dataset(self, x_val, y_val, shuffle=False)
+                val_dataset = tf.data.Dataset.from_tensor_slices((
+                {k: v for k, v in zip(self.input_layer_names, x_val)}, y_val
+            ))
+
+            if self.config['shuffle']:
+                val_dataset = val_dataset.shuffle(self.config['buffer_size'])
+
+            val_dataset = val_dataset.batch(self.config['batch_size'],
+                                                drop_remainder=self.config['drop_remainder'])
         else:
             val_dataset = val_data
 
@@ -1041,11 +1048,7 @@ class Model(NN, Plots):
 
                 if hasattr(self, 'test_indices'):
                     if self.test_indices is not None:
-                        x, prev_y, label = self.fetch_data(data=self.data,
-                                                           inps=self.in_cols,
-                                                           outs=self.out_cols,
-                                                           transformation=self.config['transformation'],
-                                                           indices=self.test_indices)
+                        x, prev_y, label = self.train_data(indices=self.test_indices, **kwargs)
 
                         if self.category.upper() == "ML" and self.outs == 1:
                             label = label.reshape(-1, )
@@ -1350,7 +1353,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
             if isinstance(inputs, list):
                 new_inputs = []
-                for _input in inputs:
+                for idx, _input in enumerate(inputs):
                     if sort:
                         _input = _input[np.argsort(dt_index.to_pydatetime())]
                     new_inputs.append(_input[..., 1:])
@@ -2176,30 +2179,3 @@ def maybe_three_outputs(data, num_outputs=2):
             return data[0], data[2]
     elif num_outputs == 3:
         return data[0], data[1], data[2]
-
-
-def make_dataset(model, x, y, shuffle):
-    """
-    Makes dataset for more than one inputs.
-    model: dl4seq's instance."""
-    def train_generator():
-        for idx, l in enumerate(y):
-            _x = [x[i][idx] for i in range(len(x))]
-            yield {inp_name: inp for inp_name, inp in zip(model.input_layer_names, _x)}, l
-
-    inp_lyr_shapes = [model.layers_out_shapes[inp_name][0][1:] for inp_name in model.input_layer_names]
-    # assuming that there is only one output
-    out_lyr_shape = tuple(model._model.outputs[0].shape.as_list()[1:])
-
-    dataset = tf.data.Dataset.from_generator(
-        train_generator,
-        output_shapes=({inp_name: inp_shp for inp_name, inp_shp in zip(model.input_layer_names, inp_lyr_shapes)},
-                       out_lyr_shape),
-        output_types=({inp_name: tf.float32 for inp_name in model.input_layer_names}, tf.float32))
-
-    if shuffle:
-        dataset = dataset.shuffle(model.config['buffer_size'])
-
-    dataset = dataset.batch(model.config['batch_size'],
-                                    drop_remainder=model.config['drop_remainder'])
-    return dataset
