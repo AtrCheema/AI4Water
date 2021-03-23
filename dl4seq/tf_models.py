@@ -5,6 +5,7 @@ import pandas as pd
 
 from dl4seq.main import Model
 from dl4seq.backend import keras
+from dl4seq.main import print_something
 from dl4seq.nn_tools import check_act_fn
 from dl4seq.layer_definition import MyTranspose, MyDot
 
@@ -231,7 +232,12 @@ class DualAttentionModel(Model):
 
         h_de0 = s_de0 = np.zeros((x.shape[0], self.config['dec_config']['p']))
 
+        if self.verbosity > 0:
+            print_something([x, prev_y, s0, h0, h_de0, s_de0], "input_x")
+            print_something(labels, "target")
+
         return [x, prev_y, s0, h0, h_de0, s_de0], prev_y, labels
+
 
 class InputAttentionModel(DualAttentionModel):
 
@@ -259,6 +265,10 @@ class InputAttentionModel(DualAttentionModel):
 
         s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
         h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
+
+        if self.verbosity > 0:
+            print_something([x, prev_y, s0, h0], "input_x")
+            print_something(labels, "target")
 
         return [x, s0, h0], prev_y, labels
 
