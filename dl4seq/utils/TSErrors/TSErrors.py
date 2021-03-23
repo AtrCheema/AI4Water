@@ -5,7 +5,7 @@ import numpy as np
 import warnings
 import json
 
-from dl4seq.utils.utils import stats
+from dl4seq.utils.utils import ts_features
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute
@@ -1231,8 +1231,8 @@ class FindErrors(object):
     def stats(self, verbose: bool = False) -> dict:
         """ returs some important stats about true and predicted values."""
         _stats = dict()
-        _stats['true'] = stats(self.true)
-        _stats['predicted'] = stats(self.predicted)
+        _stats['true'] = ts_features(self.true)
+        _stats['predicted'] = ts_features(self.predicted)
 
         if verbose:
             print("\nName            True         Predicted  ")
