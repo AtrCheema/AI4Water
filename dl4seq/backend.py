@@ -136,5 +136,6 @@ VERSION_INFO = {
     'xgboost': str(xgboost.__version__) if xgboost is not None else None,
     'lightgbm': str(lightgbm.__version__) if lightgbm is not None else None,
     'sklearn': str(sklearn.__version__) if sklearn is not None else None,
-    'tpot': str(tpot.__version__) if tpot else None
+    'tpot': str(tpot.__version__) if tpot else None,
+    'eager_execution': tf.executing_eagerly() if tf is not None else None
 }
