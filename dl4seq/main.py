@@ -564,7 +564,7 @@ class Model(NN, Plots):
 
         if self.config['save_model']:
             _callbacks.append(keras.callbacks.ModelCheckpoint(
-                filepath=self.w_path + "\\weights_{epoch:03d}_" + fname,
+                filepath=self.w_path + f"{os.sep}weights_" + "{epoch:03d}_" + fname,
                 save_weights_only=True,
                 monitor=_monitor,
                 mode='min',
@@ -645,7 +645,7 @@ class Model(NN, Plots):
                     validation_steps=validation_steps,
                     )
 
-        self.info['training_time_in_minutes'] = float(time.time() - st) / 60.0
+        self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 
         return self.post_kfit()
 
@@ -1215,7 +1215,16 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         return true_outputs, predicted
 
     def impute(self, method, imputer_args=None, inputs=False, outputs=False, cols=None):
-        """impute the missing data. One of either inputs, outputs or cols can be used."""
+        """impute the missing data. One of either inputs, outputs or cols can be used.
+        method: imputation algorithm
+        imputer_args: the keyword arguments for the imputation algorithm.
+        cols: columns on which imputation to be applied.
+        >>>from dl4seq import Model
+        >>>model = Model()
+        >>>model.impute('interpolate', {'method': 'linear'}, cols=outputs)
+        or
+        >>>model.impute(cols=outputs, method='SimpleImputer', imputer_args={})
+        """
         # TODO, put it in config
         if cols is not None:
             if not isinstance(cols, list):
@@ -1425,7 +1434,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if isinstance(data, pd.DataFrame):
                 data = data.values
             else:
-                raise TypeError(f"unknown data type for data {type(data)}")
+                raise TypeError(f"unknown data type {data.__class__.__name__} for data ")
 
         # for case when there is not lookback, i.e first layer is dense layer and takes 2D input
         input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
@@ -1852,7 +1861,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
 
-        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(type(layer_name))
+        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
 
         predictions, observations = self.predict(pp=False, **kwargs)
 
@@ -2048,13 +2057,13 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         visualizer.plot_missing(cols=cols)
 
         # show data as heatmapt
-        visualizer.data_heatmap(cols=cols)
+        visualizer.heatmap(cols=cols)
 
         # line plots of input/output data
         visualizer.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
-        visualizer.plot_feature_feature_corr(cols=cols)
+        visualizer.feature_feature_corr(cols=cols)
 
         # print stats about input/output data
         self.stats()
@@ -2133,7 +2142,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 _fpath = os.path.join(self.data_path, fname + f'_{data_name}') if fpath is None else fpath
                 save_stats(_description, _fpath)
         else:
-            print(f"description can not be found for data type of {type(self.data)}")
+            print(f"description can not be found for data type of {self.data.__class__.__name__}")
 
         return description
 
