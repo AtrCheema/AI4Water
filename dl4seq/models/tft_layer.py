@@ -229,18 +229,20 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             """Apply temporal variable selection networks.
 
             Args:
-              embedding: Transformed inputs. (num_examples, encoder_steps, hidden_units, 4)
+              embedding: Transformed inputs. (num_examples, time_steps, hidden_units, num_inputs)
+              # time_steps can be either encoder_steps or decoder_steps.
+              # num_inputs can be either encoder_inputs or decoder_inputs
               static_context:
               _name: name of encompassing layers
 
             Returns:
-              Processed tensor outputs.
+              Processed tensor outputs. (num_examples, time_steps, hidden_units)
             """
 
             # Add temporal features
             _, time_steps, embedding_dim, num_inputs = embedding.get_shape().as_list()
 
-            flatten = K.reshape(embedding,  # (num_examples, encoder_steps, 640)
+            flatten = K.reshape(embedding,  # (num_examples, time_steps, num_inputs*hidden_units)
                                 [-1, time_steps, embedding_dim * num_inputs])
 
             if static_context is not None:
@@ -261,18 +263,18 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                 name=f'GRN_with_{_name}'
             )
 
-            # mlp_outputs.shape (num_examples, encoder_steps, 4)
-            # static_gate.shape (num_examples, encoder_steps, 4)
-            # sparse_weights (num_examples, 1, 1)
-            sparse_weights = tf.keras.layers.Activation('softmax',
-                                                        name=f'sparse_{_name}_weights_softmax')(mlp_outputs)  # (num_examples, encoder_steps, 4)
-            sparse_weights = tf.expand_dims(sparse_weights, axis=2)  # (num_examples, encoder_steps, 1, 4)
+            # mlp_outputs.shape (num_examples, time_steps, num_inputs)
+            # static_gate.shape (num_examples, time_steps, num_inputs)
+            # sparse_weights (num_examples, time_steps, num_inputs)
+            sparse_weights = tf.keras.layers.Activation('softmax',    # --> (num_examples, time_steps, num_inputs)
+                                                        name=f'sparse_{_name}_weights_softmax')(mlp_outputs)
+            sparse_weights = tf.expand_dims(sparse_weights, axis=2)  # (num_examples, time_steps, 1, num_inputs)
 
             # Non-linear Processing & weight application
             trans_emb_list = []
             for i in range(num_inputs):
-                grn_output = gated_residual_network(
-                    embedding[Ellipsis, i],
+                grn_output = gated_residual_network(  # --> (num_examples, time_steps, hidden_units)
+                    embedding[Ellipsis, i],   # feeding (num_examples, time_steps, hidden_units) as input
                     self.hidden_units,
                     dropout_rate=self.dropout_rate,
                     use_time_distributed=False,
@@ -280,11 +282,12 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                 )
                 trans_emb_list.append(grn_output)
 
-            transformed_embedding = stack(trans_emb_list, axis=-1)  # (num_examples, encoder_steps, hidden_units, 4)
+            transformed_embedding = stack(trans_emb_list, axis=-1)  # (num_examples, time_steps, hidden_units, num_inputs)
 
-            combined = tf.keras.layers.Multiply(name=f'sparse_and_transform_{_name}')(  # (num_examples, encoder_steps, hidden_units, 4)
+            # --> (num_examples, time_steps, hidden_units, num_inputs)
+            combined = tf.keras.layers.Multiply(name=f'sparse_and_transform_{_name}')(
                 [sparse_weights, transformed_embedding])
-            temporal_ctx = K.sum(combined, axis=-1)  # (num_examples, encoder_steps, hidden_units)
+            temporal_ctx = K.sum(combined, axis=-1)  # (num_examples, time_steps, hidden_units)
 
             return temporal_ctx, sparse_weights, static_gate
 
@@ -484,6 +487,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                                                  ])
                 embeddings.append(embedding)
 
+            # regular_inputs
             regular_inputs, categorical_inputs = all_inputs[:, :, :num_regular_variables], \
                                                  all_inputs[:, :, num_regular_variables:]
 
@@ -497,7 +501,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
 
         else:
             embedded_inputs = []
-            regular_inputs = all_inputs[:, :, :num_regular_variables]
+            regular_inputs = all_inputs[:, :, :num_regular_variables]  # --> (num_examples, total_time_steps, num_inputs)
             categorical_inputs = None
 
         # Static inputs
@@ -550,8 +554,8 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
           unknown_inputs = None
 
         # A priori known inputs
-        known_regular_inputs = [  # list of num_outputs all of shape (num_examples, time_steps, hidden_units)
-            convert_real_to_embedding(regular_inputs[Ellipsis, i:i + 1], _name=f'KnownRegularInputs')
+        known_regular_inputs = [  # list of tensors all of shape (num_examples, total_time_steps, hidden_units)
+            convert_real_to_embedding(regular_inputs[Ellipsis, i:i + 1], _name=f'KnownRegularInputs')  # feeding (num_examples, total_time_steps, 1) at each loop
             for i in self._known_regular_input_idx
             if i not in self._static_input_loc
         ]
