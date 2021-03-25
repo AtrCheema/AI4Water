@@ -223,21 +223,21 @@ class Plots(object):
 
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
-        x, _, y = self.train_data(**kwargs)
+        x, y = self.train_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='training')
 
         return
 
     def plot_val_data(self, how='3d', save=True,  **kwargs):
 
-        x, _, y = self.val_data(**kwargs)
+        x, y = self.val_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='validation')
 
         return
 
     def plot_test_data(self, how='3d', save=True,  **kwargs):
 
-        x, _, y = self.test_data(**kwargs)
+        x, y = self.test_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='test')
 
         return
@@ -458,7 +458,7 @@ class Plots(object):
             elif model in ['XGBOOSTRFREGRESSOR']:  # dtreeviz doesn't plot this
                 pass
             else:
-                x, _, y = self.test_data()
+                x, y = self.test_data()
 
                 if np.ndim(y) > 2:
                     y = np.squeeze(y, axis=2)
@@ -523,7 +523,15 @@ class Plots(object):
 
         if isinstance(data, list):
             for idx, d in enumerate(data):
-                _cols  = cols +  [self.out_cols[idx]] if outputs else cols
+                if isinstance(self.in_cols, dict):
+                    cols_ = [item for sublist in list(self.in_cols.values()) for item in sublist]
+                    _cols = []
+                    for c in cols_:
+                        if c in d:
+                            cols_.append(c)
+                else:
+                    _cols  = cols +  [self.out_cols[idx]] if outputs else cols
+
                 self._box_plot(d, _cols, save, normalize, figsize, max_features, show_datapoints, freq,
                                violen=violen,
                                prefix=str(idx),

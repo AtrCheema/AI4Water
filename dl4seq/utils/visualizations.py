@@ -225,7 +225,7 @@ def scatter_numpy(self, dim, index, src):
 
 class Visualizations(object):
 
-    def __init__(self, config: dict=None, data=None, path=None, dpi=300, in_cols=None, out_cols=None):
+    def __init__(self, data=None, config: dict=None, path=None, dpi=300, in_cols=None, out_cols=None):
         self.config = config
         self.data=data
         self.path = path
@@ -477,46 +477,77 @@ class Visualizations(object):
         self.save_or_show(save=save, fname=fname, where='data', dpi=dpi)
         return
 
-    def data_heatmap(self, cols=None, **kwargs):
+    def heatmap(self, cols=None, **kwargs):
+        """
+        Plots a heatmap.
+        :param cols:
+        :param kwargs:
+        :return:
+        Examples:
+        >>>vis = Visualizations(data)
+        >>>vis.heatmap(save=False)
+        """
         if isinstance(self.data, pd.DataFrame):
-            self._data_heatmap(self.data, cols=cols, **kwargs)
+            self.heatmap_df(self.data, cols=cols, **kwargs)
 
         elif isinstance(self.data, list):
-            for idx, data in self.data:
+            for idx, data in enumerate(self.data):
                 if isinstance(data, pd.DataFrame):
-                    self._data_heatmap(data, cols=cols[idx], fname=f"data_heatmap_{idx}", **kwargs)
+                    self.heatmap_df(data, cols=cols[idx] if isinstance(cols, list) else None,
+                                       fname=f"data_heatmap_{idx}", **kwargs)
 
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
                     _cols = cols[data_name] if cols is not None else None
-                    self._data_heatmap(data, _cols, fname=data_name, **kwargs)
+                    self.heatmap_df(data, _cols, fname=data_name, **kwargs)
         return
 
-    def _data_heatmap(self,
-                      data:pd.DataFrame,
-                      cols=None,
-                      figsize: tuple = (20, 20),
-                      spine_color: str = "#EEEEEE",
-                      save=True,
-                      title=None,
-                      title_fs=16,
-                      fname=""
-                     ):
-
+    def heatmap_df(
+            self,
+            data:pd.DataFrame,
+            cols=None,
+            spine_color: str = "#EEEEEE",
+            save=True,
+            title=None,
+            title_fs=16,
+            fname="",
+            **kwargs
+    ):
+        """
+        plots a heat map of a dataframe. Helpful to show where missing values are located in a dataframe.
+        :param data:
+        :param cols:
+        :param spine_color:
+        :param save:
+        :param title:
+        :param title_fs:
+        :param fname:
+        :return:
+        """
         if cols is None:
             cols = data.columns
-        fig, axis = plt.subplots(figsize=figsize)
+        _kwargs = {
+            "xtick_labels_fs": 12,
+            "ytick_labels_fs": 20,
+            "figsize": (5 + len(cols)*0.25, 10 + len(cols)*0.1),
+        }
+        for k in _kwargs.keys():
+            if k in kwargs:
+                _kwargs[k] = kwargs.pop(k)
+
+        fig, axis = plt.subplots(figsize=_kwargs['figsize'])
         # ax2 - Heatmap
         sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=axis)
         axis.set_yticks(axis.get_yticks()[0::5].astype('int'))
+
         axis.set_yticklabels(axis.get_yticks(),
-                            fontsize="16")
+                            fontsize=_kwargs['ytick_labels_fs'])
         axis.set_xticklabels(
             axis.get_xticklabels(),
             horizontalalignment="center",
             fontweight="light",
-            fontsize="12",
+            fontsize=_kwargs['xtick_labels_fs'],
         )
         axis.tick_params(length=1, colors="#111111")
         axis.set_ylabel("Examples", fontsize="24")
@@ -526,18 +557,23 @@ class Visualizations(object):
         if title is not None:
             axis.set_title(title, fontsize=title_fs)
 
-        self.save_or_show(save=save, fname=fname+'_heat_map', where='data', dpi=500)
-        return
+        return self.save_or_show(save=save, fname=fname+'_heat_map', where='data', dpi=500)
 
-    def plot_missing(self, save=True, cols=None, **kwargs):
-
+    def plot_missing(self, save:bool=True, cols=None, **kwargs):
+        """
+        cols: columns to be used.
+        save: if False, plot will be shown and not plotted.
+        Examples:
+        >>>vis = Visualizations(data)
+        >>>vis.plot_missing(save=False)
+        """
         if isinstance(self.data, pd.DataFrame):
             self.plot_missing_df(self.data, cols=cols, save=save, **kwargs)
 
         elif isinstance(self.data, list):
             for idx, data in enumerate(self.data):
                 _cols = cols[idx] if isinstance(cols, list) else None
-                self.plot_missing_df(data, cols=None, prefix=str(idx), save=save, **kwargs)
+                self.plot_missing_df(data, cols=None, fname=str(idx), save=save, **kwargs)
 
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
@@ -549,21 +585,34 @@ class Visualizations(object):
     def plot_missing_df(self,
                         data:pd.DataFrame,
                         cols=None,
-                        figsize:tuple=(20,20),
                         fname:str='',
                         save:bool=True,
                         **kwargs):
+        """
+        kwargs:
+            xtick_labels_fs
+            figsize
+        """
         if cols is None:
             cols = data.columns
         data = data[cols]
         # Identify missing values
         mv_total, mv_rows, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
 
+        _kwargs = {
+            "xtick_labels_fs": 12,
+            "ytick_labels_fs": 20,
+            "figsize": (5 + len(cols)*0.25, 10 + len(cols)*0.1),
+        }
+        for k in _kwargs.keys():
+            if k in kwargs:
+                _kwargs[k] = kwargs.pop(k)
+
         if mv_total == 0:
             print("No missing values found in the dataset.")
         else:
             # Create figure and axes
-            fig = plt.figure(figsize=figsize)
+            fig = plt.figure(figsize=_kwargs['figsize'])
             gs = fig.add_gridspec(nrows=1, ncols=1, left=0.1, wspace=0.05)
             ax1 = fig.add_subplot(gs[:1, :5])
 
@@ -575,13 +624,13 @@ class Visualizations(object):
             ax1.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
             ax1.set_yticklabels(ax1.get_yticks(),
                                 fontsize="18")
-            ax1.set_ylabel("Missing Percentage", fontsize="24")
+            ax1.set_ylabel("Missing Percentage", fontsize=_kwargs['ytick_labels_fs'])
             ax1.set_xticklabels(
                 ax1.get_xticklabels(),
                 horizontalalignment="center",
                 fontweight="light",
                 rotation=90,
-                fontsize="12",
+                fontsize=_kwargs['xtick_labels_fs'],
             )
             ax1.tick_params(axis="y", colors="#111111", length=1)
 
@@ -625,33 +674,40 @@ class Visualizations(object):
         self.save_or_show(fname=f"hist_{prefix}", save=save, where='data')
         return
 
-    def plot_feature_feature_corr(self, cols=None, remove_targets=True, save=True, **kwargs):
-
+    def feature_feature_corr(self, cols=None, remove_targets=True, save=True, **kwargs):
+        """
+        >>>from dl4seq.utils.visualizations import Visualizations
+        >>>vis = Visualizations(data)
+        >>>vis.feature_feature_corr(save=False)
+        """
         if cols is None:
             cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
+            if isinstance(cols, dict):
+                cols = None
 
         if isinstance(self.data, pd.DataFrame):
-            self._feature_feature_corr(self.data, cols, save=save, **kwargs)
+            self.feature_feature_corr_df(self.data, cols, save=save, **kwargs)
 
         elif isinstance(self.data, list):
             for idx, data in enumerate(self.data):
                 if isinstance(data, pd.DataFrame):
-                    self._feature_feature_corr(data, cols[idx], prefix=str(idx), save=save, **kwargs)
+                    self.feature_feature_corr_df(data, cols[idx] if cols is not None else None,
+                                               prefix=str(idx), save=save, **kwargs)
 
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
-                    self._feature_feature_corr(data, cols, prefix=data_name, save=save, **kwargs)
+                    self.feature_feature_corr_df(data, cols, prefix=data_name, save=save, **kwargs)
         return
 
-    def _feature_feature_corr(self,
+    def feature_feature_corr_df(self,
                               data,
                               cols=None,
                               prefix='',
                               save=True,
                               split=None,
                               threshold=0,
-                              figsize=(20,20),
+                              method='pearson',
                               **kwargs):
         """
         split : Optional[str], optional
@@ -667,12 +723,11 @@ class Visualizations(object):
                 coefficients.
                 Value between -1 <= vmin <= 1 or vmax, limits the range of the cbar.
         To plot positive correlation only:
-        _feature_feature_corr(model.data, list(model.data.columns), split="pos")
+        feature_feature_corr_df(model.data, list(model.data.columns), split="pos")
         To plot negative correlation only
-        _feature_feature_corr(model.data, list(model.data.columns), split="neg")
+        feature_feature_corr_df(model.data, list(model.data.columns), split="neg")
         """
         plt.close('all')
-        method = kwargs.get('method', 'pearson')
 
         if cols is None:
             cols = data.columns
@@ -689,7 +744,7 @@ class Visualizations(object):
         vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
         vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
 
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 10 + len(cols)*0.1)))
 
         _kwargs = dict()
         _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
@@ -763,7 +818,8 @@ class Visualizations(object):
         kwargs will go to sns.pairplot."""
         if isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self._plot_pcs(data[self.in_cols], num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
+                self._plot_pcs(data[self.in_cols],
+                               num_pcs, save=save, prefix=str(idx), save_as_csv=save_as_csv,
                                hue=self.out_cols[idx], figsize=figsize, **kwargs)
 
         elif isinstance(self.data, dict):
@@ -833,7 +889,8 @@ class Visualizations(object):
 
         if isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self.plot_df(data, cols=cols[idx], save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
+                self.plot_df(data, cols=cols[idx] if isinstance(cols, list) else None,
+                             save=save, freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
                 if isinstance(data, pd.DataFrame):
