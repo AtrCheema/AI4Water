@@ -30,6 +30,7 @@ params = {
     'stack_size': 1,
     'use_cudnn': False,
     'future_inputs': True,
+    'return_sequences': True,
 }
 
 output_size = 1
@@ -55,7 +56,7 @@ class Test_TFT(unittest.TestCase):
                 params['num_inputs'],
             ))
 
-        tft = TemporalFusionTransformer(raw_params=params)
+        tft = TemporalFusionTransformer(**params)
         transformer_layer = tft(all_inputs)
 
         if params['total_time_steps'] == num_encoder_steps:
@@ -80,7 +81,7 @@ class Test_TFT(unittest.TestCase):
     def test_as_layer(self):
         layers = {
             "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs'])}},
-            "TemporalFusionTransformer": {"config": {'raw_params': params}},
+            "TemporalFusionTransformer": {"config": params},
             "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, num_encoder_steps:, :])},
             "TimeDistributed": {"config": {}},
             "Dense": {"config": {"units": output_size * len(quantiles)}}
