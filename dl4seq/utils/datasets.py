@@ -186,6 +186,7 @@ from dl4seq.utils.download_zenodo import download_from_zenodo
 from dl4seq.utils.download_pangaea import PanDataSet
 from dl4seq.utils.spatial_utils import plot_shapefile
 
+SEP = os.sep
 # TODO, add visualization
 
 # TODO all available datasets should be available using a single interface instead of importing each separately
@@ -320,7 +321,7 @@ Use overwrite=True to remove previously saved files and download again""")
 
     def _download_and_unzip(self):
         os.makedirs(self.ds_dir)
-        download_from_zenodo(self.ds_dir, self.DATASETS[self.name]['url'])
+        download_from_zenodo(self.ds_dir, self.url)
         self._unzip()
         return
 
@@ -566,6 +567,25 @@ when categorices is {categories}"""
         return station_df
 
 
+class LamaH(Camels):
+    f"""
+    Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
+    from     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
+    paper: https://essd.copernicus.org/preprints/essd-2021-72/
+    """
+    url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
+    def __init__(self):
+
+        super().__init__()
+
+        self._download()
+
+    @property
+    def ds_dir(self):
+        """Directory where a particular dataset will be saved. """
+        return os.path.join(self.camels_dir, self.name)
+
+
 class CAMELS_US(Camels):
     """Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
     from https://ral.ucar.edu/solutions/products/camels
@@ -574,11 +594,11 @@ class CAMELS_US(Camels):
     url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
     catchment_attr_url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/camels_attributes_v2.0.zip"
 
-    folders = {'basin_mean_daymet': 'basin_mean_forcing\\daymet',
-             'basin_mean_maurer': 'basin_mean_forcing\\maurer',
-             'basin_mean_nldas': 'basin_mean_forcing\\nldas',
-             'elev_bands': 'elev\\daymet',
-             'hru': 'hru_forcing\\daymet'}
+    folders = {'basin_mean_daymet': f'basin_mean_forcing{SEP}daymet',
+             'basin_mean_maurer': f'basin_mean_forcing{SEP}maurer',
+             'basin_mean_nldas': f'basin_mean_forcing{SEP}nldas',
+             'elev_bands': f'elev{SEP}daymet',
+             'hru': f'hru_forcing{SEP}daymet'}
 
     def __init__(self):
 
@@ -587,12 +607,12 @@ class CAMELS_US(Camels):
         if os.path.exists(self.ds_dir):
             print(f"dataset is already downloaded at {self.ds_dir}")
         else:
-            download(self.url, os.path.join(self.camels_dir, 'CAMELS_US\\CAMELS_US.zip'))
-            download(self.catchment_attr_url, os.path.join(self.camels_dir, "CAMELS_US\\catchment_attrs.zip"))
+            download(self.url, os.path.join(self.camels_dir, f'CAMELS_US{SEP}CAMELS_US.zip'))
+            download(self.catchment_attr_url, os.path.join(self.camels_dir, f"CAMELS_US{SEP}catchment_attrs.zip"))
             self._unzip()
 
-        self.attr_dir = os.path.join(self.ds_dir, 'catchment_attrs\\camels_attributes_v2.0')
-        self.dataset_dir = os.path.join(self.ds_dir, 'CAMELS_US\\basin_dataset_public_v1p2')
+        self.attr_dir = os.path.join(self.ds_dir, f'catchment_attrs{SEP}camels_attributes_v2.0')
+        self.dataset_dir = os.path.join(self.ds_dir, f'CAMELS_US{SEP}basin_dataset_public_v1p2')
 
     @property
     def ds_dir(self):
@@ -610,7 +630,7 @@ class CAMELS_US(Camels):
     def stations(self)->list:
         stns = []
         for _dir in os.listdir(os.path.join(self.dataset_dir, 'usgs_streamflow')):
-            cat = os.path.join(self.dataset_dir, f'usgs_streamflow\\{_dir}')
+            cat = os.path.join(self.dataset_dir, f'usgs_streamflow{SEP}{_dir}')
             stns += [fname.split('_')[0] for fname in os.listdir(cat)]
 
         return stns
@@ -647,10 +667,10 @@ class CAMELS_US(Camels):
         df1 = None
         dir_name = self.folders[forcing]
         for cat in os.listdir(os.path.join(self.dataset_dir, dir_name)):
-            cat_dirs = os.listdir(os.path.join(self.dataset_dir, f'{dir_name}\\{cat}'))
+            cat_dirs = os.listdir(os.path.join(self.dataset_dir, f'{dir_name}{SEP}{cat}'))
             stn_file = f'{station}_lump_cida_forcing_leap.txt'
             if stn_file in cat_dirs:
-                df = pd.read_csv(os.path.join(self.dataset_dir, f'{dir_name}\\{cat}\\{stn_file}'),
+                df = pd.read_csv(os.path.join(self.dataset_dir, f'{dir_name}{SEP}{cat}{SEP}{stn_file}'),
                                  sep="\s+|;|:",
                                  skiprows=4,
                                  engine='python',
@@ -664,7 +684,7 @@ class CAMELS_US(Camels):
             cat_dirs = os.listdir(os.path.join(flow_dir, cat))
             stn_file = f'{station}_streamflow_qc.txt'
             if stn_file in cat_dirs:
-                fpath = os.path.join(flow_dir, f'{cat}\\{stn_file}')
+                fpath = os.path.join(flow_dir, f'{cat}{SEP}{stn_file}')
                 df1 = pd.read_csv(fpath,  sep="\s+|;|:'", names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'], engine='python')
                 df1.index = pd.to_datetime(
                     df1['Year'].map(str) + '-' + df1['Month'].map(str) + '-' + df1['Day'].map(str))
@@ -675,7 +695,10 @@ class CAMELS_US(Camels):
 
 
 class CAMELS_BR(Camels):
-    """Downloads and processes CAMELS dataset of Brazil"""
+    """
+    Downloads and processes CAMELS dataset of Brazil
+    """
+    url = "https://zenodo.org/record/3964745#.YA6rUxZS-Uk"
 
     dynamic_attributes = ['streamflow_m3s', 'streamflow_mm', 'streamflow_simulated',
                            'precipitation_cpc', 'precipitation_mswep', 'precipitation_chirps',
@@ -697,7 +720,7 @@ class CAMELS_BR(Camels):
         path = None
         for _dir in self._all_dirs:
             if "attributes" in _dir:  # supposing that 'attributes' axist in only one file/folder in self.ds_dir
-                path = os.path.join(self.ds_dir, f'{_dir}\\{_dir}')
+                path = os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}')
         return path
 
     @property
@@ -728,7 +751,7 @@ class CAMELS_BR(Camels):
         all_files = []
         for _dir in self._all_dirs:
             if attribute in _dir:
-                all_files = os.listdir(os.path.join(self.ds_dir, f'{_dir}\\{_dir}'))
+                all_files = os.listdir(os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}'))
 
         stations = []
         for f in all_files:
@@ -793,7 +816,7 @@ class CAMELS_BR(Camels):
 
             for _dir in self._all_dirs:
                 if attr in _dir:
-                    path = os.path.join(self.ds_dir, f'{_dir}\\{_dir}')
+                    path = os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}')
                     # supposing that the filename starts with stn_id and has .txt extension.
                     fname = [f for f in os.listdir(path) if f.startswith(str(stn_id)) and f.endswith('.txt')]
                     fname = fname[0]
@@ -864,7 +887,10 @@ class CAMELS_BR(Camels):
 
 
 class CAMELS_GB(Camels):
-
+    """
+    This dataset must be manually downloaded by the user.
+    The path of the downloaded folder must be provided while initiating this class.
+    """
     def __init__(self, path=None):
         super().__init__(name="CAMELS-GB")
         self.ds_dir = path
@@ -899,7 +925,7 @@ class CAMELS_GB(Camels):
 
     def stations(self, to_exclude=None):
         # CAMELS_GB_hydromet_timeseries_StationID_number
-        path = os.path.join(self.ds_dir, 'data\\timeseries')
+        path = os.path.join(self.ds_dir, f'data{SEP}timeseries')
         gauge_ids = []
         for f in os.listdir(path):
             gauge_ids.append(f.split('_')[4])
@@ -918,7 +944,7 @@ class CAMELS_GB(Camels):
         if en is None:
             en = self.end
 
-        path = os.path.join(self.ds_dir, f"data\\timeseries")
+        path = os.path.join(self.ds_dir, f"data{SEP}timeseries")
         fname = None
         for f in os.listdir(path):
             if stn_id in f:
@@ -1044,7 +1070,7 @@ class CAMELS_AUS(Camels):
         return "Australia"
 
     def stations(self, as_list=True):
-        fname = os.path.join(self.ds_dir, "01_id_name_metadata\\01_id_name_metadata\\id_name_metadata.csv")
+        fname = os.path.join(self.ds_dir, f"01_id_name_metadata{SEP}01_id_name_metadata{SEP}id_name_metadata.csv")
         df = pd.read_csv(fname)
         if as_list:
             return df['station_id'].to_list()
@@ -1054,7 +1080,7 @@ class CAMELS_AUS(Camels):
     @property
     def static_attribute_categories(self):
         attributes = []
-        path = os.path.join(self.ds_dir, '04_attributes\\04_attributes')
+        path = os.path.join(self.ds_dir, f'04_attributes{SEP}04_attributes')
         for f in os.listdir(path):
             if os.path.isfile(os.path.join(path, f)) and f.endswith('csv'):
                 f = str(f.split('.csv')[0])
@@ -1105,25 +1131,25 @@ class CAMELS_AUS(Camels):
 
             for attr in dynamic_attributes:
                 if 'SILO' in attr:
-                    path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\SILO")
+                    path = os.path.join(self.ds_dir, f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO")
                     populate_dynattr(path, attr)
 
                 if 'AWAP' in attr:
-                    path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\AWAP")
+                    path = os.path.join(self.ds_dir, f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AWAP")
                     populate_dynattr(path, attr)
 
                 if 'et_' in attr or 'evap_' in attr:
                     path = os.path.join(self.ds_dir,
-                                        "05_hydrometeorology\\05_hydrometeorology\\02_EvaporativeDemand_timeseries")
+                                        f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries")
                     populate_dynattr(path, attr)
 
                 if 'precipitation_' in attr:
                     path = os.path.join(self.ds_dir,
-                                        "05_hydrometeorology\\05_hydrometeorology\\01_precipitation_timeseries")
+                                        f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries")
                     populate_dynattr(path, attr)
 
                 if 'streamflow_' in attr:
-                    path = os.path.join(self.ds_dir, "03_streamflow\\03_streamflow")
+                    path = os.path.join(self.ds_dir, f"03_streamflow{SEP}03_streamflow")
                     populate_dynattr(path, attr)
 
             # making one separate dataframe for one station
@@ -1148,7 +1174,7 @@ class CAMELS_AUS(Camels):
                      st=None, en=None, as_ts=False)->dict:
 
         df_categories = {}
-        path = os.path.join(self.ds_dir, "04_attributes\\04_attributes")
+        path = os.path.join(self.ds_dir, f"04_attributes{SEP}04_attributes")
         for category in categories:
             for fname in os.listdir(path):
                 if category in fname:
@@ -1204,23 +1230,23 @@ class CAMELS_AUS(Camels):
                     df[attr] = _df[stn_id][st:en]
 
         if any(['SILO' in i for i in attributes]):
-            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\SILO")
+            path = os.path.join(self.ds_dir, f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO")
             populate_df(path)
 
         if any(['AWAP' in i for i in attributes]):
-            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\03_Other\\AWAP")
+            path = os.path.join(self.ds_dir, f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}AWAP")
             populate_df(path)
 
         if any(['et_' in i for i in attributes]) or any(['evap_' in i for i in attributes]):
-            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\02_EvaporativeDemand_timeseries")
+            path = os.path.join(self.ds_dir, f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}02_EvaporativeDemand_timeseries")
             populate_df(path)
 
         if any(['precipitation_' in i for i in attributes]):
-            path = os.path.join(self.ds_dir, "05_hydrometeorology\\05_hydrometeorology\\01_precipitation_timeseries")
+            path = os.path.join(self.ds_dir, f"05_hydrometeorology{SEP}05_hydrometeorology{SEP}01_precipitation_timeseries")
             populate_df(path)
 
         if any(['streamflow_' in i for i in attributes]):
-            path = os.path.join(self.ds_dir, "03_streamflow\\03_streamflow")
+            path = os.path.join(self.ds_dir, f"03_streamflow{SEP}03_streamflow")
             populate_df(path)
 
         return df
@@ -1252,7 +1278,7 @@ class CAMELS_AUS(Camels):
                                as_ts=False,
                                **kwargs)->pd.DataFrame:
         # fetch static attribute of one station
-        path = os.path.join(self.ds_dir, "04_attributes\\04_attributes")
+        path = os.path.join(self.ds_dir, f"04_attributes{SEP}04_attributes")
         fname = None
         for f in os.listdir(path):
             if category in f:
@@ -1270,8 +1296,8 @@ class CAMELS_AUS(Camels):
 
     def plot(self, what, stations=None, **kwargs):
         assert what in ['outlets', 'boundaries']
-        f1 = os.path.join(self.ds_dir, f'02_location_boundary_area\\02_location_boundary_area\\shp\\CAMELS_AUS_BasinOutlets_adopted.shp')
-        f2 = os.path.join(self.ds_dir, f'02_location_boundary_area\\02_location_boundary_area\\shp\\bonus data\\Australia_boundaries.shp')
+        f1 = os.path.join(self.ds_dir, f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}CAMELS_AUS_BasinOutlets_adopted.shp')
+        f2 = os.path.join(self.ds_dir, f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}bonus data{SEP}Australia_boundaries.shp')
 
         return plot_shapefile(f1, bbox_shp=f2, recs=stations, rec_idx=0, **kwargs)
 
@@ -1336,7 +1362,7 @@ class CAMELS_CL(Camels):
 
     @property
     def static_attribute_categories(self):
-        path = os.path.join(self.ds_dir, "1_CAMELScl_attributes\\1_CAMELScl_attributes.txt")
+        path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
         return df.index.to_list()
 
@@ -1346,7 +1372,7 @@ class CAMELS_CL(Camels):
         for dyn_attr in self.dynamic_attributes:
             for _dir in self._all_dirs:
                 if dyn_attr in _dir:
-                    fname = os.path.join(self.ds_dir, f"{_dir}\\{_dir}.txt")
+                    fname = os.path.join(self.ds_dir, f"{_dir}{SEP}{_dir}.txt")
                     df = pd.read_csv(fname, sep='\t', nrows=2, index_col='gauge_id')
                     _stations[dyn_attr] = list(df.columns)
 
@@ -1386,7 +1412,7 @@ class CAMELS_CL(Camels):
             dyn_attrs = {}
             for attr in dynamic_attributes:
                 fname = [f for f in self._all_dirs if '_'+attr in f][0]
-                fname = os.path.join(self.ds_dir, f'{fname}\\{fname}.txt')
+                fname = os.path.join(self.ds_dir, f'{fname}{SEP}{fname}.txt')
                 _df = pd.read_csv(fname, sep='\t', index_col=['gauge_id'])
                 _df.index=  pd.to_datetime(_df.index)
                 dyn_attrs[attr] = _df
@@ -1407,7 +1433,7 @@ class CAMELS_CL(Camels):
     def _read_static(self, stations):
         # overwritten for speed
         df = pd.DataFrame()
-        path = os.path.join(self.ds_dir, "1_CAMELScl_attributes\\1_CAMELScl_attributes.txt")
+        path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         _df = pd.read_csv(path, sep='\t', index_col='gauge_id')
 
         stns_df = {}
@@ -1448,7 +1474,7 @@ class CAMELS_CL(Camels):
                 if attr in f:
                     fname = f
                     break
-            fpath = os.path.join(self.ds_dir, f"{fname}\\{fname}.txt")
+            fpath = os.path.join(self.ds_dir, f"{fname}{SEP}{fname}.txt")
             _df = pd.read_csv(fpath, sep='\t', index_col='gauge_id', na_values=['" "', '', ' '])
             _df.index = pd.to_datetime(_df.index)
             df[attr] = _df[stn_id][st:en]
@@ -1469,7 +1495,7 @@ class CAMELS_CL(Camels):
         if static_attributes == 'all':
             attributes = self.static_attribute_categories
 
-        path = os.path.join(self.ds_dir, "1_CAMELScl_attributes\\1_CAMELScl_attributes.txt")
+        path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         try:
             df = pd.read_csv(path, sep='\t', index_col='gauge_id', usecols=[' ' + station, 'gauge_id']).transpose()
         except ValueError:
@@ -1699,7 +1725,6 @@ def download(url, out=None):
         callback_progress(blocks, block_size, total_size, bar_function=bar)
 
     callback = callback_charged
-
 
     # Python 3 can not quote URL as needed
     binurl = list(urlparse.urlsplit(url))
