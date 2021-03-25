@@ -17,6 +17,9 @@ from dl4seq.utils.utils import dateandtime_now
 
 # TODO add logistic, tanh and more scalers.
 # rpca
+# tSNE
+# UMAP
+# PaCMAP
 # which transformation to use? Some related articles/posts
 # https://scikit-learn.org/stable/modules/preprocessing.html
 # http://www.faqs.org/faqs/ai-faq/neural-nets/part2/section-16.html
@@ -63,7 +66,7 @@ class scaler_container(object):
 
 class Transformations(scaler_container):
     """
-    Apply transformation to data.
+    Applies transformation to tabular data.
     Any new transforming methods should define two methods one starting with "transform_with_" and "inverse_transofrm_with_"
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
@@ -123,11 +126,20 @@ class Transformations(scaler_container):
 
     Examples:
     --------
+    >>>from dl4seq.utils.transformations import Transformations
     >>>from dl4seq.data import load_u1
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>transformer = Transformations(data=data[inputs], method='pca', n_components=10)
     >>>new_data = transformer.transform()
+
+    Following shows how to apply log transformation on an array containing zeros by making
+    use of the argument `replace_zeros`. The zeros in the input array will be replaced internally
+    but will be inserted back afterwards.
+    >>>import pandas as pd
+    >>>a = pd.DataFrame([10, 2, 0])
+    >>>Transformations(a, 'log', replace_zeros=True)()
+    ...[2.302585, 0.693147, 0.0]
     """
 
     available_scalers = {
