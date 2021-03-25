@@ -363,13 +363,13 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
     config.update(model_config)
 
     assert type(config['inputs']) == type(config['outputs']), f"""
-inputs is of type {type(config['inputs'])} but outputs is of type {type(config['outputs'])}
+inputs is of type {config['inputs'].__class__.__name__} but outputs is of type {config['outputs'].__class__.__name__}
 """
 
     if isinstance(config['inputs'], dict):
         for data in [config['inputs'], config['outputs']]:
             for k,v in data.items():
-                assert isinstance(v, list), f"{k} is of type {type(v)} but it must of of type list"
+                assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
     return config
 
 
@@ -385,10 +385,10 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
             val_type = type(val)
             if val_type not in dtype:
                 raise TypeError("{} must be any of the type {} but it is of type {}"
-                                .format(key, dtype, type(val)))
+                                .format(key, dtype, val.__class__.__name__))
         elif not isinstance(val, dtype):
             if val != dict_to_lookup[key]['default']: # the default value may be None which will be different than dtype
-                raise TypeError(f"{key} must be of type {dtype} but it is of type {type(val)}")
+                raise TypeError(f"{key} must be of type {dtype} but it is of type {val.__class__.__name__}")
 
     if isinstance(val, int) or isinstance(val, float):
         if low is not None:
@@ -965,7 +965,7 @@ def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
         if hasattr(data, '__len__'):
             data = np.array(data)
         else:
-            raise TypeError(f"{name} must be array like but it is of type {type(data)}")
+            raise TypeError(f"{name} must be array like but it is of type {data.__class__.__name__}")
 
     if np.array(data).dtype.type is np.str_:
         warnings.warn(f"{name} contains string values")
@@ -1197,7 +1197,7 @@ def prepare_data(
         if isinstance(data, pd.DataFrame):
             data = data.values
         else:
-            raise TypeError(f"unknown data type for data {type(data)}")
+            raise TypeError(f"unknown data type for data {data.__class__.__name__}")
 
     if num_inputs is None and num_outputs is None:
         raise ValueError("""
@@ -1315,6 +1315,14 @@ def process_axis(axis,
     if log and log_nz:
         raise ValueError
 
+    use_third = False
+    if x is not None:
+        if isinstance(x, str):  # the user has not specified x so x is currently plot style.
+            style = x
+            x = None
+            if marker == '.':
+                use_third=  True
+
     if log_nz:
         data = deepcopy(data)
         _data = data.values
@@ -1333,6 +1341,8 @@ def process_axis(axis,
 
     if x is not None:
         axis.plot(x, data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
+    elif use_third:
+        axis.plot(data, style, color=c, ms=ms, label=label)
     else:
         axis.plot(data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
 
@@ -1393,12 +1403,19 @@ def process_axis(axis,
 
     return axis
 
-def plot(*args, **kwargs):
-    """one liner plot function."""
+
+def plot(*args, show=True, **kwargs):
+    """
+    One liner plot function. It should not be more complex than axis.plot() or plt.plot()
+    yet it must accomplish all in one line what requires multiple lines in matplotlib.
+    args and kwargs can be anything which goes into plt.plot() or axis.plot().
+    They can also be anything which goes into `process_axis`.
+    """
     plt.close('all')
     fig, axis = plt.subplots()
-    process_axis(axis, *args, **kwargs)
+    axis = process_axis(axis, *args, **kwargs)
     if kwargs.get('save', False):
         plt.savefig(f"{kwargs.get('name', 'fig.png')}")
-    plt.show()
-    return
+    if show:
+        plt.show()
+    return axis
