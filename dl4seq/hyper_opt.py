@@ -23,7 +23,7 @@ try:
     from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
     from hyperopt.pyll.base import Apply
     from hyperopt import space_eval
-    from hyperopt.plotting import main_plot_history, main_plot_histogram  # todo
+    from hyperopt.base import miscs_to_idxs_vals  # todo main_plot_1D_attachment
 except ImportError:
     hyperopt = None
 
@@ -901,14 +901,25 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         res = sr()
         plt.close('all')
         if sr.x_iters is not None:
-            plot_convergence([res])
+            plot_convergence([res])  #todo, should include an option to plot original evaluations instead of only minimum
 
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
 
         if self.skopt_space() is not None and res.x_iters is not None:
+            plt.close('all')
             plot_evaluations(res, dimensions=list(self.best_paras.keys()))
             plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
+
+        if self.algorithm == 'tpe' and hasattr(self, 'trials'):
+            loss_histogram([y for y in self.trials.losses()],
+                           save=True,
+                           fname=os.path.join(self.opt_path, "loss_histogram.png")
+                           )
+            plot_hyperparameters(self.trials,
+                                 fname=os.path.join(self.opt_path, "loss_histogram.png"),
+                                 save=True
+                                 )
         return
 
     def best_paras_kw(self)->dict:
@@ -1143,6 +1154,100 @@ def to_real(_space, prior_name=None):
         raise NotImplementedError
 
     return Real(low=limits['low'], high=limits['high'], prior=prior, name=prior_name)
+
+
+def loss_histogram(losses,  # array like
+                   xlabel='objective_fn',
+                   ylabel='Frequency',
+                   save=True,
+                   fname="histogram.png"):
+
+    plt.hist(losses)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    if save:
+        plt.savefig(fname, dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+
+
+def plot_hyperparameters(
+        trials,
+        save=True,
+        fontsize=10,
+        colorize_best=None,
+        columns=5,
+        arrange_by_loss=False,
+        fname='parameters_selection_plot.png'
+):
+    """Copying from hyperopt because original hyperopt does not allow saving the plot."""
+
+    idxs, vals = miscs_to_idxs_vals(trials.miscs)
+    losses = trials.losses()
+    finite_losses = [y for y in losses if y not in (None, float("inf"))]
+    asrt = np.argsort(finite_losses)
+    if colorize_best is not None:
+        colorize_thresh = finite_losses[asrt[colorize_best + 1]]
+    else:
+        # -- set to lower than best (disabled)
+        colorize_thresh = finite_losses[asrt[0]] - 1
+
+    loss_min = min(finite_losses)
+    loss_max = max(finite_losses)
+    print("finite loss range", loss_min, loss_max, colorize_thresh)
+
+    loss_by_tid = dict(zip(trials.tids, losses))
+
+    def color_fn_bw(lossval):
+        if lossval in (None, float("inf")):
+            return 1, 1, 1
+        else:
+            t = (lossval - loss_min) / (loss_max - loss_min + 0.0001)
+            if lossval < colorize_thresh:
+                return 0.0, 1.0 - t, 0.0  # -- red best black worst
+            else:
+                return t, t, t  # -- white=worst, black=best
+
+    all_labels = list(idxs.keys())
+    titles = all_labels
+    order = np.argsort(titles)
+
+    C = min(columns, len(all_labels))
+    R = int(np.ceil(len(all_labels) / float(C)))
+
+    for plotnum, varnum in enumerate(order):
+        label = all_labels[varnum]
+        plt.subplot(R, C, plotnum + 1)
+
+        # hide x ticks
+        ticks_num, ticks_txt = plt.xticks()
+        plt.xticks(ticks_num, [""] * len(ticks_num))
+
+        dist_name = label
+
+        if arrange_by_loss:
+            x = [loss_by_tid[ii] for ii in idxs[label]]
+        else:
+            x = idxs[label]
+        if "log" in dist_name:
+            y = np.log(vals[label])
+        else:
+            y = vals[label]
+        plt.title(titles[varnum], fontsize=fontsize)
+        c = list(map(color_fn_bw, [loss_by_tid[ii] for ii in idxs[label]]))
+        if len(y):
+            plt.scatter(x, y, c=c)
+        if "log" in dist_name:
+            nums, texts = plt.yticks()
+            plt.yticks(nums, ["%.2e" % np.exp(t) for t in nums])
+
+    if save:
+        plt.savefig(fname, dpi=300, bbox_inches='tight' )
+    else:
+        plt.show()
+
+
 
 
 def scatterplot_matrix_colored(params_names:list,
