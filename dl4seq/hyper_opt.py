@@ -7,16 +7,23 @@ from skopt import BayesSearchCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from skopt import gp_minimize
 from skopt.utils import use_named_args
-from skopt.plots import plot_convergence
+from skopt.plots import plot_convergence, plot_evaluations
 from sklearn.model_selection import ParameterGrid, ParameterSampler
-from skopt.space import Real, Categorical, Integer
+from skopt.space import Real as _Real
+from skopt.space import Categorical as _Categorical
+from skopt.space import Integer as _Integer
 from skopt.space.space import Dimension
+from skopt.space.space import Space
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
+import matplotlib as mpl
 
 try:
     from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+    from hyperopt.pyll.base import Apply
+    from hyperopt import space_eval
+    from hyperopt.plotting import main_plot_history, main_plot_histogram  # todo
 except ImportError:
     hyperopt = None
 
@@ -33,7 +40,7 @@ from dl4seq.utils.utils import post_process_skopt_results, Jsonize, dateandtime_
 class Counter:
     counter = 0
 
-class Real(Real, Counter):
+class Real(_Real, Counter):
     """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
     algorithm to create grid space.
     num_samples: int, if given, it will be used to create grid space using the formula"""
@@ -77,10 +84,17 @@ class Real(Real, Counter):
             self._grid = np.array(x)
 
     def as_hp(self):
-        return hp.uniform(self.name, low=self.low, high=self.high)
+
+        if self.prior == 'log-uniform':
+            return hp.loguniform(self.name, low=self.low, high=self.high)
+        else:
+            assert self.prior in ['uniform', 'loguniform', 'normal', 'lognormal',
+                                  'quniform', 'qloguniform', 'qnormal', 'qlognormal']
+            return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.hight)
 
 
-class Integer(Integer, Counter):
+
+class Integer(_Integer, Counter):
     """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
     algorithm to create grid space. Moreover it also generates optuna and hyperopt compatible/equivalent instances.
     num_samples: int, if given, it will be used to create grid space using the formula"""
@@ -120,15 +134,17 @@ class Integer(Integer, Counter):
                 self._grid = np.linspace(self.low, self.high, self.num_samples, dtype=np.int32)
             elif self.step:
                 self._grid = np.arange(self.low, self.high, self.step, dtype=np.int32)
+            else:
+                self._grid = None
         else:
-            assert hasattr(x, '__len__'), f"unacceptable type of grid {type(x)}"
+            assert hasattr(x, '__len__'), f"unacceptable type of grid {x.__class__.__name__}"
             self._grid = np.array(x)
 
     def as_hp(self):
-        return hp.uniform(self.name, low=self.low, high=self.high)
+        return hp.randint(self.name, low=self.low, high=self.high)
 
 
-class Categorical(Categorical):
+class Categorical(_Categorical):
 
     @property
     def grid(self):
@@ -169,12 +185,12 @@ class HyperOpt(object):
         case this will only be Bayesian
 
     We wish to make a class which allows application of any of the three optimization methods on any type of
-    model/classifier/regressor. If the classifier/regressor is of sklearn-based, then for random search, we use RanddomSearchCV, for grid search,
-    we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the other hand, if the model is not sklearn-based,
-    you will still be able to implement any of the three methods. In such case, the bayesian will be implemented using
-    gp_minimize. Random search and grid search will be done by simple iterating over the sample space generated as in
-    sklearn based samplers. However, the post-processing of the results is (supposed to be) done same as done in
-    RandomSearchCV and GridSearchCV.
+    model/classifier/regressor. If the classifier/regressor is of sklearn-based, then for random search,
+    we use RanddomSearchCV, for grid search, we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the other
+    hand, if the model is not sklearn-based, you will still be able to implement any of the three methods. In such case,
+    the bayesian will be implemented using gp_minimize. Random search and grid search will be done by simple iterating
+    over the sample space generated as in sklearn based samplers. However, the post-processing of the results is
+    (supposed to be) done same as done in RandomSearchCV and GridSearchCV.
 
     The class should pass all the tests written in sklearn or skopt for corresponding classes.
 
@@ -235,12 +251,15 @@ class HyperOpt(object):
     ---------------
     ```python
     # using grid search with dl4seq
+    >>>from dl4seq.hyper_opt import HyperOpt
     >>>from dl4seq.data import load_u1
     >>>data = load_u1()
     >>>opt = HyperOpt("grid",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
-    ...           dl4seq_args={'model': 'xgboostRegressor'},
+    ...           dl4seq_args={'model': 'XGBoostRegressor',
+    ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+    ...                        'outputs': ['target']},
     ...           data=data,
     ...           use_named_args=True,
     ...           )
@@ -250,7 +269,9 @@ class HyperOpt(object):
     >>>opt = HyperOpt("random",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
-    ...           dl4seq_args={'model': 'xgboost'},
+    ...           dl4seq_args={'model': 'XGBoostRegressor',
+    ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+    ...                        'outputs': ['target']},
     ...           data=data,
     ...           use_named_args=True,
     ...           n_iter=100
@@ -333,6 +354,7 @@ class HyperOpt(object):
         self.objective_fn = objective_fn
         self.algorithm = algorithm
         self.param_space=param_space
+        self.original_space = param_space       # todo self.space and self.param_space should be combined.
         self.backend=backend
         self.dl4seq_args = None
         self.use_named_args = False
@@ -404,18 +426,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if "dl4seq_args" in kwargs:
             self.dl4seq_args = kwargs.pop("dl4seq_args")
             self.data = kwargs.pop("data")
-            _model = self.dl4seq_args.pop("model")
-            self._model = list(_model.keys())[0]
+            self._model = self.dl4seq_args.pop("model")
+            #self._model = list(_model.keys())[0]
             self.use_dl4seq_model = True
 
         if 'n_initial_points' in kwargs:
             if int(''.join(skopt.__version__.split('.')[1])) < 8:
                 raise ValueError(f"""
-'n_initial_points' argument is not available in skopt version < 0.8.
-However you are using skopt version {skopt.__version__} .
-See https://scikit-optimize.github.io/stable/modules/generated/skopt.gp_minimize.html#skopt.gp_minimize
-for more details.
-""""")
+                        'n_initial_points' argument is not available in skopt version < 0.8.
+                        However you are using skopt version {skopt.__version__} .
+                        See https://scikit-optimize.github.io/stable/modules/generated/skopt.gp_minimize.html#skopt.gp_minimize
+                        for more details.
+                        """"")
         if 'x0' in kwargs and self.algorithm in ['tpe', 'atpe', 'random', 'grid', 'cmaes']:
             kwargs.pop('x0')
         return kwargs
@@ -440,17 +462,21 @@ for more details.
             if isinstance(x, dict):
                 _param_space = []
                 for k,v in x.items():
-                    assert isinstance(v, Dimension)
+                    assert isinstance(v, Dimension), f"""
+                            space for parameter {k} is of invalid type {v.__class__.__name__}.
+                            For {self.algorithm}, it must be of type {Dimension.__name__}
+                            """
                     _param_space.append(v)
             else:
                 assert isinstance(x, list), f"""
-param space must be list of parameters but it is of type {type(x)}"""
+                        param space must be list of parameters but it is of type
+                        {x.__class__.__name__}"""
                 for space in x:
                     # each element in the list can be a tuple of lower and and upper bounds
                     if not isinstance(space, tuple):
                         assert isinstance(space, Dimension), f"""
-param space must be one of Integer, Real or Categorical
-but it is of type {type(space)}"""
+                                param space must be one of Integer, Real or Categorical
+                                but it is of type {space.__class__.__name__}"""
                 _param_space = x
 
         elif self.algorithm in ["random", "grid"]:
@@ -465,13 +491,21 @@ but it is of type {type(space)}"""
                 raise ValueError
         elif self.algorithm == 'tpe':
             if isinstance(x, list):
-                _param_space = {}
-                for space in x:
-                    if isinstance(space, Dimension):
+                # space is provided as list. Either all of them must be hp.space or Dimension.
+                if isinstance(x[0], Dimension):
+                    _param_space = {}
+                    for idx, space in enumerate(x):
+                        assert isinstance(space, Dimension)
                         _param_space[space.name] = space.as_hp()
-                    else:
-                        raise ValueError
-            elif isinstance(x, Dimension):
+                elif isinstance(x[0], Apply):
+                    _param_space = []
+                    for idx, space in enumerate(x):
+                        assert isinstance(space, Apply), f"""invalid space type {space.__class__.__name__}"""
+                        _param_space.append(space)
+                else:
+                    raise NotImplementedError
+
+            elif isinstance(x, Dimension): # for single hyper-parameter optimization ?
                 _param_space = x.as_hp()
             else:
                 _param_space = x
@@ -479,6 +513,58 @@ but it is of type {type(space)}"""
             raise ValueError
 
         self._param_space = _param_space
+
+    def skopt_space(self):
+        """Tries to make skopt compatible Space object. If unsuccessful, return None"""
+        x = self.original_space
+        if isinstance(x, list):
+            if all([isinstance(s, Dimension) for s in x]):
+                return  Space(x)
+            elif len(x) == 1 and isinstance(x[0], tuple):
+                if len(x[0]) == 2:
+                    if 'int' in x[0][0].__class__.__name__:
+                        self._space = Integer(low=x[0][0], high=x[0][1])
+                    elif 'float' in x[0][0].__class__.__name__:
+                        self._space = Integer(low=x[0][0], high=x[0][1])
+                self._space = Categorical(x[0])
+            else:
+                return None
+        elif isinstance(x, dict):  # todo, in random, should we build Only Categorical space?
+            _space = []
+            for k,v in x.items():
+                if isinstance(v, list):
+                    if len(v)>2:
+                        if isinstance(v[0], int):
+                            s = Integer(grid=v, name=k)
+                        elif isinstance(v[0], float):
+                            s = Real(grid=v, name=k)
+                        else:
+                            s = Categorical(v,name=k)
+                    else:
+                        if isinstance(v[0], int):
+                            s = Integer(low=np.min(v), high=np.max(v), name=k)
+                        elif isinstance(v[0], float):
+                            s = Real(low=np.min(v), high=np.max(v), name=k)
+                        elif isinstance(v[0], str):
+                            s = Categorical(v, name=k)
+                        else:
+                            raise NotImplementedError
+                elif isinstance(v, Dimension):
+                    s = v
+                elif isinstance(v, Apply) or 'rv_frozen' in v.__class__.__name__:
+                    s = skopt_space_from_hp_space(v, k)
+                elif isinstance(v, tuple) or isinstance(v, list):
+                    s = Categorical(v, name=k)
+                else:
+                    raise NotImplementedError(f"unknown type {v}, {type(v)}")
+                _space.append(s)
+
+            return Space(_space) if len(_space)>0 else None
+        elif 'rv_frozen' in x.__class__.__name__ or isinstance(x, Apply):
+            return None
+        else:
+            raise NotImplementedError(f"unknown type {x}, {type(x)}")
+
 
     @property
     def use_sklearn(self):
@@ -544,12 +630,13 @@ but it is of type {type(space)}"""
             idx = np.argmin(func_vals)
             paras = x_iters[idx]
         elif self.use_tpe:
-            paras = self.trials.best_trial['misc']['vals']
-            paras = {k:v[0] for k,v in paras.items()}
-            # todo, for string paras, it does not return actual parameter but the index
+            if isinstance(self.param_space, dict):
+                return get_one_tep_x_iter(self.trials.best_trial['misc']['vals'], self.param_space)
+            else:
+                return self.trials.best_trial['misc']['vals']
         else:
-            fun = list(sorted(self.results.keys()))[0]
-            paras = self.results[fun]
+            best_y = list(sorted(self.results.keys()))[0]
+            paras = sort_x_iters(self.results[best_y], list(self.param_space.keys()))
 
         return paras
 
@@ -574,11 +661,7 @@ but it is of type {type(space)}"""
                      **kwargs):
 
         # this is for it to make json serializable.
-        for k,v in kwargs.items():
-            if 'int' in v.__class__.__name__:
-                kwargs[k] = int(v)
-            if 'float' in v.__class__.__name__:
-                kwargs[k] = float(v)
+        kwargs = Jsonize(kwargs)()
 
         if title is None:
             title =  self.opt_path #self.method + '_' + config.model["problem"] + '_' + config.model["ml_model"]
@@ -586,10 +669,13 @@ but it is of type {type(space)}"""
         else:
             title = title
 
+        _model = self._model
+        if isinstance(_model, dict):
+            _model = list(_model.keys())[0]
         model = Model(data=self.data,
                       prefix=title,
                       verbosity=1 if pp else 0,
-                      model={self._model: kwargs},
+                      model={_model: kwargs},
                       **self.dl4seq_args)
 
         assert model.config["model"] is not None, "Currently supported only for ml models. Make your own" \
@@ -600,7 +686,7 @@ but it is of type {type(space)}"""
         mse = FindErrors(t, p).mse()
 
         error = round(mse, 6)
-        self.results[str(error)] = kwargs
+        self.results[str(error)] = sort_x_iters(kwargs, self.original_para_order())
 
         print(f"Validation mse {error}")
 
@@ -612,6 +698,18 @@ but it is of type {type(space)}"""
         if return_model:
             return model
         return error
+
+    def original_para_order(self):
+        if isinstance(self.param_space, dict):
+            return list(self.param_space.keys())
+        elif self.skopt_space() is not None:
+            names = []
+            for s in self.skopt_space():
+                names.append(s.name)
+            return names
+        else:
+            raise NotImplementedError
+
 
     def dims(self):
         # this will be used for gp_minimize
@@ -656,12 +754,12 @@ but it is of type {type(space)}"""
         except ValueError:
             if int(''.join(sklearn.__version__.split('.')[1]))>22:
                 raise ValueError(f"""
-For bayesian optimization, If your sklearn version is above 0.23,
-then this error may be related to 
-https://github.com/kiudee/bayes-skopt/issues/90 .
-Try to lower the sklearn version to 0.22 and run again.
-{traceback.print_stack()}
-""")
+                    For bayesian optimization, If your sklearn version is above 0.23,
+                    then this error may be related to 
+                    https://github.com/kiudee/bayes-skopt/issues/90 .
+                    Try to lower the sklearn version to 0.22 and run again.
+                    {traceback.print_stack()}
+                    """)
             else:
                 raise ValueError(traceback.print_stack())
 
@@ -691,13 +789,13 @@ Try to lower the sklearn version to 0.22 and run again.
                     err = self.objective_fn(*list(para.values()))
                 except TypeError:
                     raise TypeError(f"""
-use_named_args argument is set to {self.use_named_args}. If your
-objective function takes key word arguments, make sure that
-this argument is set to True during initiatiation of HyperOpt.""")
+                        use_named_args argument is set to {self.use_named_args}. If your
+                        objective function takes key word arguments, make sure that
+                        this argument is set to True during initiatiation of HyperOpt.""")
             err = round(err, 8)
 
-            #if self.dl4seq_args is not None:
-            self.results[f'{err}_{idx}'] = para
+            if not self.use_dl4seq_model:
+                self.results[f'{err}_{idx}'] = sort_x_iters(para, self.original_para_order())
 
         fname = os.path.join(self.opt_path, "eval_results.json")
         jsonized_results = {}
@@ -706,7 +804,7 @@ this argument is set to True during initiatiation of HyperOpt.""")
         with open(fname, "w") as fp:
             json.dump(jsonized_results, fp, sort_keys=True, indent=4)
 
-        self._plot_convergence()
+        self._plot()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -729,16 +827,24 @@ this argument is set to True during initiatiation of HyperOpt.""")
         return self.eval_sequence(param_list)
 
     def fmin(self, **kwargs):
+
         trials = Trials()
         model_kws = self.gpmin_args
         if 'num_iterations' in model_kws:
             model_kws['max_evals'] = model_kws.pop('num_iterations')
 
-        if self.use_named_args:
+        if self.use_named_args and not self.use_dl4seq_model:
             def objective_fn(kws):
                 # the objective function in hyperopt library receives a dictionary
                 return self.objective_fn(**kws)
             objective_f = objective_fn
+
+        elif self.use_named_args and self.use_dl4seq_model:
+            # make objective_fn using dl4seq
+            def fitness(kws):
+                return self.dl4seq_model(**kws)
+            objective_f = fitness
+
         else:
             objective_f = self.objective_fn
 
@@ -754,7 +860,7 @@ this argument is set to True during initiatiation of HyperOpt.""")
 
         setattr(self, 'trials', trials)
         self.results = trials.results
-        self._plot_convergence()
+        self._plot()
 
         return best
 
@@ -769,26 +875,41 @@ this argument is set to True during initiatiation of HyperOpt.""")
         if callable(self.objective_fn) and not self.use_named_args:
             return self.objective_fn(*args)
 
-    def _plot_convergence(self):
-        algorithm = self.algorithm
-        trials = self.trials if self.algorithm == 'tpe' else None
-        num_iterations = self.num_iterations
+    def x_iters(self, as_list=True):
+        if self.algorithm == 'tpe':
+            # we have to extract x values from trail.trials.
+            if isinstance(self.param_space, dict):
+
+                return x_iter_for_tpe(self.trials, self.param_space, as_list=as_list)
+        else:
+            return [list(_iter.values()) for _iter in self.results.values()]
+
+    def func_vals(self):
+        if self.algorithm == 'tpe':
+            return [self.trials.results[i]['loss'] for i in range(self.num_iterations)]
+        else:
+            return np.array(list(self.results.keys()), dtype=np.float32)
+
+    def _plot(self):
 
         class sr:
-            def __init__(self, results):
-                if algorithm == 'tpe':
-                    self.x_iters = [[val[0] for val in list(trials.trials[i]['misc']['vals'].values())] for i in range(num_iterations)]
-                    self.func_vals = [trials.results[i]['loss'] for i in range(num_iterations)]
-                else:
-                    self.x_iters = [list(_iter.values()) for _iter in results.values()]
-                    self.func_vals = np.array(list(results.keys()), dtype=np.float32)
+            x_iters = self.x_iters() if not isinstance(self.param_space, Apply) else None
+            func_vals = self.func_vals()
+            space = self.skopt_space()
+            x = list(self.best_paras.values())
 
-        res = sr(self.results)
+        res = sr()
         plt.close('all')
-        plot_convergence([res])
+        if sr.x_iters is not None:
+            plot_convergence([res])
 
-        fname = os.path.join(self.opt_path, "convergence.png")
-        return plt.savefig(fname, dpi=300)
+            fname = os.path.join(self.opt_path, "convergence.png")
+            plt.savefig(fname, dpi=300, bbox_inches='tight')
+
+        if self.skopt_space() is not None and res.x_iters is not None:
+            plot_evaluations(res, dimensions=list(self.best_paras.keys()))
+            plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
+        return
 
     def best_paras_kw(self)->dict:
         """Returns a dictionary consisting of best parameters with their names as keys and their values as keys."""
@@ -855,3 +976,224 @@ this argument is set to True during initiatiation of HyperOpt.""")
             return self.objective_fn(x)
 
         raise NotImplementedError
+
+
+def is_choice(space):
+    """checks if an hp.space is hp.choice or not"""
+    if 'switch' in space.name:
+        return True
+    return False
+
+
+def x_iter_for_tpe(trials, param_space:dict, as_list=True):
+
+    assert isinstance(param_space, dict)
+
+    x_iters = []
+    for t in trials.trials:
+
+        vals = t['misc']['vals']
+        _iter = get_one_tep_x_iter(vals, param_space)
+
+        x_iters.append(_iter)
+
+    if as_list:
+        return [list(d.values()) for d in x_iters]
+    return x_iters
+
+
+def get_one_tep_x_iter(tpe_vals, param_space:dict, sort=True):
+
+    x_iter = {}
+    for para, para_val in tpe_vals.items():
+        if is_choice(param_space[para]):
+            hp_assign = {para: para_val[0]}
+            cval = space_eval(param_space[para], hp_assign)
+            x_iter[para] = cval
+        else:
+            x_iter[para] = para_val[0]
+
+    if sort:
+        x_iter = sort_x_iters(x_iter, list(param_space.keys()))
+
+    return x_iter
+
+
+def sort_x_iters(x_iter:dict, original_order:list):
+    # the values in x_iter may not be sorted as the parameters provided in original order
+
+    new_x_iter = {}
+    for s in original_order:
+        new_x_iter[s] = x_iter[s]
+
+    return new_x_iter
+
+
+def skopt_space_from_hp_spaces(hp_space:dict):
+    """given a dictionary of hp spaces where keys are names, this function
+    converts it into skopt space."""
+    new_spaces = []
+
+    for k,s in hp_space.items():
+
+        new_spaces.append(skopt_space_from_hp_space(s, k))
+
+    return
+
+
+def skopt_space_from_hp_space(hp_space, prior_name=None):
+    """Converts on hp space into a corresponding skopt space."""
+    if is_choice(hp_space):
+        skopt_space = to_categorical(hp_space, prior_name=prior_name)
+    elif any([i in hp_space.__str__() for i in ['loguniform', 'quniform', 'qloguniform', 'uniform']]):
+        skopt_space = to_real(hp_space, prior_name=prior_name)
+    elif 'randint' in hp_space.__str__():
+        skopt_space = to_int(hp_space, prior_name=prior_name)
+    else:
+        raise NotImplementedError
+
+    return skopt_space
+
+
+def to_categorical(_space, prior_name=None):
+    """converts an hp space into a Dimension object."""
+    cats = []
+    inferred_name = None
+    for arg in _space.pos_args:
+        if hasattr(arg, '_obj') and arg.pure:
+            cats.append(arg._obj)
+        elif arg.name == 'hyperopt_param' and len(arg.pos_args)>0:
+            for a in arg.pos_args:
+                if a.name == 'literal' and a.pure:
+                    inferred_name = a._obj
+
+    prior_name = verify_name(prior_name, inferred_name)
+
+    if len(cats)==0:
+        raise NotImplementedError
+    return Categorical(categories=cats, name=prior_name)
+
+
+def verify_name(prior_name, inferred_name):
+    """Verfies that the given/prior name matches with the inferred name.
+    """
+    if prior_name is None:
+        prior_name = inferred_name
+    else:
+        assert prior_name == inferred_name, f"""given name {prior_name} does not mach with 
+                                                inferred name {inferred_name}"""
+    return prior_name
+
+
+def to_int(_space, prior_name=None):
+    """converts an hp.randint into a Dimension object"""
+    inferred_name = None
+    limits = None
+    for arg in _space.pos_args:
+        if arg.name == 'literal' and len(arg.named_args)==0:
+            inferred_name = arg._obj
+        elif len(arg.named_args) == 2 and arg.name == 'randint':
+            limits = {}
+            for a in arg.named_args:
+                limits[a[0]] =  a[1]._obj
+
+        elif len(arg.pos_args) == 2 and arg.name == 'randint':
+            # high and low are not named args
+            _limits = []
+            for a in arg.pos_args:
+                _limits.append(a._obj)
+            limits =  {'high': np.max(_limits), 'low': np.min(_limits)}
+        else:
+            raise NotImplementedError
+
+    prior_name = verify_name(prior_name, inferred_name)
+
+    if limits is None:
+        raise NotImplementedError
+    return Integer(low=limits['low'], high=limits['high'], name=prior_name)
+
+
+def to_real(_space, prior_name=None):
+    """converts an an hp space to real. """
+    inferred_name = None
+    limits = None
+    prior = None
+    allowed_names = ['uniform', 'loguniform', 'quniform', 'loguniform', 'qloguniform']
+    for arg in _space.pos_args:
+        if len(arg.pos_args) > 0:
+            for a in arg.pos_args:
+                if a.name == 'literal' and len(arg.named_args) == 0:
+                    inferred_name = a._obj
+                elif a.name in allowed_names and len(a.named_args) == 2:
+                    prior = a.name
+                    limits = {}
+                    for _a in a.named_args:
+                        limits[_a[0]] = _a[1]._obj
+                elif a.name in allowed_names and len(a.pos_args)==2:
+                    prior = a.name
+                    _limits = []
+                    for _a in a.pos_args:
+                        _limits.append(_a._obj)
+                    limits = {'high': np.max(_limits), 'low': np.min(_limits)}
+
+    prior_name = verify_name(prior_name, inferred_name)
+
+    # prior must be inferred because hp spaces always have prior
+    if limits is None or prior is None or 'high' not in limits:
+        raise NotImplementedError
+
+    return Real(low=limits['low'], high=limits['high'], prior=prior, name=prior_name)
+
+
+def scatterplot_matrix_colored(params_names:list,
+                               params_values:list,
+                               best_accs:list,
+                               blur=False,
+                               save=True,
+                               fname='scatter_plot.png'
+                               ):
+    """Scatterplot colored according to the Z values of the points.
+    https://github.com/guillaume-chevalier/Hyperopt-Keras-CNN-CIFAR-100/blob/Vooban/AnalyzeTestHyperoptResults.ipynb
+    """
+
+    nb_params = len(params_values)
+    best_accs = np.array(best_accs)
+    norm = mpl.colors.Normalize(vmin=best_accs.min(), vmax=best_accs.max())
+
+    fig, ax = plt.subplots(nb_params, nb_params, figsize=(16, 16))  # , facecolor=bg_color, edgecolor=fg_color)
+
+    for i in range(nb_params):
+        p1 = params_values[i]
+        for j in range(nb_params):
+            p2 = params_values[j]
+
+            axes = ax[i, j]
+            # Subplot:
+            if blur:
+                s = axes.scatter(p2, p1, s=400, alpha=.1,
+                                 c=best_accs, cmap='viridis', norm=norm)
+                s = axes.scatter(p2, p1, s=200, alpha=.2,
+                                 c=best_accs, cmap='viridis', norm=norm)
+                s = axes.scatter(p2, p1, s=100, alpha=.3,
+                                 c=best_accs, cmap='viridis', norm=norm)
+            s = axes.scatter(p2, p1, s=15,
+                             c=best_accs, cmap='viridis', norm=norm)
+
+            # Labels only on side subplots, for x and y:
+            if j == 0:
+                axes.set_ylabel(params_names[i], rotation=0)
+            else:
+                axes.set_yticks([])
+
+            if i == nb_params - 1:
+                axes.set_xlabel(params_names[j], rotation=90)
+            else:
+                axes.set_xticks([])
+
+    fig.subplots_adjust(right=0.82, top=0.95)
+    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+    cb = fig.colorbar(s, cax=cbar_ax)
+
+    plt.suptitle(
+        'Scatterplot matrix of tried values in the search space over different params, colored in function of best test accuracy')
+    plt.show()

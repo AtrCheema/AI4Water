@@ -357,6 +357,7 @@ class TestHyperOpt(unittest.TestCase):
         self.assertEqual(len(best), 2)
 
     def test_dl4seqModel_with_hyperopt(self):
+        """"""
         def fn(**suggestion):
 
             model = Model(
@@ -380,11 +381,38 @@ class TestHyperOpt(unittest.TestCase):
             'n_estimators': hp.randint('n_estimators', low=1000, high=2000),
             'learning_rate': hp.uniform('learning_rate', low=1e-5, high=0.1)
         }
-        optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=20,
+        optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=5,
                              use_named_args=True,
                              opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
+
         optimizer.fit()
-        self.assertEqual(len(optimizer.trials.trials), 20)
+        self.assertEqual(len(optimizer.trials.trials), 5)
+        self.assertIsNotNone(optimizer.skopt_space())
+        return
+
+    def test_hp_to_skopt_space(self):
+        """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
+        successfully.
+        """
+        opt = HyperOpt("tpe",
+                       # param_space=[hp.randint('n_estimators', low=1000, high=2000),
+                       #              hp.randint('max_depth', low=3, high=6),
+                       #              hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
+                       #              ],
+                       param_space=[Integer(low=1000, high=2000, name='n_estimators', num_samples=5),
+                                    Integer(low=3, high=6, name='max_depth', num_samples=5),
+                                    Categorical(['gbtree', 'gblinear', 'dart'], name='booster')
+                                    ],
+                       dl4seq_args ={'model': 'XGBoostRegressor',
+                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'outputs': ['target']
+                                     },
+                       data =data,
+                       use_named_args =True,
+                       num_iterations =5
+                       )
+        opt.fit()
+        assert isinstance(list(opt.best_paras.values())[-1], str)
 
 
 if __name__ == "__main__":
