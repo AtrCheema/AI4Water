@@ -2,23 +2,33 @@ import os
 import json
 import traceback
 
-import skopt
-from skopt import BayesSearchCV
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from skopt import gp_minimize
-from skopt.utils import use_named_args
-from skopt.plots import plot_convergence, plot_evaluations
 from sklearn.model_selection import ParameterGrid, ParameterSampler
-from skopt.space import Real as _Real
-from skopt.space import Categorical as _Categorical
-from skopt.space import Integer as _Integer
-from skopt.space.space import Dimension
-from skopt.space.space import Space
+
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
 import matplotlib as mpl
-import plotly
+
+try:
+    import plotly
+except ImportError:
+    plotly = None
+
+try:
+    import skopt
+    from skopt import gp_minimize
+    from skopt import BayesSearchCV
+    from skopt.space.space import Space
+    from skopt.space import Real as _Real
+    from skopt.utils import use_named_args
+    from skopt.space.space import Dimension
+    from skopt.space import Integer as _Integer
+    from skopt.space import Categorical as _Categorical
+    from skopt.plots import plot_convergence, plot_evaluations
+except ImportError:
+    skopt, gp_minimize, BayesSearchCV, Space, _Real, use_named_args = None, None, None, None, None, None
+    Dimension, _Integer, _Categorical, plot_evaluations, plot_convergence = None, None, None, None, None
 
 try:
     from hyperopt import fmin, tpe, atpe, hp, STATUS_OK, Trials, rand
@@ -26,14 +36,15 @@ try:
     from hyperopt import space_eval
     from hyperopt.base import miscs_to_idxs_vals  # todo main_plot_1D_attachment
 except ImportError:
-    hyperopt = None
+    hyperopt, fmin, tpe, atpe, hp, Trials, rand, Apply = None, None, None, None, None, None, None, None
+    space_eval, miscs_to_idxs_vals = None, None
 
 try:
     import optuna
     from optuna.visualization import plot_parallel_coordinate, plot_contour, plot_slice
     from optuna.visualization import plot_param_importances, plot_edf
-except any([ImportError, ModuleNotFoundError]):
-    optuna = None
+except ImportError:
+    optuna, plot_parallel_coordinate, plot_contour, plot_edf, plot_param_importances = None, None, None, None, None
 
 from dl4seq import Model
 from dl4seq.utils.TSErrors import FindErrors
@@ -101,7 +112,7 @@ class Real(_Real, Counter):
                                   'quniform', 'qloguniform', 'qnormal', 'qlognormal']
             return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.high)
 
-    def suggest(self, _trial:optuna.trial.BaseTrial):
+    def suggest(self, _trial):
         # creates optuna trial
         log=False
         if self.prior:
@@ -163,7 +174,7 @@ class Integer(_Integer, Counter):
     def as_hp(self):
         return hp.randint(self.name, low=self.low, high=self.high)
 
-    def suggest(self, _trial:optuna.trial.BaseTrial):
+    def suggest(self, _trial):
         # creates optuna trial
         log=False
         if self.prior:
@@ -186,7 +197,7 @@ class Categorical(_Categorical):
     def as_hp(self):
         return hp.choice(self.name, self.categories)
 
-    def suggest(self, _trial:optuna.trial.BaseTrial):
+    def suggest(self, _trial):
         # creates optuna trial
         return _trial.suggest_categorical(name=self.name, choices=self.categories)
 
@@ -1092,17 +1103,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         if self.backend == 'optuna':
 
-            fig = plot_parallel_coordinate(self.study)
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parallel_coordinates.html'),auto_open=False)
+            if plotly is not None:
+                fig = plot_parallel_coordinate(self.study)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parallel_coordinates.html'),auto_open=False)
 
-            fig = plot_contour(self.study)
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),auto_open=False)
+                fig = plot_contour(self.study)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),auto_open=False)
 
-            fig = plot_param_importances(self.study)
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parameter_importance.html'),auto_open=False)
+                fig = plot_param_importances(self.study)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parameter_importance.html'),auto_open=False)
 
-            fig = plot_edf(self.study)
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'),auto_open=False)
+                fig = plot_edf(self.study)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'),auto_open=False)
 
         return
 
