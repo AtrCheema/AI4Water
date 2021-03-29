@@ -72,6 +72,39 @@ def run_dl4seq(method):
     return
 
 
+def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
+
+    def fn(**suggestion):
+        model = Model(
+            inputs=inputs,
+            outputs=outputs,
+            model={"xgboostregressor": suggestion},
+            data=data,
+            prefix=f'test_{algorithm}_xgboost_{backend}',
+            verbosity=0)
+
+        model.fit(indices="random")
+
+        t, p = model.predict(indices=model.test_indices, pref='test')
+        mse = FindErrors(t, p).mse()
+
+        return mse
+
+    search_space = [
+        Categorical(['gbtree', 'dart'], name='booster'),
+        Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
+        Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
+    ]
+
+    optimizer = HyperOpt(algorithm, objective_fn=fn, param_space=search_space,
+                         backend=backend,
+                         num_iterations=num_iterations,
+                         use_named_args=True,
+                         opt_path=os.path.join(os.getcwd(), f'results\\test_{algorithm}_xgboost_{backend}'))
+
+    optimizer.fit()
+    return optimizer
+
 class TestHyperOpt(unittest.TestCase):
 
     def test_real_num_samples(self):
@@ -317,7 +350,11 @@ class TestHyperOpt(unittest.TestCase):
                     {'time_module': pickle.dumps(time.time)}
                 }
 
-        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=hp.uniform('x', -10, 10), max_evals=100)
+        optimizer = HyperOpt('tpe',
+                             objective_fn=objective,
+                             param_space=hp.uniform('x', -10, 10),
+                             backend='hyperopt',
+                             max_evals=100)
         best = optimizer.fit()
         self.assertGreater(len(best), 0)
         return
@@ -333,7 +370,7 @@ class TestHyperOpt(unittest.TestCase):
             'y': hp.uniform('y', -6, 6)
         }
 
-        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, max_evals=100)
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt', max_evals=100)
         best = optimizer.fit()
         self.assertEqual(len(best), 2)
 
@@ -352,7 +389,7 @@ class TestHyperOpt(unittest.TestCase):
             'x2': hp.randint('x2', -5, 5)
         }
 
-        optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, max_evals=100)
+        optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, backend='hyperopt', max_evals=100)
         best = optimizer.fit()
         self.assertEqual(len(best), 2)
 
@@ -383,6 +420,7 @@ class TestHyperOpt(unittest.TestCase):
         }
         optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=5,
                              use_named_args=True,
+                             backend='hyperopt',
                              opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
 
         optimizer.fit()
@@ -395,7 +433,7 @@ class TestHyperOpt(unittest.TestCase):
         successfully.
         """
         opt = HyperOpt("tpe",
-                       # param_space=[hp.randint('n_estimators', low=1000, high=2000),
+                       # param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
                        #              hp.randint('max_depth', low=3, high=6),
                        #              hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
                        #              ],
@@ -408,11 +446,28 @@ class TestHyperOpt(unittest.TestCase):
                                      'outputs': ['target']
                                      },
                        data =data,
+                       backend='hyperopt',
                        use_named_args =True,
                        num_iterations =5
                        )
         opt.fit()
         assert isinstance(list(opt.best_paras.values())[-1], str)
+
+    def test_unified_interface(self):
+
+        run_unified_interface('tpe', 'optuna', 5)
+        run_unified_interface('cmaes', 'optuna', 5)
+        run_unified_interface('random', 'optuna', 5)
+        ##run_unified_interface('grid', 'optuna', None)  # todo
+        run_unified_interface('tpe', 'hyperopt', 5)
+        #run_unified_interface('atpe', 'hyperopt', 5)  # todo
+        #run_unified_interface('random', 'hyperopt', 5)  # todo
+        run_unified_interface('bayes', 'skopt', 12)
+        run_unified_interface('random', 'sklearn', 5, num_samples=5)
+        run_unified_interface('grid', 'sklearn', None, num_samples=2)
+
+
+
 
 
 if __name__ == "__main__":

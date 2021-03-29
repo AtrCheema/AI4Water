@@ -18,24 +18,31 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
 import matplotlib as mpl
+import plotly
 
 try:
-    from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+    from hyperopt import fmin, tpe, atpe, hp, STATUS_OK, Trials, rand
     from hyperopt.pyll.base import Apply
     from hyperopt import space_eval
     from hyperopt.base import miscs_to_idxs_vals  # todo main_plot_1D_attachment
 except ImportError:
     hyperopt = None
 
+try:
+    import optuna
+    from optuna.visualization import plot_parallel_coordinate, plot_contour, plot_slice
+    from optuna.visualization import plot_param_importances, plot_edf
+except any([ImportError, ModuleNotFoundError]):
+    optuna = None
+
 from dl4seq import Model
 from dl4seq.utils.TSErrors import FindErrors
 from dl4seq.utils.utils import post_process_skopt_results, Jsonize, dateandtime_now
 
 
-# TODO incorporate hyper_opt, optuna and RayTune libraries under the hood
+# TODO RayTune libraries under the hood
 # TODO add generic algorithm, deap/pygad
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
-# TODO add post processing results for all optimizations
 
 class Counter:
     counter = 0
@@ -80,6 +87,8 @@ class Real(_Real, Counter):
                 self._grid = np.linspace(self.low, self.high, self.num_samples)
             elif self.step:
                 self._grid = np.arange(self.low, self.high, self.step)
+            else:
+                self._grid = None
         else:
             self._grid = np.array(x)
 
@@ -90,8 +99,19 @@ class Real(_Real, Counter):
         else:
             assert self.prior in ['uniform', 'loguniform', 'normal', 'lognormal',
                                   'quniform', 'qloguniform', 'qnormal', 'qlognormal']
-            return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.hight)
+            return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.high)
 
+    def suggest(self, _trial:optuna.trial.BaseTrial):
+        # creates optuna trial
+        log=False
+        if self.prior:
+            if self.prior == 'log':
+                log=True
+        return _trial.suggest_float(name=self.name,
+                                    low=self.low,
+                                    high=self.high,
+                                    step=self.step,  # default step is None
+                                    log=log)
 
 
 class Integer(_Integer, Counter):
@@ -143,6 +163,19 @@ class Integer(_Integer, Counter):
     def as_hp(self):
         return hp.randint(self.name, low=self.low, high=self.high)
 
+    def suggest(self, _trial:optuna.trial.BaseTrial):
+        # creates optuna trial
+        log=False
+        if self.prior:
+            if self.prior == 'log':
+                log=True
+
+        return _trial.suggest_int(name=self.name,
+                                    low=self.low,
+                                    high=self.high,
+                                    step=self.step if self.step else 1,  # default step is 1
+                                    log=log)
+
 
 class Categorical(_Categorical):
 
@@ -153,9 +186,13 @@ class Categorical(_Categorical):
     def as_hp(self):
         return hp.choice(self.name, self.categories)
 
+    def suggest(self, _trial:optuna.trial.BaseTrial):
+        # creates optuna trial
+        return _trial.suggest_categorical(name=self.name, choices=self.categories)
 
 ALGORITHMS = {
     'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
+    'bayes': {},
     'forest': {'name': 'decision_tree', 'backend': ['skopt']},
     'gbrt': {'name': 'gradient-boosted-tree regression', 'backend': ['skopt']},
     'tpe': {'name': 'Tree of Parzen Estimators', 'backend': ['hyperopt', 'optuna']},
@@ -250,10 +287,79 @@ class HyperOpt(object):
     Examples
     ---------------
     ```python
-    # using grid search with dl4seq
+    The following examples illustrate how we can uniformly apply different optimization algorithms.
+    >>>from dl4seq import Model
     >>>from dl4seq.hyper_opt import HyperOpt
     >>>from dl4seq.data import load_u1
+    # We have to define an objective function which will take keyword arguments. If the objective
+    # function does not take keyword arguments, make sure to set use_named_args=False
     >>>data = load_u1()
+    >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
+    >>>outputs = ['target']
+    >>>def objective_fn(**suggestion):
+    ...    model = Model(
+    ...        inputs=inputs,
+    ...        outputs=outputs,
+    ...        model={"xgboostregressor": suggestion},
+    ...        data=data,
+    ...        verbosity=0)
+    ...
+    ...    model.fit(indices="random")
+    ...
+    ...    t, p = model.predict(indices=model.test_indices, pref='test')
+    ...    mse = FindErrors(t, p).mse()
+    ...
+    ...    return mse
+    # Define search space
+    >>>num_samples=5   # only relavent for random and grid search
+    >>>    search_space = [
+    ...    Categorical(['gbtree', 'dart'], name='booster'),
+    ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
+    ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
+    ...]
+    # Using TPE with optuna
+    >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
+    ...                     backend='optuna',
+    ...                     num_iterations=num_iterations,
+    ...                     use_named_args=True)
+    >>>optimizer.fit()
+    # Using cmaes with optuna
+    >>>optimizer = HyperOpt('cmaes', objective_fn=objective_fn, param_space=search_space,
+    ...                     backend='optuna',
+    ...                     num_iterations=num_iterations,
+    ...                     use_named_args=True)
+    >>>optimizer.fit()
+
+    # Using random with optuna, we can also try hyperopt and sklearn as backend for random algorithm
+    >>>optimizer = HyperOpt('random', objective_fn=objective_fn, param_space=search_space,
+    ...                     backend='optuna',
+    ...                     num_iterations=num_iterations,
+    ...                     use_named_args=True)
+    >>>optimizer.fit()
+
+    # Using TPE of hyperopt
+    >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
+    ...                     backend='hyperopt',
+    ...                     num_iterations=num_iterations,
+    ...                     use_named_args=True)
+    >>>optimizer.fit()
+
+    Using Baysian with gaussian processes
+    >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
+    ...                     backend='skopt',
+    ...                     num_iterations=num_iterations,
+    ...                     use_named_args=True)
+    >>>optimizer.fit()
+
+    Using grid with sklearn
+    >>>optimizer = HyperOpt('grid', objective_fn=objective_fn, param_space=search_space,
+    ...                     backend='sklearn',
+    ...                     num_iterations=num_iterations,
+    ...                     use_named_args=True)
+    >>>optimizer.fit()
+    # Backward compatability
+    The following shows some tweaks with hyperopt to make its working compatible with its underlying libraries.
+    # using grid search with dl4seq
     >>>opt = HyperOpt("grid",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
@@ -348,14 +454,16 @@ class HyperOpt(object):
                  **kwargs
                  ):
 
-        if algorithm not in ["random", "grid", "bayes", "tpe"]:
-            raise ValueError("algorithm must be one of random, grid, bayes or tpe.")
+        if algorithm not in ALGORITHMS:
+            raise ValueError(f"""Invalid value of algorithm provided. Allowd values for algorithm"
+                                are {list(ALGORITHMS.keys())}. 
+                                You provided {algorithm}""")
 
         self.objective_fn = objective_fn
         self.algorithm = algorithm
+        self.backend=backend
         self.param_space=param_space
         self.original_space = param_space       # todo self.space and self.param_space should be combined.
-        self.backend=backend
         self.dl4seq_args = None
         self.use_named_args = False
         self.title = self.algorithm
@@ -380,15 +488,18 @@ class HyperOpt(object):
             self.fit = self.own_fit
 
         elif self.use_own:
-            self.predict = self._predict
-            if self.algorithm == "grid":
+            self.predict = self._predict and self.backend != 'optuna'
+            if self.algorithm == "grid" and self.backend != 'optuna':
                 self.fit = self.grid_search
-            elif self.algorithm == 'random':
+            elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
                 self.fit = self.random_search
-            elif self.algorithm == 'tpe':
+            elif self.backend == 'hyperopt':
                 self.fit = self.fmin
+            elif self.backend == 'optuna':
+                self.fit = self.optuna_objective
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"""No fit function found for algorithm {self.algorithm}
+                                          with backend {self.backend}""")
 
     @property
     def backend(self):
@@ -397,12 +508,16 @@ class HyperOpt(object):
     @backend.setter
     def backend(self, x):
         if x is not None:
-            assert x in ['optuna', 'hyperopt', 'sklearn'], f"""
+            assert x in ['optuna', 'hyperopt', 'sklearn', 'skopt'], f"""
 Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.algorithm == 'tpe':
             if x is None:
                 x = 'optuna'
             assert x in ['optuna', 'hyperopt']
+        elif self.algorithm == 'atpe':
+            if x is None:
+                x = 'hyperopt'
+            assert x == 'hyperopt'
         elif self.algorithm == 'random':
             if x is None:
                 x = 'sklearn'
@@ -479,7 +594,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                 but it is of type {space.__class__.__name__}"""
                 _param_space = x
 
-        elif self.algorithm in ["random", "grid"]:
+        elif self.algorithm in ["random", "grid"] and self.backend != 'optuna':
+            # todo, do we also need to provide grid of sample space for random??
             if isinstance(x, dict):
                 _param_space = x
             elif isinstance(x, list):
@@ -489,7 +605,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     _param_space[_space.name] = _space.grid
             else:
                 raise ValueError
-        elif self.algorithm == 'tpe':
+        elif self.algorithm in ['tpe', 'atpe', 'random'] and self.backend == 'hyperopt':
             if isinstance(x, list):
                 # space is provided as list. Either all of them must be hp.space or Dimension.
                 if isinstance(x[0], Dimension):
@@ -509,6 +625,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 _param_space = x.as_hp()
             else:
                 _param_space = x
+
+        elif self.backend == 'optuna':
+            if isinstance(x, list):
+                _param_space = {}
+                for s in x:
+                    assert isinstance(s, Dimension)
+                    _param_space[s.name] = s
+            elif isinstance(x, dict):
+                assert all([isinstance(s, Dimension) for s in x.values()])
+                _param_space = x
+            else:
+                raise NotImplementedError(f"unknown type of space {x.__class__.__name__}")
         else:
             raise ValueError
 
@@ -593,7 +721,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     @property
     def use_tpe(self):
-        if self.algorithm == 'tpe':
+        if self.algorithm in ['tpe', 'atpe', 'random'] and self.backend == 'hyperopt':
             return True
         else:
             return False
@@ -616,8 +744,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def num_iterations(self):
         if 'num_iterations' in self.gpmin_args:
             return self.gpmin_args['num_iterations']
-        if self.algorithm == 'tpe':
+        if self.algorithm in ['tpe', 'atpe', 'random'] and self.backend == 'hyperopt':
             return self.gpmin_args.get('max_evals', 9223372036854775807)
+        if self.backend == 'optuna':
+            return self.gpmin_args.get('n_trials', None)  # default value of n_trials is None in study.optimize()
         if 'n_calls' in self.gpmin_args:
             return self.gpmin_args['n_calls']
         return self.gpmin_args['n_iter']
@@ -629,11 +759,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             func_vals = self.gpmin_results['func_vals']
             idx = np.argmin(func_vals)
             paras = x_iters[idx]
-        elif self.use_tpe:
+        elif self.backend == 'hyperopt':
             if isinstance(self.param_space, dict):
                 return get_one_tep_x_iter(self.trials.best_trial['misc']['vals'], self.param_space)
             else:
                 return self.trials.best_trial['misc']['vals']
+        elif self.backend == 'optuna':
+            return self.study.best_trial.params
         else:
             best_y = list(sorted(self.results.keys()))[0]
             paras = sort_x_iters(self.results[best_y], list(self.param_space.keys()))
@@ -650,6 +782,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             path = os.path.join(os.getcwd(), "results\\" + self.title)
             if not os.path.exists(path):
                 os.makedirs(path)
+        elif not os.path.exists(path):
+            os.makedirs(path)
 
         self._opt_path = path
 
@@ -826,7 +960,36 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return self.eval_sequence(param_list)
 
+    def optuna_objective(self, **kwargs):
+
+        sampler = {
+            'tpe': optuna.samplers.TPESampler,
+            'cmaes': optuna.samplers.CmaEsSampler,
+            'random': optuna.samplers.RandomSampler,
+            'grid': optuna.samplers.GridSampler
+        }
+
+        def objective(trial):
+            suggestion = {}
+            for space_name, _space in self.param_space.items():
+                    suggestion[space_name] = _space.suggest(trial)
+            return self.objective_fn(**suggestion)
+
+        study = optuna.create_study(direction='minimize', sampler=sampler[self.algorithm]())
+        study.optimize(objective, n_trials=self.num_iterations)
+        setattr(self, 'study', study)
+
+        self._plot()
+
+        return study
+
     def fmin(self, **kwargs):
+
+        suggest_options = {
+            'tpe': tpe.suggest,
+            'atpe': atpe.suggest,
+            'random': rand.suggest
+        }
 
         trials = Trials()
         model_kws = self.gpmin_args
@@ -850,7 +1013,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         best = fmin(objective_f,
                     space=self.param_space,
-                    algo=tpe.suggest,
+                    algo=suggest_options[self.algorithm],
                     trials=trials,
                     **kwargs,
                     **model_kws)
@@ -876,17 +1039,23 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.objective_fn(*args)
 
     def x_iters(self, as_list=True):
-        if self.algorithm == 'tpe':
+        if self.backend == 'hyperopt':
             # we have to extract x values from trail.trials.
             if isinstance(self.param_space, dict):
 
                 return x_iter_for_tpe(self.trials, self.param_space, as_list=as_list)
+
+        elif self.backend == 'optuna':
+
+            return [list(s.params.values()) for s in self.study.trials]
         else:
             return [list(_iter.values()) for _iter in self.results.values()]
 
     def func_vals(self):
-        if self.algorithm == 'tpe':
+        if self.backend == 'hyperopt':
             return [self.trials.results[i]['loss'] for i in range(self.num_iterations)]
+        elif self.backend == 'optuna':
+            return [s.values for s in self.study.trials]
         else:
             return np.array(list(self.results.keys()), dtype=np.float32)
 
@@ -911,7 +1080,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plot_evaluations(res, dimensions=list(self.best_paras.keys()))
             plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
 
-        if self.algorithm == 'tpe' and hasattr(self, 'trials'):
+        if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
                            save=True,
                            fname=os.path.join(self.opt_path, "loss_histogram.png")
@@ -920,6 +1089,21 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                  fname=os.path.join(self.opt_path, "loss_histogram.png"),
                                  save=True
                                  )
+
+        if self.backend == 'optuna':
+
+            fig = plot_parallel_coordinate(self.study)
+            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parallel_coordinates.html'),auto_open=False)
+
+            fig = plot_contour(self.study)
+            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),auto_open=False)
+
+            fig = plot_param_importances(self.study)
+            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parameter_importance.html'),auto_open=False)
+
+            fig = plot_edf(self.study)
+            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'),auto_open=False)
+
         return
 
     def best_paras_kw(self)->dict:
