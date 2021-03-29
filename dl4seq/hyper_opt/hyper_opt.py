@@ -8,7 +8,6 @@ from sklearn.model_selection import ParameterGrid, ParameterSampler
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
-import matplotlib as mpl
 
 try:
     import plotly
@@ -20,186 +19,42 @@ try:
     from skopt import gp_minimize
     from skopt import BayesSearchCV
     from skopt.space.space import Space
-    from skopt.space import Real as _Real
     from skopt.utils import use_named_args
     from skopt.space.space import Dimension
-    from skopt.space import Integer as _Integer
-    from skopt.space import Categorical as _Categorical
     from skopt.plots import plot_convergence, plot_evaluations
 except ImportError:
     skopt, gp_minimize, BayesSearchCV, Space, _Real, use_named_args = None, None, None, None, None, None
     Dimension, _Integer, _Categorical, plot_evaluations, plot_convergence = None, None, None, None, None
 
 try:
-    from hyperopt import fmin, tpe, atpe, hp, STATUS_OK, Trials, rand
+    import hyperopt
     from hyperopt.pyll.base import Apply
-    from hyperopt import space_eval
-    from hyperopt.base import miscs_to_idxs_vals  # todo main_plot_1D_attachment
+    from hyperopt import fmin, tpe, atpe, STATUS_OK, Trials, rand
 except ImportError:
-    hyperopt, fmin, tpe, atpe, hp, Trials, rand, Apply = None, None, None, None, None, None, None, None
+    hyperopt, fmin, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
     space_eval, miscs_to_idxs_vals = None, None
 
 try:
     import optuna
-    from optuna.visualization import plot_parallel_coordinate, plot_contour, plot_slice
     from optuna.visualization import plot_param_importances, plot_edf
+    from optuna.visualization import plot_parallel_coordinate, plot_contour, plot_slice
 except ImportError:
     optuna, plot_parallel_coordinate, plot_contour, plot_edf, plot_param_importances = None, None, None, None, None
 
 from dl4seq import Model
 from dl4seq.utils.TSErrors import FindErrors
-from dl4seq.utils.utils import post_process_skopt_results, Jsonize, dateandtime_now
-
+from dl4seq.hyper_opt.utils import get_one_tpe_x_iter
+from dl4seq.utils.utils import Jsonize, dateandtime_now
+from dl4seq.hyper_opt.utils import skopt_space_from_hp_space
+from dl4seq.hyper_opt.utils import post_process_skopt_results
+from dl4seq.hyper_opt.utils import Categorical, Real, Integer
+from dl4seq.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
+from dl4seq.hyper_opt.utils import loss_histogram, plot_hyperparameters
 
 # TODO RayTune libraries under the hood
 # TODO add generic algorithm, deap/pygad
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
 
-class Counter:
-    counter = 0
-
-class Real(_Real, Counter):
-    """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
-    algorithm to create grid space.
-    num_samples: int, if given, it will be used to create grid space using the formula"""
-    def __init__(self,
-                 low=None,
-                 high=None,
-                 num_samples:int=None,
-                 step:int=None,
-                 grid=None,
-                 *args,
-                 **kwargs
-                 ):
-
-        if low is None:
-            assert grid is not None
-            assert hasattr(grid, '__len__')
-            low = grid[0]
-            high = grid[-1]
-
-        self.counter += 1
-        if 'name' not in kwargs:
-            kwargs['name'] = f'real_{self.counter}'
-
-        self.num_samples = num_samples
-        self.step = step
-        super().__init__(low=low, high=high, *args, **kwargs)
-        self.grid = grid
-
-    @property
-    def grid(self):
-        return self._grid
-
-    @grid.setter
-    def grid(self, x):
-        if x is None:
-            if self.num_samples:
-                self._grid = np.linspace(self.low, self.high, self.num_samples)
-            elif self.step:
-                self._grid = np.arange(self.low, self.high, self.step)
-            else:
-                self._grid = None
-        else:
-            self._grid = np.array(x)
-
-    def as_hp(self):
-
-        if self.prior == 'log-uniform':
-            return hp.loguniform(self.name, low=self.low, high=self.high)
-        else:
-            assert self.prior in ['uniform', 'loguniform', 'normal', 'lognormal',
-                                  'quniform', 'qloguniform', 'qnormal', 'qlognormal']
-            return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.high)
-
-    def suggest(self, _trial):
-        # creates optuna trial
-        log=False
-        if self.prior:
-            if self.prior == 'log':
-                log=True
-        return _trial.suggest_float(name=self.name,
-                                    low=self.low,
-                                    high=self.high,
-                                    step=self.step,  # default step is None
-                                    log=log)
-
-
-class Integer(_Integer, Counter):
-    """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
-    algorithm to create grid space. Moreover it also generates optuna and hyperopt compatible/equivalent instances.
-    num_samples: int, if given, it will be used to create grid space using the formula"""
-    def __init__(self,
-                 low=None,
-                 high=None,
-                 num_samples:int=None,
-                 step:int=None,
-                 grid=None,
-                 *args,
-                 **kwargs
-                 ):
-
-        if low is None:
-            assert grid is not None
-            assert hasattr(grid, '__len__')
-            low = grid[0]
-            high = grid[-1]
-
-        self.counter += 1
-        if 'name' not in kwargs:
-            kwargs['name'] = f'integer_{self.counter}'
-
-        self.num_samples = num_samples
-        self.step = step
-        super().__init__(low=low, high=high, *args, **kwargs)
-        self.grid = grid
-
-    @property
-    def grid(self):
-        return self._grid
-
-    @grid.setter
-    def grid(self, x):
-        if x is None:
-            if self.num_samples:
-                self._grid = np.linspace(self.low, self.high, self.num_samples, dtype=np.int32)
-            elif self.step:
-                self._grid = np.arange(self.low, self.high, self.step, dtype=np.int32)
-            else:
-                self._grid = None
-        else:
-            assert hasattr(x, '__len__'), f"unacceptable type of grid {x.__class__.__name__}"
-            self._grid = np.array(x)
-
-    def as_hp(self):
-        return hp.randint(self.name, low=self.low, high=self.high)
-
-    def suggest(self, _trial):
-        # creates optuna trial
-        log=False
-        if self.prior:
-            if self.prior == 'log':
-                log=True
-
-        return _trial.suggest_int(name=self.name,
-                                    low=self.low,
-                                    high=self.high,
-                                    step=self.step if self.step else 1,  # default step is 1
-                                    log=log)
-
-
-class Categorical(_Categorical):
-
-    @property
-    def grid(self):
-        return self.categories
-
-    def as_hp(self):
-        return hp.choice(self.name, self.categories)
-
-    def suggest(self, _trial):
-        # creates optuna trial
-        return _trial.suggest_categorical(name=self.name, choices=self.categories)
 
 ALGORITHMS = {
     'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
@@ -772,7 +627,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             paras = x_iters[idx]
         elif self.backend == 'hyperopt':
             if isinstance(self.param_space, dict):
-                return get_one_tep_x_iter(self.trials.best_trial['misc']['vals'], self.param_space)
+                return get_one_tpe_x_iter(self.trials.best_trial['misc']['vals'], self.param_space)
             else:
                 return self.trials.best_trial['misc']['vals']
         elif self.backend == 'optuna':
@@ -1183,318 +1038,3 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.objective_fn(x)
 
         raise NotImplementedError
-
-
-def is_choice(space):
-    """checks if an hp.space is hp.choice or not"""
-    if 'switch' in space.name:
-        return True
-    return False
-
-
-def x_iter_for_tpe(trials, param_space:dict, as_list=True):
-
-    assert isinstance(param_space, dict)
-
-    x_iters = []
-    for t in trials.trials:
-
-        vals = t['misc']['vals']
-        _iter = get_one_tep_x_iter(vals, param_space)
-
-        x_iters.append(_iter)
-
-    if as_list:
-        return [list(d.values()) for d in x_iters]
-    return x_iters
-
-
-def get_one_tep_x_iter(tpe_vals, param_space:dict, sort=True):
-
-    x_iter = {}
-    for para, para_val in tpe_vals.items():
-        if is_choice(param_space[para]):
-            hp_assign = {para: para_val[0]}
-            cval = space_eval(param_space[para], hp_assign)
-            x_iter[para] = cval
-        else:
-            x_iter[para] = para_val[0]
-
-    if sort:
-        x_iter = sort_x_iters(x_iter, list(param_space.keys()))
-
-    return x_iter
-
-
-def sort_x_iters(x_iter:dict, original_order:list):
-    # the values in x_iter may not be sorted as the parameters provided in original order
-
-    new_x_iter = {}
-    for s in original_order:
-        new_x_iter[s] = x_iter[s]
-
-    return new_x_iter
-
-
-def skopt_space_from_hp_spaces(hp_space:dict):
-    """given a dictionary of hp spaces where keys are names, this function
-    converts it into skopt space."""
-    new_spaces = []
-
-    for k,s in hp_space.items():
-
-        new_spaces.append(skopt_space_from_hp_space(s, k))
-
-    return
-
-
-def skopt_space_from_hp_space(hp_space, prior_name=None):
-    """Converts on hp space into a corresponding skopt space."""
-    if is_choice(hp_space):
-        skopt_space = to_categorical(hp_space, prior_name=prior_name)
-    elif any([i in hp_space.__str__() for i in ['loguniform', 'quniform', 'qloguniform', 'uniform']]):
-        skopt_space = to_real(hp_space, prior_name=prior_name)
-    elif 'randint' in hp_space.__str__():
-        skopt_space = to_int(hp_space, prior_name=prior_name)
-    else:
-        raise NotImplementedError
-
-    return skopt_space
-
-
-def to_categorical(_space, prior_name=None):
-    """converts an hp space into a Dimension object."""
-    cats = []
-    inferred_name = None
-    for arg in _space.pos_args:
-        if hasattr(arg, '_obj') and arg.pure:
-            cats.append(arg._obj)
-        elif arg.name == 'hyperopt_param' and len(arg.pos_args)>0:
-            for a in arg.pos_args:
-                if a.name == 'literal' and a.pure:
-                    inferred_name = a._obj
-
-    prior_name = verify_name(prior_name, inferred_name)
-
-    if len(cats)==0:
-        raise NotImplementedError
-    return Categorical(categories=cats, name=prior_name)
-
-
-def verify_name(prior_name, inferred_name):
-    """Verfies that the given/prior name matches with the inferred name.
-    """
-    if prior_name is None:
-        prior_name = inferred_name
-    else:
-        assert prior_name == inferred_name, f"""given name {prior_name} does not mach with 
-                                                inferred name {inferred_name}"""
-    return prior_name
-
-
-def to_int(_space, prior_name=None):
-    """converts an hp.randint into a Dimension object"""
-    inferred_name = None
-    limits = None
-    for arg in _space.pos_args:
-        if arg.name == 'literal' and len(arg.named_args)==0:
-            inferred_name = arg._obj
-        elif len(arg.named_args) == 2 and arg.name == 'randint':
-            limits = {}
-            for a in arg.named_args:
-                limits[a[0]] =  a[1]._obj
-
-        elif len(arg.pos_args) == 2 and arg.name == 'randint':
-            # high and low are not named args
-            _limits = []
-            for a in arg.pos_args:
-                _limits.append(a._obj)
-            limits =  {'high': np.max(_limits), 'low': np.min(_limits)}
-        else:
-            raise NotImplementedError
-
-    prior_name = verify_name(prior_name, inferred_name)
-
-    if limits is None:
-        raise NotImplementedError
-    return Integer(low=limits['low'], high=limits['high'], name=prior_name)
-
-
-def to_real(_space, prior_name=None):
-    """converts an an hp space to real. """
-    inferred_name = None
-    limits = None
-    prior = None
-    allowed_names = ['uniform', 'loguniform', 'quniform', 'loguniform', 'qloguniform']
-    for arg in _space.pos_args:
-        if len(arg.pos_args) > 0:
-            for a in arg.pos_args:
-                if a.name == 'literal' and len(arg.named_args) == 0:
-                    inferred_name = a._obj
-                elif a.name in allowed_names and len(a.named_args) == 2:
-                    prior = a.name
-                    limits = {}
-                    for _a in a.named_args:
-                        limits[_a[0]] = _a[1]._obj
-                elif a.name in allowed_names and len(a.pos_args)==2:
-                    prior = a.name
-                    _limits = []
-                    for _a in a.pos_args:
-                        _limits.append(_a._obj)
-                    limits = {'high': np.max(_limits), 'low': np.min(_limits)}
-
-    prior_name = verify_name(prior_name, inferred_name)
-
-    # prior must be inferred because hp spaces always have prior
-    if limits is None or prior is None or 'high' not in limits:
-        raise NotImplementedError
-
-    return Real(low=limits['low'], high=limits['high'], prior=prior, name=prior_name)
-
-
-def loss_histogram(losses,  # array like
-                   xlabel='objective_fn',
-                   ylabel='Frequency',
-                   save=True,
-                   fname="histogram.png"):
-
-    plt.hist(losses)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-
-    if save:
-        plt.savefig(fname, dpi=300, bbox_inches='tight')
-    else:
-        plt.show()
-
-
-def plot_hyperparameters(
-        trials,
-        save=True,
-        fontsize=10,
-        colorize_best=None,
-        columns=5,
-        arrange_by_loss=False,
-        fname='parameters_selection_plot.png'
-):
-    """Copying from hyperopt because original hyperopt does not allow saving the plot."""
-
-    idxs, vals = miscs_to_idxs_vals(trials.miscs)
-    losses = trials.losses()
-    finite_losses = [y for y in losses if y not in (None, float("inf"))]
-    asrt = np.argsort(finite_losses)
-    if colorize_best is not None:
-        colorize_thresh = finite_losses[asrt[colorize_best + 1]]
-    else:
-        # -- set to lower than best (disabled)
-        colorize_thresh = finite_losses[asrt[0]] - 1
-
-    loss_min = min(finite_losses)
-    loss_max = max(finite_losses)
-    print("finite loss range", loss_min, loss_max, colorize_thresh)
-
-    loss_by_tid = dict(zip(trials.tids, losses))
-
-    def color_fn_bw(lossval):
-        if lossval in (None, float("inf")):
-            return 1, 1, 1
-        else:
-            t = (lossval - loss_min) / (loss_max - loss_min + 0.0001)
-            if lossval < colorize_thresh:
-                return 0.0, 1.0 - t, 0.0  # -- red best black worst
-            else:
-                return t, t, t  # -- white=worst, black=best
-
-    all_labels = list(idxs.keys())
-    titles = all_labels
-    order = np.argsort(titles)
-
-    C = min(columns, len(all_labels))
-    R = int(np.ceil(len(all_labels) / float(C)))
-
-    for plotnum, varnum in enumerate(order):
-        label = all_labels[varnum]
-        plt.subplot(R, C, plotnum + 1)
-
-        # hide x ticks
-        ticks_num, ticks_txt = plt.xticks()
-        plt.xticks(ticks_num, [""] * len(ticks_num))
-
-        dist_name = label
-
-        if arrange_by_loss:
-            x = [loss_by_tid[ii] for ii in idxs[label]]
-        else:
-            x = idxs[label]
-        if "log" in dist_name:
-            y = np.log(vals[label])
-        else:
-            y = vals[label]
-        plt.title(titles[varnum], fontsize=fontsize)
-        c = list(map(color_fn_bw, [loss_by_tid[ii] for ii in idxs[label]]))
-        if len(y):
-            plt.scatter(x, y, c=c)
-        if "log" in dist_name:
-            nums, texts = plt.yticks()
-            plt.yticks(nums, ["%.2e" % np.exp(t) for t in nums])
-
-    if save:
-        plt.savefig(fname, dpi=300, bbox_inches='tight' )
-    else:
-        plt.show()
-
-
-
-
-def scatterplot_matrix_colored(params_names:list,
-                               params_values:list,
-                               best_accs:list,
-                               blur=False,
-                               save=True,
-                               fname='scatter_plot.png'
-                               ):
-    """Scatterplot colored according to the Z values of the points.
-    https://github.com/guillaume-chevalier/Hyperopt-Keras-CNN-CIFAR-100/blob/Vooban/AnalyzeTestHyperoptResults.ipynb
-    """
-
-    nb_params = len(params_values)
-    best_accs = np.array(best_accs)
-    norm = mpl.colors.Normalize(vmin=best_accs.min(), vmax=best_accs.max())
-
-    fig, ax = plt.subplots(nb_params, nb_params, figsize=(16, 16))  # , facecolor=bg_color, edgecolor=fg_color)
-
-    for i in range(nb_params):
-        p1 = params_values[i]
-        for j in range(nb_params):
-            p2 = params_values[j]
-
-            axes = ax[i, j]
-            # Subplot:
-            if blur:
-                s = axes.scatter(p2, p1, s=400, alpha=.1,
-                                 c=best_accs, cmap='viridis', norm=norm)
-                s = axes.scatter(p2, p1, s=200, alpha=.2,
-                                 c=best_accs, cmap='viridis', norm=norm)
-                s = axes.scatter(p2, p1, s=100, alpha=.3,
-                                 c=best_accs, cmap='viridis', norm=norm)
-            s = axes.scatter(p2, p1, s=15,
-                             c=best_accs, cmap='viridis', norm=norm)
-
-            # Labels only on side subplots, for x and y:
-            if j == 0:
-                axes.set_ylabel(params_names[i], rotation=0)
-            else:
-                axes.set_yticks([])
-
-            if i == nb_params - 1:
-                axes.set_xlabel(params_names[j], rotation=90)
-            else:
-                axes.set_xticks([])
-
-    fig.subplots_adjust(right=0.82, top=0.95)
-    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    cb = fig.colorbar(s, cax=cbar_ax)
-
-    plt.suptitle(
-        'Scatterplot matrix of tried values in the search space over different params, colored in function of best test accuracy')
-    plt.show()

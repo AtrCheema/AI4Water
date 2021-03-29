@@ -6,19 +6,14 @@ from typing import Union
 from shutil import rmtree
 from copy import deepcopy
 from typing import Any, Dict
-from pickle import PicklingError
 from collections import OrderedDict
 
 import scipy
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
-from skopt.utils import dump
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
-from skopt.plots import plot_evaluations, plot_objective, plot_convergence
-
 
 
 def maybe_create_path(prefix=None, path=None):
@@ -96,24 +91,6 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
         json.dump(data, fp, sort_keys=sort_keys, indent=4)
 
     return
-
-
-def skopt_plots(search_result, pref=os.getcwd()):
-
-    plt.close('all')
-    _ = plot_evaluations(search_result)
-    plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
-
-    if search_result.space.n_dims == 1:
-        pass
-    else:
-        plt.close('all')
-        _ = plot_objective(search_result)
-        plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
-
-    plt.close('all')
-    _ = plot_convergence(search_result)
-    plt.savefig(os.path.join(pref , 'convergence'), dpi=400, bbox_inches='tight')
 
 
 def check_min_loss(epoch_losses, epoch, msg:str, save_fg:bool, to_save=None):
@@ -469,264 +446,6 @@ class Jsonize(object):
         return str(obj)
 
 
-class SerializeSKOptResults(object):
-    """
-    This class has two functions
-      - converts everything in skopt results into python native types so that these results can be saved in readable
-        json files.
-      - Store as much attributes in in serialized form that a skopt `search_result` object can be generated from it
-        which then can be used to regenerate all hyper-parameter optimization related plots.
-
-     skopt_results is a dictionary which contains following keys
-     x: list, list of parameters being optimized
-     fun: float, final value of objective function
-     func_vals: numpy array, of length equal to number of iterations
-     x_iters: list of lists, outer list is equal to number of iterations and each inner list is equal number of parameters
-              being optimized
-     models: list of models, where a model has following attributes
-             - noise: str
-             - kernel: skopt.learning.gaussian_process.kernels.Sum, it has following 2 attributes
-                 - k1: skopt.learning.gaussian_process.kernels.Product, it has following attributes
-                     -k1: skopt.learning.gaussian_process.kernels.ConstantKernel
-                         - constant_value: flaot
-                         - constant_value_bounds: tuple of floats
-                     -k2: skopt.learning.gaussian_process.kernels.Matern
-                         - length_scale: numpy ndarray
-                         - length_scale_bounds: list of floats
-                         - nu: float
-                 - k2: skopt.learning.gaussian_process.kernels.WhiteKernel
-                     - noise_level: float
-                     - noise_level_bounds: tuple of floats
-             - alpha: float
-             - optimizer: str
-             - n_restarts_optimizer: int
-             - normalize_y: bool
-             - copy_X_train: bool
-             - random_state: int
-             - kernel_: skopt.learning.gaussian_process.kernels.Sum
-             - _rng: numpy.random.mtrand.RandomState
-             - n_features_in_: int
-             - _y_train_mean: np.float64
-             - _y_train_std: np.float64
-             - X_train_: numpy array
-             - y_train_: numpy array
-             - log_marginal_likelihood_value_: numpy array
-             - L_: numpy array
-             - _K_inv: NoneType
-             - alpha_: numpy array
-             - noise_: np.float64
-             - K_inv_: numpy array
-             - y_train_std_: np.float64
-             - y_train_mean_: np.float64
-     space: skopt.space.space.Space, parameter spaces
-     random_state: numpy.random.mtrand.RandomState
-     specs: dict,  specs of each iteration. It has following keys
-         - args: dict, which has following keys
-             - func: function
-             - dimensions: skopt.space.space.Space
-             - base_estimator: skopt.learning.gaussian_process.gpr.GaussianProcessRegressor, which has following attributes
-                 - noise: str
-                 - kernel: skopt.learning.gaussian_process.kernels.Product
-                     - k1: skopt.learning.gaussian_process.kernels.ConstantKernel, which has following attributes
-                         - constant_value: flaot
-                         - constant_value_bounds: tuple of floats
-                     - k2: skopt.learning.gaussian_process.kernels.Matern, which has following attributes
-                         - length_scale: numpy ndarray
-                         - length_scale_bounds: list of floats
-                         - nu: float
-                 - alpha: float
-                 - optimizer: str
-                 - n_restarts_optimizer: int
-                 - normalize_y: bool
-                 - copy_X_train: bool
-                 - random_state: int
-             - n_cals: int
-             - n_random_starts: NoneType
-             - n_initial_points: str
-             - initial_point_generator: str
-             - acq_func: str
-             - acq_optimizer: str
-             - x0: list
-             - y0: NoneType
-             - random_state: numpy.random.mtrand.RandomState
-             - verbose: book
-             - callback: NoneType
-             - n_points: int
-             - n_restarts_optimizer: int
-             - xi: float
-             - kappa: float
-             - n_jobs: int
-             - model_queue_size: NoneType
-         - function: str
-     """
-    def __init__(self, results:dict):
-        self.results = results
-        self.iters = len(results['func_vals'])
-        self.paras = len(results['x'])
-        self.serialized_results = {}
-
-        for key in results.keys():
-            self.serialized_results[key] = getattr(self, key)()
-
-    def x(self):
-
-        return self.para_list(self.results['x'])
-
-    def para_list(self, x):
-        """Serializes list of parameters"""
-        _x = []
-        for para in x:
-            _x.append(Jsonize(para)())
-        return _x
-
-    def x0(self):
-        _x0 = []
-
-        __xo = self.results['specs']['args']['x0']
-
-        if __xo is not None:
-            for para in __xo:
-                if isinstance(para, list):
-                    _x0.append(self.para_list(para))
-                else:
-                    _x0.append(Jsonize(para)())
-        return _x0
-
-    def y0(self):
-        __y0 = self.results['specs']['args']['y0']
-        if __y0 is None:
-            return __y0
-        if isinstance(__y0, list):
-            _y0 = []
-            for y in self.results['specs']['args']['y0']:
-                _y0.append(Jsonize(y)())
-            return _y0
-
-        return Jsonize(self.results['specs']['args']['y0'])()
-
-    def fun(self):
-        return float(self.results['fun'])
-
-    def func_vals(self):
-        return [float(i) for i in self.results['func_vals']]
-
-    def x_iters(self):
-        out_x = []
-        for i in range(self.iters):
-            x = []
-            for para in self.results['x_iters'][i]:
-                x.append(Jsonize(para)())
-
-            out_x.append(x)
-
-        return out_x
-
-    def space(self):
-        raum = {}
-        for sp in self.results['space'].dimensions:
-            if sp.__class__.__name__ == 'Categorical':
-                _raum = {k: Jsonize(v)() for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
-                _raum.update({'type': 'Categorical'})
-                raum[sp.name] = _raum
-
-            elif sp.__class__.__name__ == 'Integer':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
-                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
-                _raum.update({'type': 'Integer'})
-                raum[sp.name] = _raum
-
-            elif sp.__class__.__name__ == 'Real':
-                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
-                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
-                _raum.update({'type': 'Real'})
-                raum[sp.name] = _raum
-
-        return raum
-
-    def random_state(self):
-        return str(self.results['random_state'])
-
-    def kernel(self, k):
-        """Serializes Kernel"""
-        if k.__class__.__name__ == "Product":
-            return self.prod_kernel(k)
-
-        if k.__class__.__name__ == "Sum":
-            return self.sum_kernel(k)
-        # default scenario, just converts it to string
-        return str(k)
-
-    def prod_kernel(self, k):
-        """Serializes product kernel"""
-        kernel = {}
-        for _k,v in k.__dict__.items():
-
-            kernel[_k] = self.singleton_kernel(v)
-
-        return {"ProductKernel": kernel}
-
-    def sum_kernel(self, k):
-        """Serializes sum kernel"""
-        kernel = {}
-
-        for _k,v in k.__dict__.items():
-
-            if v.__class__.__name__ == "Product":
-                kernel[_k] = self.prod_kernel(v)
-            else:
-                kernel[_k] = self.singleton_kernel(v)
-
-        return {"SumKernel": kernel}
-
-    def singleton_kernel(self, k):
-        """Serializes Kernels such as  Matern, White, Constant Kernels"""
-        return {k:Jsonize(v)() for k,v in k.__dict__.items()}
-
-
-    def specs(self):
-        _specs = {}
-
-        _specs['function'] = self.results['specs']['function']
-
-        args = {}
-
-        args['func'] = str(self.results['specs']['args']['func'])
-
-        args['dimensions'] = self.space()
-
-        be = self.results['specs']['args']['base_estimator']
-        b_e = {k: Jsonize(v)() for k, v in be.__dict__.items() if
-                                       k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state']}
-        b_e['kernel'] = self.kernel(be.kernel)
-
-        args['base_estimator'] = b_e
-
-        for k,v in self.results['specs']['args'].items():
-            if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func', 'acq_optimizer',
-                     'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa', 'n_jobs', 'model_queue_size']:
-                args[k] = Jsonize(v)()
-
-        args['x0'] = self.x0()
-        args['y0'] = self.y0()
-
-        _specs['args'] = args
-        return _specs
-
-    def models(self):
-
-        mods = []
-        for model in self.results['models']:
-            mod = {k:Jsonize(v)() for k,v in model.__dict__.items() if k in  ['noise',
-                         'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
-                         '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train', 'log_marginal_likelihood',
-                         'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
-
-            mod['kernel'] = self.kernel(model.kernel)
-            mods.append({model.__class__.__name__: mod})
-
-        return mods
-
-
 def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
     """Looks in opt_dir and saves the min val_loss with the folder name"""
     results = {}
@@ -882,35 +601,6 @@ def split_by_indices(x, y, indices):
 
     return x, y
 
-
-def post_process_skopt_results(skopt_results, results, opt_path):
-    mpl.rcParams.update(mpl.rcParamsDefault)
-
-    skopt_plots(skopt_results, pref=opt_path)
-
-    fname = os.path.join(opt_path, 'gp_parameters')
-
-    sr_res = SerializeSKOptResults(skopt_results)
-
-    if 'folder' in list(results.items())[0]:
-        clear_weights(results=results, opt_dir=opt_path)
-    else:
-        clear_weights(results=results, opt_dir=opt_path)
-        clear_weights(opt_dir=opt_path)
-
-    try:
-        dump(skopt_results, os.path.join(opt_path, os.path.basename(opt_path)))
-    except PicklingError:
-        print("could not pickle results")
-
-    try:
-        with open(fname + '.json', 'w') as fp:
-            json.dump(sr_res.serialized_results, fp, sort_keys=True, indent=4)
-    except TypeError:
-        with open(fname + '.json', 'w') as fp:
-            json.dump(str(sr_res.serialized_results), fp, sort_keys=True, indent=4)
-
-    return
 
 def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
           precision:int=3,
