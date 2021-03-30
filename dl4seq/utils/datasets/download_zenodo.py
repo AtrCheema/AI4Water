@@ -4,12 +4,12 @@
 import sys
 import os
 import json
-import wget
 import signal
 import time
 import hashlib
 import requests
 from contextlib import contextmanager
+from dl4seq.utils.datasets.utils import download
 
 abort_signal = False
 abort_counter = 0
@@ -168,7 +168,7 @@ def download_from_zenodo(outdir,
 
                     for _ in range(retry + 1):
                         try:
-                            filename = wget.download(link)
+                            filename = download(link)
                         except Exception:
                             print('  Download error.')
                             time.sleep(pause)
