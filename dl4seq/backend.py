@@ -22,6 +22,7 @@ def get_sklearn_models():
         from sklearn.naive_bayes import GaussianNB
         from sklearn.kernel_ridge import KernelRidge
         from sklearn.isotonic import isotonic_regression
+        from sklearn.gaussian_process import GaussianProcessRegressor
 
         from sklearn.experimental import enable_hist_gradient_boosting
         from sklearn.ensemble import HistGradientBoostingClassifier

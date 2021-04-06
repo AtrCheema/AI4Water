@@ -340,7 +340,8 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
     config.update(model_config)
 
     assert type(config['inputs']) == type(config['outputs']), f"""
-inputs is of type {config['inputs'].__class__.__name__} but outputs is of type {config['outputs'].__class__.__name__}
+inputs is of type {config['inputs'].__class__.__name__} but outputs is of type {config['outputs'].__class__.__name__}.
+Inputs and outputs must be of same type.
 """
 
     if isinstance(config['inputs'], dict):
