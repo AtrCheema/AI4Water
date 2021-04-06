@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from sklearn.svm import SVC
 from scipy.stats import uniform
+from skopt.space.space import Space
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -36,6 +37,17 @@ inputs.remove('target')
 inputs.remove('target_by_group')
 outputs = ['target']
 
+
+def check_attrs(optimizer, paras):
+    space = optimizer.space()
+    assert isinstance(space, dict)
+    assert len(space)==paras
+    assert isinstance(optimizer.xy_of_iterations(), dict)
+    assert len(optimizer.xy_of_iterations())>1
+    assert isinstance(optimizer.best_paras(as_list=True), list)
+    assert isinstance(optimizer.best_paras(False), dict)
+    assert len(optimizer.func_vals()) > 1
+    assert isinstance(optimizer.skopt_space(), Space)
 
 def run_dl4seq(method):
     dims = {'n_estimators': [1000,  2000],
@@ -69,6 +81,7 @@ def run_dl4seq(method):
 
     # executes bayesian optimization
     opt.fit()
+    check_attrs(opt, 4)
     return
 
 
@@ -103,6 +116,11 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
                          opt_path=os.path.join(os.getcwd(), f'results\\test_{algorithm}_xgboost_{backend}'))
 
     optimizer.fit()
+    check_attrs(optimizer, 3)
+
+    for f in ["parameter_importance.html", "convergence.png", "iterations.json", "iterations_sorted.json"]:
+        fpath = os.path.join(optimizer.opt_path, f)
+        assert os.path.exists(fpath)
     return optimizer
 
 class TestHyperOpt(unittest.TestCase):
@@ -125,12 +143,12 @@ class TestHyperOpt(unittest.TestCase):
     def test_integer_num_samples(self):
         r = Integer(low=10, high=100, num_samples=20)
         grit = r.grid
-        assert grit.shape == (20,)
+        assert len(grit) == 20
 
     def test_integer_steps(self):
         r = Integer(low=10, high=100, step=20)
         grit = r.grid
-        grit.shape = (5,)
+        assert len(grit) == 5
 
     def test_integer_grid(self):
         grit = [1, 2, 3, 4, 5]
@@ -356,12 +374,13 @@ class TestHyperOpt(unittest.TestCase):
                              backend='hyperopt',
                              max_evals=100)
         best = optimizer.fit()
+        check_attrs(optimizer, 1)
         self.assertGreater(len(best), 0)
         return
 
     def test_hyperopt_multipara(self):
         # https://github.com/hyperopt/hyperopt/blob/master/tutorial/02.MultipleParameterTutorial.ipynb
-        def objective(params):
+        def objective(**params):
             x, y = params['x'], params['y']
             return np.sin(np.sqrt(x**2 + y**2))
 
@@ -370,29 +389,34 @@ class TestHyperOpt(unittest.TestCase):
             'y': hp.uniform('y', -6, 6)
         }
 
-        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt', max_evals=100)
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt', use_named_args=True,
+                             max_evals=100)
         best = optimizer.fit()
+        check_attrs(optimizer, 2)
         self.assertEqual(len(best), 2)
+        return
 
-    def test_hyperopt_multipara_multispace(self):
-        def f(params):
-            x1, x2 = params['x1'], params['x2']
-            if x1 == 'james':
-                return -1 * x2
-            if x1 == 'max':
-                return 2 * x2
-            if x1 == 'wansoo':
-                return -3 * x2
-
-        search_space = {
-            'x1': hp.choice('x1', ['james', 'max', 'wansoo']),
-            'x2': hp.randint('x2', -5, 5)
-        }
-
-        optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, backend='hyperopt', max_evals=100)
-        best = optimizer.fit()
-        self.assertEqual(len(best), 2)
-
+    # # def test_hyperopt_multipara_multispace(self):  # todo
+    # #     # https://github.com/hyperopt/hyperopt/issues/615
+    # #     def f(**params):
+    # #         x1, x2 = params['x1'], params['x2']
+    # #         if x1 == 'james':
+    # #             return -1 * x2
+    # #         if x1 == 'max':
+    # #             return 2 * x2
+    # #         if x1 == 'wansoo':
+    # #             return -3 * x2
+    # #
+    # #     search_space = {
+    # #         'x1': hp.choice('x1', ['james', 'max', 'wansoo']),
+    # #         'x2': hp.randint('x2', -5, 5)
+    # #     }
+    # #
+    # #     optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, use_named_args=True,
+    # #                          backend='hyperopt', max_evals=100)
+    # #     best = optimizer.fit()
+    # #     self.assertEqual(len(best), 2)
+    #
     def test_dl4seqModel_with_hyperopt(self):
         """"""
         def fn(**suggestion):
@@ -424,6 +448,7 @@ class TestHyperOpt(unittest.TestCase):
                              opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
 
         optimizer.fit()
+        check_attrs(optimizer, 3)
         self.assertEqual(len(optimizer.trials.trials), 5)
         self.assertIsNotNone(optimizer.skopt_space())
         return
@@ -433,10 +458,6 @@ class TestHyperOpt(unittest.TestCase):
         successfully.
         """
         opt = HyperOpt("tpe",
-                       # param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
-                       #              hp.randint('max_depth', low=3, high=6),
-                       #              hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
-                       #              ],
                        param_space=[Integer(low=1000, high=2000, name='n_estimators', num_samples=5),
                                     Integer(low=3, high=6, name='max_depth', num_samples=5),
                                     Categorical(['gbtree', 'gblinear', 'dart'], name='booster')
@@ -451,14 +472,38 @@ class TestHyperOpt(unittest.TestCase):
                        num_iterations =5
                        )
         opt.fit()
-        assert isinstance(list(opt.best_paras.values())[-1], str)
+        check_attrs(opt, 3)
+        assert isinstance(list(opt.best_paras().values())[-1], str)
+
+    def test_hp_to_skopt_space1(self):
+        """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
+        successfully.
+        """
+        opt = HyperOpt("tpe",
+                       param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
+                                    hp.randint('max_depth', low=3, high=6),
+                                    hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
+                                    ],
+
+                       dl4seq_args ={'model': 'XGBoostRegressor',
+                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'outputs': ['target']
+                                     },
+                       data =data,
+                       backend='hyperopt',
+                       use_named_args =True,
+                       num_iterations =5
+                       )
+        opt.fit()
+        check_attrs(opt, 3)
+        assert isinstance(list(opt.best_paras().values())[-1], str)
 
     def test_unified_interface(self):
 
         run_unified_interface('tpe', 'optuna', 5)
         run_unified_interface('cmaes', 'optuna', 5)
         run_unified_interface('random', 'optuna', 5)
-        ##run_unified_interface('grid', 'optuna', None)  # todo
+        run_unified_interface('grid', 'optuna', 5, num_samples=3)
         run_unified_interface('tpe', 'hyperopt', 5)
         #run_unified_interface('atpe', 'hyperopt', 5)  # todo
         #run_unified_interface('random', 'hyperopt', 5)  # todo

@@ -23,6 +23,13 @@ except ImportError:
     _Integer, _Categorical, _Real = None, None, None
     plot_evaluations, plot_objective, plot_convergence = None, None, None
 
+try:
+    from optuna.distributions import CategoricalDistribution, UniformDistribution, IntLogUniformDistribution
+    from optuna.distributions import IntUniformDistribution, DiscreteUniformDistribution, LogUniformDistribution
+except ImportError:
+    CategoricalDistribution, UniformDistribution, IntLogUniformDistribution = None, None, None
+    IntUniformDistribution, DiscreteUniformDistribution, LogUniformDistribution = None, None, None
+
 from dl4seq.utils.utils import Jsonize, clear_weights
 
 
@@ -94,7 +101,12 @@ class Real(_Real, Counter):
                                     high=self.high,
                                     step=self.step,  # default step is None
                                     log=log)
-
+    def to_optuna(self):
+        """returns an equivalent optuna space"""
+        if self.prior != 'log':
+            return UniformDistribution(low=self.low, high=self.high)
+        else:
+            return LogUniformDistribution(low=self.low, high=self.high)
 
 class Integer(_Integer, Counter):
     """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
@@ -133,9 +145,11 @@ class Integer(_Integer, Counter):
     def grid(self, x):
         if x is None:
             if self.num_samples:
-                self._grid = np.linspace(self.low, self.high, self.num_samples, dtype=np.int32)
+                __grid = np.linspace(self.low, self.high, self.num_samples, dtype=np.int32)
+                self._grid = [int(val) for val in __grid]
             elif self.step:
-                self._grid = np.arange(self.low, self.high, self.step, dtype=np.int32)
+                __grid = np.arange(self.low, self.high, self.step, dtype=np.int32)
+                self._grid = [int(val) for val in __grid]
             else:
                 self._grid = None
         else:
@@ -157,7 +171,12 @@ class Integer(_Integer, Counter):
                                     high=self.high,
                                     step=self.step if self.step else 1,  # default step is 1
                                     log=log)
-
+    def to_optuna(self):
+        """returns an equivalent optuna space"""
+        if self.prior != 'log':
+            return IntUniformDistribution(low=self.low, high=self.high)
+        else:
+            return IntLogUniformDistribution(low=self.low, high=self.high)
 
 class Categorical(_Categorical):
 
@@ -172,6 +191,9 @@ class Categorical(_Categorical):
         # creates optuna trial
         return _trial.suggest_categorical(name=self.name, choices=self.categories)
 
+    def to_optuna(self):
+        return CategoricalDistribution(choices=self.categories)
+
 
 def is_choice(space):
     """checks if an hp.space is hp.choice or not"""
@@ -184,17 +206,22 @@ def x_iter_for_tpe(trials, param_space:dict, as_list=True):
 
     assert isinstance(param_space, dict)
 
-    x_iters = []
+    x_iters = []  # todo, remove x_iters, it is just values of iterations
+    iterations = {}
     for t in trials.trials:
 
         vals = t['misc']['vals']
+        y = t['result']['loss']
+
         _iter = get_one_tpe_x_iter(vals, param_space)
+        iterations[y] = _iter
 
         x_iters.append(_iter)
 
     if as_list:
         return [list(d.values()) for d in x_iters]
-    return x_iters
+    return iterations
+
 
 
 def get_one_tpe_x_iter(tpe_vals, param_space:dict, sort=True):
