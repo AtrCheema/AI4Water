@@ -1,12 +1,12 @@
+import pprint
+
 import numpy as np
 import matplotlib.pyplot as plt
-import mpl_toolkits.axisartist.floating_axes as FA
 from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
+import mpl_toolkits.axisartist.floating_axes as FA
 
 from dl4seq.utils.TSErrors import FindErrors
-
-np.random.seed(313)
 
 COLORS = np.array([
        [0.89411765, 0.10196078, 0.10980392, 1.        ],
@@ -253,6 +253,10 @@ def plot_taylor(trues:dict,
     """
     scenarios = trues.keys()
 
+    assert all([len(array)>1 for array in trues.values()]), f"""one or more array in true values has less than 2 values
+                                                    {pprint.pprint({key:len(array) for key, array in trues.items()},
+                                                                   width=20)}"""
+
     add_ith_interval = kwargs.get('add_idth_interval', False)
     ref_color = kwargs.get('ref_color', 'r')
     intervals = kwargs.get('intervals', [])
@@ -395,7 +399,7 @@ def plot_taylor(trues:dict,
 
 
 if __name__ == "__main__":
-
+    np.random.seed(313)
     observations = {
         'site1': np.random.normal(20, 40, 10),
         'site2': np.random.normal(20, 40, 10),
