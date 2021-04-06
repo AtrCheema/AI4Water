@@ -177,7 +177,10 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from dl4seq.utils.spatial_utils import plot_shapefile
+try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
+    from dl4seq.utils.spatial_utils import plot_shapefile
+except ModuleNotFoundError:
+    plot_shapefile = None
 from dl4seq.utils.datasets.download_pangaea import PanDataSet
 from dl4seq.utils.datasets.download_zenodo import download_from_zenodo
 from dl4seq.utils.datasets.utils import download, download_all_http_directory
@@ -1296,7 +1299,10 @@ class CAMELS_AUS(Camels):
         f1 = os.path.join(self.ds_dir, f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}CAMELS_AUS_BasinOutlets_adopted.shp')
         f2 = os.path.join(self.ds_dir, f'02_location_boundary_area{SEP}02_location_boundary_area{SEP}shp{SEP}bonus data{SEP}Australia_boundaries.shp')
 
-        return plot_shapefile(f1, bbox_shp=f2, recs=stations, rec_idx=0, **kwargs)
+        if plot_shapefile is not None:
+            return plot_shapefile(f1, bbox_shp=f2, recs=stations, rec_idx=0, **kwargs)
+        else:
+            raise ModuleNotFoundError("Shapely must be installed in order to plot the datasets.")
 
 
 class CAMELS_CL(Camels):
