@@ -15,11 +15,9 @@ The specific purposes of the repository are
   prediction/classification problems (also holds true for any 1D data)
 * save, load/reload or build models from readable json file.
 * both of above functionalities should be available without complicating keras implementation.
-* provide a uniform `one window` interface for optimizing hyper-parameters using either Bayesian, random or grid search
-  for any kind of model using `HyperOpt` class. This class sits on top of [BayesSearchCV](https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html),
-  [GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV),
-  [RandomizeSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV)
-  but but has some extra functionalities. See [example](https://github.com/AtrCheema/dl4seq/blob/master/examples/hyper_para_opt.ipynb) using its application.
+* provide a uniform interface for optimizing hyper-parameters for [skopt](https://scikit-optimize.github.io/stable/index.html),
+ [sklearn](https://scikit-learn.org/stable/modules/classes.html#hyper-parameter-optimizers) based [grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) and [random](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html),
+  [hyperopt](http://hyperopt.github.io/hyperopt/) based [tpe](https://papers.nips.cc/paper/2011/file/86e8f7ab32cfd12577bc2619bc635690-Paper.pdf), [atpe](https://www.electricbrain.io/blog/learning-to-optimize) or [optuna](https://optuna.readthedocs.io/en/stable/) based [tpe](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.TPESampler.html), [cmaes](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.CmaEsSampler.html) etc. See [example](https://github.com/AtrCheema/dl4seq/blob/master/examples/hyper_para_opt.ipynb)  using its application.
 * It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
@@ -73,49 +71,52 @@ The latest code however (possibly with less bugs and more features) can be insal
 
 ## How to use
 
+Build a `Model` by providing all the arguments to initiate it.
+
 ```python
-import pandas as pd 
-from dl4seq import InputAttentionModel  # import any of the above model 
-
-df = pd.read_csv('data/data_30min.csv')  # path for data file
-
-model = InputAttentionModel(
-              inputs=['input1', 'input2', 'input3'], # columns in csv file to be used as input
-              outputs=['target7'],        # columns in csv file to be used as output
-              batch_size=16,
-              lookback=15,
-              lr=0.001,
-              data=df
-              )
-
-model.eda()  # perform comprehensive explanatory data analysis, check model.path directory for plots
-
-history = model.fit(indices='random')
-
-preds, obs = model.predict()
-acts = model.view_model()
+from dl4seq import Model
+from dl4seq.data import load_30min
+data = load_30min()
+model = Model(
+        model = {'layers': {"LSTM": 64}},
+        data = data,
+        inputs=['input1', 'input2', 'input3'],   # columns in csv file to be used as input
+        outputs = ['target5'],     # columns in csv file to be used as output
+        lookback = 12
+)
 ```
+
+Train the model by calling the `fit()` method
+```python
+history = model.fit()
+```
+
+Make predictions from it
+```python
+true, predicted = model.predict()
+```
+
 
 ## Using your own pre-processed data
 You can use your own pre-processed data without using any of pre-processing tools of dl4seq. You will need to provide
 input output paris to `data` argument to `fit` and/or `predict` methods.
 ```python
 import numpy as np
-from dl4seq import InputAttentionModel  # import any of the above model
+from dl4seq import Model  # import any of the above model
 
 batch_size = 16
 lookback = 15
 inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names for plotting and saving results.
 outputs=['DummyTarget']
 
-model = InputAttentionModel(
-                    data=None,
-                    batch_size=batch_size,
-                    lookback=lookback,
-                    transformation=None,
-                    inputs=inputs,
-                    outputs=outputs,
-                    lr=0.001
+model = Model(
+            data=None,
+            batch_size=batch_size,
+            lookback=lookback,
+            transformation=None,
+            inputs=inputs,
+            outputs=outputs,
+            lr=0.001
               )
 x = np.random.random((batch_size*10, lookback, len(inputs)))
 y = np.random.random((batch_size*10, len(outputs)))
@@ -179,3 +180,5 @@ series prediction.
 [TSFuse Python package for automatically constructing features from multi-view time series data](https://github.com/arnedb/tsfuse)
 
 [Catalyst](https://github.com/catalyst-team/catalyst)
+
+[tsai - A state-of-the-art deep learning library for time series and sequential data](https://github.com/timeseriesAI/tsai)

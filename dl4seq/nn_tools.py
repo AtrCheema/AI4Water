@@ -88,7 +88,7 @@ class NN(AttributeStore):
 
             lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
 
-            lyr_name, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
+            lyr_name, args, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
             # may be user has defined layers without input layer, in this case add Input layer as first layer
             if first_layer:
@@ -112,7 +112,7 @@ class NN(AttributeStore):
                 # or it uses the previous outputs as inputs
                 if lyr_name.upper() == "INPUT":
                     # it is an Input layer, hence should not be called
-                    layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)
+                    layer_outputs = LAYERS[lyr_name.upper()](*args, **lyr_config)
                 else:
                     # it is executable and uses previous outputs as inputs
                     if lyr_name.upper() in ACTIVATION_LAYERS:
@@ -129,11 +129,11 @@ class NN(AttributeStore):
                         layers_config[lyr]['config'] = lyr_config
                     else:
                         if wrp_layer is not None:
-                            layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](**lyr_config))(layer_outputs)
+                            layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(layer_outputs)
                             wrp_layer = None
                         else:
                             add_args = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
-                            layer_initialized = LAYERS[lyr_name.upper()](**lyr_config)
+                            layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
                             layer_outputs = layer_initialized(layer_outputs, **add_args)
                             self.get_and_set_attrs(layer_initialized)
 
@@ -153,11 +153,11 @@ class NN(AttributeStore):
                 else:
                     if wrp_layer is not None:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](**lyr_config))(call_args, **add_args)
+                        layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(call_args, **add_args)
                         wrp_layer = None
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_initialized = LAYERS[lyr_name.upper()](**lyr_config)
+                        layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
                         layer_outputs = layer_initialized(call_args, **add_args)
                         self.get_and_set_attrs(layer_initialized)
 
@@ -246,15 +246,25 @@ class NN(AttributeStore):
         cache[key] = value
         return
 
-    def deconstruct_lyr_args(self, lyr_name,  lyr_args:dict) ->tuple:
+    def deconstruct_lyr_args(self, lyr_name,  lyr_args) ->tuple:
+
+        if not isinstance(lyr_args, dict):
+            return lyr_args, None, None,None
 
         if 'config' not in lyr_args:
-            raise ValueError(f"No config found for layer {lyr_name}")
+            if all([arg not in lyr_args for arg in ['inputs', 'outputs', 'call_args']]):
+                config = lyr_args
+                inputs = None
+                outputs = None
+                call_args = None
+            else:
+                raise ValueError(f"No config found for layer {lyr_name}")
+        else:
 
-        config = lyr_args['config']
-        inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None
-        outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
-        call_args = lyr_args['call_args'] if 'call_args' in lyr_args else None
+            config = lyr_args['config']
+            inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None
+            outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
+            call_args = lyr_args['call_args'] if 'call_args' in lyr_args else None
 
         if isinstance(config, tf.keras.layers.Lambda):
             config = tf.keras.layers.serialize(config)
@@ -262,6 +272,12 @@ class NN(AttributeStore):
         return config, inputs, outputs, call_args
 
     def check_lyr_config(self, lyr_name: str, config: dict):
+
+        if not isinstance(config, dict):
+            args = [config]
+            config = {}
+        else:
+            args = []
 
         if 'name' not in config:
             config['name'] = lyr_name
@@ -274,13 +290,17 @@ class NN(AttributeStore):
             # get keras/tensorflow layer compatible layer name
             lyr_name = self.get_layer_name(lyr_name)
 
-        return lyr_name, config, activation
+        return lyr_name, args, config, activation
 
     def get_layer_name(self, lyr: str) -> str:
 
         layer_name = lyr.split('_')[0]
         if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
-            raise ValueError(f"The layer name '{lyr}' you specified, does not exist")
+            raise ValueError(f"""
+                            The layer name '{lyr}' you specified, does not exist.
+                            Is this a user defined layer? If so, make sure your
+                            layer is being considered by dl4seq
+                            """)
 
         return layer_name
 
@@ -309,11 +329,16 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
         call_args = []
         for lyr_ins in lyr_inputs:
             if lyr_ins not in lyr_cache:
-                raise ValueError("No layer named '{}' currently exists in the model which can be fed as input to '{}' layer.".format(lyr_ins, lyr_name))
+                raise ValueError("""No layer named '{}' currently exists in the model which can be fed
+                                    as input to '{}' layer.""".format(lyr_ins, lyr_name))
             call_args.append(lyr_cache[lyr_ins])
     else:
         if lyr_inputs not in lyr_cache:
-            raise ValueError(f"No layer named '{lyr_inputs}' currently exists in the model which can be fed as input to '{lyr_name}' layer. Available layers are {list(lyr_cache.keys())}")
+            raise ValueError(f"""
+                                No layer named '{lyr_inputs}' currently exists in the model which
+                                can be fed as input to '{lyr_name}' layer. Available layers are
+                                {list(lyr_cache.keys())}
+""")
         call_args = lyr_cache[lyr_inputs]
 
     return call_args, get_add_call_args(add_args, lyr_cache, lyr_name)

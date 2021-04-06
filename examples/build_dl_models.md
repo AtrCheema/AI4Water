@@ -3,8 +3,8 @@
 We can construct a normal layered model using keras layers by placing the layers in a dictionary. The keys in the
 dictionary must be a keras layer and optionally can have an identifier separated by an underscore `_` in order to 
 differentiate it from other similar layers in the model. The input/initializating arguments in the layer must be
-enclosed in a `config` dictionary within the layer. To find out what input/initializing arguments can be used, check
-documentation of corresponding layer in `Tensorflow` docs. 
+enclosed in a dictionary within the layer. To find out what input/initializing arguments can be used, check
+documentation of corresponding layer in [`Tensorflow` docs](https://www.tensorflow.org/api_docs/python/tf/keras/layers). 
 
 ### multi-layer perceptron
 
@@ -13,12 +13,12 @@ from dl4seq import Model
 
 import pandas as pd
 
-layers = {"Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
-          "Dropout_0": {'config': {'rate': 0.3}},
-          "Dense_1": {'config': {'units': 32, 'activation': 'relu'}},
-          "Dropout_1": {'config': {'rate': 0.3}},
-          "Dense_2": {'config': {'units': 16, 'activation': 'relu'}},
-          "Dense_3": {'config': {'units': 1}}
+layers = {"Dense_0": {'units': 64, 'activation': 'relu'},
+          "Dropout_0": 0.3,  # 0.3 here refers to 'rate' keyword argument in Dropout layer in Tensorflow API
+          "Dense_1": {'units': 32, 'activation': 'relu'},
+          "Dropout_1": 0.3,
+          "Dense_2": {'units': 16, 'activation': 'relu'},
+          "Dense_3": 1     # 1 refers to 'units' keyword argument in Dense layer in Tensorflow
           }
 
 df = pd.read_csv('data/all_data_30min.csv')
@@ -36,15 +36,15 @@ model = Model(
 <img src="imgs/mlp.png" width="500" height="600" />
 
 ### LSTM based model
-
+If you do not define the last dense/fully connected layer, it will be inferred from the number of outputs the 
+model is set to produce. In following case a [`Dense`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense) layer with one `units` is added automatically at the end of 
+second `LSTM` layer.
 ```python
 from dl4seq import Model
 import pandas as pd
 
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
-          "LSTM_1": {'config': {'units': 32}},
-          "Dropout": {'config': {'rate': 0.3}},
-          "Dense": {'config': {'units': 1}}
+layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
+          "LSTM_1": 32
           }
 
 df = pd.read_csv("data/all_data_30min.csv")
@@ -64,13 +64,13 @@ If a layer does not receive any input arguments for its initialization, still an
 Activation functions can also be used as a separate layer.
 
 ```python
-layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
-          "dropout": {'config': {'rate': 0.3}},
-          "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
-          "maxpool1d": {'config': {'pool_size': 2}},
-          'flatten': {'config': {}}, # This layer does not receive any input arguments
-          'leakyrelu': {'config': {}},  # activation function can also be used as a separate layer
-          "Dense": {'config': {'units': 1}}
+layers = {"Conv1D_9": {'filters': 64, 'kernel_size': 2},
+          "dropout": 0.3,
+          "Conv1D_1": {'filters': 32, 'kernel_size': 2},
+          "maxpool1d": 2,
+          'flatten': {}, # This layer does not receive any input arguments
+          'leakyrelu': {},  # activation function can also be used as a separate layer
+          "Dense": 1
           }
 ```
 
@@ -79,26 +79,28 @@ layers = {"Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
 ### LSTM -> CNN based model
 
 ```python
-layers = {"LSTM": {'config': {'units': 64, 'return_sequences': True}},
-          "Conv1D_0": {'config': {'filters': 64, 'kernel_size': 2}},
-          "dropout": {'config': {'rate': 0.3}},
-          "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
-          "maxpool1d": {'config': {'pool_size': 2}},
-          'flatten': {'config': {}},
-          'leakyrelu': {'config': {}},
-          "Dense": {'config': {'units': 1}}
+layers = {"LSTM": {'units': 64, 'return_sequences': True},
+          "Conv1D_0": {'filters': 64, 'kernel_size': 2},
+          "dropout": 0.3,
+          "Conv1D_1": {'filters': 32, 'kernel_size': 2},
+          "maxpool1d": 2,
+          'flatten': {},
+          'leakyrelu': {},
+          "Dense": 1
           }
 ```
 <img src="imgs/lstm_cnn.png" width="500" height="600" />
 
 ### ConvLSTM based model
-
+dl4seq will infer input shape for general cases however it is better to explicitly define the [input layer](https://www.tensorflow.org/api_docs/python/tf/keras/Input)
+when the input is > 3d or the number of inputs are more than one.
 ```python
-layers = {'convlstm2d': {'config': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'}},
-          'flatten': {'config': {}},
-          'repeatvector': {'config': {'n': 1}},
-          'lstm':   {'config': {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 }},
-          'Dense': {'config': {'units': 1}}
+layers = {'Input': {'shape': (3, 1, 4, 8)},
+          'convlstm2d': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
+          'flatten': {},
+          'repeatvector': 1,
+          'lstm':   {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 },
+          'Dense': 1
           }
 ```
 <img src="imgs/convlstm.png" width="500" height="600" />
@@ -113,25 +115,25 @@ lookback = 15
 time_steps = lookback // sub_sequences
 layers = {
     "Input": {'config': {'shape': (None, time_steps, 10)}},
-    "TimeDistributed_0": {'config': {}},
-    'conv1d_0': {'config': {'filters': 64, 'kernel_size': 2}},
-    'LeakyRelu_0': {'config': {}},
-    "TimeDistributed_1": {'config': {}},
-    'conv1d_1': {'config': {'filters': 32, 'kernel_size': 2}},
-    'elu_1': {'config': {}},
-    "TimeDistributed_2": {'config': {}},
-    'conv1d_2': {'config': {'filters': 16, 'kernel_size': 2}},
-    'tanh_2': {'config': {}},
-    "TimeDistributed_3": {'config': {}},
-    "maxpool1d": {'config': {'pool_size': 2}},
-    "TimeDistributed_4": {'config': {}},
-    'flatten': {'config': {}},
-    'lstm_0':   {'config': {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
-               'name': 'lstm_0'}},
-    'Relu_1': {'config': {}},
-    'lstm_1':   {'config': {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'}},
-    'sigmoid_2': {'config': {}},
-    'Dense': {'config': {'units': 1}}
+    "TimeDistributed_0": {},
+    'conv1d_0': {'filters': 64, 'kernel_size': 2},
+    'LeakyRelu_0': {},
+    "TimeDistributed_1":{},
+    'conv1d_1': {'filters': 32, 'kernel_size': 2},
+    'elu_1': {},
+    "TimeDistributed_2": {},
+    'conv1d_2': {'filters': 16, 'kernel_size': 2},
+    'tanh_2': {},
+    "TimeDistributed_3": {},
+    "maxpool1d": {'pool_size': 2},
+    "TimeDistributed_4": {},
+    'flatten': {},
+    'lstm_0':   {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+               'name': 'lstm_0'},
+    'Relu_1': {},
+    'lstm_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
+    'sigmoid_2': {},
+    'Dense': 1
 }
 ```
 <img src="imgs/cnn_lstm.png" width="800" height="900" />
@@ -139,12 +141,12 @@ layers = {
 ### LSTM based auto-encoder
 ```python
 layers = {
-    'lstm_0': {'config': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4}},
-    "leakyrelu_0": {'config': {}},
-    'RepeatVector': {'config': {'n': 11}},
-    'lstm_1': {'config': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4}},
-    "relu_1": {'config': {}},
-    'Dense': {'config': {'units': 1}}
+    'lstm_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+    "leakyrelu_0": {},
+    'RepeatVector': 11,
+    'lstm_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+    "relu_1": {},
+    'Dense': 1
 }
 ```
 <img src="imgs/lstm_autoenc.png" width="500" height="700" />
@@ -154,15 +156,15 @@ You can use third party layers such as [`tcn`](https://github.com/philipperemy/k
 installed `tcn`, the layer along with its arguments can be used as following
 
 ```python
-layers = {"tcn": {'config': {'nb_filters': 64,
+layers = {"tcn": {'nb_filters': 64,
                   'kernel_size': 2,
                   'nb_stacks': 1,
                   'dilations': [1, 2, 4, 8, 16, 32],
                   'padding': 'causal',
                   'use_skip_connections': True,
                   'return_sequences': False,
-                  'dropout_rate': 0.0}},
-          'Dense': {'config': {'units': 1}}
+                  'dropout_rate': 0.0},
+          'Dense': 1
           }
 ```
 
@@ -170,8 +172,9 @@ layers = {"tcn": {'config': {'nb_filters': 64,
 
 ### Multiple Inputs
 In order to build more complex models, where a layer takes more than one inputs, you can specify the `inputs` key
-for the layer and specify which inputs the layer uses. The `value` of the `inputs` dictionary must be a `list` in this
-case whose members must be the names of the layers which must have been defined earlier.
+for the layer and specify which inputs the layer uses.  The `value` of the `inputs` dictionary must be a `list` in this
+case whose members must be the names of the layers which must have been defined earlier. The input/initializating 
+arguments in the layer must be enclosed in a `config` dictionary within the layer in such cases.
 
 ```python
 from dl4seq import Model
@@ -184,11 +187,11 @@ class MyModel(Model):
         return 
 
 
-layers = {"Input_0": {"config": {"shape": (5, 10), "name": "cont_inputs"}},
+layers = {"Input_0": {"shape": (5, 10), "name": "cont_inputs"},
           "lstm_0": {"config": { "units": 62,  "activation": "leakyrelu", "dropout": 0.4,  "recurrent_dropout": 0.4, "return_sequences": False,  "name": "lstm_0"},
                      "inputs": "cont_inputs"},
 
-          "Input_1": {"config": {"shape": 10, "name": "disc_inputs"}},
+          "Input_1": {"shape": 10, "name": "disc_inputs"},
           "Dense_0": {"config": {"units": 64,"activation": "leakyrelu", "name": "Dense_0"},
                       "inputs": "disc_inputs"},
           "flatten_0": {"config": {"name": "flatten_0" },
@@ -197,9 +200,9 @@ layers = {"Input_0": {"config": {"shape": (5, 10), "name": "cont_inputs"}},
           "Concat": {"config": {"name": "Concat" },
                      "inputs": ["lstm_0", "flatten_0"]},
 
-          "Dense_1": {"config": {"units": 16, "activation": "leakyrelu", "name": "Dense_1"}},
-          "Dropout": {"config": {"rate": 0.4, "name": "Dropout"}},
-          "Dense_2": {"config": {"units": 1, "name": "Dense_2"}}
+          "Dense_1": {"units": 16, "activation": "leakyrelu", "name": "Dense_1"},
+          "Dropout": 0.4,
+          "Dense_2": 1
         }
 ```
 
@@ -232,8 +235,7 @@ layers = {
     "Concat": {'config': {'name': 'MyConcat'},
             'inputs': ['MyDense', 'MyFlatten']},
 
-    "Dense": {'config': {'units':1},
-              'inputs': "MyConcat"}
+    "Dense": 1
 }
 ```
 
@@ -246,11 +248,8 @@ LSTM. In such cases we can make use of `call_args` as `key`. The value of `call_
 we can provide `keyword` arguments while calling a layer.
 
 ```python
-lookback = 5
-input_features = ['temp', 'pressure', 'volume']
-output_features = ['spped']
 layers ={
-    "Input": {'config': {'shape': (lookback, len(input_features)), 'name': "MyInputs"}},
+    "Input": {'config': {'shape': (15, 8), 'name': "MyInputs"}},
     "LSTM": {'config': {'units': 64, 'return_sequences': True, 'return_state': True, 'name': 'MyLSTM1'},
              'inputs': 'MyInputs',
              'outputs': ['junk', 'h_state', 'c_state']},
@@ -272,8 +271,7 @@ layers ={
     "Concat": {'config': {'name': 'MyConcat'},
             'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
 
-    "Dense": {'config': {'units':len(output_features)},
-              'inputs': "MyConcat"}
+    "Dense": 1
 }
 ```
 <img src="imgs/add_call_args.png" width="700" height="800" />
@@ -301,5 +299,9 @@ df = pd.read_csv('data/data.csv')
 model = Model.from_config(config_path=config_path, data=df)
 ```
 <img src="imgs/lambda.png" width="500" height="600" />
+
+You may notice reshaping of the outputs into 3d. This is done for a consistent
+output shape with time series prediction cases with multiple horizons. More on this
+[here]()
 
 For more examples see `examples`.
