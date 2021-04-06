@@ -69,7 +69,6 @@ def run_dl4seq(method):
                    param_space=dims,
                    dl4seq_args=dl4seq_args,
                    data=data,
-                   use_named_args=True,
                    acq_func='EI',  # Expected Improvement.
                    n_calls=12,
                    n_iter=12,
@@ -112,7 +111,6 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
     optimizer = HyperOpt(algorithm, objective_fn=fn, param_space=search_space,
                          backend=backend,
                          num_iterations=num_iterations,
-                         use_named_args=True,
                          opt_path=os.path.join(os.getcwd(), f'results\\test_{algorithm}_xgboost_{backend}'))
 
     optimizer.fit()
@@ -299,7 +297,6 @@ class TestHyperOpt(unittest.TestCase):
         opt = HyperOpt("bayes",
                        objective_fn=f,
                        param_space=dims,
-                       use_named_args=True,
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
                        # acq_optimizer='auto',
@@ -309,6 +306,7 @@ class TestHyperOpt(unittest.TestCase):
                        )
 
         opt.fit()
+        check_attrs(opt, 4)
         return
 
     def test_dl4seq_bayes(self):
@@ -333,7 +331,6 @@ class TestHyperOpt(unittest.TestCase):
                        param_space=dims,
                        dl4seq_args=dl4seq_args,
                        data=data,
-                       use_named_args=True,
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
                        # acq_optimizer='auto',
@@ -343,6 +340,7 @@ class TestHyperOpt(unittest.TestCase):
                        )
 
         opt.fit()
+        check_attrs(opt, 4)
         return
 
     def test_dl4seq_grid(self):
@@ -389,7 +387,7 @@ class TestHyperOpt(unittest.TestCase):
             'y': hp.uniform('y', -6, 6)
         }
 
-        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt', use_named_args=True,
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt',
                              max_evals=100)
         best = optimizer.fit()
         check_attrs(optimizer, 2)
@@ -443,7 +441,6 @@ class TestHyperOpt(unittest.TestCase):
             'learning_rate': hp.uniform('learning_rate', low=1e-5, high=0.1)
         }
         optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=5,
-                             use_named_args=True,
                              backend='hyperopt',
                              opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
 
@@ -468,7 +465,6 @@ class TestHyperOpt(unittest.TestCase):
                                      },
                        data =data,
                        backend='hyperopt',
-                       use_named_args =True,
                        num_iterations =5
                        )
         opt.fit()
@@ -491,7 +487,6 @@ class TestHyperOpt(unittest.TestCase):
                                      },
                        data =data,
                        backend='hyperopt',
-                       use_named_args =True,
                        num_iterations =5
                        )
         opt.fit()

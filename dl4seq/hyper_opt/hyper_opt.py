@@ -1,5 +1,6 @@
 import os
 import json
+import inspect
 import traceback
 from typing import Union
 
@@ -58,7 +59,7 @@ try:
 except ModuleNotFoundError:
     plot_param_importances = None
 
-# TODO RayTune libraries under the hood
+# TODO RayTune libraries under the hood https://docs.ray.io/en/master/tune/api_docs/suggestion.html#summary
 # TODO add generic algorithm, deap/pygad
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
 
@@ -133,9 +134,7 @@ class HyperOpt(object):
                   passed to initialize dl4seq's Model class. The choice of kwargs depends whether you are using this class
                   For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
                   For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
-                  For scenario 2, f your custom objective_fn/function accepts named arguments, then an argument `use_named_args`
-                  must be passed as True. This must also be passed if you are using in-built `dl4seq_model` as objective
-                  function.
+
 
 
     Attributes
@@ -166,8 +165,7 @@ class HyperOpt(object):
     >>>from dl4seq import Model
     >>>from dl4seq.hyper_opt import HyperOpt
     >>>from dl4seq.data import load_u1
-    # We have to define an objective function which will take keyword arguments. If the objective
-    # function does not take keyword arguments, make sure to set use_named_args=False
+    # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>outputs = ['target']
@@ -195,42 +193,36 @@ class HyperOpt(object):
     # Using TPE with optuna
     >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
-    ...                     num_iterations=num_iterations,
-    ...                     use_named_args=True)
+    ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
     # Using cmaes with optuna
     >>>optimizer = HyperOpt('cmaes', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
-    ...                     num_iterations=num_iterations,
-    ...                     use_named_args=True)
+    ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
 
     # Using random with optuna, we can also try hyperopt and sklearn as backend for random algorithm
     >>>optimizer = HyperOpt('random', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
-    ...                     num_iterations=num_iterations,
-    ...                     use_named_args=True)
+    ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
 
     # Using TPE of hyperopt
     >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='hyperopt',
-    ...                     num_iterations=num_iterations,
-    ...                     use_named_args=True)
+    ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
 
     Using Baysian with gaussian processes
     >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='skopt',
-    ...                     num_iterations=num_iterations,
-    ...                     use_named_args=True)
+    ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
 
     Using grid with sklearn
     >>>optimizer = HyperOpt('grid', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='sklearn',
-    ...                     num_iterations=num_iterations,
-    ...                     use_named_args=True)
+    ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
     # Backward compatability
     The following shows some tweaks with hyperopt to make its working compatible with its underlying libraries.
@@ -242,7 +234,6 @@ class HyperOpt(object):
     ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
     ...                        'outputs': ['target']},
     ...           data=data,
-    ...           use_named_args=True,
     ...           )
     >>>opt.fit()
 
@@ -254,7 +245,6 @@ class HyperOpt(object):
     ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
     ...                        'outputs': ['target']},
     ...           data=data,
-    ...           use_named_args=True,
     ...           n_iter=100
     ...           )
     >>>sr = opt.fit()
@@ -266,7 +256,6 @@ class HyperOpt(object):
     ...                        Integer(low=3, high=6, name='max_depth')],
     ...           dl4seq_args={'model': 'xgboostRegressor'},
     ...               data=data,
-    ...               use_named_args=True,
     ...               n_calls=100,
     ...               x0=[1000, 3],
     ...               n_random_starts=3,  # the number of random initialization points
@@ -301,7 +290,6 @@ class HyperOpt(object):
     ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
     ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
     ...                        ],
-    ...           use_named_args=True,
     ...           acq_func='EI',  # Expected Improvement.
     ...           n_calls=50,     #number of iterations
     ...           x0=[32, "relu"],  # inital value of optimizing parameters
@@ -339,8 +327,7 @@ class HyperOpt(object):
         self.backend=backend
         self.param_space=param_space
         self.original_space = param_space       # todo self.space and self.param_space should be combined.
-        self.dl4seq_args = None         # todo, this should be inferred.
-        self.use_named_args = False
+        self.dl4seq_args = None
         self.title = self.algorithm
         self.results = {}  # internally stored results
         self.gpmin_results = None  #
@@ -422,8 +409,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def check_args(self, **kwargs):
         kwargs = kwargs.copy()
-        if "use_named_args" in kwargs:
-            self.use_named_args = kwargs.pop("use_named_args")
 
         self.use_dl4seq_model = False
         if "dl4seq_args" in kwargs:
@@ -701,6 +686,33 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.gpmin_args['n_calls']
         return self.gpmin_args['n_iter']
 
+    @property
+    def use_named_args(self):
+        if self.use_dl4seq_model:
+            return True
+        argspec = inspect.getfullargspec(self.objective_fn)
+        if argspec.varkw is None:
+            return False
+        elif isinstance(argspec.varkw, str):
+            return True
+        else:
+            raise NotImplementedError
+
+    @property
+    def opt_path(self):
+        return self._opt_path
+
+    @opt_path.setter
+    def opt_path(self, path):
+        if path is None:
+            path = os.path.join(os.getcwd(), "results\\" + self.title)
+            if not os.path.exists(path):
+                os.makedirs(path)
+        elif not os.path.exists(path):
+            os.makedirs(path)
+
+        self._opt_path = path
+
     def best_paras(self, as_list=False)->Union[list, dict]:
         # returns best parameters either as dictionary or as list
         if self.use_skopt_gpmin:
@@ -724,21 +736,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if as_list:
             return list(paras.values())
         return paras
-
-    @property
-    def opt_path(self):
-        return self._opt_path
-
-    @opt_path.setter
-    def opt_path(self, path):
-        if path is None:
-            path = os.path.join(os.getcwd(), "results\\" + self.title)
-            if not os.path.exists(path):
-                os.makedirs(path)
-        elif not os.path.exists(path):
-            os.makedirs(path)
-
-        self._opt_path = path
 
     def dl4seq_model(self,
                      pp=False,
