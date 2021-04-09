@@ -341,7 +341,19 @@ class Visualizations(object):
         self.save_or_show(save=save, fname=name, close=False, where=where)
         return
 
-    def regplot_using_searborn(self, true, pred, save, name, where='plots', **kwargs):
+    def regplot_using_searborn(self, true, pred, save, name=None, where='plots', **kwargs):
+        """
+        Following kwargs are allowed:
+            figsize: tuple
+            colorbar: for plt.colorbar
+            cmap: for plt.scatter
+            s: for plt.scatter
+        >>>from dl4seq.utils import Visualizations
+        >>>import numpy as np
+        >>>true = np.random.random(100)
+        >>>pred = np.random.random(100)
+        >>>Visualizations().regplot_using_searborn(a,b,save=False)
+        """
         # https://seaborn.pydata.org/generated/seaborn.regplot.html
         if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
             true = true.values.reshape(-1,)
@@ -368,7 +380,7 @@ class Visualizations(object):
         plt.xlabel('Observed', fontsize=14)
         plt.ylabel('Predicted', fontsize=14)
 
-        self.save_or_show(save=save, fname=name + "_reg", close=False, where=where)
+        self.save_or_show(save=save, fname=f"{name}_reg", close=False, where=where)
         return
 
     def plot_loss(self, history: dict, name="loss_curve"):
@@ -607,11 +619,11 @@ class Visualizations(object):
         for k in _kwargs.keys():
             if k in kwargs:
                 _kwargs[k] = kwargs.pop(k)
-
-        if mv_total == 0:
+        if mv_total < 6:
             print("No missing values found in the dataset.")
         else:
             # Create figure and axes
+            plt.close('all')
             fig = plt.figure(figsize=_kwargs['figsize'])
             gs = fig.add_gridspec(nrows=1, ncols=1, left=0.1, wspace=0.05)
             ax1 = fig.add_subplot(gs[:1, :5])
@@ -621,9 +633,9 @@ class Visualizations(object):
             ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
             ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)
             ax1.grid(linestyle=":", linewidth=1)
-            ax1.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
             ax1.set_yticklabels(ax1.get_yticks(),
                                 fontsize="18")
+            ax1.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1f'))
             ax1.set_ylabel("Missing Percentage", fontsize=_kwargs['ytick_labels_fs'])
             ax1.set_xticklabels(
                 ax1.get_xticklabels(),
@@ -639,7 +651,7 @@ class Visualizations(object):
                 height = rect.get_height()
                 ax1.text(
                     0.1 + rect.get_x() + rect.get_width() / 2,
-                    height + 0.5,
+                    height + height*0.02,
                     label,
                     ha="center",
                     va="bottom",
@@ -647,7 +659,7 @@ class Visualizations(object):
                     alpha=0.5,
                     fontsize="11",
                 )
-        self.save_or_show(save=save, fname=fname+'_missing_vals', where='data', dpi=500)
+            self.save_or_show(save=save, fname=fname+'_missing_vals', where='data', dpi=500)
         return
 
     def plot_histograms(self, save=True, cols=None, **kwargs):
@@ -743,8 +755,8 @@ class Visualizations(object):
 
         vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
         vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
-
-        fig, ax = plt.subplots(figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 10 + len(cols)*0.1)))
+        # width x height
+        fig, ax = plt.subplots(figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 9 + len(cols)*0.1)))
 
         _kwargs = dict()
         _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
