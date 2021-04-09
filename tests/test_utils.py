@@ -1,4 +1,5 @@
 import os
+import random
 import warnings
 import unittest
 from os.path import abspath
@@ -18,6 +19,7 @@ from dl4seq.utils.utils import split_by_indices, train_val_split, ts_features, p
 
 seed = 313
 np.random.seed(seed)
+random.seed(seed)
 
 file_path = abspath(getsourcefile(lambda:0))
 dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
@@ -710,6 +712,15 @@ class TestUtils(unittest.TestCase):
         x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2,
                                        forecast_len=4)
         self.assertEqual(label.sum(), 0.0)
+        return
+
+    def test_prepare_data_with_mask(self):
+        data = np.arange(int(50 * 5)).reshape(-1, 50).transpose()
+        idx = random.choices(np.arange(49), k=20)
+        data[idx, -1] = -99
+        x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=-99)
+        self.assertEqual(len(x),  len(y))
+        self.assertGreater(len(data)-len(idx) + 4, len(x))
         return
 
 

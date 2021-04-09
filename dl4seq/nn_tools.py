@@ -322,6 +322,7 @@ def check_act_fn(config: dict):
 
     return config, activation
 
+
 def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
     """ gets the additional call arguments for a layer. It is supposed that the call arguments are actually tensors/layers
     that have been created so far in the model including input layer. The call_args can be a list of inputs as well."""

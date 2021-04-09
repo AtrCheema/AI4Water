@@ -737,7 +737,8 @@ def prepare_data(
         forecast_step:int=0,
         forecast_len:int=1,
         known_future_inputs:bool=False,
-        output_steps=1
+        output_steps=1,
+        mask:Union[int, np.ndarray]=None,
 ):
     """
     converts a numpy nd array into a supervised machine learning problem.
@@ -758,13 +759,20 @@ def prepare_data(
     :param known_future_inputs: bool, Only useful if `forecast_len`>1. If True, this means, we know and use
                                 'future inputs' while making predictions at t>0
     :param output_steps: step size in outputs. If =2, it means we want to predict every second value from the targets
+    :param mask: int, 1d array. If int, then the examples with these values in the output will be skipped.
+                 If array then it must be a boolean mask indicating which examples to include/exclude.
+                 The length of mask should be equal to the number of generated examples. The number of
+                 generated examples is difficult to prognose because it depend upon lookback, input_steps,
+                 and forecast_step. Thus it is better to provide an integer indicating which values in outputs
+                 are to be considered as invalid. Default is None, which indicates all the generated examples
+                 will be returned.
 
     Returns:
       x: numpy array of shape (examples, lookback, ins) consisting of input examples
       prev_y: numpy array consisting of previous outputs
       y: numpy array consisting of target values
 
-    Given following sample consisting of input/output pairs
+    Given following example consisting of input/output pairs
   input1, input2, output1, output2, output 3
     1,     11,     21,       31,     41
     2,     12,     22,       32,     42
@@ -912,18 +920,18 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     if known_future_inputs:
         lookback_steps = lookback_steps + forecast_len
         assert forecast_len>1, f"""
-known_futre_inputs should be True only when making predictions at multiple 
-horizons i.e. when forecast length/number of horizons to predict is > 1.
-known_future_inputs: {known_future_inputs}
-forecast_len: {forecast_len}"""
+            known_futre_inputs should be True only when making predictions at multiple 
+            horizons i.e. when forecast length/number of horizons to predict is > 1.
+            known_future_inputs: {known_future_inputs}
+            forecast_len: {forecast_len}"""
+
+    examples = len(data)
 
     x = []
     prev_y = []
     y = []
 
-    samples = len(data)
-
-    for i in range(samples - lookback_steps * input_steps + 1 - forecast_step - forecast_len + 1):
+    for i in range(examples - lookback_steps * input_steps + 1 - forecast_step - forecast_len + 1):
         stx, enx = i, i + lookback_steps * input_steps
         x_example = data[stx:enx:input_steps, 0:features - num_outputs]
 
@@ -938,11 +946,25 @@ forecast_len: {forecast_len}"""
         prev_y.append(np.array(y_data))
         y.append(np.array(target))
 
-    #x = np.array([np.array(i, dtype=np.float32) for i in x], dtype=np.float32)
     x = np.stack(x)
     prev_y = np.array([np.array(i, dtype=np.float32) for i in prev_y], dtype=np.float32)
     # transpose because we want labels to be of shape (examples, outs, forecast_length)
     y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
+
+
+    if mask is not None:
+        if isinstance(mask, np.ndarray):
+            assert mask.ndim == 1
+            assert len(x) == len(mask), f"Number of generated examples are {len(x)} but the length of mask is {len(mask)}"
+        else:
+            assert isinstance(mask, int), f"""
+                    mask must be either 1d array or integer but it is of type {mask.__class__.__name__}"""
+            mask = y!=mask
+            mask = np.array([all(i) for i in mask])
+
+        x = x[mask]
+        prev_y = prev_y[mask]
+        y = y[mask]
 
     return x, prev_y, y
 

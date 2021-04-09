@@ -1099,8 +1099,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 fig = plot_contour(self.study)
                 plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),auto_open=False)
 
-
-
                 fig = plot_edf(self.study)
                 plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'),auto_open=False)
 
