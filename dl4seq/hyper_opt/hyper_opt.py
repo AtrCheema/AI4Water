@@ -1,8 +1,10 @@
 import os
 import json
 import inspect
+import warnings
 import traceback
 from typing import Union
+from collections import OrderedDict
 
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.model_selection import ParameterGrid, ParameterSampler
@@ -44,6 +46,7 @@ try:
     from optuna.visualization import plot_parallel_coordinate, plot_contour, plot_slice
 except ImportError:
     optuna, plot_parallel_coordinate, plot_contour, plot_edf, = None, None, None, None
+    Study = None
 
 from dl4seq import Model
 from dl4seq.utils.TSErrors import FindErrors
@@ -62,6 +65,7 @@ except ModuleNotFoundError:
 # TODO RayTune libraries under the hood https://docs.ray.io/en/master/tune/api_docs/suggestion.html#summary
 # TODO add generic algorithm, deap/pygad
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
+# todo loading gpmin_results is not consistent.
 
 
 ALGORITHMS = {
@@ -564,7 +568,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 _space = skopt_space_from_hp_space(self.original_space)
                 _space = {_space.name: _space}
             elif isinstance(self.original_space, dict):
-                _space = {}
+                _space = OrderedDict()
                 for k, v in self.original_space.items():
                     if isinstance(v, Apply) or 'rv_frozen' in v.__class__.__name__:
                         _space[k] = skopt_space_from_hp_space(v)
@@ -574,10 +578,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         raise NotImplementedError
             elif isinstance(self.original_space, list):
                 if  all([isinstance(s, Dimension) for s in self.original_space]):
-                    _space = {s.name:s for s in self.original_space}
+                    _space = OrderedDict({s.name:s for s in self.original_space})
                 elif all([isinstance(s, Apply) for s in self.original_space]):
                     d = [skopt_space_from_hp_space(v) for v in self.original_space]
-                    _space = {s.name:s for s in d}
+                    _space = OrderedDict({s.name:s for s in d})
                 else:
                     raise NotImplementedError
             else:
@@ -585,7 +589,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         elif self.backend == 'optuna':
             if isinstance(self.original_space, list):
                 if all([isinstance(s, Dimension) for s in self.original_space]):
-                    _space = {s.name: s for s in self.original_space}
+                    _space = OrderedDict({s.name: s for s in self.original_space})
                 else:
                     raise NotImplementedError
             else:
@@ -597,7 +601,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 _space = {sk_space.name: sk_space}
 
             elif all([isinstance(s, Dimension) for s in sk_space]):
-                _space = {}
+                _space = OrderedDict()
                 for s in sk_space:
                     _space[s.name] = s
 
@@ -606,11 +610,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         elif self.backend == 'sklearn':
             if isinstance(self.original_space, list):
                 if all([isinstance(s, Dimension) for s in self.original_space]):
-                    _space = {s.name:s for s in self.original_space}
+                    _space = OrderedDict({s.name:s for s in self.original_space})
                 else:
                     raise NotImplementedError
             elif isinstance(self.original_space, dict):
-                _space = {}
+                _space = OrderedDict()
                 for k, v in self.original_space.items():
                     if isinstance(v, list):
                         s = space_from_list(v, k)
@@ -847,6 +851,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             else:
                 raise ValueError(traceback.print_stack())
 
+        # the `space` in search_results may not be in same order as originally provided.
+        space = search_result['space']
+        ordered_sapce = OrderedDict()
+        for k in self.space().keys():
+            ordered_sapce[k] = space[k]
+        search_result['space'] = ordered_sapce
+
         self.gpmin_results = search_result
 
         if len(self.results) < 1:
@@ -1002,13 +1013,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def xy_of_iterations(self)->dict:
 
+        assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
+
         if self.backend == "optuna":
             return {trial.value:trial.params for trial in self.study.trials}
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
         elif self.backend == 'skopt':
             # adding idx because sometimes the difference between two func_vals is negligible
-            return {k + idx:self.to_kw(v) for idx, k, v in zip(range(len(self.gpmin_results['func_vals'])), self.gpmin_results['func_vals'], self.gpmin_results['x_iters'])}
+            return {float(f'{k}_{idx}'):self.to_kw(v) for idx, k, v in zip(range(len(self.gpmin_results['func_vals'])), self.gpmin_results['func_vals'], self.gpmin_results['x_iters'])}
         else:
             # for sklearn based
             return self.results
@@ -1074,14 +1087,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                  save=True
                                  )
 
+        self.plot_importance(raise_error=False)
+
         if plotly is not None:
-
-            importances, fig = plot_param_importances(self.optuna_study())
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parameter_importance.html'),
-                                auto_open=False)
-
-            with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-                json.dump(importances, fp, indent=4, sort_keys=True)
 
             if self.backend == 'optuna':
 
@@ -1096,6 +1104,24 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 fig = plot_edf(self.study)
                 plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'),auto_open=False)
 
+        return
+
+    def plot_importance(self, raise_error=True):
+
+        msg = "You must optuna and plotly installed to get hyper-parameter importance."
+        if plotly is None or optuna is None:
+            if raise_error:
+                raise ModuleNotFoundError(msg)
+            else:
+                warnings.warn(msg)
+
+        else:
+            importances, fig = plot_param_importances(self.optuna_study())
+            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parameter_importance.html'),
+                                auto_open=False)
+
+            with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
+                json.dump(importances, fp, indent=4, sort_keys=True)
         return
 
     def to_kw(self, x):
@@ -1144,10 +1170,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @classmethod
     def from_gp_parameters(cls, fpath:str, objective_fn):
         """loads results saved from bayesian optimization"""
+        opt_path = os.path.dirname(fpath)
         with open(fpath, 'r') as fp:
             gpmin_results = json.load(fp)
-        x_iters = gpmin_results['x_iters']
-        func_vals = gpmin_results['func_vals']
         space = gpmin_results['space']
         spaces = []
         for sp_name, sp_paras in space.items():
@@ -1160,10 +1185,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             else:
                 raise NotImplementedError
 
-        cls.gpmin_results = gpmin_results
+        optimizer = cls('bayes',
+                        param_space=spaces,
+                        objective_fn=objective_fn,
+                        opt_path=opt_path,
+                        backend='skopt')
+        optimizer.gpmin_results = gpmin_results
 
-        return cls('bayes', param_space=spaces, objective_fn=objective_fn,
-                   backend='skopt')
+        return optimizer
 
     def pre_calculated_results(self, resutls, from_gp_parameters=True):
         """Loads the pre-calculated results i.e. x and y values which

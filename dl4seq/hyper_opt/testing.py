@@ -1,3 +1,31 @@
+# This file contains code mostly or 90% from optuna library. The reason to rewrite this code is because
+# I was unable to create an Optuna Study instance without `Storage` attribute. But it appears that
+# we can calculate parameter importance without Storage attribute from Study instance. Thus
+# the importance is calculated from Study instance without it having Storage attribute.
+# The optuna library comes with following MIT licence.
+"""
+MIT License
+
+Copyright (c) 2018 Preferred Networks, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 from collections import OrderedDict
 from typing import Callable
 from typing import Dict
@@ -6,16 +34,12 @@ from typing import Optional
 
 import numpy
 
-# import optuna
-# from optuna.distributions import BaseDistribution
-# #from optuna.importance._base import _get_distributions
 from optuna.distributions import CategoricalDistribution
 from optuna.distributions import DiscreteUniformDistribution
 from optuna.distributions import IntLogUniformDistribution
 from optuna.distributions import IntUniformDistribution
 from optuna.distributions import LogUniformDistribution
 from optuna.distributions import UniformDistribution
-#from optuna.importance._base import BaseImportanceEvaluator
 from optuna.logging import get_logger
 from optuna._transform import _SearchSpaceTransform
 from optuna.study import Study
@@ -45,9 +69,12 @@ _distribution_colors = {
 }
 
 def _get_distributions(study, params):
+    # based on supposition that get_distributions only returns an ordered dictionary and requiring `storage` attribute
+    # of study is redundant
     assert params is None
     trial = study.trials[0]
     return OrderedDict(trial.distributions)
+
 
 class ImportanceEvaluator(FanovaImportanceEvaluator):
 
@@ -124,20 +151,6 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
 
         return sorted_importances
 
-
-
-# def get_param_importances(
-#     study: Study,
-#     *,
-#     evaluator  = None,
-#     params: Optional[List[str]] = None,
-#     target: Optional[Callable[[FrozenTrial], float]] = None,
-# ) -> Dict[str, float]:
-#
-#     if evaluator is None:
-#         evaluator = ImportanceEvaluator()
-#
-#     return evaluator.evaluate(study, params=params, target=target)
 
 def plot_param_importances(
     study: Study,

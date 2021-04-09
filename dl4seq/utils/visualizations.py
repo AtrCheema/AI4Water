@@ -228,7 +228,7 @@ class Visualizations(object):
     def __init__(self, data=None, config: dict=None, path=None, dpi=300, in_cols=None, out_cols=None):
         self.config = config
         self.data=data
-        self.path = path
+        self.path = os.getcwd() if path is None else path
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
@@ -341,7 +341,7 @@ class Visualizations(object):
         self.save_or_show(save=save, fname=name, close=False, where=where)
         return
 
-    def regplot_using_searborn(self, true, pred, save, name=None, where='plots', **kwargs):
+    def regplot_using_searborn(self, true, pred, save=True, name=None, where='plots', **kwargs):
         """
         Following kwargs are allowed:
             figsize: tuple
@@ -352,7 +352,7 @@ class Visualizations(object):
         >>>import numpy as np
         >>>true = np.random.random(100)
         >>>pred = np.random.random(100)
-        >>>Visualizations().regplot_using_searborn(a,b,save=False)
+        >>>Visualizations().regplot_using_searborn(true,pred,save=False)
         """
         # https://seaborn.pydata.org/generated/seaborn.regplot.html
         if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
