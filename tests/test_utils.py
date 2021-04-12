@@ -723,6 +723,15 @@ class TestUtils(unittest.TestCase):
         self.assertGreater(len(data)-len(idx) + 4, len(x))
         return
 
+    def test_prepare_data_with_mask1(self):
+        data = np.arange(int(50 * 5), dtype=np.float32).reshape(-1, 50).transpose()
+        idx = random.choices(np.arange(49), k=20)
+        data[idx, -1] = np.nan
+        x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=np.nan)
+        self.assertEqual(len(x), len(y))
+        self.assertEqual(len(x), 33)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

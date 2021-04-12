@@ -2,6 +2,7 @@ import json
 import os
 import math
 import time
+import pprint
 import random
 import warnings
 from types import MethodType
@@ -822,10 +823,13 @@ class Model(NN, Plots):
 
         return interval_length
 
-    def train_data(self, data=None, data_keys=None, **kwargs):
+    def train_data(self, data=None, data_keys=None, use_split_data=False, **kwargs):
         """ prepare data on which to train the NN.
         It is possible that self.data is dictionary but self.ins and self.outs are not dictionaries.
         This means same in_cols and out_cols exist in all dataframes of self.data.
+        use_split_data: bool, if data is a dictionary then if we want x,y as dictionary as well, then
+                        this argument can be set to True. In such a case, x and prev_y and y will
+                        be dictionaries of arrays.
         """
 
         # For cases we don't want to use any of data-preprocessing utils,
@@ -841,6 +845,9 @@ class Model(NN, Plots):
         else:
             # use all the keys unless the user has requested for some
             data_keys = self.data.keys() if isinstance(self.data, dict) else None
+        if use_split_data:
+            assert isinstance(self.data, dict)
+            assert isinstance(data_keys, list)
 
         transformation = self.config['transformation']
         if isinstance(self.data, dict):
@@ -859,7 +866,7 @@ class Model(NN, Plots):
                 if _label.sum() != 0.0:
                     label[k] = _label
 
-            if self.num_input_layers == 1:
+            if self.num_input_layers == 1 and not use_split_data:
                 # tile all the arrays in x and label
                 x = np.concatenate(list(x.values()))
                 prev_y = np.concatenate(list(prev_y.values()))
@@ -870,7 +877,7 @@ class Model(NN, Plots):
 
         x, prev_y, label = self.check_batches(x, prev_y, label)
 
-        if isinstance(label, dict):
+        if isinstance(label, dict) and not use_split_data:
             assert len(self._model.outputs) == len(label)
             if len(label) == 1:
                 label = list(label.values())[0]
@@ -1550,7 +1557,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 nan_idx = np.isnan(label_y) if outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
                 # nan_idx_t = nan_idx[self.lookback - 1:]
                 # non_nan_idx = ~nan_idx_t.values
-                non_nan_idx = ~nan_idx.reshape(-1, )
+                non_nan_idx = np.array([all(i.reshape(-1,)) for i in np.invert(nan_idx)])
                 label_y = label_y[non_nan_idx]
                 input_x = input_x[non_nan_idx]
                 input_y = input_y[non_nan_idx]
@@ -2176,7 +2183,8 @@ def print_something(something, prefix=''):
     elif isinstance(something, list):
         print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
     elif isinstance(something, dict):
-        print(f"{prefix} shape: ", [thing.shape for thing in something.values() if isinstance(thing, np.ndarray)])
+        print(f"{prefix} shape: ")
+        pprint.pprint({k:v.shape for k,v in something.items()}, width=40)
 
 
 def maybe_three_outputs(data, num_outputs=2):

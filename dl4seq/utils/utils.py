@@ -738,7 +738,7 @@ def prepare_data(
         forecast_len:int=1,
         known_future_inputs:bool=False,
         output_steps=1,
-        mask:Union[int, np.ndarray]=None,
+        mask:Union[int, float, np.ndarray]=None,
 ):
     """
     converts a numpy nd array into a supervised machine learning problem.
@@ -759,7 +759,7 @@ def prepare_data(
     :param known_future_inputs: bool, Only useful if `forecast_len`>1. If True, this means, we know and use
                                 'future inputs' while making predictions at t>0
     :param output_steps: step size in outputs. If =2, it means we want to predict every second value from the targets
-    :param mask: int, 1d array. If int, then the examples with these values in the output will be skipped.
+    :param mask: int, np.nan, 1d array. If int, then the examples with these values in the output will be skipped.
                  If array then it must be a boolean mask indicating which examples to include/exclude.
                  The length of mask should be equal to the number of generated examples. The number of
                  generated examples is difficult to prognose because it depend upon lookback, input_steps,
@@ -956,11 +956,14 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
         if isinstance(mask, np.ndarray):
             assert mask.ndim == 1
             assert len(x) == len(mask), f"Number of generated examples are {len(x)} but the length of mask is {len(mask)}"
+        elif isinstance(mask, float) and np.isnan(mask):
+            mask = np.invert(np.isnan(y))
+            mask = np.array([all(i.reshape(-1,)) for i in mask])
         else:
             assert isinstance(mask, int), f"""
-                    mask must be either 1d array or integer but it is of type {mask.__class__.__name__}"""
+                    Invalid mask identifier given of type: {mask.__class__.__name__}"""
             mask = y!=mask
-            mask = np.array([all(i) for i in mask])
+            mask = np.array([all(i.reshape(-1,)) for i in mask])
 
         x = x[mask]
         prev_y = prev_y[mask]
