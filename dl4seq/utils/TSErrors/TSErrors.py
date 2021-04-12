@@ -1,6 +1,6 @@
 from math import sqrt
 from scipy.special import xlogy
-from scipy.stats import gmean
+from scipy.stats import gmean, kendalltau
 import numpy as np
 import warnings
 import json
@@ -599,6 +599,16 @@ class FindErrors(object):
         d2[np.isnan(d2)] = 0
         d = 0.5 * sum(d1 + d2)
         return d
+
+    def kendaull_tau(self, return_p=False):
+        """Kendall's tau
+        https://machinelearningmastery.com/how-to-calculate-nonparametric-rank-correlation-in-python/
+        used in https://www.jmlr.org/papers/volume20/18-444/18-444.pdf
+        """
+        coef, p = kendalltau(self.true, self.predicted)
+        if return_p:
+            return coef, p
+        return p
 
     def kge(self, return_all=False):
         """
