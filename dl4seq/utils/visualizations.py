@@ -313,7 +313,9 @@ class Visualizations(object):
             # color:
         """
 
-        self.regplot_using_searborn(true, predicted, save=save, name=name, where=where)
+        regplot(true, predicted, save=save, name=name, where=where)
+        self.save_or_show(save=save, fname=f"{name}_reg", close=False, where=where)
+
         plt.close('all')
         mpl.rcParams.update(mpl.rcParamsDefault)
 
@@ -339,48 +341,6 @@ class Visualizations(object):
         plt.xlabel("Time", fontsize=18)
 
         self.save_or_show(save=save, fname=name, close=False, where=where)
-        return
-
-    def regplot_using_searborn(self, true, pred, save=True, name=None, where='plots', **kwargs):
-        """
-        Following kwargs are allowed:
-            figsize: tuple
-            colorbar: for plt.colorbar
-            cmap: for plt.scatter
-            s: for plt.scatter
-        >>>from dl4seq.utils import Visualizations
-        >>>import numpy as np
-        >>>true = np.random.random(100)
-        >>>pred = np.random.random(100)
-        >>>Visualizations().regplot_using_searborn(true,pred,save=False)
-        """
-        # https://seaborn.pydata.org/generated/seaborn.regplot.html
-        if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
-            true = true.values.reshape(-1,)
-        if any([isinstance(pred, _type) for _type in [pd.DataFrame, pd.Series]]):
-            pred = pred.values.reshape(-1,)
-
-        plt.close('all')
-
-        s = kwargs.get('s', 20)
-        cmap = kwargs.get('cmap', 'winter')  # https://matplotlib.org/stable/tutorials/colors/colormaps.html
-        figsize = kwargs.get('figsize', (8, 5.5))
-
-        plt.figure(figsize=figsize)
-        points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
-
-        if kwargs.get('annotate', True):
-            plt.annotate(f'$R^{2}$: {round(FindErrors(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
-                     horizontalalignment='right', verticalalignment='top', fontsize=16)
-
-        if kwargs.get('colorbar', False):
-            plt.colorbar(points)
-
-        sns.regplot(x=true, y=pred, scatter=False, color=".1")
-        plt.xlabel('Observed', fontsize=14)
-        plt.ylabel('Predicted', fontsize=14)
-
-        self.save_or_show(save=save, fname=f"{name}_reg", close=False, where=where)
         return
 
     def plot_loss(self, history: dict, name="loss_curve"):
@@ -528,13 +488,19 @@ class Visualizations(object):
     ):
         """
         plots a heat map of a dataframe. Helpful to show where missing values are located in a dataframe.
-        :param data:
-        :param cols:
+        :param data: pd.DataFrame,
+        :param cols: list, columns from data to be used.
         :param spine_color:
-        :param save:
-        :param title:
-        :param title_fs:
-        :param fname:
+        :param save: bool
+        :param title: str, title of the plot
+        :param title_fs: int, font size of title
+        :param fname: str, name of saved file, only valid if save is True.
+        :param kwargs: following kwargs are allowed:
+            xtick_labels_fs, 12
+            ytick_labels_fs, 20
+            figsize: tuple
+            any additional keyword argument will be passed to sns.heatmap
+
         :return:
         """
         if cols is None:
@@ -548,12 +514,23 @@ class Visualizations(object):
             if k in kwargs:
                 _kwargs[k] = kwargs.pop(k)
 
+        show_time_on_yaxis = False
+        if isinstance(data.index, pd.DatetimeIndex):
+            show_time_on_yaxis = True
+
         fig, axis = plt.subplots(figsize=_kwargs['figsize'])
         # ax2 - Heatmap
-        sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=axis)
+        sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=axis, **kwargs)
+
         axis.set_yticks(axis.get_yticks()[0::5].astype('int'))
 
-        axis.set_yticklabels(axis.get_yticks(),
+        if show_time_on_yaxis:
+            index = pd.date_range(data.index[0], data.index[-1], periods=len(axis.get_yticks()))
+            # formatting y-ticklabels
+            index = [d.strftime('%Y-%m-%d') for d in index]
+            axis.set_yticklabels(index, fontsize="18")
+        else:
+            axis.set_yticklabels(axis.get_yticks(),
                             fontsize=_kwargs['ytick_labels_fs'])
         axis.set_xticklabels(
             axis.get_xticklabels(),
@@ -603,7 +580,9 @@ class Visualizations(object):
         """
         kwargs:
             xtick_labels_fs
+            ytick_labels_fs
             figsize
+            any other keyword argument will be passed to sns.barplot()
         """
         if cols is None:
             cols = data.columns
@@ -630,13 +609,15 @@ class Visualizations(object):
 
             # ax1 - Barplot
             ax1 = sns.barplot(x=list(data.columns), y=np.round(mv_cols_ratio * 100, 2), ax=ax1, **kwargs)
+
             ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
             ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)
             ax1.grid(linestyle=":", linewidth=1)
-            ax1.set_yticklabels(ax1.get_yticks(),
-                                fontsize="18")
+
+            ax1.set_yticklabels(ax1.get_yticks(), fontsize="18")
             ax1.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1f'))
             ax1.set_ylabel("Missing Percentage", fontsize=_kwargs['ytick_labels_fs'])
+
             ax1.set_xticklabels(
                 ax1.get_xticklabels(),
                 horizontalalignment="center",
@@ -1024,4 +1005,51 @@ def validate_freq(df, freq):
     assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
     assert freq in ["weekly", "monthly",
                     "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
+    return
+
+
+def regplot(true, pred, **kwargs):
+    """
+    :param true: array like
+    :param pred, array like
+    Following kwargs are allowed:
+        figsize: tuple
+        colorbar: for plt.colorbar
+        cmap: for plt.scatter
+        s: for plt.scatter
+    :Note, This function will neither show nor saves the plot. The user has to manually
+           do it after calling this function as shown below.
+    >>>from dl4seq.utils.visualizations import regplot
+    >>>import numpy as np
+    >>>true = np.random.random(100)
+    >>>pred = np.random.random(100)
+    >>>regplot(true, pred)
+    >>>plt.show()
+    """
+    # https://seaborn.pydata.org/generated/seaborn.regplot.html
+    if any([isinstance(true, _type) for _type in [pd.DataFrame, pd.Series]]):
+        true = true.values.reshape(-1,)
+    if any([isinstance(pred, _type) for _type in [pd.DataFrame, pd.Series]]):
+        pred = pred.values.reshape(-1,)
+
+    plt.close('all')
+
+    s = kwargs.get('s', 20)
+    cmap = kwargs.get('cmap', 'winter')  # https://matplotlib.org/stable/tutorials/colors/colormaps.html
+    figsize = kwargs.get('figsize', (8, 5.5))
+
+    plt.figure(figsize=figsize)
+    points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
+
+    if kwargs.get('annotate', True):
+        plt.annotate(f'$R^{2}$: {round(FindErrors(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
+                 horizontalalignment='right', verticalalignment='top', fontsize=16)
+
+    if kwargs.get('colorbar', False):
+        plt.colorbar(points)
+
+    sns.regplot(x=true, y=pred, scatter=False, color=".1")
+    plt.xlabel('Observed', fontsize=14)
+    plt.ylabel('Predicted', fontsize=14)
+
     return
