@@ -28,7 +28,6 @@ SOFTWARE.
 """
 from collections import OrderedDict
 from typing import Callable
-from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -52,7 +51,6 @@ from optuna.visualization._plotly_imports import go
 from optuna.importance import get_param_importances
 
 import plotly
-
 
 
 logger = get_logger(__name__)
@@ -84,7 +82,7 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         params: Optional[List[str]] = None,
         *,
         target: Optional[Callable[[FrozenTrial], float]] = None,
-    ) -> Dict[str, float]:
+    ):
 
         if target is None and study._is_multi_objective():
             raise ValueError(
@@ -135,9 +133,11 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         )
 
         importances = {}
+        variance = {}
         for i, name in enumerate(distributions.keys()):
-            importance, _ = evaluator.get_importance((i,))
-            importances[name] = importance
+            _mean, _std = evaluator.get_importance((i,))
+            importances[name] = _mean
+            variance[name] = {'mean': _mean, 'std': _std}
 
         total_importance = sum(importances.values())
         for name in importances:
@@ -149,7 +149,7 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
             )
         )
 
-        return sorted_importances
+        return sorted_importances, variance
 
 
 def plot_param_importances(
@@ -180,7 +180,7 @@ def plot_param_importances(
 
     if evaluator is None:
         evaluator = ImportanceEvaluator()
-    importances = get_param_importances(
+    importances, importance_paras = get_param_importances(
         study, evaluator=evaluator, params=params, target=target
     )
 
@@ -208,7 +208,7 @@ def plot_param_importances(
         layout=layout,
     )
 
-    return importances, fig
+    return importances, importance_paras, fig
 
 
 def _get_distribution(param_name: str, study: Study):
@@ -226,5 +226,4 @@ def _make_hovertext(param_name: str, importance: float, study: Study) -> str:
     return "{} ({}): {}<extra></extra>".format(
         param_name, _get_distribution(param_name, study).__class__.__name__, importance
     )
-
 

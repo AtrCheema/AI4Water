@@ -10,6 +10,7 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import sklearn
 
@@ -853,10 +854,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         # the `space` in search_results may not be in same order as originally provided.
         space = search_result['space']
-        ordered_sapce = OrderedDict()
-        for k in self.space().keys():
-            ordered_sapce[k] = space[k]
-        search_result['space'] = ordered_sapce
+        if space.__dict__.__len__()>1:
+            ordered_sapce = OrderedDict()
+            for k in self.space().keys():
+                ordered_sapce[k] = [s for s in space if s.name == k][0]
+            search_result['space'] = Space(ordered_sapce.values())
 
         self.gpmin_results = search_result
 
@@ -1013,13 +1015,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def xy_of_iterations(self)->dict:
 
-        assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
-
         if self.backend == "optuna":
             return {trial.value:trial.params for trial in self.study.trials}
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
         elif self.backend == 'skopt':
+            assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
             # adding idx because sometimes the difference between two func_vals is negligible
             return {float(f'{k}_{idx}'):self.to_kw(v) for idx, k, v in zip(range(len(self.gpmin_results['func_vals'])), self.gpmin_results['func_vals'], self.gpmin_results['x_iters'])}
         else:
@@ -1114,12 +1115,21 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 warnings.warn(msg)
 
         else:
-            importances, fig = plot_param_importances(self.optuna_study())
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parameter_importance.html'),
+            importances, importance_paras, fig = plot_param_importances(self.optuna_study())
+            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'fanova_importance.html'),
                                 auto_open=False)
+
+            plt.close('all')
+            df = pd.DataFrame.from_dict(importance_paras)
+            df.boxplot()
+            plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
             with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
                 json.dump(importances, fp, indent=4, sort_keys=True)
+
+            with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
+                json.dump(importance_paras, fp, indent=4, sort_keys=True)
+
         return
 
     def to_kw(self, x):
