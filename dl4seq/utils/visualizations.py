@@ -9,7 +9,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.TSMetrics import Metrics
 from dl4seq.utils.utils import _missing_vals
 from dl4seq.utils.utils import find_tot_plots, set_fig_dim
 from dl4seq.utils.transformations import Transformations
@@ -1042,7 +1042,7 @@ def regplot(true, pred, **kwargs):
     points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
 
     if kwargs.get('annotate', True):
-        plt.annotate(f'$R^{2}$: {round(FindErrors(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
+        plt.annotate(f'$R^{2}$: {round(Metrics(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
                  horizontalalignment='right', verticalalignment='top', fontsize=16)
 
     if kwargs.get('colorbar', False):

@@ -131,7 +131,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         },
         15)
-        
+
         assert model._model.count_params() == 39697
         assert model._model.layers.__len__() == 15
         return
