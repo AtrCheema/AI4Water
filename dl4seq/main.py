@@ -26,7 +26,7 @@ from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
-from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.TSMetrics import Metrics
 from dl4seq.utils.visualizations import Visualizations
 
 
@@ -957,7 +957,7 @@ class Model(NN, Plots):
                     t = t.values[~nan_idx]
                     p = p.values[~nan_idx]
 
-                errors = FindErrors(t, p)
+                errors = Metrics(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
@@ -1571,7 +1571,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return input_x, input_y, label_y
 
-    def activations(self, layer_names=None, **kwargs):
+    def activations(self, layer_names=None, return_input=False, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
         data = self.test_data(**kwargs)
         inputs, _ = maybe_three_outputs(data)
@@ -1582,11 +1582,16 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                                                   use_datetime_index=kwargs.get('use_datetime_index', False))
 
         activations = keract.get_activations(self._model, inputs, layer_names=layer_names, auto_compile=True)
-        return activations, inputs
+        if return_input:
+            return activations, inputs
+        return activations
 
     def display_activations(self, layer_name: str = None, st=0, en=None, indices=None, **kwargs):
         # not working currently because it requres the shape of activations to be (1, output_h, output_w, num_filters)
-        activations, _ = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
+        activations = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
+
+        assert isinstance(activations, dict)
+
         if layer_name is None:
             activations = activations
         else:
@@ -1691,7 +1696,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """Plots outputs of intermediate layers except input and output.
         If called without any arguments then it will plot outputs of all layers.
         By default do not plot LSTM activations."""
-        activations, _ = self.activations(**kwargs)
+        activations = self.activations(**kwargs)
 
         if self.verbosity > 0:
             print("Plotting activations of layers")
@@ -1872,7 +1877,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         predictions, observations = self.predict(pp=False, **kwargs)
 
-        activation, data = self.activations(layer_names=layer_name, **kwargs)
+        activation, data = self.activations(layer_names=layer_name, return_input=True, **kwargs)
 
         activation = activation[layer_name]
         data = self.inputs_for_attention(data)
@@ -1882,11 +1887,11 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         plt.close('all')
 
         for out in range(self.outs):
-            pred = predictions[out]
-            obs = observations[out]
+            pred = predictions[:, out]
+            obs = observations[:, out]
             out_name = self.out_cols[out]
 
-            for idx in range(self.ins):
+            for idx in range(4):
 
                 fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
                 fig.set_figheight(10)
@@ -1896,13 +1901,13 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 ax1.set_title('activations w.r.t ' + self.in_cols[idx])
                 ax1.set_ylabel(self.in_cols[idx])
 
-                ax2.plot(pred.values, label='Prediction')
-                ax2.plot(obs.values, '.', label='Observed')
+                ax2.plot(pred, label='Prediction')
+                ax2.plot(obs, '.', label='Observed')
                 ax2.legend()
 
                 im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
-                ax3.set_ylabel('lookback')
-                ax3.set_xlabel('samples')
+                ax3.set_ylabel('lookback steps')
+                ax3.set_xlabel('Examples')
                 fig.colorbar(im, orientation='horizontal', pad=0.2)
                 plt.subplots_adjust(wspace=0.005, hspace=0.005)
                 if name is not None:

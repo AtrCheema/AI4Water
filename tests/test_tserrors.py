@@ -3,8 +3,8 @@ import unittest
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils.TSErrors import FindErrors
-from dl4seq.utils.TSErrors.utils import plot_errors
+from dl4seq.utils.TSMetrics import Metrics
+from dl4seq.utils.TSMetrics.utils import plot_errors
 
 import numpy as np
 
@@ -12,7 +12,7 @@ import numpy as np
 t = np.random.random((20, 1))
 p = np.random.random((20, 1))
 
-er = FindErrors(t, p)
+er = Metrics(t, p)
 
 all_errors = er.calculate_all()
 
@@ -24,7 +24,7 @@ class test_errors(unittest.TestCase):
         return 
 
     def test_calculate_all(self):
-        assert len(all_errors) > 1.0
+        assert len(all_errors) > 100
         return
 
     def test_stats(self):
@@ -59,7 +59,7 @@ class test_errors(unittest.TestCase):
             [1.24, 	1.29],
             [0.64, 	0.60]]
         )
-        errs = FindErrors(data[:, 0], data[:, 1])
+        errs = Metrics(data[:, 0], data[:, 1])
         np.testing.assert_almost_equal(0.348, errs.mrae(), 2)
         assert errs.mare() * 100.0 == errs.mape()
         return
