@@ -152,6 +152,8 @@
 # https://zenodo.org/record/4319770#.YExooNyRWUk
 # https://zenodo.org/record/4319756#.YExnl9yRWUk
 # https://zenodo.org/record/854619#.YExnityRWUk
+# https://essd.copernicus.org/articles/13/1289/2021/
+# https://essd.copernicus.org/articles/13/1307/2021/
 
 
 # geologic

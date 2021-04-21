@@ -84,7 +84,7 @@ def get_lu_paras(code, para):
     dict_ = {'Fallow': {'cn': 58, 'albedo': 16},
              'Forest': {'cn': 77, 'albedo': 16},
              'Teak': {'cn': 82, 'albedo': 18},
-             'Culture': {'cn': 80, 'albedo': 23}}
+             'Crop': {'cn': 80, 'albedo': 23}}
     for key in dict_:
         if key in code:
             val = dict_[key][para]

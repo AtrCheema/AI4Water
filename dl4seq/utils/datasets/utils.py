@@ -5,11 +5,10 @@ import sys, shutil
 import urllib.request as ulib
 import urllib.parse as urlparse
 
-import bs4
-
 
 def download_all_http_directory(url, outpath=None, filetypes=None):
     """Download all the files which are of category filetypes at the location of outpath."""
+    import bs4
     page = list(urlparse.urlsplit(url))[2].split('/')[-1]
     basic_url = url.split(page)[0]
 
