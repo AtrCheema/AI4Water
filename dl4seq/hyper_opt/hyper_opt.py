@@ -50,7 +50,7 @@ except ImportError:
     Study = None
 
 from dl4seq import Model
-from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.TSMetrics import Metrics
 from dl4seq.hyper_opt.utils import get_one_tpe_x_iter
 from dl4seq.utils.utils import Jsonize, dateandtime_now
 from dl4seq.hyper_opt.utils import skopt_space_from_hp_space
@@ -93,10 +93,13 @@ class HyperOpt(object):
 
     Sklearn is great but
       - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
+
       - sklearn does not provide Bayesian optimization
+
     On the other hand BayesSearchCV of skopt library
       - extends sklearn such that the sklearn-based regressors/classifiers could be used for Bayesian but then it can be
         used only for sklearn-based regressors/classifiers
+
       - The gp_minimize function from skopt allows application of Bayesian on any regressor/classifier/model, but in that
         case this will only be Bayesian
 
@@ -772,7 +775,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         model.fit(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pp=pp)
-        mse = FindErrors(t, p).mse()
+        mse = Metrics(t, p).mse()
 
         error = round(mse, 7)
         self.results[error] = sort_x_iters(kwargs, self.original_para_order())

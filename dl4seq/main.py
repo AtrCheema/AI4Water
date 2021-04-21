@@ -1891,7 +1891,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             obs = observations[:, out]
             out_name = self.out_cols[out]
 
-            for idx in range(4):
+            for idx in range(self.ins):
 
                 fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
                 fig.set_figheight(10)

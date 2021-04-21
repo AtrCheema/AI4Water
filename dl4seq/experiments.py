@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from dl4seq import Model
 from dl4seq.hyper_opt import HyperOpt
-from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.TSMetrics import Metrics
 from dl4seq.utils.taylor_diagram import plot_taylor
 from dl4seq.hyper_opt import Real, Categorical, Integer
 from dl4seq.utils.utils import clear_weights, dateandtime_now
@@ -302,7 +302,7 @@ Available cases are {self.models} and you wanted to include
         """
 
         def find_matric_array(true, sim):
-            errors = FindErrors(true, sim)
+            errors = Metrics(true, sim)
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -486,7 +486,7 @@ class MLRegressionExperiments(Experiments):
 
             return (t,p), (tt, tp)
 
-        return FindErrors(tt, tp).mse()
+        return Metrics(tt, tp).mse()
 
     def model_ADABoostRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
@@ -1082,7 +1082,7 @@ class MLClassificationExperiments(Experiments):
         if predict:
             return (t, p), (tt, tp)
 
-        return FindErrors(tt, tp).mse()
+        return Metrics(tt, tp).mse()
 
     def model_AdaBoostClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
