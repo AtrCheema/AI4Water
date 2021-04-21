@@ -30,3 +30,7 @@ coverage.xml
 
 *tests/catboost_info/
 *dl4seq/utils/datasets/data/
+
+# docs
+docs/
+site/
