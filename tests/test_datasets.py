@@ -6,7 +6,7 @@ from typing import Union
 
 import pandas as pd
 
-from dl4seq.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US
+from dl4seq.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS
 from dl4seq.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
 from dl4seq.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
 from dl4seq.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
@@ -31,7 +31,7 @@ def test_dynamic_data(dataset, stations, target, stn_data_len):
     print(f"test_dynamic_data for {dataset.name}")
     df = dataset.fetch(stations=stations, categories=None)
 
-    assert len(df) == target
+    assert len(df) == target, f'dataset lenth is {len(df)} while target is {target}'
     for k,v in df.items():
         assert isinstance(v, pd.DataFrame)
         # data for each station must minimum be of this length
@@ -92,8 +92,32 @@ ds_aus = CAMELS_AUS()
 ds_cl = CAMELS_CL()
 ds_us = CAMELS_US()
 
+class TestLamaH(unittest.TestCase):
 
-# ds_gb = CAMELS_GB(path=r"D:\mytools\dl4seq\dl4seq\utils\datasets\CAMELS\CAMELS-GB")
+    def test_all(self):
+        stations = [859, 859, 454]
+        static = [61, 62, 61]
+        for idx, dt in enumerate(LamaH._data_types):
+            ds_eu = LamaH(time_step='daily', data_type=dt)
+            test_dynamic_data(ds_eu, None, stations[idx], 14244)
+            test_dynamic_data(ds_eu, 0.1, int(stations[idx]*0.1), 14244)
+            test_static_data(ds_eu, None, stations[idx], static[idx])
+            test_static_data(ds_eu, 0.1,  int(stations[idx]*0.1), static[idx])
+            test_static_attributes(ds_eu, 1)
+            test_stations(ds_eu, stations[idx])
+            test_fetch_dynamic_attributes(ds_eu, '2', 22)
+            test_fetch_dynamic_multiple_stations(ds_eu, 3, 22)
+            test_fetch_static_attribue(ds_eu, '2', static[idx])
+            data = ds_eu.fetch_dynamic_attributes('2', st='19880101', en='19881231')
+            self.assertEqual(len(data), 366)
+            #assert len(data) == 366
+            data = ds_eu.fetch(['2'], categories=None, st='19880101', en='19881231')
+            for k,v in data.items():
+                self.assertEqual(len(v), 366)
+                #assert len(v) == 366
+#ds_hy = HYSETS()
+
+ds_gb = CAMELS_GB(path=r"D:\mytools\dl4seq\dl4seq\utils\datasets\data\CAMELS\CAMELS-GB")
 # class TestCamelsGB(unittest.TestCase):
 #
 #     def test_all_dynamic_data(self):

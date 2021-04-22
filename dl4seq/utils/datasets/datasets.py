@@ -221,30 +221,31 @@ DATASETS = [
             ]
 
 # following files must exist withing data folder for CAMELS-GB data
-CAMELS_GB_files = [
-    'CAMELS_GB_climatic_attributes.csv',
-    'CAMELS_GB_humaninfluence_attributes.csv',
-    'CAMELS_GB_hydrogeology_attributes.csv',
-    'CAMELS_GB_hydrologic_attributes.csv',
-    'CAMELS_GB_hydrometry_attributes.csv',
-    'CAMELS_GB_landcover_attributes.csv',
-    'CAMELS_GB_soil_attributes.csv',
-    'CAMELS_GB_topographic_attributes.csv'
-]
+DATA_FILES = {
+    'CAMELS-GB': [
+        'CAMELS_GB_climatic_attributes.csv',
+        'CAMELS_GB_humaninfluence_attributes.csv',
+        'CAMELS_GB_hydrogeology_attributes.csv',
+        'CAMELS_GB_hydrologic_attributes.csv',
+        'CAMELS_GB_hydrometry_attributes.csv',
+        'CAMELS_GB_landcover_attributes.csv',
+        'CAMELS_GB_soil_attributes.csv',
+        'CAMELS_GB_topographic_attributes.csv'
+    ],
+    'HYSETS': [  # following files must exist in a folder containing HYSETS dataset.
+        'HYSETS_2020_ERA5.nc',
+        'HYSETS_2020_ERA5Land.nc',
+        'HYSETS_2020_ERA5Land_SWE.nc',
+        'HYSETS_2020_Livneh.nc',
+        'HYSETS_2020_nonQC_stations.nc',
+        'HYSETS_2020_SCDNA.nc',
+        'HYSETS_2020_SNODAS_SWE.nc',
+        'HYSETS_elevation_bands_100m.csv',
+        'HYSETS_watershed_boundaries.zip',
+        'HYSETS_watershed_properties.txt'
+    ]
+}
 
-# following files must exist in a folder containing HYSETS dataset.
-HYSETS_FILES = [
-    'HYSETS_2020_ERA5.nc',
-    'HYSETS_2020_ERA5Land.nc',
-    'HYSETS_2020_ERA5Land_SWE.nc',
-    'HYSETS_2020_Livneh.nc',
-    'HYSETS_2020_nonQC_stations.nc',
-    'HYSETS_2020_SCDNA.nc',
-    'HYSETS_2020_SNODAS_SWE.nc',
-    'HYSETS_elevation_bands_100m.csv',
-    'HYSETS_watershed_boundaries.zip',
-    'HYSETS_watershed_properties.txt'
-]
 
 def gb_message():
     link = "https://doi.org/10.5285/8344e4f3-d2ea-44f5-8afa-86d2987543a9"
@@ -252,14 +253,15 @@ def gb_message():
 
 
 def sanity_check(dataset_name, path):
-    if dataset_name == 'CAMELS-GB':
-        if not os.path.exists(os.path.join(path, 'data')):
-            raise FileNotFoundError(f"No folder named `path` exists inside {path}")
-        else:
-            data_path = os.path.join(path, 'data')
-            for file in CAMELS_GB_files:
-                if not os.path.exists(os.path.join(data_path, file)):
-                    raise FileNotFoundError(f"File {file} must exist inside {data_path}")
+    if dataset_name in DATA_FILES:
+        if dataset_name == 'CAMELS-GB':
+            if not os.path.exists(os.path.join(path, 'data')):
+                raise FileNotFoundError(f"No folder named `data` exists inside {path}")
+            else:
+                data_path = os.path.join(path, 'data')
+                for file in DATA_FILES[dataset_name]:
+                    if not os.path.exists(os.path.join(data_path, file)):
+                        raise FileNotFoundError(f"File {file} must exist inside {data_path}")
     return
 
 
@@ -313,6 +315,7 @@ class Datasets(object):
                 shutil.rmtree(self.ds_dir)
                 self._download_and_unzip()
             else:
+                sanity_check(self.name, self.ds_dir)
                 print(f"""
 Not downloading the data since the directory 
 {self.ds_dir} already exists.
@@ -346,6 +349,12 @@ Use overwrite=True to remove previously saved files and download again""")
                         for _file in filelist:
                             if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
                                 zip_ref.extract(_file)
+
+        # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
+        gz_files = glob.glob(f"{self.ds_dir}/*.gz")
+        for f in gz_files:
+            shutil.unpack_archive(f, self.ds_dir)
+
         return
 
     def download_from_pangaea(self, overwrite=False):
@@ -576,16 +585,136 @@ class LamaH(Camels):
     paper: https://essd.copernicus.org/preprints/essd-2021-72/
     """
     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
-    def __init__(self):
+    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
 
-        super().__init__()
+    static_attribute_categories = ['']
+
+    def __init__(self, *, time_step, data_type, **kwargs):
+        assert time_step in ['daily', 'hourly'], f"invalid time_step {time_step} given"
+        assert data_type in self._data_types
+        self.time_step = time_step
+        self.data_type = data_type
+        super().__init__(**kwargs)
 
         self._download()
+
+    @property
+    def dynamic_attributes(self):
+        station = self.stations()[0]
+        df = self.read_ts_of_station(station)
+        return df.columns.to_list()
+
+    @property
+    def static_attributes(self)->list:
+        fname = os.path.join(self.data_type_dir, f'1_attributes{SEP}Catchment_attributes.csv')
+        df = pd.read_csv(fname, sep=';', index_col='ID')
+        return df.columns.to_list()
 
     @property
     def ds_dir(self):
         """Directory where a particular dataset will be saved. """
         return os.path.join(self.camels_dir, self.name)
+
+    @property
+    def data_type_dir(self):
+        # self.ds_dir/CAMELS_AT/data_type_dir
+        f = [f for f in os.listdir(os.path.join(self.ds_dir, 'CAMELS_AT')) if self.data_type in f][0]
+        return os.path.join(self.ds_dir, f'CAMELS_AT{SEP}{f}')
+
+    def stations(self)->list:
+        # assuming file_names of the format ID_{stn_id}.csv
+        _dirs = os.listdir(os.path.join(self.data_type_dir, f'2_timeseries{SEP}{self.time_step}'))
+        s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
+        return s
+
+    def fetch_station_attributes(self,
+                                 station,
+                                 dynamic_attributes='all',
+                                 categories='all',
+                                 static_attributes='all',
+                                 as_ts=False,
+                                 st=None,
+                                 en=None,
+                                 **kwargs) ->pd.DataFrame:
+        """Reads attributes of one station"""
+
+        station_df = pd.DataFrame()
+
+        if dynamic_attributes is not None:
+            dynamic_df = self.fetch_dynamic_attributes(station, dynamic_attributes, st, en, **kwargs)
+            station_df = pd.concat([station_df, dynamic_df])
+
+        if categories is not None:
+            static = self.fetch_static_attributes(station, categories, static_attributes, as_ts=as_ts)
+            if as_ts:
+                idx = pd.date_range(st, en, freq='D')
+                static = pd.DataFrame(np.repeat(static.values, len(idx), axis=0), index=idx)
+                station_df = pd.concat([station_df, static], axis=1)
+
+            else:
+                station_df = pd.concat([station_df, static])
+
+        return station_df
+
+    def fetch_static_attributes(self,
+                                station,
+                                categories,
+                                static_attributes,
+                                as_ts=False):
+
+        fname = os.path.join(self.data_type_dir, f'1_attributes{SEP}Catchment_attributes.csv')
+
+        df = pd.read_csv(fname, sep=';', index_col='ID')
+
+        static_attributes = check_attributes(static_attributes, self.static_attributes)
+
+        return df[static_attributes]
+
+    def fetch_dynamic_attributes(self,
+                                 station,
+                                 dynamic_attributes='all',
+                                 st=None,
+                                 en=None,
+                                 **kwargs):
+        if st is None:
+            st = self.start
+
+        if en is None:
+            en = self.end
+
+        dynamic_attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
+
+        df = self.read_ts_of_station(station)
+
+        return df[dynamic_attributes][st:en]
+
+    def read_ts_of_station(self, station)->pd.DataFrame:
+        # read a file containing timeseries data for one station
+        fname = os.path.join(self.data_type_dir, f'2_timeseries{SEP}{self.time_step}{SEP}ID_{station}.csv')
+        df = pd.read_csv(fname, sep=';')
+        periods = pd.PeriodIndex(year=df["YYYY"], month=df["MM"], day=df["DD"], freq="D")
+        df.index = periods.to_timestamp()
+        [df.pop(item) for item in ['YYYY', 'MM', 'DD']]
+        return df
+
+    @property
+    def start(self):
+        return "19810101"
+
+    @property
+    def end(self):
+        return "20191231"
+
+
+class HYSETS(Camels):
+
+    url = " "
+    def __init__(self):
+
+        super().__init__()
+        self._ds_dir = os.path.join(self.base_ds_dir, self.name)
+        self._download()
+
 
 
 class CAMELS_US(Camels):
@@ -1122,14 +1251,7 @@ class CAMELS_AUS(Camels):
                 dyn_attrs[attr] = df
 
         if dynamic_attributes is not None:
-            if dynamic_attributes == 'all':
-                dynamic_attributes = self.dynamic_attributes
-            elif isinstance(dynamic_attributes, str):
-                assert dynamic_attributes in self.dynamic_attributes
-                dynamic_attributes = [dynamic_attributes]
-            elif isinstance(dynamic_attributes, list):
-                assert all(attr in self.dynamic_attributes for attr in dynamic_attributes)
-                dynamic_attributes = dynamic_attributes
+            dynamic_attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
 
             for attr in dynamic_attributes:
                 if 'SILO' in attr:
@@ -1401,14 +1523,7 @@ class CAMELS_CL(Camels):
         assert all(stn in self.stations() for stn in stations)
 
         if dynamic_attributes is not None:
-            if dynamic_attributes == 'all':
-                dynamic_attributes = self.dynamic_attributes
-            elif isinstance(dynamic_attributes, str):
-                assert dynamic_attributes in self.dynamic_attributes
-                dynamic_attributes = [dynamic_attributes]
-            elif isinstance(dynamic_attributes, list):
-                assert all(attr in self.dynamic_attributes for attr in dynamic_attributes)
-                dynamic_attributes = dynamic_attributes
+            dynamic_attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
 
             # since one file contains data for one dynamic attribute for all stations, thus if we need data
             # for one station only, we will have to read all the files. So we first read all the files
@@ -1684,3 +1799,18 @@ class WeatherJena(Datasets):
     def __init__(self):
         super().__init__()
         download_all_http_directory(self.url, self.ds_dir, filetypes=None)
+
+
+def check_attributes(attributes, check_against:list)->list:
+    if attributes == 'all':
+        attributes = check_against
+    elif not isinstance(attributes, list):
+        assert isinstance(attributes, str)
+        assert attributes in check_against
+        attributes = [attributes]
+    else:
+        raise ValueError
+
+    assert all(elem in check_against for elem in attributes)
+
+    return attributes

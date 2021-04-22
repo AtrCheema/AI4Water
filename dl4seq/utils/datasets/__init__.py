@@ -4,6 +4,8 @@ from dl4seq.utils.datasets.datasets import CAMELS_CL
 from dl4seq.utils.datasets.datasets import CAMELS_BR
 from dl4seq.utils.datasets.datasets import CAMELS_GB
 from dl4seq.utils.datasets.datasets import CAMELS_US
+from dl4seq.utils.datasets.datasets import LamaH
+from dl4seq.utils.datasets.datasets import HYSETS
 from dl4seq.utils.datasets.datasets import Weisssee
 from dl4seq.utils.datasets.datasets import WaterChemEcuador
 from dl4seq.utils.datasets.datasets import WaterChemVictoriaLakes
