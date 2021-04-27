@@ -23,6 +23,7 @@ from dl4seq.utils.utils import dateandtime_now
 # which transformation to use? Some related articles/posts
 # https://scikit-learn.org/stable/modules/preprocessing.html
 # http://www.faqs.org/faqs/ai-faq/neural-nets/part2/section-16.html
+# https://data.library.virginia.edu/interpreting-log-transformations-in-a-linear-model/
 
 
 class EmdTransformer(object):
@@ -313,6 +314,21 @@ class Transformations(scaler_container):
 
             if self.zero_indices is None: self.zero_indices = indices
 
+        # if self.replace_negatives:
+        #     indices = {}
+        #     for col in data.columns:
+        #         # find index containing negatives in corrent column of dataframe
+        #         i = data.index[data[col] < 0.0]
+        #         if len(i) > 0:
+        #             indices[col] = i.values
+        #             if self.replace_negatives_with in ['mean', 'max', 'min']:
+        #                 replace_with = float(getattr(np, 'nan' + self.replace_negatives_with)(data[col]))
+        #             else:
+        #                 replace_with = self.replace_negatives_with
+        #             data[col][indices[col]] = get_val(data[col], replace_with)
+        #
+        #     if self.negative_indices is None: self.negative_indices = indices
+
         return data
 
     def post_process_data(self, data):
@@ -328,6 +344,11 @@ class Transformations(scaler_container):
                 if hasattr(self, 'zero_indices'):
                     for col, idx in self.zero_indices.items():
                         data[col][idx] = 0.0
+
+            # if self.replace_negatives:
+            #     if hasattr(self, 'negative_indices'):
+            #         for col, idx in self.negative_indices.items():
+            #             data[col][idx] = 0.0
         return data
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
