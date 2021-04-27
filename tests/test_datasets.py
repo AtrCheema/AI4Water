@@ -91,6 +91,9 @@ ds_br = CAMELS_BR()
 ds_aus = CAMELS_AUS()
 ds_cl = CAMELS_CL()
 ds_us = CAMELS_US()
+hy = HYSETS(path=r'D:\mytools\dl4seq\dl4seq\utils\datasets\data\HYSETS')
+s = hy.stations()
+st = hy.fetch_static_attributes(station=s[0])
 
 class TestLamaH(unittest.TestCase):
 
@@ -110,12 +113,10 @@ class TestLamaH(unittest.TestCase):
             test_fetch_static_attribue(ds_eu, '2', static[idx])
             data = ds_eu.fetch_dynamic_attributes('2', st='19880101', en='19881231')
             self.assertEqual(len(data), 366)
-            #assert len(data) == 366
             data = ds_eu.fetch(['2'], categories=None, st='19880101', en='19881231')
             for k,v in data.items():
                 self.assertEqual(len(v), 366)
-                #assert len(v) == 366
-#ds_hy = HYSETS()
+
 
 ds_gb = CAMELS_GB(path=r"D:\mytools\dl4seq\dl4seq\utils\datasets\data\CAMELS\CAMELS-GB")
 # class TestCamelsGB(unittest.TestCase):
@@ -401,8 +402,8 @@ class TestPangaea(unittest.TestCase):
 
 
 
-if __name__=="__main__":
-    unittest.main()
+# if __name__=="__main__":
+#     unittest.main()
     #import time
     #st = time.time()
     #df = ds_aus.fetch(categories=None)

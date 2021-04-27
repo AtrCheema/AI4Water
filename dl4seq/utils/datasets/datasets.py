@@ -707,14 +707,79 @@ class LamaH(Camels):
 
 
 class HYSETS(Camels):
+    """
+    database for hydrometeorological modeling of 14,425 North American watersheds
+    from 1950-2018.
+    Following data_source are available.
+        SNODAS_SWE:
+        SCDNA:
+        nonQC_stations:
+        Livneh:
+        ERA5:
+    SWE data_types do not have tasmin and tasmax otherwise all datatypes have following dynamic_attributes
+    with following shapes
+        time                           (25202,)
+        watershedID                    (14425,)
+        drainage_area                  (14425,)
+        drainage_area_GSIM             (14425,)
+        flag_GSIM_boundaries           (14425,)
+        flag_artificial_boundaries     (14425,)
+        centroid_lat                   (14425,)
+        centroid_lon                   (14425,)
+        elevation                      (14425,)
+        slope                          (14425,)
+        discharge                      (14425, 25202)
+        pr                             (14425, 25202)
+        tasmax                         (14425, 25202)
+        tasmin                         (14425, 25202)
+    """
+    doi = "https://doi.org/10.1038/s41597-020-00583-2"
+    url = "https://osf.io/rpc3w/"
+    DATA_SOURCES = ['ERA5', 'ERA5Land', 'ERA5Land_SWE', 'Livneh', 'nonQC_stations', 'SCDNA', 'SNODAS_SWE']
+    def __init__(self, path, **kwargs):
+        super().__init__(**kwargs)
+        self.ds_dir = path
 
-    url = " "
-    def __init__(self):
+    @property
+    def ds_dir(self):
+        return self._ds_dir
 
-        super().__init__()
-        self._ds_dir = os.path.join(self.base_ds_dir, self.name)
-        self._download()
+    @ds_dir.setter
+    def ds_dir(self, x):
+        sanity_check('HYSETS', x)
+        self._ds_dir = x
 
+    @property
+    def static_attributes(self):
+        df = self.read_static_data()
+        return df.columns.to_list()
+
+    def stations(self)->list:
+        return self.read_static_data().index.to_list()
+
+    @property
+    def start(self):
+        return "19500101"
+
+    @property
+    def end(self):
+        return "20181231"
+
+    def fetch_static_attributes(self,
+                                station,
+                                categories='all',
+                                static_attributes='all',
+                                as_ts=False):
+
+        df = self.read_static_data()
+
+        static_attributes = check_attributes(static_attributes, self.static_attributes)
+
+        return df.loc[station][static_attributes]
+
+    def read_static_data(self):
+        fname = os.path.join(self.ds_dir, 'HYSETS_watershed_properties.txt')
+        return  pd.read_csv(fname, index_col='Watershed_ID', sep=';')
 
 
 class CAMELS_US(Camels):
@@ -1624,14 +1689,6 @@ class CAMELS_CL(Camels):
         return df[attributes]
 
 
-class HYSETS(Camels):
-    """
-    database for hydrometeorological modeling of 14,425 North American watersheds
-    from 1950-2018.
-    """
-    doi = "https://doi.org/10.1038/s41597-020-00583-2"
-    url = "https://osf.io/rpc3w/"
-
 class Weisssee(Datasets):
 
     dynamic_attributes = ['Precipitation_measurements',
@@ -1809,7 +1866,7 @@ def check_attributes(attributes, check_against:list)->list:
         assert attributes in check_against
         attributes = [attributes]
     else:
-        raise ValueError
+        assert isinstance(attributes, list), f'unknown attributes {attributes}'
 
     assert all(elem in check_against for elem in attributes)
 
