@@ -9,6 +9,7 @@ import numpy as np
 import os
 
 from dl4seq import Model
+from dl4seq.utils.visualizations import Visualizations
 
 
 class MultiInputSharedModel(Model):
@@ -48,26 +49,28 @@ class MultiInputSharedModel(Model):
 
     def fit(self, st=0, en=None, indices=None, **callbacks):
 
+        visualizer = Visualizations(path=self.path)
+
         train_data = self.train_data(st=st, en=en, indices=indices)
 
         val_data = self.val_data(st=st, en=en, indices=indices)
 
         history = self._fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
 
-        self.plot_loss(history.history)
+        visualizer.plot_loss(history.history)
 
         return history.history
 
-    def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', pref: str = 'test',
+    def predict(self, st=0, en=None, indices=None, scaler_key: str = '5', prefix: str = 'test',
                 use_datetime_index=True, pp=True, **plot_args):
-        out_cols = self.out_cols
+        out_cols = self.out_cols['output']
 
         predictions = []
         observations = []
 
         for idx, out in enumerate(out_cols):
 
-            self.out_cols = [self.config['outputs'][idx]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs']['output'][idx]]  # because fetch_data depends upon self.outs
             scaler_key = str(idx) + scaler_key
             inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
                                                    use_datetime_index=use_datetime_index, data=self.data[idx])
@@ -79,7 +82,12 @@ class MultiInputSharedModel(Model):
                                              batch_size=self.config['batch_size'],
                                              verbose=1)
 
-            predicted, true_outputs = self.denormalize_data(inputs[1], predicted, true_outputs[0], scaler_key)
+            predicted, true_outputs = self.denormalize_data(inputs[1] if len(inputs)>1 else inputs[0],
+                                                            predicted,
+                                                            true_outputs[0],
+                                                            in_cols=self.in_cols,
+                                                            out_cols=out,
+                                                            scaler_key=scaler_key)
 
             self.out_cols = self.config['outputs']  # setting the actual output columns back to original
             
@@ -91,11 +99,8 @@ class MultiInputSharedModel(Model):
                                          columns=['pred_' + str(i) for i in range(horizons)]).sort_index()
 
                 if pp:
-                    df = pd.concat([true_outputs, predicted], axis=1)
-                    df.to_csv(os.path.join(self.path, pref + '_' + str(out) + ".csv"), index_label='time')
-
                     self.out_cols = [out]
-                    self.process_results(true_outputs.values, predicted.values, pref + '_', index=dt_index, **plot_args)
+                    self.process_results(true_outputs.values, predicted.values, prefix + '_', index=dt_index, **plot_args)
 
             else:
                 self.plot_quantiles1(true_outputs, predicted)
@@ -105,7 +110,7 @@ class MultiInputSharedModel(Model):
             predictions.append(predicted)
             observations.append(true_outputs)
 
-        self.out_cols = out_cols
+        self.out_cols = {'output': out_cols}
         return observations, predictions
 
 
