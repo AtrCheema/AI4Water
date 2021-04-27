@@ -34,3 +34,8 @@ coverage.xml
 # docs
 docs/
 site/
+
+# run time junk
+examples/.jovianrc
+examples/catboost_info/
+tests/__MACOSX/
