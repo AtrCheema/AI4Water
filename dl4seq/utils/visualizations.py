@@ -9,7 +9,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-from dl4seq.utils.TSMetrics import Metrics
+from dl4seq.utils.SeqMetrics import Metrics
 from dl4seq.utils.utils import _missing_vals
 from dl4seq.utils.utils import find_tot_plots, set_fig_dim
 from dl4seq.utils.transformations import Transformations
