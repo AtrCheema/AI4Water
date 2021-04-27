@@ -547,7 +547,7 @@ def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
     return best_results
 
 
-def get_attributes(aus, what:str='losses') ->dict:
+def get_attributes(aus, what:str) ->dict:
     """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
     capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
     are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
