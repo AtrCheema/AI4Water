@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from dl4seq import Model
 from dl4seq.hyper_opt import HyperOpt
-from dl4seq.utils.TSMetrics import Metrics
+from dl4seq.utils.SeqMetrics import Metrics
 from dl4seq.utils.taylor_diagram import plot_taylor
 from dl4seq.hyper_opt import Real, Categorical, Integer
 from dl4seq.utils.utils import clear_weights, dateandtime_now

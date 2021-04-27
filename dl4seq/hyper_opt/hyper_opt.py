@@ -50,7 +50,7 @@ except ImportError:
     Study = None
 
 from dl4seq import Model
-from dl4seq.utils.TSMetrics import Metrics
+from dl4seq.utils.SeqMetrics import Metrics
 from dl4seq.hyper_opt.utils import get_one_tpe_x_iter
 from dl4seq.utils.utils import Jsonize, dateandtime_now
 from dl4seq.hyper_opt.utils import skopt_space_from_hp_space

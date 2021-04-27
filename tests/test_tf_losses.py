@@ -6,7 +6,7 @@ import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from dl4seq.utils import tf_losses
-from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.SeqMetrics import Metrics
 
 
 import tensorflow as tf

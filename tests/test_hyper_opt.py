@@ -24,7 +24,7 @@ np.random.seed(313)
 from dl4seq.hyper_opt import HyperOpt, Real, Categorical, Integer
 from dl4seq import Model
 from dl4seq.utils.utils import Jsonize
-from dl4seq.utils.TSErrors import FindErrors
+from dl4seq.utils.SeqMetrics import Metrics
 
 
 file_path = abspath(getsourcefile(lambda:0))

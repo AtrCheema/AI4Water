@@ -1,2 +1,3 @@
 
-from dl4seq.experiments.experiments import Experiments
+from dl4seq.experiments.experiments import Experiments, MLRegressionExperiments, MLClassificationExperiments
+from dl4seq.experiments.experiments import TransformationExperiments

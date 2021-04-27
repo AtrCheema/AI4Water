@@ -3,8 +3,8 @@ import unittest
 import site   # so that dl4seq directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils.TSMetrics import Metrics
-from dl4seq.utils.TSMetrics.utils import plot_errors
+from dl4seq.utils.SeqMetrics import Metrics
+from dl4seq.utils.SeqMetrics.utils import plot_errors
 
 import numpy as np
 

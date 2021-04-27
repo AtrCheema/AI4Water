@@ -26,7 +26,7 @@ from dl4seq.utils.plotting_tools import Plots
 from dl4seq.utils.transformations import Transformations
 from dl4seq.utils.imputation import Imputation
 from dl4seq.models.custom_training import train_step, test_step
-from dl4seq.utils.TSMetrics import Metrics
+from dl4seq.utils.SeqMetrics import Metrics
 from dl4seq.utils.visualizations import Visualizations
 
 
