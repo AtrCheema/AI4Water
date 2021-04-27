@@ -175,6 +175,10 @@ series prediction.
 
 [TSFEL: Time Series Feature Extraction Library](https://doi.org/10.1016/j.softx.2020.100456)
 
+[catch22](https://github.com/chlubba/catch22)
+
+[vest](https://github.com/vcerqueira/vest-python)
+
 [pyunicorn (Unified Complex Network and RecurreNce analysis toolbox](https://github.com/pik-copan/pyunicorn)
 
 [TSFuse Python package for automatically constructing features from multi-view time series data](https://github.com/arnedb/tsfuse)
