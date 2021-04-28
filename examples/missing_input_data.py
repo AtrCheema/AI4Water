@@ -43,7 +43,7 @@ model = DualAttentionModel(
 history = model.fit(indices='random')
 
 y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
-# tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train', use_datetime_index=False)
+# tr_y, tr_obs = model.predict(indices=model.train_indices, prefix='train', use_datetime_index=False)
 
 model.view_model(st=0, save=True)  # takes a lot of time to save all plots
 
