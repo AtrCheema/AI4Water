@@ -10,7 +10,7 @@ batch_size = 32
 examples = batch_size*10
 epochs = 1
 ins = 16
-units = 64
+units = 16
 outs = 1
 batch_shape = (batch_size, lookback,  ins)
 layers = {
@@ -18,7 +18,6 @@ layers = {
     "LSTM": {"config": {"units": units, "return_sequences": True}},
     "Flatten": {"config": {}},
     "Dense": {"config": {"units": outs}},
-    "Reshape": {"config": {"target_shape": (outs,1)}}
 }
 
 model = Model(
