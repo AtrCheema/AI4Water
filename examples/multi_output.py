@@ -8,10 +8,12 @@ import os
 
 import pandas as pd
 import numpy as np
+import tensorflow as tf
 from tensorflow import keras
 
 from dl4seq import InputAttentionModel
 
+tf.compat.v1.disable_eager_execution()
 
 class MultiSite(InputAttentionModel):
     """ This is only for two outputs currently. """
@@ -94,4 +96,4 @@ if __name__ == "__main__":
     history = model.fit(indices='random', tensorboard=True)
 
     y, obs = model.predict()
-    activations, given_inputs = model.activations(st=0, en=1400)
+    activations = model.activations(st=0, en=1400)
