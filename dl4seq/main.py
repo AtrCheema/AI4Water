@@ -87,7 +87,6 @@ class Model(NN, Plots):
         self.data = data
         self.in_cols = self.config['inputs']
         self.out_cols = self.config['outputs']
-        self.loss = LOSSES[self.config['loss'].upper()]
         self.KModel = keras.models.Model if keras is not None else None
         self.path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
@@ -178,14 +177,6 @@ class Model(NN, Plots):
             return len(self.out_cols)
 
     @property
-    def loss(self):
-        return self._loss
-
-    @loss.setter
-    def loss(self, x):
-        self._loss = x
-
-    @property
     def quantiles(self):
         return self.config['quantiles']
 
@@ -245,6 +236,12 @@ class Model(NN, Plots):
     def input_layer_names(self) -> list:
 
         return [lyr.name.split(':')[0] for lyr in self._model.inputs]
+
+    def loss(self):
+         # overwrite this function for a customized loss function.
+         # this function should return something which can be accepted as 'loss' by the keras Model.
+         # It can be a string or callable.
+        return LOSSES[self.config['loss'].upper()]
 
     def fetch_data(self,
                    data: pd.DataFrame,
@@ -1391,7 +1388,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         opt_args = self.get_opt_args()
         optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
 
-        k_model.compile(loss=self.loss, optimizer=optimizer, metrics=self.get_metrics(), **compile_args)
+        k_model.compile(loss=self.loss(), optimizer=optimizer, metrics=self.get_metrics(), **compile_args)
 
         if self.verbosity > 0:
             k_model.summary()

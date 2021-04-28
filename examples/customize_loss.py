@@ -23,6 +23,9 @@ class QuantileModel(Model):
 
         return predicted, true
 
+    def loss(self):
+
+        return qloss
 
 def qloss(y_true, y_pred):
     # Pinball loss for multiple quantiles
@@ -57,12 +60,9 @@ model = QuantileModel(
     outputs=['input_' + str(cols - 1)],
     lookback=1,
     model={'layers':layers},
-    epochs=100,
+    epochs=10,
     data=data,
     quantiles=quantiles)
-
-# Assign loss for the model
-model.loss = qloss
 
 # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
 model.fit(st=0, en=1500)

@@ -514,7 +514,7 @@ class Metrics(object):
     def fdc_fhv(self, h: float = 0.02) -> float:
         """
         modified after: https://github.com/kratzert/ealstm_regional_modeling/blob/64a446e9012ecd601e0a9680246d3bbf3f002f6d/papercode/metrics.py#L190
-        Peak flow bias of the flow duration curve (Yilmaz 2018).
+        Peak flow bias of the flow duration curve (Yilmaz 2008).
         used in kratzert et al., 2018
         Returns
         -------

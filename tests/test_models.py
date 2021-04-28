@@ -162,5 +162,56 @@ class test_MultiInputModels(unittest.TestCase):
         self.assertGreater(len(hist.history['loss']), 1)
         return
 
+    def test_customize_loss(self):
+        class QuantileModel(Model):
+
+            def denormalize_data(self,
+                                 inputs: np.ndarray,
+                                 predicted: np.ndarray,
+                                 true: np.ndarray,
+                                 in_cols, out_cols,
+                                 scaler_key: str,
+                                 transformation=None):
+                return predicted, true
+
+            def loss(self):
+                return qloss
+
+        def qloss(y_true, y_pred):
+            # Pinball loss for multiple quantiles
+            qs = quantiles
+            q = tf.constant(np.array([qs]), dtype=tf.float32)
+            e = y_true - y_pred
+            v = tf.maximum(q * e, (q - 1) * e)
+            return tf.keras.backend.mean(v)
+
+        # Define a dummy dataset consisting of 6 time-series.
+        cols = 6
+        data = np.arange(int(2000 * cols)).reshape(-1, 2000).transpose()
+        data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
+                            index=pd.date_range('20110101', periods=len(data), freq='H'))
+
+        # Define Model
+        layers = {'Dense_0': {'units': 64, 'activation': 'relu'},
+                  'Dense_3': {'units': 3}}
+
+        # Define Quantiles
+        quantiles = [0.005, 0.025,   0.995]
+
+        # Initiate Model
+        model = QuantileModel(
+            inputs=['input_' + str(i) for i in range(cols - 1)],
+            outputs=['input_' + str(cols - 1)],
+            lookback=1,
+            verbosity=0,
+            model={'layers': layers},
+            epochs=2,
+            data=data,
+            quantiles=quantiles)
+
+        # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
+        model.fit(st=0, en=1500)
+        return
+
 if __name__ == "__main__":
     unittest.main()

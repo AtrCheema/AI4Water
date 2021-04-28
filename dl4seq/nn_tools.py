@@ -217,19 +217,31 @@ class NN(AttributeStore):
         """
         new_outputs = current_outputs
         shape = current_outputs.shape
-        if len(shape) < 3:  # the output is not of shape (?, num_outputs, horizons)
+        quantiles = 1 if getattr(self, 'quantiles', None) is None else len(self.quantiles)
+        change_shape = True
+        if isinstance(self.outs, int):
+            outs = self.outs
+        elif isinstance(self.outs, dict):
+            if len(self.outs) == 1:
+                outs = list(self.outs.values())[0]
+            else:
+                change_shape = False
+        else:
+            raise NotImplementedError
 
-            if shape[-1] != self.outs:  # we add a Dense layer followed by reshaping it
+        if len(shape) < 3 and change_shape:  # the output is not of shape (?, num_outputs, horizons)
+            num_outs = outs * quantiles
+            if shape[-1] != num_outs:  # we add a Dense layer followed by reshaping it
 
-                dense = tf.keras.layers.Dense(self.outs)
+                dense = tf.keras.layers.Dense(num_outs)
                 dense_out = dense(current_outputs)
                 self.update_cache(lyr_cache, dense.name, dense)
-                reshape = tf.keras.layers.Reshape(target_shape=(self.outs, self.forecast_len))
+                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len))
                 new_outputs = reshape(dense_out)
                 self.update_cache(lyr_cache, reshape.name, reshape)
 
             else:  # just reshape the output to match (?, num_outputs, horizons)
-                reshape = tf.keras.layers.Reshape(target_shape=(self.outs, self.forecast_len))
+                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len))
                 new_outputs = reshape(current_outputs)
                 self.update_cache(lyr_cache, reshape.name, reshape)
         elif len(shape) > 3:

@@ -325,7 +325,10 @@ class Plots(object):
             en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
 
             plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, q + 1], alpha=0.2,
+            plt.fill_between(np.arange(st, en),
+                             predicted[st:en, q].reshape(-1,),
+                             predicted[st:en, q + 1].reshape(-1,),
+                             alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
             self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
@@ -341,7 +344,10 @@ class Plots(object):
                                               str(en))
 
         plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-        plt.fill_between(np.arange(st, en), predicted[st:en, min_q], predicted[st:en, max_q], alpha=0.2,
+        plt.fill_between(np.arange(st, en),
+                         predicted[st:en, min_q].reshape(-1,),
+                         predicted[st:en, max_q].reshape(-1,),
+                         alpha=0.2,
                          color='g', edgecolor=None, label=q_name + ' %')
         plt.legend(loc="best")
         self.save_or_show(save, fname= "q_" + q_name + ".png", where='results')
@@ -367,7 +373,7 @@ class Plots(object):
     def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
         plt.close('all')
         plt.style.use('ggplot')
-
+        assert true_outputs.shape[-2:] == (1,1)
         if en is None:
             en = true_outputs.shape[0]
         for q in range(len(self.quantiles) - 1):
@@ -375,7 +381,8 @@ class Plots(object):
             en_q = "{:.1f}".format(self.quantiles[-q] * 100)
 
             plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q], predicted[st:en, -q], alpha=0.2,
+            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
+                             predicted[st:en, -q].reshape(-1,), alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
