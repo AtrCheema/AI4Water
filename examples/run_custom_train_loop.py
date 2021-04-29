@@ -1,9 +1,10 @@
-from dl4seq.main import Model
+import os
 
 import tensorflow as tf
 from tensorflow import keras
-import os
 import pandas as pd
+
+from AI4Water.main import Model
 
 # TODO put code in @tf.function
 # TODO write validation code
@@ -11,25 +12,28 @@ import pandas as pd
 
 class CustomModel(Model):
 
-    def train(self, st=0, en=None, indices=None, **callbacks):
+    def fit(self, st=0, en=None, indices=None, **callbacks):
+        self.is_training = True
         # Instantiate an optimizer.
-        optimizer = keras.optimizers.Adam(learning_rate=self.model_config['lr'])
+        optimizer = keras.optimizers.Adam(learning_rate=self.config['lr'])
         # Instantiate a loss function.
         loss_fn = self.loss
 
         # Prepare the training dataset.
-        batch_size = self.data_config['batch_size']
+        batch_size = self.config['batch_size']
 
         indices = self.get_indices(indices)
 
         train_x, train_y, train_label = self.fetch_data(data=self.data, st=st, en=en, shuffle=True,
-                                                        write_data=self.data_config['CACHEDATA'],
+                                                        write_data=self.config['cache_data'],
+                                                        inps=self.in_cols,
+                                                        outs=self.out_cols,
                                                         indices=indices)
 
         train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_label))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
-        for epoch in range(self.model_config['epochs']):
+        for epoch in range(self.config['epochs']):
             print("\nStart of epoch %d" % (epoch,))
 
             # Iterate over the batches of the dataset.
@@ -87,7 +91,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config':  {'units': 1}}
           }
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
 df = pd.read_csv(fname)  # must be 2d dataframe
 
 
@@ -95,12 +99,13 @@ model = CustomModel(model={'layers':layers},
                     batch_size=12,
                     lookback=15,
                     lr=8.95e-5,
-                    ignore_nans=False,
+                    allow_nan_labels=1,
                     inputs=input_features,
                     outputs=outputs,
-                    epochs=10
+                    epochs=10,
+                    data=df,
                     )
-history = model.train(indices='random', tensorboard=True)
+history = model.fit(indices='random', tensorboard=True)
 
 test_pred, test_obs = model.predict(indices=model.test_indices)
 train_pred, train_obs = model.predict(indices=model.train_indices)

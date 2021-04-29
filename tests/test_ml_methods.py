@@ -1,9 +1,9 @@
 import os
 import unittest
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq import Model
+from AI4Water import Model
 
 import pandas as pd
 import numpy as np

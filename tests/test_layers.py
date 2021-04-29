@@ -6,14 +6,14 @@ import unittest
 
 import tensorflow as tf
 
-import site  # so that dl4seq directory is in path
+import site  # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from inspect import getsourcefile
 from os.path import abspath
 
-from dl4seq import Model
-from dl4seq import NBeatsModel
+from AI4Water import Model
+from AI4Water import NBeatsModel
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
@@ -23,7 +23,7 @@ ins = len(input_features)
 outs = 1
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
 
 def make_and_run(
         model,

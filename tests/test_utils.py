@@ -1,26 +1,28 @@
-from inspect import getsourcefile
-from os.path import abspath
+import os
+import random
 import warnings
 import unittest
-import os
-
-import tensorflow as tf
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-import site   # so that dl4seq directory is in path
+from os.path import abspath
+from inspect import getsourcefile
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq import Model
-from dl4seq.utils.utils import split_by_indices, train_val_split, stats, make_3d_batches, Jsonize
-from dl4seq.backend import get_sklearn_models
-from dl4seq.utils.imputation import Imputation
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
+from AI4Water import Model
+from AI4Water.backend import get_sklearn_models
+from AI4Water.utils.imputation import Imputation
+from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
 seed = 313
 np.random.seed(seed)
+random.seed(seed)
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 nasdaq_df = pd.read_csv(fname)
 
@@ -31,6 +33,7 @@ in_cols = ['input_'+str(i) for i in range(5)]
 out_cols = ['output']
 cols=  in_cols + out_cols
 
+data2 = np.arange(int(50 * 5)).reshape(-1, 50).transpose()
 data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).transpose(),
                     columns=cols,
                     index=pd.date_range("20110101", periods=examples, freq="D"))
@@ -346,17 +349,6 @@ class TestUtils(unittest.TestCase):
         np.allclose(tr_y[0], tr_indices)
         np.allclose(tr_x1, tr_x2[0])
 
-    def test_make_3d_batches(self):
-
-        exs = 50
-        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = make_3d_batches(d, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
-        self.assertEqual(x.shape, (38, 4, 3))
-        self.assertEqual(label.shape, (38, 2, 4))
-        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
-                                                        [208., 209., 210., 211.]])))
-        return
-
     def test_same_test_val_data_train_random(self):
         #TODO not a good test, must check that individual elements in returned arrayare correct
 
@@ -403,18 +395,35 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_stats(self):
-        d = stats(np.random.random(10))
+        d = ts_features(np.random.random(10))
         self.assertGreater(len(d), 1)
         return
 
     def test_stats_pd(self):
-        d = stats(pd.Series(np.random.random(10)))
+        d = ts_features(pd.Series(np.random.random(10)))
         self.assertGreater(len(d), 1)
         return
 
     def test_stats_list(self):
-        d = stats(np.random.random(10).tolist())
+        d = ts_features(np.random.random(10).tolist())
         self.assertGreater(len(d), 1)
+        return
+
+    def test_stats_slice(self):
+        d = ts_features(np.random.random(100), st=10, en=50)
+        self.assertEqual(d['Counts'], 40)
+        return
+
+    def test_ts_features_numbers(self):
+        # test that all the features are calculated
+        d = ts_features(np.random.random(100))
+        self.assertEqual(len(d), 21)
+        return
+
+    def test_ts_features_single_feature(self):
+        # test that only one feature can be calculated
+        d = ts_features(np.random.random(10), features=['Shannon entropy'])
+        self.assertEqual(len(d), 1)
         return
 
     def test_datetimeindex(self):
@@ -620,14 +629,6 @@ class TestUtils(unittest.TestCase):
             np.allclose(testy[4][0], df[['out1']].iloc[29])
             return
 
-    def test_prepare_data_no_outputs(self):
-        """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
-        exs = 100
-        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = make_3d_batches(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2, forecast_len=4)
-        self.assertEqual(label.sum(), 0.0)
-        return
-
     def test_jsonize(self):
         a = [np.array([2.0])]
         b = Jsonize(a)()
@@ -648,6 +649,89 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(isinstance(b, list))
         self.assertTrue(isinstance(b[0], type(None)))
         return
+
+    def test_prepare_data0(self):
+        # vanilla case of time series forecasting
+        x, _, y = prepare_data(data2,
+                               num_outputs=2,
+                               lookback_steps=4,
+                               forecast_step=1)
+        self.assertAlmostEqual(y[0].sum(), 358.0, 6)
+        return
+
+    def test_prepare_data1(self):
+        # multi_step ahead at multiple horizons with known future inputs
+        x, prevy, y = prepare_data(data2,
+                                   num_outputs=2,
+                                   lookback_steps=4,
+                                   forecast_len=3,
+                                   forecast_step=1,
+                                   known_future_inputs = True)
+        self.assertAlmostEqual(y[0].sum(), 1080.0, 6)
+        return
+
+    def test_prepare_data2(self):
+        # multi_step ahead at multiple horizons without known_future_inputs
+        x, prevy, y = prepare_data(data2,
+                                   num_outputs=2,
+                                   lookback_steps=4,
+                                   forecast_len=3,
+                                   forecast_step=1,
+                                   known_future_inputs=False)
+        self.assertAlmostEqual(y[0].sum(), 1080.0, 6)
+        return
+
+    def test_prepare_data3(self):
+        # multistep ahead at single horizon
+        x, prevy, y = prepare_data(data2,
+                                   num_outputs=2,
+                                   lookback_steps=4,
+                                   forecast_len=1,
+                                   forecast_step=3)
+        self.assertAlmostEqual(y[0].sum(), 362.0, 6)
+        return
+
+    def test_prepare_data4(self):
+        # multi output, with strides in input, multi step ahead at multiple horizons without future inputs
+        x, prevy, label = prepare_data(data2,
+                                       num_outputs=2,
+                                       lookback_steps=4,
+                                       input_steps=2,
+                                       forecast_step=2,
+                                       forecast_len=4)
+        self.assertEqual(x.shape, (38, 4, 3))
+        self.assertEqual(label.shape, (38, 2, 4))
+        self.assertTrue(np.allclose(label[0], np.array([[158., 159., 160., 161.],
+                                                        [208., 209., 210., 211.]])))
+        return
+
+    def test_prepare_data_no_outputs(self):
+        """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
+        exs = 100
+        d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
+        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2,
+                                       forecast_len=4)
+        self.assertEqual(label.sum(), 0.0)
+        return
+
+    def test_prepare_data_with_mask(self):
+        data = np.arange(int(50 * 5)).reshape(-1, 50).transpose()
+        idx = random.choices(np.arange(49), k=20)
+        data[idx, -1] = -99
+        x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=-99)
+        self.assertEqual(len(x),  len(y))
+        self.assertGreater(len(data)-len(idx) + 4, len(x))
+        return
+
+    def test_prepare_data_with_mask1(self):
+        data = np.arange(int(50 * 5), dtype=np.float32).reshape(-1, 50).transpose()
+        idx = random.choices(np.arange(49), k=20)
+        data[idx, -1] = np.nan
+        x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=np.nan)
+        self.assertEqual(len(x), len(y))
+        self.assertEqual(len(x), 33)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

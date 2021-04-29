@@ -1,16 +1,15 @@
 import os
 import unittest
-
-
-
-import site  # so that dl4seq directory is in path
+import site  # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq import Model
-
-import tensorflow as tf
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, Input
+
+from AI4Water import Model
+
 
 examples = 200
 lookback = 10
@@ -20,9 +19,8 @@ w = 5
 h = 5
 
 # input for 2D data, radar images
-pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h) #5 rows 5 columns, and 100 images
+pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h)  # 5 rows 5 columns, and 100 images
 lai = np.random.randint(6, 10, examples*w*h).reshape(examples, w, h)
-
 
 data_2d = np.full((len(pcp), len(inp_2d), w, h), np.nan) #np.shape(data)==(100,5,5,5); 5 rows, 5 columns, 5 variables, and 100 images in each variable
 
@@ -72,10 +70,11 @@ def build_and_run(outputs, transformation=None, indices=None):
         verbosity=0
     )
 
-    hist = model.fit(indices=indices)
+    model.fit(indices=indices)
     return model.predict(indices=model.test_indices if indices else None)
 
 class test_MultiInputModels(unittest.TestCase):
+
     def test_with_no_transformation(self):
         outputs = {"inp_1d": ['flow']}
         build_and_run(outputs, transformation=None)
@@ -95,6 +94,123 @@ class test_MultiInputModels(unittest.TestCase):
     def test_with_multiple_outputs(self):
         outputs = {'inp_1d': ['flow', 'suro']}
         build_and_run(outputs)
+        return
+
+    def test_add_output_layer1(self):
+        # check if it adds both dense and reshapes it correctly or not
+        model = Model(model={'layers': {'lstm': {'config': {'units': 64}}}},
+                      verbosity=0)
+
+        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
+        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+
+        return
+
+    def test_add_output_layer2(self):
+        # check if it reshapes the output correctly
+        model = Model(model={'layers': {'lstm': {'config': {'units': 64}},
+                                        'Dense': {'config': {'units': 1}}}},
+                      verbosity=0)
+
+        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
+        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        return
+
+    def test_add_no_output_layer(self):
+        # check if it does not add layers when it does not have to
+        model = Model(model={'layers': {'lstm': {'config': {'units': 64}},
+                                        'Dense': {'config': {'units': 1}},
+                                        'Reshape': {'config': {'target_shape': (1,1)}}}},
+                      verbosity=0)
+
+        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
+        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        return
+
+    def test_same_val_data(self):
+        # test that we can use val_data="same" with multiple inputs. Execution of model.fit() below means that
+        # tf.data was created successfully and keras Model accepted it to train as well.
+        _examples = 200
+
+        class MyModel(Model):
+            def add_layers(self, layers_config:dict, inputs=None):
+                input_layer_names = ['input1', 'input2', 'input3', 'input4']
+
+                inp1 = Input(shape=(10, 5), name=input_layer_names[0])
+                inp2 = Input(shape=(10, 4), name=input_layer_names[1])
+                inp3 = Input(shape=(10,), name=input_layer_names[2])
+                inp4 = Input(shape=(9,), name=input_layer_names[3])
+                conc1 = tf.keras.layers.Concatenate()([inp1, inp2])
+                dense1 = Dense(1)(conc1)
+                out1 = tf.keras.layers.Flatten()(dense1)
+                conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
+                s = tf.keras.layers.Concatenate()([out1, conc2])
+                out = Dense(1, name='output')(s)
+                return [inp1, inp2, inp3, inp4], out
+
+            def train_data(self, data=None, data_keys=None, **kwargs):
+
+                in1 = np.random.random((_examples, 10, 5))
+                in2 = np.random.random((_examples, 10, 4))
+                in3 = np.random.random((_examples, 10))
+                in4 = np.random.random((_examples, 9))
+                o = np.random.random((_examples, 1))
+                return [in1, in2, in3, in4], o
+
+        model = MyModel(val_data='same', verbosity=0)
+        hist = model.fit()
+        self.assertGreater(len(hist.history['loss']), 1)
+        return
+
+    def test_customize_loss(self):
+        class QuantileModel(Model):
+
+            def denormalize_data(self,
+                                 inputs: np.ndarray,
+                                 predicted: np.ndarray,
+                                 true: np.ndarray,
+                                 in_cols, out_cols,
+                                 scaler_key: str,
+                                 transformation=None):
+                return predicted, true
+
+            def loss(self):
+                return qloss
+
+        def qloss(y_true, y_pred):
+            # Pinball loss for multiple quantiles
+            qs = quantiles
+            q = tf.constant(np.array([qs]), dtype=tf.float32)
+            e = y_true - y_pred
+            v = tf.maximum(q * e, (q - 1) * e)
+            return tf.keras.backend.mean(v)
+
+        # Define a dummy dataset consisting of 6 time-series.
+        cols = 6
+        data = np.arange(int(2000 * cols)).reshape(-1, 2000).transpose()
+        data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
+                            index=pd.date_range('20110101', periods=len(data), freq='H'))
+
+        # Define Model
+        layers = {'Dense_0': {'units': 64, 'activation': 'relu'},
+                  'Dense_3': {'units': 3}}
+
+        # Define Quantiles
+        quantiles = [0.005, 0.025,   0.995]
+
+        # Initiate Model
+        model = QuantileModel(
+            inputs=['input_' + str(i) for i in range(cols - 1)],
+            outputs=['input_' + str(cols - 1)],
+            lookback=1,
+            verbosity=0,
+            model={'layers': layers},
+            epochs=2,
+            data=data,
+            quantiles=quantiles)
+
+        # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
+        model.fit(st=0, en=1500)
         return
 
 if __name__ == "__main__":

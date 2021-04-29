@@ -1,8 +1,8 @@
 # Put channel and spatial attention of CBAM model for time-series prediction
 
 
-from dl4seq import Model
-from dl4seq.data import load_30min
+from AI4Water import Model
+from AI4Water.data import load_30min
 
 inputs = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']
@@ -16,14 +16,14 @@ layers = {
 
     "Flatten": {"config": {}},
     "Dense": {"config": {"units": 1}},
-    "reshape": {"config": {"target_shape": (1,1)}}
+    "Reshape": {"config": {"target_shape": (1,1)}}
 }
 
 model = Model(
-    layers=layers,
+    model={'layers':layers},
     lookback=10,
     inputs=inputs,
     outputs=outputs,
     data=load_30min())
 
-#history = model.fit(indices="random")
+history = model.fit(indices="random")

@@ -6,17 +6,26 @@
 import numpy as np
 import pandas as pd
 
-from dl4seq import Model
 import tensorflow as tf
 from tensorflow import keras
 
+from AI4Water import Model
 
 class QuantileModel(Model):
 
-    def denormalize_data(self, first_input, predicted, true_outputs, scaler_key):
+    def denormalize_data(self,
+                         inputs: np.ndarray,
+                         predicted: np.ndarray,
+                         true: np.ndarray,
+                         in_cols, out_cols,
+                         scaler_key: str,
+                         transformation=None):
 
-        return predicted, true_outputs
+        return predicted, true
 
+    def loss(self):
+
+        return qloss
 
 def qloss(y_true, y_pred):
     # Pinball loss for multiple quantiles
@@ -50,13 +59,10 @@ model = QuantileModel(
     inputs=['input_' + str(i) for i in range(cols - 1)],
     outputs=['input_' + str(cols - 1)],
     lookback=1,
-    layers=layers,
-    epochs=100,
+    model={'layers':layers},
+    epochs=10,
     data=data,
     quantiles=quantiles)
-
-# Assign loss for the model
-model.loss = qloss
 
 # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
 model.fit(st=0, en=1500)

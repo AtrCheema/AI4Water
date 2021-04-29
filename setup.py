@@ -10,7 +10,7 @@ with open('version.py') as fv:
     exec(fv.read())
 
 setup(
-    name='dl4seq',
+    name='AI4Water',
 
     version=ver,
 
@@ -18,12 +18,12 @@ setup(
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
-    url='https://github.com/AtrCheema/dl4seq',
+    url='https://github.com/AtrCheema/AI4Water',
 
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'dl4seq/data': ['data_30min.csv', "input_target_u1.csv"]},
+    package_data={'AI4Water/data': ['data_30min.csv', "input_target_u1.csv"]},
     include_package_data=True,
 
     classifiers=[
@@ -44,7 +44,16 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
 
-    packages=['dl4seq', 'dl4seq/models', 'dl4seq/utils', 'dl4seq/data', 'dl4seq/utils/TSErrors'],
+    packages=['AI4Water',
+              'AI4Water/models',
+              'AI4Water/data',
+              'AI4Water/hyper_opt',
+              'AI4Water/utils',
+              'AI4Water/utils/SeqMetrics',
+              'AI4Water/utils/datasets',
+              'AI4Water/ETUtil',
+              'AI4Water/experiments'
+              ],
 
     install_requires=[
         'numpy',
@@ -52,7 +61,6 @@ setup(
         'scikit-learn',
         'pandas',
         'matplotlib',
-        'scikit-optimize',
-        'TSErrors',
+        'scikit-optimize'
     ],
 )

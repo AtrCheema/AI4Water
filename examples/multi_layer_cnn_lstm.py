@@ -2,11 +2,11 @@
 # We build a CNN->LSTM model consisting of 3 CNN layers followed by max pooling and then feeding its output
 # to two LSTM layers.
 
-from dl4seq.utils import make_model
-from dl4seq import Model
+import os
 
 import pandas as pd
-import os
+
+from AI4Water import Model
 
 input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']
@@ -42,25 +42,18 @@ layers = {
 }
 
 
-config = make_model(batch_size=16,
-                    lookback=lookback,
-                    inputs=input_features,
-                    outputs=outputs,
-                    model={'layers':layers},
-                    lr=0.0001)
-
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
 df = pd.read_csv(fname)
 df.index = pd.to_datetime(df['Date_Time2'])
 
-model = Model(config=config,
-              data=df,
-              batch_size=16,
-                lookback=lookback,
-                inputs=input_features,
-                outputs=outputs,
-                model={'layers':layers},
-                lr=0.0001
+model = Model(
+    data=df,
+    batch_size=16,
+    lookback=lookback,
+    inputs=input_features,
+    outputs=outputs,
+    model={'layers':layers},
+    lr=0.0001
               )
 
 # This model is built only to showcase how to build multi layer model by manipulating config

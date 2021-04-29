@@ -1,10 +1,14 @@
 # this file shows how to build a simple dense layer based model
 # the input_features and outputs are columns and are present in the file
-
-import pandas as pd
 import os
 
-from dl4seq import Model
+import pandas as pd
+import tensorflow as tf
+
+from AI4Water import Model
+
+tf.compat.v1.disable_eager_execution()
+
 
 if __name__ == "__main__":
     input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
@@ -12,7 +16,7 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['target7']
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
     df = pd.read_csv(fname)
     df.index = pd.to_datetime(df['Date_Time2'])
 

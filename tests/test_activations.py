@@ -6,17 +6,17 @@ from inspect import getsourcefile
 from os.path import abspath
 import pandas as pd
 
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq import Model
-from dl4seq.utils import make_model
+from AI4Water import Model
+from AI4Water.utils import make_model
 
 
 
 _ = make_model()
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 
 df = pd.read_csv(fname)

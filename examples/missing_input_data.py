@@ -2,13 +2,17 @@
 # This file shows how to build and set time series prediction problem when we have missing values as a chunk in target
 # data. # We will insert some nan values (as a representative of missing values) in chunks i.e. continuous missing
 # values after certain values. These nan values will then be ignored using the feature `intervals`.
-import numpy as np
-import pandas as pd
 import os
 
-from dl4seq import DualAttentionModel
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
+from AI4Water import DualAttentionModel
+
+tf.compat.v1.disable_eager_execution()
+
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
 # df.index = pd.date_range("20110101", periods=len(df), freq='H')
@@ -39,7 +43,7 @@ model = DualAttentionModel(
 history = model.fit(indices='random')
 
 y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
-# tr_y, tr_obs = model.predict(indices=model.train_indices, pref='train', use_datetime_index=False)
+# tr_y, tr_obs = model.predict(indices=model.train_indices, prefix='train', use_datetime_index=False)
 
 model.view_model(st=0, save=True)  # takes a lot of time to save all plots
 

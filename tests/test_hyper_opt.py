@@ -1,44 +1,59 @@
+import os
+import time
+import pickle
+import unittest
+from os.path import abspath
+from inspect import getsourcefile
+import site   # so that AI4Water directory is in path
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+
+import skopt
+import sklearn
+import numpy as np
+import pandas as pd
+from sklearn.svm import SVC
+from scipy.stats import uniform
+from skopt.space.space import Space
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from scipy.stats import uniform
-from sklearn.svm import SVC
-import numpy as np
+from hyperopt import hp, STATUS_OK
+
 np.random.seed(313)
-import os
-import skopt
-import pandas as pd
-import unittest
 
-import site   # so that dl4seq directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
-
-from dl4seq.hyper_opt import HyperOpt, Real, Categorical, Integer
-from dl4seq import Model
-from dl4seq.utils.utils import Jsonize
-from dl4seq.utils.TSErrors import FindErrors
-
-from inspect import getsourcefile
-from os.path import abspath
+from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
+from AI4Water import Model
+from AI4Water.utils.utils import Jsonize
+from AI4Water.utils.SeqMetrics import Metrics
 
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
 fname = os.path.join(dpath, "input_target_u1.csv")
+data = pd.read_csv(fname)
+inputs = list(data.columns)
+inputs.remove('index')
+inputs.remove('target')
+inputs.remove('target_by_group')
+outputs = ['target']
+
+
+def check_attrs(optimizer, paras):
+    space = optimizer.space()
+    assert isinstance(space, dict)
+    assert len(space)==paras
+    assert isinstance(optimizer.xy_of_iterations(), dict)
+    assert len(optimizer.xy_of_iterations())>1
+    assert isinstance(optimizer.best_paras(as_list=True), list)
+    assert isinstance(optimizer.best_paras(False), dict)
+    assert len(optimizer.func_vals()) > 1
+    assert isinstance(optimizer.skopt_space(), Space)
 
 def run_dl4seq(method):
     dims = {'n_estimators': [1000,  2000],
             'max_depth': [3,  6],
             'learning_rate': [0.1,  0.0005],
             'booster': ["gbtree", "dart"]}
-
-
-    data = pd.read_csv(fname)
-    inputs = list(data.columns)
-    inputs.remove('index')
-    inputs.remove('target')
-    inputs.remove('target_by_group')
-    outputs = ['target']
 
     dl4seq_args = {"inputs": inputs,
                    "outputs": outputs,
@@ -54,7 +69,6 @@ def run_dl4seq(method):
                    param_space=dims,
                    dl4seq_args=dl4seq_args,
                    data=data,
-                   use_named_args=True,
                    acq_func='EI',  # Expected Improvement.
                    n_calls=12,
                    n_iter=12,
@@ -65,9 +79,47 @@ def run_dl4seq(method):
                    )
 
     # executes bayesian optimization
-    sr = opt.fit()
+    opt.fit()
+    check_attrs(opt, 4)
     return
 
+
+def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
+
+    def fn(**suggestion):
+        model = Model(
+            inputs=inputs,
+            outputs=outputs,
+            model={"xgboostregressor": suggestion},
+            data=data,
+            prefix=f'test_{algorithm}_xgboost_{backend}',
+            verbosity=0)
+
+        model.fit(indices="random")
+
+        t, p = model.predict(indices=model.test_indices, pref='test')
+        mse = FindErrors(t, p).mse()
+
+        return mse
+
+    search_space = [
+        Categorical(['gbtree', 'dart'], name='booster'),
+        Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
+        Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
+    ]
+
+    optimizer = HyperOpt(algorithm, objective_fn=fn, param_space=search_space,
+                         backend=backend,
+                         num_iterations=num_iterations,
+                         opt_path=os.path.join(os.getcwd(), f'results\\test_{algorithm}_xgboost_{backend}'))
+
+    optimizer.fit()
+    check_attrs(optimizer, 3)
+
+    for f in ["fanova_importance.html", "convergence.png", "iterations.json", "iterations_sorted.json"]:
+        fpath = os.path.join(optimizer.opt_path, f)
+        assert os.path.exists(fpath)
+    return optimizer
 
 class TestHyperOpt(unittest.TestCase):
 
@@ -89,12 +141,12 @@ class TestHyperOpt(unittest.TestCase):
     def test_integer_num_samples(self):
         r = Integer(low=10, high=100, num_samples=20)
         grit = r.grid
-        assert grit.shape == (20,)
+        assert len(grit) == 20
 
     def test_integer_steps(self):
         r = Integer(low=10, high=100, step=20)
         grit = r.grid
-        grit.shape = (5,)
+        assert len(grit) == 5
 
     def test_integer_grid(self):
         grit = [1, 2, 3, 4, 5]
@@ -115,7 +167,7 @@ class TestHyperOpt(unittest.TestCase):
         distributions1 = dict(C=uniform(loc=0, scale=4),
                              penalty=['l2', 'l1'])
 
-        clf = HyperOpt('random', model=logistic, param_space=distributions1, random_state=0)
+        clf = HyperOpt('random', objective_fn=logistic, param_space=distributions1, random_state=0)
 
         search = clf.fit(iris.data, iris.target)
         np.testing.assert_almost_equal(search.best_params_['C'], 2.195254015709299, 5)
@@ -130,7 +182,7 @@ class TestHyperOpt(unittest.TestCase):
         iris = load_iris()
         parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
         svc = SVC()
-        clf = HyperOpt("grid", model=svc, param_space=parameters)
+        clf = HyperOpt("grid", objective_fn=svc, param_space=parameters)
         search = clf.fit(iris.data, iris.target)
 
         sorted(clf.cv_results_.keys())
@@ -140,31 +192,33 @@ class TestHyperOpt(unittest.TestCase):
         print("GridSearchCV test passed")
         return clf
 
+    def test_bayes(self):
+        # testing for sklearn-based model with gp_min
+        # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
+        X, y = load_iris(True)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
+        if int(''.join(sklearn.__version__.split('.')[1])) > 22:
+            # https://github.com/scikit-optimize/scikit-optimize/issues/978
+            pass
+        else:
+            opt = HyperOpt("bayes",  objective_fn=SVC(),
+                           param_space={
+                'C': Real(1e-6, 1e+6, prior='log-uniform'),
+                'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
+                'degree': Integer(1, 8),
+                'kernel': Categorical(['linear', 'poly', 'rbf']),
+                },
+                n_iter=32,
+                random_state=0
+            )
 
-    # def test_bayes(self):
-    #     # testing for sklearn-based model with gp_min
-    #     # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
-    #     X, y = load_iris(True)
-    #     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
-    #
-    #     opt = HyperOpt("bayes",  model=SVC(),
-    #                    param_space={
-    #         'C': Real(1e-6, 1e+6, prior='log-uniform'),
-    #         'gamma': Real(1e-6, 1e+1, prior='log-uniform'),
-    #         'degree': Integer(1, 8),
-    #         'kernel': Categorical(['linear', 'poly', 'rbf']),
-    #         },
-    #         n_iter=32,
-    #         random_state=0
-    #     )
-    #     # executes bayesian optimization
-    #     _ = opt.fit(X_train, y_train)
-    #
-    #     # model can be saved, used for predictions or scoring
-    #     np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
-    #     print("BayesSearchCV test passed")
-    #     return
+            # executes bayesian optimization
+            _ = opt.fit(X_train, y_train)
 
+            # model can be saved, used for predictions or scoring
+            np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
+        print("BayesSearchCV test passed")
+        return
 
     def test_gpmin_skopt(self):
         # testing for custom model with gp_min
@@ -173,7 +227,7 @@ class TestHyperOpt(unittest.TestCase):
             return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) \
                    + np.random.randn() * noise_level
 
-        opt = HyperOpt("bayes", model=f, param_space=[(-2.0, 2.0)],
+        opt = HyperOpt("bayes", objective_fn=f, param_space=[(-2.0, 2.0)],
                        acq_func="EI",  # the acquisition function
                        n_calls=15,  # the number of evaluations of f
                        n_random_starts=5,  # the number of random initialization points
@@ -196,7 +250,7 @@ class TestHyperOpt(unittest.TestCase):
                    + np.random.randn() * noise_level
 
         opt = HyperOpt("grid",
-                       model=f,
+                       objective_fn=f,
                        param_space=[Real(low=-2.0, high=2.0, num_samples=20)],
                        n_calls=15,  # the number of evaluations of f
                        )
@@ -214,13 +268,7 @@ class TestHyperOpt(unittest.TestCase):
                 ]
 
         def f(**kwargs):
-            data = pd.read_csv(fname)
 
-            inputs = list(data.columns)
-            inputs.remove('index')
-            inputs.remove('target')
-            inputs.remove('target_by_group')
-            outputs = ['target']
             kwargs['objective'] = 'reg:squarederror'
 
             kwargs = Jsonize(kwargs)()
@@ -247,9 +295,8 @@ class TestHyperOpt(unittest.TestCase):
             return mse
 
         opt = HyperOpt("bayes",
-                       model=f,
+                       objective_fn=f,
                        param_space=dims,
-                       use_named_args=True,
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
                        # acq_optimizer='auto',
@@ -258,9 +305,9 @@ class TestHyperOpt(unittest.TestCase):
                        random_state=2
                        )
 
-        res = opt.fit()
+        opt.fit()
+        check_attrs(opt, 4)
         return
-
 
     def test_dl4seq_bayes(self):
         dims = [Integer(low=1000, high=2000, name='n_estimators'),
@@ -268,13 +315,6 @@ class TestHyperOpt(unittest.TestCase):
                 Real(low=1e-5, high=0.1, name='learning_rate'),
                 Categorical(categories=["gbtree", "dart"], name="booster")
                 ]
-
-        data = pd.read_csv(fname)
-        inputs = list(data.columns)
-        inputs.remove('index')
-        inputs.remove('target')
-        inputs.remove('target_by_group')
-        outputs = ['target']
 
         dl4seq_args = {"inputs": inputs,
                        "outputs": outputs,
@@ -291,7 +331,6 @@ class TestHyperOpt(unittest.TestCase):
                        param_space=dims,
                        dl4seq_args=dl4seq_args,
                        data=data,
-                       use_named_args=True,
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
                        # acq_optimizer='auto',
@@ -301,16 +340,173 @@ class TestHyperOpt(unittest.TestCase):
                        )
 
         opt.fit()
+        check_attrs(opt, 4)
         return
 
     def test_dl4seq_grid(self):
         run_dl4seq("grid")
-        print("dl4seq for grid passing")
+        print("AI4Water for grid passing")
 
     def test_dl4seq_random(self):
         run_dl4seq("random")
-        print("dl4seq for random passing")
+        print("AI4Water for random passing")
         return
+
+    def test_hyperopt_basic(self):
+        # https://github.com/hyperopt/hyperopt/blob/master/tutorial/01.BasicTutorial.ipynb
+        def objective(x):
+            return {
+                'loss': x ** 2,
+                'status': STATUS_OK,
+                # -- store other results like this
+                'eval_time': time.time(),
+                'other_stuff': {'type': None, 'value': [0, 1, 2]},
+                # -- attachments are handled differently
+                'attachments':
+                    {'time_module': pickle.dumps(time.time)}
+                }
+
+        optimizer = HyperOpt('tpe',
+                             objective_fn=objective,
+                             param_space=hp.uniform('x', -10, 10),
+                             backend='hyperopt',
+                             max_evals=100)
+        best = optimizer.fit()
+        check_attrs(optimizer, 1)
+        self.assertGreater(len(best), 0)
+        return
+
+    def test_hyperopt_multipara(self):
+        # https://github.com/hyperopt/hyperopt/blob/master/tutorial/02.MultipleParameterTutorial.ipynb
+        def objective(**params):
+            x, y = params['x'], params['y']
+            return np.sin(np.sqrt(x**2 + y**2))
+
+        space = {
+            'x': hp.uniform('x', -6, 6),
+            'y': hp.uniform('y', -6, 6)
+        }
+
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt',
+                             max_evals=100)
+        best = optimizer.fit()
+        check_attrs(optimizer, 2)
+        self.assertEqual(len(best), 2)
+        return
+
+    # # def test_hyperopt_multipara_multispace(self):  # todo
+    # #     # https://github.com/hyperopt/hyperopt/issues/615
+    # #     def f(**params):
+    # #         x1, x2 = params['x1'], params['x2']
+    # #         if x1 == 'james':
+    # #             return -1 * x2
+    # #         if x1 == 'max':
+    # #             return 2 * x2
+    # #         if x1 == 'wansoo':
+    # #             return -3 * x2
+    # #
+    # #     search_space = {
+    # #         'x1': hp.choice('x1', ['james', 'max', 'wansoo']),
+    # #         'x2': hp.randint('x2', -5, 5)
+    # #     }
+    # #
+    # #     optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, use_named_args=True,
+    # #                          backend='hyperopt', max_evals=100)
+    # #     best = optimizer.fit()
+    # #     self.assertEqual(len(best), 2)
+    #
+    def test_dl4seqModel_with_hyperopt(self):
+        """"""
+        def fn(**suggestion):
+
+            model = Model(
+                inputs=inputs,
+                outputs=outputs,
+                model={"xgboostregressor": suggestion},
+                data=data,
+                prefix='test_tpe_xgboost',
+                verbosity=0)
+
+            model.fit(indices="random")
+
+            t, p = model.predict(indices=model.test_indices, pref='test')
+            mse = FindErrors(t, p).mse()
+            print(f"Validation mse {mse}")
+
+            return mse
+
+        search_space = {
+            'booster': hp.choice('booster', ['gbtree', 'dart']),
+            'n_estimators': hp.randint('n_estimators', low=1000, high=2000),
+            'learning_rate': hp.uniform('learning_rate', low=1e-5, high=0.1)
+        }
+        optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=5,
+                             backend='hyperopt',
+                             opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
+
+        optimizer.fit()
+        check_attrs(optimizer, 3)
+        self.assertEqual(len(optimizer.trials.trials), 5)
+        self.assertIsNotNone(optimizer.skopt_space())
+        return
+
+    def test_hp_to_skopt_space(self):
+        """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
+        successfully.
+        """
+        opt = HyperOpt("tpe",
+                       param_space=[Integer(low=1000, high=2000, name='n_estimators', num_samples=5),
+                                    Integer(low=3, high=6, name='max_depth', num_samples=5),
+                                    Categorical(['gbtree', 'gblinear', 'dart'], name='booster')
+                                    ],
+                       dl4seq_args ={'model': 'XGBoostRegressor',
+                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'outputs': ['target']
+                                     },
+                       data =data,
+                       backend='hyperopt',
+                       num_iterations =5
+                       )
+        opt.fit()
+        check_attrs(opt, 3)
+        assert isinstance(list(opt.best_paras().values())[-1], str)
+
+    def test_hp_to_skopt_space1(self):
+        """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
+        successfully.
+        """
+        opt = HyperOpt("tpe",
+                       param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
+                                    hp.randint('max_depth', low=3, high=6),
+                                    hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
+                                    ],
+
+                       dl4seq_args ={'model': 'XGBoostRegressor',
+                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'outputs': ['target']
+                                     },
+                       data =data,
+                       backend='hyperopt',
+                       num_iterations =5
+                       )
+        opt.fit()
+        check_attrs(opt, 3)
+        assert isinstance(list(opt.best_paras().values())[-1], str)
+
+    def test_unified_interface(self):
+
+        run_unified_interface('tpe', 'optuna', 5)
+        run_unified_interface('cmaes', 'optuna', 5)
+        run_unified_interface('random', 'optuna', 5)
+        run_unified_interface('grid', 'optuna', 5, num_samples=3)
+        run_unified_interface('tpe', 'hyperopt', 5)
+        #run_unified_interface('atpe', 'hyperopt', 5)  # todo
+        #run_unified_interface('random', 'hyperopt', 5)  # todo
+        run_unified_interface('bayes', 'skopt', 12)
+        run_unified_interface('random', 'sklearn', 5, num_samples=5)
+        run_unified_interface('grid', 'sklearn', None, num_samples=2)
+
+
 
 
 

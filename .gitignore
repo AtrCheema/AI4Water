@@ -29,4 +29,13 @@ coverage.xml
 *.cover
 
 *tests/catboost_info/
-*dl4seq/utils/datasets/
+*dl4seq/utils/datasets/data/
+
+# docs
+docs/
+site/
+
+# run time junk
+examples/.jovianrc
+examples/catboost_info/
+tests/__MACOSX/

@@ -1,10 +1,10 @@
-from dl4seq import Model
-
+import os
 
 import tensorflow as tf
 from tensorflow import keras
-import os
 import pandas as pd
+
+from AI4Water import Model
 
 
 class CustomModel(keras.Model):
@@ -31,21 +31,18 @@ class CustomModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
-model = Model(lstm_units=64,
-            dropout=0.4,
-            rec_dropout=0.5,
-            lstm_act='relu',
-            batch_size=32,
-            lookback=1,
-            lr=8.95e-5,
-              data=df
-              )
+model = Model(
+    batch_size=32,
+    lookback=1,
+    lr=8.95e-5,
+    data=df
+)
 
 model.KModel = CustomModel
 
 history = model.fit(indices='random')
 
-# y, obs = model.predict()
+y, obs = model.predict()
