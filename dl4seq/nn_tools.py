@@ -1,11 +1,14 @@
 __all__ = ["NN", "check_act_fn"]
 
+from collections import OrderedDict
 
 try:
     import tensorflow as tf
     from dl4seq.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS
+    BACKEND = 'tensorflow'
 except ModuleNotFoundError:
     tf = None
+    BACKEND = 'pytorch'
 
 from weakref import WeakKeyDictionary
 
@@ -34,11 +37,11 @@ class AttributeStore(object):
         self.de_LSTM_cell = None
         self.de_densor_We = None
         self.scalers = {}
-        self.layers = None
+        #self.layers = None
         self.is_training = False
 
 
-class NN(AttributeStore):
+class NN(tf.keras.Model, AttributeStore):
 
     def __init__(self,
                  config: dict,
@@ -47,6 +50,7 @@ class NN(AttributeStore):
         self.lookback = self.config['lookback']
 
         super(NN, self).__init__()
+        AttributeStore.__init__(self)
 
     @property
     def lookback(self):
@@ -56,157 +60,305 @@ class NN(AttributeStore):
     def lookback(self, x):
         self._lookback = x
 
-    def add_layers(self, layers_config:dict, inputs=None):
-        """
-        @param layers_config: `dict`, wholse keys can be one of the following:
-            `config`: `dict`/lambda, Every layer must contain initializing arguments as `config` dictionary. The `config`
-                                     dictionary for every layer can contain `name` key and its value must be `str`
-                                     type. If `name` key  is not provided in the config, the provided layer name will be
-                                     used as its name e.g in following case
-                                       layers = {'LSTM': {'config': {'units': 16}}}
-                                     the name of `LSTM` layer will be `LSTM` while in follwoing case
-                                        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
-                                     the name of the lstm will be `MyLSTM`.
-            `inputs`: str/list,  The calling arguments for the list. If `inputs` key is missing for a layer, it will be
-                                 supposed that either this is an Input layer or it uses previous outputs as inputs.
-            `outputs`: str/list  We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
-                                 list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
-            `call_args`: str/list  We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
-                                   a list of strings.
-
-        @param inputs: if None, it will be supposed the the `Input` layer either exists in `layers_config` or an Input
-        layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
-        layer and the remaining NN architecture will be built as defined in `layers_config`. This can be handy when we
-        want to use this method several times to build a complex or parallel NN structure.
-        avoid `Input` in layer names.
-        """
-        lyr_cache = {}
+    def add_layers(self, layers_config, **kwargs):
+        layers_config = layers_config.copy()
         wrp_layer = None  # indicator for wrapper layers
         first_layer = True
+        lyr_cache = OrderedDict() if BACKEND == 'tensorflow' else []
+        self.inputs_ = []
 
         for lyr, lyr_args in layers_config.items():
 
             lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
 
-            lyr_name, args, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
+            lyr_name, args,  lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
-            # may be user has defined layers without input layer, in this case add Input layer as first layer
-            if first_layer:
-                if inputs is not None: # This method was called by providing it inputs.
-                    assert isinstance(inputs, tf.Tensor)
-                    lyr_cache["INPUT"] = inputs
-                    first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
-                    layer_outputs = inputs
+            if BACKEND == 'pytorch':
+                lyr_initiated = LAYERS[lyr_name.upper()](**lyr_config)
+                setattr(self, lyr, lyr_initiated)
+                lyr_cache.append(lyr)
 
-                elif lyr_name.upper() != "INPUT":
-                    # for simple dense layer based models, lookback will not be used
-                    def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
-                    layer_outputs = LAYERS["INPUT"](shape=def_shape)
-                    # first layer is built so next iterations will not be for first layer
-                    first_layer = False
-                    # put the first layer in memory to be used for model compilation
-                    lyr_cache["INPUT"] = layer_outputs
-                    # add th layer which the user had specified as first layer
+            elif BACKEND == 'tensorflow':
+                if first_layer:
+                    # # may be user has defined layers without input layer, in this case add Input layer as first layer
+                    if lyr_name.upper() != "INPUT":
+                        # for simple dense layer based models, lookback will not be used
+                        def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
+                        layer_outputs = LAYERS["INPUT"](shape=def_shape)
+                        # first layer is built so next iterations will not be for first layer
+                        first_layer = False
+                        # #put the first layer in memory to be used for model compilation
+                        lyr_cache["INPUT"] = layer_outputs
+                        self.Input = layer_outputs
+                        # add th layer which the user had specified as first layer
+                        self.inputs_.append(layer_outputs)
 
-            if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
-                # or it uses the previous outputs as inputs
-                if lyr_name.upper() == "INPUT":
-                    # it is an Input layer, hence should not be called
-                    layer_outputs = LAYERS[lyr_name.upper()](*args, **lyr_config)
-                else:
-                    # it is executable and uses previous outputs as inputs
-                    if lyr_name.upper() in ACTIVATION_LAYERS:
-                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(layer_outputs)
-                    elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                        wrp_layer = LAYERS[lyr_name.upper()]
-                        lyr_cache[lyr_name] = wrp_layer
-                        continue
-                    elif  "LAMBDA" in lyr_name.upper():
-                        # lyr_config is serialized lambda layer, which needs to be deserialized
-                        layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
-                        # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
-                        # object (lambda) with the serialized version (lyr_config) so that it can be saved as json file.
-                        layers_config[lyr]['config'] = lyr_config
-                    else:
-                        if wrp_layer is not None:
-                            layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(layer_outputs)
-                            wrp_layer = None
-                        else:
-                            add_args = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
-                            layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
-                            layer_outputs = layer_initialized(layer_outputs, **add_args)
-                            self.get_and_set_attrs(layer_initialized)
+                if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
+                    # or it uses the previous outputs as inputs
+                    if lyr_name.upper() == "INPUT":
+                        # it is an Input layer, hence should not be called
+                        layer_outputs = LAYERS[lyr_name.upper()](**lyr_config)
+                        self.Input = layer_outputs
+                        self.inputs_.append(layer_outputs)
+                        lyr_cache[lyr_config['name']] = layer_outputs
+                        first_layer = False
 
-            else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
-                # it is an executable
                 if lyr_name.upper() in ACTIVATION_LAYERS:
-                    call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(call_args, **add_args)
+                    lyr_cache[lyr_name] = {'layer': ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name']),
+                                            'inputs': lyr_inputs,
+                                            'named_outs': named_outs,
+                                            'call_args': call_args}
+                    continue
                 elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
                     wrp_layer = LAYERS[lyr_name.upper()]
                     lyr_cache[lyr_name] = wrp_layer
                     continue
                 elif "LAMBDA" in lyr_name.upper():
-                    call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                    layer_outputs = tf.keras.layers.deserialize(lyr_config)(call_args)
-                    layers_config[lyr]['config'] = lyr_config
+                    lyr_cache[lyr_name] = {'layer': tf.keras.layers.deserialize(lyr_config),
+                                            'inputs': lyr_inputs,
+                                            'named_outs': named_outs,
+                                            'call_args': call_args}
+                    continue
+
+                _lyr = lyr.split('_')[0]
+                if wrp_layer is not None:
+                    initiated_lyr = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))
+                    wrp_layer = None
                 else:
-                    if wrp_layer is not None:
-                        call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(call_args, **add_args)
-                        wrp_layer = None
-                    else:
-                        call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
-                        layer_outputs = layer_initialized(call_args, **add_args)
-                        self.get_and_set_attrs(layer_initialized)
+                    initiated_lyr = LAYERS[lyr_name.upper()](*args, **lyr_config)
 
-            if activation is not None:  # put the string back to dictionary to be saved in config file
-                lyr_config['activation'] = activation
+                if _lyr.upper() != "INPUT":
+                    lyr_cache[lyr_config['name']] = {'layer': initiated_lyr,
+                                       'inputs': lyr_inputs,
+                                       'named_outs': named_outs,
+                                       'call_args': call_args}
+            else:
+                raise ValueError
 
-            if named_outs is not None:
+        setattr(self, 'lyr_cache', lyr_cache)
 
-                if isinstance(named_outs, list):
-                    # this layer is returning more than one output
-                    assert len(named_outs) == len(layer_outputs), "Layer {} is expected to return {} outputs but it actually returns {}".format(lyr_name, named_outs, layer_outputs)
-                    for idx, out_name in enumerate(named_outs):
-                        self.update_cache(lyr_cache, out_name, layer_outputs[idx])
-                else:
-                    # this layer returns just one output, TODO, this might be re
-                    self.update_cache(lyr_cache, named_outs, layer_outputs)
+        self.input_layer = self.inputs_
+        if BACKEND == 'tensorflow':
+            self.out = self.call(self.input_layer)
+        elif BACKEND == 'pytorch':
+            pass
 
-            self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
-            first_layer = False
+        if BACKEND == 'tensorflow':
+            # Reinitial
+            super(NN, self).__init__(
+                inputs=self.input_layer,
+                outputs=self.out)
+        return self.inputs_, self.out
 
-        layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
+    def call(self, inputs, training=None, mask=None):
+        outs = inputs
 
-        inputs = []
-        for k,v in lyr_cache.items():
-            # since the model is not build yet and we have access to only output tensors of each list, this is probably
-            # the only way to know that how many `Input` layers were encountered during the run of this method. Each
-            # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
-            if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
-                if k.upper() != "TIMEDISTRIBUTED" and hasattr(v, 'op'):
-                    if hasattr(v.op, 'inputs'):
-                        _ins = v.op.inputs
-                        if len(_ins) == 0:
-                            inputs.append(v)
-            else:  # not sure if this is the proper way of checking if a layer receives an input or not!
-                if hasattr(v, '_keras_mask'):
-                    inputs.append(v)
+        # inputs can be a list of tensors
+        if isinstance(inputs, list):
+            cache = {i.name.split(':')[0]: i for i in inputs}
 
-        setattr(self, 'layers', lyr_cache)
+        # if inputs is a list, then just save it in cache
+        elif isinstance(inputs, dict):
+            cache = inputs
 
-        # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
-        # {Input_1, Input -> Dense }, thus it makes Dense as output and first 2 as inputs, so throwing warning
-        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
-            if len(layer_outputs.op.inputs) < 1:
-                print("Warning: the output is of Input tensor class type")
+        # inputs can be a list of tensors but as a ListWrapper
+        elif inputs.__class__.__name__ == "Listwrapper":
+            cache = {i.name.split(':')[0]: i for i in inputs}
+
+        # hopefully this is just one tensor
         else:
-            if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
-                print("Warning: the output is of Input tensor class type")
+            cache = {inputs.name: inputs}
 
-        return inputs, layer_outputs
+        # update the cache with the layers, todo keep tensor chache and layers cache separate
+        #cache.update(self.lyr_cache)
+
+        for lyr, lyr_args in self.lyr_cache.items():
+
+            if isinstance(lyr_args, tf.Tensor):
+                # this must be an input layer
+                assert is_input(lyr_args)
+                outs = lyr_args
+
+            elif lyr.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+                # no need to call wrapper layer so move to next iteration
+                continue
+            else:
+                _inputs = lyr_args.get('inputs', None)
+
+                # inputs have not been explicitly defined by the user so just use previous output
+                if _inputs is None:
+                    _inputs = prev_output_name
+
+                call_args, add_args = get_call_args(_inputs, cache, lyr_args['call_args'], lyr)
+
+                outs = lyr_args['layer'](call_args, **add_args)
+
+                if lyr_args['named_outs'] is not None:
+                    if isinstance(outs, list):
+                        assert len(lyr_args['named_outs']) == len(outs)
+                        for name, out_tensor in zip(lyr_args['named_outs'], outs):
+                            cache[name] = out_tensor
+                    else:
+                        cache[lyr_args['named_outs']] = outs
+
+            cache[lyr] = outs
+            prev_output_name = lyr
+
+        outs = self.maybe_add_output_layer(outs, cache)
+
+        return outs
+
+    # def add_layers(self, layers_config:dict, inputs=None):
+    #     """
+    #     @param layers_config: `dict`, wholse keys can be one of the following:
+    #         `config`: `dict`/lambda, Every layer must contain initializing arguments as `config` dictionary. The `config`
+    #                                  dictionary for every layer can contain `name` key and its value must be `str`
+    #                                  type. If `name` key  is not provided in the config, the provided layer name will be
+    #                                  used as its name e.g in following case
+    #                                    layers = {'LSTM': {'config': {'units': 16}}}
+    #                                  the name of `LSTM` layer will be `LSTM` while in follwoing case
+    #                                     layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
+    #                                  the name of the lstm will be `MyLSTM`.
+    #         `inputs`: str/list,  The calling arguments for the list. If `inputs` key is missing for a layer, it will be
+    #                              supposed that either this is an Input layer or it uses previous outputs as inputs.
+    #         `outputs`: str/list  We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
+    #                              list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
+    #         `call_args`: str/list  We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
+    #                                a list of strings.
+    #
+    #     @param inputs: if None, it will be supposed the the `Input` layer either exists in `layers_config` or an Input
+    #     layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
+    #     layer and the remaining NN architecture will be built as defined in `layers_config`. This can be handy when we
+    #     want to use this method several times to build a complex or parallel NN structure.
+    #     avoid `Input` in layer names.
+    #     """
+    #     lyr_cache = {}
+    #     wrp_layer = None  # indicator for wrapper layers
+    #     first_layer = True
+    #
+    #     for lyr, lyr_args in layers_config.items():
+    #
+    #         lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
+    #
+    #         lyr_name, args, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
+    #
+    #         # may be user has defined layers without input layer, in this case add Input layer as first layer
+    #         if first_layer:
+    #             if inputs is not None: # This method was called by providing it inputs.
+    #                 assert isinstance(inputs, tf.Tensor)
+    #                 lyr_cache["INPUT"] = inputs
+    #                 first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
+    #                 layer_outputs = inputs
+    #
+    #             elif lyr_name.upper() != "INPUT":
+    #                 # for simple dense layer based models, lookback will not be used
+    #                 def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
+    #                 layer_outputs = LAYERS["INPUT"](shape=def_shape)
+    #                 # first layer is built so next iterations will not be for first layer
+    #                 first_layer = False
+    #                 # put the first layer in memory to be used for model compilation
+    #                 lyr_cache["INPUT"] = layer_outputs
+    #                 # add th layer which the user had specified as first layer
+    #
+    #         if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
+    #             # or it uses the previous outputs as inputs
+    #             if lyr_name.upper() == "INPUT":
+    #                 # it is an Input layer, hence should not be called
+    #                 layer_outputs = LAYERS[lyr_name.upper()](*args, **lyr_config)
+    #             else:
+    #                 # it is executable and uses previous outputs as inputs
+    #                 if lyr_name.upper() in ACTIVATION_LAYERS:
+    #                     layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(layer_outputs)
+    #                 elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+    #                     wrp_layer = LAYERS[lyr_name.upper()]
+    #                     lyr_cache[lyr_name] = wrp_layer
+    #                     continue
+    #                 elif  "LAMBDA" in lyr_name.upper():
+    #                     # lyr_config is serialized lambda layer, which needs to be deserialized
+    #                     layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
+    #                     # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
+    #                     # object (lambda) with the serialized version (lyr_config) so that it can be saved as json file.
+    #                     layers_config[lyr]['config'] = lyr_config
+    #                 else:
+    #                     if wrp_layer is not None:
+    #                         layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(layer_outputs)
+    #                         wrp_layer = None
+    #                     else:
+    #                         add_args = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
+    #                         layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
+    #                         layer_outputs = layer_initialized(layer_outputs, **add_args)
+    #                         self.get_and_set_attrs(layer_initialized)
+    #
+    #         else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
+    #             # it is an executable
+    #             if lyr_name.upper() in ACTIVATION_LAYERS:
+    #                 call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+    #                 layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(call_args, **add_args)
+    #             elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+    #                 wrp_layer = LAYERS[lyr_name.upper()]
+    #                 lyr_cache[lyr_name] = wrp_layer
+    #                 continue
+    #             elif "LAMBDA" in lyr_name.upper():
+    #                 call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+    #                 layer_outputs = tf.keras.layers.deserialize(lyr_config)(call_args)
+    #                 layers_config[lyr]['config'] = lyr_config
+    #             else:
+    #                 if wrp_layer is not None:
+    #                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+    #                     layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(call_args, **add_args)
+    #                     wrp_layer = None
+    #                 else:
+    #                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
+    #                     layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
+    #                     layer_outputs = layer_initialized(call_args, **add_args)
+    #                     self.get_and_set_attrs(layer_initialized)
+    #
+    #         if activation is not None:  # put the string back to dictionary to be saved in config file
+    #             lyr_config['activation'] = activation
+    #
+    #         if named_outs is not None:
+    #
+    #             if isinstance(named_outs, list):
+    #                 # this layer is returning more than one output
+    #                 assert len(named_outs) == len(layer_outputs), "Layer {} is expected to return {} outputs but it actually returns {}".format(lyr_name, named_outs, layer_outputs)
+    #                 for idx, out_name in enumerate(named_outs):
+    #                     self.update_cache(lyr_cache, out_name, layer_outputs[idx])
+    #             else:
+    #                 # this layer returns just one output, TODO, this might be re
+    #                 self.update_cache(lyr_cache, named_outs, layer_outputs)
+    #
+    #         self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
+    #         first_layer = False
+    #
+    #     layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
+    #
+    #     inputs = []
+    #     for k,v in lyr_cache.items():
+    #         # since the model is not build yet and we have access to only output tensors of each list, this is probably
+    #         # the only way to know that how many `Input` layers were encountered during the run of this method. Each
+    #         # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
+    #         if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
+    #             if k.upper() != "TIMEDISTRIBUTED" and hasattr(v, 'op'):
+    #                 if hasattr(v.op, 'inputs'):
+    #                     _ins = v.op.inputs
+    #                     if len(_ins) == 0:
+    #                         inputs.append(v)
+    #         else:  # not sure if this is the proper way of checking if a layer receives an input or not!
+    #             if hasattr(v, '_keras_mask'):
+    #                 inputs.append(v)
+    #
+    #     setattr(self, 'layers', lyr_cache)
+    #
+    #     # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
+    #     # {Input_1, Input -> Dense }, thus it makes Dense as output and first 2 as inputs, so throwing warning
+    #     if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
+    #         if len(layer_outputs.op.inputs) < 1:
+    #             print("Warning: the output is of Input tensor class type")
+    #     else:
+    #         if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
+    #             print("Warning: the output is of Input tensor class type")
+    #
+    #     return inputs, layer_outputs
 
     def maybe_add_output_layer(self, current_outputs, lyr_cache:dict):
         """
@@ -322,6 +474,16 @@ class NN(AttributeStore):
             setattr(self, f'{layer.name}_attentions', layer.attention_components)
         return
 
+
+def is_input(tensor, name=''):
+    _is_input = False
+    if name.upper() != "TIMEDISTRIBUTED" and hasattr(tensor, 'op'):
+        if hasattr(tensor.op, 'inputs'):
+            _ins = tensor.op.inputs
+            if len(_ins) == 0:
+                _is_input = True
+
+    return _is_input
 
 def check_act_fn(config: dict):
     """ it is possible that the config file does not have activation argument or activation is None"""

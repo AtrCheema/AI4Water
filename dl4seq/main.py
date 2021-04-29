@@ -87,17 +87,17 @@ class Model(NN, Plots):
         self.data = data
         self.in_cols = self.config['inputs']
         self.out_cols = self.config['outputs']
-        self.KModel = keras.models.Model if keras is not None else None
+        #self.KModel = keras.models.Model if keras is not None else None
         self.path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
         self.category = self.config['category']
         self.problem = self.config['problem']
         self.info = {}
 
-        Plots.__init__(self, self.path, self.problem, self.category, self._model,
+        Plots.__init__(self, self.path, self.problem, self.category, self,
                        config=config.config)
 
-        self.build()  # will initialize ML models or build NNs
+        self.build(None)  # will initialize ML models or build NNs
 
     @property
     def act_path(self):
@@ -180,28 +180,28 @@ class Model(NN, Plots):
     def quantiles(self):
         return self.config['quantiles']
 
-    @property
-    def KModel(self):
-        """In case when we want to customize the model such as for
-        implementing custom `train_step`, we can provide the customized model as input the this Model class"""
-        return self._k_model
-
-    @KModel.setter
-    def KModel(self, x):
-        self._k_model = x
+    # @property
+    # def KModel(self):
+    #     """In case when we want to customize the model such as for
+    #     implementing custom `train_step`, we can provide the customized model as input the this Model class"""
+    #     return self._k_model
+    #
+    # @KModel.setter
+    # def KModel(self, x):
+    #     self._k_model = x
 
     @property
     def layer_names(self):
         _all_layers = []
-        for layer in self._model.layers:
+        for layer in self.layers:
             _all_layers.append(layer.name)
         return _all_layers
 
     @property
-    def weights(self):
+    def weight_names(self):
         """Returns names of weights in model."""
         _ws = []
-        for w in self._model.weights:
+        for w in self.weights:
             _ws.append(w.name)
         return _ws
 
@@ -210,7 +210,7 @@ class Model(NN, Plots):
         """ returns the shapes of inputs to all layers"""
         shapes = {}
 
-        for lyr in self._model.layers:
+        for lyr in self.layers:
             shapes[lyr.name] = lyr.input_shape
 
         return shapes
@@ -220,7 +220,7 @@ class Model(NN, Plots):
         """ returns shapes of outputs from all layers in model as dictionary"""
         shapes = {}
 
-        for lyr in self._model.layers:
+        for lyr in self.layers:
             shapes[lyr.name] = lyr.output_shape
 
         return shapes
@@ -230,12 +230,12 @@ class Model(NN, Plots):
         if self.category.upper() != "DL":
             return np.inf
         else:
-            return len(self._model.inputs)
+            return len(self.inputs)
 
     @property
     def input_layer_names(self) -> list:
 
-        return [lyr.name.split(':')[0] for lyr in self._model.inputs]
+        return [lyr.name.split(':')[0] for lyr in self.inputs]
 
     def loss(self):
          # overwrite this function for a customized loss function.
@@ -532,11 +532,11 @@ class Model(NN, Plots):
         """ instead of tuple, returning a list so that it can be moified if needed"""
         if self.num_input_layers > 1:
             shapes = {}
-            for lyr in self._model.inputs:
+            for lyr in self.inputs:
                 shapes[lyr.name] = lyr.shape
             return shapes
         shape = []
-        for idx, d in enumerate(self._model.layers[0].input.shape):
+        for idx, d in enumerate(self.layers[0].input.shape):
             if int(tf.__version__[0]) == 1:
                 if isinstance(d, tf.Dimension):  # for tf 1.x
                     d = d.value
@@ -601,10 +601,10 @@ class Model(NN, Plots):
             y = kwargs['y']
             assert np.isnan(y).sum() > 0
             kwargs['y'] = np.nan_to_num(y)  # In graph mode, masking of nans does not work
-            self._model.train_step = MethodType(train_step, self._model)
-            self._model.test_step = MethodType(test_step, self._model)
+            self.train_step = train_step
+            self.test_step = test_step
 
-        return self._model.fit(*args, **kwargs)
+        return super().fit(*args, **kwargs)
 
     def _fit(self, inputs, outputs, validation_data, validation_steps=None, **callbacks):
 
@@ -699,7 +699,7 @@ class Model(NN, Plots):
 
         # x_train contains more than one input
         elif self.num_input_layers > 1 and isinstance(x_train, list):
-            assert len(self._model.outputs) == 1
+            assert len(self.outputs) == 1
             train_dataset = tf.data.Dataset.from_tensor_slices((
                 {k: v for k, v in zip(self.input_layer_names, x_train)}, y_train
             ))
@@ -737,7 +737,7 @@ class Model(NN, Plots):
 
     def post_kfit(self):
         """Does some stuff after Keras model.fit has been called"""
-        history = self._model.history
+        history = self.history
 
         self.save_config(history.history)
 
@@ -875,7 +875,7 @@ class Model(NN, Plots):
         x, prev_y, label = self.check_batches(x, prev_y, label)
 
         if isinstance(label, dict) and not use_split_data:
-            assert len(self._model.outputs) == len(label)
+            assert len(self.outputs) == len(label)
             if len(label) == 1:
                 label = list(label.values())[0]
 
@@ -967,7 +967,7 @@ class Model(NN, Plots):
                 visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
         return
 
-    def build(self):
+    def build(self, input_shape):
 
         if self.verbosity > 0:
             print('building {} based model for {} problem'.format(self.category, self.problem))
@@ -975,13 +975,13 @@ class Model(NN, Plots):
         if self.category.upper() == "DL":
             inputs, predictions = self.add_layers(self.config['model']['layers'])
 
-            self._model = self.compile(inputs, predictions)
+            self.compile(inputs, predictions)
 
-            self.info['model_parameters'] = int(self._model.count_params()) if self._model is not None else None
+            self.trainable_paras()
 
             if self.verbosity > 0:
                 if 'tcn' in self.config['model']['layers']:
-                    tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
+                    tcn.tcn_full_summary(self, expand_residual_blocks=True)
         else:
             self.build_ml_model()
 
@@ -995,6 +995,18 @@ class Model(NN, Plots):
         self.info['version_info'] = VERSION_INFO
 
         return
+
+    def trainable_paras(self):
+        if tf is not None:
+            paras = int(self.count_params())
+        elif tf is None and torch is not None:
+            # https://discuss.pytorch.org/t/how-do-i-check-the-number-of-parameters-of-a-model/4325/9
+            paras = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        else:
+            paras = None
+
+        self.info['model_parameters'] = paras
+        return paras
 
     def build_ml_model(self):
         """ builds models that follow sklearn api such as xgboost, catboost, lightgbm and obviously sklearn."""
@@ -1090,9 +1102,9 @@ class Model(NN, Plots):
         inputs, outputs = maybe_three_outputs(train_data)
 
         if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
-            if isinstance(self._model.outputs, list):
-                assert len(self._model.outputs) == 1
-                model_output_shape = tuple(self._model.outputs[0].shape.as_list()[1:])
+            if isinstance(self.outputs, list):
+                assert len(self.outputs) == 1
+                model_output_shape = tuple(self.outputs[0].shape.as_list()[1:])
 
                 if getattr(self, 'quantiles', None) is not None:
                     assert model_output_shape[0] == len(self.quantiles) * self.outs
@@ -1144,7 +1156,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def prediction_step(self, inputs):
         if self.category.upper() == "DL":
-            predicted = self._model.predict(x=inputs,
+            predicted = super().predict(x=inputs,
                                             batch_size=self.config['batch_size'],
                                             verbose=self.verbosity)
         else:
@@ -1383,25 +1395,25 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def compile(self, model_inputs, outputs, **compile_args):
 
-        k_model = self.KModel(inputs=model_inputs, outputs=outputs)
+        #k_model = self.KModel(inputs=model_inputs, outputs=outputs)
 
         opt_args = self.get_opt_args()
         optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
 
-        k_model.compile(loss=self.loss(), optimizer=optimizer, metrics=self.get_metrics(), **compile_args)
+        super().compile(loss=self.loss(), optimizer=optimizer, metrics=self.get_metrics(), **compile_args)
 
         if self.verbosity > 0:
-            k_model.summary()
+            self.summary()
 
         kwargs = {}
         if int(tf.__version__.split('.')[1]) > 14:
             kwargs['dpi'] = 300
 
         try:
-            keras.utils.plot_model(k_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, **kwargs)
+            keras.utils.plot_model(self, to_file=os.path.join(self.path, "model.png"), show_shapes=True, **kwargs)
         except (AssertionError, ImportError) as e:
             print("dot plot of model could not be plotted")
-        return k_model
+        return
 
     def get_opt_args(self):
         """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
@@ -1578,7 +1590,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         _, inputs, _ = self.deindexify_input_data(inputs, sort=True,
                                                   use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        activations = keract.get_activations(self._model, inputs, layer_names=layer_names, auto_compile=True)
+        activations = keract.get_activations(self, inputs, layer_names=layer_names, auto_compile=True)
         if return_input:
             return activations, inputs
         return activations
@@ -1603,7 +1615,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        return keract.get_gradients_of_trainable_weights(self._model, x, y)
+        return keract.get_gradients_of_trainable_weights(self, x, y)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, data=None, layer_name=None, **kwargs) -> dict:
 
@@ -1612,12 +1624,12 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        return keract.get_gradients_of_activations(self._model, x, y, layer_names=layer_name)
+        return keract.get_gradients_of_activations(self, x, y, layer_names=layer_name)
 
-    def trainable_weights(self, weights:list=None):
+    def __trainable_weights(self, weights:list=None):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
-        for weight in self._model.trainable_weights:
+        for weight in self.trainable_weights:
             if tf.executing_eagerly():
                 weights[weight.name] = weight.numpy()
             else:
@@ -1655,7 +1667,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         return lstm_weights
 
     def plot_weights(self, weights=None, save=True):
-        weights = self.trainable_weights(weights=weights)
+        weights = self.__trainable_weights(weights=weights)
 
         if self.verbosity > 0:
             print("Plotting trainable weights of layers of the model.")
@@ -1984,10 +1996,10 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         return config
 
     def loss_name(self):
-        if isinstance(self._model.loss, str):
-            return self._model.loss
+        if isinstance(self.loss, str):
+            return self.loss
         else:
-            return self._model.loss.__name__
+            return self.loss.__name__
 
     @classmethod
     def from_config(cls, config_path: str, data, make_new_path=False, **kwargs):
@@ -2041,7 +2053,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.
-            self._model.load_weights(weight_file_path)
+            super().load_weights(weight_file_path)
         if self.verbosity > 0:
             print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
         return

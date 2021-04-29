@@ -31,4 +31,4 @@ if __name__ == "__main__":
     history = model.fit(indices='random')
 
     y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
-    model.view_model(st=0)
+    #model.view_model(st=0)

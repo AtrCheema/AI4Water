@@ -127,40 +127,40 @@ class test_MultiInputModels(unittest.TestCase):
         self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
         return
 
-    def test_same_val_data(self):
-        # test that we can use val_data="same" with multiple inputs. Execution of model.fit() below means that
-        # tf.data was created successfully and keras Model accepted it to train as well.
-        _examples = 200
-
-        class MyModel(Model):
-            def add_layers(self, layers_config:dict, inputs=None):
-                input_layer_names = ['input1', 'input2', 'input3', 'input4']
-
-                inp1 = Input(shape=(10, 5), name=input_layer_names[0])
-                inp2 = Input(shape=(10, 4), name=input_layer_names[1])
-                inp3 = Input(shape=(10,), name=input_layer_names[2])
-                inp4 = Input(shape=(9,), name=input_layer_names[3])
-                conc1 = tf.keras.layers.Concatenate()([inp1, inp2])
-                dense1 = Dense(1)(conc1)
-                out1 = tf.keras.layers.Flatten()(dense1)
-                conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
-                s = tf.keras.layers.Concatenate()([out1, conc2])
-                out = Dense(1, name='output')(s)
-                return [inp1, inp2, inp3, inp4], out
-
-            def train_data(self, data=None, data_keys=None, **kwargs):
-
-                in1 = np.random.random((_examples, 10, 5))
-                in2 = np.random.random((_examples, 10, 4))
-                in3 = np.random.random((_examples, 10))
-                in4 = np.random.random((_examples, 9))
-                o = np.random.random((_examples, 1))
-                return [in1, in2, in3, in4], o
-
-        model = MyModel(val_data='same', verbosity=0)
-        hist = model.fit()
-        self.assertGreater(len(hist.history['loss']), 1)
-        return
+    # def test_same_val_data(self):
+    #     # test that we can use val_data="same" with multiple inputs. Execution of model.fit() below means that
+    #     # tf.data was created successfully and keras Model accepted it to train as well.
+    #     _examples = 200
+    #
+    #     class MyModel(Model):
+    #         def add_layers(self, layers_config:dict, inputs=None):
+    #             input_layer_names = ['input1', 'input2', 'input3', 'input4']
+    #
+    #             inp1 = Input(shape=(10, 5), name=input_layer_names[0])
+    #             inp2 = Input(shape=(10, 4), name=input_layer_names[1])
+    #             inp3 = Input(shape=(10,), name=input_layer_names[2])
+    #             inp4 = Input(shape=(9,), name=input_layer_names[3])
+    #             conc1 = tf.keras.layers.Concatenate()([inp1, inp2])
+    #             dense1 = Dense(1)(conc1)
+    #             out1 = tf.keras.layers.Flatten()(dense1)
+    #             conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
+    #             s = tf.keras.layers.Concatenate()([out1, conc2])
+    #             out = Dense(1, name='output')(s)
+    #             return [inp1, inp2, inp3, inp4], out
+    #
+    #         def train_data(self, data=None, data_keys=None, **kwargs):
+    #
+    #             in1 = np.random.random((_examples, 10, 5))
+    #             in2 = np.random.random((_examples, 10, 4))
+    #             in3 = np.random.random((_examples, 10))
+    #             in4 = np.random.random((_examples, 9))
+    #             o = np.random.random((_examples, 1))
+    #             return [in1, in2, in3, in4], o
+    #
+    #     model = MyModel(val_data='same', verbosity=0)
+    #     hist = model.fit()
+    #     self.assertGreater(len(hist.history['loss']), 1)
+    #     return
 
     def test_customize_loss(self):
         class QuantileModel(Model):
