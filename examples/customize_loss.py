@@ -9,7 +9,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 
-from dl4seq import Model
+from AI4Water import Model
 
 class QuantileModel(Model):
 

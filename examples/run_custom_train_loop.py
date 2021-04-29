@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow import keras
 import pandas as pd
 
-from dl4seq.main import Model
+from AI4Water.main import Model
 
 # TODO put code in @tf.function
 # TODO write validation code
@@ -91,7 +91,7 @@ layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "Dense": {'config':  {'units': 1}}
           }
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
 df = pd.read_csv(fname)  # must be 2d dataframe
 
 

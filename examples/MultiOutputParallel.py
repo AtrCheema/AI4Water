@@ -16,9 +16,9 @@ from tensorflow import keras
 from sklearn.model_selection import train_test_split
 from tensorflow.python.keras.engine import training_utils
 
-from dl4seq import Model
+from AI4Water import Model
 from examples import LSTMAutoEnc_Config
-from dl4seq.utils.utils import check_min_loss
+from AI4Water.utils.utils import check_min_loss
 
 # TODO, failing in tf1 due to different dtype of tf.keras.model and inputs
 
@@ -371,7 +371,7 @@ def make_multi_model(input_model,  from_config=False, config_path=None, weights=
 
     val_fraction = 0.2
 
-    fpath = os.path.join(os.path.dirname(os.getcwd()), 'dl4seq\\data')
+    fpath = os.path.join(os.path.dirname(os.getcwd()), 'AI4Water\\data')
     df_1 = pd.read_csv(os.path.join(fpath, 'data_1.csv'))
     df_3 = pd.read_csv(os.path.join(fpath, 'data_3.csv'))
     df_8 = pd.read_csv(os.path.join(fpath, 'data_8.csv'))

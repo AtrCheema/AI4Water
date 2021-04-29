@@ -3,11 +3,11 @@ import numpy as np
 import pandas as pd
 import os
 
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils.transformations import Transformations
-from dl4seq import Model
+from AI4Water.utils.transformations import Transformations
+from AI4Water import Model
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])

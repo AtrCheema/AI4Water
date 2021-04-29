@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow import keras
 import pandas as pd
 
-from dl4seq import Model
+from AI4Water import Model
 
 
 class CustomModel(keras.Model):
@@ -31,7 +31,7 @@ class CustomModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
 model = Model(

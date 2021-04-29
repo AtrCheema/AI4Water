@@ -1,8 +1,8 @@
 # Put channel and spatial attention of CBAM model for time-series prediction
 
 
-from dl4seq import Model
-from dl4seq.data import load_30min
+from AI4Water import Model
+from AI4Water.data import load_30min
 
 inputs = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']

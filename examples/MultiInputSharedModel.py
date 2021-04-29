@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 import os
 
-from dl4seq import Model
-from dl4seq.utils.visualizations import Visualizations
+from AI4Water import Model
+from AI4Water.utils.visualizations import Visualizations
 
 
 class MultiInputSharedModel(Model):

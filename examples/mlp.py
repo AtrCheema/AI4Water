@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import tensorflow as tf
 
-from dl4seq import Model
+from AI4Water import Model
 
 tf.compat.v1.disable_eager_execution()
 
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['target7']
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
     df = pd.read_csv(fname)
     df.index = pd.to_datetime(df['Date_Time2'])
 

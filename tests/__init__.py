@@ -1,1 +1,1 @@
-#from ..dl4seq.utils import make_model
+#from ..AI4Water.utils import make_model

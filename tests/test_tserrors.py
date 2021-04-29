@@ -1,10 +1,10 @@
 import os
 import unittest
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils.SeqMetrics import Metrics
-from dl4seq.utils.SeqMetrics.utils import plot_errors
+from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics.utils import plot_errors
 
 import numpy as np
 

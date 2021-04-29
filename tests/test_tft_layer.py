@@ -1,14 +1,14 @@
 
 import os
 import unittest
-import site  # so that dl4seq directory is in path
+import site  # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 import numpy as np
 
-from dl4seq.models.tft_layer import TemporalFusionTransformer
-from dl4seq import Model
+from AI4Water.models.tft_layer import TemporalFusionTransformer
+from AI4Water import Model
 
 tf.compat.v1.disable_eager_execution()
 np.random.seed(313)

@@ -6,7 +6,7 @@ import os
 
 import pandas as pd
 
-from dl4seq import Model
+from AI4Water import Model
 
 input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
                   'input11']
@@ -42,7 +42,7 @@ layers = {
 }
 
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
 df = pd.read_csv(fname)
 df.index = pd.to_datetime(df['Date_Time2'])
 

@@ -4,7 +4,7 @@ import warnings
 import unittest
 from os.path import abspath
 from inspect import getsourcefile
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
@@ -12,17 +12,17 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
-from dl4seq import Model
-from dl4seq.backend import get_sklearn_models
-from dl4seq.utils.imputation import Imputation
-from dl4seq.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
+from AI4Water import Model
+from AI4Water.backend import get_sklearn_models
+from AI4Water.utils.imputation import Imputation
+from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
 seed = 313
 np.random.seed(seed)
 random.seed(seed)
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 nasdaq_df = pd.read_csv(fname)
 

@@ -2,11 +2,11 @@ import os
 import pandas as pd
 from inspect import getsourcefile
 from os.path import abspath
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.pytorch_models import HARHNModel
-from dl4seq.utils import make_model
+from AI4Water.pytorch_models import HARHNModel
+from AI4Water.utils import make_model
 
 lookback = 10
 epochs = 50

@@ -1,7 +1,7 @@
-# dl4seq
+# AI4Water
 
 
-[![Build Status](https://github.com/AtrCheema/dl4seq/workflows/tf230/badge.svg)](https://github.com/AtrCheema/dl4seq/actions)
+[![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf230/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
 
 A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
@@ -17,8 +17,8 @@ The specific purposes of the repository are
 * both of above functionalities should be available without complicating keras implementation.
 * provide a uniform interface for optimizing hyper-parameters for [skopt](https://scikit-optimize.github.io/stable/index.html),
  [sklearn](https://scikit-learn.org/stable/modules/classes.html#hyper-parameter-optimizers) based [grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) and [random](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html),
-  [hyperopt](http://hyperopt.github.io/hyperopt/) based [tpe](https://papers.nips.cc/paper/2011/file/86e8f7ab32cfd12577bc2619bc635690-Paper.pdf), [atpe](https://www.electricbrain.io/blog/learning-to-optimize) or [optuna](https://optuna.readthedocs.io/en/stable/) based [tpe](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.TPESampler.html), [cmaes](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.CmaEsSampler.html) etc. See [example](https://github.com/AtrCheema/dl4seq/blob/master/examples/hyper_para_opt.ipynb)  using its application.
-* It should be possible to overwrite/customize any of the functionality of the dl4seq's `Model` by subclassing the
+  [hyperopt](http://hyperopt.github.io/hyperopt/) based [tpe](https://papers.nips.cc/paper/2011/file/86e8f7ab32cfd12577bc2619bc635690-Paper.pdf), [atpe](https://www.electricbrain.io/blog/learning-to-optimize) or [optuna](https://optuna.readthedocs.io/en/stable/) based [tpe](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.TPESampler.html), [cmaes](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.CmaEsSampler.html) etc. See [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)  using its application.
+* It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
@@ -52,14 +52,14 @@ Currently following models are implemented
 | Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
 | Input Attention  | `InputAttentionModel` | |
 
-`*` These models can be constructed by stacking layers in a python dictionary as shown in [examples](https://github.com/AtrCheema/dl4seq/blob/master/examples/build_dl_models.md). The remaining models 
-can be used as shown [here](https://github.com/AtrCheema/dl4seq/blob/master/examples/build_dl_models.md)
+`*` These models can be constructed by stacking layers in a python dictionary as shown in [examples](https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md). The remaining models 
+can be used as shown [here](https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md)
 
 ## Installation
 
 using github link
 
-	python -m pip install git+https://github.com/AtrCheema/dl4seq.git
+	python -m pip install git+https://github.com/AtrCheema/AI4Water.git
 
 using setup file, go to folder where repo is downloaded
 
@@ -67,15 +67,15 @@ using setup file, go to folder where repo is downloaded
 
 The latest code however (possibly with less bugs and more features) can be insalled from `dev` branch instead
 
-    python -m pip install git+https://github.com/AtrCheema/dl4seq.git@dev
+    python -m pip install git+https://github.com/AtrCheema/AI4Water.git@dev
 
 ## How to use
 
 Build a `Model` by providing all the arguments to initiate it.
 
 ```python
-from dl4seq import Model
-from dl4seq.data import load_30min
+from AI4Water import Model
+from AI4Water.data import load_30min
 data = load_30min()
 model = Model(
         model = {'layers': {"LSTM": 64}},
@@ -98,11 +98,11 @@ true, predicted = model.predict()
 
 
 ## Using your own pre-processed data
-You can use your own pre-processed data without using any of pre-processing tools of dl4seq. You will need to provide
+You can use your own pre-processed data without using any of pre-processing tools of AI4Water. You will need to provide
 input output paris to `data` argument to `fit` and/or `predict` methods.
 ```python
 import numpy as np
-from dl4seq import Model  # import any of the above model
+from AI4Water import Model  # import any of the above model
 
 batch_size = 16
 lookback = 15
@@ -131,7 +131,7 @@ The repository can also be used for machine learning based models such as scikit
 classification and regression problems by making use of `model` keyword arguments in `Model` function.
 However, integration of ML based models is not complete yet.
 ```python
-from dl4seq import Model
+from AI4Water import Model
 import pandas as pd 
 
 df = pd.read_csv('data/data_30min.csv')  # path for data file

@@ -1,6 +1,6 @@
 import os
 import unittest
-import site  # so that dl4seq directory is in path
+import site  # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
@@ -8,7 +8,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input
 
-from dl4seq import Model
+from AI4Water import Model
 
 
 examples = 200

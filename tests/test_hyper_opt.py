@@ -4,7 +4,7 @@ import pickle
 import unittest
 from os.path import abspath
 from inspect import getsourcefile
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import skopt
@@ -21,14 +21,14 @@ from hyperopt import hp, STATUS_OK
 
 np.random.seed(313)
 
-from dl4seq.hyper_opt import HyperOpt, Real, Categorical, Integer
-from dl4seq import Model
-from dl4seq.utils.utils import Jsonize
-from dl4seq.utils.SeqMetrics import Metrics
+from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
+from AI4Water import Model
+from AI4Water.utils.utils import Jsonize
+from AI4Water.utils.SeqMetrics import Metrics
 
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
 fname = os.path.join(dpath, "input_target_u1.csv")
 data = pd.read_csv(fname)
 inputs = list(data.columns)
@@ -345,11 +345,11 @@ class TestHyperOpt(unittest.TestCase):
 
     def test_dl4seq_grid(self):
         run_dl4seq("grid")
-        print("dl4seq for grid passing")
+        print("AI4Water for grid passing")
 
     def test_dl4seq_random(self):
         run_dl4seq("random")
-        print("dl4seq for random passing")
+        print("AI4Water for random passing")
         return
 
     def test_hyperopt_basic(self):

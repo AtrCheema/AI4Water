@@ -8,11 +8,11 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from dl4seq import DualAttentionModel
+from AI4Water import DualAttentionModel
 
 tf.compat.v1.disable_eager_execution()
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/nasdaq100_padding.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/nasdaq100_padding.csv")
 df = pd.read_csv(fname)
 
 # df.index = pd.date_range("20110101", periods=len(df), freq='H')

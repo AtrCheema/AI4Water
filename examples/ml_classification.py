@@ -1,10 +1,10 @@
-#How to use dl4seq for classification problems
+#How to use AI4Water for classification problems
 
 import pandas as pd
 import numpy as np
 from sklearn.datasets import load_breast_cancer
 
-from dl4seq import Model
+from AI4Water import Model
 
 data_class = load_breast_cancer()
 cols = data_class['feature_names'].tolist() + ['target']

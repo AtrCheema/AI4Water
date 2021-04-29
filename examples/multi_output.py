@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from dl4seq import InputAttentionModel
+from AI4Water import InputAttentionModel
 
 tf.compat.v1.disable_eager_execution()
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['target7', 'target8']
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
     df = pd.read_csv(fname, na_values="#NUM!")
     df.index = pd.to_datetime(df['Date_Time2'])
 

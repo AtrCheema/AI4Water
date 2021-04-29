@@ -1,13 +1,13 @@
 import os
 import site
 import unittest
-# so that dl4seq directory is in path
+# so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 
-from dl4seq import Model
-from dl4seq.data import load_30min
+from AI4Water import Model
+from AI4Water.data import load_30min
 
 data = load_30min()
 

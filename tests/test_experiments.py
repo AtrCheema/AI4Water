@@ -1,12 +1,12 @@
 import os
 import unittest
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import pandas as pd
 import sklearn
 
-from dl4seq.experiments import MLRegressionExperiments
+from AI4Water.experiments import MLRegressionExperiments
 
 
 input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
@@ -14,7 +14,7 @@ input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'i
 # column in dataframe to bse used as output/target
 outputs = ['target7']
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dl4seq/data/data_30min.csv")
+fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
 df = pd.read_csv(fname)
 df.index = pd.to_datetime(df['Date_Time2'])
 

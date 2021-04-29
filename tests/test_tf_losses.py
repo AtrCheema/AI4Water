@@ -2,11 +2,11 @@ import unittest
 import numpy as np
 import os
 
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from dl4seq.utils import tf_losses
-from dl4seq.utils.SeqMetrics import Metrics
+from AI4Water.utils import tf_losses
+from AI4Water.utils.SeqMetrics import Metrics
 
 
 import tensorflow as tf
@@ -19,7 +19,7 @@ pred = np.random.random(10)
 t = tf.convert_to_tensor(_true, dtype=tf.float32)
 p = tf.convert_to_tensor(pred, dtype=tf.float32)
 
-np_errors = FindErrors(_true, pred)
+np_errors = Metrics(_true, pred)
 
 class test_errors(unittest.TestCase):
 

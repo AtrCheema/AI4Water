@@ -1,18 +1,18 @@
 import unittest
 import os
-import site   # so that dl4seq directory is in path
+import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 from typing import Union
 
 import pandas as pd
 
-from dl4seq.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS
-from dl4seq.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
-from dl4seq.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
-from dl4seq.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
-from dl4seq.utils.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
-from dl4seq.utils.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
-from dl4seq.utils.datasets import GeoChemMatane
+from AI4Water.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS
+from AI4Water.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
+from AI4Water.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
+from AI4Water.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
+from AI4Water.utils.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
+from AI4Water.utils.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
+from AI4Water.utils.datasets import GeoChemMatane
 
 
 
@@ -91,7 +91,7 @@ ds_br = CAMELS_BR()
 ds_aus = CAMELS_AUS()
 ds_cl = CAMELS_CL()
 ds_us = CAMELS_US()
-hy = HYSETS(path=r'D:\mytools\dl4seq\dl4seq\utils\datasets\data\HYSETS')
+hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
 s = hy.stations()
 st = hy.fetch_static_attributes(station=s[0])
 
@@ -118,7 +118,7 @@ class TestLamaH(unittest.TestCase):
                 self.assertEqual(len(v), 366)
 
 
-ds_gb = CAMELS_GB(path=r"D:\mytools\dl4seq\dl4seq\utils\datasets\data\CAMELS\CAMELS-GB")
+ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\data\CAMELS\CAMELS-GB")
 # class TestCamelsGB(unittest.TestCase):
 #
 #     def test_all_dynamic_data(self):
