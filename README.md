@@ -3,7 +3,7 @@
 
 [![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf230/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
 
-A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
+A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
 
 `Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
