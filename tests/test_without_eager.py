@@ -16,7 +16,7 @@ from os.path import abspath
 def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
     file_path = abspath(getsourcefile(lambda: 0))
-    dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
+    dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
     fname = os.path.join(dpath, "nasdaq100_padding.csv")
     df = pd.read_csv(fname)
 

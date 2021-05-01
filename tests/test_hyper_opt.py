@@ -28,7 +28,7 @@ from AI4Water.utils.SeqMetrics import Metrics
 
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils", "datasets")
 fname = os.path.join(dpath, "input_target_u1.csv")
 data = pd.read_csv(fname)
 inputs = list(data.columns)

@@ -45,7 +45,7 @@ setup(
     ],
 
     packages=['AI4Water',
-              'AI4Water/models', 
+              'AI4Water/models',
               'AI4Water/hyper_opt',
               'AI4Water/utils',
               'AI4Water/utils/SeqMetrics',

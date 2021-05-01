@@ -22,8 +22,11 @@ np.random.seed(seed)
 random.seed(seed)
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
+if not os.path.exists(fname):
+    df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
+    df.to_csv(fname)
 nasdaq_df = pd.read_csv(fname)
 
 examples = 2000
