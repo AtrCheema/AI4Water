@@ -598,9 +598,10 @@ class Model(NN, Plots):
         """If nans are present in y, then tf.keras.model.fit is called as it is otherwise it is called with custom
         train_step and test_step which avoids calculating loss at points containing nans."""
         if kwargs.pop('nans_in_y_exist'):
-            y = kwargs['y']
-            assert np.isnan(y).sum() > 0
-            kwargs['y'] = np.nan_to_num(y)  # In graph mode, masking of nans does not work
+            if not isinstance(args[0], tf.data.Dataset):  # when x is tf.Dataset, we don't have y in kwargs
+                y = kwargs['y']
+                assert np.isnan(y).sum() > 0
+                kwargs['y'] = np.nan_to_num(y)  # In graph mode, masking of nans does not work
             self._model.train_step = MethodType(train_step, self._model)
             self._model.test_step = MethodType(test_step, self._model)
 
