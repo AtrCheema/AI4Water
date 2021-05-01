@@ -24,5 +24,3 @@ pyshp
 
 optuna
 hyperopt
-scikit-optimize
-scikit-optimize>=0.8.1  # only if you want to use file hyper_opt.py for hyper-parameter optimization
