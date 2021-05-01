@@ -16,7 +16,7 @@ from AI4Water.utils import make_model
 
 _ = make_model()
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
 fname = os.path.join(dpath, "nasdaq100_padding.csv")
 
 df = pd.read_csv(fname)

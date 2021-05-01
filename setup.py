@@ -23,9 +23,6 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'AI4Water/data': ['data_30min.csv', "input_target_u1.csv"]},
-    include_package_data=True,
-
     classifiers=[
         'Development Status :: 4 - Beta',
 
@@ -46,7 +43,6 @@ setup(
 
     packages=['AI4Water',
               'AI4Water/models',
-              'AI4Water/data',
               'AI4Water/hyper_opt',
               'AI4Water/utils',
               'AI4Water/utils/SeqMetrics',

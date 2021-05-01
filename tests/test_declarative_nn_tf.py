@@ -7,7 +7,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 import tensorflow as tf
 
 from AI4Water import Model
-from AI4Water.data import load_30min
+from AI4Water.utils.datasets import load_30min
 
 data = load_30min()
 

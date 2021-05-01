@@ -23,7 +23,7 @@ ins = len(input_features)
 outs = 1
 
 file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "data")
+dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
 
 def make_and_run(
         model,

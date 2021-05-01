@@ -168,7 +168,7 @@ def _make_model(**kwargs):
             def_prob = "classification"
         def_cat = "ML"
 
-    dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+    dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'utils',  'datasets')
     fname = os.path.join(dpath, "nasdaq100_padding.csv")
 
     if not os.path.exists(dpath):
