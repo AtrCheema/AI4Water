@@ -17,13 +17,15 @@ For full documentation visit [mkdocs.org](https://www.mkdocs.org).
         ...       # Other markdown pages, images and other files.
 
 # hyperopt
-::: AI4Water.hyper_opt.hyper_opt.HyperOpt
+AI4Water.Model
+
+AI4Water.hyper_opt.hyper_opt.HyperOpt
 
 ::: AI4Water.hyper_opt.utils.Categorical
 
-::: AI4Water.hyper_opt.utils.Integer
+AI4Water.hyper_opt.utils.Integer
 
-::: AI4Water.hyper_opt.utils.Real
+AI4Water.hyper_opt.utils.Real
 
 
 

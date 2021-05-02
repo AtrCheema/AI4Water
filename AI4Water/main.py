@@ -54,6 +54,8 @@ class Model(NN, Plots):
     """
     Model class that implements logic of AI4Water.
 
+    :parameters
+    -------------
     data: pd.Dataframe or any other conforming type
     prefix: str, prefix to be used for the folder in which the results are saved
     path: str/path like, if given, new path will not be created
