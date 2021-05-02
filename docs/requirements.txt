@@ -2,3 +2,9 @@ mkdocs
 mkdocstrings
 mkdocs-material
 h5py
+matplotlib
+numpy
+scikit-learn
+scikit-optimize
+seaborn
+pandas
