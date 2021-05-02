@@ -2,6 +2,28 @@
 # some rights may be researved by 2020  Ather Abbas
 from setuptools import setup
 from version import __version__ as ver
+from setuptools.command.install import install
+
+requirements=None
+
+class InstallCommand(install):
+    user_options = install.user_options + [
+        ('requirements', None, None), # a 'flag' option
+    ]
+
+    def initialize_options(self):
+        install.initialize_options(self)
+        self.requirements = None
+
+    def finalize_options(self):
+        if self.requirements not in [None, 'all']:
+            raise ValueError(f"Invalid Value {self.requirements} for `requirements`. Allowed value is `all`.")
+        install.finalize_options(self)
+
+    def run(self):
+        global requirements
+        requirements = self.requirements # will be 1 or None
+        install.run(self)
 
 with open("README.md", "r") as fd:
     long_desc = fd.read()
@@ -9,7 +31,41 @@ with open("README.md", "r") as fd:
 with open('version.py') as fv:
     exec(fv.read())
 
+min_requirements = [
+        'numpy',
+        'seaborn',
+        'scikit-learn',
+        'pandas',
+        'matplotlib',
+        'scikit-optimize'
+    ]
+all_requirements = min_requirements + [
+'tensorflow' # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
+'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
+'pytorch',  # only if you want to use pytorch-based models
+'h5py', # only if you want to save batches
+'xgboost',
+'EMD-signal',  # for emd transformation
+'see-rnn',   # for rnn visualizations
+'lightgbm',
+'catboost',
+'plotly',
+'tpot',
+'joblib',
+# spatial processing
+'imageio',
+# shapely manually download the wheel file and install
+'pyshp',
+
+'optuna',
+'hyperopt'
+]
+
 setup(
+    cmdclass={
+        'install': InstallCommand,
+    },
+
     name='AI4Water',
 
     version=ver,
@@ -51,12 +107,5 @@ setup(
               'AI4Water/experiments'
               ],
 
-    install_requires=[
-        'numpy',
-        'seaborn',
-        'scikit-learn',
-        'pandas',
-        'matplotlib',
-        'scikit-optimize'
-    ],
+    install_requires=min_requirements if requirements is None else all_requirements,
 )
