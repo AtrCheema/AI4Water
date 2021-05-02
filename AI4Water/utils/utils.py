@@ -254,16 +254,7 @@ def _make_model(**kwargs):
         'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
         # write the data/batches as hdf5 file
         'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
-        # if > 0, and if target values contain Nans, those samples will not be ignored and will be fed as it is to
-        # training and test steps. In such a case a customized training and evaluation step is performed where the
-        # loss is not calculated for predictions corresponding to nan observations. Thus this option can be useful
-        # when we are predicting more than 1 target and the some of the samples have some of their labels missing. In
-        # such a scenario, if we set this optin to True, we don't need to ignore those samples at all during data
-        # preparation. This option should be set to > 0 only when using tensorflow for deep learning models.
-        # if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
-        # will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
-        # means for multi-outputs, we can end up having examples whose all labels are nans.
-        # if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
+
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
         # The following argument determines how to deal with missing values in the input data. The default value
         # is None, which will raise error if missing/nan values are encountered in the input data. The user can however

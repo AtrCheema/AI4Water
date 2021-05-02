@@ -52,14 +52,100 @@ elif torch is not None:  # TODO, what if both tf and torch are installed and we 
 
 class Model(NN, Plots):
     """
-    Model class that implements logic of AI4Water.
+    Model class that implements logic of AI4Water. The Model class can take a large number of possible arguments
+    depending upon the machine learning model/algorithm used. Not all the arguments are applicable in each case. The
+    user must define only the relevant/applicable parameters and leave the others as it is.
 
     :parameters
     -------------
-    data: pd.Dataframe or any other conforming type
-    prefix: str, prefix to be used for the folder in which the results are saved
-    path: str/path like, if given, new path will not be created
-    verbosity: int, determines the amount of information being printed
+    model: dict, a dictionary defining machine learning model.
+            If you are building a non-tensorflow model
+                then this dictionary must consist of name of name of model as key and the keyword arguments to that
+                model as dictionary. For example to build a decision forest based model
+                    model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
+                The key 'DecisionTreeRegressor' should exactly match the name of the model from following libraries
+                    -scikit-learn
+                    -xgboost
+                    -catboost
+                    -lightgbm
+                The value {"max_depth": 3, "criterion": "mae"} is another dictionary which can be any keyword argument
+                which the `model` (DecisionTreeRegressor in this case) accepts. The user must refer to the documentation
+                of the underlying library (scikit-learn for DecisionTreeRegressor) to find out complete keyword
+                arguments applicable for a particular model.
+            If You are building a Deep Learning model using tensorflow, then the key must be 'layers' and the value
+                must itself be a dictionary defining layers of neural networks. For example we can build an MLP as following
+                    model = {'layers': {
+                            "Dense_0": {'units': 64, 'activation': 'relu'},
+                            "Flatten": {},
+                            "Dense_3": {'units': 1}
+                        }}
+                The MLP in this case consists of dense, and flatten layers. The user can define any keyword arguments
+                which is accepted by that layer in TensorFlow. For example the `Dense` layer in TensorFlow can accept
+                `units` and `activation` keyword argument among others. For details on how to buld neural networks
+                using such layered API see https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md
+    lr: float, learning rate, default 0.001.
+    optimizer: str/keras.optimizers like, the optimizer to be used for neural network training. Default is 'adam'
+    loss: str/callable, the cost/loss function to be used for training neural networks. Default is `mse`.
+    quantiles: list, quantiles to be used when the problem is quantile regression. Default is None
+    epochs: int, number of epochs to be used. Default is 14
+    min_val_loss: float, minimum value of validatin loss/error to be used for early stopping. Default is 0.0001.
+    patience: int, number of epochs to wait before early stopping.
+    shuffle: bool, whether to shuffle the training data or not.
+    save_model: bool, whether to save the model or not. For neural networks, the model will be saved only an improvement
+                in training/validation loss is observed. Otherwise model is not saved.
+    subsequences: int, The number of sub-sequences. Relevent for building CNN-LSTM based models. Default is 3.
+    val_data: str/None, If you want to use same data for training and test purpose, then set this argument to 'same'.
+                        Default is None.
+    val_fraction:  float, The fraction of the complete data to be used for validation. Set to 0.0 if no validation data
+                  is to be used.
+    test_fraction: float, Fraction of the complete data to be used for test purpose. Must be greater than 0.0.
+    allow_nan_labels: int, whether to allow nan labels or not. if > 0, and if target values contain Nans,
+          those samples will not be ignored and will be fed as it is to training and test steps. In such
+          a case a customized training and evaluation step is performed where the loss is not calculated
+          for predictions corresponding to nan observations. Thus this option can be useful when we are
+          predicting more than 1 target and the some of the samples have some of their labels missing. In
+          such a scenario, if we set this optin to True, we don't need to ignore those samples at all during data
+          preparation. This option should be set to > 0 only when using tensorflow for deep learning models.
+          if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
+          will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
+          means for multi-outputs, we can end up having examples whose all labels are nans.
+          if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
+    input_nans: This determines how to deal with missing values in the input data. The default value
+                is None, which will raise error if missing/nan values are encountered in the input data. The user can however
+                specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
+                be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
+                forward filling, the user can do as following
+                {'fillna': {'method': 'ffill'}}
+                For details about fillna keyword options see https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
+                For `interpolate`, the user can specify  the type of interpolation for example
+                {'interpolate': {'method': 'spline', 'order': 2}} will perform spline interpolation with 2nd order.
+                For other possible options/keyword arguments for interpolate see https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
+                The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
+                providing the above mentioned arguments as dictionary or list.
+                The sklearn based imputation methods can also be used in a similar fashion. For KNN
+                {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
+                {'IterativeImputer': {'n_nearest_features': 2}}
+                For more on sklearn based imputation methods see
+                https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
+    metrics: str/list, metrics to be monitored. e.g. ['nse', 'pbias']
+    batches: str, either `2d` or 3d`.
+    seed: int, random seed for reproducibility
+
+    data: a pandas dataframe or a dictionary of pandas dataframes.
+    inputs: list/dict, list of column names from `data` to be used as input. If dict, then it must be consistent with
+            `data`.
+    outputs: lsit/dict, list of column names from `data` to be used as output. If dict, then it must be consistent with
+             `data`.
+    tuples: tuple/None, tuple of tuples where each tuple consits of two integers, marking the start and end of interval.
+            An interval here means chunk/rows from the input file/dataframe to be skipped when when preparing
+            data/batches for NN. This happens when we have for example some missing values at some time in our data.
+            For further usage see `examples/using_intervals`
+    prefix: str, prefix to be used for the folder in which the results are saved. default is None, which means within
+            ./results/model_path
+    path: str/path like, if not given, new model_path path will not be created.
+    verbosity: int, determines the amount of information being printed. 0 means no print information.
+    accept_additional_args: bool, If you want to pass any additional argument, then this argument must be set to True,
+                            otherwise an error will be raise. Default is False
     kwargs: any argument for model building/pre-processing etc.
             for details see make_model in utils.utils.py
 

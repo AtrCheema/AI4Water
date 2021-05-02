@@ -43,6 +43,8 @@ class Metrics(object):
     """
     Presents more than 100 performance metrics related to sequence data at one place.
 
+     :parameters
+     ------------
      actual: ture/observed values, 1D array or list
      predicted: simulated values, 1D array or list
 
