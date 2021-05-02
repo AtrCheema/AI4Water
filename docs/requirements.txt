@@ -1,3 +1,4 @@
 mkdocs
 mkdocstrings
 mkdocs-material
+h5py
