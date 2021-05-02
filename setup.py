@@ -8,7 +8,7 @@ requirements=None
 
 class InstallCommand(install):
     user_options = install.user_options + [
-        ('requirements', None, None), # a 'flag' option
+        ('requirements', None, "whether to install with all requirements or with minimum requirements"),
     ]
 
     def initialize_options(self):
@@ -18,11 +18,13 @@ class InstallCommand(install):
     def finalize_options(self):
         if self.requirements not in [None, 'all']:
             raise ValueError(f"Invalid Value {self.requirements} for `requirements`. Allowed value is `all`.")
+        if self.requirements == 'all':
+            print(f"Install AI4Water version {ver} with all requirements")
         install.finalize_options(self)
 
     def run(self):
         global requirements
-        requirements = self.requirements # will be 1 or None
+        requirements = self.requirements
         install.run(self)
 
 with open("README.md", "r") as fd:

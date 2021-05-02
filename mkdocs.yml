@@ -1,0 +1,19 @@
+site_name: AI4Water
+
+#google_analytics: ['UA-27795084-5']
+
+repo_url: https://github.com/AtrCheema/AI4Water/tree/master
+
+theme:
+  name: "material"
+
+plugins:
+- search
+- mkdocstrings
+
+pages:
+- 'README.md'
+
+nav:
+  - 'index.md'
+  - 'README.md'
