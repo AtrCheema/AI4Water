@@ -21,7 +21,7 @@ AI4Water.Model
 
 AI4Water.hyper_opt.hyper_opt.HyperOpt
 
-::: AI4Water.hyper_opt.utils.Categorical
+AI4Water.hyper_opt.utils.Categorical
 
 AI4Water.hyper_opt.utils.Integer
 
