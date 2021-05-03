@@ -10,12 +10,16 @@ For full documentation visit [mkdocs.org](https://al4water.readthedocs.io/en/lat
 # HyerOpt
 
 ::: AI4Water.hyper_opt.hyper_opt.HyperOpt
+    handler: python
 
 ::: AI4Water.hyper_opt.utils.Categorical
+    handler: python
 
 ::: AI4Water.hyper_opt.utils.Integer
+    handler: python
 
 ::: AI4Water.hyper_opt.utils.Real
+    handler: python
 
 
 
