@@ -923,6 +923,7 @@ class Model(NN, Plots):
                     # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
                     more = len(self.intervals) * self.lookback if self.intervals is not None else 0  # self.lookback
                     tot_obs = data.shape[0] - int(data[out_cols].isna().sum()) - more
+                    tot_obs -= self.forecast_len
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = data.shape[0] - int(data[out_cols[0]].isna().sum())
