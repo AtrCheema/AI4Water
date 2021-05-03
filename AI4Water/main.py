@@ -1090,7 +1090,7 @@ class Model(NN, Plots):
                 fname = prefix + out + '_' + str(h) + ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='time')
 
-                visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=fpath)
+                visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -2010,53 +2010,6 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         assert inputs.shape[1] == self.ins
 
         return inputs
-
-    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
-
-        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
-
-        predictions, observations = self.predict(pp=False, **kwargs)
-
-        activation, data = self.activations(layer_names=layer_name, return_input=True, **kwargs)
-
-        activation = activation[layer_name]
-        data = self.inputs_for_attention(data)
-
-        assert data.shape[1] == self.ins
-
-        plt.close('all')
-
-        for out in range(self.outs):
-            pred = predictions[:, out]
-            obs = observations[:, out]
-            out_name = self.out_cols[out]
-
-            for idx in range(self.ins):
-
-                fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
-                fig.set_figheight(10)
-
-                ax1.plot(data[:, idx], label=self.in_cols[idx])
-                ax1.legend()
-                ax1.set_title('activations w.r.t ' + self.in_cols[idx])
-                ax1.set_ylabel(self.in_cols[idx])
-
-                ax2.plot(pred, label='Prediction')
-                ax2.plot(obs, '.', label='Observed')
-                ax2.legend()
-
-                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
-                ax3.set_ylabel('lookback steps')
-                ax3.set_xlabel('Examples')
-                fig.colorbar(im, orientation='horizontal', pad=0.2)
-                plt.subplots_adjust(wspace=0.005, hspace=0.005)
-                if name is not None:
-                    _name = out_name + '_' + name
-                    plt.savefig(os.path.join(self.act_path, _name) + self.in_cols[idx], dpi=400, bbox_inches='tight')
-                else:
-                    plt.show()
-                plt.close('all')
-            return
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 

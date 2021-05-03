@@ -1,11 +1,8 @@
-import os
 import site
 dl4seq_dir = "D:\\mytools\\AI4Water"
 site.addsitedir(dl4seq_dir)
 
 print(f'adding dl4seq_dir {dl4seq_dir}')
-
-import random
 
 import numpy as np
 import tensorflow as tf
@@ -13,15 +10,11 @@ import tensorflow as tf
 from AI4Water import DualAttentionModel
 from AI4Water.utils.datasets import CAMELS_AUS
 from AI4Water.utils.utils import dateandtime_now
-from AI4Water.hyper_opt import HyperOpt, Categorical, Real, Integer
-from AI4Water.utils.utils import Jsonize, plot, prepare_data
-from AI4Water.utils import Visualizations
+from AI4Water.utils.utils import Jsonize
+from AI4Water.utils.visualizations import Interpret
 
-print(tf.test.is_gpu_available())
-print(tf.__version__)
-seed = 313
-np.random.seed(seed)
-random.seed(seed)
+
+tf.compat.v1.disable_eager_execution()
 
 
 dataset = CAMELS_AUS()
@@ -50,7 +43,6 @@ for k,v in data.items():
         target[target < 0] = np.nan
         target[target == 0.0] = np.nan
         v['streamflow_MLd'] = target
-        #v = v.fillna(-99)
         data[k] = v
         print(k, v.isna().sum().sum())
 
@@ -60,8 +52,7 @@ def objective_fn(**suggestion):
 
     suggestion = Jsonize(suggestion)()
 
-
-    _model = DualAttentionModel(#model={'layers': layers},
+    _model = DualAttentionModel(
                     data=data['401203'],
                     inputs=inputs,
                     outputs=outputs,
@@ -77,14 +68,16 @@ def objective_fn(**suggestion):
                     prefix=prefix
                     )
 
-    # model.impute('interpolate', {'method': 'linear'}, cols=outputs)
-    # model.impute(cols=outputs, method='SimpleImputer', imputer_args={})
-    #
     h = _model.fit(indices='random')
     min_val_loss = float(np.min(h.history['val_loss']))
     print(f'with {suggestion} min val loss is {min_val_loss}')
-    #return min_val_loss
+
     return _model
 
-
 model = objective_fn(hidden_units=100, lookback=15, lr=0.0001, batch_size=64)
+
+model.predict(indices=model.train_indices, prefix='train')
+
+model.predict(indices=model.test_indices, prefix='test')
+
+Interpret(model)
