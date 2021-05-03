@@ -11,7 +11,7 @@ For full documentation visit [mkdocs.org](https://al4water.readthedocs.io/en/lat
 
 ::: AI4Water.hyper_opt.hyper_opt.HyperOpt
     handler: python
-          setup_commands:
+        setup_commands:
             - import sys
             - sys.path.append("AI4Water")
 
