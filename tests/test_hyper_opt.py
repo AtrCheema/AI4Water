@@ -98,7 +98,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
         model.fit(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pref='test')
-        mse = FindErrors(t, p).mse()
+        mse = Metrics(t, p).mse()
 
         return mse
 
@@ -289,7 +289,7 @@ class TestHyperOpt(unittest.TestCase):
             model.fit(indices="random")
 
             t, p = model.predict(indices=model.test_indices, pref='test')
-            mse = FindErrors(t, p).mse()
+            mse = Metrics(t, p).mse()
             print(f"Validation mse {mse}")
 
             return mse
@@ -430,7 +430,7 @@ class TestHyperOpt(unittest.TestCase):
             model.fit(indices="random")
 
             t, p = model.predict(indices=model.test_indices, pref='test')
-            mse = FindErrors(t, p).mse()
+            mse = Metrics(t, p).mse()
             print(f"Validation mse {mse}")
 
             return mse
@@ -442,7 +442,7 @@ class TestHyperOpt(unittest.TestCase):
         }
         optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=5,
                              backend='hyperopt',
-                             opt_path=os.path.join(os.getcwd(), 'results\\test_tpe_xgboost'))
+                             opt_path=os.path.join(os.getcwd(), 'results', 'test_tpe_xgboost'))
 
         optimizer.fit()
         check_attrs(optimizer, 3)
