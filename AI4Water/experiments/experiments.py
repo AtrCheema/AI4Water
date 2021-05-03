@@ -179,7 +179,7 @@ Available cases are {self.models} and you wanted to exclude
 
     def train_best(self, model_type, fit_kws=None):
         """Train the best model."""
-        best_paras =  self.optimizer.best_paras_kw()
+        best_paras =  self.optimizer.best_paras()
         if best_paras.get('lookback', 1)>1:
             _model = 'layers'
         else:
@@ -188,7 +188,7 @@ Available cases are {self.models} and you wanted to exclude
         train_results, test_results = self.build_and_run(predict=True,
                                                          #view=True,
                                                          fit_kws=fit_kws,
-                                                         model={_model: self.optimizer.best_paras_kw()},
+                                                         model={_model: self.optimizer.best_paras()},
                                                          title=f"{self.exp_name}\\{model_type}\\best")
 
         self._populate_results(model_type, train_results, test_results)
