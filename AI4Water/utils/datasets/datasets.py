@@ -180,12 +180,12 @@ import numpy as np
 import pandas as pd
 
 try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
-    from dl4seq.utils.spatial_utils import plot_shapefile
+    from AI4Water.utils.spatial_utils import plot_shapefile
 except ModuleNotFoundError:
     plot_shapefile = None
-from dl4seq.utils.datasets.download_pangaea import PanDataSet
-from dl4seq.utils.datasets.download_zenodo import download_from_zenodo
-from dl4seq.utils.datasets.utils import download, download_all_http_directory
+from AI4Water.utils.datasets.download_pangaea import PanDataSet
+from AI4Water.utils.datasets.download_zenodo import download_from_zenodo
+from AI4Water.utils.datasets.utils import download, download_all_http_directory
 
 
 SEP = os.sep

@@ -9,7 +9,7 @@ import time
 import hashlib
 import requests
 from contextlib import contextmanager
-from dl4seq.utils.datasets.utils import download
+from AI4Water.utils.datasets.utils import download
 
 abort_signal = False
 abort_counter = 0
