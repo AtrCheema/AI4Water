@@ -45,10 +45,10 @@ class Metrics(object):
 
      :parameters
      ------------
-     true: 1D array or list
+     true : 1D array or list
         ture/observed/actual values,
 
-     predicted: 1D array or list
+     predicted : 1D array or list
          simulated values
 
      The following attributes are dynamic i.e. they can be changed from outside the class. This means the user can
@@ -56,17 +56,17 @@ class Metrics(object):
      NaN and then by not ignoring the NaNs. However, the user has to run the method `treat_arrays` in order to have the
      changed values impact on true and predicted arrays.
 
-     replace_nan: float/int, default None,
+     replace_nan : float/int, default None,
           if not None, then NaNs in true and predicted will be replaced by this value.
 
-     replace_inf: float/int, default None,
+     replace_inf : float/int, default None,
           if not None, then inf vlaues in true and predicted will be replaced by this value.
 
-     remove_zero: bool, default False,
+     remove_zero : bool, default False,
          if True, the zero values in true or predicted arrays will be removed. If a zero
          is found in one array, the corresponding value in the other array will also be removed.
 
-     remove_neg: bool, default False,
+     remove_neg : bool, default False,
          if True, the negative values in true or predicted arrays will be removed.
     """
 
