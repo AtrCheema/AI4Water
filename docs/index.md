@@ -2,21 +2,26 @@
 
 For full documentation visit [mkdocs.org](https://al4water.readthedocs.io/en/latest/).
 
-# hyperopt
+# Model
 ::: AI4Water.main.Model
+    handler: python
 
-AI4Water.hyper_opt.hyper_opt.HyperOpt
 
-AI4Water.hyper_opt.utils.Categorical
+# HyerOpt
 
-AI4Water.hyper_opt.utils.Integer
+::: AI4Water.hyper_opt.hyper_opt.HyperOpt
 
-AI4Water.hyper_opt.utils.Real
+::: AI4Water.hyper_opt.utils.Categorical
+
+::: AI4Water.hyper_opt.utils.Integer
+
+::: AI4Water.hyper_opt.utils.Real
 
 
 
 # SeqMetrics
 ::: AI4Water.utils.SeqMetrics.SeqMetrics.Metrics
+    handler: python
 
 
 

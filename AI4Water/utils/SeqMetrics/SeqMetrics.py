@@ -41,24 +41,33 @@ EPS = 1e-10  # epsilon
 
 class Metrics(object):
     """
-    Presents more than 100 performance metrics related to sequence data at one place.
+    Calculates more than 100 performance metrics related to sequence data.
 
      :parameters
      ------------
-     actual: ture/observed values, 1D array or list
-     predicted: simulated values, 1D array or list
+     true: 1D array or list
+        ture/observed/actual values,
+
+     predicted: 1D array or list
+         simulated values
 
      The following attributes are dynamic i.e. they can be changed from outside the class. This means the user can
      change their value after creating the class. This will be useful if we want to calculate an error once by ignoring
      NaN and then by not ignoring the NaNs. However, the user has to run the method `treat_arrays` in order to have the
      changed values impact on true and predicted arrays.
 
-     replace_nan: float/int, default None, if not None, then NaNs in true and predicted will be replaced by this value.
-     replace_inf: float/int, default None, if not None, then inf vlaues in true and predicted will be replaced by this
-                  value.
-     remove_zero: bool, default False, if True, the zero values in true or predicted arrays will be removed. If a zero
-                  is found in one array, the corresponding value in the other array will also be removed.
-     remove_neg: bool, default False, if True, the negative values in true or predicted arrays will be removed.
+     replace_nan: float/int, default None,
+          if not None, then NaNs in true and predicted will be replaced by this value.
+
+     replace_inf: float/int, default None,
+          if not None, then inf vlaues in true and predicted will be replaced by this value.
+
+     remove_zero: bool, default False,
+         if True, the zero values in true or predicted arrays will be removed. If a zero
+         is found in one array, the corresponding value in the other array will also be removed.
+
+     remove_neg: bool, default False,
+         if True, the negative values in true or predicted arrays will be removed.
     """
 
     def __init__(self,

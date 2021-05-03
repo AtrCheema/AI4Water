@@ -2,6 +2,7 @@
 
 
 [![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf230/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
+[![Documentation Status](https://readthedocs.org/projects/al4water/badge/?version=latest)](https://al4water.readthedocs.io/en/latest/?badge=latest)
 
 A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
