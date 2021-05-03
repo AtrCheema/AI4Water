@@ -7,9 +7,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-from dl4seq.ETUtil.converter import Temp, Speed, Pressure
-from dl4seq.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA, Colors
-from dl4seq.ETUtil.global_variables import default_constants, SB_CONS
+from AI4Water.ETUtil.converter import Temp, Speed, Pressure
+from AI4Water.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA, Colors
+from AI4Water.ETUtil.global_variables import default_constants, SB_CONS
 
 
 class AttributeChecker:

@@ -125,10 +125,12 @@ class HyperOpt(object):
 
     :parameters
     --------------
-    algorithm: str, must be one of "random", "grid" "bayes" and "tpe", defining which optimization algorithm to use.
-    objective_fn: callable, It can be either sklearn/xgboost based regressor/classifier or any function whose returned
+    algorithm : str, must be one of "random", "grid" "bayes" and "tpe", defining which optimization algorithm to use.
+
+    objective_fn : callable, It can be either sklearn/xgboost based regressor/classifier or any function whose returned
                   values can act as objective function for the optimization problem.
-    param_space: list/dict, the space parameters to be optimized. We recommend the use of Real, Integer and categorical
+
+    param_space : list/dict, the space parameters to be optimized. We recommend the use of Real, Integer and categorical
                  classes from AI4Water/hyper_opt (not from skopt.space). These classes allow a uniform way of defining
                  the parameter space for all the underlying libraries. However, to make this class work exactly similar
                  to its underlying libraries, the user can also define parameter space as is defined in its underlying
@@ -136,9 +138,9 @@ class HyperOpt(object):
                  in the examples of hyperopt library. In case the code breaks, please report.
                   Based upon above scenarios
 
-    eval_on_best: bool, if True, then after optimization, the objective_fn will be evaluated on best parameters and the results
+    eval_on_best : bool, if True, then after optimization, the objective_fn will be evaluated on best parameters and the results
                   will be stored in the folder named "best" inside `title` folder.
-    kwargs: dict, For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
+    kwargs : dict, For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
                   passed to initialize AI4Water's Model class. The choice of kwargs depends whether you are using this class
                   For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
                   For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
@@ -191,50 +193,71 @@ class HyperOpt(object):
     ...    mse = FindErrors(t, p).mse()
     ...
     ...    return mse
+    ```
+
     # Define search space
+
+    ```python
     >>>num_samples=5   # only relavent for random and grid search
     >>>    search_space = [
     ...    Categorical(['gbtree', 'dart'], name='booster'),
     ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
     ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
     ...]
+    ```
+
     # Using TPE with optuna
+    ```python
     >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
+    ```
+
     # Using cmaes with optuna
+    ```python
     >>>optimizer = HyperOpt('cmaes', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
+    ```
 
     # Using random with optuna, we can also try hyperopt and sklearn as backend for random algorithm
+    ```python
     >>>optimizer = HyperOpt('random', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
+    ```
 
     # Using TPE of hyperopt
+    ```python
     >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='hyperopt',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
+    ```
 
     Using Baysian with gaussian processes
+    ```python
     >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='skopt',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
+    ```
 
     Using grid with sklearn
+    ```python
     >>>optimizer = HyperOpt('grid', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='sklearn',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
+    ```
+
     # Backward compatability
     The following shows some tweaks with hyperopt to make its working compatible with its underlying libraries.
     # using grid search with AI4Water
+    ```python
     >>>opt = HyperOpt("grid",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
@@ -244,8 +267,10 @@ class HyperOpt(object):
     ...           data=data,
     ...           )
     >>>opt.fit()
+    ```
 
-    #using random search with AI4Water
+    # using random search with AI4Water
+    ```python
     >>>opt = HyperOpt("random",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
@@ -256,8 +281,10 @@ class HyperOpt(object):
     ...           n_iter=100
     ...           )
     >>>sr = opt.fit()
+    ```
 
     # using Bayesian with AI4Water
+    ```python
     >>>from AI4Water.hyper_opt import Integer
     >>>opt = HyperOpt("bayes",
     ...           param_space=[Integer(low=1000, high=2000, name='n_estimators'),
@@ -269,9 +296,11 @@ class HyperOpt(object):
     ...               n_random_starts=3,  # the number of random initialization points
     ...               random_state=2)
     >>>sr = opt.fit()
+    ```
 
 
     # using Bayesian with custom objective_fn
+    ```python
     >>>def f(x, noise_level=0.1):
     ...      return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
     ...
@@ -286,9 +315,10 @@ class HyperOpt(object):
     ...           n_random_starts=3,  # the number of random initialization points
     ...           )
     >>>opt_results = opt.fit()
+    ```
 
     # using Bayesian with custom objective_fn and named args
-    >>>
+    ```python
     >>>def f(noise_level=0.1, **kwargs):
     ...    x = kwargs['x']
     ...    return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
