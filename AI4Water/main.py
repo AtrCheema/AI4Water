@@ -64,9 +64,10 @@ class Model(NN, Plots):
                  **kwargs):
 
         """
-        The Model class can take a large number of possible arguments
-        depending upon the machine learning model/algorithm used. Not all the arguments are applicable in each case. The
-        user must define only the relevant/applicable parameters and leave the others as it is.
+        The Model class can take a large number of possible arguments depending
+        upon the machine learning model/algorithm used. Not all the arguments
+        are applicable in each case. The user must define only the relevant/applicable
+        parameters and leave the others as it is.
 
         Arguments:
             model dict:
@@ -165,15 +166,17 @@ class Model(NN, Plots):
                 ```
                 For details about fillna keyword options see
                 https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
-                For `interpolate`, the user can specify  the type of interpolation for example
+                For `interpolate`, the user can specify  the type of interpolation
+                for example
                 ```python
                 {'interpolate': {'method': 'spline', 'order': 2}}
                 ``` will perform spline interpolation with 2nd order.
                 For other possible options/keyword arguments for interpolate see
                 https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
-                The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
-                providing the above mentioned arguments as dictionary or list.
-                The sklearn based imputation methods can also be used in a similar fashion. For KNN
+                The filling or interpolation is done columnwise, however, the user
+                can specify how to do for each column by providing the above mentioned
+                arguments as dictionary or list. The sklearn based imputation methods
+                can also be used in a similar fashion. For KNN
                 {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
                 {'IterativeImputer': {'n_nearest_features': 2}}
                 For more on sklearn based imputation methods see
@@ -187,28 +190,36 @@ class Model(NN, Plots):
             data pd.DataFrame/dict: default is None
                 a pandas dataframe or a dictionary of pandas dataframes.
             inputs list/dict:
-                list of column names from `data` to be used as input. If dict, then it must be consistent with `data`.
+                list of column names from `data` to be used as input. If dict,
+                then it must be consistent with `data`.
             outputs lsit/dict:
-                list of column names from `data` to be used as output. If dict, then it must be consistent with `data`.
+                list of column names from `data` to be used as output. If dict,
+                then it must be consistent with `data`.
             intervals tuple/None: default is None.
-                tuple of tuples where each tuple consits of two integers, marking the start and end of interval.
-                An interval here means chunk/rows from the input file/dataframe to be skipped when when preparing
-                data/batches for NN. This happens when we have for example some missing values at some time in our data.
+                tuple of tuples where each tuple consits of two integers, marking
+                the start and end of interval. An interval here means chunk/rows
+                from the input file/dataframe to be skipped when when preparing
+                data/batches for NN. This happens when we have for example some
+                missing values at some time in our data.
                 For further usage see `examples/using_intervals`
-            lookback int: The term lookback has been adopted from Francois Chollet's "deep learning
+            lookback int: The term lookback has been adopted from Francois Chollet's
+                "deep learning
                 with keras" book. This means how many
-                historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
-                for any non timeseries forecasting related problems.
+                historical time-steps of data, we want to feed to at time-step to
+                predict next value. This value must be one for any non timeseries
+                forecasting related problems.
             forecast_length int: how many future values/horizons we want to predict. default is 1.
             forecast_step int: how many steps ahead we want to predict. default is 0 which means nowcasting.
             batch_size int: size of a batch. default is 32.
             input_step int: step size of input data. default is 1.
-            transformation str/list/dict/None: type of transformation to be applied. The transformation
-                can be any transformation name from AI4Water.utils.transformations.py. The user can
-                specify more than one transformation. Moreover, the user can also determine which
+            transformation str/list/dict/None: type of transformation to be applied.
+                The transformation can be any transformation name from
+                AI4Water.utils.transformations.py. The user can specify more than
+                one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
             prefix str:
-                prefix to be used for the folder in which the results are saved. default is None, which means within
+                prefix to be used for the folder in which the results are saved.
+                default is None, which means within
                 ./results/model_path
             path str/path like:
                 if not given, new model_path path will not be created.
