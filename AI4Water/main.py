@@ -163,11 +163,23 @@ class Model(NN, Plots):
             list of column names from `data` to be used as input. If dict, then it must be consistent with `data`.
         outputs lsit/dict:
             list of column names from `data` to be used as output. If dict, then it must be consistent with `data`.
-        intervals : tuple/None, default is None.
+        intervals tuple: tuple/None, default is None.
             tuple of tuples where each tuple consits of two integers, marking the start and end of interval.
             An interval here means chunk/rows from the input file/dataframe to be skipped when when preparing
             data/batches for NN. This happens when we have for example some missing values at some time in our data.
             For further usage see `examples/using_intervals`
+        lookback int: The term lookback has been adopted from Francois Chollet's "deep learning
+            with keras" book. This means how many
+            historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
+            for any non timeseries forecasting related problems.
+        forecast_length int: how many future values/horizons we want to predict. default is 1.
+        forecast_step int: how many steps ahead we want to predict. default is 0 which means nowcasting.
+        batch_size int: size of a batch. default is 32.
+        input_step int: step size of input data. default is 1.
+        transformation str/list/dict/None: type of transformation to be applied. The transformation
+            can be any transformation name from AI4Water.utils.transformations.py. The user can
+            specify more than one transformation. Moreover, the user can also determine which
+            transformation to be applied on which input feature. Default is 'minmax'.
         prefix str:
             prefix to be used for the folder in which the results are saved. default is None, which means within
             ./results/model_path
