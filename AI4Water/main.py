@@ -958,7 +958,8 @@ class Model(NN, Plots):
         return interval_length
 
     def train_data(self, data=None, data_keys=None, use_split_data=False, **kwargs):
-        """ prepare data on which to train the NN.
+        """
+        Prepares data on which to train the NN.
         It is possible that self.data is dictionary but self.ins and self.outs are not dictionaries.
         This means same in_cols and out_cols exist in all dataframes of self.data.
         use_split_data: bool, if data is a dictionary then if we want x,y as dictionary as well, then
@@ -1055,8 +1056,7 @@ class Model(NN, Plots):
                         predicted: np.ndarray,
                         prefix=None,
                         index=None,
-                        remove_nans=True,
-                        **plot_args):
+                        remove_nans=True):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
@@ -1289,10 +1289,17 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return predicted
 
-    def predict(self, st=0, en=None, indices=None, data=None, data_keys=None,
+    def predict(self,
+                st=0,
+                en=None,
+                indices=None,
+                data=None,
+                data_keys=None,
                 scaler_key: str = None,
                 prefix: str = 'test',
-                use_datetime_index=False, pp=True, **plot_args):
+                use_datetime_index=False,
+                pp=True,
+                **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
         pp: post processing
@@ -1345,7 +1352,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         if self.quantiles is None:
 
             if pp:
-                self.process_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index, **plot_args)
+                self.process_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index)
 
         else:
             assert self.outs == 1
