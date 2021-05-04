@@ -1146,19 +1146,20 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         else:
             importances, importance_paras, fig = plot_param_importances(self.optuna_study())
-            plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'fanova_importance.html'),
-                                auto_open=False)
+            if importances is not None:
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'fanova_importance.html'),
+                                    auto_open=False)
 
-            plt.close('all')
-            df = pd.DataFrame.from_dict(importance_paras)
-            df.boxplot()
-            plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
+                plt.close('all')
+                df = pd.DataFrame.from_dict(importance_paras)
+                df.boxplot()
+                plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
-            with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-                json.dump(importances, fp, indent=4, sort_keys=True)
+                with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
+                    json.dump(importances, fp, indent=4, sort_keys=True)
 
-            with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
-                json.dump(importance_paras, fp, indent=4, sort_keys=True)
+                with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
+                    json.dump(importance_paras, fp, indent=4, sort_keys=True)
 
         return
 
