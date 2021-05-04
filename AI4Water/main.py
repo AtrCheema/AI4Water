@@ -105,7 +105,7 @@ class Model(NN, Plots):
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API see
-                https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md
+                https://ai4water.readthedocs.io/en/latest/build_dl_models/
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -209,7 +209,8 @@ class Model(NN, Plots):
                 predict next value. This value must be one for any non timeseries
                 forecasting related problems.
             forecast_length int: how many future values/horizons we want to predict. default is 1.
-            forecast_step int: how many steps ahead we want to predict. default is 0 which means nowcasting.
+            forecast_step int: how many steps ahead we want to predict. default is
+                0 which means nowcasting.
             batch_size int: size of a batch. default is 32.
             input_step int: step size of input data. default is 1.
             transformation str/list/dict/None: type of transformation to be applied.
@@ -224,10 +225,11 @@ class Model(NN, Plots):
             path str/path like:
                 if not given, new model_path path will not be created.
             verbosity int: default is 1.
-                determines the amount of information being printed. 0 means no print information. Can be between 0 and 3.
+                determines the amount of information being printed. 0 means no
+                print information. Can be between 0 and 3.
             accept_additional_args bool:  Default is False
-                If you want to pass any additional argument, then this argument must be set to True,
-                                    otherwise an error will be raise.
+                If you want to pass any additional argument, then this argument
+                must be set to True, otherwise an error will be raise.
             kwargs : any argument for model building/pre-processing etc.
                     for details see make_model in utils.utils.py
         """
