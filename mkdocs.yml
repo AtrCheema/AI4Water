@@ -13,6 +13,7 @@ plugins:
 
 pages:
 - Model: 'model.md'
+- declarative model definiton: 'build_dl_models.md'
 - Metrics: 'metrics.md'
 - hyperparameter optimization: 'hyperopt.md'
 - Evapotranspiration: 'evapotranspiration.md'

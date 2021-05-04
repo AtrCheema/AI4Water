@@ -72,22 +72,26 @@ class Model(NN, Plots):
             model dict:
                 a dictionary defining machine learning model.
                 If you are building a non-tensorflow model
-                then this dictionary must consist of name of name of model as key and the keyword arguments to that
-                model as dictionary. For example to build a decision forest based model
+                then this dictionary must consist of name of name of model as key
+                and the keyword arguments to that model as dictionary. For example
+                to build a decision forest based model
                 ```python
                 model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
                 ```
-                The key 'DecisionTreeRegressor' should exactly match the name of the model from following libraries
+                The key 'DecisionTreeRegressor' should exactly match the name of
+                the model from following libraries
                             -scikit-learn
                             -xgboost
                             -catboost
                             -lightgbm
-                The value {"max_depth": 3, "criterion": "mae"} is another dictionary which can be any keyword argument
-                which the `model` (DecisionTreeRegressor in this case) accepts. The user must refer to the documentation
-                of the underlying library (scikit-learn for DecisionTreeRegressor) to find out complete keyword
-                arguments applicable for a particular model.
-                If You are building a Deep Learning model using tensorflow, then the key must be 'layers' and the value
-                must itself be a dictionary defining layers of neural networks. For example we can build an MLP as following
+                The value {"max_depth": 3, "criterion": "mae"} is another dictionary
+                which can be any keyword argument which the `model` (DecisionTreeRegressor
+                in this case) accepts. The user must refer to the documentation
+                of the underlying library (scikit-learn for DecisionTreeRegressor)
+                to find out complete keyword arguments applicable for a particular model.
+                If You are building a Deep Learning model using tensorflow, then the key
+                must be 'layers' and the value must itself be a dictionary defining layers
+                of neural networks. For example we can build an MLP as following
                 ```python
                 model = {'layers': {
                             "Dense_0": {'units': 64, 'activation': 'relu'},
@@ -95,10 +99,12 @@ class Model(NN, Plots):
                              "Dense_3": {'units': 1}
                             }}
                 ```
-                The MLP in this case consists of dense, and flatten layers. The user can define any keyword arguments
-                which is accepted by that layer in TensorFlow. For example the `Dense` layer in TensorFlow can accept
-                `units` and `activation` keyword argument among others. For details on how to buld neural networks
-                using such layered API see https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md
+                The MLP in this case consists of dense, and flatten layers. The user
+                can define any keyword arguments which is accepted by that layer in
+                TensorFlow. For example the `Dense` layer in TensorFlow can accept
+                `units` and `activation` keyword argument among others. For details
+                on how to buld neural networks using such layered API see
+                https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -116,34 +122,43 @@ class Model(NN, Plots):
             shuffle bool:
                 whether to shuffle the training data or not.
             save_model bool:,
-                whether to save the model or not. For neural networks, the model will be saved only an improvement
-                in training/validation loss is observed. Otherwise model is not saved.
+                whether to save the model or not. For neural networks, the model will
+                be saved only an improvement in training/validation loss is observed.
+                Otherwise model is not saved.
             subsequences int: Default is 3.
                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
             val_data str/None: Default is None.
-                If you want to use same data for training and test purpose, then set this argument to 'same'.
+                If you want to use same data for training and test purpose, then set
+                this argument to 'same'.
             val_fraction float:
-                The fraction of the complete data to be used for validation. Set to 0.0 if no validation data
-                is to be used.
+                The fraction of the complete data to be used for validation. Set to 0.0 if
+                no validation data is to be used.
             test_fraction float:,
-                Fraction of the complete data to be used for test purpose. Must be greater than 0.0.
+                Fraction of the complete data to be used for test purpose. Must be greater
+                than 0.0.
             allow_nan_labels int:
                 whether to allow nan labels or not. if > 0, and if target values contain Nans,
-                those samples will not be ignored and will be fed as it is to training and test steps. In such
-                a case a customized training and evaluation step is performed where the loss is not calculated
-                for predictions corresponding to nan observations. Thus this option can be useful when we are
-                predicting more than 1 target and the some of the samples have some of their labels missing. In
-                such a scenario, if we set this optin to True, we don't need to ignore those samples at all during data
-                preparation. This option should be set to > 0 only when using tensorflow for deep learning models.
-                if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
-                will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
-                means for multi-outputs, we can end up having examples whose all labels are nans.
-                if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
+                those samples will not be ignored and will be fed as it is to training
+                and test steps. In such a case a customized training and evaluation
+                step is performed where the loss is not calculated for predictions
+                corresponding to nan observations. Thus this option can be useful
+                when we are predicting more than 1 target and the some of the samples
+                have some of their labels missing. In such a scenario, if we set this
+                optin to True, we don't need to ignore those samples at all during data
+                preparation. This option should be set to > 0 only when using tensorflow
+                for deep learning models. if == 1, then if an example has label [nan, 1]
+                it will not be removed while the example with label [nan, nan]
+                will be ignored/removed. If ==2, both examples (mentioned before) will be
+                considered/will not be removed. This means for multi-outputs, we can end
+                up having examples whose all labels are nans. if the number of outputs
+                are just one. Then this must be set to 2 in order to use samples with nan labels.
             input_nans None/dict: default is None.
-                This determines how to deal with missing values in the input data. The default value
-                is None, which will raise error if missing/nan values are encountered in the input data. The user can however
-                specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
-                be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
+                This determines how to deal with missing values in the input data.
+                The default value is None, which will raise error if missing/nan values
+                are encountered in the input data. The user can however specify a
+                dictionary whose key must be either `fillna` or `interpolate` the value
+                of this dictionary should be the keyword arguments will be forwarded
+                to pandas .fillna() or .iterpolate() method. For example, to do
                 forward filling, the user can do as following
                 ```python
                 {'fillna': {'method': 'ffill'}}
