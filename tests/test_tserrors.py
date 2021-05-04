@@ -4,7 +4,7 @@ import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from AI4Water.utils.SeqMetrics import Metrics
-from AI4Water.utils.SeqMetrics.utils import plot_errors
+from AI4Water.utils.SeqMetrics.utils import plot_metrics
 
 import numpy as np
 
@@ -20,7 +20,8 @@ all_errors = er.calculate_all()
 class test_errors(unittest.TestCase):
 
     def test_radial_pots(self):
-        plot_errors(all_errors)
+        plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
+        plot_metrics(all_errors, plot_type='radial')
         return 
 
     def test_calculate_all(self):
