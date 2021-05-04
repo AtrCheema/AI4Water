@@ -430,34 +430,6 @@ class MLRegressionExperiments(Experiments):
     Inside this new method the user can define, which parameters to optimize, their param_space for optimization
     and the initial values to use for optimization.
 
-    Arguments:
-        param_space: dimenstions of parameters which are to be optimized. These can be overwritten in `models`.
-        x0 list: initial values of the parameters which are to be optimized. These can be overwritten in `models`
-        data: this will be passed to `Model`.
-        exp_name str: name of experiment, all results will be saved within this folder
-        model_kwargs dict: keyword arguments which are to be passed to `Model` and are not optimized.
-    Examples:
-    --------
-    ```python
-    >>>from AI4Water.data import load_30min
-    >>>from AI4Water.experiments import MLRegressionExperiments
-    >>> # first compare the performance of all available models without optimizing their parameters
-    >>>data = load_30min()  # read data file, in this case load the default data
-    >>>inputs = [inp for inp in data.columns if inp.startswith('input')]  # define input and output columns in data
-    >>>outputs = ['target5']
-    >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
-    ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-    >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTREGRESSOR'])
-    >>>comparisons.compare_errors('r2')
-    >>> # find out the models which resulted in r2> 0.5
-    >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.5)
-    >>> # now build a new experiment for best models and otpimize them
-    >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
-    ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
-    >>>comparisons.fit(run_type="optimize", include=best_models)
-    >>>comparisons.compare_errors('r2')
-    >>>comparisons.plot_taylor()  # see help(comparisons.plot_taylor()) to tweak the taylor plot
-    ```
     """
 
     def __init__(self,
@@ -469,6 +441,38 @@ class MLRegressionExperiments(Experiments):
                  exp_name='MLExperiments',
                  num_samples=10,
                  **model_kwargs):
+        """
+
+        Arguments:
+            param_space: dimenstions of parameters which are to be optimized. These can be overwritten in `models`.
+            x0 list: initial values of the parameters which are to be optimized. These can be overwritten in `models`
+            data: this will be passed to `Model`.
+            exp_name str: name of experiment, all results will be saved within this folder
+            model_kwargs dict: keyword arguments which are to be passed to `Model` and are not optimized.
+
+        Examples:
+        --------
+        ```python
+        >>>from AI4Water.data import load_30min
+        >>>from AI4Water.experiments import MLRegressionExperiments
+        >>> # first compare the performance of all available models without optimizing their parameters
+        >>>data = load_30min()  # read data file, in this case load the default data
+        >>>inputs = [inp for inp in data.columns if inp.startswith('input')]  # define input and output columns in data
+        >>>outputs = ['target5']
+        >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
+        ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
+        >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTREGRESSOR'])
+        >>>comparisons.compare_errors('r2')
+        >>> # find out the models which resulted in r2> 0.5
+        >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.5)
+        >>> # now build a new experiment for best models and otpimize them
+        >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
+        ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
+        >>>comparisons.fit(run_type="optimize", include=best_models)
+        >>>comparisons.compare_errors('r2')
+        >>>comparisons.plot_taylor()  # see help(comparisons.plot_taylor()) to tweak the taylor plot
+        ```
+        """
         self.param_space = param_space
         self.x0 = x0
         self.data = data

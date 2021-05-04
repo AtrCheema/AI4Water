@@ -121,27 +121,7 @@ class HyperOpt(object):
       1. Apply grid/random/bayesian search for sklearn based regressor/classifier
       2. Apply grid/random/bayesian search for custom regressor/classifier/model/function
       3. Apply grid/random/bayesian search for AI4Water. This may be the easierst one, if user is familier with AI4Water. Only
-         supported for ml models and not for dl models. For dl based dl4eq's models, consider scenario 2.
-
-    Arguments:
-        algorithm str: must be one of "random", "grid" "bayes" and "tpe", defining which
-            optimization algorithm to use.
-        objective_fn callable: It can be either sklearn/xgboost based regressor/classifier
-             or any function whose returned
-             values can act as objective function for the optimization problem.
-        param_space list/dict: the space parameters to be optimized. We recommend the use of Real, Integer and categorical
-                     classes from AI4Water/hyper_opt (not from skopt.space). These classes allow a uniform way of defining
-                     the parameter space for all the underlying libraries. However, to make this class work exactly similar
-                     to its underlying libraries, the user can also define parameter space as is defined in its underlying
-                     libraries. For example, for hyperopt based method like 'tpe' the parameter space can be specified as
-                     in the examples of hyperopt library. In case the code breaks, please report.
-                      Based upon above scenarios
-        eval_on_best bool: if True, then after optimization, the objective_fn will be evaluated on best parameters and the results
-                      will be stored in the folder named "best" inside `title` folder.
-        kwargs dict: For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
-                      passed to initialize AI4Water's Model class. The choice of kwargs depends whether you are using this class
-                      For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
-                      For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
+         supported for ml models and not for dl models. For dl based AI4Water's models, consider scenario 2.
 
     Attributes
     --------------
@@ -256,7 +236,7 @@ class HyperOpt(object):
     >>>opt = HyperOpt("grid",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
-    ...           dl4seq_args={'model': 'XGBoostRegressor',
+    ...           ai4water_args={'model': 'XGBoostRegressor',
     ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
     ...                        'outputs': ['target']},
     ...           data=data,
@@ -269,7 +249,7 @@ class HyperOpt(object):
     >>>opt = HyperOpt("random",
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
-    ...           dl4seq_args={'model': 'XGBoostRegressor',
+    ...           ai4water_args={'model': 'XGBoostRegressor',
     ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
     ...                        'outputs': ['target']},
     ...           data=data,
@@ -284,7 +264,7 @@ class HyperOpt(object):
     >>>opt = HyperOpt("bayes",
     ...           param_space=[Integer(low=1000, high=2000, name='n_estimators'),
     ...                        Integer(low=3, high=6, name='max_depth')],
-    ...           dl4seq_args={'model': 'xgboostRegressor'},
+    ...           ai4water_args={'model': 'xgboostRegressor'},
     ...               data=data,
     ...               n_calls=100,
     ...               x0=[1000, 3],
@@ -350,6 +330,28 @@ class HyperOpt(object):
                  **kwargs
                  ):
 
+        """
+        Arguments:
+            algorithm str: must be one of "random", "grid" "bayes" and "tpe", defining which
+                optimization algorithm to use.
+            objective_fn callable: It can be either sklearn/xgboost based regressor/classifier
+                or any function whose returned
+                values can act as objective function for the optimization problem.
+            param_space list/dict: the space parameters to be optimized. We recommend the use
+                of Real, Integer and categorical classes from AI4Water/hyper_opt (not from skopt.space).
+                These classes allow a uniform way of defining the parameter space for all the
+                underlying libraries. However, to make this class work exactly similar
+                to its underlying libraries, the user can also define parameter space
+                as is defined in its underlying libraries. For example, for hyperopt
+                based method like 'tpe' the parameter space can be specified as in the
+                examples of hyperopt library. In case the code breaks, please report.
+            eval_on_best bool: if True, then after optimization, the objective_fn will
+                be evaluated on best parameters and the results will be stored in the
+                folder named "best" inside `title` folder.
+            kwargs dict: Any additional keyword arguments will for the underlying optimization
+                algorithm. In case of using AI4Water model, these must be arguments which
+                are passed to AI4Water's Model class.
+        """
         if algorithm not in ALGORITHMS:
             raise ValueError(f"""Invalid value of algorithm provided. Allowd values for algorithm"
                                 are {list(ALGORITHMS.keys())}. 
@@ -360,7 +362,7 @@ class HyperOpt(object):
         self.backend=backend
         self.param_space=param_space
         self.original_space = param_space       # todo self.space and self.param_space should be combined.
-        self.dl4seq_args = None
+        self.ai4water_args = None
         self.title = self.algorithm
         self.results = {}  # internally stored results
         self.gpmin_results = None  #
@@ -443,13 +445,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def check_args(self, **kwargs):
         kwargs = kwargs.copy()
 
-        self.use_dl4seq_model = False
-        if "dl4seq_args" in kwargs:
-            self.dl4seq_args = kwargs.pop("dl4seq_args")
+        self.use_ai4water_model = False
+        if "ai4water_args" in kwargs:
+            self.ai4water_args = kwargs.pop("ai4water_args")
             self.data = kwargs.pop("data")
-            self._model = self.dl4seq_args.pop("model")
+            self._model = self.ai4water_args.pop("model")
             #self._model = list(_model.keys())[0]
-            self.use_dl4seq_model = True
+            self.use_ai4water_model = True
 
         if 'n_initial_points' in kwargs:
             if int(''.join(skopt.__version__.split('.')[1])) < 8:
@@ -721,7 +723,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     @property
     def use_named_args(self):
-        if self.use_dl4seq_model:
+        if self.use_ai4water_model:
             return True
         argspec = inspect.getfullargspec(self.objective_fn)
         if argspec.varkw is None:
@@ -770,7 +772,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return list(paras.values())
         return paras
 
-    def dl4seq_model(self,
+    def ai4water_model(self,
                      pp=False,
                      title=None,
                      return_model=False,
@@ -793,7 +795,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                       prefix=title,
                       verbosity=1 if pp else 0,
                       model={_model: kwargs},
-                      **self.dl4seq_args)
+                      **self.ai4water_args)
 
         assert model.config["model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " AI4Water model and pass it as custom model."
@@ -843,18 +845,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.objective_fn
 
         dims = self.dims()
-        if self.use_named_args and self.dl4seq_args is None:
+        if self.use_named_args and self.ai4water_args is None:
             # external function and this function accepts named args.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
                 return self.objective_fn(**kwargs)
             return fitness
 
-        if self.use_named_args and self.dl4seq_args is not None:
-            # using in-build dl4seq_model as objective function.
+        if self.use_named_args and self.ai4water_args is not None:
+            # using in-build ai4water_model as objective function.
             @use_named_args(dimensions=dims)
             def fitness(**kwargs):
-                return self.dl4seq_model(**kwargs)
+                return self.ai4water_model(**kwargs)
             return fitness
 
         raise ValueError(f"used named args is {self.use_named_args}")
@@ -907,8 +909,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         print(f"total number of iterations: {len(params)}")
         for idx, para in enumerate(params):
 
-            if self.use_dl4seq_model:
-                err = self.dl4seq_model(**para)
+            if self.use_ai4water_model:
+                err = self.ai4water_model(**para)
             elif self.use_named_args:  # objective_fn is external but uses kwargs
                 err = self.objective_fn(**para)
             else: # objective_fn is external and does not uses keywork arguments
@@ -921,7 +923,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         this argument is set to True during initiatiation of HyperOpt.""")
             err = round(err, 8)
 
-            if not self.use_dl4seq_model:
+            if not self.use_ai4water_model:
                 self.results[err + idx] = sort_x_iters(para, self.original_para_order())
 
         self._plot()
@@ -987,16 +989,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             model_kws['max_evals'] = model_kws.pop('num_iterations')
 
         space = self.hp_space()
-        if self.use_named_args and not self.use_dl4seq_model:
+        if self.use_named_args and not self.use_ai4water_model:
             def objective_fn(kws):
                 # the objective function in hyperopt library receives a dictionary
                 return self.objective_fn(**kws)
             objective_f = objective_fn
 
-        elif self.use_named_args and self.use_dl4seq_model:
+        elif self.use_named_args and self.use_ai4water_model:
             # make objective_fn using AI4Water
             def fitness(kws):
-                return self.dl4seq_model(**kws)
+                return self.ai4water_model(**kws)
             objective_f = fitness
 
         else:
@@ -1028,10 +1030,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def _predict(self, *args, **params):
 
-        if self.use_named_args and self.dl4seq_args is not None:
-            return self.dl4seq_model(pp=True, **params)
+        if self.use_named_args and self.ai4water_args is not None:
+            return self.ai4water_model(pp=True, **params)
 
-        if self.use_named_args and self.dl4seq_args is None:
+        if self.use_named_args and self.ai4water_args is None:
             return self.objective_fn(**params)
 
         if callable(self.objective_fn) and not self.use_named_args:
@@ -1188,14 +1190,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         else:
             x = self.best_paras(False)
 
-        if self.use_named_args and self.dl4seq_args is not None:
-            return self.dl4seq_model(pp=True,
+        if self.use_named_args and self.ai4water_args is not None:
+            return self.ai4water_model(pp=True,
                                      view_model=view_model,
                                      return_model=return_model,
                                      title=os.path.join(self.opt_path, "best"),
                                      **x)
 
-        if self.use_named_args and self.dl4seq_args is None:
+        if self.use_named_args and self.ai4water_args is None:
             return self.objective_fn(**x)
 
         if callable(self.objective_fn) and not self.use_named_args:
