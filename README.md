@@ -2,7 +2,7 @@
 
 
 [![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf230/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
-[![Documentation Status](https://readthedocs.org/projects/al4water/badge/?version=latest)](https://al4water.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/ai4water/badge/?version=latest)](https://ai4water.readthedocs.io/en/latest/?badge=latest)
 
 A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
@@ -53,8 +53,8 @@ Currently following models are implemented
 | Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
 | Input Attention  | `InputAttentionModel` | |
 
-`*` These models can be constructed by stacking layers in a python dictionary as shown in [examples](https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md). The remaining models 
-can be used as shown [here](https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md)
+`*` These models can be constructed by stacking layers in a python dictionary as shown [here](https://ai4water.readthedocs.io/en/latest/build_dl_models/). The remaining models 
+can be used as shown [here](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
 
 ## Installation
 

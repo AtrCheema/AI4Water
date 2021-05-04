@@ -64,30 +64,35 @@ class Model(NN, Plots):
                  **kwargs):
 
         """
-        The Model class can take a large number of possible arguments
-        depending upon the machine learning model/algorithm used. Not all the arguments are applicable in each case. The
-        user must define only the relevant/applicable parameters and leave the others as it is.
+        The Model class can take a large number of possible arguments depending
+        upon the machine learning model/algorithm used. Not all the arguments
+        are applicable in each case. The user must define only the relevant/applicable
+        parameters and leave the others as it is.
 
         Arguments:
             model dict:
                 a dictionary defining machine learning model.
                 If you are building a non-tensorflow model
-                then this dictionary must consist of name of name of model as key and the keyword arguments to that
-                model as dictionary. For example to build a decision forest based model
+                then this dictionary must consist of name of name of model as key
+                and the keyword arguments to that model as dictionary. For example
+                to build a decision forest based model
                 ```python
                 model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
                 ```
-                The key 'DecisionTreeRegressor' should exactly match the name of the model from following libraries
+                The key 'DecisionTreeRegressor' should exactly match the name of
+                the model from following libraries
                             -scikit-learn
                             -xgboost
                             -catboost
                             -lightgbm
-                The value {"max_depth": 3, "criterion": "mae"} is another dictionary which can be any keyword argument
-                which the `model` (DecisionTreeRegressor in this case) accepts. The user must refer to the documentation
-                of the underlying library (scikit-learn for DecisionTreeRegressor) to find out complete keyword
-                arguments applicable for a particular model.
-                If You are building a Deep Learning model using tensorflow, then the key must be 'layers' and the value
-                must itself be a dictionary defining layers of neural networks. For example we can build an MLP as following
+                The value {"max_depth": 3, "criterion": "mae"} is another dictionary
+                which can be any keyword argument which the `model` (DecisionTreeRegressor
+                in this case) accepts. The user must refer to the documentation
+                of the underlying library (scikit-learn for DecisionTreeRegressor)
+                to find out complete keyword arguments applicable for a particular model.
+                If You are building a Deep Learning model using tensorflow, then the key
+                must be 'layers' and the value must itself be a dictionary defining layers
+                of neural networks. For example we can build an MLP as following
                 ```python
                 model = {'layers': {
                             "Dense_0": {'units': 64, 'activation': 'relu'},
@@ -95,10 +100,12 @@ class Model(NN, Plots):
                              "Dense_3": {'units': 1}
                             }}
                 ```
-                The MLP in this case consists of dense, and flatten layers. The user can define any keyword arguments
-                which is accepted by that layer in TensorFlow. For example the `Dense` layer in TensorFlow can accept
-                `units` and `activation` keyword argument among others. For details on how to buld neural networks
-                using such layered API see https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md
+                The MLP in this case consists of dense, and flatten layers. The user
+                can define any keyword arguments which is accepted by that layer in
+                TensorFlow. For example the `Dense` layer in TensorFlow can accept
+                `units` and `activation` keyword argument among others. For details
+                on how to buld neural networks using such layered API see
+                https://ai4water.readthedocs.io/en/latest/build_dl_models/
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -116,49 +123,60 @@ class Model(NN, Plots):
             shuffle bool:
                 whether to shuffle the training data or not.
             save_model bool:,
-                whether to save the model or not. For neural networks, the model will be saved only an improvement
-                in training/validation loss is observed. Otherwise model is not saved.
+                whether to save the model or not. For neural networks, the model will
+                be saved only an improvement in training/validation loss is observed.
+                Otherwise model is not saved.
             subsequences int: Default is 3.
                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
             val_data str/None: Default is None.
-                If you want to use same data for training and test purpose, then set this argument to 'same'.
+                If you want to use same data for training and test purpose, then set
+                this argument to 'same'.
             val_fraction float:
-                The fraction of the complete data to be used for validation. Set to 0.0 if no validation data
-                is to be used.
+                The fraction of the complete data to be used for validation. Set to 0.0 if
+                no validation data is to be used.
             test_fraction float:,
-                Fraction of the complete data to be used for test purpose. Must be greater than 0.0.
+                Fraction of the complete data to be used for test purpose. Must be greater
+                than 0.0.
             allow_nan_labels int:
                 whether to allow nan labels or not. if > 0, and if target values contain Nans,
-                those samples will not be ignored and will be fed as it is to training and test steps. In such
-                a case a customized training and evaluation step is performed where the loss is not calculated
-                for predictions corresponding to nan observations. Thus this option can be useful when we are
-                predicting more than 1 target and the some of the samples have some of their labels missing. In
-                such a scenario, if we set this optin to True, we don't need to ignore those samples at all during data
-                preparation. This option should be set to > 0 only when using tensorflow for deep learning models.
-                if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
-                will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
-                means for multi-outputs, we can end up having examples whose all labels are nans.
-                if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
+                those samples will not be ignored and will be fed as it is to training
+                and test steps. In such a case a customized training and evaluation
+                step is performed where the loss is not calculated for predictions
+                corresponding to nan observations. Thus this option can be useful
+                when we are predicting more than 1 target and the some of the samples
+                have some of their labels missing. In such a scenario, if we set this
+                optin to True, we don't need to ignore those samples at all during data
+                preparation. This option should be set to > 0 only when using tensorflow
+                for deep learning models. if == 1, then if an example has label [nan, 1]
+                it will not be removed while the example with label [nan, nan]
+                will be ignored/removed. If ==2, both examples (mentioned before) will be
+                considered/will not be removed. This means for multi-outputs, we can end
+                up having examples whose all labels are nans. if the number of outputs
+                are just one. Then this must be set to 2 in order to use samples with nan labels.
             input_nans None/dict: default is None.
-                This determines how to deal with missing values in the input data. The default value
-                is None, which will raise error if missing/nan values are encountered in the input data. The user can however
-                specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
-                be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
+                This determines how to deal with missing values in the input data.
+                The default value is None, which will raise error if missing/nan values
+                are encountered in the input data. The user can however specify a
+                dictionary whose key must be either `fillna` or `interpolate` the value
+                of this dictionary should be the keyword arguments will be forwarded
+                to pandas .fillna() or .iterpolate() method. For example, to do
                 forward filling, the user can do as following
                 ```python
                 {'fillna': {'method': 'ffill'}}
                 ```
                 For details about fillna keyword options see
                 https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
-                For `interpolate`, the user can specify  the type of interpolation for example
+                For `interpolate`, the user can specify  the type of interpolation
+                for example
                 ```python
                 {'interpolate': {'method': 'spline', 'order': 2}}
                 ``` will perform spline interpolation with 2nd order.
                 For other possible options/keyword arguments for interpolate see
                 https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
-                The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
-                providing the above mentioned arguments as dictionary or list.
-                The sklearn based imputation methods can also be used in a similar fashion. For KNN
+                The filling or interpolation is done columnwise, however, the user
+                can specify how to do for each column by providing the above mentioned
+                arguments as dictionary or list. The sklearn based imputation methods
+                can also be used in a similar fashion. For KNN
                 {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
                 {'IterativeImputer': {'n_nearest_features': 2}}
                 For more on sklearn based imputation methods see
@@ -172,36 +190,46 @@ class Model(NN, Plots):
             data pd.DataFrame/dict: default is None
                 a pandas dataframe or a dictionary of pandas dataframes.
             inputs list/dict:
-                list of column names from `data` to be used as input. If dict, then it must be consistent with `data`.
+                list of column names from `data` to be used as input. If dict,
+                then it must be consistent with `data`.
             outputs lsit/dict:
-                list of column names from `data` to be used as output. If dict, then it must be consistent with `data`.
+                list of column names from `data` to be used as output. If dict,
+                then it must be consistent with `data`.
             intervals tuple/None: default is None.
-                tuple of tuples where each tuple consits of two integers, marking the start and end of interval.
-                An interval here means chunk/rows from the input file/dataframe to be skipped when when preparing
-                data/batches for NN. This happens when we have for example some missing values at some time in our data.
+                tuple of tuples where each tuple consits of two integers, marking
+                the start and end of interval. An interval here means chunk/rows
+                from the input file/dataframe to be skipped when when preparing
+                data/batches for NN. This happens when we have for example some
+                missing values at some time in our data.
                 For further usage see `examples/using_intervals`
-            lookback int: The term lookback has been adopted from Francois Chollet's "deep learning
+            lookback int: The term lookback has been adopted from Francois Chollet's
+                "deep learning
                 with keras" book. This means how many
-                historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
-                for any non timeseries forecasting related problems.
+                historical time-steps of data, we want to feed to at time-step to
+                predict next value. This value must be one for any non timeseries
+                forecasting related problems.
             forecast_length int: how many future values/horizons we want to predict. default is 1.
-            forecast_step int: how many steps ahead we want to predict. default is 0 which means nowcasting.
+            forecast_step int: how many steps ahead we want to predict. default is
+                0 which means nowcasting.
             batch_size int: size of a batch. default is 32.
             input_step int: step size of input data. default is 1.
-            transformation str/list/dict/None: type of transformation to be applied. The transformation
-                can be any transformation name from AI4Water.utils.transformations.py. The user can
-                specify more than one transformation. Moreover, the user can also determine which
+            transformation str/list/dict/None: type of transformation to be applied.
+                The transformation can be any transformation name from
+                AI4Water.utils.transformations.py. The user can specify more than
+                one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
             prefix str:
-                prefix to be used for the folder in which the results are saved. default is None, which means within
+                prefix to be used for the folder in which the results are saved.
+                default is None, which means within
                 ./results/model_path
             path str/path like:
                 if not given, new model_path path will not be created.
             verbosity int: default is 1.
-                determines the amount of information being printed. 0 means no print information. Can be between 0 and 3.
+                determines the amount of information being printed. 0 means no
+                print information. Can be between 0 and 3.
             accept_additional_args bool:  Default is False
-                If you want to pass any additional argument, then this argument must be set to True,
-                                    otherwise an error will be raise.
+                If you want to pass any additional argument, then this argument
+                must be set to True, otherwise an error will be raise.
             kwargs : any argument for model building/pre-processing etc.
                     for details see make_model in utils.utils.py
         """
@@ -958,7 +986,8 @@ class Model(NN, Plots):
         return interval_length
 
     def train_data(self, data=None, data_keys=None, use_split_data=False, **kwargs):
-        """ prepare data on which to train the NN.
+        """
+        Prepares data on which to train the NN.
         It is possible that self.data is dictionary but self.ins and self.outs are not dictionaries.
         This means same in_cols and out_cols exist in all dataframes of self.data.
         use_split_data: bool, if data is a dictionary then if we want x,y as dictionary as well, then
@@ -1055,8 +1084,7 @@ class Model(NN, Plots):
                         predicted: np.ndarray,
                         prefix=None,
                         index=None,
-                        remove_nans=True,
-                        **plot_args):
+                        remove_nans=True):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
@@ -1289,10 +1317,17 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return predicted
 
-    def predict(self, st=0, en=None, indices=None, data=None, data_keys=None,
+    def predict(self,
+                st=0,
+                en=None,
+                indices=None,
+                data=None,
+                data_keys=None,
                 scaler_key: str = None,
                 prefix: str = 'test',
-                use_datetime_index=False, pp=True, **plot_args):
+                use_datetime_index=False,
+                pp=True,
+                **plot_args):
         """
         scaler_key: if None, the data will not be indexed along date_time index.
         pp: post processing
@@ -1345,7 +1380,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         if self.quantiles is None:
 
             if pp:
-                self.process_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index, **plot_args)
+                self.process_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index)
 
         else:
             assert self.outs == 1

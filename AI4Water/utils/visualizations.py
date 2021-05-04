@@ -30,6 +30,9 @@ class Interpret(object):
         if any(['attn_weight' in l for l in model.layer_names]):
             self.plot_act_along_inputs(f'attn_weight_{model.lookback-1}_1', name='attention_weights')
 
+        if hasattr(model, 'TemporalFusionTransformer_attentions'):
+            atten_components = self.tft_attention_components()
+
     @property
     def model(self):
         return self._model
@@ -98,11 +101,21 @@ class Interpret(object):
                 plt.close('all')
             return
 
-    def tft_attention_components(self, model=None, **train_data_args):
+    def tft_attention_components(self, model=None, **train_data_args)->dict:
         """
         Gets attention components of tft layer from AI4Water's Model.
-        model: a AI4Water's Model instance.
-        train_data_args: keyword arguments which will passed to train_data method to fetch processed input data"""
+        Arguments:
+        model : a AI4Water's Model instance.
+        train_data_args : keyword arguments which will passed to train_data method to fetch processed input data
+
+        returns:
+            dictionary containing attention components of tft as numpy arrays. Following four attention
+            components are present in the dictionary
+            decoder_self_attn: (attention_heads, ?, total_time_steps, 22)
+            static_variable_selection_weights:
+            encoder_variable_selection_weights: (?, encoder_steps, input_features)
+            decoder_variable_selection_weights: (?, decoder_steps, input_features)
+        """
         if model is None:
             model = self.model
 
