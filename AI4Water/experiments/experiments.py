@@ -102,6 +102,7 @@ class Experiments(object):
         elif isinstance(exclude, str):
             exclude = [exclude]
 
+        if isinstance(exclude, list):
             exclude = ['model_' + _model if not _model.startswith('model_') else _model for _model in exclude ]
             assert all(elem in self.models for elem in exclude), f"""
 One or more models to `exclude` are not available.
