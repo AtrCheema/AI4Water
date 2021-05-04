@@ -114,45 +114,40 @@ class HyperOpt(object):
     The class should pass all the tests written in sklearn or skopt for corresponding classes.
 
     For detailed use of this class see [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
-    :Scenarios
+
+    Scenarios:
     ---------------
     Use scenarios of this class can be one of the following:
-      1) Apply grid/random/bayesian search for sklearn based regressor/classifier
-      2) Apply grid/random/bayesian search for custom regressor/classifier/model/function
-      3) Apply grid/random/bayesian search for AI4Water. This may be the easierst one, if user is familier with AI4Water. Only
+      1. Apply grid/random/bayesian search for sklearn based regressor/classifier
+      2. Apply grid/random/bayesian search for custom regressor/classifier/model/function
+      3. Apply grid/random/bayesian search for AI4Water. This may be the easierst one, if user is familier with AI4Water. Only
          supported for ml models and not for dl models. For dl based dl4eq's models, consider scenario 2.
 
-
-    :parameters
-    --------------
-    algorithm : str, must be one of "random", "grid" "bayes" and "tpe", defining which optimization algorithm to use.
-
-    objective_fn : callable, It can be either sklearn/xgboost based regressor/classifier or any function whose returned
-                  values can act as objective function for the optimization problem.
-
-    param_space : list/dict, the space parameters to be optimized. We recommend the use of Real, Integer and categorical
-                 classes from AI4Water/hyper_opt (not from skopt.space). These classes allow a uniform way of defining
-                 the parameter space for all the underlying libraries. However, to make this class work exactly similar
-                 to its underlying libraries, the user can also define parameter space as is defined in its underlying
-                 libraries. For example, for hyperopt based method like 'tpe' the parameter space can be specified as
-                 in the examples of hyperopt library. In case the code breaks, please report.
-                  Based upon above scenarios
-
-    eval_on_best : bool, if True, then after optimization, the objective_fn will be evaluated on best parameters and the results
-                  will be stored in the folder named "best" inside `title` folder.
-    kwargs : dict, For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
-                  passed to initialize AI4Water's Model class. The choice of kwargs depends whether you are using this class
-                  For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
-                  For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
-
-
+    Arguments:
+        algorithm str: must be one of "random", "grid" "bayes" and "tpe", defining which
+            optimization algorithm to use.
+        objective_fn callable: It can be either sklearn/xgboost based regressor/classifier
+             or any function whose returned
+             values can act as objective function for the optimization problem.
+        param_space list/dict: the space parameters to be optimized. We recommend the use of Real, Integer and categorical
+                     classes from AI4Water/hyper_opt (not from skopt.space). These classes allow a uniform way of defining
+                     the parameter space for all the underlying libraries. However, to make this class work exactly similar
+                     to its underlying libraries, the user can also define parameter space as is defined in its underlying
+                     libraries. For example, for hyperopt based method like 'tpe' the parameter space can be specified as
+                     in the examples of hyperopt library. In case the code breaks, please report.
+                      Based upon above scenarios
+        eval_on_best bool: if True, then after optimization, the objective_fn will be evaluated on best parameters and the results
+                      will be stored in the folder named "best" inside `title` folder.
+        kwargs dict: For scenario 3, you must provide `dl4seq_args` as dictionary for additional arguments which  are to be
+                      passed to initialize AI4Water's Model class. The choice of kwargs depends whether you are using this class
+                      For scenario 1 ,the kwargs will be passed to either GridSearchCV, RandomizeSearchCV or BayesSearchCV.
+                      For scenario 2, if the `method` is Bayes, then kwargs will be passed to `gp_minimize`.
 
     Attributes
     --------------
     For scenario 1, all attributes of corresponding classes of skopt and sklean as available from HyperOpt.
     For scenario 2 and 3, some additional attributes are available.
 
-    - best_paras(): returns the best parameters from optimization.
     - results: dict
     - gpmin_results: dict
     - skopt_results
@@ -165,11 +160,11 @@ class HyperOpt(object):
 
     Methods
     -----------------
-    eval_with_best: evaluates the objective_fn on best parameters
+    - eval_with_best: evaluates the objective_fn on best parameters
+    - best_paras(): returns the best parameters from optimization.
 
 
-    Examples
-    ---------------
+    Examples:
     ```python
     The following examples illustrate how we can uniformly apply different optimization algorithms.
     >>>from AI4Water import Model

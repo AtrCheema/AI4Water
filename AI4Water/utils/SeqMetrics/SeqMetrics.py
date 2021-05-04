@@ -43,42 +43,43 @@ class Metrics(object):
     """
     Calculates more than 100 performance metrics related to sequence data.
 
-     :parameters
-     ------------
-     true : 1D array or list
-        ture/observed/actual values,
+     The arguments other than `true` and `predicted` are dynamic i.e. they can be changed from outside the class.
+     This means the user can change their value after creating the class. This will be useful if we want to
+     calculate an error once by ignoring NaN and then by not ignoring the NaNs. However, the user has to run
+     the method `treat_arrays` in order to have the changed values impact on true and predicted arrays.
 
-     predicted : 1D array or list
-         simulated values
+     Arguments:
+         true array/list: ture/observed/actual values
+         predicted array/list: simulated values
+         replace_nan float/int: default None. if not None, then NaNs in true and predicted
+              will be replaced by this value.
+         replace_inf float/int: default None, if not None, then inf vlaues in true and
+              predicted will be replaced by this value.
+         remove_zero bool: default False, if True, the zero values in true or predicted
+              arrays will be removed. If a zero is found in one array, the corresponding
+              value in the other array will also be removed.
+         remove_neg bool: default False, if True, the negative values in true or predicted arrays will be removed.
 
-     The following attributes are dynamic i.e. they can be changed from outside the class. This means the user can
-     change their value after creating the class. This will be useful if we want to calculate an error once by ignoring
-     NaN and then by not ignoring the NaNs. However, the user has to run the method `treat_arrays` in order to have the
-     changed values impact on true and predicted arrays.
-
-     replace_nan : float/int, default None,
-          if not None, then NaNs in true and predicted will be replaced by this value.
-
-     replace_inf : float/int, default None,
-          if not None, then inf vlaues in true and predicted will be replaced by this value.
-
-     remove_zero : bool, default False,
-         if True, the zero values in true or predicted arrays will be removed. If a zero
-         is found in one array, the corresponding value in the other array will also be removed.
-
-     remove_neg : bool, default False,
-         if True, the negative values in true or predicted arrays will be removed.
+     Examples:
+     ```python
+     import numpy as np
+     from AI4Water.utils.SeqMetrics import Metrics
+     t = np.random.random(10)
+     p = np.random.random(10)
+     errors = Metrics(t,p)
+     all_errors = errors.calculate_all()
+     ```
     """
 
     def __init__(self,
-                 actual,
+                 true,
                  predicted,
                  replace_nan=None,
                  replace_inf=None,
                  remove_zero=False,
                  remove_neg=False):
 
-        self.true, self.predicted = self._pre_process(actual, predicted)
+        self.true, self.predicted = self._pre_process(true, predicted)
         self.replace_nan = replace_nan
         self.replace_inf = replace_inf
         self.remove_zero = remove_zero

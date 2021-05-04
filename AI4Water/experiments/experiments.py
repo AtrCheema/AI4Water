@@ -21,7 +21,8 @@ from AI4Water.utils.utils import clear_weights, dateandtime_now
 # https://www.youtube.com/watch?v=QrJlj0VCHys
 
 class Experiments(object):
-    """Base class for all the experiments.
+    """
+    Base class for all the experiments.
     All the expriments must be subclasses of this class.
     The core idea of of `Experiments` is `model`. An experiment consists of one or more models. The models differ from
     each other in their structure/idea/concept. When fit() is called, each model is trained.
@@ -210,9 +211,11 @@ Available cases are {self.models} and you wanted to exclude
                      figsize: tuple = (9, 7),
                      **kwargs):
         """
-        include: if not None, must a list of models which will be included. None will result in plotting all the models.
-        exclude: if not None, must be a list of models which will excluded. None will result in no exclusion
-        kwargs are all the keyword arguments from plot_taylor()."""
+        :param include: if not None, must a list of models which will be included. None will result in plotting all the models.
+        :param exclude: if not None, must be a list of models which will excluded. None will result in no exclusion
+        :param figsize:
+        :param kwargs are all the keyword arguments from plot_taylor().
+        """
 
         include = self.check_include_arg(include)
         simulations = {'train': {},
@@ -267,30 +270,44 @@ Available cases are {self.models} and you wanted to include
             ignore_nans: bool = True,
             name:str = 'ErrorComparison',
             **kwargs
-    ):
-        """Plots a specific performance matric for all the models which were
-        run during experiment.fit().
-        :param matric_name: str, performance matric whose value to plot for all the models
-        :param cutoff_val: float, if provided, only those models will be plotted for whome the matric is greater/smaller
-                                  than this value. This works in conjuction with `cutoff_type`.
-        :param cutoff_type: str, one of `greater`, `greater_equal`, `less` or `less_equal`.
-                            Criteria to determine cutoff_val. For example if we want to
-                            show only those models whose r2 is > 0.5, it will be 'max'.
-        :param save: bool, whether to save the plot or not
-        :param sort_by: str, either 'test' or 'train'. How to sort the results for plotting. If 'test', then test
-                         performance matrics will be sorted otherwise train performance matrics will be sorted.
-        :param ignore_nans: bool, default True, if True, then performance matrics with nans are ignored otherwise
-                            nans/empty bars will be shown to depict which models have resulted in nans for the given
-                            performance matric.
-        :param name: str, name of the saved file.
-        kwargs are:
-            fig_height:
-            fig_width:
-            title_fs:
-            xlabel_fs:
+    )->dict:
+        """
+        Plots a specific performance matric for all the models which were
+        run during `experiment.fit()`.
+
+        Arguments:
+            matric_name str:
+                 performance matric whose value to plot for all the models
+            cutoff_val float:
+                 if provided, only those models will be plotted for whome the matric is greater/smaller
+                 than this value. This works in conjuction with `cutoff_type`.
+            cutoff_type str:
+                 one of `greater`, `greater_equal`, `less` or `less_equal`.
+                 Criteria to determine cutoff_val. For example if we want to
+                 show only those models whose r2 is > 0.5, it will be 'max'.
+            save bool:
+                whether to save the plot or not
+            sort_by str:
+                either 'test' or 'train'. How to sort the results for plotting. If 'test', then test
+                performance matrics will be sorted otherwise train performance matrics will be sorted.
+            ignore_nans bool:
+                default True, if True, then performance matrics with nans are ignored otherwise
+                nans/empty bars will be shown to depict which models have resulted in nans for the given
+                performance matric.
+            name str:
+                name of the saved file.
+            kwargs :
+                fig_height:
+                fig_width:
+                title_fs:
+                xlabel_fs:
+
+        returns:
+            dictionary whose keys are models and values are performance metrics.
 
         Example
         -----------
+        ```python
         >>>from AI4Water.data import load_30min
         >>>data = load_30min()
         >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
@@ -299,6 +316,7 @@ Available cases are {self.models} and you wanted to include
         >>>experiment.fit(exclude=['model_TPOTREGRESSOR'])
         >>>experiment.compare_errors('mse')
         >>>experiment.compare_errors('r2', 0.5, 'greater')
+        ```
         """
 
         def find_matric_array(true, sim):
@@ -413,13 +431,14 @@ class MLRegressionExperiments(Experiments):
     and the initial values to use for optimization.
 
     Arguments:
-        dimension: dimenstions of parameters which are to be optimized. These can be overwritten in `models`.
-        x0: initial values of the parameters which are to be optimized. These can be overwritten in `models`
+        param_space: dimenstions of parameters which are to be optimized. These can be overwritten in `models`.
+        x0 list: initial values of the parameters which are to be optimized. These can be overwritten in `models`
         data: this will be passed to `Model`.
-        exp_name: name of experiment, all results will be saved within this folder
-        model_kwargs: keyword arguments which are to be passed to `Model` and are not optimized.
+        exp_name str: name of experiment, all results will be saved within this folder
+        model_kwargs dict: keyword arguments which are to be passed to `Model` and are not optimized.
     Examples:
     --------
+    ```python
     >>>from AI4Water.data import load_30min
     >>>from AI4Water.experiments import MLRegressionExperiments
     >>> # first compare the performance of all available models without optimizing their parameters
@@ -438,6 +457,7 @@ class MLRegressionExperiments(Experiments):
     >>>comparisons.fit(run_type="optimize", include=best_models)
     >>>comparisons.compare_errors('r2')
     >>>comparisons.plot_taylor()  # see help(comparisons.plot_taylor()) to tweak the taylor plot
+    ```
     """
 
     def __init__(self,

@@ -16,3 +16,5 @@ pages:
 - Metrics: 'metrics.md'
 - hyperparameter optimization: 'hyperopt.md'
 - Evapotranspiration: 'evapotranspiration.md'
+- datasets: 'datasets.md'
+- experiments: 'experiments.md'
