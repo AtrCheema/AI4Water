@@ -49,13 +49,13 @@ def check_attrs(optimizer, paras):
     assert len(optimizer.func_vals()) > 1
     assert isinstance(optimizer.skopt_space(), Space)
 
-def run_dl4seq(method):
+def run_ai4water(method):
     dims = {'n_estimators': [1000,  2000],
             'max_depth': [3,  6],
             'learning_rate': [0.1,  0.0005],
             'booster': ["gbtree", "dart"]}
 
-    dl4seq_args = {"inputs": inputs,
+    ai4water_args = {"inputs": inputs,
                    "outputs": outputs,
                    "lookback": 1,
                    "batches": "2d",
@@ -67,7 +67,7 @@ def run_dl4seq(method):
 
     opt = HyperOpt(method,
                    param_space=dims,
-                   dl4seq_args=dl4seq_args,
+                   ai4water_args=ai4water_args,
                    data=data,
                    acq_func='EI',  # Expected Improvement.
                    n_calls=12,
@@ -309,14 +309,14 @@ class TestHyperOpt(unittest.TestCase):
         check_attrs(opt, 4)
         return
 
-    def test_dl4seq_bayes(self):
+    def test_ai4water_bayes(self):
         dims = [Integer(low=1000, high=2000, name='n_estimators'),
                 Integer(low=3, high=6, name='max_depth'),
                 Real(low=1e-5, high=0.1, name='learning_rate'),
                 Categorical(categories=["gbtree", "dart"], name="booster")
                 ]
 
-        dl4seq_args = {"inputs": inputs,
+        ai4water_args = {"inputs": inputs,
                        "outputs": outputs,
                        "lookback": 1,
                        "batches": "2d",
@@ -329,7 +329,7 @@ class TestHyperOpt(unittest.TestCase):
 
         opt = HyperOpt("bayes",
                        param_space=dims,
-                       dl4seq_args=dl4seq_args,
+                       ai4water_args=ai4water_args,
                        data=data,
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
@@ -343,12 +343,12 @@ class TestHyperOpt(unittest.TestCase):
         check_attrs(opt, 4)
         return
 
-    def test_dl4seq_grid(self):
-        run_dl4seq("grid")
+    def test_ai4water_grid(self):
+        run_ai4water("grid")
         print("AI4Water for grid passing")
 
-    def test_dl4seq_random(self):
-        run_dl4seq("random")
+    def test_ai4water_random(self):
+        run_ai4water("random")
         print("AI4Water for random passing")
         return
 
@@ -415,7 +415,7 @@ class TestHyperOpt(unittest.TestCase):
     # #     best = optimizer.fit()
     # #     self.assertEqual(len(best), 2)
     #
-    def test_dl4seqModel_with_hyperopt(self):
+    def test_ai4waterModel_with_hyperopt(self):
         """"""
         def fn(**suggestion):
 
@@ -459,7 +459,7 @@ class TestHyperOpt(unittest.TestCase):
                                     Integer(low=3, high=6, name='max_depth', num_samples=5),
                                     Categorical(['gbtree', 'gblinear', 'dart'], name='booster')
                                     ],
-                       dl4seq_args ={'model': 'XGBoostRegressor',
+                       ai4water_args ={'model': 'XGBoostRegressor',
                                      'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
                                      'outputs': ['target']
                                      },
@@ -481,7 +481,7 @@ class TestHyperOpt(unittest.TestCase):
                                     hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
                                     ],
 
-                       dl4seq_args ={'model': 'XGBoostRegressor',
+                       ai4water_args ={'model': 'XGBoostRegressor',
                                      'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
                                      'outputs': ['target']
                                      },
