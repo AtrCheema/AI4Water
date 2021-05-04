@@ -41,7 +41,7 @@ EPS = 1e-10  # epsilon
 
 class Metrics(object):
     """
-    Calculates more than 100 performance metrics related to sequence data.
+    Calculates more than 100 regression performance metrics related to sequence data.
 
      The arguments other than `true` and `predicted` are dynamic i.e. they can be changed from outside the class.
      This means the user can change their value after creating the class. This will be useful if we want to
@@ -435,7 +435,7 @@ class Metrics(object):
     def cronbach_alpha(self)->float:
         """
         It is a measure of internal consitency of data
-        # https://stats.idre.ucla.edu/spss/faq/what-does-cronbachs-alpha-mean/
+        https://stats.idre.ucla.edu/spss/faq/what-does-cronbachs-alpha-mean/
         https://stackoverflow.com/a/20799687/5982232
         """
         itemscores = np.stack([self.true, self.predicted])

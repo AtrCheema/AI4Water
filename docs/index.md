@@ -1,12 +1,12 @@
 # Welcome to AI4Water
 
-For full documentation visit [mkdocs.org](https://al4water.readthedocs.io/en/latest/).
+For code visit [github](https://github.com/AtrCheema/AI4Water).
 
 # AI4Water
 
 <img src="imgs/monogram.png" width="300" height="200" />
 
-A uniform and siplified framework for rapid expermenting with deep leanring and machine learning based models
+A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
 
 `Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
