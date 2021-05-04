@@ -180,9 +180,12 @@ def plot_param_importances(
 
     if evaluator is None:
         evaluator = ImportanceEvaluator()
-    importances, importance_paras = get_param_importances(
-        study, evaluator=evaluator, params=params, target=target
-    )
+    try:
+        importances, importance_paras = get_param_importances(
+            study, evaluator=evaluator, params=params, target=target
+        )
+    except RuntimeError:  # sometimes it is returning error e.g. when number of trials are < 4
+        return None, None, None
 
     importances = OrderedDict(reversed(list(importances.items())))
     importance_values = list(importances.values())

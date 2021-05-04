@@ -1,0 +1,20 @@
+site_name: AI4Water
+
+#google_analytics: ['UA-27795084-5']
+
+repo_url: https://github.com/AtrCheema/AI4Water/tree/master
+
+theme:
+  name: "material"
+
+plugins:
+- search
+- mkdocstrings
+
+pages:
+- Model: 'model.md'
+- Metrics: 'metrics.md'
+- hyperparameter optimization: 'hyperopt.md'
+- Evapotranspiration: 'evapotranspiration.md'
+- datasets: 'datasets.md'
+- experiments: 'experiments.md'

@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from dl4seq.ETUtil import HargreavesSamani, ETBase, Penman, PriestleyTaylor
-from dl4seq.utils.datasets import CAMELS_AUS
-from dl4seq.utils.utils import process_axis
+from AI4Water.ETUtil import HargreavesSamani, ETBase, Penman, PriestleyTaylor
+from AI4Water.utils.datasets import CAMELS_AUS
+from AI4Water.utils.utils import process_axis
 
 
 units = {'tmin': 'Centigrade',
@@ -42,7 +42,7 @@ constants['altitude'] = 249
 constants['alphaA'] = 0.14
 constants['alpha_pt'] = 1.26
 
-dataset = CAMELS_AUS(path=r"D:\mytools\dl4seq\dl4seq\utils\datasets\data\CAMELS\CAMELS_AUS")
+dataset = CAMELS_AUS(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\data\CAMELS\CAMELS_AUS")
 
 inputs = ['mslp_SILO',
           'radiation_SILO',

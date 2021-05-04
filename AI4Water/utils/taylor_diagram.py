@@ -338,7 +338,7 @@ def plot_taylor(trues:dict,
         # Add samples to Taylor diagram
         idx = 0
         for model_name, model in simulations[season].items():
-            er = FindErrors(trues[season], model)
+            er = Metrics(trues[season], model)
             stddev = np.std(model)
             corrcoef = er.corr_coeff()
 

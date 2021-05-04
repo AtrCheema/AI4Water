@@ -180,12 +180,12 @@ import numpy as np
 import pandas as pd
 
 try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
-    from dl4seq.utils.spatial_utils import plot_shapefile
+    from AI4Water.utils.spatial_utils import plot_shapefile
 except ModuleNotFoundError:
     plot_shapefile = None
-from dl4seq.utils.datasets.download_pangaea import PanDataSet
-from dl4seq.utils.datasets.download_zenodo import download_from_zenodo
-from dl4seq.utils.datasets.utils import download, download_all_http_directory
+from AI4Water.utils.datasets.download_pangaea import PanDataSet
+from AI4Water.utils.datasets.download_zenodo import download_from_zenodo
+from AI4Water.utils.datasets.utils import download, download_all_http_directory
 
 
 SEP = os.sep
@@ -476,21 +476,23 @@ class Camels(Datasets):
               **kwargs)->dict:
         """
         Fetches the attributes of one or more stations.
-        :param stations: str/list/int/float/None, default None. if string, it is supposed to be a station name/gauge_id.
-                         If list, it will be a list of station/gauge_ids. If int, it will be supposed that the
-                         user want data for this number of stations/gauge_ids. If None (default), then attributes
-                         of all available stations. If float, it will be supposed that the user wants data
-                         of this fraction of stations.
-        :param dynamic_attributes: list default(None), If not None, then it is the attributes to be fetched.
-                                   If None, then all available attributes are fetched
-        :param categories: list/str, Categories of static attributes to be fetched.If None, then static attributes will
-                           not be fetched.
-        :param static_attributes: list
-        :param st: str, starting date of data to be returned. If None,
-                        the data will be returned from where it is available
-        :param en: str, end date of data to be returned. If None, then the data will be returned till the
-                        date data is available.
-        :param kwargs: keyword arguments to read the files
+
+        Arguments:
+            stations str/list/int/float/None:, default None. if string, it is supposed to be a station name/gauge_id.
+                             If list, it will be a list of station/gauge_ids. If int, it will be supposed that the
+                             user want data for this number of stations/gauge_ids. If None (default), then attributes
+                             of all available stations. If float, it will be supposed that the user wants data
+                             of this fraction of stations.
+            dynamic_attributes list: default(None), If not None, then it is the attributes to be fetched.
+                                       If None, then all available attributes are fetched
+            categories list/str: Categories of static attributes to be fetched.If None, then static attributes will
+                               not be fetched.
+            static_attributes list:
+            st str: starting date of data to be returned. If None,
+                            the data will be returned from where it is available
+            en str: end date of data to be returned. If None, then the data will be returned till the
+                            date data is available.
+            kwargs: keyword arguments to read the files
 
         returns:
             dictionary whose keys are station/gauge_ids and values are the attributes and dataframes.
@@ -1526,7 +1528,7 @@ class CAMELS_CL(Camels):
               contain five zip files and one xlsx file.
     """
     def __init__(self,
-                 path=None):
+                 path:str = None):
         self.ds_dir = path
         super().__init__()
 

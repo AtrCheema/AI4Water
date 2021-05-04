@@ -20,10 +20,15 @@ from AI4Water.utils.transformations import Transformations
 # rank histogram and reliability diagram for probabilitic forecasting model.
 # show availability plot of data
 
-class Intrepretation(object):
+class Interpret(object):
 
-    def __init__(self, model=None):
+    def __init__(self, model):
+        """Interprets the AI4Water Model."""
+
         self.model = model
+
+        if any(['attn_weight' in l for l in model.layer_names]):
+            self.plot_act_along_inputs(f'attn_weight_{model.lookback-1}_1', name='attention_weights')
 
     @property
     def model(self):
@@ -40,6 +45,58 @@ class Intrepretation(object):
         # https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/stallion.html#Variable-importances
 
         """
+
+    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
+
+        ins = self.model.ins
+        outs=  self.model.outs
+        in_cols = self.model.in_cols
+        out_cols = self.model.out_cols
+
+        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
+
+        predictions, observations = self.model.predict(pp=False, **kwargs)
+
+        activation, data = self.model.activations(layer_names=layer_name, return_input=True, **kwargs)
+
+        activation = activation[layer_name]
+        data = self.model.inputs_for_attention(data)
+
+        assert data.shape[1] == ins
+
+        plt.close('all')
+
+        for out in range(outs):
+            pred = predictions[:, out]
+            obs = observations[:, out]
+            out_name = out_cols[out]
+
+            for idx in range(ins):
+
+                fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
+                fig.set_figheight(10)
+
+                ax1.plot(data[:, idx], label=in_cols[idx])
+                ax1.legend()
+                ax1.set_title('activations w.r.t ' + in_cols[idx])
+                ax1.set_ylabel(in_cols[idx])
+
+                ax2.plot(pred, label='Prediction')
+                ax2.plot(obs, '.', label='Observed')
+                ax2.legend()
+
+                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
+                ax3.set_ylabel('lookback steps')
+                ax3.set_xlabel('Examples')
+                fig.colorbar(im, orientation='horizontal', pad=0.2)
+                plt.subplots_adjust(wspace=0.005, hspace=0.005)
+                if name is not None:
+                    _name = out_name + '_' + name
+                    plt.savefig(os.path.join(self.model.act_path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
+                else:
+                    plt.show()
+                plt.close('all')
+            return
 
     def tft_attention_components(self, model=None, **train_data_args):
         """

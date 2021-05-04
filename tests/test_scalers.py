@@ -318,7 +318,7 @@ class test_Scalers(unittest.TestCase):
             {"method": "minmax", "features": inputs + outputs}
                           ]
 
-        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation)
+        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation, verbosity=0)
         tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
 
         pred, true = model.denormalize_data(inputs=tr_data[inputs],
@@ -345,7 +345,7 @@ class test_Scalers(unittest.TestCase):
             {"method": "robust", "features": outputs},
             {"method": "robust", "features": inputs + outputs}
                           ]
-        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation)
+        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation, verbosity=0)
         tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
 
         pred, true = model.denormalize_data(inputs=tr_data[inputs],

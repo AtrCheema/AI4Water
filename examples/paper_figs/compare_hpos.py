@@ -8,10 +8,10 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from dl4seq.utils.datasets import CAMELS_AUS
-from dl4seq import Model
-from dl4seq.hyper_opt import HyperOpt, Categorical, Real, Integer
-from dl4seq.utils.utils import dateandtime_now
+from AI4Water.utils.datasets import CAMELS_AUS
+from AI4Water import Model
+from AI4Water.hyper_opt import HyperOpt, Categorical, Real, Integer
+from AI4Water.utils.utils import dateandtime_now
 
 tf.compat.v1.disable_eager_execution()
 
@@ -19,7 +19,7 @@ seed = 313
 np.random.seed(seed)
 random.seed(seed)
 
-dataset = CAMELS_AUS(path=r"D:\mytools\dl4seq\dl4seq\utils\datasets\CAMELS\CAMELS_AUS")
+dataset = CAMELS_AUS(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\CAMELS\CAMELS_AUS")
 
 inputs = ['et_morton_point_SILO',
            'precipitation_AWAP',
@@ -90,7 +90,7 @@ for m in ['tpe',
     results[m] = optimizer
 
 
-with open(r'D:\mytools\dl4seq\examples\results\hpo_comparisons_20210310_153743\grid\eval_results.json', 'r') as fp:
+with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\grid\eval_results.json', 'r') as fp:
     eval_results = json.load(fp)
 results = {int(key.split('_')[1]): float(key.split('_')[0]) for key in eval_results.keys()}
 results = OrderedDict(results)
@@ -99,7 +99,7 @@ results = np.array(list(results.values()))[0:144]
 iterations = range(1, len(results) + 1)
 grid = [np.min(results[:i]) for i in iterations]
 
-with open(r'D:\mytools\dl4seq\examples\results\hpo_comparisons_20210310_153743\random\eval_results_random.json', 'r') as fp:
+with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\random\eval_results_random.json', 'r') as fp:
     eval_results_random = json.load(fp)
 
 results = {int(key.split('_')[1]): float(key.split('_')[0]) for key in eval_results_random.keys()}
@@ -109,13 +109,13 @@ results = np.array(list(results.values()))[0:144]
 iterations = range(1, len(results) + 1)
 random = [np.min(results[:i]) for i in iterations]
 
-with open(r'D:\mytools\dl4seq\examples\results\hpo_comparisons_20210310_153743\tpe\trials.json', 'r') as fp:
+with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\tpe\trials.json', 'r') as fp:
     trials = json.load(fp)
 tpe = [trials[i]['result']['loss'] for i in range(len(trials))]
 iterations = range(1, len(tpe) + 1)
 tpe = [np.min(tpe[:i]) for i in iterations]
 
-with open(r'D:\mytools\dl4seq\examples\results\hpo_comparisons_20210310_153743\bayes\gp_parameters.json', 'r') as fp:
+with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\bayes\gp_parameters.json', 'r') as fp:
     gp_parameters = json.load(fp)
 bayes = gp_parameters['func_vals']
 iterations = range(1, len(bayes) + 1)

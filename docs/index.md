@@ -1,8 +1,10 @@
+# Welcome to AI4Water
+
+For code visit [github](https://github.com/AtrCheema/AI4Water).
+
 # AI4Water
 
-
-[![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf230/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
-[![Documentation Status](https://readthedocs.org/projects/al4water/badge/?version=latest)](https://al4water.readthedocs.io/en/latest/?badge=latest)
+<img src="imgs/monogram.png" width="300" height="200" />
 
 A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
 for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
@@ -153,37 +155,3 @@ history = model.fit(st=0, en=150)
 preds, obs = model.predict(st=150, en=220)
 ```
 
-## Disclaimer
-Athough the purpose of this repo is purportedly `all_in_one` model, however there is no `one_for_all` model. For each
-deep learning proble, the model needs to be build accordingly. I made this repo to teach myself deep learning for time
-series prediction. 
-
-#### Related
-
-[sktime: A Unified Interface for Machine Learning with Time Series](https://github.com/alan-turing-institute/sktime)
-
-[Seglearn: A Python Package for Learning Sequences and Time Series](https://github.com/dmbee/seglearn)
-
-[Pastas: Open Source Software for the Analysis of Groundwater Time Series](https://github.com/pastas/pastas)
-
-[Time Series FeatuRe Extraction on basis of Scalable Hypothesis tests (tsfresh -- A Python package)](https://github.com/blue-yonder/tsfresh)
-
-[MLAir](https://gmd.copernicus.org/preprints/gmd-2020-332/)
-
-[pyts: A Python Package for Time Series Classification](https://github.com/johannfaouzi/pyts)
-
-[Tslearn, A Machine Learning Toolkit for Time Series Data](https://github.com/tslearn-team/tslearn)
-
-[TSFEL: Time Series Feature Extraction Library](https://doi.org/10.1016/j.softx.2020.100456)
-
-[catch22](https://github.com/chlubba/catch22)
-
-[vest](https://github.com/vcerqueira/vest-python)
-
-[pyunicorn (Unified Complex Network and RecurreNce analysis toolbox](https://github.com/pik-copan/pyunicorn)
-
-[TSFuse Python package for automatically constructing features from multi-view time series data](https://github.com/arnedb/tsfuse)
-
-[Catalyst](https://github.com/catalyst-team/catalyst)
-
-[tsai - A state-of-the-art deep learning library for time series and sequential data](https://github.com/timeseriesAI/tsai)

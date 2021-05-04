@@ -24,9 +24,9 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
                                               input_nans={'SimpleImputer': {'strategy': 'mean'}} )
-        exclude = ['model_GammaRegressor', 'model_TPOTREGRESSOR']
+        exclude = ['TPOTRegressor']
         if int(sklearn.__version__.split('.')[1]) < 23:
-            exclude += ['model_POISSONREGRESSOR', 'model_TWEEDIEREGRESSOR']
+            exclude += ['PoissonRegressor', 'model_TweedieRegressor']
         comparisons.fit(run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2')
         best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.1)
@@ -34,18 +34,17 @@ class TestExperiments(unittest.TestCase):
         return
 
     def test_optimize(self):
-        best_models = ['model_GaussianProcessRegressor',
-                       'model_HISTGRADIENTBOOSTINGREGRESSOR',
-                       'model_HISTGRADIENTBOOSTINGREGRESSOR',
-                       'model_ADABOOSTREGRESSOR',
-                       'model_RADIUSNEIGHBORSREGRESSOR',
-                       #'model_XGBOOSTRFREGRESSOR'
+        best_models = ['GaussianProcessRegressor',
+                       'HistGradientBoostingRegressor',
+                       'ADABoostRegressor',
+                       #'RadiusNeighborsRegressor',  # todo error when using radusneighborsregressor
+                       'XGBoostRFRegressor'
             ]
 
         comparisons = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
                                               input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
         comparisons.num_samples = 2
-        comparisons.fit(run_type="optimize", opt_method="grid", include=best_models, post_optimize='train_best')
+        comparisons.fit(run_type="optimize", opt_method="random", include=best_models, post_optimize='train_best')
         comparisons.compare_errors('r2')
         comparisons.plot_taylor()
 

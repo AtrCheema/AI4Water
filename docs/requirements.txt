@@ -1,0 +1,14 @@
+mkdocs
+mkdocstrings
+mkdocs-material
+h5py
+matplotlib
+numpy
+scikit-learn
+tensorflow <=2.3.1
+seaborn
+pandas
+optuna
+hyperopt
+plotly
+scikit-optimize

@@ -53,14 +53,6 @@ elif torch is not None:  # TODO, what if both tf and torch are installed and we 
 class Model(NN, Plots):
     """
     Model class that implements logic of AI4Water.
-
-    data: pd.Dataframe or any other conforming type
-    prefix: str, prefix to be used for the folder in which the results are saved
-    path: str/path like, if given, new path will not be created
-    verbosity: int, determines the amount of information being printed
-    kwargs: any argument for model building/pre-processing etc.
-            for details see make_model in utils.utils.py
-
     """
 
     def __init__(self,
@@ -71,6 +63,148 @@ class Model(NN, Plots):
                  verbosity:int=1,
                  **kwargs):
 
+        """
+        The Model class can take a large number of possible arguments
+        depending upon the machine learning model/algorithm used. Not all the arguments are applicable in each case. The
+        user must define only the relevant/applicable parameters and leave the others as it is.
+
+        Arguments:
+            model dict:
+                a dictionary defining machine learning model.
+                If you are building a non-tensorflow model
+                then this dictionary must consist of name of name of model as key and the keyword arguments to that
+                model as dictionary. For example to build a decision forest based model
+                ```python
+                model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
+                ```
+                The key 'DecisionTreeRegressor' should exactly match the name of the model from following libraries
+                            -scikit-learn
+                            -xgboost
+                            -catboost
+                            -lightgbm
+                The value {"max_depth": 3, "criterion": "mae"} is another dictionary which can be any keyword argument
+                which the `model` (DecisionTreeRegressor in this case) accepts. The user must refer to the documentation
+                of the underlying library (scikit-learn for DecisionTreeRegressor) to find out complete keyword
+                arguments applicable for a particular model.
+                If You are building a Deep Learning model using tensorflow, then the key must be 'layers' and the value
+                must itself be a dictionary defining layers of neural networks. For example we can build an MLP as following
+                ```python
+                model = {'layers': {
+                            "Dense_0": {'units': 64, 'activation': 'relu'},
+                             "Flatten": {},
+                             "Dense_3": {'units': 1}
+                            }}
+                ```
+                The MLP in this case consists of dense, and flatten layers. The user can define any keyword arguments
+                which is accepted by that layer in TensorFlow. For example the `Dense` layer in TensorFlow can accept
+                `units` and `activation` keyword argument among others. For details on how to buld neural networks
+                using such layered API see https://github.com/AtrCheema/AI4Water/blob/master/examples/build_dl_models.md
+            lr  float:, default 0.001.
+                learning rate,
+            optimizer str/keras.optimizers like:
+                the optimizer to be used for neural network training. Default is 'adam'
+            loss str/callable:  Default is `mse`.
+                the cost/loss function to be used for training neural networks.
+            quantiles list: Default is None
+                quantiles to be used when the problem is quantile regression.
+            epochs int:  Default is 14
+                number of epochs to be used.
+            min_val_loss float:  Default is 0.0001.
+                minimum value of validatin loss/error to be used for early stopping.
+            patience int:
+                number of epochs to wait before early stopping.
+            shuffle bool:
+                whether to shuffle the training data or not.
+            save_model bool:,
+                whether to save the model or not. For neural networks, the model will be saved only an improvement
+                in training/validation loss is observed. Otherwise model is not saved.
+            subsequences int: Default is 3.
+                The number of sub-sequences. Relevent for building CNN-LSTM based models.
+            val_data str/None: Default is None.
+                If you want to use same data for training and test purpose, then set this argument to 'same'.
+            val_fraction float:
+                The fraction of the complete data to be used for validation. Set to 0.0 if no validation data
+                is to be used.
+            test_fraction float:,
+                Fraction of the complete data to be used for test purpose. Must be greater than 0.0.
+            allow_nan_labels int:
+                whether to allow nan labels or not. if > 0, and if target values contain Nans,
+                those samples will not be ignored and will be fed as it is to training and test steps. In such
+                a case a customized training and evaluation step is performed where the loss is not calculated
+                for predictions corresponding to nan observations. Thus this option can be useful when we are
+                predicting more than 1 target and the some of the samples have some of their labels missing. In
+                such a scenario, if we set this optin to True, we don't need to ignore those samples at all during data
+                preparation. This option should be set to > 0 only when using tensorflow for deep learning models.
+                if == 1, then if an example has label [nan, 1] it will not be removed while the example with label [nan, nan]
+                will be ignored/removed. If ==2, both examples (mentioned before) will be considered/will not be removed. This
+                means for multi-outputs, we can end up having examples whose all labels are nans.
+                if the number of outputs are just one. Then this must be set to 2 in order to use samples with nan labels.
+            input_nans None/dict: default is None.
+                This determines how to deal with missing values in the input data. The default value
+                is None, which will raise error if missing/nan values are encountered in the input data. The user can however
+                specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
+                be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
+                forward filling, the user can do as following
+                ```python
+                {'fillna': {'method': 'ffill'}}
+                ```
+                For details about fillna keyword options see
+                https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
+                For `interpolate`, the user can specify  the type of interpolation for example
+                ```python
+                {'interpolate': {'method': 'spline', 'order': 2}}
+                ``` will perform spline interpolation with 2nd order.
+                For other possible options/keyword arguments for interpolate see
+                https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
+                The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
+                providing the above mentioned arguments as dictionary or list.
+                The sklearn based imputation methods can also be used in a similar fashion. For KNN
+                {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
+                {'IterativeImputer': {'n_nearest_features': 2}}
+                For more on sklearn based imputation methods see
+                https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
+            metrics str/list:
+                metrics to be monitored. e.g. ['nse', 'pbias']
+            batches str:
+                either `2d` or 3d`.
+            seed int:
+                random seed for reproducibility
+            data pd.DataFrame/dict: default is None
+                a pandas dataframe or a dictionary of pandas dataframes.
+            inputs list/dict:
+                list of column names from `data` to be used as input. If dict, then it must be consistent with `data`.
+            outputs lsit/dict:
+                list of column names from `data` to be used as output. If dict, then it must be consistent with `data`.
+            intervals tuple/None: default is None.
+                tuple of tuples where each tuple consits of two integers, marking the start and end of interval.
+                An interval here means chunk/rows from the input file/dataframe to be skipped when when preparing
+                data/batches for NN. This happens when we have for example some missing values at some time in our data.
+                For further usage see `examples/using_intervals`
+            lookback int: The term lookback has been adopted from Francois Chollet's "deep learning
+                with keras" book. This means how many
+                historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
+                for any non timeseries forecasting related problems.
+            forecast_length int: how many future values/horizons we want to predict. default is 1.
+            forecast_step int: how many steps ahead we want to predict. default is 0 which means nowcasting.
+            batch_size int: size of a batch. default is 32.
+            input_step int: step size of input data. default is 1.
+            transformation str/list/dict/None: type of transformation to be applied. The transformation
+                can be any transformation name from AI4Water.utils.transformations.py. The user can
+                specify more than one transformation. Moreover, the user can also determine which
+                transformation to be applied on which input feature. Default is 'minmax'.
+            prefix str:
+                prefix to be used for the folder in which the results are saved. default is None, which means within
+                ./results/model_path
+            path str/path like:
+                if not given, new model_path path will not be created.
+            verbosity int: default is 1.
+                determines the amount of information being printed. 0 means no print information. Can be between 0 and 3.
+            accept_additional_args bool:  Default is False
+                If you want to pass any additional argument, then this argument must be set to True,
+                                    otherwise an error will be raise.
+            kwargs : any argument for model building/pre-processing etc.
+                    for details see make_model in utils.utils.py
+        """
         config = make_model(**kwargs)
 
         # data_config, model_config = config['data_config'], config['model_config']
@@ -781,6 +915,8 @@ class Model(NN, Plots):
                     # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
                     more = len(self.intervals) * self.lookback if self.intervals is not None else 0  # self.lookback
                     tot_obs = data.shape[0] - int(data[out_cols].isna().sum()) - more
+                    if self.forecast_len>1:
+                        tot_obs -= self.forecast_len
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = data.shape[0] - int(data[out_cols[0]].isna().sum())
@@ -948,7 +1084,7 @@ class Model(NN, Plots):
                 fname = prefix + out + '_' + str(h) + ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='time')
 
-                visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=fpath)
+                visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -1868,53 +2004,6 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         assert inputs.shape[1] == self.ins
 
         return inputs
-
-    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
-
-        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
-
-        predictions, observations = self.predict(pp=False, **kwargs)
-
-        activation, data = self.activations(layer_names=layer_name, return_input=True, **kwargs)
-
-        activation = activation[layer_name]
-        data = self.inputs_for_attention(data)
-
-        assert data.shape[1] == self.ins
-
-        plt.close('all')
-
-        for out in range(self.outs):
-            pred = predictions[:, out]
-            obs = observations[:, out]
-            out_name = self.out_cols[out]
-
-            for idx in range(self.ins):
-
-                fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
-                fig.set_figheight(10)
-
-                ax1.plot(data[:, idx], label=self.in_cols[idx])
-                ax1.legend()
-                ax1.set_title('activations w.r.t ' + self.in_cols[idx])
-                ax1.set_ylabel(self.in_cols[idx])
-
-                ax2.plot(pred, label='Prediction')
-                ax2.plot(obs, '.', label='Observed')
-                ax2.legend()
-
-                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
-                ax3.set_ylabel('lookback steps')
-                ax3.set_xlabel('Examples')
-                fig.colorbar(im, orientation='horizontal', pad=0.2)
-                plt.subplots_adjust(wspace=0.005, hspace=0.005)
-                if name is not None:
-                    _name = out_name + '_' + name
-                    plt.savefig(os.path.join(self.act_path, _name) + self.in_cols[idx], dpi=400, bbox_inches='tight')
-                else:
-                    plt.show()
-                plt.close('all')
-            return
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 
