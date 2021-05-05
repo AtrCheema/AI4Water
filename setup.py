@@ -81,6 +81,9 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
+    package_data={'AI4Water/utils/datasets': ['mts_30min.csv', "input_target_u1.csv"]},
+    include_package_data=True,
+
     classifiers=[
         'Development Status :: 4 - Beta',
 

@@ -36,7 +36,7 @@ from AI4Water.utils.datasets.datasets import EtpPcpSamoylov
 
 
 def load_30min():
-    fpath = os.path.join(os.path.dirname(__file__), "data_30min.csv")
+    fpath = os.path.join(os.path.dirname(__file__), "mts_30min.csv")
     df = pd.read_csv(fpath, index_col="Date_Time2")
     df.index=pd.to_datetime(df.index)
     return df
