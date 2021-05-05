@@ -1,7 +1,8 @@
 # SeqMetrics
-::: AI4Water.utils.SeqMetrics.SeqMetrics.Metrics
-    handler: python
+This modeule is for calaculation of performance matrix of sequential data. It consists of sequential metrics and some utils.
 
-# Utils
-::: AI4Water.utils.SeqMetrics.utils.plot_metrics
-    handler: python
+
+ [Metrics](seqmetrics.md)
+ 
+ 
+ [Utils](utils.md)

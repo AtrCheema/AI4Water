@@ -232,6 +232,22 @@ class Model(NN, Plots):
                 must be set to True, otherwise an error will be raise.
             kwargs : any argument for model building/pre-processing etc.
                     for details see make_model in utils.utils.py
+
+        Examples:
+        ```python
+        from AI4Water import Model
+        from AI4Water.utils.datasets import load_30min
+        df = load_30min()
+        model = Model(data=df,
+                      batch_size=16,
+                      model={'layers': {'LSTM': 64}},
+                      inputs = ['input1', 'input2', 'input3', 'input4', 'input5',
+                                'input6', 'input8', 'input11'],
+                      outputs = ['target7']
+        )
+        history = model.fit(indices='random')
+        y, obs = model.predict()
+        ```
         """
         config = make_model(**kwargs)
 
