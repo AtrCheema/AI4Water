@@ -14,6 +14,20 @@ from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
 from AI4Water.utils.utils import clear_weights, dateandtime_now
 
+try:
+    import catboost
+except ModuleNotFoundError:
+    catboost = None
+
+try:
+    import lightgbm
+except ModuleNotFoundError:
+    lightgbm = None
+
+try:
+    import xgboost
+except ModuleNotFoundError:
+    xgboost = None
 
 # TODO, when predicting, use best saved weights instead of last state of weights
 # TODO, show loss curve of different models in an Experiment
@@ -309,7 +323,7 @@ Available cases are {self.models} and you wanted to include
         Example
         -----------
         ```python
-        >>>from AI4Water.data import load_30min
+        >>>from AI4Water.utils.datasets import load_30min
         >>>data = load_30min()
         >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
         >>>outputs = ['target5']
@@ -454,7 +468,7 @@ class MLRegressionExperiments(Experiments):
         Examples:
         --------
         ```python
-        >>>from AI4Water.data import load_30min
+        >>>from AI4Water.utils.datasets import load_30min
         >>>from AI4Water.experiments import MLRegressionExperiments
         >>> # first compare the performance of all available models without optimizing their parameters
         >>>data = load_30min()  # read data file, in this case load the default data
@@ -481,6 +495,13 @@ class MLRegressionExperiments(Experiments):
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
+
+        if catboost is None:
+            self.models.remove('model_CATBoostRegressor')
+        if lightgbm is None:
+            self.models.remove('model_LGBMRegressor')
+        if xgboost is None:
+            self.models.remove('model_XGBoostRFRegressor')
 
     def build_and_run(self, predict=False, view=False, title=None,
                       fit_kws=None,
@@ -1432,7 +1453,7 @@ class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
     Examples
     --------
-    >>>from AI4Water.data import load_u1
+    >>>from AI4Water.utils.datasets import load_u1
     >>>from AI4Water.experiments import TransformationExperiments
     >>>class MyTransformationExperiments(TransformationExperiments):
     ...
