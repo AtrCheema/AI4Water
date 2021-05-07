@@ -53,8 +53,8 @@ class Real(_Real, Counter):
         if low is None:
             assert grid is not None
             assert hasattr(grid, '__len__')
-            low = grid[0]
-            high = grid[-1]
+            low = np.min(grid)
+            high = np.max(grid)
 
         self.counter += 1
         if 'name' not in kwargs:
@@ -125,8 +125,8 @@ class Integer(_Integer, Counter):
         if low is None:
             assert grid is not None
             assert hasattr(grid, '__len__')
-            low = grid[0]
-            high = grid[-1]
+            low = np.min(grid)
+            high = np.max(grid)
 
         self.counter += 1
         if 'name' not in kwargs:
