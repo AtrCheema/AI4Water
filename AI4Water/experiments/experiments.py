@@ -13,6 +13,7 @@ from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
 from AI4Water.utils.utils import clear_weights, dateandtime_now
+from AI4Water.backend import VERSION_INFO
 
 try:
     import catboost
@@ -323,14 +324,15 @@ Available cases are {self.models} and you wanted to include
         Example
         -----------
         ```python
+        >>>from AI4Water.experiments import MLRegressionExperiments
         >>>from AI4Water.utils.datasets import load_30min
         >>>data = load_30min()
         >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
         >>>outputs = ['target5']
-        >>>experiment = Experiments(data=data, inputs=inputs, outputs=outputs)
+        >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
         >>>experiment.fit(exclude=['model_TPOTREGRESSOR'])
         >>>experiment.compare_errors('mse')
-        >>>experiment.compare_errors('r2', 0.5, 'greater')
+        >>>experiment.compare_errors('r2', 0.2, 'greater')
         ```
         """
 
@@ -476,10 +478,11 @@ class MLRegressionExperiments(Experiments):
         >>>outputs = ['target5']
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-        >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTREGRESSOR'])
+        >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTRegressor'])
         >>>comparisons.compare_errors('r2')
         >>> # find out the models which resulted in r2> 0.5
-        >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.5)
+        >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
+        >>>best_models = [m[1] for m in best_models.values()]
         >>> # now build a new experiment for best models and otpimize them
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
@@ -502,6 +505,10 @@ class MLRegressionExperiments(Experiments):
             self.models.remove('model_LGBMRegressor')
         if xgboost is None:
             self.models.remove('model_XGBoostRFRegressor')
+
+        if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
+            for m in ['model_PoissonRegressor', 'model_TweedieRegressor']:
+                self.models.remove(m)
 
     def build_and_run(self, predict=False, view=False, title=None,
                       fit_kws=None,

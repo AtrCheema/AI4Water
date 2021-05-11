@@ -430,6 +430,8 @@ class Jsonize(object):
             elif isinstance(obj, list) and len(obj)>0:  # for cases like obj is [np.array([1.0])] -> [1.0]
                 return [self.stage2(obj[0])]
             elif len(obj)==1:  # for cases like obj is np.array([1.0])
+                if isinstance(obj, list) or isinstance(obj, tuple):
+                    return obj  # for cases like (1, ) or [1,]
                 return self.stage2(obj[0])
             else: # when object is []
                 return obj
