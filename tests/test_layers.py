@@ -1,24 +1,22 @@
 
-
-import pandas as pd
 import os
-import unittest
-
-import tensorflow as tf
-
 import site  # so that AI4Water directory is in path
+import unittest
+from os.path import abspath
+from inspect import getsourcefile
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from inspect import getsourcefile
-from os.path import abspath
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 
 from AI4Water import Model
 from AI4Water import NBeatsModel
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
-input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
+input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input10',
+                  'input13']
 ins = len(input_features)
 outs = 1
 
@@ -41,11 +39,12 @@ def make_and_run(
         inputs = in_cols
         outputs = ["NDX"]
     else:
-        fname = os.path.join(dpath, "data_30min.csv")
+        fname = os.path.join(dpath, "mts_30min.csv")
         df = pd.read_csv(fname)
         inputs = input_features
         # column in dataframe to bse used as output/target
         outputs = ['target7']
+        df['target7'] = np.log10(df['target7'])
         kwargs['intervals'] = ((0, 146,),
                               (145, 386,),
                               (385, 628,),
@@ -96,7 +95,7 @@ class TestModels(unittest.TestCase):
             '21_posix': 1312.3688450753175,
             '115_posix': 1265.676495072539,
         }
-        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1289.3845434825826), 3)
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1405.3555436921633), 3)
         return
 
     def test_LSTMModel(self):
@@ -129,7 +128,7 @@ class TestModels(unittest.TestCase):
         }
         if int(''.join(tf.__version__.split('.')[0:2])) <= 23:
             prediction = make_and_run(model=Model, layers=lyrs, batch_size=batch_size, batches_per_epoch=5)
-            self.assertAlmostEqual(float(prediction.sum()), 474.3257980449273, 4)
+            self.assertAlmostEqual(float(prediction.sum()), 519.6375288994583, 4)
         else:
             pass
 
@@ -195,7 +194,7 @@ class TestModels(unittest.TestCase):
             '21_posix': 1522.6872986943176,
             '115_posix': 1549.689167207415,
         }
-        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1534.6699074814169), 4)
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1409.7687666416527), 4)
 
     def test_HierarchicalAttention(self):
         # LSTM + HierarchicalAttention model
@@ -242,7 +241,7 @@ class TestModels(unittest.TestCase):
             '21_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
         }
-        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1559.654005092702), 4)
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1475.2777905818857), 4)
         return
 
     def test_spatial_attn(self):
@@ -258,40 +257,41 @@ class TestModels(unittest.TestCase):
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
             trues = {
-                '23_nt': 1459.3191080708255
+                '23_nt': 1372.9329818539659
             }
             self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision
         except ModuleNotFoundError:
             print("tcn based model can not be tested as it is not found.")
-    #
-    # def test_NBeats(self):
-    #     # NBeats based model
-    #     lookback = 12
-    #     exo_ins = 81
-    #     forecsat_length = 4 # predict next 4 values
-    #     layers = {
-    #         "Input": {"config": {"shape": (lookback, 1), "name": "prev_inputs"}},
-    #         "Input_Exo": {"config": {"shape": (lookback, exo_ins),"name": "exo_inputs"}},
-    #         "NBeats": {"config": {"backcast_length":lookback,
-    #                               "input_dim":1,
-    #                               "exo_dim":exo_ins,
-    #                               "forecast_length":forecsat_length,
-    #                               "stack_types":('generic', 'generic'),
-    #                               "nb_blocks_per_stack":2,
-    #                               "thetas_dim":(4,4),
-    #                               "share_weights_in_stack":True,
-    #                               "hidden_layer_units":62},
-    #                      "inputs": "prev_inputs",
-    #                      "call_args": {"exo_inputs": "exo_inputs"}},
-    #         "Flatten": {"config": {}},
-    #         "Reshape": {"config": {"target_shape": (1, forecsat_length)}}
-    #     }
-    #
-    #     predictions = make_and_run(NBeatsModel, layers=layers, forecast_length=forecsat_length, data_type="nasdaq")
-    #     if platform.upper() in ["WIN32"]:
-    #         self.assertAlmostEqual(float(predictions.sum()), 781079416.2836407, 4)  # 780862696.2410148
-    #     else:
-    #         self.assertGreater(float(predictions.sum()), 80000.0)  # TODO reproduction failing on linux
+
+    def test_NBeats(self):
+        # NBeats based model
+        lookback = 12
+        exo_ins = 81
+        forecsat_length = 4 # predict next 4 values
+        layers = {
+            "Input": {"config": {"shape": (lookback, 1), "name": "prev_inputs"}},
+            "Input_Exo": {"config": {"shape": (lookback, exo_ins),"name": "exo_inputs"}},
+            "NBeats": {"config": {"backcast_length":lookback,
+                                  "input_dim":1,
+                                  "exo_dim":exo_ins,
+                                  "forecast_length":forecsat_length,
+                                  "stack_types":('generic', 'generic'),
+                                  "nb_blocks_per_stack":2,
+                                  "thetas_dim":(4,4),
+                                  "share_weights_in_stack":True,
+                                  "hidden_layer_units":62},
+                         "inputs": "prev_inputs",
+                         "call_args": {"exo_inputs": "exo_inputs"}},
+            "Flatten": {"config": {}},
+            "Reshape": {"config": {"target_shape": (1, forecsat_length)}}
+        }
+
+        predictions = make_and_run(NBeatsModel, layers=layers, forecast_length=forecsat_length, data_type="nasdaq",
+                                   transformation=None)
+        if PLATFORM.upper() in ["WIN32"]:
+            self.assertAlmostEqual(float(predictions.sum()), 781079416.2836407, 4)  # 780862696.2410148
+        else:
+            self.assertGreater(float(predictions.sum()), 80000.0)  # TODO reproduction failing on linux
 
 
 if __name__ == "__main__":

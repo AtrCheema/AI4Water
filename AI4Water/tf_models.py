@@ -366,9 +366,13 @@ class NBeatsModel(Model):
 
     def train_data(self, data=None, data_keys=None, **kwargs):
 
-        exo_x, x, label = self.fetch_data(data=self.data, **kwargs)
+        exo_x, x, label = self.fetch_data(data=self.data,
+                                          inps=self.in_cols,
+                                          outs=self.out_cols,
+                                          transformation=self.config['transformation'],
+                                          **kwargs)
 
-        return [x, exo_x], label   # TODO  .reshape(-1, 1, 1) ?
+        return [x, exo_x[:, :, 0:-1]], label   # TODO  .reshape(-1, 1, 1) ?
 
     def get_batches(self, df, ins, outs):
         df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
