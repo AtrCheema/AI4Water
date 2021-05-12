@@ -12,7 +12,7 @@ from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
-from AI4Water.utils.utils import clear_weights, dateandtime_now
+from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
 from AI4Water.backend import VERSION_INFO
 
 try:
@@ -42,12 +42,12 @@ class Experiments(object):
     The core idea of of `Experiments` is `model`. An experiment consists of one or more models. The models differ from
     each other in their structure/idea/concept. When fit() is called, each model is trained.
     """
-    def __init__(self, cases=None, exp_name='Experiments', num_samples=5):
+    def __init__(self, cases=None, exp_name=None, num_samples=5):
         self.trues = {}
         self.simulations  = {}
         self.opt_results = None
         self.optimizer = None
-        self.exp_name=exp_name + '_' + str(dateandtime_now())
+        self.exp_name = 'Experiments_' + str(dateandtime_now()) if exp_name is None else exp_name
         self.num_samples = num_samples
 
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
@@ -56,10 +56,30 @@ class Experiments(object):
         self.cases = {'model_'+key if not key.startswith('model_') else key:val for key,val in cases.items()}
         self.models = self.models + list(self.cases.keys())
 
+        self.exp_path = os.path.join(os.getcwd(), "results", self.exp_name)
+        if not os.path.exists(self.exp_path):
+            os.makedirs(self.exp_path)
+
+        self.update_config(models=self.models, exp_path=self.exp_path, exp_name=self.exp_name)
+
+    def update_and_save_config(self, **kwargs):
+        self.update_config(**kwargs)
+        self.save_config()
+
+    def update_config(self, **kwargs):
+        if not hasattr(self, 'config'):
+            setattr(self, 'config', {})
+        self.config.update(kwargs.copy())
+
+    def save_config(self):
+        save_config_file(self.exp_path, config=self.config)
+
     def build_and_run(self, predict=False, title=None, fit_kws=None, **kwargs):
+        setattr(self, '_model', None)
         raise NotImplementedError
 
     def build_from_config(self, config_path, weights, fit_kws, **kwargs):
+        setattr(self, '_model', None)
         raise NotImplementedError
 
     @property
@@ -130,6 +150,7 @@ Available cases are {self.models} and you wanted to exclude
         self.simulations = {'train': {},
                             'test': {}}
 
+        self.config['eval_models'] = {}
         for model_type in include:
 
             model_name = model_type.split('model_')[1]
@@ -178,6 +199,12 @@ Available cases are {self.models} and you wanted to exclude
                         self.eval_best(model_name, opt_dir, fit_kws)
                     elif post_optimize=='train_best':
                         self.train_best(model_name)
+
+                if not hasattr(self, '_model'):  # todo asking user to define this parameter is not good
+                    raise ValueError(f'The `build_and_run` method must set a class level attribute named `_model`.')
+                self.config['eval_models'][model_type] = self._model.path
+
+        self.save_config()
         return
 
     def eval_best(self, model_type, opt_dir, fit_kws, **kwargs):
@@ -330,7 +357,7 @@ Available cases are {self.models} and you wanted to include
         >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
         >>>outputs = ['target5']
         >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
-        >>>experiment.fit(exclude=['model_TPOTREGRESSOR'])
+        >>>experiment.fit(exclude=['TPOTRegressor'])
         >>>experiment.compare_errors('mse')
         >>>experiment.compare_errors('r2', 0.2, 'greater')
         ```
@@ -423,14 +450,16 @@ Available cases are {self.models} and you wanted to include
 
     @classmethod
     def from_config(cls, config_path, **kwargs):
-        if config_path.endswith('.json'):
+        if not config_path.endswith('.json'):
             raise ValueError(f"""
 {config_path} is not a json file
 """)
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
-        return cls(**config, **kwargs)
+        cls.config = config
+
+        return cls(exp_name=config['exp_name'], **kwargs)
 
 
 class MLRegressionExperiments(Experiments):
@@ -478,7 +507,7 @@ class MLRegressionExperiments(Experiments):
         >>>outputs = ['target5']
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-        >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTRegressor'])
+        >>>comparisons.fit(run_type="dry_run", exclude=['TPOTRegressor'])
         >>>comparisons.compare_errors('r2')
         >>> # find out the models which resulted in r2> 0.5
         >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
@@ -523,6 +552,9 @@ class MLRegressionExperiments(Experiments):
             **self.model_kws,
             **kwargs
         )
+
+        setattr(self, '_model', model)
+
         model.fit(**fit_kws)
 
         en = fit_kws.get('en', None)
@@ -1120,6 +1152,8 @@ class MLClassificationExperiments(Experiments):
             **self.model_kws,
             **kwargs
         )
+
+        setattr(self, '_model', model)
 
         model.fit(**fit_kws)
 
