@@ -4,6 +4,7 @@ import warnings
 from typing import Union
 
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -12,7 +13,7 @@ from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
-from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
+from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file, process_axis
 from AI4Water.backend import VERSION_INFO
 
 try:
@@ -151,6 +152,8 @@ Available cases are {self.models} and you wanted to exclude
                             'test': {}}
 
         self.config['eval_models'] = {}
+        self.config['optimized_models'] = {}
+
         for model_type in include:
 
             model_name = model_type.split('model_')[1]
@@ -178,6 +181,7 @@ Available cases are {self.models} and you wanted to exclude
                     self._populate_results(model_name, train_results, test_results)
                 else:
                     # there may be attributes int the model, which needs to be loaded so run the method first.
+                    # such as param_space etc.
                     if hasattr(self, model_type):
                         getattr(self, model_type)()
 
@@ -194,6 +198,8 @@ Available cases are {self.models} and you wanted to exclude
                                               )
 
                     self.opt_results = self.optimizer.fit()
+
+                    self.config['optimized_models'][model_type] = self.optimizer.opt_path
 
                     if post_optimize == 'eval_best':
                         self.eval_best(model_name, opt_dir, fit_kws)
@@ -447,6 +453,52 @@ Available cases are {self.models} and you wanted to include
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
         return models
+
+    def plot_losses(self,
+                    loss_name:Union[str, list]='loss',
+                    save:bool=False,
+                    name:str='loss_comparison',
+                    **kwargs):
+        """Plots the loss curves of the evaluated models."""
+
+        if not isinstance(loss_name, list):
+            assert isinstance(loss_name, str)
+            loss_name = [loss_name]
+        loss_curves = {}
+        for _model, _path in self.config['eval_models'].items():
+            df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
+            loss_curves[_model] = df
+
+        plt.close('all')
+        fig, axis = plt.subplots()
+        for _model, _loss in loss_curves.items():
+            axis = process_axis(axis=axis, data=_loss, label=_model, linestyle='-', x_label="Epochs",
+                                y_label='Loss')
+
+        if save:
+            fname = os.path.join(self.exp_path,f'{name}_{loss_name}.png')
+            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+        plt.show()
+        return
+
+    def plot_convergence(self, save=False, name='convergence_comparison', **kwargs):
+        plt.close('all')
+        fig, axis = plt.subplots()
+
+        for _model, opt_path in self.config['optimized_models'].items():
+            with open(os.path.join(opt_path, 'iterations.json'), 'r') as fp:
+                iterations = json.load(fp)
+
+            convergence = sort_array(list(iterations.keys()))
+            process_axis(axis=axis, data=convergence, label=_model.split('model_')[1],
+                         linestyle='--',
+                         x_label='Number of iterations $n$',
+                         y_label=r"$\min f(x)$ after $n$ calls")
+        if save:
+            fname = os.path.join(self.exp_path,f'{name}.png')
+            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+        plt.show()
+        return
 
     @classmethod
     def from_config(cls, config_path, **kwargs):
@@ -1610,3 +1662,13 @@ Validation loss during all the epochs is NaN. Suggested parameters were
     def process_model_before_fit(self, model):
         """So that the user can perform procesisng of the model by overwriting this method"""
         return model
+
+
+def sort_array(array):
+    """
+    array: [4, 7, 3, 9, 4, 8, 2, 8, 7, 1]
+    returns: [4, 4, 3, 3, 3, 3, 2, 2, 2, 1]
+    """
+    results = np.array(array, dtype=np.float32)
+    iters = range(1, len(results) + 1)
+    return [np.min(results[:i]) for i in iters]

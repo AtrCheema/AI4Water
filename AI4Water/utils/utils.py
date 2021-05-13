@@ -982,9 +982,9 @@ def set_fig_dim(fig, width, height):
 def process_axis(axis,
                  data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
                  x: Union[list, np.ndarray] = None,  # array to plot as x
-                 marker='.',
+                 marker='',
                  fillstyle=None,
-                 linestyle='',
+                 linestyle='-',
                  c=None,
                  ms=6.0,  # markersize
                  label=None,  # legend
@@ -993,12 +993,12 @@ def process_axis(axis,
                  leg_ms=1,  # legend scale
                  ylim=None,  # limit for y axis
                  x_label=None,
-                 xl_fs=12,
+                 xl_fs=None,
                  y_label=None,
                  yl_fs=12,  # ylabel font size
                  yl_c='k',  # y label color, if 'same', c will be used else black
-                 xtp_ls=10,  # x tick_params labelsize
-                 ytp_ls=10,  # x tick_params labelsize
+                 xtp_ls=None,  # x tick_params labelsize
+                 ytp_ls=None,  # x tick_params labelsize
                  xtp_c='k',  # x tick colors if 'same' c will be used else black
                  ytp_c='k',  # y tick colors, if 'same', c will be used else else black
                  log=False,
@@ -1009,6 +1009,7 @@ def process_axis(axis,
                  max_xticks=None,
                  min_xticks=None,
                  title=None,
+                 title_fs=None,  # title fontszie
                  log_nz=False,
                  ):
 
@@ -1059,9 +1060,12 @@ def process_axis(axis,
     if yl_c != 'same':
         ylc = 'k'
 
+    _kwargs = {}
     if label is not None:
         if label != "__nolabel__":
-            axis.legend(loc=leg_pos, fontsize=leg_fs, markerscale=leg_ms)
+            if leg_fs is not None: _kwargs.update({'fontsize': leg_fs})
+            if leg_ms is not None: _kwargs.update({'markerscale': leg_ms})
+            axis.legend(loc=leg_pos, **_kwargs)
 
     if y_label is not None:
         axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
@@ -1085,16 +1089,24 @@ def process_axis(axis,
     if ytp_c != 'same':
         ytpc = 'k'
 
-    if x_label is not None: # better not change these paras if user has not defined any x_label
-        axis.tick_params(axis="x", which='major', labelsize=xtp_ls, colors=xtpc)
+    _kwargs = {'colors': xtpc}
+    if x_label is not None or xtp_ls is not None: # better not change these paras if user has not defined any x_label
+        if xtp_ls is not None:
+            _kwargs.update({'labelsize': xtp_ls})
+        axis.tick_params(axis="x", which='major', **_kwargs)
 
-    if y_label is not None:
-        axis.tick_params(axis="y", which='major', labelsize=ytp_ls, colors=ytpc)
+    _kwargs = {'colors': ytpc}
+    if y_label is not None or ytp_ls is not None:
+        if ytp_ls is not None:
+            _kwargs.update({'labelsize': ytp_ls})
+        axis.tick_params(axis="y", which='major', **_kwargs)
 
     axis.get_xaxis().set_visible(show_xaxis)
 
+    _kwargs = {}
     if x_label is not None:
-        axis.set_xlabel(x_label, fontsize=xl_fs)
+        if xl_fs is not None: _kwargs.update({'fontsize': xl_fs})
+        axis.set_xlabel(x_label, **_kwargs)
 
     axis.spines['top'].set_visible(top_spine)
     axis.spines['bottom'].set_visible(bottom_spine)
@@ -1107,8 +1119,11 @@ def process_axis(axis,
         fmt = mdates.AutoDateFormatter(loc)
         axis.xaxis.set_major_formatter(fmt)
 
+    if title_fs is None:
+        title_fs = plt.rcParams['axes.titlesize']
+
     if title is not None:
-        axis.set_title(title)
+        axis.set_title(title, fontsize=title_fs)
 
     return axis
 

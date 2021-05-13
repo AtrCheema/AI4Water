@@ -4,7 +4,6 @@ import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import pandas as pd
-import sklearn
 
 from AI4Water.experiments import MLRegressionExperiments
 
