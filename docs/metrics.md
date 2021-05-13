@@ -5,4 +5,4 @@ This modeule is for calaculation of performance matrix of sequential data. It co
  [Metrics](seqmetrics.md)
  
  
- [Utils](utils.md)
+ [Utils](metric_utils.md)
