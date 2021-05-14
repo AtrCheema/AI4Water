@@ -315,8 +315,11 @@ class HyperOpt(object):
     References
     --------------
     1 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV
+
     2 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV
+
     3 https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
+
     4 https://github.com/scikit-optimize/scikit-optimize/blob/9334d50a1ad5c9f7c013a1c1cb95313a54b83168/examples/bayesian-optimization.py#L109
 
     """
@@ -325,32 +328,42 @@ class HyperOpt(object):
                  algorithm:str, *,
                  param_space,
                  objective_fn=None,
-                 eval_on_best=False,
-                 backend=None,
+                 eval_on_best:bool=False,
+                 backend:str=None,
                  **kwargs
                  ):
 
         """
         Arguments:
-            algorithm str: must be one of "random", "grid" "bayes" and "tpe", defining which
+            algorithm str:
+                must be one of "random", "grid" "bayes" and "tpe", defining which
                 optimization algorithm to use.
-            objective_fn callable: It can be either sklearn/xgboost based regressor/classifier
+            objective_fn callable:
+                It can be either sklearn/xgboost based regressor/classifier
                 or any function whose returned
                 values can act as objective function for the optimization problem.
-            param_space list/dict: the space parameters to be optimized. We recommend the use
-                of Real, Integer and categorical classes from AI4Water/hyper_opt (not from skopt.space).
-                These classes allow a uniform way of defining the parameter space for all the
-                underlying libraries. However, to make this class work exactly similar
-                to its underlying libraries, the user can also define parameter space
-                as is defined in its underlying libraries. For example, for hyperopt
-                based method like 'tpe' the parameter space can be specified as in the
-                examples of hyperopt library. In case the code breaks, please report.
-            eval_on_best bool: if True, then after optimization, the objective_fn will
+            backend str:
+                Defines which backend library to use for the `algorithm`. For
+                example the user can specify whether to use `optuna` or `hyper_opt`
+                or `sklearn` for `grid` algorithm.
+            param_space list/dict:
+                the space parameters to be optimized. We recommend the use
+                of Real, Integer and categorical classes from AI4Water/hyper_opt
+                (not from skopt.space). These classes allow a uniform way of defining
+                the parameter space for all the underlying libraries. However, to
+                make this class work exactly similar to its underlying libraries,
+                the user can also define parameter space as is defined in its
+                underlying libraries. For example, for hyperopt based method like
+                'tpe' the parameter space can be specified as in the examples of
+                hyperopt library. In case the code breaks, please report.
+            eval_on_best bool:
+                if True, then after optimization, the objective_fn will
                 be evaluated on best parameters and the results will be stored in the
                 folder named "best" inside `title` folder.
-            kwargs dict: Any additional keyword arguments will for the underlying optimization
-                algorithm. In case of using AI4Water model, these must be arguments which
-                are passed to AI4Water's Model class.
+            kwargs dict:
+                Any additional keyword arguments will for the underlying optimization
+                algorithm. In case of using AI4Water model, these must be arguments
+                which are passed to AI4Water's Model class.
         """
         if algorithm not in ALGORITHMS:
             raise ValueError(f"""Invalid value of algorithm provided. Allowd values for algorithm"

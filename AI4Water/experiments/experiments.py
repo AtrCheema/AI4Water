@@ -40,8 +40,9 @@ class Experiments(object):
     """
     Base class for all the experiments.
     All the expriments must be subclasses of this class.
-    The core idea of of `Experiments` is `model`. An experiment consists of one or more models. The models differ from
-    each other in their structure/idea/concept. When fit() is called, each model is trained.
+    The core idea of of `Experiments` is `model`. An experiment consists of one
+    or more models. The models differ from each other in their structure/idea/concept.
+    When fit() is called, each model is trained.
     """
     def __init__(self, cases=None, exp_name=None, num_samples=5):
         self.trues = {}
@@ -92,9 +93,9 @@ class Experiments(object):
         self._num_samples = x
 
     def fit(self,
-            run_type="dry_run",
-            opt_method="bayes",
-            num_iterations=12,
+            run_type:str="dry_run",
+            opt_method:str="bayes",
+            num_iterations:int=12,
             include: Union[None, list] = None,
             exclude: Union[None, list, str] = '',
             post_optimize='eval_best',
@@ -102,21 +103,28 @@ class Experiments(object):
             predict_kws=None,
             hpo_kws: dict = None):
         """
+        Runs the fit loop for the specified models.
         todo, post_optimize not working for 'eval_best' with ML methods.
-        :param run_type: str, One of `dry_run` or `optimize`. If `dry_run`, the all the `models` will be trained only once.
-                              if `optimize`, then hyperparameters of all the models will be optimized.
-        :param opt_method: str, which optimization method to use. options are `bayes`, `random`, `grid`. ONly valid if
-                           `run_type` is `optimize`
-        :param num_iterations: int, number of iterations for optimization. Only valid if `run_type` is `optimize`.
-        :param include: list, name of models to included. If None, all the models found will be trained and or optimized.
-        :param exclude: list, name of `models` to be excluded
-        :param post_optimize: str, one of `eval_best` or `train_best`. If eval_best, the weights from the best models
-                              will be uploaded again and the model will be evaluated on train, test and all the data.
-                              if `train_best`, then a new model will be built and trained using the parameters of the
-                              best model.
-        :param fit_kws: dict,  key word arguments that will be passed to AI4Water's model.fit
-        :param predict_kws: dict, key word arguments that will be passed to AI4Water's model.predict
-        :param hpo_kws: keyword arguments for `HyperOpt` class.
+
+        Arguments:
+            run_type str: One of `dry_run` or `optimize`. If `dry_run`, the all
+                the `models` will be trained only once. if `optimize`, then
+                hyperparameters of all the models will be optimized.
+            opt_method str: which optimization method to use. options are `bayes`,
+                `random`, `grid`. ONly valid if `run_type` is `optimize`
+            num_iterations int: number of iterations for optimization. Only valid
+                if `run_type` is `optimize`.
+            include list: name of models to included. If None, all the models found
+                will be trained and or optimized.
+            exclude list: name of `models` to be excluded
+            post_optimize str: one of `eval_best` or `train_best`. If eval_best,
+               the weights from the best models will be uploaded again and the model
+               will be evaluated on train, test and all the data. If `train_best`,
+               then a new model will be built and trained using the parameters of
+               the best model.
+            fit_kws dict:  key word arguments that will be passed to AI4Water's model.fit
+            predict_kws dict: dict, key word arguments that will be passed to AI4Water's model.predict
+            hpo_kws dict: keyword arguments for `HyperOpt` class.
         """
 
         assert run_type in ['optimize', 'dry_run']
@@ -260,10 +268,15 @@ Available cases are {self.models} and you wanted to exclude
                      figsize: tuple = (9, 7),
                      **kwargs):
         """
-        :param include: if not None, must a list of models which will be included. None will result in plotting all the models.
-        :param exclude: if not None, must be a list of models which will excluded. None will result in no exclusion
-        :param figsize:
-        :param kwargs are all the keyword arguments from plot_taylor().
+        Arguments:
+            include list:
+                if not None, must a list of models which will be included.
+                None will result in plotting all the models.
+            exclude list:
+                if not None, must be a list of models which will excluded.
+                None will result in no exclusion
+            figsize tuple:
+            kwargs dict:  all the keyword arguments from plot_taylor().
         """
 
         include = self.check_include_arg(include)
@@ -482,6 +495,12 @@ Available cases are {self.models} and you wanted to include
         return
 
     def plot_convergence(self, save=False, name='convergence_comparison', **kwargs):
+        """
+        Plots the convergence plots of hyperparameter optimization runs.
+        Only valid if `fit` was run with `run_type=optimize`.
+        """
+        if len(self.config['optimized_models']) <1:
+            return
         plt.close('all')
         fig, axis = plt.subplots()
 
@@ -516,16 +535,19 @@ Available cases are {self.models} and you wanted to include
 
 class MLRegressionExperiments(Experiments):
     """
-    Compares peformance of around 42 machine learning models for regression problem. The experiment consists of
-    `models` which are run using `fit()` method. A `model` is one experiment. This class consists of its own
-    `build_and_run` method which is run everytime for each `model` and is executed after calling  `model`. The
+    Compares peformance of around 42 machine learning models for regression problem.
+    The experiment consists of `models` which are run using `fit()` method. A `model`
+    is one experiment. This class consists of its own `build_and_run` method which
+    is run everytime for each `model` and is executed after calling  `model`. The
     `build_and_run` method takes the output of `model` and streams it to `Model` class.
 
-    The user can define new `models` by subclassing this class. In fact any new method in the sub-class which does not
-    starts with `model_` wll be considered as a new `model`. Otherwise the user has to overwite the
-    attribute `models` to redefine, which methods are to be used as models and which should not. The method which is a
-    `model` must only return key word arguments which will be streamed to the `Model` using `build_and_run` method.
-    Inside this new method the user can define, which parameters to optimize, their param_space for optimization
+    The user can define new `models` by subclassing this class. In fact any new
+    method in the sub-class which does not starts with `model_` wll be considered
+    as a new `model`. Otherwise the user has to overwite the attribute `models` to
+    redefine, which methods are to be used as models and which should not. The
+    method which is a `model` must only return key word arguments which will be
+    streamed to the `Model` using `build_and_run` method. Inside this new method
+    the user can define, which parameters to optimize, their param_space for optimization
     and the initial values to use for optimization.
 
     """

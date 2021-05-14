@@ -737,30 +737,42 @@ def prepare_data(
     converts a numpy nd array into a supervised machine learning problem.
 
     Arguments:
-        data np.ndarray : nd numpy array whose first dimension represents the number of examples and
-            the second dimension represents the number of features. Some of those features
-            will be used as inputs and some will be considered as outputs depending upon
-            the values of `num_inputs` and `num_outputs`.
-        lookback_steps int :  number of previous steps/values to be used at one step.
-        num_inputs int : default None, number of input features in data. If None,
-            it will be calculated as features-outputs. The input data will be all from start
-            till num_outputs in second dimension.
-        num_outputs int : number of columns (from last) in data to be used as output.
+        data np.ndarray :
+            nd numpy array whose first dimension represents the number
+            of examples and the second dimension represents the number of features.
+            Some of those features will be used as inputs and some will be considered
+            as outputs depending upon the values of `num_inputs` and `num_outputs`.
+        lookback_steps int :
+            number of previous steps/values to be used at one step.
+        num_inputs int :
+            default None, number of input features in data. If None,
+            it will be calculated as features-outputs. The input data will be all
+            from start till num_outputs in second dimension.
+        num_outputs int :
+            number of columns (from last) in data to be used as output.
             If None, it will be caculated as features-inputs.
-        input_steps int : strides/number of steps in input data
-        forecast_step int : >=0, which t+ith value to use as target where i is the horizon.
-            For time series prediction, we can say, which horizon to predict.
-        forecast_len int : number of horizons/future values to predict.
-        known_future_inputs bool : Only useful if `forecast_len`>1. If True, this means, we know and use
-            'future inputs' while making predictions at t>0
-        output_steps int : step size in outputs. If =2, it means we want to predict every second value from the targets
-        mask int/np.nan/1darray : If int, then the examples with these values in the output will be skipped.
-            If array then it must be a boolean mask indicating which examples to include/exclude.
-            The length of mask should be equal to the number of generated examples. The number of
-            generated examples is difficult to prognose because it depend upon lookback, input_steps,
-            and forecast_step. Thus it is better to provide an integer indicating which values in outputs
-            are to be considered as invalid. Default is None, which indicates all the generated examples
-            will be returned.
+        input_steps int :
+            strides/number of steps in input data
+        forecast_step int :
+            must be greater than equal to 0, which t+ith value to
+            use as target where i is the horizon. For time series prediction, we
+            can say, which horizon to predict.
+        forecast_len int :
+            number of horizons/future values to predict.
+        known_future_inputs bool : Only useful if `forecast_len`>1. If True, this
+            means, we know and use 'future inputs' while making predictions at t>0
+        output_steps int :
+            step size in outputs. If =2, it means we want to predict
+            every second value from the targets
+        mask int/np.nan/1darray :
+            If int, then the examples with these values in
+            the output will be skipped. If array then it must be a boolean mask
+            indicating which examples to include/exclude. The length of mask should
+            be equal to the number of generated examples. The number of generated
+            examples is difficult to prognose because it depend upon lookback, input_steps,
+            and forecast_step. Thus it is better to provide an integer indicating
+            which values in outputs are to be considered as invalid. Default is
+            None, which indicates all the generated examples will be returned.
 
     Returns:
       x np.ndarray: numpy array of shape (examples, lookback, ins) consisting of input examples
@@ -862,8 +874,8 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2,
-    ...                  forecast_len=4)
+    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4,
+    ...    input_steps=2, forecast_step=2, forecast_len=4)
     >>>x[0]
        array([[  0.,  50., 100.],
               [  2.,  52., 102.],
@@ -873,8 +885,8 @@ def prepare_data(
        array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4, forecast_len=3,
-    ...                  known_future_inputs=True)
+    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4,
+    ...    forecast_len=3, known_future_inputs=True)
     >>>x[0]
         array([[  0,  50, 100],
                [  1,  51, 101],

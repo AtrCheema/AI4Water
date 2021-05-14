@@ -37,9 +37,10 @@ class Counter:
     counter = 0
 
 class Real(_Real, Counter):
-    """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
-    algorithm to create grid space.
-    num_samples: int, if given, it will be used to create grid space using the formula"""
+    """
+    Extends the Real class of Skopt so that it has an attribute grid which then
+    can be fed to optimization algorithm to create grid space.
+    """
     def __init__(self,
                  low=None,
                  high=None,
@@ -49,7 +50,10 @@ class Real(_Real, Counter):
                  *args,
                  **kwargs
                  ):
-
+        """
+        Arguments:
+            num_samples: int, if given, it will be used to create grid space using the formula
+        """
         if low is None:
             assert grid is not None
             assert hasattr(grid, '__len__')
@@ -109,9 +113,12 @@ class Real(_Real, Counter):
             return LogUniformDistribution(low=self.low, high=self.high)
 
 class Integer(_Integer, Counter):
-    """Extends the Real class of Skopt so that it has an attribute grid which then can be fed to optimization
-    algorithm to create grid space. Moreover it also generates optuna and hyperopt compatible/equivalent instances.
-    num_samples: int, if given, it will be used to create grid space using the formula"""
+    """
+    Extends the Real class of Skopt so that it has an attribute grid which then
+    can be fed to optimization algorithm to create grid space. Moreover it also
+    generates optuna and hyperopt compatible/equivalent instances.
+
+    """
     def __init__(self,
                  low=None,
                  high=None,
@@ -121,6 +128,15 @@ class Integer(_Integer, Counter):
                  *args,
                  **kwargs
                  ):
+        """
+        Arguments:
+            grid list/array: If given, `low` and `high` should not be given as they will be
+                calculated from this grid.
+            step int: if given , it will be used to calculated grid using the formula
+                np.arange(low, high, step)
+            num_samples int: if given, it will be used to create grid space using the formula
+                np.linspace(low, high, num_samples)
+        """
 
         if low is None:
             assert grid is not None
@@ -178,8 +194,11 @@ class Integer(_Integer, Counter):
         else:
             return IntLogUniformDistribution(low=self.low, high=self.high)
 
-class Categorical(_Categorical):
 
+class Categorical(_Categorical):
+    """
+    Overrides skopt's `Categorical` class. Can be converted to optuna's distribution
+    or hyper_opt's choice."""
     @property
     def grid(self):
         return self.categories

@@ -184,18 +184,22 @@ def plot_taylor(trues:dict,
     Helper function to plot Taylor's [1] plot.
 
     Arguments:
-        trues dict : a dictionary of length > 1, whose keys are scenarios and values
-                     represent true/observations at that scenarios.
-        simulations dict : A dictionary of length > 1 whose keys are scenarios and
-                           whose values are also dictionary. Each sub-dictionary
-                           i.e. dictionary of scenario consist of models/simulations.
-        axis_locs dict : dictionary defining axis orientation of figure. For example
-                         with two scenarios named 'scenario1' and 'scenario2', if we
-                         want to plot two plots in one column, then this argument will be
+        trues dict :
+            a dictionary of length > 1, whose keys are scenarios and values
+            represent true/observations at that scenarios.
+        simulations dict :
+            A dictionary of length > 1 whose keys are scenarios and whose values
+            are also dictionary. Each sub-dictionary i.e. dictionary of scenario
+            consist of models/simulations.
+        axis_locs dict :
+            dictionary defining axis orientation of figure. For example with two
+            scenarios named 'scenario1' and 'scenario2', if we want to plot two
+            plots in one column, then this argument will be
                       {'scenario1': 211,
                        'scenario2': 212}.
-                       Default is None.
-        cont_kws dict : kwargs related to contours. Following args can be used
+            Default is None.
+        cont_kws dict :
+            keyword arguments related to contours. Following args can be used
             - levels level of contours
             - colors color of contours
             - label_fs fontsize of labels
@@ -204,13 +208,15 @@ def plot_taylor(trues:dict,
             - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
             https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
 
-        grid_kws dict : kwargs related to grid. Following args can be used
+        grid_kws dict :
+            keyword arguments related to grid. Following args can be used
             - title_fontsize: int, fontsize of the axis title
             - which {'major', 'minor', 'both'}
             - axis {'both', 'x', 'y'},
             any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
 
-        leg_kws dict : kwargs related to legends
+        leg_kws dict :
+            keyword arguments related to legends
             - position defaults to `center`
             - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
             - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
@@ -218,14 +224,17 @@ def plot_taylor(trues:dict,
             https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
-        axis_fontdict dict : dictionary defining propertiies of axis labels
+        axis_fontdict dict :
+            dictionary defining propertiies of axis labels
             axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
                              'bottom': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14},
                              'top': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14}}
 
-        axis_kws dict : dictionary containing general parameters related to axis such as title.
+        axis_kws dict :
+            dictionary containing general parameters related to axis such as title.
 
-        kwargs dict : Following keyword arguments are optional
+        kwargs dict :
+            Following keyword arguments are optional
             - add_ith_interval: bool
             - plot_bias: bool, if True, the size of the markers will be used to represent bias. The markers will be
                        triangles with their sides up/down depending upon value of bias.
@@ -255,12 +264,12 @@ def plot_taylor(trues:dict,
     ...                     "TCN": np.random.normal(20, 40, 10),
     ...                     "CNN-LSTM": np.random.normal(20, 40, 10)}
     ...            },
-    ...            cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
-    ...            grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
-    ...            axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-    ...                     'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-    ...                     'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
-    ...            leg_kws={'fontsize': 16, 'markerscale': 2}
+    ...    cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
+    ...    grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
+    ...    axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+    ...             'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+    ...             'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
+    ...    leg_kws={'fontsize': 16, 'markerscale': 2}
     ...            )
     ```
     """
