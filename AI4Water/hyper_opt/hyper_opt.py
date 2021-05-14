@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 import inspect
 import warnings
 import traceback
@@ -456,7 +457,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         self._title = x + '_' + str(dateandtime_now())
 
     def check_args(self, **kwargs):
-        kwargs = kwargs.copy()
+        kwargs = copy.deepcopy(kwargs)
 
         self.use_ai4water_model = False
         if "ai4water_args" in kwargs:
