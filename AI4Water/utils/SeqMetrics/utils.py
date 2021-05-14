@@ -1,8 +1,8 @@
 import os
 from collections import OrderedDict
 
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
 
@@ -22,17 +22,40 @@ def plot_metrics(metrics:dict,
                  save_path:str=None,
                  **kwargs):
     """
-    Plots the metrics given as dictionary as radial plot between ranges.
+    Plots the metrics given as dictionary as radial or bar plot between specified ranges.
 
     Arguments:
-        metrics dict: dictionary whose keys are names are erros and values are error values.
-        ranges tuple: tuple of tuples defining range of errors to plot in one plot
-        exclude list/None: List of metrics to be excluded from plotting.
-        max_metrics_per_fig int: maximum number of metrics to show in one figure.
-        plot_type str: either of `radial` or `bar`.
-        save bool: if True, the figure will be saved.
-        save_path string/pathlike: if given, the figure will the saved at this location.
-        kwargs dict: keyword arguments for plotting
+        metrics dict:
+            dictionary whose keys are names are erros and values are error values.
+        ranges tuple:
+            tuple of tuples defining range of errors to plot in one plot
+        exclude list/None:
+            List of metrics to be excluded from plotting.
+        max_metrics_per_fig int:
+            maximum number of metrics to show in one figure.
+        plot_type str:
+            either of `radial` or `bar`.
+        save bool:
+            if True, the figure will be saved.
+        save_path string/pathlike:
+            if given, the figure will the saved at this location.
+        kwargs dict:
+            keyword arguments for plotting
+
+    Example
+    ---------
+    ```python
+    >>>import numpy as np
+    >>>from AI4Water.utils.SeqMetrics import Metrics
+    >>>from AI4Water.utils.SeqMetrics.utils import plot_metrics
+    >>>t = np.random.random((20, 1))
+    >>>p = np.random.random((20, 1))
+    >>>er = Metrics(t, p)
+    >>>all_errors = er.calculate_all()
+    >>>plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
+    >>># or draw the radial plot
+    >>>plot_metrics(all_errors, plot_type='radial', max_metrics_per_fig=50)
+    ```
     """
     for idx, rng in enumerate(ranges):
         assert rng[1]>rng[0], f'For range {idx}, second value: {rng[1]} is not greater than first value: {rng[0]}. '
@@ -55,6 +78,7 @@ def plot_metrics(metrics:dict,
                              max_metrics_per_fig=max_metrics_per_fig,
                              save=save, save_path=save_path, **kwargs)
     return
+
 
 def plot_metrics_between(errors: dict,
                          lower:int,
