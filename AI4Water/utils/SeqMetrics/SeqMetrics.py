@@ -971,13 +971,13 @@ class Metrics(object):
 
     def mse(self, weights=None) -> float:
         """ mean square error """
-        return np.average((self.true - self.predicted) ** 2, axis=0, weights=weights)
+        return float(np.average((self.true - self.predicted) ** 2, axis=0, weights=weights))
 
     def msle(self, weights=None) -> float:
         """
         mean square logrithmic error
         """
-        return np.average((np.log1p(self.true) - np.log1p(self.predicted)) ** 2, axis=0, weights=weights)
+        return float(np.average((np.log1p(self.true) - np.log1p(self.predicted)) ** 2, axis=0, weights=weights))
 
     def norm_euclid_distance(self):
         """Normalized Euclidian distance"""
@@ -1325,7 +1325,7 @@ class Metrics(object):
         https://www.tutorialspoint.com/statistics/residual_sum_of_squares.htm
         """
         squared_errors = (self.true - self.predicted) ** 2
-        return np.sum(squared_errors)
+        return float(np.sum(squared_errors))
 
     def smape(self) -> float:
         """
@@ -1376,7 +1376,7 @@ class Metrics(object):
         sgy = self.predicted[1:] - self.predicted[:self.predicted.size - 1]
         a = np.dot(sgx, sgy)
         b = np.linalg.norm(sgx) * np.linalg.norm(sgy)
-        return np.arccos(a / b)
+        return float(np.arccos(a / b))
 
     def skill_score_murphy(self):
         """
