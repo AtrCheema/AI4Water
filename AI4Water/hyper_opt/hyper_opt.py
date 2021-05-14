@@ -385,7 +385,7 @@ class HyperOpt(object):
             self.fit = self.own_fit
 
         elif self.use_own:
-            self.predict = self._predict and self.backend != 'optuna'
+            self.predict = self._predict
             if self.algorithm == "grid" and self.backend != 'optuna':
                 self.fit = self.grid_search
             elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
