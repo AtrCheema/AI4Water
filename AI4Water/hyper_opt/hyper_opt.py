@@ -35,6 +35,7 @@ except ImportError:
 try:
     import hyperopt
     from hyperopt.pyll.base import Apply
+    from hyperopt import fmin as fmin_hyperopt
     from hyperopt import fmin, tpe, atpe, STATUS_OK, Trials, rand
 except ImportError:
     hyperopt, fmin, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
@@ -1026,7 +1027,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 raise NotImplementedError
 
 
-        best = fmin(objective_f,
+        best = fmin_hyperopt(objective_f,
                     space=space,
                     algo=suggest_options[self.algorithm],
                     trials=trials,
@@ -1037,7 +1038,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4)
 
         setattr(self, 'trials', trials)
-        self.results = trials.results
+        #self.results = trials.results
         self._plot()
 
         return best
@@ -1198,12 +1199,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                        view_model=True,
                        return_model=False):
         """Find the best parameters and evaluate the objective_fn on them."""
-        print("Evaluting objective_fn on best set of parameters.")
 
         if self.use_named_args:
-            x = self.best_paras(True)
+            x = self.best_paras()
         else:
-            x = self.best_paras(False)
+            x = self.best_paras(True)
 
         if self.use_named_args and self.ai4water_args is not None:
             return self.ai4water_model(pp=True,
@@ -1216,6 +1216,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.objective_fn(**x)
 
         if callable(self.objective_fn) and not self.use_named_args:
+            if isinstance(x, list) and self.backend == 'hyperopt':  # when x = [x]
+                if len(x) == 1:
+                    x = x[0]
             return self.objective_fn(x)
 
         raise NotImplementedError

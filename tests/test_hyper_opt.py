@@ -39,6 +39,7 @@ outputs = ['target']
 
 
 def check_attrs(optimizer, paras, ai4water_args=None):
+    optimizer.eval_with_best(view_model=False)
     space = optimizer.space()
     assert isinstance(space, dict)
     assert len(space)==paras
