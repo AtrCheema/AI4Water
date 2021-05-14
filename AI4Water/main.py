@@ -138,9 +138,10 @@ class Model(NN, Plots):
                 Fraction of the complete data to be used for test purpose. Must be greater
                 than 0.0.
             allow_nan_labels int:
-                whether to allow nan labels or not. if > 0, and if target values contain Nans,
-                those samples will not be ignored and will be fed as it is to training
-                and test steps. In such a case a customized training and evaluation
+                Default: 0. whether to allow examples nan labels or not. if > 0,
+                and if target values contain Nans, those samples will not be
+                ignored and will be fed as it is to training and test steps.
+                In such a case a customized training and evaluation
                 step is performed where the loss is not calculated for predictions
                 corresponding to nan observations. Thus this option can be useful
                 when we are predicting more than 1 target and the some of the samples

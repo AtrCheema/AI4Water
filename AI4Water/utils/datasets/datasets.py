@@ -399,27 +399,32 @@ class Camels(Datasets):
     This class first downloads the CAMELS dataset if it is not already downloaded. Then the selected attribute
     for a selected id are fetched and provided to the user using the method `fetch`.
 
-    Attributes
-        ds_dir: diretory of the dataset
-        dynamic_attributes: tells which dynamic attributes are available in this dataset
-        static_attribute_categories: tells which kinds of static attributes are present in this category.
+    Attributes:
+        ds_dir : diretory of the dataset
+        dynamic_attributes : tells which dynamic attributes are available in this dataset
+        static_attribute_categories : tells which kinds of static attributes are present in this category.
 
 
     Methods:
         stations : returns the stations for which the data (dynamic attributes) exists as list of strings.
 
-        fetch : fetches all attributes (both static and dynamic type) of all station/gauge_ids or a speficified station.
-               It can also be used to fetch all attributes of a number of stations ids either by providing their
-               guage_id or by just saying that we need data of 20 stations which will then be chosen randomly.
+        fetch :
+            fetches all attributes (both static and dynamic type) of all station/gauge_ids
+                or a speficified station. It can also be used to fetch all attributes
+                of a number of stations ids either by providing their guage_id or
+                by just saying that we need data of 20 stations which will then
+                be chosen randomly.
 
-        fetch_dynamic_attributes : fetches speficied dynamic attributes of one specified station. If the dynamic attribute
-                                  is not specified, all dynamic attributes will be fetched for the specified station.
-                                  If station is not specified, the specified dynamic attributes will be fetched for all
-                                  stations.
+        fetch_dynamic_attributes :
+            fetches speficied dynamic attributes of one specified station. If the
+            dynamic attribute is not specified, all dynamic attributes will be
+            fetched for the specified station. If station is not specified, the
+            specified dynamic attributes will be fetched for all stations.
 
-        fetch_static_attributes : works same as `fetch_dynamic_attributes` but for `static` attributes. Here if the
-                                 `category` is not specified then static attributes of the specified station for all
-                                 categories are returned.
+        fetch_static_attributes :
+            works same as `fetch_dynamic_attributes` but for `static` attributes.
+            Here if the `category` is not specified then static attributes of
+            the specified station for all categories are returned.
     """
 
     DATASETS = {
