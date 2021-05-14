@@ -223,7 +223,7 @@ class Plots(object):
 
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
-        x, y = self.train_data(**kwargs)
+        x, _, y = self.train_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='training')
 
         return
@@ -237,7 +237,7 @@ class Plots(object):
 
     def plot_test_data(self, how='3d', save=True,  **kwargs):
 
-        x, y = self.test_data(**kwargs)
+        x, _, y = self.test_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='test')
 
         return
@@ -462,10 +462,10 @@ class Plots(object):
         if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"] or model.startswith("XGBOOST"):
             if trees is None:
                 print("dtreeviz related plots can not be plotted")
-            elif model in ['XGBOOSTRFREGRESSOR']:  # dtreeviz doesn't plot this
+            elif model in ['XGBOOSTRFREGRESSOR', 'XGBOOSTREGRESSOR']:  # dtreeviz doesn't plot this
                 pass
             else:
-                x, y = self.test_data()
+                x, _, y = self.test_data()
 
                 if np.ndim(y) > 2:
                     y = np.squeeze(y, axis=2)
