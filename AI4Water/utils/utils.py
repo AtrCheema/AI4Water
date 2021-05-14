@@ -5,7 +5,7 @@ import datetime
 from typing import Union
 from shutil import rmtree
 from copy import deepcopy
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 from collections import OrderedDict
 
 import scipy
@@ -731,49 +731,51 @@ def prepare_data(
         forecast_len:int=1,
         known_future_inputs:bool=False,
         output_steps=1,
-        mask:Union[int, float, np.ndarray]=None,
-):
+        mask:Union[int, float, np.ndarray]=None
+)-> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     converts a numpy nd array into a supervised machine learning problem.
-    :param data: nd numpy array whose first dimension represents the number of examples and
-                 the second dimension represents the number of features. Some of those features
-                 will be used as inputs and some will be considered as outputs depending upon
-                 the values of `num_inputs` and `num_outputs`.
-    :param num_inputs: int, default None, number of input features in data. If None,
-                       it will be calculated as features-outputs. The input data will be all from start
-                       till num_outputs in second dimension.
-    :param num_outputs: int, number of columns (from last) in data to be used as output.
-                        If None, it will be caculated as features-inputs.
-    :param lookback_steps: int,  number of previous steps/values to be used at one step.
-    :param input_steps: int, strides/number of steps in input data
-    :param forecast_step: int, >=0, which t+ith value to use as target where i is the horizon.
-                          For time series prediction, we can say, which horizon to predict.
-    :param forecast_len: int, number of horizons/future values to predict.
-    :param known_future_inputs: bool, Only useful if `forecast_len`>1. If True, this means, we know and use
-                                'future inputs' while making predictions at t>0
-    :param output_steps: step size in outputs. If =2, it means we want to predict every second value from the targets
-    :param mask: int, np.nan, 1d array. If int, then the examples with these values in the output will be skipped.
-                 If array then it must be a boolean mask indicating which examples to include/exclude.
-                 The length of mask should be equal to the number of generated examples. The number of
-                 generated examples is difficult to prognose because it depend upon lookback, input_steps,
-                 and forecast_step. Thus it is better to provide an integer indicating which values in outputs
-                 are to be considered as invalid. Default is None, which indicates all the generated examples
-                 will be returned.
+
+    Arguments:
+        data np.ndarray : nd numpy array whose first dimension represents the number of examples and
+            the second dimension represents the number of features. Some of those features
+            will be used as inputs and some will be considered as outputs depending upon
+            the values of `num_inputs` and `num_outputs`.
+        lookback_steps int :  number of previous steps/values to be used at one step.
+        num_inputs int : default None, number of input features in data. If None,
+            it will be calculated as features-outputs. The input data will be all from start
+            till num_outputs in second dimension.
+        num_outputs int : number of columns (from last) in data to be used as output.
+            If None, it will be caculated as features-inputs.
+        input_steps int : strides/number of steps in input data
+        forecast_step int : >=0, which t+ith value to use as target where i is the horizon.
+            For time series prediction, we can say, which horizon to predict.
+        forecast_len int : number of horizons/future values to predict.
+        known_future_inputs bool : Only useful if `forecast_len`>1. If True, this means, we know and use
+            'future inputs' while making predictions at t>0
+        output_steps int : step size in outputs. If =2, it means we want to predict every second value from the targets
+        mask int/np.nan/1darray : If int, then the examples with these values in the output will be skipped.
+            If array then it must be a boolean mask indicating which examples to include/exclude.
+            The length of mask should be equal to the number of generated examples. The number of
+            generated examples is difficult to prognose because it depend upon lookback, input_steps,
+            and forecast_step. Thus it is better to provide an integer indicating which values in outputs
+            are to be considered as invalid. Default is None, which indicates all the generated examples
+            will be returned.
 
     Returns:
-      x: numpy array of shape (examples, lookback, ins) consisting of input examples
-      prev_y: numpy array consisting of previous outputs
-      y: numpy array consisting of target values
+      x np.ndarray: numpy array of shape (examples, lookback, ins) consisting of input examples
+      prev_y np.ndarray: numpy array consisting of previous outputs
+      y np.ndarray: numpy array consisting of target values
 
     Given following example consisting of input/output pairs
-  input1, input2, output1, output2, output 3
-    1,     11,     21,       31,     41
-    2,     12,     22,       32,     42
-    3,     13,     23,       33,     43
-    4,     14,     24,       34,     44
-    5,     15,     25,       35,     45
-    6,     16,     26,       36,     46
-    7,     17,     27,       37,     47
+    input1, input2, output1, output2, output 3
+        1,     11,     21,       31,     41
+        2,     12,     22,       32,     42
+        3,     13,     23,       33,     43
+        4,     14,     24,       34,     44
+        5,     15,     25,       35,     45
+        6,     16,     26,       36,     46
+        7,     17,     27,       37,     47
 
     If we use following 2 time series as input
     1,     11,
@@ -843,8 +845,9 @@ def prepare_data(
     (examples, lookback_steps+forecast_len-1, ....num_inputs)
 
     ----------
-    Examples
+    Example
     ---------
+    ```python
     >>>import numpy as np
     >>>examples = 50
     >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
@@ -882,8 +885,10 @@ def prepare_data(
                [  6,  56, 106]])       # (7, 3)
     >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
     >>>y[0]
+
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)
+    ```
     """
     if not isinstance(data, np.ndarray):
         if isinstance(data, pd.DataFrame):

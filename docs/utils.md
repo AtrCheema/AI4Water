@@ -1,9 +1,9 @@
-# Utils
+Some utility functions
 
-prepare training data fro a supervised learning problem
+**`prepare_data`**
 ::: AI4Water.utils.utils.prepare_data
     handler: python
 
-Taylor's plot
+**`plot_taylor`**
 ::: AI4Water.utils.taylor_diagram.plot_taylor
     handler: python
