@@ -861,6 +861,7 @@ def prepare_data(
     ---------
     ```python
     >>>import numpy as np
+    >>>from AI4Water.utils.utils import prepare_data
     >>>examples = 50
     >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
     >>>data[0:10]
@@ -874,7 +875,7 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4,
+    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
     ...    input_steps=2, forecast_step=2, forecast_len=4)
     >>>x[0]
        array([[  0.,  50., 100.],
@@ -885,7 +886,7 @@ def prepare_data(
        array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4,
+    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
     ...    forecast_len=3, known_future_inputs=True)
     >>>x[0]
         array([[  0,  50, 100],

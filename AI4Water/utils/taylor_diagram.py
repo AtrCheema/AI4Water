@@ -255,6 +255,7 @@ def plot_taylor(trues:dict,
     ---------
     ```python
     >>>import numpy as np
+    >>>from AI4Water.utils import plot_taylor
     >>>np.random.seed(92)
     >>>plot_taylor(trues={'site1': np.random.normal(20, 40, 10)},
     ...            simulations={

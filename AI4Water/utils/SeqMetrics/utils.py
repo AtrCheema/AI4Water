@@ -92,7 +92,6 @@ def plot_metrics_between(errors: dict,
         if v is not None:
             if lower < v < upper:
                 zero_to_one[k] = v
-
     st = 0
     n = len(zero_to_one)
     for i in np.array(np.linspace(0, n, int(n/max_metrics_per_fig)+1),
@@ -107,7 +106,6 @@ def plot_metrics_between(errors: dict,
             else:
                 plot_circular_bar(d, save=save, save_path=save_path, **kwargs)
             st = i
-
     return
 
 

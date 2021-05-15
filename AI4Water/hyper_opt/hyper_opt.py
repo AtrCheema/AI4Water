@@ -147,11 +147,12 @@ class HyperOpt(object):
 
 
     Examples:
-    ```python
     The following examples illustrate how we can uniformly apply different optimization algorithms.
+    ```python
     >>>from AI4Water import Model
-    >>>from AI4Water.hyper_opt import HyperOpt
-    >>>from AI4Water.data import load_u1
+    >>>from AI4Water.hyper_opt import HyperOpt, Categorical, Integer, Real
+    >>>from AI4Water.utils.datasets import load_u1
+    >>>from AI4Water.utils.SeqMetrics import Metrics
     # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
@@ -167,7 +168,7 @@ class HyperOpt(object):
     ...    model.fit(indices="random")
     ...
     ...    t, p = model.predict(indices=model.test_indices, pref='test')
-    ...    mse = FindErrors(t, p).mse()
+    ...    mse = Metrics(t, p).mse()
     ...
     ...    return mse
     ```
@@ -176,7 +177,7 @@ class HyperOpt(object):
 
     ```python
     >>>num_samples=5   # only relavent for random and grid search
-    >>>    search_space = [
+    >>>search_space = [
     ...    Categorical(['gbtree', 'dart'], name='booster'),
     ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
     ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
@@ -185,6 +186,7 @@ class HyperOpt(object):
 
     # Using TPE with optuna
     ```python
+    >>>num_iterations = 10
     >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
     ...                     num_iterations=num_iterations )
@@ -965,6 +967,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def optuna_objective(self, **kwargs):
 
+        if optuna is None:
+            raise ValueError("You must install optuna inoder to use `optuna` as backend")
+
         sampler = {
             'tpe': optuna.samplers.TPESampler,
             'cmaes': optuna.samplers.CmaEsSampler,
@@ -991,6 +996,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return study
 
     def fmin(self, **kwargs):
+
+        if tpe is None:
+            raise ValueError("You must install `hyperopt` to use it as backend.")
 
         suggest_options = {
             'tpe': tpe.suggest,
