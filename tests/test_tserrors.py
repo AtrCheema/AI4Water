@@ -22,10 +22,14 @@ class test_errors(unittest.TestCase):
     def test_radial_pots(self):
         plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
         plot_metrics(all_errors, plot_type='radial')
-        return 
+        return
 
     def test_calculate_all(self):
         assert len(all_errors) > 100
+        for er_name, er_val in all_errors.items():
+            if er_val is not None:
+                er_val = getattr(er, er_name)()
+                self.assertEqual(er_val.__class__.__name__, 'float')
         return
 
     def test_stats(self):
