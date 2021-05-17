@@ -967,9 +967,16 @@ def find_tot_plots(features, max_subplots):
     return tot_plots
 
 
-def set_fig_dim(fig, width, height):
-    fig.set_figwidth(width)
-    fig.set_figheight(height)
+def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
+    """Initializes the fig for subplots"""
+    plt.close('all')
+    fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
+    if width is None:
+        fig.set_figwidth(width)
+    if height is None:
+        fig.set_figheight(height)
+    return fig, axis
+
 
 
 def process_axis(axis,
@@ -1128,8 +1135,7 @@ def plot(*args, show=True, **kwargs):
     args and kwargs can be anything which goes into plt.plot() or axis.plot().
     They can also be anything which goes into `process_axis`.
     """
-    plt.close('all')
-    fig, axis = plt.subplots()
+    fig, axis = init_subplots()
     axis = process_axis(axis, *args, **kwargs)
     if kwargs.get('save', False):
         plt.savefig(f"{kwargs.get('name', 'fig.png')}")

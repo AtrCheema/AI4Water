@@ -15,7 +15,7 @@ except ModuleNotFoundError:
     trees = None
 
 from AI4Water.backend import xgboost
-from AI4Water.utils.utils import find_tot_plots
+from AI4Water.utils.utils import find_tot_plots, init_subplots
 from AI4Water.utils.transformations import Transformations
 
 try:
@@ -196,8 +196,7 @@ class Plots(object):
         return
 
     def plot2d_act_for_a_sample(self, activations, sample=0, save:bool = False, name: str = None):
-        fig, axis = plt.subplots()
-        fig.set_figheight(8)
+        fig, axis = init_subplots(height=8)
         # for idx, ax in enumerate(axis):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
         axis.set_xlabel('lookback')

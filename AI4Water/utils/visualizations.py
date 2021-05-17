@@ -11,7 +11,7 @@ import matplotlib.ticker as ticker
 
 from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.utils import _missing_vals
-from AI4Water.utils.utils import find_tot_plots, set_fig_dim
+from AI4Water.utils.utils import find_tot_plots, init_subplots
 from AI4Water.utils.transformations import Transformations
 
 # TODO add Murphy's plot as shown in MLAir
@@ -386,11 +386,9 @@ class Visualizations(object):
         regplot(true, predicted, save=save, name=name, where=where)
         self.save_or_show(save=save, fname=f"{name}_reg", close=False, where=where)
 
-        plt.close('all')
         mpl.rcParams.update(mpl.rcParamsDefault)
 
-        fig, axis = plt.subplots()
-        set_fig_dim(fig, 12, 8)
+        fig, axis = init_subplots(width=12, height=8)
 
         # it is quite possible that when data is datetime indexed, then it is not equalidistant and large amount of graph
         # will have not data in that case lines plot will create a lot of useless interpolating lines where no data is present.
