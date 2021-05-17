@@ -4,6 +4,7 @@ import warnings
 from typing import Union
 
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -12,8 +13,23 @@ from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
-from AI4Water.utils.utils import clear_weights, dateandtime_now
+from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file, process_axis
+from AI4Water.backend import VERSION_INFO
 
+try:
+    import catboost
+except ModuleNotFoundError:
+    catboost = None
+
+try:
+    import lightgbm
+except ModuleNotFoundError:
+    lightgbm = None
+
+try:
+    import xgboost
+except ModuleNotFoundError:
+    xgboost = None
 
 # TODO, when predicting, use best saved weights instead of last state of weights
 # TODO, show loss curve of different models in an Experiment
@@ -24,15 +40,16 @@ class Experiments(object):
     """
     Base class for all the experiments.
     All the expriments must be subclasses of this class.
-    The core idea of of `Experiments` is `model`. An experiment consists of one or more models. The models differ from
-    each other in their structure/idea/concept. When fit() is called, each model is trained.
+    The core idea of of `Experiments` is `model`. An experiment consists of one
+    or more models. The models differ from each other in their structure/idea/concept.
+    When fit() is called, each model is trained.
     """
-    def __init__(self, cases=None, exp_name='Experiments', num_samples=5):
+    def __init__(self, cases=None, exp_name=None, num_samples=5):
         self.trues = {}
         self.simulations  = {}
         self.opt_results = None
         self.optimizer = None
-        self.exp_name=exp_name + '_' + str(dateandtime_now())
+        self.exp_name = 'Experiments_' + str(dateandtime_now()) if exp_name is None else exp_name
         self.num_samples = num_samples
 
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
@@ -41,10 +58,30 @@ class Experiments(object):
         self.cases = {'model_'+key if not key.startswith('model_') else key:val for key,val in cases.items()}
         self.models = self.models + list(self.cases.keys())
 
+        self.exp_path = os.path.join(os.getcwd(), "results", self.exp_name)
+        if not os.path.exists(self.exp_path):
+            os.makedirs(self.exp_path)
+
+        self.update_config(models=self.models, exp_path=self.exp_path, exp_name=self.exp_name)
+
+    def update_and_save_config(self, **kwargs):
+        self.update_config(**kwargs)
+        self.save_config()
+
+    def update_config(self, **kwargs):
+        if not hasattr(self, 'config'):
+            setattr(self, 'config', {})
+        self.config.update(kwargs.copy())
+
+    def save_config(self):
+        save_config_file(self.exp_path, config=self.config)
+
     def build_and_run(self, predict=False, title=None, fit_kws=None, **kwargs):
+        setattr(self, '_model', None)
         raise NotImplementedError
 
     def build_from_config(self, config_path, weights, fit_kws, **kwargs):
+        setattr(self, '_model', None)
         raise NotImplementedError
 
     @property
@@ -56,9 +93,9 @@ class Experiments(object):
         self._num_samples = x
 
     def fit(self,
-            run_type="dry_run",
-            opt_method="bayes",
-            num_iterations=12,
+            run_type:str="dry_run",
+            opt_method:str="bayes",
+            num_iterations:int=12,
             include: Union[None, list] = None,
             exclude: Union[None, list, str] = '',
             post_optimize='eval_best',
@@ -66,21 +103,28 @@ class Experiments(object):
             predict_kws=None,
             hpo_kws: dict = None):
         """
+        Runs the fit loop for the specified models.
         todo, post_optimize not working for 'eval_best' with ML methods.
-        :param run_type: str, One of `dry_run` or `optimize`. If `dry_run`, the all the `models` will be trained only once.
-                              if `optimize`, then hyperparameters of all the models will be optimized.
-        :param opt_method: str, which optimization method to use. options are `bayes`, `random`, `grid`. ONly valid if
-                           `run_type` is `optimize`
-        :param num_iterations: int, number of iterations for optimization. Only valid if `run_type` is `optimize`.
-        :param include: list, name of models to included. If None, all the models found will be trained and or optimized.
-        :param exclude: list, name of `models` to be excluded
-        :param post_optimize: str, one of `eval_best` or `train_best`. If eval_best, the weights from the best models
-                              will be uploaded again and the model will be evaluated on train, test and all the data.
-                              if `train_best`, then a new model will be built and trained using the parameters of the
-                              best model.
-        :param fit_kws: dict,  key word arguments that will be passed to AI4Water's model.fit
-        :param predict_kws: dict, key word arguments that will be passed to AI4Water's model.predict
-        :param hpo_kws: keyword arguments for `HyperOpt` class.
+
+        Arguments:
+            run_type str: One of `dry_run` or `optimize`. If `dry_run`, the all
+                the `models` will be trained only once. if `optimize`, then
+                hyperparameters of all the models will be optimized.
+            opt_method str: which optimization method to use. options are `bayes`,
+                `random`, `grid`. ONly valid if `run_type` is `optimize`
+            num_iterations int: number of iterations for optimization. Only valid
+                if `run_type` is `optimize`.
+            include list: name of models to included. If None, all the models found
+                will be trained and or optimized.
+            exclude list: name of `models` to be excluded
+            post_optimize str: one of `eval_best` or `train_best`. If eval_best,
+               the weights from the best models will be uploaded again and the model
+               will be evaluated on train, test and all the data. If `train_best`,
+               then a new model will be built and trained using the parameters of
+               the best model.
+            fit_kws dict:  key word arguments that will be passed to AI4Water's model.fit
+            predict_kws dict: dict, key word arguments that will be passed to AI4Water's model.predict
+            hpo_kws dict: keyword arguments for `HyperOpt` class.
         """
 
         assert run_type in ['optimize', 'dry_run']
@@ -115,6 +159,9 @@ Available cases are {self.models} and you wanted to exclude
         self.simulations = {'train': {},
                             'test': {}}
 
+        self.config['eval_models'] = {}
+        self.config['optimized_models'] = {}
+
         for model_type in include:
 
             model_name = model_type.split('model_')[1]
@@ -142,6 +189,7 @@ Available cases are {self.models} and you wanted to exclude
                     self._populate_results(model_name, train_results, test_results)
                 else:
                     # there may be attributes int the model, which needs to be loaded so run the method first.
+                    # such as param_space etc.
                     if hasattr(self, model_type):
                         getattr(self, model_type)()
 
@@ -159,10 +207,18 @@ Available cases are {self.models} and you wanted to exclude
 
                     self.opt_results = self.optimizer.fit()
 
+                    self.config['optimized_models'][model_type] = self.optimizer.opt_path
+
                     if post_optimize == 'eval_best':
                         self.eval_best(model_name, opt_dir, fit_kws)
                     elif post_optimize=='train_best':
                         self.train_best(model_name)
+
+                if not hasattr(self, '_model'):  # todo asking user to define this parameter is not good
+                    raise ValueError(f'The `build_and_run` method must set a class level attribute named `_model`.')
+                self.config['eval_models'][model_type] = self._model.path
+
+        self.save_config()
         return
 
     def eval_best(self, model_type, opt_dir, fit_kws, **kwargs):
@@ -212,10 +268,15 @@ Available cases are {self.models} and you wanted to exclude
                      figsize: tuple = (9, 7),
                      **kwargs):
         """
-        :param include: if not None, must a list of models which will be included. None will result in plotting all the models.
-        :param exclude: if not None, must be a list of models which will excluded. None will result in no exclusion
-        :param figsize:
-        :param kwargs are all the keyword arguments from plot_taylor().
+        Arguments:
+            include list:
+                if not None, must a list of models which will be included.
+                None will result in plotting all the models.
+            exclude list:
+                if not None, must be a list of models which will excluded.
+                None will result in no exclusion
+            figsize tuple:
+            kwargs dict:  all the keyword arguments from plot_taylor().
         """
 
         include = self.check_include_arg(include)
@@ -309,14 +370,15 @@ Available cases are {self.models} and you wanted to include
         Example
         -----------
         ```python
-        >>>from AI4Water.data import load_30min
+        >>>from AI4Water.experiments import MLRegressionExperiments
+        >>>from AI4Water.utils.datasets import load_30min
         >>>data = load_30min()
         >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
         >>>outputs = ['target5']
-        >>>experiment = Experiments(data=data, inputs=inputs, outputs=outputs)
-        >>>experiment.fit(exclude=['model_TPOTREGRESSOR'])
+        >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
+        >>>experiment.fit(exclude=['TPOTRegressor'])
         >>>experiment.compare_errors('mse')
-        >>>experiment.compare_errors('r2', 0.5, 'greater')
+        >>>experiment.compare_errors('r2', 0.2, 'greater')
         ```
         """
 
@@ -405,30 +467,87 @@ Available cases are {self.models} and you wanted to include
         plt.show()
         return models
 
+    def plot_losses(self,
+                    loss_name:Union[str, list]='loss',
+                    save:bool=False,
+                    name:str='loss_comparison',
+                    **kwargs):
+        """Plots the loss curves of the evaluated models."""
+
+        if not isinstance(loss_name, list):
+            assert isinstance(loss_name, str)
+            loss_name = [loss_name]
+        loss_curves = {}
+        for _model, _path in self.config['eval_models'].items():
+            df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
+            loss_curves[_model] = df
+
+        plt.close('all')
+        fig, axis = plt.subplots()
+        for _model, _loss in loss_curves.items():
+            axis = process_axis(axis=axis, data=_loss, label=_model, linestyle='-', x_label="Epochs",
+                                y_label='Loss')
+
+        if save:
+            fname = os.path.join(self.exp_path,f'{name}_{loss_name}.png')
+            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+        plt.show()
+        return
+
+    def plot_convergence(self, save=False, name='convergence_comparison', **kwargs):
+        """
+        Plots the convergence plots of hyperparameter optimization runs.
+        Only valid if `fit` was run with `run_type=optimize`.
+        """
+        if len(self.config['optimized_models']) <1:
+            return
+        plt.close('all')
+        fig, axis = plt.subplots()
+
+        for _model, opt_path in self.config['optimized_models'].items():
+            with open(os.path.join(opt_path, 'iterations.json'), 'r') as fp:
+                iterations = json.load(fp)
+
+            convergence = sort_array(list(iterations.keys()))
+            process_axis(axis=axis, data=convergence, label=_model.split('model_')[1],
+                         linestyle='--',
+                         x_label='Number of iterations $n$',
+                         y_label=r"$\min f(x)$ after $n$ calls")
+        if save:
+            fname = os.path.join(self.exp_path,f'{name}.png')
+            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+        plt.show()
+        return
+
     @classmethod
     def from_config(cls, config_path, **kwargs):
-        if config_path.endswith('.json'):
+        if not config_path.endswith('.json'):
             raise ValueError(f"""
 {config_path} is not a json file
 """)
         with open(config_path, 'r') as fp:
             config = json.load(fp)
 
-        return cls(**config, **kwargs)
+        cls.config = config
+
+        return cls(exp_name=config['exp_name'], **kwargs)
 
 
 class MLRegressionExperiments(Experiments):
     """
-    Compares peformance of around 42 machine learning models for regression problem. The experiment consists of
-    `models` which are run using `fit()` method. A `model` is one experiment. This class consists of its own
-    `build_and_run` method which is run everytime for each `model` and is executed after calling  `model`. The
+    Compares peformance of around 42 machine learning models for regression problem.
+    The experiment consists of `models` which are run using `fit()` method. A `model`
+    is one experiment. This class consists of its own `build_and_run` method which
+    is run everytime for each `model` and is executed after calling  `model`. The
     `build_and_run` method takes the output of `model` and streams it to `Model` class.
 
-    The user can define new `models` by subclassing this class. In fact any new method in the sub-class which does not
-    starts with `model_` wll be considered as a new `model`. Otherwise the user has to overwite the
-    attribute `models` to redefine, which methods are to be used as models and which should not. The method which is a
-    `model` must only return key word arguments which will be streamed to the `Model` using `build_and_run` method.
-    Inside this new method the user can define, which parameters to optimize, their param_space for optimization
+    The user can define new `models` by subclassing this class. In fact any new
+    method in the sub-class which does not starts with `model_` wll be considered
+    as a new `model`. Otherwise the user has to overwite the attribute `models` to
+    redefine, which methods are to be used as models and which should not. The
+    method which is a `model` must only return key word arguments which will be
+    streamed to the `Model` using `build_and_run` method. Inside this new method
+    the user can define, which parameters to optimize, their param_space for optimization
     and the initial values to use for optimization.
 
     """
@@ -454,7 +573,7 @@ class MLRegressionExperiments(Experiments):
         Examples:
         --------
         ```python
-        >>>from AI4Water.data import load_30min
+        >>>from AI4Water.utils.datasets import load_30min
         >>>from AI4Water.experiments import MLRegressionExperiments
         >>> # first compare the performance of all available models without optimizing their parameters
         >>>data = load_30min()  # read data file, in this case load the default data
@@ -462,10 +581,11 @@ class MLRegressionExperiments(Experiments):
         >>>outputs = ['target5']
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-        >>>comparisons.fit(run_type="dry_run", exclude=['model_TPOTREGRESSOR'])
+        >>>comparisons.fit(run_type="dry_run", exclude=['TPOTRegressor'])
         >>>comparisons.compare_errors('r2')
         >>> # find out the models which resulted in r2> 0.5
-        >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.5)
+        >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
+        >>>best_models = [m[1] for m in best_models.values()]
         >>> # now build a new experiment for best models and otpimize them
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
@@ -482,6 +602,17 @@ class MLRegressionExperiments(Experiments):
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
+        if catboost is None:
+            self.models.remove('model_CATBoostRegressor')
+        if lightgbm is None:
+            self.models.remove('model_LGBMRegressor')
+        if xgboost is None:
+            self.models.remove('model_XGBoostRFRegressor')
+
+        if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
+            for m in ['model_PoissonRegressor', 'model_TweedieRegressor']:
+                self.models.remove(m)
+
     def build_and_run(self, predict=False, view=False, title=None,
                       fit_kws=None,
                       **kwargs):
@@ -495,6 +626,9 @@ class MLRegressionExperiments(Experiments):
             **self.model_kws,
             **kwargs
         )
+
+        setattr(self, '_model', model)
+
         model.fit(**fit_kws)
 
         en = fit_kws.get('en', None)
@@ -1093,6 +1227,8 @@ class MLClassificationExperiments(Experiments):
             **kwargs
         )
 
+        setattr(self, '_model', model)
+
         model.fit(**fit_kws)
 
         indices = model.train_indices if 'indices' in fit_kws else None
@@ -1432,7 +1568,7 @@ class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
     Examples
     --------
-    >>>from AI4Water.data import load_u1
+    >>>from AI4Water.utils.datasets import load_u1
     >>>from AI4Water.experiments import TransformationExperiments
     >>>class MyTransformationExperiments(TransformationExperiments):
     ...
@@ -1548,3 +1684,13 @@ Validation loss during all the epochs is NaN. Suggested parameters were
     def process_model_before_fit(self, model):
         """So that the user can perform procesisng of the model by overwriting this method"""
         return model
+
+
+def sort_array(array):
+    """
+    array: [4, 7, 3, 9, 4, 8, 2, 8, 7, 1]
+    returns: [4, 4, 3, 3, 3, 3, 2, 2, 2, 1]
+    """
+    results = np.array(array, dtype=np.float32)
+    iters = range(1, len(results) + 1)
+    return [np.min(results[:i]) for i in iters]

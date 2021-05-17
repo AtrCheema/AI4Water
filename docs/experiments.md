@@ -1,12 +1,13 @@
-
 # Experiments
-::: AI4Water.experiments.Experiments
-    handler: python
 
-# RegressionExperiments
-::: AI4Water.experiments.MLRegressionExperiments
-    handler: python
+ [Experiments](exp.md)
+ 
+ 
+ [MLRegressionExperiments](regression.md)
+ 
+ 
+ [MLClassificationExperiments](classification.md)
 
-# ClassificationExperiments
-::: AI4Water.experiments.MLClassificationExperiments
-    handler: python
+
+
+

@@ -38,7 +38,8 @@ inputs.remove('target_by_group')
 outputs = ['target']
 
 
-def check_attrs(optimizer, paras):
+def check_attrs(optimizer, paras, ai4water_args=None):
+    optimizer.eval_with_best(view_model=False)
     space = optimizer.space()
     assert isinstance(space, dict)
     assert len(space)==paras
@@ -48,6 +49,8 @@ def check_attrs(optimizer, paras):
     assert isinstance(optimizer.best_paras(False), dict)
     assert len(optimizer.func_vals()) > 1
     assert isinstance(optimizer.skopt_space(), Space)
+    if isinstance(ai4water_args, dict):
+        assert 'model' in ai4water_args
 
 def run_ai4water(method):
     dims = {'n_estimators': [1000,  2000],
@@ -80,7 +83,7 @@ def run_ai4water(method):
 
     # executes bayesian optimization
     opt.fit()
-    check_attrs(opt, 4)
+    check_attrs(opt, 4, ai4water_args)
     return
 
 
@@ -341,7 +344,7 @@ class TestHyperOpt(unittest.TestCase):
                        )
 
         opt.fit()
-        check_attrs(opt, 4)
+        check_attrs(opt, 4, ai4water_args)
         return
 
     def test_ai4water_grid(self):
@@ -455,43 +458,45 @@ class TestHyperOpt(unittest.TestCase):
         """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
         successfully.
         """
+        ai4water_args = {'model': 'XGBoostRegressor',
+                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'outputs': ['target']
+                                     }
         opt = HyperOpt("tpe",
                        param_space=[Integer(low=1000, high=2000, name='n_estimators', num_samples=5),
                                     Integer(low=3, high=6, name='max_depth', num_samples=5),
                                     Categorical(['gbtree', 'gblinear', 'dart'], name='booster')
                                     ],
-                       ai4water_args ={'model': 'XGBoostRegressor',
-                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-                                     'outputs': ['target']
-                                     },
+                       ai4water_args =ai4water_args,
                        data =data,
                        backend='hyperopt',
                        num_iterations =5
                        )
         opt.fit()
-        check_attrs(opt, 3)
+        check_attrs(opt, 3, ai4water_args)
         assert isinstance(list(opt.best_paras().values())[-1], str)
 
     def test_hp_to_skopt_space1(self):
         """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
         successfully.
         """
+        ai4water_args = {'model': 'XGBoostRegressor',
+                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'outputs': ['target']
+                                     }
         opt = HyperOpt("tpe",
                        param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
                                     hp.randint('max_depth', low=3, high=6),
                                     hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
                                     ],
 
-                       ai4water_args ={'model': 'XGBoostRegressor',
-                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-                                     'outputs': ['target']
-                                     },
+                       ai4water_args =ai4water_args,
                        data =data,
                        backend='hyperopt',
                        num_iterations =5
                        )
         opt.fit()
-        check_attrs(opt, 3)
+        check_attrs(opt, 3, ai4water_args)
         assert isinstance(list(opt.best_paras().values())[-1], str)
 
     def test_unified_interface(self):

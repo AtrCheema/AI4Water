@@ -266,6 +266,7 @@ def sanity_check(dataset_name, path):
 
 
 class Datasets(object):
+
     def __init__(self, name=None):
         if name is None:
             name = self.__class__.__name__
@@ -393,31 +394,37 @@ Use overwrite=True to remove previously saved files and download again""")
 
 class Camels(Datasets):
 
-    """Get CAMELS dataset.
+    """
+    Get CAMELS dataset.
     This class first downloads the CAMELS dataset if it is not already downloaded. Then the selected attribute
     for a selected id are fetched and provided to the user using the method `fetch`.
 
-    Attributes
-        ds_dir: diretory of the dataset
-        dynamic_attributes: tells which dynamic attributes are available in this dataset
-        static_attribute_categories: tells which kinds of static attributes are present in this category.
+    Attributes:
+        ds_dir : diretory of the dataset
+        dynamic_attributes : tells which dynamic attributes are available in this dataset
+        static_attribute_categories : tells which kinds of static attributes are present in this category.
 
 
     Methods:
-        stations: returns the stations for which the data (dynamic attributes) exists as list of strings.
+        stations : returns the stations for which the data (dynamic attributes) exists as list of strings.
 
-        fetch: fetches all attributes (both static and dynamic type) of all station/gauge_ids or a speficified station.
-               It can also be used to fetch all attributes of a number of stations ids either by providing their
-               guage_id or by just saying that we need data of 20 stations which will then be chosen randomly.
+        fetch :
+            fetches all attributes (both static and dynamic type) of all station/gauge_ids
+                or a speficified station. It can also be used to fetch all attributes
+                of a number of stations ids either by providing their guage_id or
+                by just saying that we need data of 20 stations which will then
+                be chosen randomly.
 
-        fetch_dynamic_attributes: fetches speficied dynamic attributes of one specified station. If the dynamic attribute
-                                  is not specified, all dynamic attributes will be fetched for the specified station.
-                                  If station is not specified, the specified dynamic attributes will be fetched for all
-                                  stations.
+        fetch_dynamic_attributes :
+            fetches speficied dynamic attributes of one specified station. If the
+            dynamic attribute is not specified, all dynamic attributes will be
+            fetched for the specified station. If station is not specified, the
+            specified dynamic attributes will be fetched for all stations.
 
-        fetch_static_attributes: works same as `fetch_dynamic_attributes` but for `static` attributes. Here if the
-                                 `category` is not specified then static attributes of the specified station for all
-                                 categories are returned.
+        fetch_static_attributes :
+            works same as `fetch_dynamic_attributes` but for `static` attributes.
+            Here if the `category` is not specified then static attributes of
+            the specified station for all categories are returned.
     """
 
     DATASETS = {
@@ -1040,16 +1047,27 @@ class CAMELS_BR(Camels):
                                 as_ts=False,
                                 **kwargs)->pd.DataFrame:
         """
-        :param stn_id: int, station id whose attribute to fetch
-        :param categories: str, represents the type of static attribute to fetch e.g. climate, the one of the file
-                              name must have this in its name, otherwise this function will return None.
-        :param attributes: str, list, name of attribute to fetch. Default is None, which will return all the
-                               attributes for a particular station of the specified category.
-        :param index_col_name: str, name of column containing station names
-        :param kwargs: keyword arguments to be passed to pd.read_csv to read files.
-        :param as_ts:
+        Arguments:
+        stn_id int:
+            station id whose attribute to fetch
+        categories str:
+            represents the type of static attribute to fetch e.g. climate, the one
+            of the file name must have this in its name, otherwise this function
+            will return None.
+        attributes str/list:
+            name of attribute to fetch. Default is None, which will return all the
+            attributes for a particular station of the specified category.
+        index_col_name str:
+            name of column containing station names
+        kwargs dict:
+            keyword arguments to be passed to pd.read_csv to read files.
+        as_ts bool:
+
+        Example
+        ```python
         >>>dataset = Camels('CAMELS-BR')
         >>>df = dataset.fetch_static_attributes(11500000, 'climate')
+        ```
         """
         if not kwargs:
             kwargs = {'sep': ' '}

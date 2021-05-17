@@ -267,24 +267,24 @@ class Metrics(object):
     def abs_pbias(self) -> float:
         """ Absolute Percent bias"""
         _apb = 100.0 * sum(abs(self.predicted - self.true)) / sum(self.true)  # Absolute percent bias
-        return _apb
+        return float(_apb)
 
-    def acc(self):
+    def acc(self) -> float:
         """Anomaly correction coefficient.
         Reference: Langland et al., 2012. Miyakoda et al., 1972. Murphy et al., 1989."""
         a = self.predicted - np.mean(self.predicted)
         b = self.true - np.mean(self.true)
         c = np.std(self.true, ddof=1) * np.std(self.predicted, ddof=1) * self.predicted.size
-        return np.dot(a, b / c)
+        return float(np.dot(a, b / c))
 
-    def adjusted_r2(self):
+    def adjusted_r2(self) -> float:
         """
         Adjusted R squared
         """
         k = 1
         n = len(self.predicted)
         adj_r = 1 - ((1 - self.r2()) * (n - 1)) / (n - k - 1)
-        return adj_r
+        return float(adj_r)
 
     def agreement_index(self) -> float:
         """
@@ -301,7 +301,7 @@ class Metrics(object):
         """
         agreement_index = 1 - (np.sum((self.true - self.predicted) ** 2)) / (np.sum(
             (np.abs(self.predicted - np.mean(self.true)) + np.abs(self.true - np.mean(self.true))) ** 2))
-        return agreement_index
+        return float(agreement_index)
 
     def aic(self, p=1) -> float:
         """
@@ -314,9 +314,9 @@ class Metrics(object):
         n = len(self.true)
         resid = np.subtract(self.predicted, self.true)
         rss = np.sum(np.power(resid, 2))
-        return n * np.log(rss / n) + 2 * p
+        return float(n * np.log(rss / n) + 2 * p)
 
-    def aitchison(self, center='mean'):
+    def aitchison(self, center='mean') -> float:
         """ Aitchison distance. used in https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf"""
         lx = np.log(self.true)
         ly = np.log(self.predicted)
@@ -332,20 +332,20 @@ class Metrics(object):
         d = (sum((clr_x - clr_y) ** 2)) ** 0.5
         return float(d)
 
-    def amemiya_adj_r2(self):
+    def amemiya_adj_r2(self) -> float:
         """Amemiya’s Adjusted R-squared"""
         k = 1
         n = len(self.predicted)
         adj_r = 1 - ((1 - self.r2()) * (n + k)) / (n - k - 1)
-        return adj_r
+        return float(adj_r)
 
-    def amemiya_pred_criterion(self):
+    def amemiya_pred_criterion(self) -> float:
         """Amemiya’s Prediction Criterion"""
         k = 1
         n = len(self.predicted)
         resid = np.subtract(self.predicted, self.true)
         sse = np.sum(np.power(resid, 2))  # sum of squared errors
-        return ((n + k) / (n - k)) * (1/n) * sse
+        return float(((n + k) / (n - k)) * (1/n) * sse)
 
     def bias(self) -> float:
         """
@@ -357,17 +357,23 @@ class Metrics(object):
         return float(bias)
 
     def bic(self, p=1) -> float:
-        """Bayesian Information Criterion
+        """
+        Bayesian Information Criterion
+        Minimising the BIC is intended to give the best model. The
+        model chosen by the BIC is either the same as that chosen by the AIC, or one
+        with fewer terms. This is because the BIC penalises the number of parameters
+        more heavily than the AIC [1].
         Modified after https://github.com/UBC-MDS/RegscorePy/blob/master/RegscorePy/bic.py
+        [1]: https://otexts.com/fpp2/selecting-predictors.html#schwarzs-bayesian-information-criterion
         """
         assert p >= 0
 
         n = len(self.true)
         residual = np.subtract(self.predicted, self.true)
         SSE = np.sum(np.power(residual, 2))
-        return n * np.log(SSE / n) + p * np.log(n)
+        return float(n * np.log(SSE / n) + p * np.log(n))
 
-    def brier_score(self):
+    def brier_score(self) -> float:
         """
         Adopted from https://github.com/PeterRochford/SkillMetrics/blob/master/skill_metrics/brier_score.py
         Calculates the Brier score (BS), a measure of the mean-square error of
@@ -416,7 +422,7 @@ class Metrics(object):
              \\sqrt{\\sum ^n _{i=1}(s_i - \\bar{s})^2}}
         """
         correlation_coefficient = np.corrcoef(self.true, self.predicted)[0, 1]
-        return correlation_coefficient
+        return float(correlation_coefficient)
 
     def composite_metrics(self):
             pass
@@ -442,9 +448,9 @@ class Metrics(object):
         itemvars = itemscores.var(axis=1, ddof=1)
         tscores = itemscores.sum(axis=0)
         nitems = len(itemscores)
-        return nitems / (nitems - 1.) * (1 - itemvars.sum() / tscores.var(ddof=1))
+        return float(nitems / (nitems - 1.) * (1 - itemvars.sum() / tscores.var(ddof=1)))
 
-    def centered_rms_dev(self):
+    def centered_rms_dev(self) -> float:
         """
         Modified after https://github.com/PeterRochford/SkillMetrics/blob/master/skill_metrics/centered_rms_dev.py
         Calculates the centered root-mean-square (RMS) difference between true and predicted
@@ -465,7 +471,7 @@ class Metrics(object):
         crmsd = np.sum(crmsd) / self.predicted.size
         crmsd = np.sqrt(crmsd)
 
-        return crmsd
+        return float(crmsd)
 
     def decomposed_mse(self) -> float:
         """
@@ -485,16 +491,16 @@ class Metrics(object):
 
         decomposed_mse = bias_squared + sdsd + lcs
 
-        return decomposed_mse
+        return float(decomposed_mse)
 
-    def euclid_distance(self):
+    def euclid_distance(self) -> float:
         """Euclidian distance
 
         Referneces: Kennard et al., 2010
         """
-        return np.linalg.norm(self.true - self.predicted)
+        return float(np.linalg.norm(self.true - self.predicted))
 
-    def exp_var_score(self, weights=None):
+    def exp_var_score(self, weights=None) -> float:
         """
         Explained variance score
         https://stackoverflow.com/questions/24378176/python-sci-kit-learn-metrics-difference-between-r2-score-and-explained-varian
@@ -512,7 +518,7 @@ class Metrics(object):
             return None
         output_scores = _foo(denominator, numerator)
 
-        return np.average(output_scores, weights=weights)
+        return float(np.average(output_scores, weights=weights))
 
     def expanded_uncertainty(self, cov_fact=1.96) -> float:
         """By default it calculates uncertainty with 95% confidence interval. 1.96 is the coverage factor
@@ -523,7 +529,7 @@ class Metrics(object):
         [2] https://doi.org/10.1016/j.rser.2014.07.117
         """
         sd = np.std(self._error(self.true, self.predicted))
-        return cov_fact * np.sqrt(sd ** 2 + self.rmse() ** 2)
+        return float(cov_fact * np.sqrt(sd ** 2 + self.rmse() ** 2))
 
     def fdc_fhv(self, h: float = 0.02) -> float:
         """
@@ -554,7 +560,7 @@ class Metrics(object):
 
         fhv = np.sum(sim - obs) / (np.sum(obs) + 1e-6)
 
-        return fhv * 100
+        return float(fhv * 100)
 
     def fdc_flv(self, low_flow: float = 0.3) -> float:
         """
@@ -608,28 +614,28 @@ class Metrics(object):
 
         flv = -1 * (qsl - qol) / (qol + 1e-6)
 
-        return flv * 100
+        return float(flv * 100)
 
-    def gmae(self):
+    def gmae(self) -> float:
         """ Geometric Mean Absolute Error """
         return _geometric_mean(np.abs(self._error()))
 
-    def gmean_diff(self):
+    def gmean_diff(self) -> float:
         """Geometric mean difference. First geometric mean is calculated for each of two samples and their difference
         is calculated."""
         sim_log = np.log1p(self.predicted)
         obs_log = np.log1p(self.true)
-        return np.exp(gmean(sim_log) - gmean(obs_log))
+        return float(np.exp(gmean(sim_log) - gmean(obs_log)))
 
-    def gmrae(self, benchmark: np.ndarray = None):
+    def gmrae(self, benchmark: np.ndarray = None) -> float:
         """ Geometric Mean Relative Absolute Error """
         return _geometric_mean(np.abs(self._relative_error(benchmark)))
 
-    def inrse(self):
+    def inrse(self) -> float:
         """ Integral Normalized Root Squared Error """
-        return np.sqrt(np.sum(np.square(self._error())) / np.sum(np.square(self.true - np.mean(self.true))))
+        return float(np.sqrt(np.sum(np.square(self._error())) / np.sum(np.square(self.true - np.mean(self.true)))))
 
-    def irmse(self):
+    def irmse(self) -> float:
         """Inertial RMSE. RMSE divided by standard deviation of the gradient of true."""
         # Getting the gradient of the observed data
         obs_len = self.true.size
@@ -639,9 +645,9 @@ class Metrics(object):
         obs_grad_std = np.std(obs_grad, ddof=1)
 
         # Divide RMSE by the standard deviation of the gradient of the observed data
-        return self.rmse() / obs_grad_std
+        return float(self.rmse() / obs_grad_std)
 
-    def JS(self):
+    def JS(self) -> float:
         """Jensen-shannon divergence"""
         warnings.filterwarnings("ignore", category=RuntimeWarning)
         d1 = self.true * np.log2(2 * self.true / (self.true + self.predicted))
@@ -649,7 +655,7 @@ class Metrics(object):
         d1[np.isnan(d1)] = 0
         d2[np.isnan(d2)] = 0
         d = 0.5 * sum(d1 + d2)
-        return d
+        return float(d)
 
     def kendaull_tau(self, return_p=False):
         """Kendall's tau
@@ -675,13 +681,13 @@ class Metrics(object):
         cc = np.corrcoef(self.true, self.predicted)[0, 1]
         alpha = np.std(self.predicted) / np.std(self.true)
         beta = np.sum(self.predicted) / np.sum(self.true)
-        kge = 1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2)
+        kge = float(1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2))
         if return_all:
             return np.vstack((kge, cc, alpha, beta))
         else:
             return kge
 
-    def kge_bound(self):
+    def kge_bound(self) -> float:
         """
         Bounded Version of the Original Kling-Gupta Efficiency
         https://iahs.info/uploads/dms/13614.21--211-219-41-MATHEVET.pdf
@@ -689,7 +695,7 @@ class Metrics(object):
         kge_ = self.kge(return_all=True)[0, :]
         kge_c2m_ = kge_ / (2 - kge_)
 
-        return kge_c2m_
+        return float(kge_c2m_)
 
     def kge_mod(self, return_all=False):
         """
@@ -707,7 +713,7 @@ class Metrics(object):
         # calculate error in volume beta (bias of mean discharge)
         beta = np.mean(self.predicted, axis=0, dtype=np.float64) / np.mean(self.true, axis=0, dtype=np.float64)
         # calculate the modified Kling-Gupta Efficiency KGE'
-        kgeprime_ = 1 - np.sqrt((r - 1) ** 2 + (gamma - 1) ** 2 + (beta - 1) ** 2)
+        kgeprime_ = float(1 - np.sqrt((r - 1) ** 2 + (gamma - 1) ** 2 + (beta - 1) ** 2))
 
         if return_all:
             return np.vstack((kgeprime_, r, gamma, beta))
@@ -735,13 +741,13 @@ class Metrics(object):
         alpha = 1 - 0.5 * np.nanmean(np.abs(fdc_sim - fdc_obs))
 
         beta = np.mean(self.predicted) / np.mean(self.true)
-        kge = 1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2)
+        kge = float(1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2))
         if return_all:
             return np.vstack((kge, cc, alpha, beta))
         else:
             return kge
 
-    def kgeprime_c2m(self):
+    def kgeprime_c2m(self) -> float:
         """
         https://iahs.info/uploads/dms/13614.21--211-219-41-MATHEVET.pdf
          Bounded Version of the Modified Kling-Gupta Efficiency
@@ -749,7 +755,7 @@ class Metrics(object):
         kgeprime_ = self.kge_mod(return_all=True)[0, :]
         kgeprime_c2m_ = kgeprime_ / (2 - kgeprime_)
 
-        return kgeprime_c2m_
+        return float(kgeprime_c2m_)
 
     def kgenp_bound(self):
         """
@@ -758,9 +764,9 @@ class Metrics(object):
         kgenp_ = self.kge_np(return_all=True)[0, :]
         kgenp_c2m_ = kgenp_ / (2 - kgenp_)
 
-        return kgenp_c2m_
+        return float(kgenp_c2m_)
 
-    def KLsym(self):
+    def KLsym(self) -> float:
         """Symmetric kullback-leibler divergence"""
         if not all((self.true == 0) == (self.predicted == 0)):
             return None  # ('KL divergence not defined when only one distribution is 0.')
@@ -770,38 +776,38 @@ class Metrics(object):
         x[x == 0] = 1
         y[y == 0] = 1
         d = 0.5 * np.sum((x - y) * (np.log2(x) - np.log2(y)))
-        return d
+        return float(d)
 
-    def lm_index(self, obs_bar_p=None):
+    def lm_index(self, obs_bar_p=None) -> float:
         """Legate-McCabe Efficiency Index.
         Less sensitive to outliers in the data.
         obs_bar_p: float, Seasonal or other selected average. If None, the mean of the observed array will be used.
         """
         mean_obs = np.mean(self.true)
+        a = np.abs(self.predicted - self.true)
 
         if obs_bar_p is not None:
-            a = np.abs(self.predicted - self.true)
-            b = np.abs(self.true - obs_bar_p)
-            return 1 - (np.sum(a) / np.sum(b))
-        else:
-            a = np.abs(self.predicted - self.true)
-            b = np.abs(self.true - mean_obs)
-            return 1 - (np.sum(a) / np.sum(b))
 
-    def maape(self):
+            b = np.abs(self.true - obs_bar_p)
+        else:
+            b = np.abs(self.true - mean_obs)
+
+        return float(1 - (np.sum(a) / np.sum(b)))
+
+    def maape(self) -> float:
         """
         Mean Arctangent Absolute Percentage Error
         Note: result is NOT multiplied by 100
         """
-        return np.mean(np.arctan(np.abs((self.true - self.predicted) / (self.true + EPS))))
+        return float(np.mean(np.arctan(np.abs((self.true - self.predicted) / (self.true + EPS)))))
 
-    def mae(self, true=None, predicted=None):
+    def mae(self, true=None, predicted=None) -> float:
         """ Mean Absolute Error """
         if true is None:
             true = self.true
         if predicted is None:
             predicted = self.predicted
-        return np.mean(np.abs(true - predicted))
+        return float(np.mean(np.abs(true - predicted)))
 
     def mape(self) -> float:
         """ Mean Absolute Percentage Error.
@@ -814,7 +820,7 @@ class Metrics(object):
         [2] https://doi.org/10.1088/1742-6596/930/1/012002
         [3] https://doi.org/10.1016/j.ijforecast.2015.12.003
         """
-        return np.mean(np.abs((self.true - self.predicted) / self.true)) * 100
+        return float(np.mean(np.abs((self.true - self.predicted) / self.true)) * 100)
 
     def mbe(self) -> float:
         """Mean bias error. This indicator expresses a tendency of model to underestimate (negative value)
@@ -827,15 +833,15 @@ class Metrics(object):
         """
         return float(np.mean(self._error(self.true, self.predicted)))
 
-    def mbrae(self, benchmark: np.ndarray = None):
+    def mbrae(self, benchmark: np.ndarray = None) -> float:
         """ Mean Bounded Relative Absolute Error """
-        return np.mean(self._bounded_relative_error(benchmark))
+        return float(np.mean(self._bounded_relative_error(benchmark)))
 
-    def mapd(self):
+    def mapd(self) -> float:
         """Mean absolute percentage deviation."""
         a = np.sum(np.abs(self.predicted - self.true))
         b = np.sum(np.abs(self.true))
-        return a / b
+        return float(a / b)
 
     def mase(self, seasonality: int = 1):
         """
@@ -857,9 +863,9 @@ class Metrics(object):
         """
         maximum error
         """
-        return np.max(self._ae())
+        return float(np.max(self._ae()))
 
-    def mb_r(self):
+    def mb_r(self) -> float:
         """Mielke-Berry R value.
         Berry and Mielke, 1988.
         Mielke, P. W., & Berry, K. J. (2007). Permutation methods: a distance function approach.
@@ -873,32 +879,32 @@ class Metrics(object):
         mae_val = np.sum(np.abs(self.predicted - self.true)) / n
         mb = 1 - ((n ** 2) * mae_val / tot)
 
-        return mb
+        return float(mb)
 
-    def mda(self):
+    def mda(self) -> float:
         """ Mean Directional Accuracy
          modified after https://gist.github.com/bshishov/5dc237f59f019b26145648e2124ca1c9
          """
         dict_acc = np.sign(self.true[1:] - self.true[:-1]) == np.sign(self.predicted[1:] - self.predicted[:-1])
-        return np.mean(dict_acc)
+        return float(np.mean(dict_acc))
 
-    def mde(self):
+    def mde(self) -> float:
         """Median Error"""
-        return np.median(self.predicted - self.true)
+        return float(np.median(self.predicted - self.true))
 
-    def mdape(self):
+    def mdape(self) -> float:
         """
         Median Absolute Percentage Error
         """
-        return np.median(np.abs(self._percentage_error())) * 100
+        return float(np.median(np.abs(self._percentage_error())) * 100)
 
-    def mdrae(self, benchmark: np.ndarray = None):
+    def mdrae(self, benchmark: np.ndarray = None) -> float:
         """ Median Relative Absolute Error """
-        return np.median(np.abs(self._relative_error(benchmark)))
+        return float(np.median(np.abs(self._relative_error(benchmark))))
 
     def me(self):
         """Mean error """
-        return np.mean(self._error())
+        return float(np.mean(self._error()))
 
     def mean_bias_error(self) -> float:
         """
@@ -918,11 +924,11 @@ class Metrics(object):
          http://dx.doi.org/10.1061/(ASCE)HE.1943-5584.0001066
     [3]  https://doi.org/10.1016/j.rser.2015.08.035
          """
-        return np.sum(self.true - self.predicted) / len(self.true)
+        return float(np.sum(self.true - self.predicted) / len(self.true))
 
-    def mean_var(self):
+    def mean_var(self) -> float:
         """Mean variance"""
-        return np.var(np.log1p(self.true) - np.log1p(self.predicted))
+        return float(np.var(np.log1p(self.true) - np.log1p(self.predicted)))
 
     def mean_poisson_deviance(self, weights=None) -> float:
         """
@@ -930,7 +936,7 @@ class Metrics(object):
         """
         return _mean_tweedie_deviance(self.true, self.predicted, weights=weights, power=1)
 
-    def mean_gamma_deviance(self, weights=None):
+    def mean_gamma_deviance(self, weights=None) -> float:
         """
         mean gamma deviance
         """
@@ -942,51 +948,51 @@ class Metrics(object):
         """
         return float(np.median(np.abs(self.predicted - self.true), axis=0))
 
-    def med_seq_error(self):
+    def med_seq_error(self) -> float:
         """Median Squared Error
         Same as mse but it takes median which reduces the impact of outliers.
         """
-        return np.median((self.predicted - self.true) ** 2)
+        return float(np.median((self.predicted - self.true) ** 2))
 
-    def mle(self):
+    def mle(self) -> float:
         """Mean log error"""
-        return np.mean(np.log1p(self.predicted) - np.log1p(self.true))
+        return float(np.mean(np.log1p(self.predicted) - np.log1p(self.true)))
 
-    def mod_agreement_index(self, j=1):
+    def mod_agreement_index(self, j=1) -> float:
         """Modified agreement of index.
         j: int, when j==1, this is same as agreement_index. Higher j means more impact of outliers."""
         a = (np.abs(self.predicted - self.true)) ** j
         b = np.abs(self.predicted - np.mean(self.true))
         c = np.abs(self.true - np.mean(self.true))
         e = (b + c) ** j
-        return 1 - (np.sum(a) / np.sum(e))
+        return float(1 - (np.sum(a) / np.sum(e)))
 
-    def mpe(self):
+    def mpe(self) -> float:
         """ Mean Percentage Error """
-        return np.mean(self._percentage_error())
+        return float(np.mean(self._percentage_error()))
 
     def mrae(self, benchmark: np.ndarray = None):
         """ Mean Relative Absolute Error """
-        return np.mean(np.abs(self._relative_error(benchmark)))
+        return float(np.mean(np.abs(self._relative_error(benchmark))))
 
     def mse(self, weights=None) -> float:
         """ mean square error """
-        return np.average((self.true - self.predicted) ** 2, axis=0, weights=weights)
+        return float(np.average((self.true - self.predicted) ** 2, axis=0, weights=weights))
 
     def msle(self, weights=None) -> float:
         """
         mean square logrithmic error
         """
-        return np.average((np.log1p(self.true) - np.log1p(self.predicted)) ** 2, axis=0, weights=weights)
+        return float(np.average((np.log1p(self.true) - np.log1p(self.predicted)) ** 2, axis=0, weights=weights))
 
-    def norm_euclid_distance(self):
+    def norm_euclid_distance(self) -> float:
         """Normalized Euclidian distance"""
 
         a = self.true / np.mean(self.true)
         b = self.predicted / np.mean(self.predicted)
-        return np.linalg.norm(a - b)
+        return float(np.linalg.norm(a - b))
 
-    def nrmse_range(self):
+    def nrmse_range(self) -> float:
         """Range Normalized Root Mean Squared Error.
         RMSE normalized by true values. This allows comparison between data sets with different scales. It is more
         sensitive to outliers.
@@ -994,9 +1000,9 @@ class Metrics(object):
         Reference: Pontius et al., 2008
         """
 
-        return self.rmse() / (np.max(self.true) - np.min(self.true))
+        return float(self.rmse() / (np.max(self.true) - np.min(self.true)))
 
-    def nrmse_ipercentile(self, q1=25, q2=75):
+    def nrmse_ipercentile(self, q1=25, q2=75) -> float:
         """
         RMSE normalized by inter percentile range of true. This is least sensitive to outliers.
         q1: any interger between 1 and 99
@@ -1008,27 +1014,27 @@ class Metrics(object):
         q3 = np.percentile(self.true, q2)
         iqr = q3 - q1
 
-        return self.rmse() / iqr
+        return float(self.rmse() / iqr)
 
-    def nrmse_mean(self):
+    def nrmse_mean(self) -> float:
         """Mean Normalized RMSE
         RMSE normalized by mean of true values.This allows comparison between datasets with different scales.
 
         Reference: Pontius et al., 2008
         """
-        return self.rmse() / np.mean(self.true)
+        return float(self.rmse() / np.mean(self.true))
 
-    def norm_ae(self):
+    def norm_ae(self) -> float:
         """ Normalized Absolute Error """
-        return np.sqrt(np.sum(np.square(self._error() - self.mae())) / (len(self.true) - 1))
+        return float(np.sqrt(np.sum(np.square(self._error() - self.mae())) / (len(self.true) - 1)))
 
-    def norm_ape(self):
+    def norm_ape(self) -> float:
         """ Normalized Absolute Percentage Error """
-        return np.sqrt(np.sum(np.square(self._percentage_error() - self.mape())) / (len(self.true) - 1))
+        return float(np.sqrt(np.sum(np.square(self._percentage_error() - self.mape())) / (len(self.true) - 1)))
 
     def nrmse(self) -> float:
         """ Normalized Root Mean Squared Error """
-        return self.rmse() / (np.max(self.true) - np.min(self.true))
+        return float(self.rmse() / (np.max(self.true) - np.min(self.true)))
 
     def nse(self) -> float:
         """Nash-Sutcliff Efficiency.
@@ -1043,7 +1049,7 @@ class Metrics(object):
             model assessment. Adv. Geosci., 5, 89-97. http://dx.doi.org/10.5194/adgeo-5-89-2005.
         """
         _nse = 1 - sum((self.predicted - self.true) ** 2) / sum((self.true - np.mean(self.true)) ** 2)
-        return _nse
+        return float(_nse)
 
     def nse_alpha(self) -> float:
         """
@@ -1055,7 +1061,7 @@ class Metrics(object):
             Alpha decomposition of the NSE
 
         """
-        return np.std(self.predicted) / np.std(self.true)
+        return float(np.std(self.predicted) / np.std(self.true))
 
     def nse_beta(self) -> float:
         """
@@ -1066,27 +1072,27 @@ class Metrics(object):
         float
             Beta decomposition of the NSE
         """
-        return (np.mean(self.predicted) - np.mean(self.true)) / np.std(self.true)
+        return float((np.mean(self.predicted) - np.mean(self.true)) / np.std(self.true))
 
-    def nse_mod(self, j=1):
+    def nse_mod(self, j=1) -> float:
         """
         Gives less weightage of outliers if j=1 and if j>1, gives more weightage to outliers.
         Reference: Krause et al., 2005
         """
         a = (np.abs(self.predicted - self.true)) ** j
         b = (np.abs(self.true - np.mean(self.true))) ** j
-        return 1 - (np.sum(a) / np.sum(b))
+        return float(1 - (np.sum(a) / np.sum(b)))
 
-    def nse_rel(self):
+    def nse_rel(self) -> float:
         """
         Relative NSE.
         """
 
         a = (np.abs((self.predicted - self.true) / self.true)) ** 2
         b = (np.abs((self.true - np.mean(self.true)) / np.mean(self.true))) ** 2
-        return 1 - (np.sum(a) / np.sum(b))
+        return float(1 - (np.sum(a) / np.sum(b)))
 
-    def nse_bound(self):
+    def nse_bound(self) -> float:
         """
         Bounded Version of the Nash-Sutcliffe Efficiency
         https://iahs.info/uploads/dms/13614.21--211-219-41-MATHEVET.pdf
@@ -1094,7 +1100,7 @@ class Metrics(object):
         nse_ = self.nse()
         nse_c2m_ = nse_ / (2 - nse_)
 
-        return nse_c2m_
+        return (nse_c2m_)
 
     def log_nse(self, epsilon=0.0) -> float:
         """
@@ -1117,7 +1123,8 @@ class Metrics(object):
         return float(np.mean(normpdf))
 
     def pbias(self) -> float:
-        """ Percent Bias.
+        """
+        Percent Bias.
         It determine how well the model simulates the average magnitudes for the output response of interest. It can
         also determine over and under-prediction. It cannot be used (1) for single-event simula-tions to identify
         differences in timing and magnitude of peak flows and the shape of recession curves nor (2) to determine how
@@ -1126,10 +1133,11 @@ class Metrics(object):
         PBIAS will be close to zero even though the model simulation is poor. [1]
         [1] Moriasi et al., 2015
         """
-        return 100.0 * sum(self.predicted - self.true) / sum(self.true)  # percent bias
+        return float(100.0 * sum(self.predicted - self.true) / sum(self.true))
 
-    def pearson_r(self):
-        """Pearson correlation coefficient.
+    def pearson_r(self) -> float:
+        """
+        Pearson correlation coefficient.
         Measures linear correlatin. Sensitive to outliers.
         Reference: Pearson, K 1895.
         """
@@ -1140,12 +1148,12 @@ class Metrics(object):
         bot1 = np.sqrt(np.sum((self.true - obs_mean) ** 2))
         bot2 = np.sqrt(np.sum((self.predicted - sim_mean) ** 2))
 
-        return top / (bot1 * bot2)
+        return float(top / (bot1 * bot2))
 
     def percentage_metrics(self):
             pass
 
-    def rmsle(self):
+    def rmsle(self) -> float:
         """Root mean square log error. Compared to RMSE, RMSLE only considers the relative error between predicted and
          actual values, and the scale of the error is nullified by the log-transformation. Furthermore, RMSLE penalizes
          underestimation more than overestimation. This is especially useful in our studies where the underestimation
@@ -1153,43 +1161,43 @@ class Metrics(object):
 
          [1] https://doi.org/10.1016/j.scitotenv.2020.137894
          """
-        return np.sqrt(np.mean(np.power(np.log1p(self.predicted) - np.log1p(self.true), 2)))
+        return float(np.sqrt(np.mean(np.power(np.log1p(self.predicted) - np.log1p(self.true), 2))))
 
-    def rmdspe(self):
+    def rmdspe(self) -> float:
         """
         Root Median Squared Percentage Error
         """
-        return np.sqrt(np.median(np.square(self._percentage_error()))) * 100.0
+        return float(np.sqrt(np.median(np.square(self._percentage_error()))) * 100.0)
 
-    def rse(self):
+    def rse(self) -> float:
         """Relative Squared Error"""
-        return np.sum(np.square(self.true - self.predicted)) / np.sum(np.square(self.true - np.mean(self.true)))
+        return float(np.sum(np.square(self.true - self.predicted)) / np.sum(np.square(self.true - np.mean(self.true))))
 
-    def rrse(self):
+    def rrse(self) -> float:
         """ Root Relative Squared Error """
-        return np.sqrt(self.rse())
+        return float(np.sqrt(self.rse()))
 
-    def rae(self):
+    def rae(self) -> float:
         """ Relative Absolute Error (aka Approximation Error) """
-        return np.sum(self._ae()) / (np.sum(np.abs(self.true - np.mean(self.true))) + EPS)
+        return float(np.sum(self._ae()) / (np.sum(np.abs(self.true - np.mean(self.true))) + EPS))
 
-    def ref_agreement_index(self):
+    def ref_agreement_index(self) -> float:
         """Refined Index of Agreement. From -1 to 1. Larger the better.
         Refrence: Willmott et al., 2012"""
         a = np.sum(np.abs(self.predicted - self.true))
         b = 2 * np.sum(np.abs(self.true - self.true.mean()))
         if a <= b:
-            return 1 - (a / b)
+            return float(1 - (a / b))
         else:
-            return (b / a) - 1
+            return float((b / a) - 1)
 
-    def rel_agreement_index(self):
+    def rel_agreement_index(self) -> float:
         """Relative index of agreement. from 0 to 1. larger the better."""
         a = ((self.predicted - self.true) / self.true) ** 2
         b = np.abs(self.predicted - np.mean(self.true))
         c = np.abs(self.true - np.mean(self.true))
         e = ((b + c) / np.mean(self.true)) ** 2
-        return 1 - (np.sum(a) / np.sum(e))
+        return float(1 - (np.sum(a) / np.sum(e)))
 
     def rmse(self, weights=None) -> float:
         """ root mean square error"""
@@ -1206,7 +1214,7 @@ class Metrics(object):
         zx = (self.true - np.mean(self.true)) / np.std(self.true, ddof=1)
         zy = (self.predicted - np.mean(self.predicted)) / np.std(self.predicted, ddof=1)
         r = np.sum(zx * zy) / (len(self.true) - 1)
-        return r ** 2
+        return float(r ** 2)
 
     def r2_mod(self, weights=None):
         """
@@ -1220,7 +1228,7 @@ class Metrics(object):
         if len(self.predicted) < 2:
             msg = "R^2 score is not well-defined with less than two samples."
             warnings.warn(msg)
-            return float('nan')
+            return None
 
         if weights is None:
             weight = 1.
@@ -1236,7 +1244,7 @@ class Metrics(object):
             return None
         output_scores = _foo(denominator, numerator)
 
-        return np.average(output_scores, weights=weights)
+        return float(np.average(output_scores, weights=weights))
 
     def relative_rmse(self) -> float:
         """
@@ -1245,40 +1253,40 @@ class Metrics(object):
             RRMSE=\\frac{\\sqrt{\\frac{1}{N}\\sum_{i=1}^{N}(e_{i}-s_{i})^2}}{\\bar{e}}
         """
         rrmse = self.rmse() / np.mean(self.true)
-        return rrmse
+        return float(rrmse)
 
     def rmspe(self) -> float:
         """
         Root Mean Square Percentage Error
         https://stackoverflow.com/a/53166790/5982232
         """
-        return np.sqrt(np.mean(np.square(((self.true - self.predicted) / self.true)), axis=0))
+        return float(np.sqrt(np.mean(np.square(((self.true - self.predicted) / self.true)), axis=0)))
 
     def rsr(self) -> float:
         """
         Moriasi et al., 2007.
         It incorporates the benefits of error index statistics andincludes a scaling/normalization factor,
         so that the resulting statistic and reported values can apply to various constitu-ents."""
-        return self.rmse() / np.std(self.true)
+        return float(self.rmse() / np.std(self.true))
 
     def relative_metrics(self):
             pass
 
-    def rmsse(self, seasonality: int = 1):
+    def rmsse(self, seasonality: int = 1) -> float:
         """ Root Mean Squared Scaled Error """
         q = np.abs(self._error()) / self.mae(self.true[seasonality:], self._naive_prognose(seasonality))
-        return np.sqrt(np.mean(np.square(q)))
+        return float(np.sqrt(np.mean(np.square(q))))
 
-    def sa(self):
+    def sa(self) -> float:
         """Spectral angle. From -pi/2 to pi/2. Closer to 0 is better.
         It measures angle between two vectors in hyperspace indicating how well the shape of two arrays match instead
         of their magnitude.
         Reference: Robila and Gershman, 2005."""
         a = np.dot(self.predicted, self.true)
         b = np.linalg.norm(self.predicted) * np.linalg.norm(self.true)
-        return np.arccos(a / b)
+        return float(np.arccos(a / b))
 
-    def sc(self):
+    def sc(self) -> float:
         """Spectral correlation.
          From -pi/2 to pi/2. Closer to 0 is better.
         """
@@ -1286,7 +1294,7 @@ class Metrics(object):
         b = np.linalg.norm(self.true - np.mean(self.true))
         c = np.linalg.norm(self.predicted - np.mean(self.predicted))
         e = b * c
-        return np.arccos(a / e)
+        return float(np.arccos(a / e))
 
     def scale_free_metrics(self):
             pass
@@ -1309,14 +1317,14 @@ class Metrics(object):
 
         return _stats
 
-    def smdape(self):
+    def smdape(self) -> float:
         """
         Symmetric Median Absolute Percentage Error
         Note: result is NOT multiplied by 100
         """
-        return np.median(2.0 * self._ae() / ((np.abs(self.true) + np.abs(self.predicted)) + EPS))
+        return float(np.median(2.0 * self._ae() / ((np.abs(self.true) + np.abs(self.predicted)) + EPS)))
 
-    def sse(self):
+    def sse(self) -> float:
         """Sum of squared errors (model vs actual).
         measure of how far off our model’s predictions are from the observed values. A value of 0 indicates that all
          predications are spot on. A non-zero value indicates errors.
@@ -1325,7 +1333,7 @@ class Metrics(object):
         https://www.tutorialspoint.com/statistics/residual_sum_of_squares.htm
         """
         squared_errors = (self.true - self.predicted) ** 2
-        return np.sum(squared_errors)
+        return float(np.sum(squared_errors))
 
     def smape(self) -> float:
         """
@@ -1334,9 +1342,9 @@ class Metrics(object):
          https://stackoverflow.com/a/51440114/5982232
         """
         _temp = np.sum(2 * np.abs(self.predicted - self.true) / (np.abs(self.true) + np.abs(self.predicted)))
-        return 100 / len(self.true) * _temp
+        return float(100 / len(self.true) * _temp)
 
-    def spearmann_corr(self):
+    def spearmann_corr(self) -> float:
         """Separmann correlation coefficient
         https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf
         """
@@ -1359,16 +1367,16 @@ class Metrics(object):
         denominator2 = np.sqrt(np.nansum([(a[j][3] - mw_rank_x) ** 2. for j in range(len(a))]))
         return float(numerator / (denominator1 * denominator2))
 
-    def sid(self):
+    def sid(self) -> float:
         """Spectral Information Divergence.
         From -pi/2 to pi/2. Closer to 0 is better. """
         first = (self.true / np.mean(self.true)) - (
                 self.predicted / np.mean(self.predicted))
         second1 = np.log10(self.true) - np.log10(np.mean(self.true))
         second2 = np.log10(self.predicted) - np.log10(np.mean(self.predicted))
-        return np.dot(first, second1 - second2)
+        return float(np.dot(first, second1 - second2))
 
-    def sga(self):
+    def sga(self) -> float:
         """Spectral gradient angle.
         From -pi/2 to pi/2. Closer to 0 is better.
         """
@@ -1376,9 +1384,9 @@ class Metrics(object):
         sgy = self.predicted[1:] - self.predicted[:self.predicted.size - 1]
         a = np.dot(sgx, sgy)
         b = np.linalg.norm(sgx) * np.linalg.norm(sgy)
-        return np.arccos(a / b)
+        return float(np.arccos(a / b))
 
-    def skill_score_murphy(self):
+    def skill_score_murphy(self) -> float:
         """
         Adopted from https://github.com/PeterRochford/SkillMetrics/blob/278b2f58c7d73566f25f10c9c16a15dc204f5869/skill_metrics/skill_score_murphy.py
         Calculate non-dimensional skill score (SS) between two variables using
@@ -1410,23 +1418,23 @@ class Metrics(object):
         # Calculate standard deviation
         sdev2 = np.std(self.true, ddof=1) ** 2
 
-        # % Calculate skill score
+        # Calculate skill score
         ss = 1 - rmse2 / sdev2
 
-        return ss
+        return float(ss)
 
     def umbrae(self, benchmark: np.ndarray = None):
         """ Unscaled Mean Bounded Relative Absolute Error """
         return self.mbrae(benchmark) / (1 - self.mbrae(benchmark))
 
-    def ve(self):
+    def ve(self) -> float:
         """
         Volumetric efficiency. from 0 to 1. Smaller the better.
         Reference: Criss and Winston 2008.
         """
         a = np.sum(np.abs(self.predicted - self.true))
         b = np.sum(self.true)
-        return 1 - (a / b)
+        return float(1 - (a / b))
 
     def volume_error(self) -> float:
         """
@@ -1452,16 +1460,16 @@ class Metrics(object):
         """
         return float(np.sum(self._ae() / np.sum(self.true)))
 
-    def watt_m(self):
+    def watt_m(self) -> float:
         """Watterson's M.
         Refrence: Watterson., 1996"""
         a = 2 / np.pi
         c = np.std(self.true, ddof=1) ** 2 + np.std(self.predicted, ddof=1) ** 2
         e = (np.mean(self.predicted) - np.mean(self.true)) ** 2
         f = c + e
-        return a * np.arcsin(1 - (self.mse() / f))
+        return float(a * np.arcsin(1 - (self.mse() / f)))
 
-    def wmape(self):
+    def wmape(self) -> float:
         """
          Weighted Mean Absolute Percent Error
          https://stackoverflow.com/a/54833202/5982232
@@ -1484,15 +1492,17 @@ class Metrics(object):
 
         # Calculate the wmape for each forecast and return as a dictionary
         ft_wmape_forecast = ft_actual_prod_mape_sum / ft_actual_sum
-        return ft_wmape_forecast
+        return float(ft_wmape_forecast)
 
     def treat_values(self):
         """
-        This function is applied by default at the start/at the time of initiating the class. However, it can used any
-        time after that. This can be handy if we want to calculate error first by ignoring nan and then by no ignoring
+        This function is applied by default at the start/at the time of initiating
+        the class. However, it can used any time after that. This can be handy
+        if we want to calculate error first by ignoring nan and then by no ignoring
         nan.
         Adopting from https://github.com/BYU-Hydroinformatics/HydroErr/blob/master/HydroErr/HydroErr.py#L6210
-        Removes the nan, negative, and inf values in two numpy arrays"""
+        Removes the nan, negative, and inf values in two numpy arrays
+        """
         sim_copy = np.copy(self.predicted)
         obs_copy = np.copy(self.true)
 
@@ -1648,7 +1658,7 @@ def _mean_tweedie_deviance(y_true, y_pred, power=0, weights=None):
                    - y_true * np.power(y_pred, 1 - power) / (1 - power)
                    + np.power(y_pred, 2 - power) / (2 - power))
 
-    return np.average(dev, weights=weights)
+    return float(np.average(dev, weights=weights))
 
 
 def _geometric_mean(a, axis=0, dtype=None):
@@ -1662,4 +1672,4 @@ def _geometric_mean(a, axis=0, dtype=None):
             log_a = np.log(np.asarray(a, dtype=dtype))
     else:
         log_a = np.log(a)
-    return np.exp(log_a.mean(axis=axis))
+    return float(np.exp(log_a.mean(axis=axis)))

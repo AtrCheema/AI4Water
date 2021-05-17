@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 import inspect
 import warnings
 import traceback
@@ -34,10 +35,16 @@ except ImportError:
 try:
     import hyperopt
     from hyperopt.pyll.base import Apply
-    from hyperopt import fmin, tpe, atpe, STATUS_OK, Trials, rand
+    from hyperopt import fmin as fmin_hyperopt
+    from hyperopt import fmin, tpe, STATUS_OK, Trials, rand
 except ImportError:
     hyperopt, fmin, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
     space_eval, miscs_to_idxs_vals = None, None
+
+try:  # atpe is only available in later versions of hyperopt
+    from hyperopt import atpe
+except ImportError:
+    atpe = None
 
 try:
     import optuna
@@ -145,11 +152,12 @@ class HyperOpt(object):
 
 
     Examples:
-    ```python
     The following examples illustrate how we can uniformly apply different optimization algorithms.
+    ```python
     >>>from AI4Water import Model
-    >>>from AI4Water.hyper_opt import HyperOpt
-    >>>from AI4Water.data import load_u1
+    >>>from AI4Water.hyper_opt import HyperOpt, Categorical, Integer, Real
+    >>>from AI4Water.utils.datasets import load_u1
+    >>>from AI4Water.utils.SeqMetrics import Metrics
     # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
@@ -165,7 +173,7 @@ class HyperOpt(object):
     ...    model.fit(indices="random")
     ...
     ...    t, p = model.predict(indices=model.test_indices, pref='test')
-    ...    mse = FindErrors(t, p).mse()
+    ...    mse = Metrics(t, p).mse()
     ...
     ...    return mse
     ```
@@ -174,7 +182,7 @@ class HyperOpt(object):
 
     ```python
     >>>num_samples=5   # only relavent for random and grid search
-    >>>    search_space = [
+    >>>search_space = [
     ...    Categorical(['gbtree', 'dart'], name='booster'),
     ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
     ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
@@ -183,6 +191,7 @@ class HyperOpt(object):
 
     # Using TPE with optuna
     ```python
+    >>>num_iterations = 10
     >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
     ...                     backend='optuna',
     ...                     num_iterations=num_iterations )
@@ -315,8 +324,11 @@ class HyperOpt(object):
     References
     --------------
     1 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV
+
     2 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV
+
     3 https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
+
     4 https://github.com/scikit-optimize/scikit-optimize/blob/9334d50a1ad5c9f7c013a1c1cb95313a54b83168/examples/bayesian-optimization.py#L109
 
     """
@@ -325,32 +337,42 @@ class HyperOpt(object):
                  algorithm:str, *,
                  param_space,
                  objective_fn=None,
-                 eval_on_best=False,
-                 backend=None,
+                 eval_on_best:bool=False,
+                 backend:str=None,
                  **kwargs
                  ):
 
         """
         Arguments:
-            algorithm str: must be one of "random", "grid" "bayes" and "tpe", defining which
+            algorithm str:
+                must be one of "random", "grid" "bayes" and "tpe", defining which
                 optimization algorithm to use.
-            objective_fn callable: It can be either sklearn/xgboost based regressor/classifier
+            objective_fn callable:
+                It can be either sklearn/xgboost based regressor/classifier
                 or any function whose returned
                 values can act as objective function for the optimization problem.
-            param_space list/dict: the space parameters to be optimized. We recommend the use
-                of Real, Integer and categorical classes from AI4Water/hyper_opt (not from skopt.space).
-                These classes allow a uniform way of defining the parameter space for all the
-                underlying libraries. However, to make this class work exactly similar
-                to its underlying libraries, the user can also define parameter space
-                as is defined in its underlying libraries. For example, for hyperopt
-                based method like 'tpe' the parameter space can be specified as in the
-                examples of hyperopt library. In case the code breaks, please report.
-            eval_on_best bool: if True, then after optimization, the objective_fn will
+            backend str:
+                Defines which backend library to use for the `algorithm`. For
+                example the user can specify whether to use `optuna` or `hyper_opt`
+                or `sklearn` for `grid` algorithm.
+            param_space list/dict:
+                the space parameters to be optimized. We recommend the use
+                of Real, Integer and categorical classes from AI4Water/hyper_opt
+                (not from skopt.space). These classes allow a uniform way of defining
+                the parameter space for all the underlying libraries. However, to
+                make this class work exactly similar to its underlying libraries,
+                the user can also define parameter space as is defined in its
+                underlying libraries. For example, for hyperopt based method like
+                'tpe' the parameter space can be specified as in the examples of
+                hyperopt library. In case the code breaks, please report.
+            eval_on_best bool:
+                if True, then after optimization, the objective_fn will
                 be evaluated on best parameters and the results will be stored in the
                 folder named "best" inside `title` folder.
-            kwargs dict: Any additional keyword arguments will for the underlying optimization
-                algorithm. In case of using AI4Water model, these must be arguments which
-                are passed to AI4Water's Model class.
+            kwargs dict:
+                Any additional keyword arguments will for the underlying optimization
+                algorithm. In case of using AI4Water model, these must be arguments
+                which are passed to AI4Water's Model class.
         """
         if algorithm not in ALGORITHMS:
             raise ValueError(f"""Invalid value of algorithm provided. Allowd values for algorithm"
@@ -385,7 +407,7 @@ class HyperOpt(object):
             self.fit = self.own_fit
 
         elif self.use_own:
-            self.predict = self._predict and self.backend != 'optuna'
+            self.predict = self._predict
             if self.algorithm == "grid" and self.backend != 'optuna':
                 self.fit = self.grid_search
             elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
@@ -432,6 +454,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 x = 'skopt'
         else:
             raise ValueError
+        if x == 'hyperopt' and hyperopt is None:
+            raise ValueError(f"You must install `hyperopt` to use it as backend for {self.algorithm} algorithm.")
+        if x == 'optuna' and optuna is None:
+            raise ValueError(f"You must install optuna to use `optuna` as backend for {self.algorithm} algorithm")
         self._backend = x
 
     @property
@@ -443,7 +469,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         self._title = x + '_' + str(dateandtime_now())
 
     def check_args(self, **kwargs):
-        kwargs = kwargs.copy()
+        kwargs = copy.deepcopy(kwargs)
 
         self.use_ai4water_model = False
         if "ai4water_args" in kwargs:
@@ -979,9 +1005,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         suggest_options = {
             'tpe': tpe.suggest,
-            'atpe': atpe.suggest,
             'random': rand.suggest
         }
+        if atpe is not None:
+            suggest_options.update({'atpe': atpe.suggest})
 
         trials = Trials()
         model_kws = self.gpmin_args
@@ -1011,8 +1038,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             else:
                 raise NotImplementedError
 
-
-        best = fmin(objective_f,
+        best = fmin_hyperopt(objective_f,
                     space=space,
                     algo=suggest_options[self.algorithm],
                     trials=trials,
@@ -1023,7 +1049,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4)
 
         setattr(self, 'trials', trials)
-        self.results = trials.results
+        #self.results = trials.results
         self._plot()
 
         return best
@@ -1184,12 +1210,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                        view_model=True,
                        return_model=False):
         """Find the best parameters and evaluate the objective_fn on them."""
-        print("Evaluting objective_fn on best set of parameters.")
 
         if self.use_named_args:
-            x = self.best_paras(True)
+            x = self.best_paras()
         else:
-            x = self.best_paras(False)
+            x = self.best_paras(True)
 
         if self.use_named_args and self.ai4water_args is not None:
             return self.ai4water_model(pp=True,
@@ -1202,6 +1227,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.objective_fn(**x)
 
         if callable(self.objective_fn) and not self.use_named_args:
+            if isinstance(x, list) and self.backend == 'hyperopt':  # when x = [x]
+                if len(x) == 1:
+                    x = x[0]
             return self.objective_fn(x)
 
         raise NotImplementedError

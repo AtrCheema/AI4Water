@@ -5,7 +5,7 @@ import datetime
 from typing import Union
 from shutil import rmtree
 from copy import deepcopy
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 from collections import OrderedDict
 
 import scipy
@@ -430,6 +430,8 @@ class Jsonize(object):
             elif isinstance(obj, list) and len(obj)>0:  # for cases like obj is [np.array([1.0])] -> [1.0]
                 return [self.stage2(obj[0])]
             elif len(obj)==1:  # for cases like obj is np.array([1.0])
+                if isinstance(obj, list) or isinstance(obj, tuple):
+                    return obj  # for cases like (1, ) or [1,]
                 return self.stage2(obj[0])
             else: # when object is []
                 return obj
@@ -729,49 +731,63 @@ def prepare_data(
         forecast_len:int=1,
         known_future_inputs:bool=False,
         output_steps=1,
-        mask:Union[int, float, np.ndarray]=None,
-):
+        mask:Union[int, float, np.ndarray]=None
+)-> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     converts a numpy nd array into a supervised machine learning problem.
-    :param data: nd numpy array whose first dimension represents the number of examples and
-                 the second dimension represents the number of features. Some of those features
-                 will be used as inputs and some will be considered as outputs depending upon
-                 the values of `num_inputs` and `num_outputs`.
-    :param num_inputs: int, default None, number of input features in data. If None,
-                       it will be calculated as features-outputs. The input data will be all from start
-                       till num_outputs in second dimension.
-    :param num_outputs: int, number of columns (from last) in data to be used as output.
-                        If None, it will be caculated as features-inputs.
-    :param lookback_steps: int,  number of previous steps/values to be used at one step.
-    :param input_steps: int, strides/number of steps in input data
-    :param forecast_step: int, >=0, which t+ith value to use as target where i is the horizon.
-                          For time series prediction, we can say, which horizon to predict.
-    :param forecast_len: int, number of horizons/future values to predict.
-    :param known_future_inputs: bool, Only useful if `forecast_len`>1. If True, this means, we know and use
-                                'future inputs' while making predictions at t>0
-    :param output_steps: step size in outputs. If =2, it means we want to predict every second value from the targets
-    :param mask: int, np.nan, 1d array. If int, then the examples with these values in the output will be skipped.
-                 If array then it must be a boolean mask indicating which examples to include/exclude.
-                 The length of mask should be equal to the number of generated examples. The number of
-                 generated examples is difficult to prognose because it depend upon lookback, input_steps,
-                 and forecast_step. Thus it is better to provide an integer indicating which values in outputs
-                 are to be considered as invalid. Default is None, which indicates all the generated examples
-                 will be returned.
+
+    Arguments:
+        data np.ndarray :
+            nd numpy array whose first dimension represents the number
+            of examples and the second dimension represents the number of features.
+            Some of those features will be used as inputs and some will be considered
+            as outputs depending upon the values of `num_inputs` and `num_outputs`.
+        lookback_steps int :
+            number of previous steps/values to be used at one step.
+        num_inputs int :
+            default None, number of input features in data. If None,
+            it will be calculated as features-outputs. The input data will be all
+            from start till num_outputs in second dimension.
+        num_outputs int :
+            number of columns (from last) in data to be used as output.
+            If None, it will be caculated as features-inputs.
+        input_steps int :
+            strides/number of steps in input data
+        forecast_step int :
+            must be greater than equal to 0, which t+ith value to
+            use as target where i is the horizon. For time series prediction, we
+            can say, which horizon to predict.
+        forecast_len int :
+            number of horizons/future values to predict.
+        known_future_inputs bool : Only useful if `forecast_len`>1. If True, this
+            means, we know and use 'future inputs' while making predictions at t>0
+        output_steps int :
+            step size in outputs. If =2, it means we want to predict
+            every second value from the targets
+        mask int/np.nan/1darray :
+            If int, then the examples with these values in
+            the output will be skipped. If array then it must be a boolean mask
+            indicating which examples to include/exclude. The length of mask should
+            be equal to the number of generated examples. The number of generated
+            examples is difficult to prognose because it depend upon lookback, input_steps,
+            and forecast_step. Thus it is better to provide an integer indicating
+            which values in outputs are to be considered as invalid. Default is
+            None, which indicates all the generated examples will be returned.
 
     Returns:
-      x: numpy array of shape (examples, lookback, ins) consisting of input examples
-      prev_y: numpy array consisting of previous outputs
-      y: numpy array consisting of target values
+      x np.ndarray: numpy array of shape (examples, lookback, ins) consisting of input examples
+      prev_y np.ndarray: numpy array consisting of previous outputs
+      y np.ndarray: numpy array consisting of target values
 
     Given following example consisting of input/output pairs
-  input1, input2, output1, output2, output 3
-    1,     11,     21,       31,     41
-    2,     12,     22,       32,     42
-    3,     13,     23,       33,     43
-    4,     14,     24,       34,     44
-    5,     15,     25,       35,     45
-    6,     16,     26,       36,     46
-    7,     17,     27,       37,     47
+    input1, input2, output1, output2, output 3
+        1,     11,     21,       31,     41
+        2,     12,     22,       32,     42
+        3,     13,     23,       33,     43
+        4,     14,     24,       34,     44
+        5,     15,     25,       35,     45
+        6,     16,     26,       36,     46
+        7,     17,     27,       37,     47
 
     If we use following 2 time series as input
     1,     11,
@@ -841,9 +857,11 @@ def prepare_data(
     (examples, lookback_steps+forecast_len-1, ....num_inputs)
 
     ----------
-    Examples
+    Example
     ---------
+    ```python
     >>>import numpy as np
+    >>>from AI4Water.utils.utils import prepare_data
     >>>examples = 50
     >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
     >>>data[0:10]
@@ -857,8 +875,8 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4, input_steps=2, forecast_step=2,
-    ...                  forecast_len=4)
+    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+    ...    input_steps=2, forecast_step=2, forecast_len=4)
     >>>x[0]
        array([[  0.,  50., 100.],
               [  2.,  52., 102.],
@@ -868,8 +886,8 @@ def prepare_data(
        array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-    >>>x, prevy, label = prepare_data(data, num_outputs=2, lookback_steps=4, forecast_len=3,
-    ...                  known_future_inputs=True)
+    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+    ...    forecast_len=3, known_future_inputs=True)
     >>>x[0]
         array([[  0,  50, 100],
                [  1,  51, 101],
@@ -880,8 +898,10 @@ def prepare_data(
                [  6,  56, 106]])       # (7, 3)
     >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
     >>>y[0]
+
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)
+    ```
     """
     if not isinstance(data, np.ndarray):
         if isinstance(data, pd.DataFrame):
@@ -980,9 +1000,9 @@ def set_fig_dim(fig, width, height):
 def process_axis(axis,
                  data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
                  x: Union[list, np.ndarray] = None,  # array to plot as x
-                 marker='.',
+                 marker='',
                  fillstyle=None,
-                 linestyle='',
+                 linestyle='-',
                  c=None,
                  ms=6.0,  # markersize
                  label=None,  # legend
@@ -991,12 +1011,12 @@ def process_axis(axis,
                  leg_ms=1,  # legend scale
                  ylim=None,  # limit for y axis
                  x_label=None,
-                 xl_fs=12,
+                 xl_fs=None,
                  y_label=None,
                  yl_fs=12,  # ylabel font size
                  yl_c='k',  # y label color, if 'same', c will be used else black
-                 xtp_ls=10,  # x tick_params labelsize
-                 ytp_ls=10,  # x tick_params labelsize
+                 xtp_ls=None,  # x tick_params labelsize
+                 ytp_ls=None,  # x tick_params labelsize
                  xtp_c='k',  # x tick colors if 'same' c will be used else black
                  ytp_c='k',  # y tick colors, if 'same', c will be used else else black
                  log=False,
@@ -1007,6 +1027,7 @@ def process_axis(axis,
                  max_xticks=None,
                  min_xticks=None,
                  title=None,
+                 title_fs=None,  # title fontszie
                  log_nz=False,
                  ):
 
@@ -1057,9 +1078,12 @@ def process_axis(axis,
     if yl_c != 'same':
         ylc = 'k'
 
+    _kwargs = {}
     if label is not None:
         if label != "__nolabel__":
-            axis.legend(loc=leg_pos, fontsize=leg_fs, markerscale=leg_ms)
+            if leg_fs is not None: _kwargs.update({'fontsize': leg_fs})
+            if leg_ms is not None: _kwargs.update({'markerscale': leg_ms})
+            axis.legend(loc=leg_pos, **_kwargs)
 
     if y_label is not None:
         axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
@@ -1083,16 +1107,24 @@ def process_axis(axis,
     if ytp_c != 'same':
         ytpc = 'k'
 
-    if x_label is not None: # better not change these paras if user has not defined any x_label
-        axis.tick_params(axis="x", which='major', labelsize=xtp_ls, colors=xtpc)
+    _kwargs = {'colors': xtpc}
+    if x_label is not None or xtp_ls is not None: # better not change these paras if user has not defined any x_label
+        if xtp_ls is not None:
+            _kwargs.update({'labelsize': xtp_ls})
+        axis.tick_params(axis="x", which='major', **_kwargs)
 
-    if y_label is not None:
-        axis.tick_params(axis="y", which='major', labelsize=ytp_ls, colors=ytpc)
+    _kwargs = {'colors': ytpc}
+    if y_label is not None or ytp_ls is not None:
+        if ytp_ls is not None:
+            _kwargs.update({'labelsize': ytp_ls})
+        axis.tick_params(axis="y", which='major', **_kwargs)
 
     axis.get_xaxis().set_visible(show_xaxis)
 
+    _kwargs = {}
     if x_label is not None:
-        axis.set_xlabel(x_label, fontsize=xl_fs)
+        if xl_fs is not None: _kwargs.update({'fontsize': xl_fs})
+        axis.set_xlabel(x_label, **_kwargs)
 
     axis.spines['top'].set_visible(top_spine)
     axis.spines['bottom'].set_visible(bottom_spine)
@@ -1105,8 +1137,11 @@ def process_axis(axis,
         fmt = mdates.AutoDateFormatter(loc)
         axis.xaxis.set_major_formatter(fmt)
 
+    if title_fs is None:
+        title_fs = plt.rcParams['axes.titlesize']
+
     if title is not None:
-        axis.set_title(title)
+        axis.set_title(title, fontsize=title_fs)
 
     return axis
 

@@ -12,10 +12,10 @@ plugins:
 - mkdocstrings
 
 pages:
-- Model: 'model.md'
-- declarative model definiton: 'build_dl_models.md'
-- Metrics: 'metrics.md'
-- hyperparameter optimization: 'hyperopt.md'
+- Model: 'modelbuilding.md'
+- SeqMetrics: 'metrics.md'
+- hyperparameter optimization: 'hpo.md'
 - Evapotranspiration: 'evapotranspiration.md'
 - datasets: 'datasets.md'
 - experiments: 'experiments.md'
+- utils: 'utils.md'
