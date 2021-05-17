@@ -36,7 +36,7 @@ from AI4Water.utils.datasets.datasets import RiverIsotope
 from AI4Water.utils.datasets.datasets import EtpPcpSamoylov
 
 
-def load_30min(target:Union[None, list]=None)->pd.DataFrame:
+def load_30min(target:Union[list, str]='target5')->pd.DataFrame:
     """Loads a  multi-variate time series data which has mutliple targets with missing values."""
     fpath = os.path.join(os.path.dirname(__file__), "mts_30min.csv")
     df = pd.read_csv(fpath, index_col="Date_Time2")
@@ -46,16 +46,18 @@ def load_30min(target:Union[None, list]=None)->pd.DataFrame:
 
     inputs = [col for col in df.columns if col.startswith('input')]
 
-    if target is not None:
+    if not isinstance(target, list):
         if isinstance(target, str):
             target = [target]
-        assert isinstance(target, list)
     else:
         target = default_targets
+
+    assert isinstance(target, list)
 
     df = df[inputs + target]
 
     return df
+
 
 def load_u1(target:Union[str, list]='target')->pd.DataFrame:
     """loads 1d data that can be used fo regression and classification"""
@@ -70,3 +72,22 @@ def load_u1(target:Union[str, list]='target')->pd.DataFrame:
     df = df[inputs + target]
 
     return df
+
+
+def load_nasdaq(inputs:Union[str, list, None]=None, target:str='NDX'):
+    """loads Nasdaq100 by downloading it if it is not already downloaded."""
+    fname = os.path.join(os.path.dirname(__file__), "nasdaq100_padding.csv")
+
+    if not os.path.exists(fname):
+        print(f"downloading file to {fname}")
+        df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
+        df.to_csv(fname)
+
+    df = pd.read_csv(fname)
+    in_cols = list(df.columns)
+    in_cols.remove(target)
+    if inputs is None:
+        inputs = in_cols
+    target = [target]
+
+    return df[inputs + target]
