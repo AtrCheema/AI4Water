@@ -39,7 +39,8 @@ def maybe_create_path(prefix=None, path=None):
 
 
 def dateandtime_now()->str:
-    """ returns the datetime in following format as string
+    """
+    Returns the datetime in following format as string
     YYYYMMDD_HHMMSS
     """
     jetzt = datetime.datetime.now()
@@ -168,32 +169,8 @@ def _make_model(**kwargs):
             def_prob = "classification"
         def_cat = "ML"
 
-    dpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'utils',  'datasets')
-    fname = os.path.join(dpath, "nasdaq100_padding.csv")
-
-    if not os.path.exists(dpath):
-        os.makedirs(dpath)
-
-    if not os.path.exists(fname):
-        print(f"downloading file to {fname}")
-        df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
-        df.to_csv(fname)
-    df = pd.read_csv(fname)
-    in_cols = list(df.columns)
-    in_cols.remove("NDX")
-
     model_args = {
-        'enc_config': {'type': dict, 'default': {'n_h': 20,  # length of hidden state m
-                                'n_s': 20,  # length of hidden state m
-                                'm': 20,  # length of hidden state m
-                                'enc_lstm1_act': None,
-                                'enc_lstm2_act': None,
-                                }, 'lower': None, 'upper': None, 'between': None},
-        'dec_config': {'type': dict, 'default': {        # arguments for decoder/outputAttention in Dual stage attention
-                                            'p': 30,
-                                            'n_hde0': 30,
-                                            'n_sde0': 30
-                                            }, 'lower': None, 'upper': None, 'between': None},
+
         'model': {'type': dict, 'default': default_model, 'lower': None, 'upper': None, 'between': None},
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},   # for auto-encoders
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
@@ -218,8 +195,6 @@ def _make_model(**kwargs):
                                         'share_weights_in_stack': True,
                                         'hidden_layer_units': 62
                                     }, 'lower': None, 'upper': None, 'between': None},
-        #'ml_model':      {'type': str, 'default': None, 'lower': None, 'upper': None, 'between': None},  # name of machine learning model
-        #'ml_model_args': {'type': dict, 'default':{}, 'lower': None, 'upper': None, 'between': None},  # arguments to instantiate/initiate ML model
         'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]}
     }
@@ -292,9 +267,9 @@ def _make_model(**kwargs):
         # whether to use future input data for multi horizon prediction or not
         'known_future_inputs': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
         # input features in data_frame
-        'inputs':            {"type": None, "default": in_cols, 'lower': None, 'upper': None, 'between': None},
+        'inputs':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
-        'outputs':           {"type": None, "default": ["NDX"], 'lower': None, 'upper': None, 'between': None},
+        'outputs':           {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
         # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
         # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`

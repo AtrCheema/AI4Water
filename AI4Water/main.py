@@ -192,10 +192,13 @@ class Model(NN, Plots):
                 a pandas dataframe or a dictionary of pandas dataframes.
             inputs list/dict:
                 list of column names from `data` to be used as input. If dict,
-                then it must be consistent with `data`.
+                then it must be consistent with `data`. Default is None, which
+                means the all the columns of data except last one will be used
+                as inputs.
             outputs lsit/dict:
                 list of column names from `data` to be used as output. If dict,
-                then it must be consistent with `data`.
+                then it must be consistent with `data`. Default is None,which
+                means the last column of data will be used as output.
             intervals tuple/None: default is None.
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means chunk/rows
@@ -263,9 +266,9 @@ class Model(NN, Plots):
         NN.__init__(self, config=config.config)
 
         self.intervals = config.config['intervals']
-        self.data = data
         self.in_cols = self.config['inputs']
         self.out_cols = self.config['outputs']
+        self.data = data
         self.KModel = keras.models.Model if keras is not None else None
         self.path = maybe_create_path(path=path, prefix=prefix)
         self.verbosity = verbosity
@@ -308,7 +311,11 @@ class Model(NN, Plots):
     @data.setter
     def data(self, x):
         if isinstance(x, pd.DataFrame):
-            _data = x[self.config['inputs'] + self.config['outputs']]
+            self.in_cols = self.config['inputs']
+            _outs = self.config['outputs']
+            if self.in_cols is None:
+                self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
+            _data = x[self.in_cols + self.out_cols]
         else:
             _data = x
         self._data = _data
@@ -1258,7 +1265,10 @@ class Model(NN, Plots):
             data=None,
             data_keys=None,
             **callbacks):
-        """data: if not None, it will directlry passed to fit.
+        """
+        Trains the model with data which is taken from data accoring to st, en
+        and indices arguments.
+        data: if not None, it will directlry passed to fit.
         data_keys: allowed only if self.data is a dictionary. You can decided which to use
                    use for training by specifying the keys of self.data dictionary"""
         visualizer = Visualizations(path=self.path)
@@ -1346,6 +1356,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 pp=True,
                 **plot_args):
         """
+        Makes prediction from the trained model.
         scaler_key: if None, the data will not be indexed along date_time index.
         pp: post processing
         data: if not None, this will diretly passed to predict. If data_config['transformation'] is True, do provide
