@@ -250,10 +250,20 @@ class DualAttentionModel(Model):
         x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
 
-        s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
-        h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
+        n_s_feature_dim = self.config['enc_config']['n_s']
+        n_h_feature_dim = self.config['enc_config']['n_h']
+        p_feature_dim = self.config['dec_config']['p']
 
-        h_de0 = s_de0 = np.zeros((x.shape[0], self.config['dec_config']['p']))
+        if kwargs.get('use_datetime_index', False):  # during deindexification, first feature will be removed.
+            n_s_feature_dim += 1
+            n_h_feature_dim += 1
+            p_feature_dim += 1
+            idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
+            prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
+        s0 = np.zeros((x.shape[0], n_s_feature_dim))
+        h0 = np.zeros((x.shape[0], n_h_feature_dim))
+
+        h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
 
         if self.verbosity > 0:
             print_something([x, prev_y, s0, h0, h_de0, s_de0], "input_x")
@@ -285,11 +295,21 @@ class InputAttentionModel(DualAttentionModel):
         return
 
     def train_data(self, data=None, data_keys=None, **kwargs):
+
         x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
 
-        s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
-        h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
+        n_s_feature_dim = self.config['enc_config']['n_s']
+        n_h_feature_dim = self.config['enc_config']['n_h']
+
+        if kwargs.get('use_datetime_index', False):  # during deindexification, first feature will be removed.
+            n_s_feature_dim += 1
+            n_h_feature_dim += 1
+            idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
+            prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
+
+        s0 = np.zeros((x.shape[0], n_s_feature_dim))
+        h0 = np.zeros((x.shape[0], n_h_feature_dim))
 
         if self.verbosity > 0:
             print_something([x, prev_y, s0, h0], "input_x")
