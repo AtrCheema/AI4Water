@@ -36,10 +36,15 @@ try:
     import hyperopt
     from hyperopt.pyll.base import Apply
     from hyperopt import fmin as fmin_hyperopt
-    from hyperopt import fmin, tpe, atpe, STATUS_OK, Trials, rand
+    from hyperopt import fmin, tpe, STATUS_OK, Trials, rand
 except ImportError:
     hyperopt, fmin, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
     space_eval, miscs_to_idxs_vals = None, None
+
+try:  # atpe is only available in later versions of hyperopt
+    from hyperopt import atpe
+except ImportError:
+    atpe = None
 
 try:
     import optuna
@@ -449,6 +454,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 x = 'skopt'
         else:
             raise ValueError
+        if x == 'hyperopt' and hyperopt is None:
+            raise ValueError(f"You must install `hyperopt` to use it as backend for {self.algorithm} algorithm.")
+        if x == 'optuna' and optuna is None:
+            raise ValueError(f"You must install optuna to use `optuna` as backend for {self.algorithm} algorithm")
         self._backend = x
 
     @property
@@ -967,9 +976,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def optuna_objective(self, **kwargs):
 
-        if optuna is None:
-            raise ValueError("You must install optuna inoder to use `optuna` as backend")
-
         sampler = {
             'tpe': optuna.samplers.TPESampler,
             'cmaes': optuna.samplers.CmaEsSampler,
@@ -997,14 +1003,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def fmin(self, **kwargs):
 
-        if tpe is None:
-            raise ValueError("You must install `hyperopt` to use it as backend.")
-
         suggest_options = {
             'tpe': tpe.suggest,
-            'atpe': atpe.suggest,
             'random': rand.suggest
         }
+        if atpe is not None:
+            suggest_options.update({'atpe': atpe.suggest})
 
         trials = Trials()
         model_kws = self.gpmin_args
@@ -1033,7 +1037,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 space = list(self.hp_space().values())[0]
             else:
                 raise NotImplementedError
-
 
         best = fmin_hyperopt(objective_f,
                     space=space,
