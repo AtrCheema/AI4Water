@@ -2,8 +2,6 @@ import os
 import random
 import warnings
 import unittest
-from os.path import abspath
-from inspect import getsourcefile
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
@@ -15,19 +13,14 @@ from sklearn.model_selection import train_test_split
 from AI4Water import Model
 from AI4Water.backend import get_sklearn_models
 from AI4Water.utils.imputation import Imputation
+from AI4Water.utils.datasets import load_nasdaq
 from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
 seed = 313
 np.random.seed(seed)
 random.seed(seed)
 
-file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
-fname = os.path.join(dpath, "nasdaq100_padding.csv")
-if not os.path.exists(fname):
-    df = pd.read_csv("https://raw.githubusercontent.com/KurochkinAlexey/DA-RNN/master/nasdaq100_padding.csv")
-    df.to_csv(fname)
-nasdaq_df = pd.read_csv(fname)
+nasdaq_df = load_nasdaq()
 
 examples = 2000
 ins = 5

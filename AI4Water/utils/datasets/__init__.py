@@ -36,19 +36,46 @@ from AI4Water.utils.datasets.datasets import RiverIsotope
 from AI4Water.utils.datasets.datasets import EtpPcpSamoylov
 
 
-def load_30min(target:Union[list, str]='target5')->pd.DataFrame:
-    """Loads a  multi-variate time series data which has mutliple targets with missing values."""
-    fpath = os.path.join(os.path.dirname(__file__), "mts_30min.csv")
-    df = pd.read_csv(fpath, index_col="Date_Time2")
+def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataFrame:
+    """
+    Loads the Antibiotic resitance genes (ARG) data from a recreational beach
+    in Korea along with environment variables. The data is in the form of
+    mutlivariate time series and was collected over the period of 2 years during
+    several precipitation events. The frequency of environmental data is 30 mins
+    while the ARG is discontinuous. The data and its pre-processing is described
+    in detail in https://doi.org/10.1016/j.watres.2021.117001
+    Arguments:
+        inputs list: features to use as input. By default all environmental data
+            is used.
+        target list/str: feature/features to use as target/output. By default
+            `tetx_coppml` is used as target.
+    Returns:
+        a pandas dataframe with inputs and target and indexed
+            with pandas.DateTimeIndex
+
+    Examples
+    ```python
+    >>>from AI4Water.utils.datasets import arg_beach
+    >>>df = arg_beach()
+    ```
+    """
+    fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")
+    df = pd.read_csv(fpath, index_col="index")
     df.index=pd.to_datetime(df.index)
 
-    default_targets = [col for col in df.columns if col.startswith('target')]
+    default_inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp6_mm',
+                      'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa', 'rel_hum'
+]
+    default_targets = [col for col in df.columns if col not in default_inputs]
 
-    inputs = [col for col in df.columns if col.startswith('input')]
+    if inputs is None:
+        inputs = default_inputs
 
     if not isinstance(target, list):
         if isinstance(target, str):
             target = [target]
+    elif isinstance(target, list):
+        pass
     else:
         target = default_targets
 

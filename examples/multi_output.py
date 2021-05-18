@@ -4,14 +4,12 @@
 # Each of the parallel NN receives same input.
 # The loss function is also customized although it is not necessary
 
-import os
-
-import pandas as pd
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
 from AI4Water import InputAttentionModel
+from AI4Water.utils.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()
 
@@ -61,14 +59,11 @@ class MultiSite(InputAttentionModel):
 
 
 if __name__ == "__main__":
-    input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
     # column in dataframe to bse used as output/target
     outputs = ['target7', 'target8']
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
-    df = pd.read_csv(fname, na_values="#NUM!")
-    df.index = pd.to_datetime(df['Date_Time2'])
+    df = arg_beach(target=outputs)
+    input_features = list(df.columns)[0:-2]
 
     model = MultiSite(
         data=df,

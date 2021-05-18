@@ -239,18 +239,15 @@ class Model(NN, Plots):
 
         Examples:
         ```python
-        from AI4Water import Model
-        from AI4Water.utils.datasets import load_30min
-        df = load_30min()
-        model = Model(data=df,
-                      batch_size=16,
-                      model={'layers': {'LSTM': 64}},
-                      inputs = ['input1', 'input2', 'input3', 'input4', 'input5',
-                                'input6', 'input8', 'input11'],
-                      outputs = ['target7']
-        )
-        history = model.fit(indices='random')
-        y, obs = model.predict()
+        >>>from AI4Water import Model
+        >>>from AI4Water.utils.datasets import arg_beach
+        >>>df = arg_beach()
+        >>>model = Model(data=df,
+        ...              batch_size=16,
+        ...           model={'layers': {'LSTM': 64}},
+        ...)
+        >>>history = model.fit(indices='random')
+        >>>y, obs = model.predict()
         ```
         """
         config = make_model(**kwargs)
@@ -266,8 +263,12 @@ class Model(NN, Plots):
         NN.__init__(self, config=config.config)
 
         self.intervals = config.config['intervals']
-        self.in_cols = self.config['inputs']
-        self.out_cols = self.config['outputs']
+        _in_cols, _out_cols = self.config['inputs'], self.config['outputs']
+        if _in_cols is None and isinstance(data, pd.DataFrame):
+            _in_cols, _out_cols = list(data.columns)[0:-1], list(data.columns)[-1]
+        self.in_cols = _in_cols
+        self.out_cols = _out_cols
+
         self.data = data
         self.KModel = keras.models.Model if keras is not None else None
         self.path = maybe_create_path(path=path, prefix=prefix)

@@ -6,14 +6,11 @@ import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from AI4Water.pytorch_models import HARHNModel
-from AI4Water.utils import make_model
+from AI4Water.utils.datasets import load_nasdaq
 
 lookback = 10
 epochs = 50
-file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "dl4seq"), "data")
-fname = os.path.join(dpath, "nasdaq100_padding.csv")
-df = pd.read_csv(fname)
+df = load_nasdaq()
 
 
 model = HARHNModel(batch_size=16,

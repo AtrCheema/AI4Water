@@ -1,10 +1,9 @@
 # this file shows how to build a simple dense layer based model
 # the input_features and outputs are columns and are present in the file
-import pandas as pd
 import tensorflow as tf
 
 from AI4Water import Model
-from AI4Water.utils.datasets import load_30min
+from AI4Water.utils.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()
 
@@ -14,19 +13,19 @@ mlp_model = {'layers': {
     "Dense_3": {'units': 1},
 }}
 
-input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-              'input11']
-# column in dataframe to bse used as output/target
-outputs = ['target7']
+df = arg_beach()
 
-df = load_30min()
+input_features = list(df.columns)[0:-1]
+
+# column in dataframe to bse used as output/target
+outputs = list(df.columns)[-1]
 
 model = Model(data=df,
               batch_size=16,
               lookback=1,
               model = mlp_model,
               inputs=input_features,
-              outputs=outputs,
+              outputs=[outputs],
               lr=0.0001
               )
 

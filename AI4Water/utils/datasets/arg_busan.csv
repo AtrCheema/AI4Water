@@ -1,4 +1,4 @@
-Date_Time2,input1,input2,input3,input4,input5,input6,input7,input8,input9,input10,input11,input12,input13,target1,target2,target3,target4,target5,target6,target7,target8,target9,target10,target11,target12
+index,tide_cm,wat_temp_c,sal_psu,air_temp_c,pcp_mm,pcp3_mm,pcp6_mm,pcp12_mm,wind_dir_deg,wind_speed_mps,air_p_hpa,mslp_hpa,rel_hum,ecoli,16s,inti1,Total_args,tetx_coppml,sul1_coppml,blaTEM_coppml,aac_coppml,Total_otus,otu_5575,otu_273,otu_94
 6/19/2018 0:00,36.40714884,19.32123184,33.9560585,19.78,0,0,0,0,159.5333333,0.96,1002.856667,1007.256667,95,,,,,,,,,,,,
 6/19/2018 0:30,35.56251526,19.32012367,33.95050812,19.09333333,0,0,0,0,86.59666667,0.163333333,1002.3,1006.7,95,,,,,,,,,,,,
 6/19/2018 1:00,34.80801582,19.31966591,33.94253159,18.73333333,0,0,0,0,2.26,0.08,1001.973333,1006.373333,95,,,,,,,,,,,,

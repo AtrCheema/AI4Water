@@ -187,6 +187,7 @@ Available cases are {self.models} and you wanted to exclude
                                               **config)
 
                 if run_type == 'dry_run':
+                    print(f"running  {model_type} model")
                     train_results, test_results = objective_fn()
                     self._populate_results(model_name, train_results, test_results)
                 else:
@@ -373,10 +374,10 @@ Available cases are {self.models} and you wanted to include
         -----------
         ```python
         >>>from AI4Water.experiments import MLRegressionExperiments
-        >>>from AI4Water.utils.datasets import load_30min
-        >>>data = load_30min()
-        >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
-        >>>outputs = ['target5']
+        >>>from AI4Water.utils.datasets import arg_beach
+        >>>data = arg_beach()
+        >>>inputs = list(data.columns)[0:-1]
+        >>>outputs = list(data.columns)[-1]
         >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
         >>>experiment.fit(exclude=['TPOTRegressor'])
         >>>experiment.compare_errors('mse')
@@ -575,12 +576,12 @@ class MLRegressionExperiments(Experiments):
         Examples:
         --------
         ```python
-        >>>from AI4Water.utils.datasets import load_30min
+        >>>from AI4Water.utils.datasets import arg_beach
         >>>from AI4Water.experiments import MLRegressionExperiments
         >>> # first compare the performance of all available models without optimizing their parameters
-        >>>data = load_30min()  # read data file, in this case load the default data
-        >>>inputs = [inp for inp in data.columns if inp.startswith('input')]  # define input and output columns in data
-        >>>outputs = ['target5']
+        >>>data = arg_beach()  # read data file, in this case load the default data
+        >>>inputs = list(data.columns)[0:-1]  # define input and output columns in data
+        >>>outputs = list(data.columns)[-1]
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
         >>>comparisons.fit(run_type="dry_run", exclude=['TPOTRegressor'])
@@ -1599,7 +1600,7 @@ class TransformationExperiments(Experiments):
                  param_space=None,
                  x0=None,
                  cases=None,
-                 exp_name='TransformationExperiments',
+                 exp_name='TransformationExperiments' ,
                  num_samples=5,
                  dl4seq_model=None,
                  **model_kws):
@@ -1609,7 +1610,9 @@ class TransformationExperiments(Experiments):
         self.model_kws = model_kws
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
-        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
+        super().__init__(cases=cases,
+                         exp_name=exp_name + f'_{dateandtime_now()}',
+                         num_samples=num_samples)
 
     def update_paras(self, **suggested_paras):
         raise NotImplementedError(f"""
