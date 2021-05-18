@@ -2,30 +2,7 @@
 # some rights may be researved by 2020  Ather Abbas
 from setuptools import setup
 from version import __version__ as ver
-from setuptools.command.install import install
 
-requirements=None
-
-class InstallCommand(install):
-    user_options = install.user_options + [
-        ('requirements', None, "whether to install with all requirements or with minimum requirements"),
-    ]
-
-    def initialize_options(self):
-        install.initialize_options(self)
-        self.requirements = None
-
-    def finalize_options(self):
-        if self.requirements not in [None, 'all']:
-            raise ValueError(f"Invalid Value {self.requirements} for `requirements`. Allowed value is `all`.")
-        if self.requirements == 'all':
-            print(f"Install AI4Water version {ver} with all requirements")
-        install.finalize_options(self)
-
-    def run(self):
-        global requirements
-        requirements = self.requirements
-        install.run(self)
 
 with open("README.md", "r") as fd:
     long_desc = fd.read()
@@ -41,10 +18,11 @@ min_requirements = [
         'matplotlib',
         'scikit-optimize'
     ]
-all_requirements = min_requirements + [
-'tensorflow' # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
+
+extra_requires = [
+'tensorflow<=2.3', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
-'pytorch',  # only if you want to use pytorch-based models
+#'pytorch',  # only if you want to use pytorch-based models
 'h5py', # only if you want to save batches
 'xgboost',
 'EMD-signal',  # for emd transformation
@@ -63,10 +41,9 @@ all_requirements = min_requirements + [
 'hyperopt'
 ]
 
+all_requirements = min_requirements + extra_requires
+
 setup(
-    cmdclass={
-        'install': InstallCommand,
-    },
 
     name='AI4Water',
 
@@ -81,7 +58,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'AI4Water/utils/datasets': ['mts_30min.csv', "input_target_u1.csv"]},
+    package_data={'AI4Water/utils/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
     include_package_data=True,
 
     classifiers=[
@@ -112,5 +89,7 @@ setup(
               'AI4Water/experiments'
               ],
 
-    install_requires=min_requirements if requirements is None else all_requirements,
+    install_requires=min_requirements,
+
+    extras_require={'all': extra_requires}
 )
