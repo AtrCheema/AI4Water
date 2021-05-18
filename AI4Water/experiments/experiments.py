@@ -1158,7 +1158,7 @@ class MLRegressionExperiments(Experiments):
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
-            Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
+            #Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
             Real(low=0.1, high=0.9, name='min_child_weight ', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
             Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
@@ -1169,7 +1169,7 @@ class MLRegressionExperiments(Experiments):
             # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
             # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [10, 3, 0.001, 'gbtree', 0.1, 0.1, 0.1, 0.1,
+        self.x0 = [10, 3, 0.001, 0.1, 0.1, 0.1, 0.1,
                    #0.1, 0.1, 0.1, 0.1, 0.1
                    ]
         return {'model': {'XGBOOSTRFREGRESSOR': kwargs}}
