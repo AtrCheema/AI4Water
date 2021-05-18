@@ -379,7 +379,7 @@ Available cases are {self.models} and you wanted to include
         >>>inputs = list(data.columns)[0:-1]
         >>>outputs = list(data.columns)[-1]
         >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
-        >>>experiment.fit(exclude=['TPOTRegressor'])
+        >>>experiment.fit()
         >>>experiment.compare_errors('mse')
         >>>experiment.compare_errors('r2', 0.2, 'greater')
         ```
@@ -584,7 +584,7 @@ class MLRegressionExperiments(Experiments):
         >>>outputs = list(data.columns)[-1]
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-        >>>comparisons.fit(run_type="dry_run", exclude=['TPOTRegressor'])
+        >>>comparisons.fit(run_type="dry_run")
         >>>comparisons.compare_errors('r2')
         >>> # find out the models which resulted in r2> 0.5
         >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
@@ -1113,18 +1113,18 @@ class MLRegressionExperiments(Experiments):
     #     self.x0 = [None, None, None]
     #     return {'model': {'TransformedTargetRegressor': kwargs}}
 
-    def model_TPOTRegressor(self, **kwargs):
-        ## http://epistasislab.github.io/tpot/api/#regression
-        self.param_space = [
-            Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
-            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
-        ]
-        self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
-        return {'model': {'TPOTREGRESSOR': kwargs}}
+    # def model_TPOTRegressor(self, **kwargs):
+    #     ## http://epistasislab.github.io/tpot/api/#regression
+    #     self.param_space = [
+    #         Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
+    #         Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
+    #     ]
+    #     self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
+    #     return {'model': {'TPOTREGRESSOR': kwargs}}
 
     def model_TweedieRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TweedieRegressor.html
@@ -1553,18 +1553,18 @@ class MLClassificationExperiments(Experiments):
         self.x0 = [10, 3, 0.0001, 'gbtree', 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         return {'model': {'XGBClassifier': kwargs}}
 
-    def model_TPOTCLASSIFIER(self, **kwargs):
-        ## http://epistasislab.github.io/tpot/api/#regression
-        self.param_space = [
-            Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
-            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
-        ]
-        self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
-        return {'model': {'TPOTCLASSIFIER': kwargs}}
+    # def model_TPOTCLASSIFIER(self, **kwargs):
+    #     ## http://epistasislab.github.io/tpot/api/#regression
+    #     self.param_space = [
+    #         Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
+    #         Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
+    #     ]
+    #     self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
+    #     return {'model': {'TPOTCLASSIFIER': kwargs}}
 
 
 class TransformationExperiments(Experiments):

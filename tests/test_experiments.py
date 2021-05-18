@@ -20,7 +20,7 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
                                               input_nans={'SimpleImputer': {'strategy': 'mean'}} )
-        exclude = ['TPOTRegressor']
+        exclude = []
 
         comparisons.fit(run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2')
