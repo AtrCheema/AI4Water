@@ -31,6 +31,8 @@ try:
 except ModuleNotFoundError:
     xgboost = None
 
+SEP = os.sep
+
 # TODO, when predicting, use best saved weights instead of last state of weights
 # TODO, show loss curve of different models in an Experiment
 # todo plots comparing different models in following youtube videos at 6:30 and 8:00 minutes.
@@ -180,7 +182,7 @@ Available cases are {self.models} and you wanted to exclude
                         raise TypeError
 
                     return self.build_and_run(predict=predict,
-                                              title=f"{self.exp_name}\\{model_name}",
+                                              title=f"{self.exp_name}{SEP}{model_name}",
                                               fit_kws=fit_kws,
                                               **config)
 
@@ -193,7 +195,7 @@ Available cases are {self.models} and you wanted to exclude
                     if hasattr(self, model_type):
                         getattr(self, model_type)()
 
-                    opt_dir = os.path.join(os.getcwd(), f"results\\{self.exp_name}\\{model_name}")
+                    opt_dir = os.path.join(os.getcwd(), f"results{SEP}{self.exp_name}{SEP}{model_name}")
                     print(f"optimizing  {model_type} using {opt_method} method")
                     self.optimizer = HyperOpt(opt_method,
                                               objective_fn=objective_fn,
@@ -247,7 +249,7 @@ Available cases are {self.models} and you wanted to exclude
                                                          #view=True,
                                                          fit_kws=fit_kws,
                                                          model={_model: self.optimizer.best_paras()},
-                                                         title=f"{self.exp_name}\\{model_type}\\best")
+                                                         title=f"{self.exp_name}{SEP}{model_type}{SEP}best")
 
         self._populate_results(model_type, train_results, test_results)
         return
@@ -299,7 +301,7 @@ Available cases are {self.models} and you wanted to exclude
                 simulations['test'].pop(m[0])
 
         fname = kwargs.get('name', 'taylor.png')
-        fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}\\{fname}.png')
+        fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
         plot_taylor(
             trues=self.trues,
@@ -462,7 +464,7 @@ Available cases are {self.models} and you wanted to include
         ax.set_title("Test", fontdict={'fontsize': kwargs.get('title_fs', 20)})
 
         if save:
-            fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}\\{name}_{matric_name}.png')
+            fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
         return models
@@ -1586,7 +1588,10 @@ class TransformationExperiments(Experiments):
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>outputs = ['target']
-    >>>experiment = TransformationExperiments(inputs=inputs, outputs=outputs, data=data, exp_name="testing")
+    >>>cases = {'model_minmax': {'transformation': 'minmax'},
+    ...         'model_zscore': {'transformation': 'zscore'}}
+    >>>experiment = MyTransformationExperiments(cases=cases,
+    ...                                         inputs=inputs, outputs=outputs, data=data, exp_name="testing")
     """
 
     def __init__(self,
@@ -1628,6 +1633,8 @@ will used to build AI4Water's Model class.
             **self.update_paras(**suggested_paras),
             **self.model_kws
         )
+
+        setattr(self, '_model', model)
 
         model = self.process_model_before_fit(model)
 
