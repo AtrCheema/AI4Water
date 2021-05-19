@@ -245,7 +245,6 @@ Available cases are {self.models} and you wanted to exclude
             _model = 'layers'
         else:
             _model = model_type
-        print('inside train_best: ', model_type, best_paras)
         train_results, test_results = self.build_and_run(predict=True,
                                                          #view=True,
                                                          fit_kws=fit_kws,

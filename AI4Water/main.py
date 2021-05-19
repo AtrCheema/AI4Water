@@ -222,6 +222,18 @@ class Model(NN, Plots):
                 AI4Water.utils.transformations.py. The user can specify more than
                 one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
+                To apply a single transformation on all the data
+                ```python
+                transformation = 'minmax'
+                ```
+                T apply different transformations on different input and output features
+                ```python
+                transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
+                                {'method': 'minmax', 'features': ['input3', 'output']}
+                                ]
+                ```
+                Here `input1`, `input2`, `input3` and `outptu` are the columns in the
+                `data`.
             prefix str:
                 prefix to be used for the folder in which the results are saved.
                 default is None, which means within
