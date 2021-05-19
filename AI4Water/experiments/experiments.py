@@ -31,6 +31,8 @@ try:
 except ModuleNotFoundError:
     xgboost = None
 
+SEP = os.sep
+
 # TODO, when predicting, use best saved weights instead of last state of weights
 # TODO, show loss curve of different models in an Experiment
 # todo plots comparing different models in following youtube videos at 6:30 and 8:00 minutes.
@@ -180,11 +182,12 @@ Available cases are {self.models} and you wanted to exclude
                         raise TypeError
 
                     return self.build_and_run(predict=predict,
-                                              title=f"{self.exp_name}\\{model_name}",
+                                              title=f"{self.exp_name}{SEP}{model_name}",
                                               fit_kws=fit_kws,
                                               **config)
 
                 if run_type == 'dry_run':
+                    print(f"running  {model_type} model")
                     train_results, test_results = objective_fn()
                     self._populate_results(model_name, train_results, test_results)
                 else:
@@ -193,7 +196,7 @@ Available cases are {self.models} and you wanted to exclude
                     if hasattr(self, model_type):
                         getattr(self, model_type)()
 
-                    opt_dir = os.path.join(os.getcwd(), f"results\\{self.exp_name}\\{model_name}")
+                    opt_dir = os.path.join(os.getcwd(), f"results{SEP}{self.exp_name}{SEP}{model_name}")
                     print(f"optimizing  {model_type} using {opt_method} method")
                     self.optimizer = HyperOpt(opt_method,
                                               objective_fn=objective_fn,
@@ -242,12 +245,11 @@ Available cases are {self.models} and you wanted to exclude
             _model = 'layers'
         else:
             _model = model_type
-        print('inside train_best: ', model_type, best_paras)
         train_results, test_results = self.build_and_run(predict=True,
                                                          #view=True,
                                                          fit_kws=fit_kws,
                                                          model={_model: self.optimizer.best_paras()},
-                                                         title=f"{self.exp_name}\\{model_type}\\best")
+                                                         title=f"{self.exp_name}{SEP}{model_type}{SEP}best")
 
         self._populate_results(model_type, train_results, test_results)
         return
@@ -299,7 +301,7 @@ Available cases are {self.models} and you wanted to exclude
                 simulations['test'].pop(m[0])
 
         fname = kwargs.get('name', 'taylor.png')
-        fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}\\{fname}.png')
+        fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
         plot_taylor(
             trues=self.trues,
@@ -371,12 +373,12 @@ Available cases are {self.models} and you wanted to include
         -----------
         ```python
         >>>from AI4Water.experiments import MLRegressionExperiments
-        >>>from AI4Water.utils.datasets import load_30min
-        >>>data = load_30min()
-        >>>inputs = [inp for inp in data.columns if inp.startswith('input')]
-        >>>outputs = ['target5']
+        >>>from AI4Water.utils.datasets import arg_beach
+        >>>data = arg_beach()
+        >>>inputs = list(data.columns)[0:-1]
+        >>>outputs = list(data.columns)[-1]
         >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
-        >>>experiment.fit(exclude=['TPOTRegressor'])
+        >>>experiment.fit()
         >>>experiment.compare_errors('mse')
         >>>experiment.compare_errors('r2', 0.2, 'greater')
         ```
@@ -462,7 +464,7 @@ Available cases are {self.models} and you wanted to include
         ax.set_title("Test", fontdict={'fontsize': kwargs.get('title_fs', 20)})
 
         if save:
-            fname = os.path.join(os.getcwd(),f'results\\{self.exp_name}\\{name}_{matric_name}.png')
+            fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
         return models
@@ -573,15 +575,15 @@ class MLRegressionExperiments(Experiments):
         Examples:
         --------
         ```python
-        >>>from AI4Water.utils.datasets import load_30min
+        >>>from AI4Water.utils.datasets import arg_beach
         >>>from AI4Water.experiments import MLRegressionExperiments
         >>> # first compare the performance of all available models without optimizing their parameters
-        >>>data = load_30min()  # read data file, in this case load the default data
-        >>>inputs = [inp for inp in data.columns if inp.startswith('input')]  # define input and output columns in data
-        >>>outputs = ['target5']
+        >>>data = arg_beach()  # read data file, in this case load the default data
+        >>>inputs = list(data.columns)[0:-1]  # define input and output columns in data
+        >>>outputs = list(data.columns)[-1]
         >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
-        >>>comparisons.fit(run_type="dry_run", exclude=['TPOTRegressor'])
+        >>>comparisons.fit(run_type="dry_run")
         >>>comparisons.compare_errors('r2')
         >>> # find out the models which resulted in r2> 0.5
         >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
@@ -1110,18 +1112,18 @@ class MLRegressionExperiments(Experiments):
     #     self.x0 = [None, None, None]
     #     return {'model': {'TransformedTargetRegressor': kwargs}}
 
-    def model_TPOTRegressor(self, **kwargs):
-        ## http://epistasislab.github.io/tpot/api/#regression
-        self.param_space = [
-            Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
-            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
-        ]
-        self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
-        return {'model': {'TPOTREGRESSOR': kwargs}}
+    # def model_TPOTRegressor(self, **kwargs):
+    #     ## http://epistasislab.github.io/tpot/api/#regression
+    #     self.param_space = [
+    #         Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
+    #         Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
+    #     ]
+    #     self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
+    #     return {'model': {'TPOTREGRESSOR': kwargs}}
 
     def model_TweedieRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TweedieRegressor.html
@@ -1155,7 +1157,7 @@ class MLRegressionExperiments(Experiments):
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
-            Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
+            #Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
             Real(low=0.1, high=0.9, name='min_child_weight ', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
             Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
@@ -1166,7 +1168,7 @@ class MLRegressionExperiments(Experiments):
             # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
             # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [10, 3, 0.001, 'gbtree', 0.1, 0.1, 0.1, 0.1,
+        self.x0 = [10, 3, 0.001, 0.1, 0.1, 0.1, 0.1,
                    #0.1, 0.1, 0.1, 0.1, 0.1
                    ]
         return {'model': {'XGBOOSTRFREGRESSOR': kwargs}}
@@ -1550,18 +1552,18 @@ class MLClassificationExperiments(Experiments):
         self.x0 = [10, 3, 0.0001, 'gbtree', 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
         return {'model': {'XGBClassifier': kwargs}}
 
-    def model_TPOTCLASSIFIER(self, **kwargs):
-        ## http://epistasislab.github.io/tpot/api/#regression
-        self.param_space = [
-            Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
-            Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
-            Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
-            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
-        ]
-        self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
-        return {'model': {'TPOTCLASSIFIER': kwargs}}
+    # def model_TPOTCLASSIFIER(self, **kwargs):
+    #     ## http://epistasislab.github.io/tpot/api/#regression
+    #     self.param_space = [
+    #         Integer(low=10, high=100, name='generations', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='population_size', num_samples=self.num_samples),
+    #         Integer(low=10, high=100, name='offspring_size', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='mutation_rate', num_samples=self.num_samples),
+    #         Real(low=0.01, high=0.99, name='crossover_rate', num_samples=self.num_samples),
+    #         Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples)
+    #     ]
+    #     self.x0 = [10, 10, 10, 0.9, 0.1, 1.0]
+    #     return {'model': {'TPOTCLASSIFIER': kwargs}}
 
 
 class TransformationExperiments(Experiments):
@@ -1586,7 +1588,10 @@ class TransformationExperiments(Experiments):
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>outputs = ['target']
-    >>>experiment = TransformationExperiments(inputs=inputs, outputs=outputs, data=data, exp_name="testing")
+    >>>cases = {'model_minmax': {'transformation': 'minmax'},
+    ...         'model_zscore': {'transformation': 'zscore'}}
+    >>>experiment = MyTransformationExperiments(cases=cases,
+    ...                                         inputs=inputs, outputs=outputs, data=data, exp_name="testing")
     """
 
     def __init__(self,
@@ -1594,7 +1599,7 @@ class TransformationExperiments(Experiments):
                  param_space=None,
                  x0=None,
                  cases=None,
-                 exp_name='TransformationExperiments',
+                 exp_name='TransformationExperiments' ,
                  num_samples=5,
                  dl4seq_model=None,
                  **model_kws):
@@ -1604,7 +1609,9 @@ class TransformationExperiments(Experiments):
         self.model_kws = model_kws
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
-        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
+        super().__init__(cases=cases,
+                         exp_name=exp_name + f'_{dateandtime_now()}',
+                         num_samples=num_samples)
 
     def update_paras(self, **suggested_paras):
         raise NotImplementedError(f"""
@@ -1628,6 +1635,8 @@ will used to build AI4Water's Model class.
             **self.update_paras(**suggested_paras),
             **self.model_kws
         )
+
+        setattr(self, '_model', model)
 
         model = self.process_model_before_fit(model)
 

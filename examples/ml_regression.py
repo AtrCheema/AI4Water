@@ -1,4 +1,4 @@
-#How to use dl4seq for classification problems
+#How to use AI4Water for regression problems
 
 import pandas as pd
 import numpy as np

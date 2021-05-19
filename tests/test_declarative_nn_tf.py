@@ -7,13 +7,12 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 import tensorflow as tf
 
 from AI4Water import Model
-from AI4Water.utils.datasets import load_30min
+from AI4Water.utils.datasets import arg_beach
 
-data = load_30min()
+inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
+outputs = ['tetx_coppml']
 
-inputs = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input7',
-       'input8']
-outputs = ['target5']
+data = arg_beach(inputs, outputs)
 
 
 def build_model(layers, lookback):

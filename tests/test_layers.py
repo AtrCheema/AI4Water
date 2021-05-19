@@ -2,26 +2,22 @@
 import os
 import site  # so that AI4Water directory is in path
 import unittest
-from os.path import abspath
-from inspect import getsourcefile
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 
 from AI4Water import Model
 from AI4Water import NBeatsModel
+from AI4Water.utils.datasets import arg_beach, load_nasdaq
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
-input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input10',
-                  'input13']
+input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
+                  'rel_hum']
 ins = len(input_features)
 outs = 1
 
-file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
 
 def make_and_run(
         model,
@@ -32,19 +28,16 @@ def make_and_run(
         **kwargs):
 
     if data_type == "nasdaq":
-        fname = os.path.join(dpath, "nasdaq100_padding.csv")
-        df = pd.read_csv(fname)
-        in_cols = list(df.columns)
-        in_cols.remove("NDX")
+        df = load_nasdaq()
+        in_cols = list(df.columns)[0:-1]
         inputs = in_cols
         outputs = ["NDX"]
     else:
-        fname = os.path.join(dpath, "mts_30min.csv")
-        df = pd.read_csv(fname)
+        outputs = ['blaTEM_coppml']
+        df = arg_beach(input_features, target=outputs)
         inputs = input_features
         # column in dataframe to bse used as output/target
-        outputs = ['target7']
-        df['target7'] = np.log10(df['target7'])
+        df['blaTEM_coppml'] = np.log10(df['blaTEM_coppml'])
         kwargs['intervals'] = ((0, 146,),
                               (145, 386,),
                               (385, 628,),

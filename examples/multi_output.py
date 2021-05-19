@@ -4,14 +4,12 @@
 # Each of the parallel NN receives same input.
 # The loss function is also customized although it is not necessary
 
-import os
-
-import pandas as pd
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
 from AI4Water import InputAttentionModel
+from AI4Water.utils.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()
 
@@ -40,12 +38,14 @@ class MultiSite(InputAttentionModel):
         setattr(self, 'method', 'input_attention')
         print('building input attention')
 
+        self.config['enc_config'] = self.enc_config
+
         predictions = []
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')  # Enter time series data
         inputs = [enc_input]
 
         for out in range(self.outs):
-            lstm_out1, h0, s0 = self._encoder(enc_input, self.config['enc_config'], lstm2_seq=False, suf=str(out))
+            lstm_out1, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False, suf=str(out))
             act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]
@@ -61,14 +61,11 @@ class MultiSite(InputAttentionModel):
 
 
 if __name__ == "__main__":
-    input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
     # column in dataframe to bse used as output/target
-    outputs = ['target7', 'target8']
+    outputs = ['blaTEM_coppml', 'aac_coppml']
 
-    fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
-    df = pd.read_csv(fname, na_values="#NUM!")
-    df.index = pd.to_datetime(df['Date_Time2'])
+    df = arg_beach(target=outputs)
+    input_features = list(df.columns)[0:-2]
 
     model = MultiSite(
         data=df,

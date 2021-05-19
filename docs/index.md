@@ -7,11 +7,7 @@ For code visit [github](https://github.com/AtrCheema/AI4Water).
 <img src="imgs/monogram.png" width="300" height="200" />
 
 A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
-for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
-
-`Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
- the ability to babysit a large number of experiments at once, staring at plots and tweaking/re-launching what works. 
- This is necessary, but not sufficient.` 
+for time series and 1D data. 
 
 The specific purposes of the repository are
 * compliment the functionality of keras by making pre and post processing easeier for time-series
@@ -29,34 +25,11 @@ This repository provides a framework to build layered models using python dictio
 which fasten the process of  modeling time-series forcasting. The purpose is to cut short the time to write boiler plate code
 in developing deep learning based models.
 
-Most of the models in this repository have been adopted from other repositories in order to create an `all in one` code.
-I have tried to reference the original repositories as well.
-
 This repository is for you if you want to
 * avoid pre and post post processing of data to build data-driven models for 1D or time series data.
 * want to save (in) and reload models from readable json config file.
 * Customize some of the utilities provided here while retaining others e.g using your own normalization and denormalization 
 
-Currently following models are implemented
-
-| Name                          | Name in this repository  | Reference |
-| -------------------------- | ------------- | ---------- |
-| MLP  | `Model` | |
-| LSTM | ٭ | |
-| CNN  | * |  |
-| LSTM CNN | * |  |
-| CNN LSTM |  * |  |
-| Autoencoder  | * |  |
-| ConvLSTM | * | [paper](https://arxiv.org/abs/1506.04214v1) [Code](https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/) |
-| Temporal Convolutional Networks (TCN)  | * | [paper](https://www.nature.com/articles/s41598-020-65070-5) [code](https://github.com/philipperemy/keras-tcn) |
-| Iterpretable Multivariate LSTM (IMV-LSTM)  | `IMVLSTMModel` | [paper](https://arxiv.org/pdf/1905.12034.pdf) [code](https://github.com/KurochkinAlexey/IMV_LSTM) |
-| HARHN  | `HARHNModel` | [paper](https://arxiv.org/abs/1806.00685) [code](https://github.com/KurochkinAlexey/Hierarchical-Attention-Based-Recurrent-Highway-Networks-for-Time-Series-Prediction)|
-| Neural Beats  | `NBeatsModel` | [paper](https://arxiv.org/pdf/1905.10437.pdf) |
-| Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
-| Input Attention  | `InputAttentionModel` | |
-
-`*` These models can be constructed by stacking layers in a python dictionary as shown [here](https://ai4water.readthedocs.io/en/latest/build_dl_models/). The remaining models 
-can be used as shown [here](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
 
 ## Installation
 

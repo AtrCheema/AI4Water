@@ -1,24 +1,19 @@
-import tensorflow as tf
 import os
-
-tf.compat.v1.disable_eager_execution()
-
+import unittest
 import site  # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)))
 
-from AI4Water import InputAttentionModel, DualAttentionModel
-import unittest
+import tensorflow as tf
 
-import pandas as pd
-from inspect import getsourcefile
-from os.path import abspath
+tf.compat.v1.disable_eager_execution()
+
+from AI4Water.utils.datasets import load_nasdaq
+from AI4Water import InputAttentionModel, DualAttentionModel
+
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
-    file_path = abspath(getsourcefile(lambda: 0))
-    dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
-    fname = os.path.join(dpath, "nasdaq100_padding.csv")
-    df = pd.read_csv(fname)
+    df = load_nasdaq()
 
     model = input_model(
         data=df,

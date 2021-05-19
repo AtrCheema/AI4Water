@@ -2,16 +2,14 @@
 # We build a CNN->LSTM model consisting of 3 CNN layers followed by max pooling and then feeding its output
 # to two LSTM layers.
 
-import os
-
-import pandas as pd
-
 from AI4Water import Model
+from AI4Water.utils.datasets import arg_beach
 
-input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
-# column in dataframe to be used as output/target
-outputs = ['target7']
+df = arg_beach()
+input_features = list(df.columns)[0:-1]
+
+# column in dataframe to bse used as output/target
+outputs = list(df.columns)[-1]
 
 sub_sequences = 3
 lookback = 15
@@ -40,11 +38,6 @@ layers = {
     'sigmoid_2': {'config':  {}},
     'Dense': {'config':  {'units': 1}}
 }
-
-
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
-df = pd.read_csv(fname)
-df.index = pd.to_datetime(df['Date_Time2'])
 
 model = Model(
     data=df,

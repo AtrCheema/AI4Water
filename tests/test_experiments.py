@@ -3,19 +3,16 @@ import unittest
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-import pandas as pd
-
 from AI4Water.experiments import MLRegressionExperiments
+from AI4Water.utils.datasets import arg_beach
 
 
-input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
+input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp12_mm',
+                  'air_p_hpa']
 # column in dataframe to bse used as output/target
-outputs = ['target7']
+outputs = ['blaTEM_coppml']
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water", "utils", "datasets", "mts_30min.csv")
-df = pd.read_csv(fname)
-df.index = pd.to_datetime(df['Date_Time2'])
+df = arg_beach(input_features, outputs)
 
 class TestExperiments(unittest.TestCase):
 
@@ -23,7 +20,7 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
                                               input_nans={'SimpleImputer': {'strategy': 'mean'}} )
-        exclude = ['TPOTRegressor']
+        exclude = []
 
         comparisons.fit(run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2')

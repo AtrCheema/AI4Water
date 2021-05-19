@@ -1,3 +1,6 @@
+::: AI4Water.utils.datasets.arg_beach
+    handler: python
+
 ::: AI4Water.utils.datasets.datasets.Datasets
     handler: python
 

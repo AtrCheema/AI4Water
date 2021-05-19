@@ -5,6 +5,7 @@ from tensorflow import keras
 import pandas as pd
 
 from AI4Water import Model
+from AI4Water.utils.datasets import load_nasdaq
 
 
 class CustomModel(keras.Model):
@@ -31,8 +32,7 @@ class CustomModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/nasdaq100_padding.csv")
-df = pd.read_csv(fname)
+df = load_nasdaq()
 
 model = Model(
     batch_size=32,

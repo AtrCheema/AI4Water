@@ -25,6 +25,8 @@ model = Model(
     lookback=lookback,
     epochs=epochs,
     batch_size=batch_size,
+    inputs=[f'in_{i}' for i in range(ins)],
+    outputs = ['out'],
     data=None)
 
 x = np.random.random((examples, lookback, ins))

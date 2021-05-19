@@ -1,25 +1,16 @@
 # this file tests that given activations are working both as layers as well as activation functions withing a layer
 import unittest
 import os
-import tensorflow as tf
-from inspect import getsourcefile
-from os.path import abspath
-import pandas as pd
-
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
+import tensorflow as tf
+
 from AI4Water import Model
-from AI4Water.utils import make_model
+from AI4Water.utils.datasets import load_nasdaq
 
 
-
-_ = make_model()
-file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils",  "datasets")
-fname = os.path.join(dpath, "nasdaq100_padding.csv")
-
-df = pd.read_csv(fname)
+df = load_nasdaq()
 
 version = tf.__version__.split('.')[0] + tf.__version__.split('.')[1]
 

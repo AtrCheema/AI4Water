@@ -1,10 +1,8 @@
-import os
-
 import tensorflow as tf
 from tensorflow import keras
-import pandas as pd
 
 from AI4Water.main import Model
+from AI4Water.utils.datasets import arg_beach
 
 # TODO put code in @tf.function
 # TODO write validation code
@@ -79,20 +77,18 @@ class CustomModel(Model):
         return loss_value
 
 
-# input features in data_frame
-input_features = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
-# column in dataframe to bse used as output/target
-outputs = ['target7']
-
 layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
           "LSTM_1": {'config':  {'units': 32}},
           "Dropout": {'config':  {'rate': 0.3}},
           "Dense": {'config':  {'units': 1}}
           }
 
-fname = os.path.join(os.path.dirname(os.path.dirname(__file__)), "AI4Water/data/data_30min.csv")
-df = pd.read_csv(fname)  # must be 2d dataframe
+df = arg_beach()
+
+input_features = list(df.columns)[0:-1]
+
+# column in dataframe to bse used as output/target
+outputs = list(df.columns)[-1]
 
 
 model = CustomModel(model={'layers':layers},

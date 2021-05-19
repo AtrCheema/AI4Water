@@ -2,39 +2,31 @@ import os
 import time
 import pickle
 import unittest
-from os.path import abspath
-from inspect import getsourcefile
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import skopt
 import sklearn
 import numpy as np
-import pandas as pd
 from sklearn.svm import SVC
 from scipy.stats import uniform
+from hyperopt import hp, STATUS_OK
 from skopt.space.space import Space
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from hyperopt import hp, STATUS_OK
 
 np.random.seed(313)
 
-from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
 from AI4Water import Model
 from AI4Water.utils.utils import Jsonize
 from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.datasets import load_u1
+from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
 
 
-file_path = abspath(getsourcefile(lambda:0))
-dpath = os.path.join(os.path.join(os.path.dirname(os.path.dirname(file_path)), "AI4Water"), "utils", "datasets")
-fname = os.path.join(dpath, "input_target_u1.csv")
-data = pd.read_csv(fname)
-inputs = list(data.columns)
-inputs.remove('index')
-inputs.remove('target')
-inputs.remove('target_by_group')
+data = load_u1()
+inputs = list(data.columns)[0:-1]
 outputs = ['target']
 
 

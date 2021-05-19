@@ -14,23 +14,46 @@ KModel = keras.models.Model
 
 
 class DualAttentionModel(Model):
+    _enc_config = {'n_h': 20,  # length of hidden state m
+                   'n_s': 20,  # length of hidden state m
+                   'm': 20,  # length of hidden state m
+                   'enc_lstm1_act': None,
+                   'enc_lstm2_act': None,
+                                }
+    # arguments for decoder/outputAttention in Dual stage attention
+    _dec_config = {
+        'p': 30,
+        'n_hde0': 30,
+        'n_sde0': 30
+    }
 
-    def __init__(self, **kwargs):
+    def __init__(self, enc_config:dict=None, dec_config:dict=None, **kwargs):
 
         self.method = 'dual_attention'
+        if enc_config is None:
+            enc_config = DualAttentionModel._enc_config
+        else:
+            assert isinstance(enc_config, dict)
+
+        if dec_config is None:
+            dec_config = DualAttentionModel._dec_config
+        else:
+            assert isinstance(dec_config, dict)
+        self.enc_config = enc_config
+        self.dec_config = dec_config
 
         super(DualAttentionModel, self).__init__(**kwargs)
 
     def build(self):
 
-        dec_config = self.config['dec_config']
-        enc_config = self.config['enc_config']
+        self.config['dec_config'] = self.dec_config
+        self.config['enc_config'] = self.enc_config
 
-        self.de_LSTM_cell = layers.LSTM(dec_config['p'], return_state=True, name='decoder_LSTM')
-        self.de_densor_We = layers.Dense(enc_config['m'])
+        self.de_LSTM_cell = layers.LSTM(self.dec_config['p'], return_state=True, name='decoder_LSTM')
+        self.de_densor_We = layers.Dense(self.enc_config['m'])
 
-        h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
-        s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
+        h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
+        s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
         input_y = layers.Input(shape=(self.lookback - 1, self.outs), name='input_y')
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
 
@@ -41,25 +64,25 @@ class DualAttentionModel(Model):
 
         # originally the last dimentions was -1 but I put it equal to 'm'
         # eq 11 in paper
-        enc_out = layers.Reshape((self.lookback, enc_config['m']), name='enc_out_eq_11')(enc_lstm_out)
+        enc_out = layers.Reshape((self.lookback, self.enc_config['m']), name='enc_out_eq_11')(enc_lstm_out)
 
         if self.verbosity > 1:
             print('output from Encoder LSTM:', enc_out)
 
         h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
-        h = layers.Reshape((self.outs, dec_config['p']))(h)
+        h = layers.Reshape((self.outs, self.dec_config['p']))(h)
         # concatenation of decoder hidden state and the context vector.
         last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
 
         if self.verbosity > 2:
             print('last_concat', last_concat)
-        sec_dim = enc_config['m'] + dec_config['p']  # original it was not defined but in tf-keras we need to define it
+        sec_dim = self.enc_config['m'] + self.dec_config['p']  # original it was not defined but in tf-keras we need to define it
         last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
 
         if self.verbosity > 2:
             print('reshape:', last_reshape)
 
-        result = layers.Dense(dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
+        result = layers.Dense(self.dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
 
         if self.verbosity > 1:
             print('result:', result)
@@ -227,10 +250,20 @@ class DualAttentionModel(Model):
         x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
 
-        s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
-        h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
+        n_s_feature_dim = self.config['enc_config']['n_s']
+        n_h_feature_dim = self.config['enc_config']['n_h']
+        p_feature_dim = self.config['dec_config']['p']
 
-        h_de0 = s_de0 = np.zeros((x.shape[0], self.config['dec_config']['p']))
+        if kwargs.get('use_datetime_index', False):  # during deindexification, first feature will be removed.
+            n_s_feature_dim += 1
+            n_h_feature_dim += 1
+            p_feature_dim += 1
+            idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
+            prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
+        s0 = np.zeros((x.shape[0], n_s_feature_dim))
+        h0 = np.zeros((x.shape[0], n_h_feature_dim))
+
+        h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
 
         if self.verbosity > 0:
             print_something([x, prev_y, s0, h0, h_de0, s_de0], "input_x")
@@ -243,11 +276,13 @@ class InputAttentionModel(DualAttentionModel):
 
     def build(self):
 
+        self.config['enc_config'] = self.enc_config
+
         setattr(self, 'method', 'input_attention')
         print('building input attention')
 
         enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')
-        lstm_out, h0, s0 = self._encoder(enc_input, self.config['enc_config'], lstm2_seq=False)
+        lstm_out, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False)
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.outs)(act_out)
@@ -260,11 +295,21 @@ class InputAttentionModel(DualAttentionModel):
         return
 
     def train_data(self, data=None, data_keys=None, **kwargs):
+
         x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                           transformation=self.config['transformation'], **kwargs)
 
-        s0 = np.zeros((x.shape[0], self.config['enc_config']['n_s']))
-        h0 = np.zeros((x.shape[0], self.config['enc_config']['n_h']))
+        n_s_feature_dim = self.config['enc_config']['n_s']
+        n_h_feature_dim = self.config['enc_config']['n_h']
+
+        if kwargs.get('use_datetime_index', False):  # during deindexification, first feature will be removed.
+            n_s_feature_dim += 1
+            n_h_feature_dim += 1
+            idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
+            prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
+
+        s0 = np.zeros((x.shape[0], n_s_feature_dim))
+        h0 = np.zeros((x.shape[0], n_h_feature_dim))
 
         if self.verbosity > 0:
             print_something([x, prev_y, s0, h0], "input_x")
@@ -276,17 +321,16 @@ class InputAttentionModel(DualAttentionModel):
 class OutputAttentionModel(DualAttentionModel):
 
     def build(self):
+        self.config['dec_config'] = self.dec_config
+        self.config['enc_config'] = self.enc_config
 
         setattr(self, 'method', 'output_attention')
 
         inputs = layers.Input(shape=(self.lookback, self.ins))
 
-        enc_config = self.config['enc_config']
-        dec_config = self.config['dec_config']
-
-        self.de_densor_We = layers.Dense(enc_config['m'])
-        h_de0 = layers.Input(shape=(dec_config['n_hde0'],), name='dec_1st_hidden_state')
-        s_de0 = layers.Input(shape=(dec_config['n_sde0'],), name='dec_1st_cell_state')
+        self.de_densor_We = layers.Dense(self.enc_config['m'])
+        h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
+        s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
         prev_output = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
 
         enc_lstm_out = layers.LSTM(self.config['lstm_config']['lstm_units'], return_sequences=True,
@@ -296,12 +340,12 @@ class OutputAttentionModel(DualAttentionModel):
         print('output from first LSTM:', enc_out)
 
         h, context = self.decoder_attention(enc_out, prev_output, s_de0, h_de0)
-        h = layers.Reshape((1, dec_config['p']))(h)
+        h = layers.Reshape((1, self.dec_config['p']))(h)
         # concatenation of decoder hidden state and the context vector.
         concat = layers.Concatenate(axis=2)([h, context])
         concat = layers.Reshape((-1,))(concat)
         print('decoder concat:', concat)
-        result = layers.Dense(dec_config['p'], name='eq_22')(concat)   # equation 22
+        result = layers.Dense(self.dec_config['p'], name='eq_22')(concat)   # equation 22
         print('result:', result)
         predictions = layers.Dense(1)(result)
 

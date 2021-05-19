@@ -336,11 +336,25 @@ class TestMLMethods(unittest.TestCase):
         return
 
     def test_tpot_TPOTRegressor(self):
-        run_class_test("TPOTRegressor")
+        do_test = True
+        try:
+            import tpot
+        except ImportError:
+            do_test = False
+
+        if do_test:
+            run_class_test("TPOTRegressor")
         return
 
     def test_tpot_TPOTCLASSIFIER(self):
-        run_class_test("TPOTCLASSIFIER")
+        do_test = True
+        try:
+            import tpot
+        except ImportError:
+            do_test = False
+
+        if do_test:
+            run_class_test("TPOTCLASSIFIER")
         return
 
     def test_ml_random_indices(self):

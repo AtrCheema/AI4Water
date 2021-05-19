@@ -2,11 +2,8 @@
 
 
 from AI4Water import Model
-from AI4Water.data import load_30min
+from AI4Water.utils.datasets import arg_beach
 
-inputs = ['input1', 'input2', 'input3', 'input4', 'input5', 'input6', 'input8',
-                  'input11']
-outputs = ['target7']
 
 layers = {
     "Conv1D": {"config": {"filters": 64, "kernel_size": 7}},
@@ -22,8 +19,6 @@ layers = {
 model = Model(
     model={'layers':layers},
     lookback=10,
-    inputs=inputs,
-    outputs=outputs,
-    data=load_30min())
+    data=arg_beach())
 
 history = model.fit(indices="random")
