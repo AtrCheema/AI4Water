@@ -229,7 +229,7 @@ class Model(NN, Plots):
                 T apply different transformations on different input and output features
                 ```python
                 transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
-                                {'method': 'minmax', 'features': ['input3', 'output']}
+                                {'method': 'zscore', 'features': ['input3', 'output']}
                                 ]
                 ```
                 Here `input1`, `input2`, `input3` and `outptu` are the columns in the

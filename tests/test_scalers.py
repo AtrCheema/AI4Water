@@ -1,16 +1,29 @@
+import os
+import site   # so that AI4Water directory is in path
 import unittest
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+
 import numpy as np
 import pandas as pd
-import os
-
-import site   # so that AI4Water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from AI4Water.utils.transformations import Transformations
 from AI4Water import Model
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
+
+def build_and_run(transformation, data, inputs, outputs):
+    model = Model(data=data, inputs=inputs, outputs=outputs, transformation=transformation, verbosity=0)
+    tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
+
+    pred, true = model.denormalize_data(inputs=tr_data[inputs],
+                                        true=tr_data[outputs],
+                                        predicted=tr_data[outputs],
+                                        scaler_key='5',
+                                        in_cols=model.in_cols,
+                                        out_cols=model.out_cols,
+                                        transformation=model.config['transformation'])
+    return pred
 
 def run_method1(method,
                 cols=None,
@@ -64,10 +77,10 @@ def run_method3(method,
 
 def run_method4(method,
                 replace_nans=False,
-                data=None):
+                data=None, **kwargs):
 
     scaler = Transformations(data=df if data is None else data,
-                             replace_nans=replace_nans)
+                             replace_nans=replace_nans, **kwargs)
 
     normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)(return_key=True)
     denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
@@ -79,14 +92,20 @@ def run_plot_pca(scaler, y, dim):
     return
 
 
-def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False, assert_equality=True):
+def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False, assert_equality=True,
+                    insert_ones=False):
     a = np.random.random((10, 4))
-    to_insert = np.nan if insert_nans else 0.0
 
     if insert_nans or insert_zeros:
-        a[2:4, 1] = to_insert
-        a[3:5, 2:3] = to_insert
-        a[5:8, 3] = to_insert
+        a[2:4, 1] = np.nan
+        a[3:5, 2:3] = np.nan
+
+    if insert_zeros:
+        a[5:8, 3] = 0.0
+
+    if insert_ones:
+        a[6, 1] = 1.0
+        a[9, 2:3] = 1.0
 
     kwargs = {}
     if insert_zeros:
@@ -105,7 +124,7 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
 
     _, dfo3 = run_method3(method=method, replace_nans=True, data=df3, **kwargs)
 
-    _, dfo4 = run_method4(method=method, replace_nans=True, data=df3)
+    _, dfo4 = run_method4(method=method, replace_nans=True, data=df3, **kwargs)
 
     if assert_equality:
         np.allclose(df3, dfo1, equal_nan=True)
@@ -302,8 +321,12 @@ class test_Scalers(unittest.TestCase):
 
     def test_zero_log(self):
 
-        run_log_methods("log", True, insert_nans=True, insert_zeros=True, assert_equality=False)
+        run_log_methods("log", True, insert_nans=True, insert_zeros=True)
 
+        return
+
+    def test_zero_one_log(self):
+        run_log_methods("log", True, insert_nans=True, insert_zeros=True, insert_ones=True)
         return
 
     def test_multiple_transformations(self):
@@ -318,16 +341,7 @@ class test_Scalers(unittest.TestCase):
             {"method": "minmax", "features": inputs + outputs}
                           ]
 
-        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation, verbosity=0)
-        tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
-
-        pred, true = model.denormalize_data(inputs=tr_data[inputs],
-                                            true=tr_data[outputs],
-                                            predicted=tr_data[outputs],
-                                            scaler_key='5',
-                                            in_cols=model.in_cols,
-                                            out_cols=model.out_cols,
-                                            transformation=model.config['transformation'])
+        pred = build_and_run(transformation, data, inputs, outputs)
 
         for i,j in zip(data['out1'], pred):
             self.assertAlmostEqual(i, float(j), 5)
@@ -345,28 +359,19 @@ class test_Scalers(unittest.TestCase):
             {"method": "robust", "features": outputs},
             {"method": "robust", "features": inputs + outputs}
                           ]
-        model = Model(data=data,inputs=inputs,outputs=outputs,transformation=transformation, verbosity=0)
-        tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
-
-        pred, true = model.denormalize_data(inputs=tr_data[inputs],
-                                            true=tr_data[outputs],
-                                            predicted=tr_data[outputs],
-                                            scaler_key='5',
-                                            in_cols=model.in_cols,
-                                            out_cols=model.out_cols,
-                                            transformation=model.config['transformation'])
+        pred = build_and_run(transformation, data, inputs,outputs)
 
         for i,j in zip(data['out1'], pred):
             self.assertAlmostEqual(i, float(j), 5)
         return
-
-    def test_multiple_transformation_multiple_inputs(self):
-        # TODO
-        return
-
-    def test_multile_transformations_multile_outputs(self):
-        # TODO
-        return 
+    #
+    # def test_multiple_transformation_multiple_inputs(self):
+    #     # TODO
+    #     return
+    #
+    # def test_multile_transformations_multile_outputs(self):
+    #     # TODO
+    #     return
 
 
 if __name__ == "__main__":
