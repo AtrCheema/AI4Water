@@ -27,7 +27,7 @@ from AI4Water.utils.transformations import Transformations
 from AI4Water.utils.imputation import Imputation
 from AI4Water.models.custom_training import train_step, test_step
 from AI4Water.utils.SeqMetrics import Metrics
-from AI4Water.utils.visualizations import Visualizations
+from AI4Water.utils.visualizations import Visualizations, Interpret
 
 
 def reset_seed(seed):
@@ -328,6 +328,7 @@ class Model(NN, Plots):
             _outs = self.config['outputs']
             if self.in_cols is None:
                 self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
+                self.config['inputs'], self.config['outputs'] = self.in_cols, self.out_cols
             _data = x[self.in_cols + self.out_cols]
         else:
             _data = x
@@ -392,6 +393,8 @@ class Model(NN, Plots):
     @property
     def layer_names(self):
         _all_layers = []
+        if self.category == "ML":
+            return None
         for layer in self._model.layers:
             _all_layers.append(layer.name)
         return _all_layers
@@ -2027,8 +2030,6 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """ shows all activations, weights and gradients of the keras model."""
         if 'layers' not in self.config['model']:
 
-            self.plot_feature_importance()
-
             self.plot_treeviz_leaves()
 
             if self.problem.lower().startswith("cl"):
@@ -2049,6 +2050,18 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             self.plot_weight_grads(**kwargs)
             self.plot_layer_outputs(**kwargs)
             self.plot_weights()
+
+        return
+
+    def interpret(self, save=True):
+        """
+        Interprets the underlying model. Call it after training.
+        model.fit()
+        model.interpret()
+        """
+        interpreter = Interpret(self)
+
+        interpreter.plot_feature_importance(save=save)
 
         return
 
