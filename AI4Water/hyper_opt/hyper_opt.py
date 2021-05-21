@@ -64,6 +64,7 @@ from AI4Water.hyper_opt.utils import skopt_space_from_hp_space
 from AI4Water.hyper_opt.utils import post_process_skopt_results
 from AI4Water.hyper_opt.utils import Categorical, Real, Integer
 from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
+from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
 try:
     from AI4Water.hyper_opt.testing import plot_param_importances
@@ -467,6 +468,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @title.setter
     def title(self, x):
         self._title = x + '_' + str(dateandtime_now())
+
+    def objective_fn_is_dl(self):
+        return False
 
     def check_args(self, **kwargs):
         kwargs = copy.deepcopy(kwargs)
@@ -1120,6 +1124,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def _plot(self):
 
         self.save_iterations_as_xy()
+
+        if self.objective_fn_is_dl():
+            plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
+            plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
 
         sr = self.skopt_results()
         plt.close('all')

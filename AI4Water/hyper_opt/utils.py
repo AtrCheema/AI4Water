@@ -1,9 +1,11 @@
 import os
 import json
 from skopt.utils import dump
+from itertools import islice
 from pickle import PicklingError
 
 import numpy as np
+import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -836,3 +838,108 @@ def scatterplot_matrix_colored(params_names:list,
     plt.suptitle(
         'Scatterplot matrix of tried values in the search space over different params, colored in function of best test accuracy')
     plt.show()
+
+
+def take(n, iterable):
+    """Return first n items of the iterable as a list
+    https://stackoverflow.com/questions/7971618/return-first-n-keyvalue-pairs-from-dict
+    """
+    return list(islice(iterable, n))
+
+
+def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False, **kwargs):
+
+    plot_dir = os.path.join(opt_dir, "plots")
+    if not os.path.exists(plot_dir):
+        os.makedirs(plot_dir)
+
+    max_len = kwargs.get('max_len', 500)
+    show_top = kwargs.get('show_top', 3)
+    ylim_bottom = kwargs.get('ylim_bottom', None)
+    ylim_top = kwargs.get('ylim_top', None)
+    font_size = kwargs.get('font_size', 16)
+    ylabel = kwargs.get('ylabel', 'Validation MSE')
+    leg_pos = kwargs.get('leg_pos', 'upper right')
+    style = kwargs.get('style', 'ggplot')
+
+    models = []
+    for f in os.listdir(opt_dir):
+        if os.path.isdir(os.path.join(opt_dir, f)):
+            models.append(f)
+
+    val_loss = pd.DataFrame()
+    default = pd.Series(np.full(max_len, 0.0))
+    min_val_loss = {}
+
+    for mod in models:
+        loss_fname = os.path.join(os.path.join(opt_dir, str(mod) + "\\losses.csv"))
+        if os.path.exists(loss_fname):
+            losses = pd.read_csv(loss_fname)
+            vl = losses[what]
+
+            vl1 = default.add(vl, fill_value=None)
+            vl1.name = mod
+
+            min_val_loss[mod] = vl1.min()
+
+            val_loss = pd.concat([val_loss, vl1], axis=1)
+
+
+    # sort min_val_loss by value
+    min_vl_sorted = {k: v for k, v in sorted(min_val_loss.items(), key=lambda item: item[1])}
+    top_3 = take(show_top, min_vl_sorted)
+
+    colors = {
+        0: 'b',
+        1: 'g',
+        2: 'orange'
+    }
+
+    default = np.full(max_len, np.nan)
+
+    plt.close('all')
+    fig, axis = plt.subplots()
+
+    for k,v in min_vl_sorted.items():
+
+        val = val_loss[k]
+
+        default[np.argmin(val.values)] = val.min()
+        if k not in top_3:
+            if show_whole:
+                axis.plot(val, color='silver', linewidth=0.5,  label='_nolegend_')
+
+            if show_min:
+                axis.plot(default, '.', markersize=2.5, color='silver', label='_nolegend_')
+        default = np.full(max_len, np.nan)
+
+    for idx, k in enumerate(top_3):
+        val = val_loss[k]
+
+        if show_whole:
+            axis.plot(val, color=colors[idx], linewidth=1,   label= f'Rank {idx+1}')
+
+        default[np.argmin(val.values)] = val.min()
+        if show_min:
+            axis.plot(default, 'x', markersize=5.5, color=colors[idx], label='Rank ' + str(idx))
+
+        default = np.full(max_len, np.nan)
+
+    axis.legend(loc=leg_pos, fontsize=font_size)
+    axis.set_yscale('log')
+    axis.set_ylabel(ylabel, fontsize=font_size)
+    axis.set_xlabel('Epochs', fontsize=font_size)
+
+    if ylim_bottom is not None:
+        axis.set_ylim(bottom=ylim_bottom)
+    if ylim_top is not None:
+        axis.set_ylim(top=ylim_top)
+
+    _name = what
+    _name += '_whole_loss_' if show_whole else ''
+    _name += '_loss_points' if show_min else ''
+    fname = os.path.join(plot_dir, _name)
+
+    plt.savefig(fname, dpi=300, bbox_inches='tight')
+
+    return
