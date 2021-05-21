@@ -1,5 +1,5 @@
 # SeqMetrics
-This modeule is for calaculation of performance matrix of sequential data. It consists of sequential metrics and some utils.
+This module is for calaculation of performance matrix of sequential data. It consists of Metrics class and some utils.
 
 
  [Metrics](seqmetrics.md)

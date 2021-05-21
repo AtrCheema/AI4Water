@@ -971,9 +971,9 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
     """Initializes the fig for subplots"""
     plt.close('all')
     fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
-    if width is None:
+    if width is not None:
         fig.set_figwidth(width)
-    if height is None:
+    if height is not None:
         fig.set_figheight(height)
     return fig, axis
 
@@ -989,6 +989,7 @@ def process_axis(axis,
                  ms=6.0,  # markersize
                  label=None,  # legend
                  leg_pos="best",
+                 bbox_to_anchor=None,  # will take priority over leg_pos
                  leg_fs=12,
                  leg_ms=1,  # legend scale
                  ylim=None,  # limit for y axis
@@ -1065,7 +1066,11 @@ def process_axis(axis,
         if label != "__nolabel__":
             if leg_fs is not None: _kwargs.update({'fontsize': leg_fs})
             if leg_ms is not None: _kwargs.update({'markerscale': leg_ms})
-            axis.legend(loc=leg_pos, **_kwargs)
+            if bbox_to_anchor is not None:
+                _kwargs['bbox_to_anchor'] = bbox_to_anchor
+            else:
+                _kwargs['loc'] = leg_pos
+            axis.legend(**_kwargs)
 
     if y_label is not None:
         axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)

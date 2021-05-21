@@ -13,7 +13,8 @@ from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
-from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file, process_axis
+from AI4Water.utils.utils import init_subplots, process_axis
+from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
 from AI4Water.backend import VERSION_INFO
 
 try:
@@ -484,11 +485,17 @@ Available cases are {self.models} and you wanted to include
             df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
             loss_curves[_model] = df
 
-        plt.close('all')
-        fig, axis = plt.subplots()
+        _kwargs = {'linestyle': '-',
+                   'x_label':"Epochs",
+                   'y_label':'Loss'}
+
+        if len(loss_curves)>5:
+            _kwargs['bbox_to_anchor'] = (1.1, 0.99)
+
+        fig, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
+
         for _model, _loss in loss_curves.items():
-            axis = process_axis(axis=axis, data=_loss, label=_model, linestyle='-', x_label="Epochs",
-                                y_label='Loss')
+            axis = process_axis(axis=axis, data=_loss, label=_model, **_kwargs)
 
         if save:
             fname = os.path.join(self.exp_path,f'{name}_{loss_name}.png')
@@ -502,6 +509,7 @@ Available cases are {self.models} and you wanted to include
         Only valid if `fit` was run with `run_type=optimize`.
         """
         if len(self.config['optimized_models']) <1:
+            print('No model was optimized')
             return
         plt.close('all')
         fig, axis = plt.subplots()

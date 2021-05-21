@@ -617,6 +617,7 @@ class Model(NN, Plots):
 
     def normalize(self, df, key, transformation):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
+        # todo, isn't it better to save the instance of Transformation class in the memory?
         scaler = None
 
         if transformation is not None:
@@ -1492,6 +1493,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
+        # todo, do we need **trans/**transformation such as replace_nans/repace_zeros during inverse transformation?
         # for cases if they are 2D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 

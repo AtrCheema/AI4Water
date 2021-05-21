@@ -1877,6 +1877,18 @@ class WeatherJena(Datasets):
         super().__init__()
         download_all_http_directory(self.url, self.ds_dir, filetypes=None)
 
+class Laos(Datasets):
+    """
+    Downloads and prepares hydrological, climate and land use data for Laos.
+    """
+
+    def fetch_lu(self):
+        """Downloads and unzips and landuse data"""
+        url = "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0f1aea48-2a51-9b42-7688-a774a8f75e7a"
+        fname = os.path.join(self.ds_dir, "lu.zip")
+        download(url, fname)
+        shutil.unpack_archive(fname, self.ds_dir)
+
 
 def check_attributes(attributes, check_against:list)->list:
     if attributes == 'all':
