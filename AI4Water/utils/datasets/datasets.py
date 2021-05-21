@@ -11,6 +11,7 @@
 # https://doi.pangaea.de/10.1594/PANGAEA.831193
 # https://data.world/datagov-uk/223a8f60-e3ac-4a25-987d-587cc3a92fa1
 # https://www.bafg.de/GRDC/EN/04_spcldtbss/41_ARDB/arcticHycos.html?nn=201574 flow dataset
+# https://doi.pangaea.de/10.1594/PANGAEA.924561 Air temp Tiangin china
 
 # HYSETS https://osf.io/rpc3w/  https://www.nature.com/articles/s41597-020-00583-2
 
@@ -94,6 +95,7 @@
 # https://zenodo.org/record/4268711#.YEx6-9yRWUk
 # https://zenodo.org/record/322827#.YEx69tyRWUk
 # https://zenodo.org/record/1050301#.YEx6y9yRWUk
+# https://zenodo.org/record/4734372#.YKc9QKGRWUk
 
 
 # ETP
@@ -1870,12 +1872,53 @@ class HydroMeteorAndes(Datasets):
 
 
 class WeatherJena(Datasets):
-    """10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
-    from 2002 onwards."""
+    """
+    10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
+    from 2002 onwards.
+    """
     url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
-    def __init__(self):
+
+    def __init__(self, obs_loc='roof'):
+
+        if obs_loc not in ['roof', 'soil', 'saale']:
+            raise ValueError
+        self.obs_loc = obs_loc
+
         super().__init__()
-        download_all_http_directory(self.url, self.ds_dir, filetypes=None)
+
+        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
+
+        download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
+        unzip_all_in_dir(sub_dir, 'zip')
+
+    def fetch(self,
+              st:str=None,
+              en:str=None,
+              **kwargs
+              )->pd.DataFrame:
+
+        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+        all_files = glob.glob(f"{sub_dir}/*.csv")
+
+        df = pd.DataFrame()
+        for fpath in all_files:
+            f_df = pd.read_csv(fpath, index_col='Date Time',
+                               encoding= 'unicode_escape', na_values=-9999)
+            f_df.index = pd.DatetimeIndex(f_df.index)
+            df = pd.concat([df, f_df])  # todo, such concatenation is slow.
+
+        df = df.sort_index()
+
+        if st is None:
+            st = df.index[0]
+        if en is None:
+            en = df.index[-1]
+
+        return df[st:en]
+
 
 class Laos(Datasets):
     """
@@ -1903,3 +1946,9 @@ def check_attributes(attributes, check_against:list)->list:
     assert all(elem in check_against for elem in attributes)
 
     return attributes
+
+
+def unzip_all_in_dir(dir_name, ext=".gz"):
+    gz_files = glob.glob(f"{dir_name}/*{ext}")
+    for f in gz_files:
+        shutil.unpack_archive(f, dir_name)
