@@ -2056,8 +2056,11 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     def interpret(self, save=True):
         """
         Interprets the underlying model. Call it after training.
+        Example
+        ```python
         model.fit()
         model.interpret()
+        ```
         """
         interpreter = Interpret(self)
 

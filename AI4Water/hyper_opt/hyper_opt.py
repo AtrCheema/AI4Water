@@ -76,6 +76,7 @@ except ModuleNotFoundError:
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
 # todo loading gpmin_results is not consistent.
 
+SEP = os.sep
 
 ALGORITHMS = {
     'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
@@ -770,7 +771,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @opt_path.setter
     def opt_path(self, path):
         if path is None:
-            path = os.path.join(os.getcwd(), "results\\" + self.title)
+            path = os.path.join(os.getcwd(), f"results{SEP}" + self.title)
             if not os.path.exists(path):
                 os.makedirs(path)
         elif not os.path.exists(path):
@@ -1186,7 +1187,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
                 plt.close('all')
                 df = pd.DataFrame.from_dict(importance_paras)
-                df.boxplot()
+                df.boxplot(rot=70)
                 plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:

@@ -160,7 +160,7 @@ class Interpret(Plot):
                 xgboost.plot_importance(self._model, **kwargs)
         else:
             plt.bar(range(self.model.ins if use_prev else self.model.ins + self.model.outs), importance, **kwargs)
-            plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
+            plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=12)
         self.save_or_show(save, fname="feature_importance.png")
         return
 
