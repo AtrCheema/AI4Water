@@ -1,4 +1,6 @@
 import os
+import json
+import warnings
 from typing import Any, Callable, List, Tuple, Union
 
 import numpy as np
@@ -8,10 +10,11 @@ import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from AI4Water.backend import xgboost
 
 from AI4Water.utils.SeqMetrics import Metrics
 from AI4Water.utils.utils import _missing_vals
-from AI4Water.utils.utils import find_tot_plots, init_subplots
+from AI4Water.utils.utils import find_tot_plots, init_subplots, Jsonize
 from AI4Water.utils.transformations import Transformations
 
 # TODO add Murphy's plot as shown in MLAir
@@ -20,18 +23,65 @@ from AI4Water.utils.transformations import Transformations
 # rank histogram and reliability diagram for probabilitic forecasting model.
 # show availability plot of data
 
-class Interpret(object):
+class Plot(object):
+
+    def __init__(self, path = None):
+        self.path = path
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, x):
+        if x is None:
+            x = os.getcwd()
+        self._path = x
+
+    def save_or_show(self, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
+
+        if save:
+            assert isinstance(fname, str)
+            if "/" in fname:
+                fname = fname.replace("/", "__")
+            if ":" in fname:
+                fname = fname.replace(":", "__")
+
+            save_dir = os.path.join(self.path, where)
+
+            if not os.path.exists(save_dir):
+                assert os.path.dirname(where) in ['', 'activations', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
+                save_dir = os.path.join(self.path, where)
+
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+
+            fname = os.path.join(save_dir, fname + ".png")
+
+            plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
+        else:
+            plt.show()
+
+        if close:
+            plt.close('all')
+        return
+
+class Interpret(Plot):
 
     def __init__(self, model):
         """Interprets the AI4Water Model."""
 
         self.model = model
 
-        if any(['attn_weight' in l for l in model.layer_names]):
-            self.plot_act_along_inputs(f'attn_weight_{model.lookback-1}_1', name='attention_weights')
+        super().__init__(model.path)
 
-        if hasattr(model, 'TemporalFusionTransformer_attentions'):
-            atten_components = self.tft_attention_components()
+        if self.model.category.upper() == "DL":
+
+            if any(['attn_weight' in l for l in model.layer_names]):
+                self.plot_act_along_inputs(f'attn_weight_{model.lookback - 1}_1', name='attention_weights')
+
+            if hasattr(model, 'TemporalFusionTransformer_attentions'):
+                atten_components = self.tft_attention_components()
 
     @property
     def model(self):
@@ -48,6 +98,71 @@ class Interpret(object):
         # https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/stallion.html#Variable-importances
 
         """
+
+    def feature_importance(self):
+        if self.model.category.upper() == "ML":
+
+            model_name = list(self.model.config['model'].keys())[0]
+            if model_name.upper() in ["SVC", "SVR"]:
+                if self.model._model.kernel == "linear":
+                    # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
+                    return self.model._model.coef_
+            elif hasattr(self.model._model, "feature_importances_"):
+                return self.model._model.feature_importances_
+
+    def f_importances_svm(self, coef, names, save):
+
+        plt.close('all')
+        mpl.rcParams.update(mpl.rcParamsDefault)
+        classes = coef.shape[0]
+        features = coef.shape[1]
+        fig, axis = plt.subplots(classes, sharex='all')
+        axis = axis if hasattr(axis, "__len__") else [axis]
+
+        for idx, ax in enumerate(axis):
+            colors = ['red' if c < 0 else 'blue' for c in self._model.coef_[idx]]
+            ax.bar(range(features), self._model.coef_[idx], 0.4)
+
+        plt.xticks(ticks=range(features), labels=self.model.in_cols, rotation=90, fontsize=12)
+        self.save_or_show(save=save, fname=f"{list(self.model.config['model'].keys())[0]}_feature_importance")
+        return
+
+    def plot_feature_importance(self, importance=None, save=True, use_xgb=False, **kwargs):
+
+        if importance is None:
+            importance = self.feature_importance()
+
+        if self.model.category == "ML":
+            model_name = list(self.model.config['model'].keys())[0]
+            if model_name.upper() in ["SVC", "SVR"]:
+                if self._model.kernel == "linear":
+                    return self.f_importances_svm(importance, self.model.in_cols, save=save)
+                else:
+                    warnings.warn(f"for {self._model.kernel} kernels of {model_name}, feature importance can not be plotted.")
+                return
+
+        if isinstance(importance, np.ndarray):
+            assert importance.ndim <= 2
+
+        with open(os.path.join(self.model.path, 'feature_importance.json'), 'w') as fp:
+            json.dump(Jsonize(importance)(), fp)
+
+        use_prev = self.model.config['use_predicted_output']
+        all_cols = self.model.config['inputs'] if use_prev else self.model.config['inputs'] + \
+                                                                                self.model.config['outputs']
+        plt.close('all')
+        plt.figure()
+        plt.title("Feature importance")
+        if use_xgb:
+            if xgboost is None:
+                warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
+            else:
+                xgboost.plot_importance(self._model, **kwargs)
+        else:
+            plt.bar(range(self.model.ins if use_prev else self.model.ins + self.model.outs), importance, **kwargs)
+            plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
+        self.save_or_show(save, fname="feature_importance.png")
+        return
 
     def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
 
@@ -293,15 +408,16 @@ def scatter_numpy(self, dim, index, src):
     return self
 
 
-class Visualizations(object):
+class Visualizations(Plot):
 
     def __init__(self, data=None, config: dict=None, path=None, dpi=300, in_cols=None, out_cols=None):
         self.config = config
         self.data=data
-        self.path = os.getcwd() if path is None else path
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
+
+        super().__init__(path)
 
     @property
     def config(self):
@@ -318,44 +434,6 @@ class Visualizations(object):
     @data.setter
     def data(self, x):
         self._data = x
-
-    @property
-    def path(self):
-        return self._path
-
-    @path.setter
-    def path(self, x):
-        if x is None:
-            x = os.getcwd()
-        self._path = x
-
-    def save_or_show(self, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
-
-        if save:
-            assert isinstance(fname, str)
-            if "/" in fname:
-                fname = fname.replace("/", "__")
-            if ":" in fname:
-                fname = fname.replace(":", "__")
-
-            save_dir = os.path.join(self.path, where)
-
-            if not os.path.exists(save_dir):
-                assert os.path.dirname(where) in ['', 'activations', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
-                save_dir = os.path.join(self.path, where)
-
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
-
-            fname = os.path.join(save_dir, fname + ".png")
-
-            plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
-        else:
-            plt.show()
-
-        if close:
-            plt.close('all')
-        return
 
     def horizon_plots(self, errors:dict, fname='', save=True):
         plt.close('')
