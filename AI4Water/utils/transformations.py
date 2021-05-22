@@ -65,6 +65,7 @@ class scaler_container(object):
     def __init__(self):
         self.scalers = {}
 
+
 class Transformations(scaler_container):
     """
     Applies transformation to tabular data.
@@ -74,17 +75,22 @@ class Transformations(scaler_container):
     ---------
     arguments
     ---------
-     - data: a dataframe or numpy ndarray. The transformed or inversely transformed value will have the same type as data
+     data pd.DataFrame: a dataframe or numpy ndarray. The transformed or inversely
+         transformed value will have the same type as data
              and will have the same index as data (in case data is dataframe).
-     - method: str, method by which to transform and consequencly inversely transform the data. default is 'minmax'.
-                Currently following methods are available for transformation and inverse transformation
+     method str: method by which to transform and consequencly inversely transform
+         the data. default is 'minmax'.
+         Currently following methods are available for transformation and inverse
+         transformation
                   minmax
                   maxabs
                   robust
                   power
-                  zscore:
+                  zscore:   also known as standard scalers
                   quantile:
-                  log:     logrithmic
+                  log:     natural logrithmic
+                  log10:   log with base 10
+                  log2: log with base 2
                   tan:     tangent
                   cumsum:  cummulative sum
                   pca:     principle component analysis
@@ -92,24 +98,30 @@ class Transformations(scaler_container):
                   ipca:    incremental principle component analysis
                   fastica: fast incremental component analysis
 
-                Following methods have only transformations and not inverse transformations. They can be used for feature
+         Following methods have only transformations and not inverse transformations.
+         They can be used for feature
                 creation.
                   emd:    empirical mode decomposition
                   eemd:   ensemble empirical mode decomposition
 
-     - features: list of strings, if data is datafrmae, then this list is the features on which we want to apply transformation.
-                 The remaining columns will remain same/unchanged.
-     - replace_nans: bool, If true, then will replace the nan values in data with some fixed value `replace_with` before
-                     transformation. The nan values will be put back at their places after transformation so this
-                     replacement is done only to avoid error during transformation. However, the process of puttin
-                     the nans back does not happen when the `method` results in dimention change, such as for PCA etc.
-     - replace_with: str/int/float, if replace_nans is True, then this value will be used to replace nans in dataframe
-                      before doing transformation. You can define the method with which to replace nans for exaple
-                      by setting this argument to 'mean' will replace nans with 'mean' of the array/column which
-                      contains nans. Allowed string values are 'mean', 'max', 'man'.
-     - replace_zeros: bool, same as replace_nans but for zeros in the data.
-     - replace_zeros_with: str/int/float, same as `replace_with` for for zeros in the data.
-     - kwargs: any arguments which are to be provided to transformer on INTIALIZATION and not during transform or inverse
+     features list: list of strings, if data is datafrmae, then this list is the
+         features on which we want to apply transformation. The remaining columns
+         will remain same/unchanged.
+     replace_nans bool: If true, then will replace the nan values in data with
+         some fixed value `replace_with` before transformation. The nan values
+         will be put back at their places after transformation so this replacement
+         is done only to avoid error during transformation. However, the process
+         of puttin the nans back does not happen when the `method` results in
+         dimention change, such as for PCA etc.
+     replace_with str/int/float: if replace_nans is True, then this value will be
+         used to replace nans in dataframe before doing transformation. You can
+         define the method with which to replace nans for exaple by setting this
+         argument to 'mean' will replace nans with 'mean' of the array/column which
+         contains nans. Allowed string values are 'mean', 'max', 'man'.
+     replace_zeros bool: same as replace_nans but for zeros in the data.
+     replace_zeros_with str/int/float: same as `replace_with` for for zeros in the data.
+     kwargs dict: any arguments which are to be provided to transformer on INTIALIZATION
+         and not during transform or inverse
                     transform e.g. n_components for pca.
 
     To transform a datafrmae using any of the above methods use
@@ -134,9 +146,9 @@ class Transformations(scaler_container):
     >>>transformer = Transformations(data=data[inputs], method='pca', n_components=10)
     >>>new_data = transformer.transform()
 
-    Following shows how to apply log transformation on an array containing zeros by making
-    use of the argument `replace_zeros`. The zeros in the input array will be replaced internally
-    but will be inserted back afterwards.
+    Following shows how to apply log transformation on an array containing zeros
+    by making use of the argument `replace_zeros`. The zeros in the input array
+    will be replaced internally but will be inserted back afterwards.
     >>>import pandas as pd
     >>>a = pd.DataFrame([10, 2, 0])
     >>>Transformations(a, 'log', replace_zeros=True)()
@@ -207,12 +219,12 @@ class Transformations(scaler_container):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
             transformer = item.split('_')[2]
-            if transformer.lower() in list(self.available_scalers.keys()) + ["log", "tan", "cumsum"]:
+            if transformer.lower() in list(self.available_scalers.keys()) + ["log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.transform_with_sklearn
         elif item.startswith("inverse_transform_with"):
             transformer = item.split('_')[3]
-            if transformer.lower() in list(self.available_scalers.keys()) + ["log", "tan", "cumsum"]:
+            if transformer.lower() in list(self.available_scalers.keys()) + ["log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
 
@@ -355,7 +367,7 @@ class Transformations(scaler_container):
 
         to_transform = self.get_features()  #TODO, shouldn't kwargs go here as input?
 
-        if self.method.lower() == "log":
+        if self.method.lower() in ["log", "log10", "log2"]:
 
             if (to_transform.values < 0).any():
                 raise InvalidValueError(self.method, "negative")
@@ -366,7 +378,14 @@ class Transformations(scaler_container):
             if 0 in to_transform.values:
                 raise InvalidValueError(self.method, "zero")
 
-            scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
+            if self.method == "log":
+                scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
+            elif self.method == "log2":
+                scaler = FunctionTransformer(func=np.log2, inverse_func=lambda x:2**x, validate=True,
+                                             check_inverse=True)
+            else:   # "log10":
+                scaler = FunctionTransformer(func=np.log10, inverse_func=lambda x:10**x, validate=True,
+                                             check_inverse=True)
         elif self.method.lower() == "tan":
             scaler = FunctionTransformer(func=np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
         elif self.method.lower() == "cumsum":
