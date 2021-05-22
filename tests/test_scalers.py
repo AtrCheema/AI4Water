@@ -201,6 +201,12 @@ class test_Scalers(unittest.TestCase):
     def test_log_scaler(self):
         self.run_method("log")
 
+    def test_log10_scaler(self):
+        self.run_method("log10")
+
+    def test_log2_scaler(self):
+        self.run_method("log2")
+
     def test_robust_scaler(self):
         self.run_method("robust")
 
@@ -303,6 +309,22 @@ class test_Scalers(unittest.TestCase):
         run_log_methods("log", True)
         return
 
+    def test_log10_with_nans(self):
+        run_log_methods(method='log10', index=None)
+        return
+
+    def test_log10_with_index(self):
+        run_log_methods("log10", True)
+        return
+
+    def test_log2_with_nans(self):
+        run_log_methods(method='log2', index=None)
+        return
+
+    def test_log2_with_index(self):
+        run_log_methods("log2", True)
+        return
+
     def test_tan_with_nans(self):
         run_log_methods("tan", index=None)
         return
@@ -320,13 +342,28 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_zero_log(self):
-
         run_log_methods("log", True, insert_nans=True, insert_zeros=True)
-
         return
 
     def test_zero_one_log(self):
         run_log_methods("log", True, insert_nans=True, insert_zeros=True, insert_ones=True)
+        return
+
+    def test_zero_log10(self):
+        run_log_methods("log10", True, insert_nans=True, insert_zeros=True)
+        return
+
+    def test_zero_one_log10(self):
+        run_log_methods("log10", True, insert_nans=True, insert_zeros=True, insert_ones=True)
+        return
+
+
+    def test_zero_log2(self):
+        run_log_methods("log2", True, insert_nans=True, insert_zeros=True)
+        return
+
+    def test_zero_one_log2(self):
+        run_log_methods("log2", True, insert_nans=True, insert_zeros=True, insert_ones=True)
         return
 
     def test_multiple_transformations(self):
