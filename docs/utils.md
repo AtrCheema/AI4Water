@@ -1,5 +1,9 @@
 Some utility functions
 
+**`Transformations`**
+::: AI4Water.utils.transformations.Transformations
+    handler: python
+
 **`prepare_data`**
 ::: AI4Water.utils.utils.prepare_data
     handler: python
