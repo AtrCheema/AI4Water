@@ -1283,10 +1283,16 @@ class Model(NN, Plots):
             data_keys=None,
             **callbacks):
         """
-        Trains the model with data which is taken from data accoring to st, en
-        and indices arguments.
-        data: if not None, it will directlry passed to fit.
-        data_keys: allowed only if self.data is a dictionary. You can decided which to use
+        Trains the model with data which is taken from data accoring to `st`, `en`
+        or `indices` or `data_keys` or `data` arguments.
+
+        Arguments
+        -----------
+        st : starting index of data to be used
+        en : end index of data to be used
+        indices : indices of data to be used. If given, `st` and `en` will be ignored.
+        data : if not None, it will directlry passed to fit ignorign `st`, `en` and `indices`
+        data_keys : allowed only if self.data is a dictionary. You can decided which to use
                    use for training by specifying the keys of self.data dictionary"""
         visualizer = Visualizations(path=self.path)
         self.is_training = True

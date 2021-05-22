@@ -121,10 +121,10 @@ class Experiments(object):
                 will be trained and or optimized.
             exclude list: name of `models` to be excluded
             post_optimize str: one of `eval_best` or `train_best`. If eval_best,
-               the weights from the best models will be uploaded again and the model
-               will be evaluated on train, test and all the data. If `train_best`,
-               then a new model will be built and trained using the parameters of
-               the best model.
+                the weights from the best models will be uploaded again and the model
+                will be evaluated on train, test and all the data. If `train_best`,
+                then a new model will be built and trained using the parameters of
+                the best model.
             fit_kws dict:  key word arguments that will be passed to AI4Water's model.fit
             predict_kws dict: dict, key word arguments that will be passed to AI4Water's model.predict
             hpo_kws dict: keyword arguments for `HyperOpt` class.

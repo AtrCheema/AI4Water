@@ -480,28 +480,33 @@ class Camels(Datasets):
         return
 
 
-    def fetch(self, stations=None, dynamic_attributes='all', categories='all', static_attributes='all',
-              st: Union[None, str] = None, en: Union[None, str] = None,
+    def fetch(self, stations=None,
+              dynamic_attributes='all',
+              categories='all',
+              static_attributes='all',
+              st: Union[None, str] = None,
+              en: Union[None, str] = None,
               **kwargs)->dict:
         """
         Fetches the attributes of one or more stations.
 
         Arguments:
-            stations str/list/int/float/None:, default None. if string, it is supposed to be a station name/gauge_id.
+            stations str/list/int/float/None: default None. if string, it is supposed to be a station name/gauge_id.
                              If list, it will be a list of station/gauge_ids. If int, it will be supposed that the
                              user want data for this number of stations/gauge_ids. If None (default), then attributes
                              of all available stations. If float, it will be supposed that the user wants data
                              of this fraction of stations.
             dynamic_attributes list: default(None), If not None, then it is the attributes to be fetched.
                                        If None, then all available attributes are fetched
-            categories list/str: Categories of static attributes to be fetched.If None, then static attributes will
+            categories list/str: categories of static attributes to be fetched.If None, then static attributes will
                                not be fetched.
-            static_attributes list:
+            static_attributes list: If categeories are available, and they are None, then this argument
+                will have no meaning.
             st str: starting date of data to be returned. If None,
                             the data will be returned from where it is available
             en str: end date of data to be returned. If None, then the data will be returned till the
                             date data is available.
-            kwargs: keyword arguments to read the files
+            kwargs dict: keyword arguments to read the files
 
         returns:
             dictionary whose keys are station/gauge_ids and values are the attributes and dataframes.
