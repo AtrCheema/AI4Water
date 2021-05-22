@@ -1288,12 +1288,13 @@ class Model(NN, Plots):
 
         Arguments
         -----------
-        st : starting index of data to be used
-        en : end index of data to be used
-        indices : indices of data to be used. If given, `st` and `en` will be ignored.
-        data : if not None, it will directlry passed to fit ignorign `st`, `en` and `indices`
-        data_keys : allowed only if self.data is a dictionary. You can decided which to use
-                   use for training by specifying the keys of self.data dictionary"""
+            st : starting index of data to be used
+            en : end index of data to be used
+            indices : indices of data to be used. If given, `st` and `en` will be ignored.
+            data : if not None, it will directlry passed to fit ignorign `st`, `en` and `indices`
+            data_keys : allowed only if self.data is a dictionary. You can decided which to use
+                use for training by specifying the keys of self.data dictionary
+        """
         visualizer = Visualizations(path=self.path)
         self.is_training = True
         if data_keys is not None and self.num_input_layers == 1:
@@ -1376,15 +1377,28 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 scaler_key: str = None,
                 prefix: str = 'test',
                 use_datetime_index=False,
-                pp=True,
-                **plot_args):
+                pp=True
+                ):
         """
         Makes prediction from the trained model.
-        scaler_key: if None, the data will not be indexed along date_time index.
-        pp: post processing
-        data: if not None, this will diretly passed to predict. If data_config['transformation'] is True, do provide
-            the scaler_key that was used when the data was transformed. By default that is '0'. If the data was not
-            transformed with Model, then make sure that data_config['transformation'] is None.
+        Arguments:
+            st :
+            en :
+            indices :
+            data :
+            data_keys :
+            scaler_key : if None, the data will not be indexed along date_time index.
+            pp : post processing
+            data : if not None, this will diretly passed to predict. If
+                data_config['transformation'] is True, do provide the scaler_key
+                that was used when the data was transformed. By default that is '0'.
+                If the data was not transformed with Model, then make sure that
+                data_config['transformation'] is None.
+            use_datetime_index bool: whether to sort the results. Should only be
+                used if the data is indexed by pd.DatetimeIndex and `indices` is random.
+            prefix str: prefix used with names of saved results
+        Returns:
+            a tuple of arrays. The first is true and the second is predicted.
         """
 
         if indices is not None:
@@ -2182,12 +2196,15 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     @classmethod
     def from_config(cls, config_path: str, data, make_new_path=False, **kwargs):
         """
-        :param config_path:
-        :param data:
-        :param make_new_path: bool, If true, then it means we want to use the config file, only to build the model and a new
-                              path will be made. We should not load the weights in such a case.
-        :param kwargs:
-        :return:
+        Loads the model from a config file.
+        Arguments:
+            config_path :
+            data :
+            make_new_path bool: If true, then it means we want to use the config file, only to build the model and a new
+                                  path will be made. We should not load the weights in such a case.
+            kwargs :
+        return:
+            Model
         """
         with open(config_path, 'r') as fp:
             config = json.load(fp)
@@ -2216,7 +2233,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def load_weights(self, weight_file: str):
         """
-        weight_file: str, name of file which contains parameters of model.
+        Updates the weights of the underlying model.
+        Arguments:
+            weight_file str: name of file which contains parameters of model.
         """
         weight_file_path = os.path.join(self.w_path, weight_file)
         if not self.allow_weight_loading:

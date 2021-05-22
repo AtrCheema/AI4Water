@@ -80,12 +80,13 @@ class Transformations(scaler_container):
              and will have the same index as data (in case data is dataframe).
      method str: method by which to transform and consequencly inversely transform
          the data. default is 'minmax'.
+
          Currently following methods are available for transformation and inverse
          transformation
-                  minmax
-                  maxabs
-                  robust
-                  power
+                  minmax:
+                  maxabs:
+                  robust:
+                  power:
                   zscore:   also known as standard scalers
                   quantile:
                   log:     natural logrithmic
@@ -139,20 +140,24 @@ class Transformations(scaler_container):
 
     Examples:
     --------
+    ```python
     >>>from AI4Water.utils.transformations import Transformations
     >>>from AI4Water.data import load_u1
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>transformer = Transformations(data=data[inputs], method='pca', n_components=10)
     >>>new_data = transformer.transform()
+    ```
 
     Following shows how to apply log transformation on an array containing zeros
     by making use of the argument `replace_zeros`. The zeros in the input array
     will be replaced internally but will be inserted back afterwards.
+    ```python
     >>>import pandas as pd
     >>>a = pd.DataFrame([10, 2, 0])
     >>>Transformations(a, 'log', replace_zeros=True)()
     ...[2.302585, 0.693147, 0.0]
+    ```
     """
 
     available_scalers = {
