@@ -10,6 +10,7 @@ from AI4Water.utils.datasets.datasets import CAMELS_GB
 from AI4Water.utils.datasets.datasets import CAMELS_US
 from AI4Water.utils.datasets.datasets import LamaH
 from AI4Water.utils.datasets.datasets import HYSETS
+from AI4Water.utils.datasets.datasets import HYPE
 from AI4Water.utils.datasets.datasets import Weisssee
 from AI4Water.utils.datasets.datasets import WaterChemEcuador
 from AI4Water.utils.datasets.datasets import WaterChemVictoriaLakes
