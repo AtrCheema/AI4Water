@@ -1286,13 +1286,13 @@ class Model(NN, Plots):
         Trains the model with data which is taken from data accoring to `st`, `en`
         or `indices` or `data_keys` or `data` arguments.
 
-        Arguments
+        Arguments:
         -----------
-            st : starting index of data to be used
-            en : end index of data to be used
-            indices : indices of data to be used. If given, `st` and `en` will be ignored.
+            st int: starting index of data to be used
+            en int: end index of data to be used
+            indices list: indices of data to be used. If given, `st` and `en` will be ignored.
             data : if not None, it will directlry passed to fit ignorign `st`, `en` and `indices`
-            data_keys : allowed only if self.data is a dictionary. You can decided which to use
+            data_keys list: allowed only if self.data is a dictionary. You can decided which to use
                 use for training by specifying the keys of self.data dictionary
         """
         visualizer = Visualizations(path=self.path)
@@ -2047,7 +2047,25 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                                                                                                np.ndim(gradient)))
 
     def view_model(self, **kwargs):
-        """ shows all activations, weights and gradients of the keras model."""
+        """ shows all activations, weights and gradients of the model."""
+
+        if self.category.upper() == "DL":
+            self.plot_act_grads(**kwargs)
+            self.plot_weight_grads(**kwargs)
+            self.plot_layer_outputs(**kwargs)
+            self.plot_weights()
+
+        return
+
+    def interpret(self, save=True, **kwargs):
+        """
+        Interprets the underlying model. Call it after training.
+        Example
+        ```python
+        model.fit()
+        model.interpret()
+        ```
+        """
         if 'layers' not in self.config['model']:
 
             self.plot_treeviz_leaves()
@@ -2065,23 +2083,6 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if list(self.config['model'].keys())[0].lower().startswith("xgb"):
                 self.decision_tree(which="xgboost", **kwargs)
 
-        if self.category.upper() == "DL":
-            self.plot_act_grads(**kwargs)
-            self.plot_weight_grads(**kwargs)
-            self.plot_layer_outputs(**kwargs)
-            self.plot_weights()
-
-        return
-
-    def interpret(self, save=True):
-        """
-        Interprets the underlying model. Call it after training.
-        Example
-        ```python
-        model.fit()
-        model.interpret()
-        ```
-        """
         interpreter = Interpret(self)
 
         interpreter.plot_feature_importance(save=save)
@@ -2198,10 +2199,11 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """
         Loads the model from a config file.
         Arguments:
-            config_path :
-            data :
-            make_new_path bool: If true, then it means we want to use the config file, only to build the model and a new
-                                  path will be made. We should not load the weights in such a case.
+            config_path str: complete path of config file
+            data : data for Model
+            make_new_path bool: If true, then it means we want to use the config
+                file, only to build the model and a new path will be made. We
+                should not load the weights in such a case.
             kwargs :
         return:
             Model
