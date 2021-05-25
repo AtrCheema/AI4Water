@@ -2,9 +2,12 @@
 *.xlsx
 *.png
 
+*.npy
+
 .ipynb_checkpoints/
 __pycache__/
 .idea/
+AI4Water.egg-info/
 
 # private stuff
 results/
@@ -27,6 +30,7 @@ paper/
 nosetests.xml
 coverage.xml
 *.cover
+*.jovianrc
 
 *tests/catboost_info/
 *dl4seq/utils/datasets/data/

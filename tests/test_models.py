@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input
 
 from AI4Water import Model
-from AI4Water.utils.datasets import load_nasdaq
+from AI4Water.utils.datasets import load_nasdaq, arg_beach
 
 
 examples = 200
@@ -161,7 +161,7 @@ class test_MultiInputModels(unittest.TestCase):
                 o = np.random.random((_examples, 1))
                 return [in1, in2, in3, in4], o
 
-        model = MyModel(val_data='same', verbosity=0)
+        model = MyModel(val_data='same', verbosity=0, data=arg_beach())
         hist = model.fit()
         self.assertGreater(len(hist.history['loss']), 1)
         return

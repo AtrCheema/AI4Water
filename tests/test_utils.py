@@ -14,6 +14,7 @@ from AI4Water import Model
 from AI4Water.backend import get_sklearn_models
 from AI4Water.utils.imputation import Imputation
 from AI4Water.utils.datasets import load_nasdaq
+from AI4Water.utils.visualizations import Interpret
 from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
 seed = 313
@@ -320,38 +321,7 @@ class TestUtils(unittest.TestCase):
 
         model = build_model(inputs=in_cols,
                             outputs=out_cols)
-        model.plot_feature_importance(np.random.randint(1, 10, 5))
-
-    def test_get_attributes(self):
-        sk = get_sklearn_models()
-        rf = sk["RANDOMFORESTREGRESSOR"]
-        gb = sk["GRADIENTBOOSTINGREGRESSOR"]
-        self.assertGreater(len(sk), 1)
-        return
-
-    def test_split_by_indices(self):
-        x = np.arange(1000).reshape(100, 5, 2)
-        y = np.arange(100)
-        tr_indices, test_indices = train_test_split(np.arange(100), test_size=0.2, random_state=seed)
-        testx, testy = split_by_indices(x,y, test_indices)
-        np.allclose(testx[0][0], [600, 601])
-        np.allclose(testy, test_indices)
-
-        tr_x1, tr_y = split_by_indices(x, y, tr_indices)
-        np.allclose(tr_y, tr_indices)
-        tr_x2, tr_y = split_by_indices([x, x, x], [y], tr_indices)
-        self.assertEqual(len(tr_x2), 3)
-        self.assertEqual(len(tr_y), 1)
-        np.allclose(tr_y[0], tr_indices)
-        np.allclose(tr_x1, tr_x2[0])
-
-    def test_same_test_val_data_train_random(self):
-        #TODO not a good test, must check that individual elements in returned arrayare correct
-
-        x,y = run_same_train_val_data(indices='random')
-        self.assertEqual(len(x[0]), len(y))
-
-        return
+        Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
     def test_same_test_val_data_with_chunk(self):
         #TODO not a good test, must check that individual elements in returned arrayare correct

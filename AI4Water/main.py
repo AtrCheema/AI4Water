@@ -262,19 +262,18 @@ class Model(NN, Plots):
         >>>y, obs = model.predict()
         ```
         """
-        config = make_model(**kwargs)
+        maker = make_model(data, **kwargs)
 
         # data_config, model_config = config['data_config'], config['model_config']
-        reset_seed(config.config['seed'])
+        reset_seed(maker.config['seed'])
         if tf is not None:
             # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
             # file, they may share same graph.
             tf.keras.backend.clear_session()
 
-        # super(Model, self).__init__(**config)
-        NN.__init__(self, config=config.config)
+        NN.__init__(self, config=maker.config)
 
-        self.intervals = config.config['intervals']
+        self.intervals = maker.config['intervals']
         _in_cols, _out_cols = self.config['inputs'], self.config['outputs']
         if _in_cols is None and isinstance(data, pd.DataFrame):
             _in_cols, _out_cols = list(data.columns)[0:-1], list(data.columns)[-1]
@@ -290,7 +289,7 @@ class Model(NN, Plots):
         self.info = {}
 
         Plots.__init__(self, self.path, self.problem, self.category, self._model,
-                       config=config.config)
+                       config=maker.config)
 
         self.build()  # will initialize ML models or build NNs
 
@@ -324,11 +323,11 @@ class Model(NN, Plots):
     @data.setter
     def data(self, x):
         if isinstance(x, pd.DataFrame):
-            self.in_cols = self.config['inputs']
-            _outs = self.config['outputs']
-            if self.in_cols is None:
-                self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
-                self.config['inputs'], self.config['outputs'] = self.in_cols, self.out_cols
+            #self.in_cols = self.config['inputs']
+            #_outs = self.config['outputs']
+            #if self.in_cols is None:
+            #    self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
+            #    self.config['inputs'], self.config['outputs'] = self.in_cols, self.out_cols
             _data = x[self.in_cols + self.out_cols]
         else:
             _data = x
