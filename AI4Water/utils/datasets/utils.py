@@ -1,4 +1,5 @@
 import os
+import ssl
 import requests
 import tempfile
 import sys, shutil
@@ -6,18 +7,36 @@ import urllib.request as ulib
 import urllib.parse as urlparse
 
 
-def download_all_http_directory(url, outpath=None, filetypes=None):
-    """Download all the files which are of category filetypes at the location of outpath."""
+def download_all_http_directory(url, outpath=None, filetypes=".zip", match_name=None):
+    """
+    Download all the files which are of category filetypes at the location of
+    outpath. If a file is already present. It will not be downloaded.
+    filetypes str: extension of files to be downloaded. By default only .zip files
+        are downloaded.
+    mathc_name str: if not None, then only those files will be downloaded whose name
+        have match_name string in them.
+    """
     import bs4
+    if os.name == 'nt':
+        ssl._create_default_https_context = ssl._create_unverified_context
     page = list(urlparse.urlsplit(url))[2].split('/')[-1]
     basic_url = url.split(page)[0]
 
     r = requests.get(url)
     data = bs4.BeautifulSoup(r.text, "html.parser")
+    match_name = filetypes if match_name is None else match_name
+
     for l in data.find_all("a"):
-        r = requests.get(url + l["href"])
-        if l["href"].endswith(".zip"):
-            download(basic_url + l["href"])
+
+        if l["href"].endswith(filetypes) and match_name in l['href']:
+            _outpath = outpath
+            if outpath is not None:
+                _outpath = os.path.join(outpath, l['href'])
+
+            if os.path.exists(_outpath):
+                print(f"file {l['href']} already exists at {outpath}")
+                continue
+            download(basic_url + l["href"], _outpath)
             print(r.status_code, l["href"], )
 
 

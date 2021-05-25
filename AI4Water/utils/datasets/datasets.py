@@ -11,6 +11,7 @@
 # https://doi.pangaea.de/10.1594/PANGAEA.831193
 # https://data.world/datagov-uk/223a8f60-e3ac-4a25-987d-587cc3a92fa1
 # https://www.bafg.de/GRDC/EN/04_spcldtbss/41_ARDB/arcticHycos.html?nn=201574 flow dataset
+# https://doi.pangaea.de/10.1594/PANGAEA.924561 Air temp Tiangin china
 
 # HYSETS https://osf.io/rpc3w/  https://www.nature.com/articles/s41597-020-00583-2
 
@@ -62,9 +63,6 @@
 # https://zenodo.org/record/3836648#.YExu09yRWUk
 # https://zenodo.org/record/4290294#.YExo5tyRWUk
 # https://zenodo.org/record/2728636#.YEx4EdyRWUk
-# https://zenodo.org/record/581435#.YEx4KNyRWUk  HYPE
-# https://zenodo.org/record/4029572#.YEx5HNyRWUk  HYPE
-# https://zenodo.org/record/4029572#.YEx6Z9yRWUk  HYPE
 # https://zenodo.org/record/3581187#.YEx5CNyRWUk
 # https://zenodo.org/record/3946242#.YEx5FtyRWUk
 # https://zenodo.org/record/883100#.YEx5L9yRWUk
@@ -94,6 +92,7 @@
 # https://zenodo.org/record/4268711#.YEx6-9yRWUk
 # https://zenodo.org/record/322827#.YEx69tyRWUk
 # https://zenodo.org/record/1050301#.YEx6y9yRWUk
+# https://zenodo.org/record/4734372#.YKc9QKGRWUk
 
 
 # ETP
@@ -267,9 +266,14 @@ def sanity_check(dataset_name, path):
 
 class Datasets(object):
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, units=None):
         if name is None:
             name = self.__class__.__name__
+
+        if units is not None:
+            assert units in ['si', 'imperial', 'metric']
+
+        self.units = units
         self.name = name
 
     @property
@@ -310,7 +314,7 @@ class Datasets(object):
 
     def _download(self, overwrite=False):
         """Downloads the dataset. If already downloaded, then"""
-        if os.path.exists(self.ds_dir):
+        if os.path.exists(self.ds_dir) and len(os.listdir(self.ds_dir))>0:
             if overwrite:
                 print(f"removing previous data directory {self.ds_dir} and downloading new")
                 shutil.rmtree(self.ds_dir)
@@ -326,9 +330,16 @@ Use overwrite=True to remove previously saved files and download again""")
         return
 
     def _download_and_unzip(self):
-        os.makedirs(self.ds_dir)
-        download_from_zenodo(self.ds_dir, self.url)
-        self._unzip()
+        if not os.path.exists(self.ds_dir):
+            os.makedirs(self.ds_dir)
+        if isinstance(self.url, str):
+            download_from_zenodo(self.ds_dir, self.url)
+            self._unzip()
+        elif isinstance(self.url, list):
+            for url in self.url:
+                download_from_zenodo(self.ds_dir, url)
+                self._unzip()
+
         return
 
     def _unzip(self, dirname=None):
@@ -478,28 +489,33 @@ class Camels(Datasets):
         return
 
 
-    def fetch(self, stations=None, dynamic_attributes='all', categories='all', static_attributes='all',
-              st: Union[None, str] = None, en: Union[None, str] = None,
+    def fetch(self, stations=None,
+              dynamic_attributes='all',
+              categories='all',
+              static_attributes='all',
+              st: Union[None, str] = None,
+              en: Union[None, str] = None,
               **kwargs)->dict:
         """
         Fetches the attributes of one or more stations.
 
         Arguments:
-            stations str/list/int/float/None:, default None. if string, it is supposed to be a station name/gauge_id.
+            stations str/list/int/float/None: default None. if string, it is supposed to be a station name/gauge_id.
                              If list, it will be a list of station/gauge_ids. If int, it will be supposed that the
                              user want data for this number of stations/gauge_ids. If None (default), then attributes
                              of all available stations. If float, it will be supposed that the user wants data
                              of this fraction of stations.
             dynamic_attributes list: default(None), If not None, then it is the attributes to be fetched.
                                        If None, then all available attributes are fetched
-            categories list/str: Categories of static attributes to be fetched.If None, then static attributes will
+            categories list/str: categories of static attributes to be fetched.If None, then static attributes will
                                not be fetched.
-            static_attributes list:
+            static_attributes list: If categeories are available, and they are None, then this argument
+                will have no meaning.
             st str: starting date of data to be returned. If None,
                             the data will be returned from where it is available
             en str: end date of data to be returned. If None, then the data will be returned till the
                             date data is available.
-            kwargs: keyword arguments to read the files
+            kwargs dict: keyword arguments to read the files
 
         returns:
             dictionary whose keys are station/gauge_ids and values are the attributes and dataframes.
@@ -588,7 +604,7 @@ when categorices is {categories}"""
 
 
 class LamaH(Camels):
-    f"""
+    """
     Large-Sample Data for Hydrology and Environmental Sciences for Central Europe
     from     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
     paper: https://essd.copernicus.org/preprints/essd-2021-72/
@@ -598,7 +614,7 @@ class LamaH(Camels):
 
     static_attribute_categories = ['']
 
-    def __init__(self, *, time_step, data_type, **kwargs):
+    def __init__(self, *, time_step:str, data_type:str, **kwargs):
         assert time_step in ['daily', 'hourly'], f"invalid time_step {time_step} given"
         assert data_type in self._data_types
         self.time_step = time_step
@@ -606,6 +622,12 @@ class LamaH(Camels):
         super().__init__(**kwargs)
 
         self._download()
+
+    """
+    Arguments:
+        time_step str:
+        data_type str:
+    """
 
     @property
     def dynamic_attributes(self):
@@ -681,7 +703,7 @@ class LamaH(Camels):
 
     def fetch_dynamic_attributes(self,
                                  station,
-                                 dynamic_attributes='all',
+                                 attributes='all',
                                  st=None,
                                  en=None,
                                  **kwargs):
@@ -691,7 +713,7 @@ class LamaH(Camels):
         if en is None:
             en = self.end
 
-        dynamic_attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
+        dynamic_attributes = check_attributes(attributes, self.dynamic_attributes)
 
         df = self.read_ts_of_station(station)
 
@@ -792,8 +814,10 @@ class HYSETS(Camels):
 
 
 class CAMELS_US(Camels):
-    """Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
+    """
+    Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
     from https://ral.ucar.edu/solutions/products/camels
+    https://doi.org/10.5194/hess-19-209-2015
     """
     DATASETS = ['CAMELS_US']
     url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
@@ -1515,7 +1539,10 @@ class CAMELS_AUS(Camels):
 
 
 class CAMELS_CL(Camels):
-    """Downloads and processes CAMELS dataset of Chile"""
+    """
+    Downloads and processes CAMELS dataset of Chile
+    https://doi.org/10.5194/hess-22-5817-2018
+    """
 
     urls = {
         "1_CAMELScl_attributes.zip":"https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
@@ -1709,6 +1736,75 @@ class CAMELS_CL(Camels):
         return df[attributes]
 
 
+class HYPE(Camels):
+    """
+    Downloads and preprocesses HYPE dataset from https://zenodo.org/record/4029572.
+    This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily
+    monthly and yearly time steps.
+    paper : https://doi.org/10.2166/nh.2010.007
+    """
+    url = [
+        "https://zenodo.org/record/581435",
+        "https://zenodo.org/record/4029572"
+    ]
+    dynamic_attributes = [
+        'AET_mm',
+        'Baseflow_mm',
+        'Infiltration_mm',
+        'SM_mm',
+        'Streamflow_mm',
+        'Runoff_mm',
+        'Qsim_m3-s',
+        'Prec_mm',
+        'PET_mm'
+    ]
+
+    def __init__(self, time_step:str='daily', **kwargs):
+        assert time_step in ['daily', 'monthly', 'yearly']
+        self.time_step = time_step
+        self.ds_dir = None
+        super().__init__(**kwargs)
+
+        self._download()
+
+    def stations(self):
+        return np.arange(1, 565).astype(str).tolist()
+
+    def fetch_dynamic_attributes(self,
+                                 station,
+                                 attributes='all',
+                                 st=None,
+                                 en=None,
+                                 **kwargs):
+
+        dynamic_attributes = check_attributes(attributes, self.dynamic_attributes)
+
+        _dynamic_attributes = []
+        for dyn_attr in dynamic_attributes:
+            pref, suff = dyn_attr.split('_')[0], dyn_attr.split('_')[-1]
+            _dyn_attr = f"{pref}_{self.time_step}_{suff}"
+            _dynamic_attributes.append(_dyn_attr)
+
+        df = pd.DataFrame()
+        for dyn_attr in _dynamic_attributes:
+            fname = f"{dyn_attr}.csv"
+            fpath = os.path.join(self.ds_dir, fname)
+            _df = pd.read_csv(fpath, index_col='DATE', usecols=['DATE', str(station)])
+            _df.index = pd.to_datetime(_df.index)
+            _df.columns = [dyn_attr]
+            df = pd.concat([df, _df], axis=1)
+
+        return df[_dynamic_attributes][st:en]
+
+    @property
+    def start(self):
+        return '19850101'
+
+    @property
+    def end(self):
+        return '20191231'
+
+
 class Weisssee(Datasets):
 
     dynamic_attributes = ['Precipitation_measurements',
@@ -1870,12 +1966,65 @@ class HydroMeteorAndes(Datasets):
 
 
 class WeatherJena(Datasets):
-    """10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
-    from 2002 onwards."""
+    """
+    10 minute weather dataset of Jena, Germany hosted at https://www.bgc-jena.mpg.de/wetter/index.html
+    from 2002 onwards.
+    """
     url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
-    def __init__(self):
+
+    def __init__(self, obs_loc='roof'):
+
+        if obs_loc not in ['roof', 'soil', 'saale']:
+            raise ValueError
+        self.obs_loc = obs_loc
+
         super().__init__()
-        download_all_http_directory(self.url, self.ds_dir, filetypes=None)
+
+        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
+
+        download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
+        unzip_all_in_dir(sub_dir, 'zip')
+
+    def fetch(self,
+              st:str=None,
+              en:str=None,
+              **kwargs
+              )->pd.DataFrame:
+
+        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+        all_files = glob.glob(f"{sub_dir}/*.csv")
+
+        df = pd.DataFrame()
+        for fpath in all_files:
+            f_df = pd.read_csv(fpath, index_col='Date Time',
+                               encoding= 'unicode_escape', na_values=-9999)
+            f_df.index = pd.DatetimeIndex(f_df.index)
+            df = pd.concat([df, f_df])  # todo, such concatenation is slow.
+
+        df = df.sort_index()
+
+        if st is None:
+            st = df.index[0]
+        if en is None:
+            en = df.index[-1]
+
+        return df[st:en]
+
+
+class Laos(Datasets):
+    """
+    Downloads and prepares hydrological, climate and land use data for Laos.
+    """
+
+    def fetch_lu(self):
+        """Downloads and unzips and landuse data"""
+        url = "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0f1aea48-2a51-9b42-7688-a774a8f75e7a"
+        fname = os.path.join(self.ds_dir, "lu.zip")
+        download(url, fname)
+        shutil.unpack_archive(fname, self.ds_dir)
 
 
 def check_attributes(attributes, check_against:list)->list:
@@ -1891,3 +2040,9 @@ def check_attributes(attributes, check_against:list)->list:
     assert all(elem in check_against for elem in attributes)
 
     return attributes
+
+
+def unzip_all_in_dir(dir_name, ext=".gz"):
+    gz_files = glob.glob(f"{dir_name}/*{ext}")
+    for f in gz_files:
+        shutil.unpack_archive(f, dir_name)

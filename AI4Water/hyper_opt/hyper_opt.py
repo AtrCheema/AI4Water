@@ -64,6 +64,7 @@ from AI4Water.hyper_opt.utils import skopt_space_from_hp_space
 from AI4Water.hyper_opt.utils import post_process_skopt_results
 from AI4Water.hyper_opt.utils import Categorical, Real, Integer
 from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
+from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
 try:
     from AI4Water.hyper_opt.testing import plot_param_importances
@@ -75,6 +76,7 @@ except ModuleNotFoundError:
 # TODO skopt provides functions other than gp_minimize, see if they are useful and can be used.
 # todo loading gpmin_results is not consistent.
 
+SEP = os.sep
 
 ALGORITHMS = {
     'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
@@ -468,6 +470,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def title(self, x):
         self._title = x + '_' + str(dateandtime_now())
 
+    def objective_fn_is_dl(self):
+        return False
+
     def check_args(self, **kwargs):
         kwargs = copy.deepcopy(kwargs)
 
@@ -766,7 +771,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @opt_path.setter
     def opt_path(self, path):
         if path is None:
-            path = os.path.join(os.getcwd(), "results\\" + self.title)
+            path = os.path.join(os.getcwd(), f"results{SEP}" + self.title)
             if not os.path.exists(path):
                 os.makedirs(path)
         elif not os.path.exists(path):
@@ -799,10 +804,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return paras
 
     def ai4water_model(self,
-                     pp=False,
-                     title=None,
-                     return_model=False,
-                     view_model=False,
+                       pp=False,
+                       title=None,
+                       return_model=False,
+                       view_model=False,
+                       interpret=False,
                      **kwargs):
 
         # this is for it to make json serializable.
@@ -836,9 +842,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         print(f"Validation mse {error}")
 
         if view_model:
-            model.predict(indices=model.train_indices, pref='train')
-            model.predict(pref='all')
+            model.predict(indices=model.train_indices, prefix='train')
+            model.predict(prefix='all')
             model.view_model()
+            if interpret:
+                model.interpret(save=True)
 
         if return_model:
             return model
@@ -1121,6 +1129,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         self.save_iterations_as_xy()
 
+        if self.objective_fn_is_dl():
+            plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
+            plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
+
         sr = self.skopt_results()
         plt.close('all')
         if sr.x_iters is not None and self.backend != "skopt":
@@ -1178,7 +1190,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
                 plt.close('all')
                 df = pd.DataFrame.from_dict(importance_paras)
-                df.boxplot()
+                df.boxplot(rot=70)
                 plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
@@ -1207,9 +1219,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return xkv
 
     def eval_with_best(self,
+                       return_model=False,
                        view_model=True,
-                       return_model=False):
-        """Find the best parameters and evaluate the objective_fn on them."""
+                       interpret=False):
+        """
+        Find the best parameters and evaluate the objective_fn with them.
+        Arguments:
+            return_model bool: If True, then then the built objective_fn will be returned
+            view_model bool: only relevent if ai4Water_args are given.
+            interpret bool:  only relevent if ai4water_args are given
+        """
 
         if self.use_named_args:
             x = self.best_paras()
@@ -1218,9 +1237,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         if self.use_named_args and self.ai4water_args is not None:
             return self.ai4water_model(pp=True,
-                                     view_model=view_model,
-                                     return_model=return_model,
-                                     title=os.path.join(self.opt_path, "best"),
+                                       view_model=view_model,
+                                       return_model=return_model,
+                                       interpret=interpret,
+                                       title=os.path.join(self.opt_path, "best"),
                                      **x)
 
         if self.use_named_args and self.ai4water_args is None:

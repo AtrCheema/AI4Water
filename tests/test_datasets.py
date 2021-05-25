@@ -6,7 +6,7 @@ from typing import Union
 
 import pandas as pd
 
-from AI4Water.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS
+from AI4Water.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
 from AI4Water.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
 from AI4Water.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
 from AI4Water.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
@@ -93,6 +93,7 @@ ds_cl = CAMELS_CL()
 ds_us = CAMELS_US()
 hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
 s = hy.stations()
+ds_hype = HYPE()
 st = hy.fetch_static_attributes(station=s[0])
 
 class TestLamaH(unittest.TestCase):
@@ -154,6 +155,50 @@ ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\data\CAMELS
 #         data = ds_gb.fetch(['97002'], categories=None, st='19880101', en='19881231')
 #         for k,v in data.items():
 #             self.assertEqual(len(v), 366)
+
+
+class TestHYPE(unittest.TestCase):
+
+    # def test_all_dynamic_data(self):
+    #     test_dynamic_data(ds_hype, None, 564, 14245)  # check that dynamic attribues from all data can be retrieved.
+
+    def test_random_dynamic_data(self):
+        test_dynamic_data(ds_hype, 0.1, 56, 12783)    # check that dynamic data of 10% of stations can be retrieved
+
+    # def test_all_static_data(self):
+    #     test_static_data(ds_hype, None, 564, 68)  # check that static data of all stations can be retrieved
+    #
+    # def test_random_static_data(self):
+    #     test_static_data(ds_br, 0.1, 56, 68)    # check that static data of 10% of stations can be retrieved
+
+    # def test_static_attributes(self):
+    #     test_static_attributes(ds_br, 9)  # check length of static attribute categories
+
+    def test_stations(self):
+        test_stations(ds_hype, 564)  # check length of stations
+
+    def test_fetch_dynamic_attributes(self):
+        test_fetch_dynamic_attributes(ds_hype, '5', 9)  # make sure dynamic data from one station have 17 attributes
+
+    def test_fetch_dynamic_multiple_stations(self):
+        test_fetch_dynamic_multiple_stations(ds_hype, 3, 9)  # make sure that dynamic data from 3 stations each have 17 attributes
+
+    # def test_fetch_static_attribue(self):
+    #     test_fetch_static_attribue(ds_br, '64620000', 68)  # make sure that static data from one station can be retrieved
+
+    def test_st_en(self):
+        data = ds_hype.fetch_dynamic_attributes('12', st='19880101', en='19881231')
+        self.assertEqual(len(data), 366)
+        data = ds_hype.fetch(['12'], categories=None, st='19880101', en='19881231')
+        for k,v in data.items():
+            self.assertEqual(len(v), 366)
+
+    # def test_st_en_with_static_and_dynamic(self):
+    #     data = ds_br.fetch(['64620000'], as_ts=True, st='19880101', en='19881231')
+    #     for k,v in data.items():
+    #         assert isinstance(v.index, pd.DatetimeIndex)
+    #         assert v.shape == (366, 85)
+    #     return
 
 
 class TestCamelsBR(unittest.TestCase):

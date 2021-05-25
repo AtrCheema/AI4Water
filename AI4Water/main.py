@@ -27,7 +27,7 @@ from AI4Water.utils.transformations import Transformations
 from AI4Water.utils.imputation import Imputation
 from AI4Water.models.custom_training import train_step, test_step
 from AI4Water.utils.SeqMetrics import Metrics
-from AI4Water.utils.visualizations import Visualizations
+from AI4Water.utils.visualizations import Visualizations, Interpret
 
 
 def reset_seed(seed):
@@ -229,7 +229,7 @@ class Model(NN, Plots):
                 T apply different transformations on different input and output features
                 ```python
                 transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
-                                {'method': 'minmax', 'features': ['input3', 'output']}
+                                {'method': 'zscore', 'features': ['input3', 'output']}
                                 ]
                 ```
                 Here `input1`, `input2`, `input3` and `outptu` are the columns in the
@@ -262,19 +262,18 @@ class Model(NN, Plots):
         >>>y, obs = model.predict()
         ```
         """
-        config = make_model(**kwargs)
+        maker = make_model(data, **kwargs)
 
         # data_config, model_config = config['data_config'], config['model_config']
-        reset_seed(config.config['seed'])
+        reset_seed(maker.config['seed'])
         if tf is not None:
             # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
             # file, they may share same graph.
             tf.keras.backend.clear_session()
 
-        # super(Model, self).__init__(**config)
-        NN.__init__(self, config=config.config)
+        NN.__init__(self, config=maker.config)
 
-        self.intervals = config.config['intervals']
+        self.intervals = maker.config['intervals']
         _in_cols, _out_cols = self.config['inputs'], self.config['outputs']
         if _in_cols is None and isinstance(data, pd.DataFrame):
             _in_cols, _out_cols = list(data.columns)[0:-1], list(data.columns)[-1]
@@ -290,7 +289,7 @@ class Model(NN, Plots):
         self.info = {}
 
         Plots.__init__(self, self.path, self.problem, self.category, self._model,
-                       config=config.config)
+                       config=maker.config)
 
         self.build()  # will initialize ML models or build NNs
 
@@ -324,10 +323,11 @@ class Model(NN, Plots):
     @data.setter
     def data(self, x):
         if isinstance(x, pd.DataFrame):
-            self.in_cols = self.config['inputs']
-            _outs = self.config['outputs']
-            if self.in_cols is None:
-                self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
+            #self.in_cols = self.config['inputs']
+            #_outs = self.config['outputs']
+            #if self.in_cols is None:
+            #    self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
+            #    self.config['inputs'], self.config['outputs'] = self.in_cols, self.out_cols
             _data = x[self.in_cols + self.out_cols]
         else:
             _data = x
@@ -392,6 +392,8 @@ class Model(NN, Plots):
     @property
     def layer_names(self):
         _all_layers = []
+        if self.category == "ML":
+            return None
         for layer in self._model.layers:
             _all_layers.append(layer.name)
         return _all_layers
@@ -617,6 +619,7 @@ class Model(NN, Plots):
 
     def normalize(self, df, key, transformation):
         """ should return the transformed dataframe and the key with which scaler is put in memory. """
+        # todo, isn't it better to save the instance of Transformation class in the memory?
         scaler = None
 
         if transformation is not None:
@@ -1279,11 +1282,18 @@ class Model(NN, Plots):
             data_keys=None,
             **callbacks):
         """
-        Trains the model with data which is taken from data accoring to st, en
-        and indices arguments.
-        data: if not None, it will directlry passed to fit.
-        data_keys: allowed only if self.data is a dictionary. You can decided which to use
-                   use for training by specifying the keys of self.data dictionary"""
+        Trains the model with data which is taken from data accoring to `st`, `en`
+        or `indices` or `data_keys` or `data` arguments.
+
+        Arguments:
+        -----------
+            st int: starting index of data to be used
+            en int: end index of data to be used
+            indices list: indices of data to be used. If given, `st` and `en` will be ignored.
+            data : if not None, it will directlry passed to fit ignorign `st`, `en` and `indices`
+            data_keys list: allowed only if self.data is a dictionary. You can decided which to use
+                use for training by specifying the keys of self.data dictionary
+        """
         visualizer = Visualizations(path=self.path)
         self.is_training = True
         if data_keys is not None and self.num_input_layers == 1:
@@ -1366,15 +1376,28 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 scaler_key: str = None,
                 prefix: str = 'test',
                 use_datetime_index=False,
-                pp=True,
-                **plot_args):
+                pp=True
+                ):
         """
         Makes prediction from the trained model.
-        scaler_key: if None, the data will not be indexed along date_time index.
-        pp: post processing
-        data: if not None, this will diretly passed to predict. If data_config['transformation'] is True, do provide
-            the scaler_key that was used when the data was transformed. By default that is '0'. If the data was not
-            transformed with Model, then make sure that data_config['transformation'] is None.
+        Arguments:
+            st :
+            en :
+            indices :
+            data :
+            data_keys :
+            scaler_key : if None, the data will not be indexed along date_time index.
+            pp : post processing
+            data : if not None, this will diretly passed to predict. If
+                data_config['transformation'] is True, do provide the scaler_key
+                that was used when the data was transformed. By default that is '0'.
+                If the data was not transformed with Model, then make sure that
+                data_config['transformation'] is None.
+            use_datetime_index bool: whether to sort the results. Should only be
+                used if the data is indexed by pd.DatetimeIndex and `indices` is random.
+            prefix str: prefix used with names of saved results
+        Returns:
+            a tuple of arrays. The first is true and the second is predicted.
         """
 
         if indices is not None:
@@ -1492,6 +1515,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
+        # todo, do we need **trans/**transformation such as replace_nans/repace_zeros during inverse transformation?
         # for cases if they are 2D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
@@ -2022,10 +2046,26 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                                                                                                np.ndim(gradient)))
 
     def view_model(self, **kwargs):
-        """ shows all activations, weights and gradients of the keras model."""
-        if 'layers' not in self.config['model']:
+        """ shows all activations, weights and gradients of the model."""
 
-            self.plot_feature_importance()
+        if self.category.upper() == "DL":
+            self.plot_act_grads(**kwargs)
+            self.plot_weight_grads(**kwargs)
+            self.plot_layer_outputs(**kwargs)
+            self.plot_weights()
+
+        return
+
+    def interpret(self, save=True, **kwargs):
+        """
+        Interprets the underlying model. Call it after training.
+        Example
+        ```python
+        model.fit()
+        model.interpret()
+        ```
+        """
+        if 'layers' not in self.config['model']:
 
             self.plot_treeviz_leaves()
 
@@ -2042,11 +2082,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if list(self.config['model'].keys())[0].lower().startswith("xgb"):
                 self.decision_tree(which="xgboost", **kwargs)
 
-        if self.category.upper() == "DL":
-            self.plot_act_grads(**kwargs)
-            self.plot_weight_grads(**kwargs)
-            self.plot_layer_outputs(**kwargs)
-            self.plot_weights()
+        interpreter = Interpret(self)
+
+        interpreter.plot_feature_importance(save=save)
 
         return
 
@@ -2158,12 +2196,16 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     @classmethod
     def from_config(cls, config_path: str, data, make_new_path=False, **kwargs):
         """
-        :param config_path:
-        :param data:
-        :param make_new_path: bool, If true, then it means we want to use the config file, only to build the model and a new
-                              path will be made. We should not load the weights in such a case.
-        :param kwargs:
-        :return:
+        Loads the model from a config file.
+        Arguments:
+            config_path str: complete path of config file
+            data : data for Model
+            make_new_path bool: If true, then it means we want to use the config
+                file, only to build the model and a new path will be made. We
+                should not load the weights in such a case.
+            kwargs :
+        return:
+            Model
         """
         with open(config_path, 'r') as fp:
             config = json.load(fp)
@@ -2192,7 +2234,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def load_weights(self, weight_file: str):
         """
-        weight_file: str, name of file which contains parameters of model.
+        Updates the weights of the underlying model.
+        Arguments:
+            weight_file str: name of file which contains parameters of model.
         """
         weight_file_path = os.path.join(self.w_path, weight_file)
         if not self.allow_weight_loading:

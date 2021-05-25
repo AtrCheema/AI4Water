@@ -13,7 +13,7 @@ plugins:
 
 pages:
 - Model: 'modelbuilding.md'
-- SeqMetrics: 'metrics.md'
+- Performance metrics: 'metrics.md'
 - hyperparameter optimization: 'hpo.md'
 - Evapotranspiration: 'evapotranspiration.md'
 - datasets: 'datasets.md'

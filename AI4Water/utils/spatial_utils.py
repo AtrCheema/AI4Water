@@ -81,7 +81,7 @@ def get_total_area(file_to_read):
 def get_lu_paras(code, para):
     """get some landuse related constand parameters"""
     val = None
-    dict_ = {'Fallow': {'cn': 58, 'albedo': 16},
+    dict_ = {'Urban': {'cn': 58, 'albedo': 16},
              'Forest': {'cn': 77, 'albedo': 16},
              'Teak': {'cn': 82, 'albedo': 18},
              'Crop': {'cn': 80, 'albedo': 23}}

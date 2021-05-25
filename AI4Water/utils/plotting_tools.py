@@ -83,17 +83,6 @@ class Plots(object):
     def lookback(self):
         return self.config['lookback']
 
-    def feature_imporance(self):
-        if self.category.upper() == "ML":
-
-            model_name = list(self.config['model'].keys())[0]
-            if model_name.upper() in ["SVC", "SVR"]:
-                if self._model.kernel == "linear":
-                    # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
-                    return self._model.coef_
-            elif hasattr(self._model, "feature_importances_"):
-                return self._model.feature_importances_
-
     def _imshow_3d(self, activation,
                    lyr_name,
                    save=True,
@@ -387,40 +376,6 @@ class Plots(object):
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
 
-    def plot_feature_importance(self, importance=None, save=True, use_xgb=False, **kwargs):
-
-        if importance is None:
-            importance = self.feature_imporance()
-
-        if self.category == "ML":
-            model_name = list(self.config['model'].keys())[0]
-            if model_name.upper() in ["SVC", "SVR"]:
-                if self._model.kernel == "linear":
-                    return self.f_importances_svm(importance, self.in_cols, save=save)
-                else:
-                    warnings.warn(f"for {self._model.kernel} kernels of {model_name}, feature importance can not be plotted.")
-                return
-            return 
-
-        if isinstance(importance, np.ndarray):
-            assert importance.ndim <= 2
-
-        use_prev = self.config['use_predicted_output']
-        all_cols = self.config['inputs'] if use_prev else self.config['inputs'] + \
-                                                                                self.config['outputs']
-        plt.close('all')
-        plt.figure()
-        plt.title("Feature importance")
-        if use_xgb:
-            if xgboost is None:
-                warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
-            else:
-                xgboost.plot_importance(self._model, **kwargs)
-        else:
-            plt.bar(range(self.ins if use_prev else self.ins + self.outs), importance, **kwargs)
-            plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=5)
-        self.save_or_show(save, fname="feature_importance.png")
-        return
 
     def roc_curve(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
@@ -474,23 +429,6 @@ class Plots(object):
 
                 trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
                 self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
-
-    def f_importances_svm(self, coef, names, save):
-
-        plt.close('all')
-        mpl.rcParams.update(mpl.rcParamsDefault)
-        classes = coef.shape[0]
-        features = coef.shape[1]
-        fig, axis = plt.subplots(classes, sharex='all')
-        axis = axis if hasattr(axis, "__len__") else [axis]
-
-        for idx, ax in enumerate(axis):
-            colors = ['red' if c < 0 else 'blue' for c in self._model.coef_[idx]]
-            ax.bar(range(features), self._model.coef_[idx], 0.4)
-
-        plt.xticks(ticks=range(features), labels=self.in_cols, rotation=90, fontsize=12)
-        self.save_or_show(save=save, fname=f"{list(self.config['model'].keys())[0]}_feature_importance")
-        return
 
     def box_plot(self,
                  inputs=True,

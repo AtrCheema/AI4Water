@@ -137,12 +137,35 @@ def check_kwargs(**kwargs):
 
 class make_model(object):
 
-    def __init__(self, **kwargs):
+    def __init__(self,data, **kwargs):
 
-        self.config = _make_model(**kwargs)
+        self.config = _make_model(data, **kwargs)
 
 
-def _make_model(**kwargs):
+def process_io(data, **kwargs):
+
+    inputs = kwargs.get('inputs', None)
+    outputs = kwargs.get('outputs', None)
+
+    if isinstance(inputs, str):
+        inputs = [inputs]
+    if isinstance(outputs, str):
+        outputs = [outputs]
+
+    if inputs is None:  #when inputs and outputs are not defined.
+        assert isinstance(data, pd.DataFrame)
+        if outputs is None:
+            inputs = list(data.columns)[0:-1]
+            outputs = [list(data.columns)[-1]]
+        elif isinstance(outputs, list):
+            inputs = [col for col in list(data.columns) if col not in outputs]
+
+    kwargs['inputs'] = inputs
+    kwargs['outputs'] = outputs
+    return kwargs
+
+
+def _make_model(data, **kwargs):
     """
     This functions fills the default arguments needed to run all the models. All the input arguments can be overwritten
     by providing their name.
@@ -150,6 +173,8 @@ def _make_model(**kwargs):
       nn_config: `dict`, contais parameters to build and train the neural network such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
+    kwargs = process_io(data, **kwargs)
+
     default_model = {'layers': {
         "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
         "Flatten": {"config": {}},
@@ -231,22 +256,7 @@ def _make_model(**kwargs):
         'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
 
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
-        # The following argument determines how to deal with missing values in the input data. The default value
-        # is None, which will raise error if missing/nan values are encountered in the input data. The user can however
-        # specify a dictionary whose key must be either `fillna` or `interpolate` the value of this dictionary should
-        # be the keyword arguments will be forwarded to pandas .fillna() or .iterpolate() method. For example, to do
-        # forward filling, the user can do as following
-        # {'fillna': {'method': 'ffill'}}
-        # For details about fillna keyword options see https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
-        # For `interpolate`, the user can specify  the type of interpolation for example
-        # {'interpolate': {'method': 'spline', 'order': 2}} will perform spline interpolation with 2nd order.
-        # For other possible options/keyword arguments for interpolate see https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
-        # The filling or interpolation is done columnwise, however, the user can specify how to do for each column by
-        # providing the above mentioned arguments as dictionary or list.
-        # The sklearn based imputation methods can also be used in a similar fashion. For KNN
-        # {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
-        # {'IterativeImputer': {'n_nearest_features': 2}}
-        # For more on sklearn based imputation methods see https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
+
         'input_nans':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
         # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
         'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
@@ -971,9 +981,9 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
     """Initializes the fig for subplots"""
     plt.close('all')
     fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
-    if width is None:
+    if width is not None:
         fig.set_figwidth(width)
-    if height is None:
+    if height is not None:
         fig.set_figheight(height)
     return fig, axis
 
@@ -989,6 +999,7 @@ def process_axis(axis,
                  ms=6.0,  # markersize
                  label=None,  # legend
                  leg_pos="best",
+                 bbox_to_anchor=None,  # will take priority over leg_pos
                  leg_fs=12,
                  leg_ms=1,  # legend scale
                  ylim=None,  # limit for y axis
@@ -1065,7 +1076,11 @@ def process_axis(axis,
         if label != "__nolabel__":
             if leg_fs is not None: _kwargs.update({'fontsize': leg_fs})
             if leg_ms is not None: _kwargs.update({'markerscale': leg_ms})
-            axis.legend(loc=leg_pos, **_kwargs)
+            if bbox_to_anchor is not None:
+                _kwargs['bbox_to_anchor'] = bbox_to_anchor
+            else:
+                _kwargs['loc'] = leg_pos
+            axis.legend(**_kwargs)
 
     if y_label is not None:
         axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
