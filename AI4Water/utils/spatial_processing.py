@@ -22,16 +22,21 @@ COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B
 
 
 class MakeHRUs(object):
-    """Distributes a given time series data for HRUs in a catchment according to the `hru_definition`.
+    """
+    Distributes a given time series data for HRUs in a catchment according to the `hru_definition`.
     Currently it is supposed that only land use changes with time.
     Arguments:
-        hru_definition: str, definition of HRU, determines how an HRU should be defined. The number and size of HRUs
-                        depend upon this parameter.
-        index: dict, index representing time variation of land use. The keys should represent unit of time and values
-                     should be the path of land use shape file during that time period.
-        soil_shape: str, path of soil shapefile. Only required if hru_definition contains soil.
-        slope_shape: str, path of slope shapefile.
-        subbasins_shape: str, path of sub-basin shape file
+        hru_definition str: definition of HRU, determines how an HRU should be
+            defined. The number and size of HRUs depend upon this parameter.
+        index dict: index representing time variation of land use. The keys should
+            represent unit of time and values should be the path of land use
+            shape file during that time period. All features in all land use
+            shapefiles must have an attribute "NAME".
+        soil_shape str: path of soil shapefile. Only required if hru_definition
+            contains soil. All features in slope shapefiles must have an attribute "NAME"
+        slope_shape str: path of slope shapefile.
+        subbasins_shape str: path of sub-basin shape file. All features must hvae
+            an attribute "id".
     """
 
     HRU_DEFINITIONS = [
@@ -77,7 +82,7 @@ class MakeHRUs(object):
         self.area_frac_cat = pd.DataFrame(index=pd.date_range(str(st) + '0101', str(en) + '1231',
                                                               freq='12m'))
 
-    def get(self, plot_hrus=True):
+    def call(self, plot_hrus=True):
 
         for yr, shp_file in self.index.items():
 
@@ -257,7 +262,7 @@ class MakeHRUs(object):
         if 'sub' in self.hru_definition and self.use_sub:
             # getting distance to outlet of each hru
             sub_shp = self.sub_shp_geom_list[first_shp_idx]
-            dist = find_records(self.subbasins_shape, 'dist_outle', first_shp_idx)
+            dist = find_records(self.subbasins_shape, 'DistOutlet', first_shp_idx)
         self.dist_to_out.loc[row_index, hru_name] = dist
 
         cn = None
@@ -274,19 +279,26 @@ class MakeHRUs(object):
 
         if self.hru_definition == 'unique_lu_sub':
             # lu_feature = feature
-            ina, inb = 'LU'+str(year)+'_NAME', lu_feat_ind
+            ina, inb = 'NAME', lu_feat_ind
             lu_code = find_records(lu_shp, ina, inb)
             if self.use_sub:
-                sub_code = find_records(self.subbasins_shape, 'Subbasin', sub_feat_ind)
+                sub_code = find_records(self.subbasins_shape, 'id', sub_feat_ind)
                 sub_code = '_sub_' + str(sub_code)
             else:
                 sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
                 sub_code = '_slope_' + SLOPE[sub_code]
             return str(year) + sub_code + '_lu_' + lu_code, lu_code
 
+        elif self.hru_definition == 'unique_lu_slope':
+            ina, inb = 'NAME', lu_feat_ind
+            lu_code = find_records(lu_shp, ina, inb)
+            sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
+            sub_code = '_slope_' + SLOPE[sub_code]
+            return str(year) + sub_code + '_lu_' + lu_code, lu_code
+
         elif self.hru_definition == 'unique_sub':
             if self.use_sub:
-                sub_code = find_records(self.subbasins_shape, 'Subbasin', sub_feat_ind)
+                sub_code = find_records(self.subbasins_shape, 'id', sub_feat_ind)
                 sub_code = '_sub_' + str(sub_code)
             else:
                 sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
@@ -294,24 +306,24 @@ class MakeHRUs(object):
             return str(year) + sub_code, sub_code[5:]
 
         elif self.hru_definition == 'unique_lu':
-            ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
+            ina, inb = 'NAME', lu_feat_ind
             lu_code = find_records(lu_shp, ina, inb)
             return str(year) + "_lu_" + lu_code
 
         elif self.hru_definition == 'unique_slope':
-            ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
+            ina, inb = 'NAME', lu_feat_ind
             lu_code = find_records(self.slope_shape, ina, sub_feat_ind)
             return str(year) + "_lu_" + lu_code
 
         elif self.hru_definition == 'unique_soil':
-            lu_code = find_records(self.soil_shape, "SOIL_GROUP", sub_feat_ind)
+            lu_code = find_records(self.soil_shape, "NAME", sub_feat_ind)
             return str(year) + "_lu_" + lu_code
 
         elif self.hru_definition == 'unique_soil_sub':
-            ina, inb = 'SOIL_GROUP', lu_feat_ind
+            ina, inb = 'NAME', lu_feat_ind
             soil_code = find_records(self.soil_shape, ina, inb)
             if self.use_sub:
-                sub_code = find_records(self.subbasins_shape, 'Subbasin', sub_feat_ind)
+                sub_code = find_records(self.subbasins_shape, 'id', sub_feat_ind)
                 sub_code = '_sub_' + str(sub_code)
             else:
                 sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
@@ -319,24 +331,26 @@ class MakeHRUs(object):
             return str(year) + sub_code + '_soil_' + soil_code, soil_code
 
         elif self.hru_definition == 'unique_lu_soil':
-            ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
+            ina, inb = 'NAME', lu_feat_ind
             lu_code = find_records(lu_shp, ina, inb)
-            ina = 'SOIL_GROUP'
+            ina = 'NAME'
             soil_code = find_records(self.soil_shape, ina, sub_feat_ind)
             return f'{year}_{soil_code}_{lu_code}', soil_code
 
         elif self.hru_definition == 'unique_lu_soil_sub':
             if self.use_sub:
-                sub_code = '_sub_' + str(find_records(self.subbasins_shape, 'Subbasin', subbasin_idx))
+                sub_code = '_sub_' + str(find_records(self.subbasins_shape, 'id', subbasin_idx))
             else:
                 sub_code = subbasin_idx  # sub_feat.find_records('id', sub_feat_ind)
                 sub_code = '_slope_' + SLOPE[sub_code]
-            ina, inb = 'LU' + str(year) + '_NAME', lu_feat_ind
+            ina, inb = 'NAME', lu_feat_ind
             lu_code = find_records(lu_shp, ina, inb)
-            ina = 'SOIL_GROUP'
+            ina = 'NAME'
             soil_code = find_records(self.soil_shape, ina, sub_feat_ind)
 
             return str(year) + sub_code + '_soil_' + str(soil_code) + '_lu_' + lu_code, soil_code
+        else:
+            raise NotImplementedError
 
     def plot_hrus(self, year, bbox, _polygon_dict, annotate=False, nrows=3,
                   ncols=4, save=False, name='',
@@ -397,7 +411,7 @@ class MakeHRUs(object):
             else:  # for empty cases
                 x, y = np.arange(0, 10), np.arange(0, 10)
                 axis.plot(x, y, color='w')
-                text1 = 'no ' + key.split('_')[4] + ' in sub-basin ' + key.split('_')[2]
+                text1 = 'no ' + key.split('_')[1] + ' in sub-basin ' + key.split('_')[2]
                 if annotate_missing_hru:
                     axis.text(x[0], np.mean(y), text1, color='red', fontsize=16)
                 axis.get_yaxis().set_visible(False)
@@ -599,6 +613,6 @@ if __name__=="__main__":
                           subbasins_shape=SubBasin_shp,
                           soil_shape=Soil_shp,
                           slope_shape=slope_shp)
-    hru_object.get()
+    hru_object.call()
     for yr in years:
         hru_object.draw_pie(yr,  title=False, n_merge=4, save=True, textprops={'fontsize': '12'})
