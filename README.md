@@ -70,6 +70,10 @@ The latest code however (possibly with less bugs and more features) can be insal
 
     python -m pip install git+https://github.com/AtrCheema/AI4Water.git@dev
 
+To install the latest branch (`dev`) with all requirements use the following command
+
+    python -m pip install "AI4Water[all] @ git+https://github.com/AtrCheema/AI4Water.git@dev"
+
 ## How to use
 
 Build a `Model` by providing all the arguments to initiate it.
