@@ -38,7 +38,9 @@ extra_requires = [
 'pyshp',
 
 'optuna',
-'hyperopt'
+'hyperopt',
+
+'netCDF4'  # for reading data
 ]
 
 all_requirements = min_requirements + extra_requires

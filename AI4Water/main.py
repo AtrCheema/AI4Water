@@ -1194,9 +1194,11 @@ class Model(NN, Plots):
             # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
             self.save_config()
 
-        VERSION_INFO.update({'numpy_version': str(np.__version__),
-                             'pandas_version': str(pd.__version__),
-                             'matplotlib_version': str(matplotlib.__version__)})
+        VERSION_INFO.update({'numpy': str(np.__version__),
+                             'pandas': str(pd.__version__),
+                             'matplotlib': str(matplotlib.__version__),
+                             'h5py': h5py.__version__,
+                            'joblib': joblib.__version__})
         self.info['version_info'] = VERSION_INFO
 
         return

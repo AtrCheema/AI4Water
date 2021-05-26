@@ -2,6 +2,9 @@ __all__ = ["tf", "keras", "torch",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
            "VERSION_INFO"]
 
+import os
+import sys
+
 from AI4Water.utils.utils import get_attributes
 
 try:
@@ -129,7 +132,12 @@ torch = torch
 tf = tf
 
 VERSION_INFO = {
+    'python': sys.version,
+    'os': os.name,
     'tensorflow': str(tf.__version__) if tf is not None else None,
+    'tf_is_built_with_cuda': tf.test.is_built_with_cuda() if tf is not None else None,
+    'is_built_with_gpu_support': tf.test.is_built_with_gpu_support() if tf is not None else None,
+    'tf_is_gpu_available': tf.test.is_gpu_available() if tf is not None else None,
     'keras': str(keras.__version__) if keras is not None else None,
     'tcn': str(tcn.__version__) if tcn is not None else None,
     'pytorch': str(torch.__version__) if torch is not None else None,
