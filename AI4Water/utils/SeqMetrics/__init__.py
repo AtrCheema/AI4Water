@@ -1,1 +1,1 @@
-from .SeqMetrics import Metrics
+from .SeqMetrics import RegressionMetrics

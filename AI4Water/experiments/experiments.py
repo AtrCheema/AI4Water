@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from AI4Water import Model
 from AI4Water.hyper_opt import HyperOpt
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.taylor_diagram import plot_taylor
 from AI4Water.hyper_opt import Real, Categorical, Integer
 from AI4Water.utils.utils import init_subplots, process_axis
@@ -386,7 +386,7 @@ Available cases are {self.models} and you wanted to include
         """
 
         def find_matric_array(true, sim):
-            errors = Metrics(true, sim)
+            errors = RegressionMetrics(true, sim)
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -655,7 +655,7 @@ class MLRegressionExperiments(Experiments):
 
             return (t,p), (tt, tp)
 
-        return Metrics(tt, tp).mse()
+        return RegressionMetrics(tt, tp).mse()
 
     def model_ADABoostRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
@@ -1253,7 +1253,7 @@ class MLClassificationExperiments(Experiments):
         if predict:
             return (t, p), (tt, tp)
 
-        return Metrics(tt, tp).mse()
+        return RegressionMetrics(tt, tp).mse()
 
     def model_AdaBoostClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html

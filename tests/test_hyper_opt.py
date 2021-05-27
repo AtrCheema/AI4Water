@@ -20,7 +20,7 @@ np.random.seed(313)
 
 from AI4Water import Model
 from AI4Water.utils.utils import Jsonize
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.datasets import load_u1
 from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
 
@@ -92,8 +92,8 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
 
         model.fit(indices="random")
 
-        t, p = model.predict(indices=model.test_indices, pref='test')
-        mse = Metrics(t, p).mse()
+        t, p = model.predict(indices=model.test_indices, prefix='test')
+        mse = RegressionMetrics(t, p).mse()
 
         return mse
 
@@ -284,8 +284,8 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit(indices="random")
 
-            t, p = model.predict(indices=model.test_indices, pref='test')
-            mse = Metrics(t, p).mse()
+            t, p = model.predict(indices=model.test_indices, prefix='test')
+            mse = RegressionMetrics(t, p).mse()
             print(f"Validation mse {mse}")
 
             return mse
@@ -425,8 +425,8 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit(indices="random")
 
-            t, p = model.predict(indices=model.test_indices, pref='test')
-            mse = Metrics(t, p).mse()
+            t, p = model.predict(indices=model.test_indices, prefix='test')
+            mse = RegressionMetrics(t, p).mse()
             print(f"Validation mse {mse}")
 
             return mse

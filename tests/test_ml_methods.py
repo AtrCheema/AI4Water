@@ -375,8 +375,8 @@ class TestMLMethods(unittest.TestCase):
             verbosity=0)
 
         model.fit(indices="random")
-        trtt, trp = model.predict(indices=model.train_indices, pref='train')
-        t, p = model.predict(indices=model.test_indices, pref='test')
+        trtt, trp = model.predict(indices=model.train_indices, prefix='train')
+        t, p = model.predict(indices=model.test_indices, prefix='test')
         self.assertGreater(len(t), 1)
         self.assertGreater(len(trtt), 1)
         return

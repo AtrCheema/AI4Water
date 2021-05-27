@@ -26,7 +26,7 @@ from AI4Water.utils.plotting_tools import Plots
 from AI4Water.utils.transformations import Transformations
 from AI4Water.utils.imputation import Imputation
 from AI4Water.models.custom_training import train_step, test_step
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.visualizations import Visualizations, Interpret
 
 
@@ -1159,7 +1159,7 @@ class Model(NN, Plots):
                     t = t.values[~nan_idx]
                     p = p.values[~nan_idx]
 
-                errors = Metrics(t, p)
+                errors = RegressionMetrics(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)

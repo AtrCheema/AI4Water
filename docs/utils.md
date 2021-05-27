@@ -3,8 +3,6 @@ Some utility functions
 **`Transformations`**
 ::: AI4Water.utils.transformations.Transformations
     handler: python
-    rendering:
-        show_root_heading: true
     selection:
         members:
             - __init__
@@ -12,6 +10,8 @@ Some utility functions
             - __getattr__
             - transform
             - inverse_transform
+    rendering:
+        show_root_heading: true
 
 **`prepare_data`**
 ::: AI4Water.utils.utils.prepare_data

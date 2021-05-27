@@ -1,6 +1,7 @@
 # HyperOpt
 
 ::: AI4Water.hyper_opt.hyper_opt.HyperOpt 
+    handler: python
     rendering:
         show_root_heading: true
     selection:

@@ -6,7 +6,7 @@ from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 
 COLORS = np.array([
        [0.89411765, 0.10196078, 0.10980392, 1.        ],
@@ -361,7 +361,7 @@ def plot_taylor(trues:dict,
         # Add samples to Taylor diagram
         idx = 0
         for model_name, model in simulations[season].items():
-            er = Metrics(trues[season], model)
+            er = RegressionMetrics(trues[season], model)
             stddev = np.std(model)
             corrcoef = er.corr_coeff()
 

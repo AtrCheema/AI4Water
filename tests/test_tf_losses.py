@@ -6,7 +6,7 @@ import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from AI4Water.utils import tf_losses
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 
 
 import tensorflow as tf
@@ -19,7 +19,7 @@ pred = np.random.random(10)
 t = tf.convert_to_tensor(_true, dtype=tf.float32)
 p = tf.convert_to_tensor(pred, dtype=tf.float32)
 
-np_errors = Metrics(_true, pred)
+np_errors = RegressionMetrics(_true, pred)
 
 class test_errors(unittest.TestCase):
 

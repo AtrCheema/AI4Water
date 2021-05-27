@@ -57,7 +57,7 @@ except ImportError:
     Study = None
 
 from AI4Water import Model
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.hyper_opt.utils import get_one_tpe_x_iter
 from AI4Water.utils.utils import Jsonize, dateandtime_now
 from AI4Water.hyper_opt.utils import skopt_space_from_hp_space
@@ -159,7 +159,7 @@ class HyperOpt(object):
     >>>from AI4Water import Model
     >>>from AI4Water.hyper_opt import HyperOpt, Categorical, Integer, Real
     >>>from AI4Water.utils.datasets import load_u1
-    >>>from AI4Water.utils.SeqMetrics import Metrics
+    >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
     # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
@@ -834,7 +834,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         model.fit(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pp=pp)
-        mse = Metrics(t, p).mse()
+        mse = RegressionMetrics(t, p).mse()
 
         error = round(mse, 7)
         self.results[error] = sort_x_iters(kwargs, self.original_para_order())

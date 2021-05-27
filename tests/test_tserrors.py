@@ -3,7 +3,7 @@ import unittest
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.SeqMetrics.utils import plot_metrics
 
 import numpy as np
@@ -12,10 +12,18 @@ import numpy as np
 t = np.random.random((20, 1))
 p = np.random.random((20, 1))
 
-er = Metrics(t, p)
+er = RegressionMetrics(t, p)
 
 all_errors = er.calculate_all()
 
+not_metrics = ['calculate_all',
+               'stats',
+               "treat_arrays",
+               "scale_free_metrics",
+               "scale_dependent_metrics",
+               "composite_metrics",
+               "relative_metrics",
+               "percentage_metrics"]
 
 class test_errors(unittest.TestCase):
 
@@ -23,6 +31,10 @@ class test_errors(unittest.TestCase):
         plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
         plot_metrics(all_errors, plot_type='radial')
         return
+
+    def test_attrs(self):
+        for _attr in not_metrics:
+            assert _attr not in er.all_methods
 
     def test_calculate_all(self):
         assert len(all_errors) > 100
@@ -64,7 +76,7 @@ class test_errors(unittest.TestCase):
             [1.24, 	1.29],
             [0.64, 	0.60]]
         )
-        errs = Metrics(data[:, 0], data[:, 1])
+        errs = RegressionMetrics(data[:, 0], data[:, 1])
         np.testing.assert_almost_equal(0.348, errs.mrae(), 2)
         assert errs.mare() * 100.0 == errs.mape()
         return
