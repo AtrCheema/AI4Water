@@ -350,9 +350,9 @@ class HyperOpt(object):
                 must be one of "random", "grid" "bayes" and "tpe", defining which
                 optimization algorithm to use.
             objective_fn callable:
-                It can be either sklearn/xgboost based regressor/classifier
-                or any function whose returned
-                values can act as objective function for the optimization problem.
+                Any callable function whose returned value is to be minimized.
+                It can also be either sklearn/xgboost based regressor/classifier.
+                If you are using `ai4water_args` then you don't need to define this.
             backend str:
                 Defines which backend library to use for the `algorithm`. For
                 example the user can specify whether to use `optuna` or `hyper_opt`
@@ -1190,7 +1190,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
                 plt.close('all')
                 df = pd.DataFrame.from_dict(importance_paras)
-                df.boxplot(rot=70)
+                axis = df.boxplot(rot=70, return_type="axes")
+                axis.set_ylabel("Relative Importance")
                 plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:

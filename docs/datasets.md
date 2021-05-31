@@ -12,7 +12,12 @@
     handler: python
     rendering:
         show_root_heading: true
-       
+
+::: AI4Water.utils.datasets.datasets.CAMELS_AUS
+    handler: python
+    rendering:
+        show_root_heading: true
+
 ::: AI4Water.utils.datasets.datasets.LamaH
     handler: python
     rendering:

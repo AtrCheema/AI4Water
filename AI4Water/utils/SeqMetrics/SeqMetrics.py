@@ -42,10 +42,15 @@ EPS = 1e-10  # epsilon
 
 class Metrics(object):
     """
-     The arguments other than `true` and `predicted` are dynamic i.e. they can be changed from outside the class.
-     This means the user can change their value after creating the class. This will be useful if we want to
-     calculate an error once by ignoring NaN and then by not ignoring the NaNs. However, the user has to run
-     the method `treat_arrays` in order to have the changed values impact on true and predicted arrays.
+    This class does some pre-processign and handles metadata regaring true and
+    predicted arrays.
+
+    The arguments other than `true` and `predicted` are dynamic i.e. they can be
+    changed from outside the class. This means the user can change their value after
+    creating the class. This will be useful if we want to calculate an error once by
+    ignoring NaN and then by not ignoring the NaNs. However, the user has to run
+    the method `treat_arrays` in order to have the changed values impact on true and
+    predicted arrays.
 
     """
 
@@ -61,24 +66,17 @@ class Metrics(object):
         Arguments:
             true array/list: ture/observed/actual values
             predicted array/list: simulated values
-            replace_nan float/int: default None. if not None, then NaNs in true and predicted
-                will be replaced by this value.
+            replace_nan float/int: default None. if not None, then NaNs in true
+                and predicted will be replaced by this value.
             replace_inf float/int: default None, if not None, then inf vlaues in true and
                 predicted will be replaced by this value.
-            remove_zero bool: default False, if True, the zero values in true or predicted
-                arrays will be removed. If a zero is found in one array, the corresponding
-                value in the other array will also be removed.
-            remove_neg bool: default False, if True, the negative values in true or predicted arrays will be removed.
+            remove_zero bool: default False, if True, the zero values in true
+                or predicted arrays will be removed. If a zero is found in one
+                array, the corresponding value in the other array will also be
+                removed.
+            remove_neg bool: default False, if True, the negative values in true
+                or predicted arrays will be removed.
 
-        Examples:
-        ```python
-        import numpy as np
-        from AI4Water.utils.SeqMetrics import Metrics
-        t = np.random.random(10)
-        p = np.random.random(10)
-        errors = Metrics(t,p)
-        all_errors = errors.calculate_all()
-        ```
         """
         self.true, self.predicted = self._pre_process(true, predicted)
         self.replace_nan = replace_nan
@@ -379,7 +377,20 @@ class Metrics(object):
 
 
 class RegressionMetrics(Metrics):
-    """Calculates more than 100 regression performance metrics related to sequence data."""
+    """
+    Calculates more than 100 regression performance metrics related to sequence data.
+
+    Example
+    ---------
+    ```python
+    import numpy as np
+    from AI4Water.utils.SeqMetrics import RegressionMetrics
+    t = np.random.random(10)
+    p = np.random.random(10)
+    errors = RegressionMetrics(t,p)
+    all_errors = errors.calculate_all()
+    ```
+    """
 
     def __init__(self, *args, **kwargs):
 
@@ -398,7 +409,9 @@ class RegressionMetrics(Metrics):
             if (array <= 0).any():  # mean tweedie error is not computable
                 self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
                                                                              'mean_poisson_deviance')]
-
+        """
+        Initializes `Metrics`.
+        """
     def abs_pbias(self) -> float:
         """ Absolute Percent bias"""
         _apb = 100.0 * sum(abs(self.predicted - self.true)) / sum(self.true)  # Absolute percent bias

@@ -35,6 +35,7 @@ from AI4Water.utils.datasets.datasets import HydrometricParana
 from AI4Water.utils.datasets.datasets import RiverTempSpain
 from AI4Water.utils.datasets.datasets import RiverIsotope
 from AI4Water.utils.datasets.datasets import EtpPcpSamoylov
+from AI4Water.utils.datasets.datasets import SWECanada
 
 
 def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataFrame:
@@ -44,7 +45,7 @@ def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataF
     mutlivariate time series and was collected over the period of 2 years during
     several precipitation events. The frequency of environmental data is 30 mins
     while the ARG is discontinuous. The data and its pre-processing is described
-    in detail in https://doi.org/10.1016/j.watres.2021.117001
+    in detail in [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)
     Arguments:
         inputs list: features to use as input. By default all environmental data
             is used.
@@ -55,6 +56,7 @@ def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataF
             with pandas.DateTimeIndex
 
     Examples
+    --------
     ```python
     >>>from AI4Water.utils.datasets import arg_beach
     >>>df = arg_beach()
