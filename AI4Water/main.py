@@ -2067,6 +2067,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         model.interpret()
         ```
         """
+        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         if 'layers' not in self.config['model']:
 
             self.plot_treeviz_leaves()
@@ -2086,7 +2087,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         interpreter = Interpret(self)
 
-        interpreter.plot_feature_importance(save=save)
+        if self.category == 'ML':
+            interpreter.plot_feature_importance(save=save)
 
         return
 
