@@ -1,13 +1,12 @@
 import json
 import warnings
-import itertools
 import numpy as np
 from math import sqrt
-from types import FunctionType
+from typing import Union
 from scipy.stats import gmean, kendalltau
 
 from AI4Water.utils.utils import ts_features
-from AI4Water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo
+from AI4Water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute
@@ -633,7 +632,7 @@ class RegressionMetrics(Metrics):
         """
         return float(np.linalg.norm(self.true - self.predicted))
 
-    def exp_var_score(self, weights=None) -> float:
+    def exp_var_score(self, weights=None) -> Union[float, None]:
         """
         Explained variance score
         https://stackoverflow.com/questions/24378176/python-sci-kit-learn-metrics-difference-between-r2-score-and-explained-varian
@@ -899,7 +898,7 @@ class RegressionMetrics(Metrics):
 
         return float(kgenp_c2m_)
 
-    def KLsym(self) -> float:
+    def KLsym(self) -> Union[float, None]:
         """Symmetric kullback-leibler divergence"""
         if not all((self.true == 0) == (self.predicted == 0)):
             return None  # ('KL divergence not defined when only one distribution is 0.')

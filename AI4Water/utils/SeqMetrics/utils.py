@@ -1,10 +1,12 @@
 import os
+import itertools
+from types import FunctionType
 from collections import OrderedDict
 
 import numpy as np
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
 from scipy.special import xlogy
+import plotly.graph_objects as go
 
 
 def take(st, en, d):
