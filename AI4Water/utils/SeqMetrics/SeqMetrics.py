@@ -133,7 +133,8 @@ class Metrics(object):
 
         return true, predicted
 
-    def _assert_1darray(self, array_like) -> np.ndarray:
+    @staticmethod
+    def _assert_1darray(array_like) -> np.ndarray:
         """Makes sure that the provided `array_like` is 1D numpy array"""
         if not isinstance(array_like, np.ndarray):
             if not isinstance(array_like, list):
@@ -163,7 +164,8 @@ class Metrics(object):
             if m not in ["brier_score"]:
                 try:
                     error = float(getattr(self, m)())
-                except TypeError:  # some errors might not have been computed and returned a non float-convertible value e.g. None
+                # some errors might not have been computed and returned a non float-convertible value e.g. None
+                except TypeError:
                     error = getattr(self, m)()
                 errors[m] = error
                 if verbose:
@@ -457,7 +459,7 @@ class RegressionMetrics(Metrics):
         Modifying from https://github.com/UBC-MDS/RegscorePy/blob/master/RegscorePy/aic.py
         """
         assert p > 0
-        self.assert_greater_than_one # noac
+        self.assert_greater_than_one  # noac
 
         n = len(self.true)
         resid = np.subtract(self.predicted, self.true)
@@ -491,9 +493,7 @@ class RegressionMetrics(Metrics):
         """Amemiya’s Prediction Criterion"""
         k = 1
         n = len(self.predicted)
-        resid = np.subtract(self.predicted, self.true)
-        sse = np.sum(np.power(resid, 2))  # sum of squared errors
-        return float(((n + k) / (n - k)) * (1/n) * sse)
+        return float(((n + k) / (n - k)) * (1/n) * self.sse())
 
     def bias(self) -> float:
         """
@@ -517,9 +517,7 @@ class RegressionMetrics(Metrics):
         assert p >= 0
 
         n = len(self.true)
-        residual = np.subtract(self.predicted, self.true)
-        SSE = np.sum(np.power(residual, 2))
-        return float(n * np.log(SSE / n) + p * np.log(n))
+        return float(n * np.log(self.sse() / n) + p * np.log(n))
 
     def brier_score(self) -> float:
         """
@@ -583,7 +581,7 @@ class RegressionMetrics(Metrics):
         covariance = np.mean((self.true - obs_mean) * (self.predicted - sim_mean))
         return float(covariance)
 
-    def cronbach_alpha(self)->float:
+    def cronbach_alpha(self) -> float:
         """
         It is a measure of internal consitency of data
         https://stats.idre.ucla.edu/spss/faq/what-does-cronbachs-alpha-mean/
@@ -1616,4 +1614,3 @@ class RegressionMetrics(Metrics):
 class ClassificationMetrics(Metrics):
     """Calculates classification metrics."""
     pass
-

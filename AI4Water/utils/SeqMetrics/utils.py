@@ -49,11 +49,11 @@ def plot_metrics(metrics:dict,
     ---------
     ```python
     >>>import numpy as np
-    >>>from AI4Water.utils.SeqMetrics import Metrics
+    >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
     >>>from AI4Water.utils.SeqMetrics.utils import plot_metrics
     >>>t = np.random.random((20, 1))
     >>>p = np.random.random((20, 1))
-    >>>er = Metrics(t, p)
+    >>>er = RegressionMetrics(t, p)
     >>>all_errors = er.calculate_all()
     >>>plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
     >>># or draw the radial plot
