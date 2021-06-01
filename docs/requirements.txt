@@ -12,3 +12,4 @@ optuna
 hyperopt
 plotly
 scikit-optimize
+netCDF4

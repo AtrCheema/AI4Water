@@ -47,4 +47,14 @@
     handler: python
     rendering:
         show_root_heading: true
+
+::: AI4Water.utils.datasets.datasets.WeatherJena
+    handler: python
+    rendering:
+        show_root_heading: true
    
+::: AI4Water.utils.datasets.datasets.SWECanada
+    handler: python
+    rendering:
+        show_root_heading: true
+      
