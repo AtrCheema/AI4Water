@@ -509,6 +509,11 @@ class WeatherJena(Datasets):
     url = "https://www.bgc-jena.mpg.de/wetter/weather_data.html"
 
     def __init__(self, obs_loc='roof'):
+        """
+        The ETP data is collected at three different locations i.e. roof, soil and saale(hall).
+        Arguments:
+            obs_loc str: location of observation.
+        """
 
         if obs_loc not in ['roof', 'soil', 'saale']:
             raise ValueError
@@ -526,9 +531,18 @@ class WeatherJena(Datasets):
 
     def fetch(self,
               st: str = None,
-              en: str = None,
-              **kwargs
+              en: str = None
               ) -> pd.DataFrame:
+        """
+        Fetches the time series data between given period as pandas dataframe.
+        Arguments:
+            st : start of data to be fetched. If None, the data from start will
+                be retuned.
+            en : end of data to be fetched. If None, the data from till end
+                be retuned.
+        Returns:
+            a pandas dataframe.
+        """
 
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
         all_files = glob.glob(f"{sub_dir}/*.csv")

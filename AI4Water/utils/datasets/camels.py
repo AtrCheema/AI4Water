@@ -31,7 +31,7 @@ class Camels(Datasets):
     This class first downloads the CAMELS dataset if it is not already downloaded. Then the selected attribute
     for a selected id are fetched and provided to the user using the method `fetch`.
 
-    Attributes
+    Attributes:
         ds_dir str/path: diretory of the dataset
         dynamic_attributes list: tells which dynamic attributes are available in this dataset
         static_attributes list: a list of static attributes.
@@ -122,42 +122,33 @@ class Camels(Datasets):
         # sanity_check(self.name, x)
         self._ds_dir = x
 
-    @property
-    def common_index(self):
-        """
-        It is possible that multiple data are available during different time-periods.
-        This returns the time-pseriod/index which is shared between all the data.
-        >>>import random
-        >>>dataset = CAMELS_BR
-        >>>stations = dataset.stations()
-        >>>df = dataset.fetch_stations_attributes(station=random.choice(stations))
-        """
-        return
-
-    def fetch(self, stations=None,
-              dynamic_attributes='all',
-              static_attributes=None,
+    def fetch(self,
+              stations: Union[str, list, int, float, None] = None,
+              dynamic_attributes: Union[list, str, None] = 'all',
+              static_attributes: Union[str, list, None] = None,
               st: Union[None, str] = None,
               en: Union[None, str] = None,
-              **kwargs) -> dict:
+              **kwargs
+              ) -> dict:
         """
         Fetches the attributes of one or more stations.
 
         Arguments:
-            stations str/list/int/float/None: default None. if string, it is supposed to be a station name/gauge_id.
-                             If list, it will be a list of station/gauge_ids. If int, it will be supposed that the
-                             user want data for this number of stations/gauge_ids. If None (default), then attributes
-                             of all available stations. If float, it will be supposed that the user wants data
-                             of this fraction of stations.
-            dynamic_attributes list: default(None), If not None, then it is the attributes to be fetched.
-                                       If None, then all available attributes are fetched
-            static_attributes list: list of static attributes to be fetches. None
+            stations : if string, it is supposed to be a station name/gauge_id.
+                If list, it will be a list of station/gauge_ids. If int, it will
+                be supposed that the user want data for this number of
+                stations/gauge_ids. If None (default), then attributes of all
+                available stations. If float, it will be supposed that the user
+                wants data of this fraction of stations.
+            dynamic_attributes : If not None, then it is the attributes to be
+                fetched. If None, then all available attributes are fetched
+            static_attributes : list of static attributes to be fetches. None
                 means no static attribute will be fetched.
-            st str: starting date of data to be returned. If None,
-                            the data will be returned from where it is available
-            en str: end date of data to be returned. If None, then the data will be returned till the
-                            date data is available.
-            kwargs dict: keyword arguments to read the files
+            st : starting date of data to be returned. If None, the data will be
+                returned from where it is available.
+            en : end date of data to be returned. If None, then the data will be
+                returned till the date data is available.
+            kwargs : keyword arguments to read the files
 
         returns:
             dictionary whose keys are station/gauge_ids and values are the attributes and dataframes.
@@ -185,10 +176,19 @@ class Camels(Datasets):
 
     def fetch_stations_attributes(self,
                                   stations: list,
-                                  dynamic_attributes='all',
-                                  static_attributes=None,
+                                  dynamic_attributes: Union[str, list, None] = 'all',
+                                  static_attributes: Union[str, list, None] = None,
                                   **kwargs) -> dict:
-        """fetches attributes of multiple stations."""
+        """fetches attributes of multiple stations.
+        Arguments:
+            stations : list of stations for which data is to be fetched.
+            dynamic_attributes : list of dynamic attributes to be fetched.
+                if 'all', then all dynamic attributes will be fetched.
+            static_attributes : list of static attributes to be fetched.
+                If `all`, then all static attributes will be fetched. If None,
+                then no static attribute will be fetched.
+            kwargs dict: additional keyword arguments
+        """
         assert isinstance(stations, list)
 
         stations_attributes = {}
@@ -199,18 +199,28 @@ class Camels(Datasets):
         return stations_attributes
 
     def fetch_station_attributes(self,
-                                 station,
-                                 dynamic_attributes='all',
-                                 static_attributes=None,
-                                 as_ts=False,
-                                 st=None,
-                                 en=None,
+                                 station: str,
+                                 dynamic_attributes: Union[str, list, None] = 'all',
+                                 static_attributes: Union[str, list, None] = None,
+                                 as_ts: bool = False,
+                                 st: Union[str, None] = None,
+                                 en: Union[str, None] = None,
                                  **kwargs) -> pd.DataFrame:
         """
         Fetches attributes for one station.
+        Arguments:
+            station : station id/gauge id for which the data is to be fetched.
+            dynamic_attributes
+            static_attributes
+            as_ts : whether static attributes are to be converted into a time
+                series or not. If yes then the returned time series will be of
+                same length as that of dynamic attribtues.
+            st : starting point from which the data to be fetched. By default
+                the data will be fetched from where it is available.
+            en : end point of data to be fetched. By default the dat will be fetched
         Return:
-            dataframe if as_ts is True else it returns a dictionary of static and dynamic attributes for
-            a station/gauge_id
+            dataframe if as_ts is True else it returns a dictionary of static and
+                dynamic attributes for a station/gauge_id
             """
         st, en = self._check_length(st, en)
 
@@ -244,7 +254,7 @@ class LamaH(Camels):
 
     static_attribute_categories = ['']
 
-    def __init__(self, *, time_step:str, data_type: str, **kwargs):
+    def __init__(self, *, time_step: str, data_type: str, **kwargs):
         assert time_step in ['daily', 'hourly'], f"invalid time_step {time_step} given"
         assert data_type in self._data_types
         self.time_step = time_step
@@ -942,10 +952,7 @@ class CAMELS_GB(Camels):
 
 class CAMELS_AUS(Camels):
     """
-    Inherits from Camels class.
-    Arguments:
-        path: path where the CAMELS-AUS dataset has been downloaded. This path must
-              contain five zip files and one xlsx file.
+    Inherits from Camels class. Fetches CAMELS-AUS dataset.
     """
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
     urls = {
@@ -993,6 +1000,12 @@ class CAMELS_AUS(Camels):
     }
 
     def __init__(self, path=None):
+        """
+        Arguments:
+            path: path where the CAMELS-AUS dataset has been downloaded. This path
+                must contain five zip files and one xlsx file. If None, then the
+                data will downloaded.
+        """
         if path is not None:
             if not os.path.exists(path) or len(os.listdir(path)) < 2:
                 raise FileNotFoundError(f"The path {path} does not exist")
@@ -1152,7 +1165,7 @@ class CAMELS_AUS(Camels):
                                 stn_id,
                                 attribute='all',
                                 **kwargs) -> pd.DataFrame:
-        """Fetches static attribuets of one station for one or more category as dataframe."""
+        """Fetches static attribuets of one station as dataframe."""
 
         return self._read_static(stn_id, attribute)
 
@@ -1203,8 +1216,11 @@ class CAMELS_CL(Camels):
               contain five zip files and one xlsx file.
     """
     def __init__(self,
-                 path: str = None):
+                 path: str = None
+                 ):
+
         self.ds_dir = path
+
         super().__init__()
 
         if not os.path.exists(self.ds_dir):
