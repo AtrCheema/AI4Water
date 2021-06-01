@@ -29,7 +29,7 @@ def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, s
 
 def test_dynamic_data(dataset, stations, target, stn_data_len):
     print(f"test_dynamic_data for {dataset.name}")
-    df = dataset.fetch(stations=stations, categories=None)
+    df = dataset.fetch(stations=stations, static_attributes=None)
 
     assert len(df) == target, f'dataset lenth is {len(df)} while target is {target}'
     for k,v in df.items():
@@ -41,7 +41,7 @@ def test_dynamic_data(dataset, stations, target, stn_data_len):
 
 def test_static_data(dataset, stations, target, stn_data_len):
     print(f"test_static_data for {dataset.name}")
-    df = dataset.fetch(stations=stations, dynamic_attributes=None)
+    df = dataset.fetch(stations=stations, dynamic_attributes=None, static_attributes='all')
 
     assert len(df) == target
     for k,v in df.items():
@@ -51,10 +51,22 @@ def test_static_data(dataset, stations, target, stn_data_len):
     return
 
 
-def test_static_attributes(dataset, static_attr_len):
-    print(f"test_static_attributes for {dataset.name}")
-    static_attributes = dataset.static_attribute_categories
+def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
+    print(f"test_attributes for {dataset.name}")
+    static_attributes = dataset.static_attributes
     assert len(static_attributes) == static_attr_len
+    assert isinstance(static_attributes, list)
+    assert all([isinstance(i, str) for i in static_attributes])
+
+    assert os.path.exists(dataset.ds_dir)
+
+    dynamic_attributes = dataset.dynamic_attributes
+    assert len(dynamic_attributes) == dyn_attr_len, f'length of dynamic attributes: {len(dynamic_attributes)}'
+    assert isinstance(dynamic_attributes, list)
+    assert all([isinstance(i, str) for i in dynamic_attributes])
+
+    test_stations(dataset, stations)
+
     return
 
 
@@ -62,6 +74,8 @@ def test_stations(dataset, stations_len):
     print(f"test_stations for {dataset.name}")
     stations = dataset.stations()
     assert len(stations) == stations_len, f'number of stations for {dataset.name} are {len(stations)}'
+
+    assert all([isinstance(i, str) for i in stations])
     return
 
 
@@ -74,7 +88,7 @@ def test_fetch_dynamic_attributes(dataset, stn_id, num_dyn_attrs):
 def test_fetch_dynamic_multiple_stations(dataset, n_stns, target):
     print(f"test_fetch_dynamic_multiple_stations for {dataset.name}")
     stations = dataset.stations()
-    d = dataset.fetch(stations[0:n_stns], categories=None)
+    d = dataset.fetch(stations[0:n_stns])
     for k, v in d.items():
         assert v.shape[1] == target, f'for {dataset.name} shape is {v.shape}'
     return
@@ -82,20 +96,41 @@ def test_fetch_dynamic_multiple_stations(dataset, n_stns, target):
 
 def test_fetch_static_attribue(dataset, stn_id, target):
     print(f"test_fetch_static_attribue for {dataset.name}")
-    df = dataset.fetch(stn_id, dynamic_attributes=None, categories='all')
+    df = dataset.fetch(stn_id, dynamic_attributes=None, static_attributes='all')
     assert df[stn_id].shape[1] == target, f'shape is: {df[stn_id].shape}'
     return
 
+def test_st_en_with_static_and_dynamic(dataset, station, len_dyn_attrs, len_static_attrs):
+    data = dataset.fetch([station], as_ts=True, static_attributes='all', st='19880101', en='19881231')
+    for k, v in data.items():
+        assert isinstance(v.index, pd.DatetimeIndex)
+        assert v.shape == (366, len_dyn_attrs + len_static_attrs), f'{v.shape}'
+
+    data = dataset.fetch([station], static_attributes='all', st='19880101', en='19881231')
+    for k, v in data.items():
+        assert isinstance(v, dict)
+        assert isinstance(v['dynamic'], pd.DataFrame)
+        assert isinstance(v['static'], pd.DataFrame)
+        assert len(v['dynamic']) == 366
+        assert v['static'].shape[1] == len_static_attrs
+
+    data = dataset.fetch_dynamic_attributes(station, st='19880101', en='19881231')
+    assert len(data) == 366
+
+    data = dataset.fetch([station], st='19880101', en='19881231')
+    for k,v in data.items():
+        assert len(v) == 366
+    return
 
 ds_br = CAMELS_BR()
 ds_aus = CAMELS_AUS()
 ds_cl = CAMELS_CL()
 ds_us = CAMELS_US()
-hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
+hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS', source='ERA5')
 s = hy.stations()
 ds_hype = HYPE()
 st = hy.fetch_static_attributes(station=s[0])
-
+#
 class TestLamaH(unittest.TestCase):
 
     def test_all(self):
@@ -107,60 +142,54 @@ class TestLamaH(unittest.TestCase):
             test_dynamic_data(ds_eu, 0.1, int(stations[idx]*0.1), 14244)
             test_static_data(ds_eu, None, stations[idx], static[idx])
             test_static_data(ds_eu, 0.1,  int(stations[idx]*0.1), static[idx])
-            test_static_attributes(ds_eu, 1)
-            test_stations(ds_eu, stations[idx])
+            test_attributes(ds_eu, static[idx], 22, stations[idx])
             test_fetch_dynamic_attributes(ds_eu, '2', 22)
             test_fetch_dynamic_multiple_stations(ds_eu, 3, 22)
             test_fetch_static_attribue(ds_eu, '2', static[idx])
             data = ds_eu.fetch_dynamic_attributes('2', st='19880101', en='19881231')
             self.assertEqual(len(data), 366)
-            data = ds_eu.fetch(['2'], categories=None, st='19880101', en='19881231')
+            data = ds_eu.fetch(['2'], static_attributes=None, st='19880101', en='19881231')
             for k,v in data.items():
                 self.assertEqual(len(v), 366)
 
 
 ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\data\CAMELS\CAMELS-GB")
-# class TestCamelsGB(unittest.TestCase):
-#
-#     def test_all_dynamic_data(self):
-#         test_dynamic_data(ds_gb, None, 671, 16436)  # check that dynamic attribues from all data can be retrieved.
-#
-#     def test_random_dynamic_data(self):
-#         test_dynamic_data(ds_gb, 0.1, 67, 16436)    # check that dynamic data of 10% of stations can be retrieved
-#
-#     def test_all_static_data(self):
-#         test_static_data(ds_gb, None, 671, 153)  # check that static data of all stations can be retrieved
-#
-#     def test_random_static_data(self):
-#         test_static_data(ds_gb, 0.1, 67, 153)    # check that static data of 10% of stations can be retrieved
-#
-#     def test_static_attributes(self):
-#         test_static_attributes(ds_gb, 8)  # check length of static attribute categories
-#
-#     def test_stations(self):
-#         test_stations(ds_gb, 671)  # check length of stations
-#
-#     def test_single_station_dynamic(self):
-#         test_fetch_dynamic_attributes(ds_gb, '97002', 10)  # make sure dynamic data from one station have 10 attributes
-#
-#     def test_multiple_station_dynamic(self):
-#         test_fetch_dynamic_multiple_stations(ds_gb, 3, 10)  # make sure that dynamic data from 3 stations each have 10 attributes
-#
-#     def test_single_station_static(self):
-#         test_fetch_static_attribue(ds_gb, '97002', 153)  # make sure that static data from one station can be retrieved
-#
-#     def test_st_en(self):
-#         data = ds_gb.fetch_dynamic_attributes('97002', st='19880101', en='19881231')
-#         self.assertEqual(len(data), 366)
-#         data = ds_gb.fetch(['97002'], categories=None, st='19880101', en='19881231')
-#         for k,v in data.items():
-#             self.assertEqual(len(v), 366)
+class TestCamelsGB(unittest.TestCase):
+
+    def test_all_dynamic_data(self):
+        test_dynamic_data(ds_gb, None, 671, 16436)  # check that dynamic attribues from all data can be retrieved.
+
+    def test_random_dynamic_data(self):
+        test_dynamic_data(ds_gb, 0.1, 67, 16436)    # check that dynamic data of 10% of stations can be retrieved
+
+    def test_all_static_data(self):
+        test_static_data(ds_gb, None, 671, 145)  # check that static data of all stations can be retrieved
+
+    def test_random_static_data(self):
+         test_static_data(ds_gb, 0.1, 67, 145)    # check that static data of 10% of stations can be retrieved
+
+    def test_attributes(self):
+        test_attributes(ds_gb, 145, 10, 671)  # check length of static attribute categories
+        return
+
+    def test_single_station_dynamic(self):
+        test_fetch_dynamic_attributes(ds_gb, '97002', 10)  # make sure dynamic data from one station have 10 attributes
+
+    def test_multiple_station_dynamic(self):
+        test_fetch_dynamic_multiple_stations(ds_gb, 3, 10)  # make sure that dynamic data from 3 stations each have 10 attributes
+
+    def test_single_station_static(self):
+        test_fetch_static_attribue(ds_gb, '97002', 145)  # make sure that static data from one station can be retrieved
+
+    def test_st_en(self):
+        test_st_en_with_static_and_dynamic(ds_gb, '97002', 10, 145)
+        return
 
 
 class TestHYPE(unittest.TestCase):
 
-    # def test_all_dynamic_data(self):
-    #     test_dynamic_data(ds_hype, None, 564, 14245)  # check that dynamic attribues from all data can be retrieved.
+    def test_all_dynamic_data(self):
+        test_dynamic_data(ds_hype, None, 564, 12783)  # check that dynamic attribues from all data can be retrieved.
 
     def test_random_dynamic_data(self):
         test_dynamic_data(ds_hype, 0.1, 56, 12783)    # check that dynamic data of 10% of stations can be retrieved
@@ -193,12 +222,12 @@ class TestHYPE(unittest.TestCase):
         for k,v in data.items():
             self.assertEqual(len(v), 366)
 
-    # def test_st_en_with_static_and_dynamic(self):
-    #     data = ds_br.fetch(['64620000'], as_ts=True, st='19880101', en='19881231')
-    #     for k,v in data.items():
-    #         assert isinstance(v.index, pd.DatetimeIndex)
-    #         assert v.shape == (366, 85)
-    #     return
+    def test_st_en_with_static_and_dynamic(self):
+        #data = ds_hype.fetch(['64620000'], as_ts=True, st='19880101', en='19881231')
+        #for k,v in data.items():
+        #    assert isinstance(v.index, pd.DatetimeIndex)
+        #    assert v.shape == (366, 85)
+        return
 
 
 class TestCamelsBR(unittest.TestCase):
@@ -210,38 +239,26 @@ class TestCamelsBR(unittest.TestCase):
         test_dynamic_data(ds_br, 0.1, 59, 14245)    # check that dynamic data of 10% of stations can be retrieved
 
     def test_all_static_data(self):
-        test_static_data(ds_br, None, 593, 68)  # check that static data of all stations can be retrieved
+        test_static_data(ds_br, None, 593, 67)  # check that static data of all stations can be retrieved
 
     def test_random_static_data(self):
-        test_static_data(ds_br, 0.1, 59, 68)    # check that static data of 10% of stations can be retrieved
+        test_static_data(ds_br, 0.1, 59, 67)    # check that static data of 10% of stations can be retrieved
 
-    def test_static_attributes(self):
-        test_static_attributes(ds_br, 9)  # check length of static attribute categories
-
-    def test_stations(self):
-        test_stations(ds_br, 593)  # check length of stations
+    def test_attributes(self):
+        test_attributes(ds_br, 67, 12, 593)  # check length of static attribute categories
+        return
 
     def test_fetch_dynamic_attributes(self):
-        test_fetch_dynamic_attributes(ds_br, '64620000', 17)  # make sure dynamic data from one station have 17 attributes
+        test_fetch_dynamic_attributes(ds_br, '64620000', 12)  # make sure dynamic data from one station have 17 attributes
 
     def test_fetch_dynamic_multiple_stations(self):
-        test_fetch_dynamic_multiple_stations(ds_br, 3, 17)  # make sure that dynamic data from 3 stations each have 17 attributes
+        test_fetch_dynamic_multiple_stations(ds_br, 3, 12)  # make sure that dynamic data from 3 stations each have 17 attributes
 
     def test_fetch_static_attribue(self):
-        test_fetch_static_attribue(ds_br, '64620000', 68)  # make sure that static data from one station can be retrieved
-
-    def test_st_en(self):
-        data = ds_br.fetch_dynamic_attributes('64620000', st='19880101', en='19881231')
-        self.assertEqual(len(data), 366)
-        data = ds_br.fetch(['64620000'], categories=None, st='19880101', en='19881231')
-        for k,v in data.items():
-            self.assertEqual(len(v), 366)
+        test_fetch_static_attribue(ds_br, '64620000', 67)  # make sure that static data from one station can be retrieved
 
     def test_st_en_with_static_and_dynamic(self):
-        data = ds_br.fetch(['64620000'], as_ts=True, st='19880101', en='19881231')
-        for k,v in data.items():
-            assert isinstance(v.index, pd.DatetimeIndex)
-            assert v.shape == (366, 85)
+        test_st_en_with_static_and_dynamic(ds_br, '64620000', 12, 67)
         return
 
 
@@ -259,33 +276,21 @@ class TestCamelsAus(unittest.TestCase):
     def test_random_static_data(self):
         test_static_data(ds_aus, 0.1,  22,  110)    # check that static data of 10% of stations can be retrieved
 
-    def test_static_attributes(self):
-        test_static_attributes(ds_aus, 5)  # check length of static attribute categories
-
-    def test_stations(self):
-        test_stations(ds_aus, 222)  # check length of stations
+    def test_attributes(self):
+        test_attributes(ds_aus, 110, 26, 222)  # check length of static attribute categories
+        return
 
     def test_fetch_dynamic_attributes(self):
-        test_fetch_dynamic_attributes(ds_aus, '912101A', 23)  # make sure dynamic data from one station have 23 attributes
+        test_fetch_dynamic_attributes(ds_aus, '912101A', 26)  # make sure dynamic data from one station have 26 attributes
 
     def test_fetch_dynamic_multiple_stations(self):
-        test_fetch_dynamic_multiple_stations(ds_aus, 3, 23)  # make sure that dynamic data from 3 stations each have 23 attributes
+        test_fetch_dynamic_multiple_stations(ds_aus, 3, 26)  # make sure that dynamic data from 3 stations each have 26 attributes
 
     def test_fetch_static_attribue(self):
         test_fetch_static_attribue(ds_aus, '912101A', 110)  # make sure that static data from one station can be retrieved
 
-    def test_st_en(self):
-        data = ds_aus.fetch_dynamic_attributes('912101A', st='19880101', en='19881231')
-        self.assertEqual(len(data), 366)
-        data = ds_aus.fetch(['912101A'], st='19880101', en='19881231')
-        for k,v in data.items():
-            self.assertEqual(len(v), 366)
-
-    def test_st_en_with_static_and_dynamic(self):
-        data = ds_aus.fetch(['912101A'], as_ts=True, st='19880101', en='19881231')
-        for k,v in data.items():
-            assert isinstance(v.index, pd.DatetimeIndex)
-            assert v.shape == (366, 133)
+    def test_st_en_with_static_and_dynamic(self):  # todo to slow even for one station
+        test_st_en_with_static_and_dynamic(ds_aus, '912101A', 26, 110)
         return
 
 
@@ -303,11 +308,9 @@ class TestCamelsCL(unittest.TestCase):
     def test_static_data(self):
         test_static_data(ds_cl, 0.1,  51,  104)    # check that static data of 10% of stations can be retrieved
 
-    def test_stations(self):
-        test_stations(ds_cl, 516)  # check length of stations
-
-    def test_static_attributes(self):
-        test_static_attributes(ds_cl, 104)
+    def test_attributes(self):
+        test_attributes(ds_cl, 104, 12, 516)
+        return
 
     def test_fetch_dynamic_attributes(self):
         test_fetch_dynamic_attributes(ds_cl, '6003001', 12)
@@ -318,37 +321,41 @@ class TestCamelsCL(unittest.TestCase):
     def test_fetch_static_attribue(self):
         test_fetch_static_attribue(ds_cl, '6003001', 104)
 
-    def test_st_en(self):
-        data = ds_cl.fetch_dynamic_attributes('6003001', st='19880101', en='19881231')
-        self.assertEqual(len(data), 366)
-        data = ds_cl.fetch(['6003001'], st='19880101', en='19881231')
-        for k,v in data.items():
-            self.assertEqual(len(v), 366)
+    def test_st_en_with_static_and_dynamic(self):
+        test_st_en_with_static_and_dynamic(ds_cl, '6003001', 12, 104)
+        return
 
 
 class TestCamelsUS(unittest.TestCase):
 
     def test_all_dynamic_data(self):
-        test_dynamic_data(ds_us, None,  674,  12784)  # check that dynamic attribues from all data can be retrieved.
+        test_dynamic_data(ds_us, None,  671,  12784)  # check that dynamic attribues from all data can be retrieved.
 
     def test_random_dynamic_data(self):
         test_dynamic_data(ds_us, 0.1,  67,  12784)    # check that dynamic data of 10% of stations can be retrieved
 
-    def test_stations(self):
-        test_stations(ds_us, 674)  # check length of stations
+    def test_all_static_data(self):
+        test_static_data(ds_us, None,  671,  59)  # check that static data of all stations can be retrieved
+
+    def test_random_static_data(self):
+        test_static_data(ds_us, 0.1,  67,  59)    # check that static data of 10% of stations can be retrieved
+
+    def test_attributes(self):
+        test_attributes(ds_us, 59, 8, 671)  # check length of static attribute categories
+        return
 
     def test_fetch_dynamic_attributes(self):
         test_fetch_dynamic_attributes(ds_us, '11473900', 7)
 
     def test_fetch_dynamic_multiple_stations(self):
         test_fetch_dynamic_multiple_stations(ds_us, 5, 7)
+#
+    def test_fetch_static_attribute(self):
+        test_fetch_static_attribue(ds_us, '11473900', 59)
 
-    def test_st_en(self):
-        data = ds_us.fetch_dynamic_attributes('11473900', st='19880101', en='19881231')
-        self.assertEqual(len(data), 366)
-        data = ds_us.fetch(['11473900'], st='19880101', en='19881231')
-        for k,v in data.items():
-            self.assertEqual(len(v), 366)
+    def test_st_en_with_static_and_dynamic(self):
+        test_st_en_with_static_and_dynamic(ds_us, '11473900', 8, 59)
+        return
 
 class TestPangaea(unittest.TestCase):
 
