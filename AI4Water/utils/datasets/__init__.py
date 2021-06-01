@@ -3,14 +3,15 @@ from typing import Union
 import os
 import pandas as pd
 
-from AI4Water.utils.datasets.datasets import CAMELS_AUS
-from AI4Water.utils.datasets.datasets import CAMELS_CL
-from AI4Water.utils.datasets.datasets import CAMELS_BR
-from AI4Water.utils.datasets.datasets import CAMELS_GB
-from AI4Water.utils.datasets.datasets import CAMELS_US
-from AI4Water.utils.datasets.datasets import LamaH
-from AI4Water.utils.datasets.datasets import HYSETS
-from AI4Water.utils.datasets.datasets import HYPE
+from AI4Water.utils.datasets.camels import CAMELS_AUS
+from AI4Water.utils.datasets.camels import CAMELS_CL
+from AI4Water.utils.datasets.camels import CAMELS_BR
+from AI4Water.utils.datasets.camels import CAMELS_GB
+from AI4Water.utils.datasets.camels import CAMELS_US
+from AI4Water.utils.datasets.camels import LamaH
+from AI4Water.utils.datasets.camels import HYSETS
+from AI4Water.utils.datasets.camels import HYPE
+
 from AI4Water.utils.datasets.datasets import Weisssee
 from AI4Water.utils.datasets.datasets import WaterChemEcuador
 from AI4Water.utils.datasets.datasets import WaterChemVictoriaLakes
@@ -38,7 +39,7 @@ from AI4Water.utils.datasets.datasets import EtpPcpSamoylov
 from AI4Water.utils.datasets.datasets import SWECanada
 
 
-def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataFrame:
+def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
     """
     Loads the Antibiotic resitance genes (ARG) data from a recreational beach
     in Korea along with environment variables. The data is in the form of
@@ -64,11 +65,11 @@ def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataF
     """
     fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")
     df = pd.read_csv(fpath, index_col="index")
-    df.index=pd.to_datetime(df.index)
+    df.index = pd.to_datetime(df.index)
 
     default_inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp6_mm',
                       'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa', 'mslp_hpa', 'rel_hum'
-]
+                      ]
     default_targets = [col for col in df.columns if col not in default_inputs]
 
     if inputs is None:
@@ -89,7 +90,7 @@ def arg_beach(inputs:list=None, target:Union[list, str]='tetx_coppml')->pd.DataF
     return df
 
 
-def load_u1(target:Union[str, list]='target')->pd.DataFrame:
+def load_u1(target: Union[str, list] = 'target') -> pd.DataFrame:
     """loads 1d data that can be used fo regression and classification"""
     fpath = os.path.join(os.path.dirname(__file__), "input_target_u1.csv")
     df = pd.read_csv(fpath, index_col='index')
@@ -104,7 +105,7 @@ def load_u1(target:Union[str, list]='target')->pd.DataFrame:
     return df
 
 
-def load_nasdaq(inputs:Union[str, list, None]=None, target:str='NDX'):
+def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     """loads Nasdaq100 by downloading it if it is not already downloaded."""
     fname = os.path.join(os.path.dirname(__file__), "nasdaq100_padding.csv")
 
