@@ -8,37 +8,37 @@
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.datasets.Camels
+::: AI4Water.utils.datasets.camels.Camels
     handler: python
     rendering:
         show_root_heading: true
 
-::: AI4Water.utils.datasets.datasets.CAMELS_AUS
+::: AI4Water.utils.datasets.camels.CAMELS_AUS
     handler: python
     rendering:
         show_root_heading: true
 
-::: AI4Water.utils.datasets.datasets.LamaH
+::: AI4Water.utils.datasets.camels.LamaH
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.datasets.CAMELS_GB
+::: AI4Water.utils.datasets.camels.CAMELS_GB
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.datasets.CAMELS_BR
+::: AI4Water.utils.datasets.camels.CAMELS_BR
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.datasets.CAMELS_US
+::: AI4Water.utils.datasets.camels.CAMELS_US
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.datasets.CAMELS_CL
+::: AI4Water.utils.datasets.camels.CAMELS_CL
     handler: python
     rendering:
         show_root_heading: true

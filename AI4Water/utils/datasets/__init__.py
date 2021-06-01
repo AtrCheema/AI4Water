@@ -3,6 +3,7 @@ from typing import Union
 import os
 import pandas as pd
 
+from AI4Water.utils.datasets.camels import Camels
 from AI4Water.utils.datasets.camels import CAMELS_AUS
 from AI4Water.utils.datasets.camels import CAMELS_CL
 from AI4Water.utils.datasets.camels import CAMELS_BR
