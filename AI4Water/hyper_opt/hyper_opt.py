@@ -1,6 +1,7 @@
 import os
 import json
 import copy
+import dill
 import inspect
 import warnings
 import traceback
@@ -405,23 +406,6 @@ class HyperOpt(object):
         elif self.use_skopt_bayes:
             self.optfn = BayesSearchCV(estimator=objective_fn, search_spaces=param_space, **kwargs)
 
-        elif self.use_skopt_gpmin:
-            self.fit = self.own_fit
-
-        elif self.use_own:
-            self.predict = self._predict
-            if self.algorithm == "grid" and self.backend != 'optuna':
-                self.fit = self.grid_search
-            elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
-                self.fit = self.random_search
-            elif self.backend == 'hyperopt':
-                self.fit = self.fmin
-            elif self.backend == 'optuna':
-                self.fit = self.optuna_objective
-        else:
-            raise NotImplementedError(f"""No fit function found for algorithm {self.algorithm}
-                                          with backend {self.backend}""")
-
     @property
     def backend(self):
         return self._backend
@@ -607,6 +591,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 if isinstance(v, list):
                     s = space_from_list(v, k)
                 elif isinstance(v, Dimension):
+                    # it is possible that the user has not specified the name so assign the names
+                    # because we have keys.
+                    if v.name is None or v.name.startswith('real_') or v.name.startswith('integer_'):
+                        v.name = k
                     s = v
                 elif isinstance(v, Apply) or 'rv_frozen' in v.__class__.__name__:
                     s = skopt_space_from_hp_space(v, k)
@@ -684,6 +672,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         s = v
                     elif isinstance(v, tuple) or isinstance(v, list):
                         s = Categorical(v, name=k)
+                    elif isinstance(v, Apply) or 'rv_frozen' in v.__class__.__name__:
+                        if self.algorithm == 'random':
+                            s = Real(v.kwds['loc'], v.kwds['loc'] + v.kwds['scale'], name=k, prior=v.dist.name)
+                        else:
+                            s = skopt_space_from_hp_space(v)
                     else:
                         raise NotImplementedError(f"unknown type {v}, {type(v)}")
                     _space[k] = s
@@ -795,6 +788,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if as_list:
                 return list(self.study.best_trial.params.values())
             return self.study.best_trial.params
+        elif self.use_skopt_bayes or self.use_sklearn:
+            paras = self.optfn.best_params_
         else:
             best_y = list(sorted(self.results.keys()))[0]
             paras = sort_x_iters(self.results[best_y], list(self.param_space.keys()))
@@ -802,6 +797,42 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if as_list:
             return list(paras.values())
         return paras
+
+    def fit(self, *args, **kwargs):
+        """Makes and calls the underlying fit method"""
+
+        if self.use_sklearn or self.use_skopt_bayes:
+            fit_fn =  self.optfn.fit
+
+        elif self.use_skopt_gpmin:
+            fit_fn = self.own_fit
+
+        elif self.use_own:
+            self.predict = self._predict
+            if self.algorithm == "grid" and self.backend != 'optuna':
+                fit_fn = self.grid_search
+            elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
+                fit_fn = self.random_search
+            elif self.backend == 'hyperopt':
+                fit_fn = self.fmin
+            elif self.backend == 'optuna':
+                fit_fn = self.optuna_objective
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError(f"""No fit function found for algorithm {self.algorithm}
+                                          with backend {self.backend}""")
+        a = fit_fn(*args, **kwargs)
+
+        serialized = self.serialize()
+        fname  = os.path.join(self.opt_path, 'serialized.json')
+        with open(fname, 'w') as fp:
+            json.dump(serialized, fp, sort_keys=True, indent=4)
+
+        with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
+            dill.dump(self.objective_fn, fp)
+
+        return a
 
     def ai4water_model(self,
                        pp=False,
@@ -1078,7 +1109,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return {k:v.as_hp() for k,v in self.space().items()}
 
     def xy_of_iterations(self)->dict:
-
+        # todo, not in original order
         if self.backend == "optuna":
             return {trial.value:trial.params for trial in self.study.trials}
         elif self.backend == "hyperopt":
@@ -1288,6 +1319,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         with open(resutls, 'r') as fp:
             results = json.load(fp)
         return
+
+    def serialize(self):
+        return {'fun': '',
+                'x': '',
+                "best_paras": self.best_paras(),
+                'space': {k: v.serialize() for k,v in self.space().items()},
+                'fun_vals': self.func_vals(),
+                #'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
+                'algorithm': self.algorithm,
+                'backend': self.backend,
+                'opt_path': self.opt_path
+                }
 
     def optuna_study(self)->Study:
         """
