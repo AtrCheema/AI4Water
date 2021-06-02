@@ -13,3 +13,6 @@ hyperopt
 plotly
 scikit-optimize
 netCDF4
+imageio
+pyshp
+shapely

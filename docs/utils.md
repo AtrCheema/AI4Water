@@ -13,6 +13,18 @@ Some utility functions
     rendering:
         show_root_heading: true
 
+**`HRU Discretization`**
+::: AI4Water.utils.spatial_processing.MakeHRUs
+    handler: python
+    selection:
+        members:
+            - __init__
+            - call
+            - draw_pie
+            - plot_as_ts
+    rendering:
+        show_root_heading: true
+        
 **`prepare_data`**
 ::: AI4Water.utils.utils.prepare_data
     handler: python

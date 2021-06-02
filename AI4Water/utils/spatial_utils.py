@@ -1,18 +1,29 @@
 import os
 import random
+import warnings
 from collections import OrderedDict
 
 import imageio
+
+MSG = f"""
+        If you installed shapely using pip, try to resintall it 
+        (after uninstalling the previous installtin obviously)
+        by manually downloading the wheel file from 
+        https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
+        and then istalling using the wheel file using following command
+        pip install path/to/wheel.whl"""
 try:
     from shapely.geometry import shape
 except FileNotFoundError:
-    raise FileNotFoundError(f"""
-If you installed shapely using pip, try to resintall it 
-(after uninstalling the previous installtin obviously)
-by manually downloading the wheel file from 
-https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
-and then istalling using the wheel file using following command
-pip install path/to/wheel.whl""")
+    raise FileNotFoundError(MSG)
+
+except OSError:
+    warnings.warn(MSG, UserWarning)
+    shape = None  # so that docs can be built
+except ModuleNotFoundError:
+    warnings.warn(MSG, UserWarning)
+    shape = None  # so that docs can be built
+
 import shapefile
 import matplotlib.pyplot as plt
 import numpy as np
@@ -135,6 +146,7 @@ class GifUtil(object):
 
 def find_records(shp_file, record_name, feature_number):
     """find the metadata about feature given its feature number and column_name which contains the data"""
+    assert os.path.exists(shp_file), f'{shp_file} does not exist'
     shp_reader = shapefile.Reader(shp_file)
     col_no = find_col_name(shp_reader, record_name)
 
