@@ -73,22 +73,22 @@ class Transformations(scaler_container):
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
     Currently following methods are available for transformation and inverse
-    transformation
-              minmax:
-              maxabs:
-              robust:
-              power:
-              zscore:   also known as standard scalers
-              quantile:
-              log:     natural logrithmic
-              log10:   log with base 10
-              log2: log with base 2
-              tan:     tangent
-              cumsum:  cummulative sum
-              pca:     principle component analysis
-              kpca:    kernel component analysis
-              ipca:    incremental principle component analysis
-              fastica: fast incremental component analysis
+    transformation:
+              minmax :
+              maxabs :
+              robust :
+              power :
+              zscore :   also known as standard scalers
+              quantile :
+              log :     natural logrithmic
+              log10 :   log with base 10
+              log2 : log with base 2
+              tan :     tangent
+              cumsum :  cummulative sum
+              pca :     principle component analysis
+              kpca :    kernel component analysis
+              ipca :    incremental principle component analysis
+              fastica : fast incremental component analysis
 
     Following methods have only transformations and not inverse transformations.
     They can be used for feature creation.
@@ -159,7 +159,36 @@ class Transformations(scaler_container):
                  replace_zeros=False,
                  replace_zeros_with='mean',
                  **kwargs):
-
+        """
+        ---------
+        arguments
+        ---------
+         data pd.DataFrame: a dataframe or numpy ndarray. The transformed or inversely
+             transformed value will have the same type as data
+                 and will have the same index as data (in case data is dataframe).
+         method str: method by which to transform and consequencly inversely transform
+             the data. default is 'minmax'. see Transformations.available_transformers
+             for full list.
+         features list: list of strings, if data is datafrmae, then this list is the
+             features on which we want to apply transformation. The remaining columns
+             will remain same/unchanged.
+         replace_nans bool: If true, then will replace the nan values in data with
+             some fixed value `replace_with` before transformation. The nan values
+             will be put back at their places after transformation so this replacement
+             is done only to avoid error during transformation. However, the process
+             of puttin the nans back does not happen when the `method` results in
+             dimention change, such as for PCA etc.
+         replace_with str/int/float: if replace_nans is True, then this value will be
+             used to replace nans in dataframe before doing transformation. You can
+             define the method with which to replace nans for exaple by setting this
+             argument to 'mean' will replace nans with 'mean' of the array/column which
+             contains nans. Allowed string values are 'mean', 'max', 'man'.
+         replace_zeros bool: same as replace_nans but for zeros in the data.
+         replace_zeros_with str/int/float: same as `replace_with` for for zeros in the data.
+         kwargs dict: any arguments which are to be provided to transformer on INTIALIZATION
+             and not during transform or inverse
+                        transform e.g. n_components for pca.
+        """
         super().__init__()
 
         self.method = method
@@ -175,39 +204,10 @@ class Transformations(scaler_container):
         self.kwargs = kwargs
         self.transformed_features = None
 
-    """
-    ---------
-    arguments
-    ---------
-     data pd.DataFrame: a dataframe or numpy ndarray. The transformed or inversely
-         transformed value will have the same type as data
-             and will have the same index as data (in case data is dataframe).
-     method str: method by which to transform and consequencly inversely transform
-         the data. default is 'minmax'. see Transformations.available_transformers
-         for full list.
-     features list: list of strings, if data is datafrmae, then this list is the
-         features on which we want to apply transformation. The remaining columns
-         will remain same/unchanged.
-     replace_nans bool: If true, then will replace the nan values in data with
-         some fixed value `replace_with` before transformation. The nan values
-         will be put back at their places after transformation so this replacement
-         is done only to avoid error during transformation. However, the process
-         of puttin the nans back does not happen when the `method` results in
-         dimention change, such as for PCA etc.
-     replace_with str/int/float: if replace_nans is True, then this value will be
-         used to replace nans in dataframe before doing transformation. You can
-         define the method with which to replace nans for exaple by setting this
-         argument to 'mean' will replace nans with 'mean' of the array/column which
-         contains nans. Allowed string values are 'mean', 'max', 'man'.
-     replace_zeros bool: same as replace_nans but for zeros in the data.
-     replace_zeros_with str/int/float: same as `replace_with` for for zeros in the data.
-     kwargs dict: any arguments which are to be provided to transformer on INTIALIZATION
-         and not during transform or inverse
-                    transform e.g. n_components for pca.
-    """
-
     def __call__(self, what="transform", return_key=False, **kwargs):
-
+        """
+        Calls the `transform` and `inverse_transform` methods.
+        """
         if what.upper().startswith("TRANS"):
 
             return self.transform(return_key=return_key, **kwargs)
@@ -220,7 +220,9 @@ class Transformations(scaler_container):
             raise ValueError(f"The class Transformation can not be called with keyword argument 'what'={what}")
 
     def __getattr__(self, item):
-
+        """
+        Gets the attributes from underlying transformation modules.
+        """
         if item.startswith('_'):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
@@ -444,11 +446,15 @@ class Transformations(scaler_container):
         return data
 
     def transform(self, return_key=False, **kwargs):
-
+        """
+        Transforms the data
+        """
         return getattr(self, "transform_with_" + self.method.lower())(return_key=return_key, **kwargs)
 
     def inverse_transform(self, **kwargs):
-
+        """
+        Inverse transforms the data.
+        """
         if 'key' in kwargs or 'scaler' in kwargs:
             pass
         elif len(self.scalers) ==1:

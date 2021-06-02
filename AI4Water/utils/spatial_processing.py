@@ -33,6 +33,7 @@ class MakeHRUs(object):
     ```python
     >>>import os
     >>>from AI4Water.utils.spatial_processing import MakeHRUs
+    >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
     >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
     >>>hru_object = MakeHRUs('unique_lu_sub',
     ...     index={2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
@@ -133,7 +134,11 @@ class MakeHRUs(object):
                                                               freq='12m'))
 
     def call(self, plot_hrus=True):
-
+        """
+        Makes the HRUs.
+        Arguments:
+            plot_hrus : If true, the exact area hrus will be plotted as well.
+        """
         for _yr, shp_file in self.index.items():
 
             _hru_paras, _hru_geoms = self.get_hrus(shp_file, _yr)
