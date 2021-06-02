@@ -1,6 +1,6 @@
+from typing import Union
 import warnings
 
-import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, PowerTransformer,\
     QuantileTransformer, FunctionTransformer
 from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA, FastICA, SparsePCA
@@ -10,6 +10,7 @@ except ModuleNotFoundError:
     EMD, EEMD = None, None
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -69,7 +70,8 @@ class scaler_container(object):
 class Transformations(scaler_container):
     """
     Applies transformation to tabular data.
-    Any new transforming methods should define two methods one starting with "transform_with_" and "inverse_transofrm_with_"
+    Any new transforming methods should define two methods one starting with
+   `transform_with_` and `inverse_transofrm_with_`
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
     Currently following methods are available for transformation and inverse
@@ -152,42 +154,42 @@ class Transformations(scaler_container):
 
     def __init__(self,
                  data: pd.DataFrame,
-                 method:str = 'minmax',
-                 features=None,
-                 replace_nans = False,
-                 replace_with='mean',
-                 replace_zeros=False,
-                 replace_zeros_with='mean',
-                 **kwargs):
+                 method: str = 'minmax',
+                 features: list=None,
+                 replace_nans: bool = False,
+                 replace_with: Union[str, int, float] = 'mean',
+                 replace_zeros: bool = False,
+                 replace_zeros_with: Union[str, int, float] = 'mean',
+                 **kwargs
+                 ):
         """
-        ---------
-        arguments
-        ---------
-         data pd.DataFrame: a dataframe or numpy ndarray. The transformed or inversely
-             transformed value will have the same type as data
-                 and will have the same index as data (in case data is dataframe).
-         method str: method by which to transform and consequencly inversely transform
-             the data. default is 'minmax'. see Transformations.available_transformers
-             for full list.
-         features list: list of strings, if data is datafrmae, then this list is the
-             features on which we want to apply transformation. The remaining columns
-             will remain same/unchanged.
-         replace_nans bool: If true, then will replace the nan values in data with
-             some fixed value `replace_with` before transformation. The nan values
-             will be put back at their places after transformation so this replacement
-             is done only to avoid error during transformation. However, the process
-             of puttin the nans back does not happen when the `method` results in
-             dimention change, such as for PCA etc.
-         replace_with str/int/float: if replace_nans is True, then this value will be
-             used to replace nans in dataframe before doing transformation. You can
-             define the method with which to replace nans for exaple by setting this
-             argument to 'mean' will replace nans with 'mean' of the array/column which
-             contains nans. Allowed string values are 'mean', 'max', 'man'.
-         replace_zeros bool: same as replace_nans but for zeros in the data.
-         replace_zeros_with str/int/float: same as `replace_with` for for zeros in the data.
-         kwargs dict: any arguments which are to be provided to transformer on INTIALIZATION
-             and not during transform or inverse
-                        transform e.g. n_components for pca.
+        Arguments:
+            data : a dataframe or numpy ndarray. The transformed or inversely
+                transformed value will have the same type as data and will have
+                the same index as data (in case data is dataframe).
+            method : method by which to transform and consequencly inversely
+                transform the data. default is 'minmax'. see `Transformations.available_transformers`
+                for full list.
+            features : list of strings, if data is datafrmae, then this list is the
+                features on which we want to apply transformation. The remaining
+                columns will remain same/unchanged.
+            replace_nans : If true, then will replace the nan values in data with
+                some fixed value `replace_with` before transformation. The nan
+                values will be put back at their places after transformation so
+                this replacement is done only to avoid error during transformation.
+                However, the process of putting the nans back does not happen when
+                the `method` results in dimention change, such as for PCA etc.
+            replace_with : if replace_nans is True, then this value will be used
+                to replace nans in dataframe before doing transformation. You can
+                define the method with which to replace nans for exaple by setting
+                this argument to 'mean' will replace nans with 'mean' of the
+                array/column which contains nans. Allowed string values are
+                'mean', 'max', 'man'.
+            replace_zeros : same as replace_nans but for zeros in the data.
+            replace_zeros_with : same as `replace_with` for for zeros in the data.
+            kwargs : any arguments which are to be provided to transformer on
+                INTIALIZATION and not during transform or inverse transform e.g.
+                `n_components` for pca.
         """
         super().__init__()
 
