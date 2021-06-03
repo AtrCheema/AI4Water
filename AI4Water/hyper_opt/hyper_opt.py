@@ -106,11 +106,13 @@ class HyperOpt(object):
     are available in this class as well. Moreover, you can use this class just as you use one of its underlying library.
 
     Sklearn is great but
+
       - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
 
       - sklearn does not provide Bayesian optimization
 
     On the other hand BayesSearchCV of skopt library
+
       - extends sklearn such that the sklearn-based regressors/classifiers could be used for Bayesian but then it can be
         used only for sklearn-based regressors/classifiers
 
@@ -157,9 +159,10 @@ class HyperOpt(object):
     - eval_with_best: evaluates the objective_fn on best parameters
     - best_paras(): returns the best parameters from optimization.
 
-
-    Examples:
     The following examples illustrate how we can uniformly apply different optimization algorithms.
+
+    Examples
+    ---------
     ```python
     >>>from AI4Water import Model
     >>>from AI4Water.hyper_opt import HyperOpt, Categorical, Integer, Real

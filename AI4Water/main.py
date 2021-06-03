@@ -249,7 +249,8 @@ class Model(NN, Plots):
             kwargs : any argument for model building/pre-processing etc.
                     for details see make_model in utils.utils.py
 
-        Examples:
+        Example
+        ---------
         ```python
         >>>from AI4Water import Model
         >>>from AI4Water.utils.datasets import arg_beach

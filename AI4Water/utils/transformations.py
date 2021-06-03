@@ -74,23 +74,23 @@ class Transformations(scaler_container):
    `transform_with_` and `inverse_transofrm_with_`
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
-    Currently following methods are available for transformation and inverse
-    transformation:
-              minmax :
-              maxabs :
-              robust :
-              power :
-              zscore :   also known as standard scalers
-              quantile :
-              log :     natural logrithmic
-              log10 :   log with base 10
-              log2 : log with base 2
-              tan :     tangent
-              cumsum :  cummulative sum
-              pca :     principle component analysis
-              kpca :    kernel component analysis
-              ipca :    incremental principle component analysis
-              fastica : fast incremental component analysis
+    Currently following methods are available for transformation and inverse transformation
+
+        - minmax :
+        - maxabs :
+        - robust :
+        - power :
+        - zscore :   also known as standard scalers
+        - quantile :
+        - log :     natural logrithmic
+        - log10 :   log with base 10
+        - log2 : log with base 2
+        - tan :     tangent
+        - cumsum :  cummulative sum
+        - pca :     principle component analysis
+        - kpca :    kernel component analysis
+        - ipca :    incremental principle component analysis
+        - fastica : fast incremental component analysis
 
     Following methods have only transformations and not inverse transformations.
     They can be used for feature creation.
@@ -100,18 +100,18 @@ class Transformations(scaler_container):
     To transform a datafrmae using any of the above methods use
         scaler = Scalers(data=df, method=method)
         scaler.transform()
-      or
+        or
         scaler = Scalers(data=df)
         normalized_df4, scaler_dict = scaler.transform_with_method()
-      or
+        or
         scaler = Scalers(data=df, method=method)
         normalized_df, scaler_dict = scaler()
-      or using one liner
+        or using one liner
         normalized_df, scaler = Scalers(data=df, method=method, features=cols)('normalize')
     where `method` can be any of the above mentioned methods.
 
-    Examples:
-    --------
+    Example
+    ----------
     ```python
     >>>from AI4Water.utils.transformations import Transformations
     >>>from AI4Water.data import load_u1
