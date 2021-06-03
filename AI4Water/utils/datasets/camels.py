@@ -763,10 +763,12 @@ class CAMELS_BR(Camels):
                                  **kwargs) -> pd.DataFrame:
         """
         returns the dynamic/time series attribute/attributes for one station id.
+        ```python
         >>>dataset = CAMELS_BR()
         >>>pcp = dataset.fetch_dynamic_attributes('10500000', 'precipitation_cpc')
         ...# fetch all time series data associated with a station.
         >>>x = dataset.fetch_dynamic_attributes('51560000', dataset.dynamic_attributes)
+        ```
         """
 
         st, en = self._check_length(st, en)
@@ -815,7 +817,8 @@ class CAMELS_BR(Camels):
 
         as_ts bool:
 
-        Example
+        Example:
+        -------
         ```python
         >>>dataset = Camels('CAMELS-BR')
         >>>df = dataset.fetch_static_attributes(11500000, 'climate')

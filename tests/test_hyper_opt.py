@@ -44,6 +44,9 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     if isinstance(ai4water_args, dict):
         assert 'model' in ai4water_args
 
+    fpath = os.path.join(optimizer.opt_path, 'serialized.json')
+    assert os.path.exists(fpath)
+
 def run_ai4water(method):
     dims = {'n_estimators': [1000,  2000],
             'max_depth': [3,  6],

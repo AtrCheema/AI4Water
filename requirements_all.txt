@@ -24,3 +24,5 @@ pyshp
 
 optuna
 hyperopt
+
+dill

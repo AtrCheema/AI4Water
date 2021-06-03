@@ -1,7 +1,6 @@
 import os
 import json
 import copy
-import dill
 import inspect
 import warnings
 import traceback
@@ -20,6 +19,11 @@ try:
     import plotly
 except ImportError:
     plotly = None
+
+try:
+    import dill
+except ImportError:
+    dill = None
 
 try:
     import skopt
@@ -829,8 +833,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         with open(fname, 'w') as fp:
             json.dump(serialized, fp, sort_keys=True, indent=4)
 
-        with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
-            dill.dump(self.objective_fn, fp)
+        if dill is not None:
+            with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
+                dill.dump(self.objective_fn, fp)
 
         return a
 
