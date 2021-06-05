@@ -23,7 +23,7 @@ extra_requires = [
 'tensorflow<=2.3', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 #'pytorch',  # only if you want to use pytorch-based models
-'h5py', # only if you want to save batches
+'h5py<2.11.0', # only if you want to save batches
 'xgboost',
 'EMD-signal',  # for emd transformation
 'see-rnn',   # for rnn visualizations

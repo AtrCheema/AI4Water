@@ -71,6 +71,8 @@ from AI4Water.hyper_opt.utils import Categorical, Real, Integer
 from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
 from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
+from AI4Water.utils.utils import JsonEncoder
+
 try:
     from AI4Water.hyper_opt.testing import plot_param_importances
 except ModuleNotFoundError:
@@ -182,7 +184,7 @@ class HyperOpt(object):
     ...
     ...    model.fit(indices="random")
     ...
-    ...    t, p = model.predict(indices=model.test_indices, pref='test')
+    ...    t, p = model.predict(indices=model.test_indices, prefix='test')
     ...    mse = Metrics(t, p).mse()
     ...
     ...    return mse
@@ -834,7 +836,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         serialized = self.serialize()
         fname  = os.path.join(self.opt_path, 'serialized.json')
         with open(fname, 'w') as fp:
-            json.dump(serialized, fp, sort_keys=True, indent=4)
+            json.dump(serialized, fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         if dill is not None:
             with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
@@ -1093,7 +1095,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
-            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4)
+            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         setattr(self, 'trials', trials)
         #self.results = trials.results
@@ -1234,10 +1236,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-                    json.dump(importances, fp, indent=4, sort_keys=True)
+                    json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
 
                 with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
-                    json.dump(importance_paras, fp, indent=4, sort_keys=True)
+                    json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
 
         return
 
@@ -1331,7 +1333,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def serialize(self):
         return {'fun': '',
                 'x': '',
-                "best_paras": self.best_paras(),
+                "best_paras": Jsonize(self.best_paras())(),
                 'space': {k: v.serialize() for k,v in self.space().items()},
                 'fun_vals': self.func_vals(),
                 #'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
@@ -1409,11 +1411,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         fname = os.path.join(self.opt_path, "iterations.json")
         with open(fname, "w") as fp:
-            json.dump(jsonized_iterations, fp, sort_keys=True, indent=4)
+            json.dump(jsonized_iterations, fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         fname = os.path.join(self.opt_path, "iterations_sorted.json")
         with open(fname, "w") as fp:
-            json.dump(dict(sorted(jsonized_iterations.items())), fp, sort_keys=True, indent=4)
+            json.dump(dict(sorted(jsonized_iterations.items())), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
 
 def space_from_list(v:list, k:str)->Dimension:
