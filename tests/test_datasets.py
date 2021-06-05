@@ -456,13 +456,3 @@ class TestPangaea(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
-    #import time
-    #st = time.time()
-    #df = ds_aus.fetch(categories=None)
-    #print(time.time() - st)
-
-
-
-
-
-

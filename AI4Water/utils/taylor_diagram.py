@@ -181,7 +181,7 @@ def plot_taylor(trues:dict,
                 **kwargs
                 )->None:
     """
-    Helper function to plot Taylor's [1] plot.
+    Helper function to plot [Taylor's](https://doi.org/10.1029/2000JD900719) plot.
 
     Arguments:
         trues dict :
@@ -234,22 +234,26 @@ def plot_taylor(trues:dict,
             dictionary containing general parameters related to axis such as title.
 
         kwargs dict :
-            Following keyword arguments are optional
-            - add_ith_interval: bool
-            - plot_bias: bool, if True, the size of the markers will be used to represent bias. The markers will be
-                       triangles with their sides up/down depending upon value of bias.
-            - ref_color: str, color of refrence dot
-            - intervals: list, if add_ith_interval is True, then this argument is used. It must be list of lists or list of
-                       tuples, where the inner tuple/list must consist of two values one each for x and y.
-            - colors: 2d numpy array, defining colors. The first dimension should be equal to number of models.
-            - extend: bool, default False, if True, will plot negative correlation
-            - save: bool, if True, will save the plot
-            - figsize: tuple defining figsize, default is (11,8).
+            Following keyword arguments are optional:
+                - add_ith_interval: bool
+                - plot_bias: bool, if True, the size of the markers will be used to
+                    represent bias. The markers will be triangles with their sides up/down
+                    depending upon value of bias.
+                - ref_color: str, color of refrence dot
+                - sim_marker : marker to use for simulations. It can be any valid
+                    marker for matplotlib axis/plot. If None, then counting is used.
+                    If string, then same marker is used for all simulations. If dict,
+                    keys of dict should match with names of models in `simulations` dictionary.
+                - true_label : label to use for `trues`. Default is 'Reference'.
+                - intervals: list, if add_ith_interval is True, then this argument is used. It
+                    must be list of lists or list of tuples, where the inner tuple/list must
+                    consist of two values one each for x and y.
+                - colors: 2d numpy array, defining colors. The first dimension should be equal to number of models.
+                - extend: bool, default False, if True, will plot negative correlation
+                - save: bool, if True, will save the plot
+                - figsize: tuple defining figsize, default is (11,8).
     return:
         None
-
-    References:
-        [1]  https://doi.org/10.1029/2000JD900719
 
     Example
     ---------
@@ -291,6 +295,8 @@ def plot_taylor(trues:dict,
     title = kwargs.get('title', "")
     figsize = kwargs.get("figsize", (11, 8))  # widht and heigt respectively
     bbox_inches=kwargs.get("bbox_inches", None)
+    sim_marker = kwargs.get("sim_marker", None)
+    true_label = kwargs.get("true_label", "Reference")
 
     if axis_locs is None:
         axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
@@ -313,10 +319,16 @@ def plot_taylor(trues:dict,
         if scen not in axis_locs:
             raise KeyError(msg(scen, "axis_locs"))
 
-    def get_marker(er, idx):
+    def get_marker(er, idx, _name):
         ls = ''
         ms = 10
         marker = '$%d$' % (idx + 1)
+
+        if sim_marker is not None:
+            if isinstance(sim_marker, str):
+                return sim_marker
+            elif isinstance(sim_marker, dict):
+                return sim_marker[_name]
 
         if plot_bias:
             pbias = er.pbias()
@@ -348,7 +360,7 @@ def plot_taylor(trues:dict,
         dia = TaylorDiagram(trues[season],
                             fig=fig,
                             rect=axis_locs[season],
-                            label='Reference',
+                            label=true_label,
                             axis_fontdict=axis_fontdict,
                             extend=extend)
 
@@ -365,7 +377,7 @@ def plot_taylor(trues:dict,
             stddev = np.std(model)
             corrcoef = er.corr_coeff()
 
-            marker, ms, ls, = get_marker(er, idx)
+            marker, ms, ls, = get_marker(er, idx, model_name)
 
             dia.add_sample(stddev, corrcoef,
                            marker=marker,
