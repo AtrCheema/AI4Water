@@ -170,13 +170,35 @@
 import glob
 import random
 import zipfile
+import warnings
 import shutil, os
 from typing import Union
 
-import netCDF4
+try:
+    import netCDF4
+except ModuleNotFoundError:
+    netCDF4 = None
+
+try:
+    import shapefile
+except ModuleNotFoundError:
+    shapefile = None
+
+try:
+    from shapely.geometry import shape, mapping
+    from shapely.ops import unary_union
+except ModuleNotFoundError:
+    shape, mapping, unary_union = None, None, None
+
+try:
+    import fiona
+except ModuleNotFoundError:
+    fiona = None
+
 import numpy as np
 import pandas as pd
 
+from AI4Water.utils.spatial_utils import find_records
 from AI4Water.utils.datasets.download_pangaea import PanDataSet
 from AI4Water.utils.datasets.download_zenodo import download_from_zenodo
 from AI4Water.utils.datasets.utils import download, download_all_http_directory
@@ -217,7 +239,13 @@ DATASETS = [
 
 
 class Datasets(object):
+    """
+    Base class for datasets
 
+    Note:
+        We don't host datasets. Each dataset is downloaded fromt he target remote
+        server and saved into local disk.
+    """
     def __init__(self, name=None, units=None):
         if name is None:
             name = self.__class__.__name__
@@ -270,13 +298,25 @@ Use overwrite=True to remove previously saved files and download again""")
         if not os.path.exists(self.ds_dir):
             os.makedirs(self.ds_dir)
         if isinstance(self.url, str):
-            download_from_zenodo(self.ds_dir, self.url)
+            if 'zenodo' in self.url:
+                download_from_zenodo(self.ds_dir, self.url)
+            else:
+                download(self.url, self.ds_dir)
             self._unzip()
         elif isinstance(self.url, list):
             for url in self.url:
-                download_from_zenodo(self.ds_dir, url)
-                self._unzip()
-
+                if 'zenodo' in url:
+                    download_from_zenodo(self.ds_dir, url)
+                else:
+                    download(url, self.ds_dir)
+            self._unzip()
+        elif isinstance(self.url, dict):
+            for fname, url in self.url.items():
+                if 'zenodo' in url:
+                    download_from_zenodo(self.ds_dir, url)
+                else:
+                    download(url, os.path.join(self.ds_dir, fname))
+            self._unzip()
         return
 
     def _unzip(self, dirname=None):
@@ -716,19 +756,236 @@ class ETPTelesinaItaly(Datasets):
     url = "https://zenodo.org/record/3726856"
 
 
-class Laos(Datasets):
+class MtropicsLaos(Datasets):
     """
-    Downloads and prepares hydrological, climate and land use data for Laos.
+    Downloads and prepares hydrological, climate and land use data for Laos from
+    https://mtropics.obs-mip.fr/catalogue-m-tropics/
     """
-    inputs = ['prec', 'et']
-    target = ['e_coli']
+    target = ['Ecoli_mpn100']
 
-    def fetch_lu(self):
-        """Downloads and unzips and landuse data"""
-        url = "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0f1aea48-2a51-9b42-7688-a774a8f75e7a"
-        fname = os.path.join(self.ds_dir, "lu.zip")
-        download(url, fname)
-        shutil.unpack_archive(fname, self.ds_dir)
+    url = {
+        'lu.zip':
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0f1aea48-2a51-9b42-7688-a774a8f75e7a",
+        'pcp.zip':
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3c870a03-324b-140d-7d98-d3585a63e6ec",
+        'hydro.zip':
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=389bbea0-7279-12c1-63d0-cfc4a77ded87",
+        'rain_guage.zip':
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=7bc45591-5b9f-a13d-90dc-f2a75b0a15cc",
+        'weather_station.zip':
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=353d7f00-8d6a-2a34-c0a2-5903c64e800b",
+        'ecoli_data.csv':
+            "https://dataverse.ird.fr/api/access/datafile/5435",
+        "ecoli_dict.csv":
+            "https://dataverse.ird.fr/api/access/datafile/5436",
+        "soilmap.zip":
+            "https://dataverse.ird.fr/api/access/datafile/5430",
+        "subs1.zip":
+            "https://dataverse.ird.fr/api/access/datafile/5432"
+    }
+
+    physio_chem_features = {
+        "T_deg": "T",
+        "EC_s/cm": "EC",
+        "DO_percent": "DOpercent",
+        "DO_mgl": "DO",
+        "pH": "pH",
+        "ORP_mV": "ORP", # stream water oxidation-reduction potential
+        "Turbidity_NTU": "Turbidity",
+        "TSS_gL": "TSS",
+        "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",  # Lower limit of the confidence interval
+        "Ecoli_mpn100": "E-coli_4dilutions",  # Stream water Escherichia coli concentration
+        "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"  # Upper limit of the confidence interval
+                            }
+
+    weather_station_data = ['air_temp', 'humidity', 'wind_run', 'global_rad']
+    inputs = list(physio_chem_features.keys()) + weather_station_data + ['water_level', 'pcp', 'susp_pm']
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+        self._download()
+
+        # we need to pre-process the land use shapefiles
+        in_dir = os.path.join(self.ds_dir, 'lu')
+        out_dir = os.path.join(self.ds_dir, 'lu1')
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+        files = glob.glob(f'{in_dir}/*.shp')
+        for fpath in files:
+            f = os.path.basename(fpath)
+            shp_file = os.path.join(in_dir, f)
+            op = os.path.join(out_dir, f)
+
+            _process_laos_shpfiles(shp_file, op)
+
+    def fetch_lu(self, processed=False):
+        """returns landuse data as list of shapefiles"""
+        lu_dir = os.path.join(self.ds_dir, f"{'lu1' if processed else 'lu'}")
+        files = glob.glob(f'{lu_dir}/*.shp')
+        return files
+
+    def fetch_ecoli(self,
+                    features: Union[list, str] = 'Ecoli_mpn100'
+                    )->pd.DataFrame:
+        """Fetches e. coli and physio-chemical features at the outlet.
+        doi:  https://doi.org/10.23708/EWOYNK
+        Arguments:
+            features : physi-chemical features to fetch. By default only E. coli
+                concentration is returned
+        Returns:
+            a pandas dataframe consisting of features as columns.
+        """
+        fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
+        df = pd.read_csv(fname, sep='\t')
+        df.index = pd.to_datetime(df['Date_Time'])
+
+        if isinstance(features, list):
+            _features = []
+            for f in features:
+                _features.append(self.physio_chem_features[f])
+        else:
+            assert isinstance(features, str)
+            if features == 'all':
+                _features = features
+            else:
+                _features = self.physio_chem_features[features]
+
+        features = check_attributes(_features, list(self.physio_chem_features.values()))
+
+        return df[features]
+
+    def fetch_rain_gauges(self,
+                          st: Union[str, pd.Timestamp] = "20010101",
+                          en: Union[str, pd.Timestamp] = "20191231",
+                          ):
+        """
+        fetches data from 7 rain gauges which is collected at daily time step.
+        """
+        # todo, does nan means 0 rainfall?
+        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.f')
+        if not os.path.exists(fname):
+            files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
+            df = pd.DataFrame()
+            for f in files:
+                _df = pd.read_excel(f, sheet_name='Daily', usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'])
+                df = pd.concat([df, _df])
+
+            df = df.reset_index(drop=True)  # index is of type Int64Index
+            df.to_feather(fname)
+
+        else:  # feather file already exists so load from it
+            df = pd.read_feather(fname)
+
+        df.index = pd.date_range('20010101', periods=len(df), freq='D')
+
+        return df[st:en]
+
+    def fetch_weather_station_data(self,
+                                   st: Union[str, pd.Timestamp] = "20010101 01:00:00",
+                                   en: Union[str, pd.Timestamp] = "20200101 00:00:00",
+                                   freq:str = 'H'
+                                   ) -> pd.DataFrame:
+        """
+        fetches hourly weather station data which consits of air temperature,
+        humidity, wind speed and solar radiation.
+        Arguments:
+            st : start of data to be feteched.
+            en : end of data to be fetched.
+            freq : frequency at which the data is to be fetched.
+        Returns:
+            a pandas dataframe consisting of 4 columns
+        """
+
+        fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.f')
+        if not os.path.exists(fname):
+            files = glob.glob(f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
+            df = pd.DataFrame()
+            for f in files:
+                _df = pd.read_excel(f, sheet_name='Hourly', usecols=['T', 'H', 'W', 'Gr'])
+                df = pd.concat([df, _df])
+
+            df = df.reset_index(drop=True)  # index is of type Int64Index
+            df.to_feather(fname)
+        else:  # feather file already exists so load from it
+            df = pd.read_feather(fname)
+
+        df.columns = self.weather_station_data
+
+        df.index = pd.date_range('20010101 01:00:00', periods=len(df), freq='H')
+
+        return df[st:en]
+
+    def fetch_pcp(self,
+                  st: Union[str, pd.Timestamp] = '20010101 00:06:00',
+                  en: Union[str, pd.Timestamp] = '20200101 00:06:00',
+                  freq:str = '6min'
+                  )->pd.DataFrame:
+        """Fetches the precipication data"""
+        # todo allow change in frequency
+
+        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.f')
+        # feather file does not exist
+        if not os.path.exists(fname):
+            files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
+            df = pd.DataFrame()
+            for f in files:
+                _df = pd.read_excel(f, sheet_name='6mn', usecols=['Rfa'])
+                df = pd.concat([df, _df])
+
+            df = df.reset_index(drop=True)
+            df.to_feather(fname)
+        else:  # feather file already exists so load from it
+            df = pd.read_feather(fname)
+
+        df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
+
+        return df[st:en]
+
+    def fetch_hydro(self,
+                    ):
+        """
+        fetches water level and suspended particulate matter
+        """
+        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.f')
+        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.f')
+        if not os.path.exists(wl_fname):
+            files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
+            wl = pd.DataFrame()
+            spm = pd.DataFrame()
+            for f in files:
+                _df = pd.read_excel(f, sheet_name='Aperiodic')
+                _wl = _df[['Date', 'Time', 'RWL04']]
+                _wl.index = pd.to_datetime(_wl['Date'].astype(str) + ' ' + _wl['Time'].astype(str))
+                _spm = _df[['Date.1', 'Time.1', 'SPM04']]
+                _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
+                if os.path.basename(f) == 'OMPrawdataLaos2016.xlsx':
+                    _spm.iloc[166] = ['2016-07-01', '20:43:47', 1.69388]
+                    _spm.iloc[247] =  ['2016-07-23', '12:57:47', 8.15714]
+                    _spm.iloc[248] = ['2016-07-23', '17:56:47', 0.5]
+                    _spm.iloc[352] = ['2016-08-16', '03:08:17', 1.12711864406]
+                if os.path.basename(f) == 'OMPrawdataLaos2017.xlsx':
+                    _spm.index = pd.to_datetime(_spm['Date.1'].astype(str))
+                else:
+                    _spm.index = pd.to_datetime(_spm['Date.1'].astype(str) + ' ' + _spm['Time.1'].astype(str))
+                wl = pd.concat([wl, _wl['RWL04']])
+                spm = pd.concat([spm, _spm['SPM04']])
+
+            wl.columns = ['water_level']
+            wl = wl.reset_index()
+            wl.to_feather(wl_fname)
+            spm.columns = ['susp_pm']
+            spm = spm.reset_index()
+            spm.to_feather(spm_fname)
+        else:
+            wl = pd.read_feather(wl_fname)
+            spm = pd.read_feather(spm_fname)
+
+        wl.index = pd.to_datetime(wl.pop('index'))
+        spm.index = pd.to_datetime(spm.pop('index'))
+
+        return wl, spm
 
     def fetch(self,
               inputs: Union[None, list],
@@ -751,6 +1008,16 @@ class Laos(Datasets):
 
         returns:
             a dataframe of shape (inputs+target, st:en)
+
+        Example:
+        --------
+        ```python
+        >>>from AI4Water.utils.datasets import MtropicsLaos
+        >>>laos = MtropicsLaos()
+        >>>inputs = ['pcp', 'air_temp']
+        >>>target = ['Ecoli_mpn100']
+        >>>data = laos.fetch(inputs, target, None, '20110101', '20181231')
+        ```
         """
         inputs = check_attributes(inputs, self.inputs)
         target = check_attributes(target, self.target)
@@ -759,7 +1026,78 @@ class Laos(Datasets):
         return
 
 
+class MtropcsThailand(Datasets):
+    pass
+
+class MtropicsVietnam(Datasets):
+    pass
+
+class MtropcsCameroon(Datasets):
+    pass
+
+class MtropicsIndia(Datasets):
+    pass
+
+
 def unzip_all_in_dir(dir_name, ext=".gz"):
     gz_files = glob.glob(f"{dir_name}/*{ext}")
     for f in gz_files:
         shutil.unpack_archive(f, dir_name)
+
+
+def _process_laos_shpfiles(shape_file, out_path):
+
+    if fiona is None:
+        warnings.warn("preprocessing can not be done because no fiona installation is found.")
+        return
+
+    shp_reader = shapefile.Reader(shape_file)
+
+    container = {
+        'Forest': [],
+        'Culture': [],
+        'Fallow': [],
+        'Teak': [],
+        #'others': []
+    }
+
+    for i in range(shp_reader.numRecords):
+        lu = find_records(shape_file, 'LU3', i)
+        shp = shp_reader.shape(i)
+        if shp.shapeType == 0:
+            continue
+        geom = shape(shp.__geo_interface__)
+        if lu.startswith('Forest'):
+            container['Forest'].append(geom)
+        elif lu.startswith('Culture'):
+            container['Culture'].append(geom)
+        elif lu.startswith('Fallow'):
+            container['Fallow'].append(geom)
+        elif lu.startswith('Teak'):
+            container['Teak'].append(geom)
+        else:  # just consider all others as 'culture' for siplicity
+            container['Culture'].append(geom)
+            #container['others'].append(geom)
+
+    # Define a polygon feature geometry with one attribute
+    schema = {
+        'geometry': 'Polygon' if os.path.basename(shape_file) in ['LU2000.shp', 'LU2001.shp'] else 'MultiPolygon',
+        'properties': {'id': 'int',
+                       'NAME': 'str',
+                       'area': 'float'},
+    }
+
+    # Write a new Shapefile
+    with fiona.open(out_path, 'w', 'ESRI Shapefile', schema) as c:
+        for idx, lu in enumerate(list(container.keys())):
+            geoms = container[lu]
+            poly = unary_union([shape(s.__geo_interface__) for s in geoms])
+
+            assert poly.is_valid
+
+            c.write({
+                'geometry': mapping(poly),
+                'properties': {'id': idx,
+                               'NAME': lu,
+                               'area': poly.area},
+            })

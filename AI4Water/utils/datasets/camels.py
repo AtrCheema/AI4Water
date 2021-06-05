@@ -3,7 +3,11 @@ import glob
 import random
 from typing import Union
 
-import netCDF4
+try:
+    import netCDF4
+except ModuleNotFoundError:
+    netCDF4 = None
+
 import numpy as np
 import pandas as pd
 

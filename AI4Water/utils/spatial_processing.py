@@ -33,6 +33,7 @@ class MakeHRUs(object):
     ```python
     >>>import os
     >>>from AI4Water.utils.spatial_processing import MakeHRUs
+    >>> # shapefile_paths is the path where shapefiles are located. todo
     >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
     >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
     >>>hru_object = MakeHRUs('unique_lu_sub',
@@ -183,8 +184,8 @@ class MakeHRUs(object):
             self.tot_cat_area = get_total_area(shp_geom_list)
 
             for shp in range(len(shp_reader.shapes())):
-                code = f'{str(year)[2:]}_{shp_name}_{find_records(shp_file, feature, shp)}'
-                hru_paras[code] = {'yearless_key': code[2:]}
+                code = f'{str(year)}_{shp_name}_{find_records(shp_file, feature, shp)}'
+                hru_paras[code] = {'yearless_key': code}
                 intersection = shp_geom_list[shp]
                 self.hru_geoms[code] = [intersection, shp_geom_list[shp]]
                 self._foo(code, intersection)
@@ -224,11 +225,11 @@ class MakeHRUs(object):
                     lu_code = find_records(first_shp_file, first_feature, lu)
                     sub_code = find_records(second_shp_file, second_feature, j)
                     sub_code = f'_{second_shp_name}_' + str(sub_code)
-                    code = str(year)[2:] + sub_code + f'_{first_shp_name}_' + lu_code #, lu_code
+                    code = str(year) + sub_code + f'_{first_shp_name}_' + lu_code #, lu_code
 
                     self.hru_geoms[code] = [intersection, second_shp_geom_list[j], first_shp_geom_list[lu]]
 
-                    hru_paras[code] = {'yearless_key': code[2:]}
+                    hru_paras[code] = {'yearless_key': code}
                     self._foo(code, intersection)
 
         if len(self.combinations) == 3:
@@ -307,8 +308,8 @@ class MakeHRUs(object):
         return hru_paras, self.hru_geoms
 
     def _foo(self, code, intersection):
-        hru_name = code[3:]
-        year = '20' + code[0:2]
+        hru_name = code[5:]
+        year = code[0:4]
         row_index = pd.to_datetime(year + '0131', format='%Y%m%d', errors='ignore')
         self.hru_names.append(hru_name)
         self.all_hrus.append(code)
@@ -325,7 +326,7 @@ class MakeHRUs(object):
 
         polygon_dict = OrderedDict()
         for k, v in _polygon_dict.items():
-            if str(year)[2:] in k[0:3]:
+            if str(year) in k[0:4]:
                 polygon_dict[k] = v
 
         # sorting dictionary based on keys so that it puts same HRU at same place for each year
