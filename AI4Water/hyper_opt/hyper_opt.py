@@ -182,7 +182,7 @@ class HyperOpt(object):
     ...
     ...    model.fit(indices="random")
     ...
-    ...    t, p = model.predict(indices=model.test_indices, pref='test')
+    ...    t, p = model.predict(indices=model.test_indices, prefix='test')
     ...    mse = Metrics(t, p).mse()
     ...
     ...    return mse
@@ -1331,7 +1331,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def serialize(self):
         return {'fun': '',
                 'x': '',
-                "best_paras": self.best_paras(),
+                "best_paras": Jsonize(self.best_paras())(),
                 'space': {k: v.serialize() for k,v in self.space().items()},
                 'fun_vals': self.func_vals(),
                 #'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
