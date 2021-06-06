@@ -503,10 +503,19 @@ Available cases are {self.models} and you wanted to include
         plt.show()
         return
 
-    def plot_convergence(self, save=False, name='convergence_comparison', **kwargs):
+    def plot_convergence(self,
+                         save:bool=False,
+                         name='convergence_comparison',
+                         **kwargs):
         """
         Plots the convergence plots of hyperparameter optimization runs.
         Only valid if `fit` was run with `run_type=optimize`.
+
+        Arguments:
+            save : whether to save the plot or not
+            name : name of file to save the plot
+            kwargs : keyword arguments like:
+                bbox_inches :
         """
         if len(self.config['optimized_models']) <1:
             print('No model was optimized')
