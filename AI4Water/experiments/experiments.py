@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 
 from AI4Water import Model
 from AI4Water.hyper_opt import HyperOpt
-from AI4Water.utils.SeqMetrics import Metrics
-from AI4Water.utils.taylor_diagram import plot_taylor
+from AI4Water.utils.SeqMetrics import RegressionMetrics
+from AI4Water.utils.taylor_diagram import taylor_plot
 from AI4Water.hyper_opt import Real, Categorical, Integer
 from AI4Water.utils.utils import init_subplots, process_axis
 from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
@@ -304,7 +304,7 @@ Available cases are {self.models} and you wanted to exclude
         fname = kwargs.get('name', 'taylor.png')
         fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
-        plot_taylor(
+        taylor_plot(
             trues=self.trues,
             simulations=simulations,
             figsize=figsize,
@@ -386,7 +386,7 @@ Available cases are {self.models} and you wanted to include
         """
 
         def find_matric_array(true, sim):
-            errors = Metrics(true, sim)
+            errors = RegressionMetrics(true, sim)
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -503,10 +503,19 @@ Available cases are {self.models} and you wanted to include
         plt.show()
         return
 
-    def plot_convergence(self, save=False, name='convergence_comparison', **kwargs):
+    def plot_convergence(self,
+                         save:bool=False,
+                         name='convergence_comparison',
+                         **kwargs):
         """
         Plots the convergence plots of hyperparameter optimization runs.
         Only valid if `fit` was run with `run_type=optimize`.
+
+        Arguments:
+            save : whether to save the plot or not
+            name : name of file to save the plot
+            kwargs : keyword arguments like:
+                bbox_inches :
         """
         if len(self.config['optimized_models']) <1:
             print('No model was optimized')
@@ -655,7 +664,7 @@ class MLRegressionExperiments(Experiments):
 
             return (t,p), (tt, tp)
 
-        return Metrics(tt, tp).mse()
+        return RegressionMetrics(tt, tp).mse()
 
     def model_ADABoostRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
@@ -1253,7 +1262,7 @@ class MLClassificationExperiments(Experiments):
         if predict:
             return (t, p), (tt, tp)
 
-        return Metrics(tt, tp).mse()
+        return RegressionMetrics(tt, tp).mse()
 
     def model_AdaBoostClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html

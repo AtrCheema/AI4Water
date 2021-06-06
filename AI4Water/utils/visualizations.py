@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from AI4Water.backend import xgboost
 
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.utils import _missing_vals
 from AI4Water.utils.utils import find_tot_plots, init_subplots, Jsonize
 from AI4Water.utils.transformations import Transformations
@@ -1188,7 +1188,7 @@ def regplot(true, pred, **kwargs):
     points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
 
     if kwargs.get('annotate', True):
-        plt.annotate(f'$R^{2}$: {round(Metrics(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
+        plt.annotate(f'$R^{2}$: {round(RegressionMetrics(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
                  horizontalalignment='right', verticalalignment='top', fontsize=16)
 
     if kwargs.get('colorbar', False):

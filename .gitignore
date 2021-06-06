@@ -4,6 +4,8 @@
 
 *.npy
 
+*.qgz
+
 .ipynb_checkpoints/
 __pycache__/
 .idea/

@@ -15,11 +15,13 @@ from AI4Water.utils.utils import dateandtime_now
 
 tf.compat.v1.disable_eager_execution()
 
+SEP = os.sep
+
 seed = 313
 np.random.seed(seed)
 random.seed(seed)
 
-dataset = CAMELS_AUS(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\CAMELS\CAMELS_AUS")
+dataset = CAMELS_AUS()
 
 inputs = ['et_morton_point_SILO',
            'precipitation_AWAP',
@@ -42,13 +44,16 @@ for k,v in data.items():
 
 results = {}
 suffix = f'hpo_comparisons_{dateandtime_now()}'
+
+opt_paths = {}
+
 for m in ['tpe',
           'bayes',
           'grid',
           'random'
             ]:
 
-    _suffix = f"{suffix}\\{m}"
+    _suffix = f"{suffix}{SEP}{m}"
 
     def objective_fn(**suggestion):
 
@@ -84,13 +89,14 @@ for m in ['tpe',
 
     optimizer = HyperOpt(m, objective_fn=objective_fn, param_space=d, num_iterations=50, x0=x0,
                          use_named_args=True,
-                         opt_path=os.path.join(os.getcwd(), f'results\\{_suffix}'))
+                         opt_path=os.path.join(os.getcwd(), f'results{SEP}{_suffix}'))
 
     r = optimizer.fit()
     results[m] = optimizer
+    opt_paths[m] = optimizer.opt_path
 
 
-with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\grid\eval_results.json', 'r') as fp:
+with open(os.path.join(opt_paths['grid'], 'eval_results.json'), 'r') as fp:
     eval_results = json.load(fp)
 results = {int(key.split('_')[1]): float(key.split('_')[0]) for key in eval_results.keys()}
 results = OrderedDict(results)
@@ -99,7 +105,7 @@ results = np.array(list(results.values()))[0:144]
 iterations = range(1, len(results) + 1)
 grid = [np.min(results[:i]) for i in iterations]
 
-with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\random\eval_results_random.json', 'r') as fp:
+with open(os.path.join(opt_paths['random'], 'eval_results_random.json'), 'r') as fp:
     eval_results_random = json.load(fp)
 
 results = {int(key.split('_')[1]): float(key.split('_')[0]) for key in eval_results_random.keys()}
@@ -109,13 +115,13 @@ results = np.array(list(results.values()))[0:144]
 iterations = range(1, len(results) + 1)
 random = [np.min(results[:i]) for i in iterations]
 
-with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\tpe\trials.json', 'r') as fp:
+with open(os.path.join(opt_paths['tpe'], 'trials.json'), 'r') as fp:
     trials = json.load(fp)
 tpe = [trials[i]['result']['loss'] for i in range(len(trials))]
 iterations = range(1, len(tpe) + 1)
 tpe = [np.min(tpe[:i]) for i in iterations]
 
-with open(r'D:\mytools\AI4Water\examples\results\hpo_comparisons_20210310_153743\bayes\gp_parameters.json', 'r') as fp:
+with open(os.path.join(opt_paths['bayes'], 'gp_parameters.json'), 'r') as fp:
     gp_parameters = json.load(fp)
 bayes = gp_parameters['func_vals']
 iterations = range(1, len(bayes) + 1)

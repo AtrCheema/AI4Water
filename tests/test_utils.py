@@ -17,6 +17,8 @@ from AI4Water.utils.datasets import load_nasdaq
 from AI4Water.utils.visualizations import Interpret
 from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
+tf.compat.v1.disable_eager_execution()
+
 seed = 313
 np.random.seed(seed)
 random.seed(seed)
@@ -422,13 +424,13 @@ class TestUtils(unittest.TestCase):
         df = get_df_with_nans(inputs=False, outputs=True, frac=0.8)
 
         model = Model(inputs=['in1', 'in2'],
-                      outputs=['out1'],
-                      transformation=None,
-                      val_data='same',
-                      test_fraction=0.3,
-                      epochs=1,
-                      data=df,
-                      verbosity=0)
+                                   outputs=['out1'],
+                                   transformation=None,
+                                   val_data='same',
+                                   test_fraction=0.3,
+                                   epochs=1,
+                                   data=df,
+                                   verbosity=0)
 
         model.fit(indices='random')
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
@@ -445,11 +447,14 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[86], eighth_non_nan_val_4m_st))
         self.assertTrue(np.allclose(x[0][-1, -1], eighth_non_nan_val_4m_st))
 
-        xx, _, yy  = model.test_data(indices=model.test_indices)
+        xx, _, yy = model.test_data(indices=model.test_indices)
         # the second test index is 9, so second value of yy must be 9th non-nan value
-        self.assertEqual(model.test_indices[2], 9)
-        self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[9])
-        self.assertTrue(np.allclose(xx[0][2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[9]))
+        self.assertEqual(model.test_indices[2], 10)
+        self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[10])
+        self.assertTrue(np.allclose(xx[0][2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[10]))
+
+        assert np.max(model.test_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
+        assert np.max(model.train_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
         return
 
     def test_random_idx_with_nan_inputs(self):
@@ -467,7 +472,7 @@ class TestUtils(unittest.TestCase):
                       epochs=1,
                       data=df,
                       input_nans={'fillna': {'method': 'bfill'}},
-                      verbosity=0)
+                      verbosity=1)
 
         model.fit(indices='random')
 
@@ -480,6 +485,38 @@ class TestUtils(unittest.TestCase):
                 self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
                 self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
 
+        return
+
+    def test_random_idx_with_nan_inputs_outputs(self):
+        """
+        Test that when nans are present in inputs and outputs and we use random indices, then x,y data is correctly made.
+        """
+
+        df = get_df_with_nans(inputs=True, outputs=True, frac=0.1)
+
+        model = Model(inputs=['in1', 'in2'],
+                                   outputs=['out1'],
+                                   transformation=None,
+                      val_data='same',
+                      test_fraction=0.3,
+                      epochs=1,
+                      data=df,
+                                   input_nans={'fillna': {'method': 'bfill'}},
+                      verbosity=1)
+
+        model.fit(indices='random')
+
+        x, _, y = model.train_data(indices=model.train_indices)
+
+        # for i in range(100):
+        #     idx = model.train_indices[i]
+        #     df_x = df[['in1', 'in2']].iloc[idx]
+        #     if idx > model.lookback and int(df_x.isna().sum()) == 0:
+        #         self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
+        #         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
+
+        assert np.max(model.test_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
+        assert np.max(model.train_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
         return
 
     def test_ffill(self):
@@ -583,7 +620,7 @@ class TestUtils(unittest.TestCase):
                           inputs=['in1', 'in2'],
                           outputs=['out1', 'out2'],
                           epochs=10,
-                          verbosity=0,
+                          verbosity=1,
                           data=df.copy())
 
             history = model.fit(indices='random')

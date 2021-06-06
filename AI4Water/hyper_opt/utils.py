@@ -36,7 +36,7 @@ from AI4Water.utils.utils import Jsonize, clear_weights
 
 
 class Counter:
-    counter = 0
+    counter = 0  # todo, not upto the mark
 
 class Real(_Real, Counter):
     """
@@ -113,6 +113,12 @@ class Real(_Real, Counter):
             return UniformDistribution(low=self.low, high=self.high)
         else:
             return LogUniformDistribution(low=self.low, high=self.high)
+
+    def serialize(self):
+        _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
+        _raum.update({'type': 'Real'})
+        return _raum
+
 
 class Integer(_Integer, Counter):
     """
@@ -196,6 +202,11 @@ class Integer(_Integer, Counter):
         else:
             return IntLogUniformDistribution(low=self.low, high=self.high)
 
+    def serialize(self):
+        _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
+        _raum.update({'type': 'Integer'})
+        return _raum
+
 
 class Categorical(_Categorical):
     """
@@ -215,6 +226,10 @@ class Categorical(_Categorical):
     def to_optuna(self):
         return CategoricalDistribution(choices=self.categories)
 
+    def serialize(self):
+        _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
+        _raum.update({'type': 'Integer'})
+        return _raum
 
 def is_choice(space):
     """checks if an hp.space is hp.choice or not"""
@@ -272,7 +287,7 @@ def sort_x_iters(x_iter:dict, original_order:list):
     return new_x_iter
 
 
-def skopt_space_from_hp_spaces(hp_space:dict):
+def skopt_space_from_hp_spaces(hp_space:dict)->list:
     """given a dictionary of hp spaces where keys are names, this function
     converts it into skopt space."""
     new_spaces = []
@@ -281,7 +296,7 @@ def skopt_space_from_hp_spaces(hp_space:dict):
 
         new_spaces.append(skopt_space_from_hp_space(s, k))
 
-    return
+    return new_spaces
 
 
 def skopt_space_from_hp_space(hp_space, prior_name=None):

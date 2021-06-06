@@ -10,6 +10,7 @@ import matplotlib.dates as mdates
 from AI4Water.ETUtil.converter import Temp, Speed, Pressure
 from AI4Water.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA, Colors
 from AI4Water.ETUtil.global_variables import default_constants, SB_CONS
+from AI4Water.utils.utils import process_axis
 
 
 class AttributeChecker:
@@ -77,7 +78,7 @@ class PlotData(AttributeChecker):
                 yl = ' '
 
             data = self.input[col]
-            process_axis(ax, data, label=col, show_xaxis=show_xaxis, show_leg=True, y_label=yl, leg_ms=8, max_xdates=4)
+            process_axis(ax, data, label=col, show_xaxis=show_xaxis, y_label=yl, leg_ms=8, max_xticks=4)
 
             idx += 1
 
@@ -121,8 +122,8 @@ class PlotData(AttributeChecker):
                 show_xaxis = True
 
             data = self.output[col]
-            process_axis(ax, data, ms=marker_scale(col), label=col, show_xaxis=show_xaxis, show_leg=True, y_label='mm',
-                         leg_ms=8, max_xdates=4)
+            process_axis(ax, data, ms=marker_scale(col), label=col, show_xaxis=show_xaxis, y_label='mm',
+                         leg_ms=8, max_xticks=4)
             idx += 1
 
         plt.subplots_adjust(wspace=0.001, hspace=0.001)
@@ -473,7 +474,12 @@ class Utils(TransFormData):
         _wind_2m
     """
 
-    def __init__(self, input_df, units, constants, calculate_at=None, verbosity=1):
+    def __init__(self, input_df, units, constants, calculate_at=None, verbosity: bool=1):
+        """
+        Arguments:
+            calculate_at :a valid pandas dataframe frequency
+            verbosity :
+        """
 
         super(Utils, self).__init__(input_df, units, constants, calculate_at=calculate_at, verbosity=verbosity)
 

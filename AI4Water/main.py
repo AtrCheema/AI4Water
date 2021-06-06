@@ -26,7 +26,7 @@ from AI4Water.utils.plotting_tools import Plots
 from AI4Water.utils.transformations import Transformations
 from AI4Water.utils.imputation import Imputation
 from AI4Water.models.custom_training import train_step, test_step
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.visualizations import Visualizations, Interpret
 
 
@@ -60,7 +60,7 @@ class Model(NN, Plots):
                  data=None,
                  prefix: str = None,
                  path: str = None,
-                 verbosity:int=1,
+                 verbosity: int = 1,
                  **kwargs):
 
         """
@@ -249,7 +249,8 @@ class Model(NN, Plots):
             kwargs : any argument for model building/pre-processing etc.
                     for details see make_model in utils.utils.py
 
-        Examples:
+        Example
+        ---------
         ```python
         >>>from AI4Water import Model
         >>>from AI4Water.utils.datasets import arg_beach
@@ -323,9 +324,9 @@ class Model(NN, Plots):
     @data.setter
     def data(self, x):
         if isinstance(x, pd.DataFrame):
-            #self.in_cols = self.config['inputs']
+            # self.in_cols = self.config['inputs']
             #_outs = self.config['outputs']
-            #if self.in_cols is None:
+            # if self.in_cols is None:
             #    self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
             #    self.config['inputs'], self.config['outputs'] = self.in_cols, self.out_cols
             _data = x[self.in_cols + self.out_cols]
@@ -439,9 +440,9 @@ class Model(NN, Plots):
         return [lyr.name.split(':')[0] for lyr in self._model.inputs]
 
     def loss(self):
-         # overwrite this function for a customized loss function.
-         # this function should return something which can be accepted as 'loss' by the keras Model.
-         # It can be a string or callable.
+        # overwrite this function for a customized loss function.
+        # this function should return something which can be accepted as 'loss' by the keras Model.
+        # It can be a string or callable.
         return LOSSES[self.config['loss'].upper()]
 
     def fetch_data(self,
@@ -524,9 +525,9 @@ class Model(NN, Plots):
                         additional = self.config['forecast_length'] + 1 if self.config['forecast_length'] > 1 else 0
                         self.offset = abs(self.lookback + additional - self.nans_removed_4m_st - 1)
                         if self.lookback > 1:
-                            warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st} nan
-                                          containing values were skipped from start. This may lead to some wrong examples
-                                          at the start or an offset of {self.offset} in indices.""",
+                            warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st}
+                                              nan containing values were skipped from start. This may lead to some wrong
+                                              examples at the start or an offset of {self.offset} in indices.""",
                                           UserWarning)
                         to_subtract = self.offset
                         self.nans_removed_4m_st = 0
@@ -913,7 +914,7 @@ class Model(NN, Plots):
             train_dataset = train_dataset.shuffle(self.config['buffer_size'])
 
         train_dataset = train_dataset.batch(self.config['batch_size'],
-                                drop_remainder=self.config['drop_remainder'])
+                                            drop_remainder=self.config['drop_remainder'])
         if x_val is not None:
             if self.num_input_layers == 1:
                 if isinstance(x_val, list):
@@ -929,7 +930,7 @@ class Model(NN, Plots):
                 val_dataset = val_dataset.shuffle(self.config['buffer_size'])
 
             val_dataset = val_dataset.batch(self.config['batch_size'],
-                                                drop_remainder=self.config['drop_remainder'])
+                                            drop_remainder=self.config['drop_remainder'])
         else:
             val_dataset = val_data
 
@@ -981,9 +982,9 @@ class Model(NN, Plots):
                     # required. In such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that
                     # creates problems when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide
                     # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
-                    more = len(self.intervals) * self.lookback if self.intervals is not None else 0  # self.lookback
+                    more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
                     tot_obs = data.shape[0] - int(data[out_cols].isna().sum()) - more
-                    if self.forecast_len>1:
+                    if self.forecast_len > 1:
                         tot_obs -= self.forecast_len
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
@@ -1159,7 +1160,7 @@ class Model(NN, Plots):
                     t = t.values[~nan_idx]
                     p = p.values[~nan_idx]
 
-                errors = Metrics(t, p)
+                errors = RegressionMetrics(t, p)
                 errs[out + '_errors_' + str(h)] = errors.calculate_all()
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
@@ -1194,9 +1195,11 @@ class Model(NN, Plots):
             # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
             self.save_config()
 
-        VERSION_INFO.update({'numpy_version': str(np.__version__),
-                             'pandas_version': str(pd.__version__),
-                             'matplotlib_version': str(matplotlib.__version__)})
+        VERSION_INFO.update({'numpy': str(np.__version__),
+                             'pandas': str(pd.__version__),
+                             'matplotlib': str(matplotlib.__version__),
+                             'h5py': h5py.__version__,
+                            'joblib': joblib.__version__})
         self.info['version_info'] = VERSION_INFO
 
         return
@@ -1755,8 +1758,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     def check_nans(self, data, input_x, input_y, label_y, outs, lookback, allow_nan_labels, allow_input_nans=False):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.
         """
-        # TODO, nans in inputs should be ignored at all cost because this causes error in results, when we set allow_nan_labels
-        # to True, then this should apply only to target/labels, and examples with nans in inputs should still be ignored.
+        # TODO, nans in inputs should be ignored at all cost because this causes error in results,
+        #  when we set allow_nan_labels to True, then this should apply only to target/labels, and examples with
+        #  nans in inputs should still be ignored.
         if isinstance(data, pd.DataFrame):
             nans = data[self.out_cols].isna()
             data = data.values
@@ -1779,8 +1783,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 if outs > 1:
                     for out in range(outs):
                         assert nans[:, out].sum() == int(nans.sum() / outs), f"""
-                        output columns {out} contains {nans[:, out].sum()} nans while the average nans are {int(nans.sum() / outs)}.
-                        This means output columns contains nan values at different indices. Try `allow_nan_labels`>0.
+                        output columns {out} contains {nans[:, out].sum()} nans while the average
+                        nans are {int(nans.sum() / outs)}. This means output columns contains nan
+                        values at different indices. Try `allow_nan_labels`>0.
                         """
 
                 if self.verbosity > 0:
@@ -1851,7 +1856,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return keract.get_gradients_of_activations(self._model, x, y, layer_names=layer_name)
 
-    def trainable_weights(self, weights:list=None):
+    def trainable_weights(self, weights: list = None):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
         for weight in self._model.trainable_weights:
@@ -2065,6 +2070,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         model.interpret()
         ```
         """
+        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         if 'layers' not in self.config['model']:
 
             self.plot_treeviz_leaves()
@@ -2084,7 +2090,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         interpreter = Interpret(self)
 
-        interpreter.plot_feature_importance(save=save)
+        if self.category == 'ML':
+            interpreter.plot_feature_importance(save=save)
 
         return
 
@@ -2194,7 +2201,10 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             return self._model.loss.__name__
 
     @classmethod
-    def from_config(cls, config_path: str, data, make_new_path=False, **kwargs):
+    def from_config(cls,
+                    config_path:str,
+                    data,
+                    make_new_path:bool=False, **kwargs):
         """
         Loads the model from a config file.
         Arguments:
@@ -2203,7 +2213,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             make_new_path bool: If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
                 should not load the weights in such a case.
-            kwargs :
+            kwargs dict:
         return:
             Model
         """
@@ -2396,7 +2406,7 @@ def print_something(something, prefix=''):
         print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
     elif isinstance(something, dict):
         print(f"{prefix} shape: ")
-        pprint.pprint({k:v.shape for k,v in something.items()}, width=40)
+        pprint.pprint({k: v.shape for k, v in something.items()}, width=40)
 
 
 def maybe_three_outputs(data, num_outputs=2):

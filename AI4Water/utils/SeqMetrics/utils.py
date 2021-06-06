@@ -1,8 +1,11 @@
 import os
+import itertools
+from types import FunctionType
 from collections import OrderedDict
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import xlogy
 import plotly.graph_objects as go
 
 
@@ -46,11 +49,11 @@ def plot_metrics(metrics:dict,
     ---------
     ```python
     >>>import numpy as np
-    >>>from AI4Water.utils.SeqMetrics import Metrics
+    >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
     >>>from AI4Water.utils.SeqMetrics.utils import plot_metrics
     >>>t = np.random.random((20, 1))
     >>>p = np.random.random((20, 1))
-    >>>er = Metrics(t, p)
+    >>>er = RegressionMetrics(t, p)
     >>>all_errors = er.calculate_all()
     >>>plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
     >>># or draw the radial plot
@@ -262,3 +265,96 @@ def plot1d(true, predicted, save=True, name="plot", show=False):
 
     plt.close('all')
     return
+
+
+def _foo(denominator, numerator):
+    nonzero_numerator = numerator != 0
+    nonzero_denominator = denominator != 0
+    valid_score = nonzero_numerator & nonzero_denominator
+    output_scores = np.ones(1)
+
+    output_scores[valid_score] = 1 - (numerator[valid_score] /
+                                      denominator[valid_score])
+    output_scores[nonzero_numerator & ~nonzero_denominator] = 0.
+    return output_scores
+
+
+def _mean_tweedie_deviance(y_true, y_pred, power=0, weights=None):
+    # copying from https://github.com/scikit-learn/scikit-learn/blob/95d4f0841d57e8b5f6b2a570312e9d832e69debc/sklearn/metrics/_regression.py#L659
+
+    message = ("Mean Tweedie deviance error with power={} can only be used on "
+               .format(power))
+    if power < 0:
+        # 'Extreme stable', y_true any real number, y_pred > 0
+        if (y_pred <= 0).any():
+            raise ValueError(message + "strictly positive y_pred.")
+        dev = 2 * (np.power(np.maximum(y_true, 0), 2 - power)
+                   / ((1 - power) * (2 - power))
+                   - y_true * np.power(y_pred, 1 - power) / (1 - power)
+                   + np.power(y_pred, 2 - power) / (2 - power))
+    elif power == 0:
+        # Normal distribution, y_true and y_pred any real number
+        dev = (y_true - y_pred) ** 2
+    elif power < 1:
+        raise ValueError("Tweedie deviance is only defined for power<=0 and "
+                         "power>=1.")
+    elif power == 1:
+        # Poisson distribution, y_true >= 0, y_pred > 0
+        if (y_true < 0).any() or (y_pred <= 0).any():
+            raise ValueError(message + "non-negative y_true and strictly "
+                                       "positive y_pred.")
+        dev = 2 * (xlogy(y_true, y_true / y_pred) - y_true + y_pred)
+    elif power == 2:
+        # Gamma distribution, y_true and y_pred > 0
+        if (y_true <= 0).any() or (y_pred <= 0).any():
+            raise ValueError(message + "strictly positive y_true and y_pred.")
+        dev = 2 * (np.log(y_pred / y_true) + y_true / y_pred - 1)
+    else:
+        if power < 2:
+            # 1 < p < 2 is Compound Poisson, y_true >= 0, y_pred > 0
+            if (y_true < 0).any() or (y_pred <= 0).any():
+                raise ValueError(message + "non-negative y_true and strictly "
+                                           "positive y_pred.")
+        else:
+            if (y_true <= 0).any() or (y_pred <= 0).any():
+                raise ValueError(message + "strictly positive y_true and "
+                                           "y_pred.")
+
+        dev = 2 * (np.power(y_true, 2 - power) / ((1 - power) * (2 - power))
+                   - y_true * np.power(y_pred, 1 - power) / (1 - power)
+                   + np.power(y_pred, 2 - power) / (2 - power))
+
+    return float(np.average(dev, weights=weights))
+
+
+def _geometric_mean(a, axis=0, dtype=None):
+    """ Geometric mean """
+    if not isinstance(a, np.ndarray):  # if not an ndarray object attempt to convert it
+        log_a = np.log(np.array(a, dtype=dtype))
+    elif dtype:  # Must change the default dtype allowing array type
+        if isinstance(a, np.ma.MaskedArray):
+            log_a = np.log(np.ma.asarray(a, dtype=dtype))
+        else:
+            log_a = np.log(np.asarray(a, dtype=dtype))
+    else:
+        log_a = np.log(a)
+    return float(np.exp(log_a.mean(axis=axis)))
+
+
+def listMethods(cls):
+    return set(x for x, y in cls.__dict__.items()
+               if isinstance(y, (FunctionType, classmethod, staticmethod)))
+
+
+def listParentMethods(cls):
+    return set(itertools.chain.from_iterable(
+        listMethods(c).union(listParentMethods(c)) for c in cls.__bases__))
+
+
+def list_subclass_methods(cls, is_narrow):
+    methods = listMethods(cls)
+    if is_narrow:
+        parentMethods = listParentMethods(cls)
+        return set(cls for cls in methods if not (cls in parentMethods))
+    else:
+        return methods

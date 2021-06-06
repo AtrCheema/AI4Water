@@ -6,7 +6,7 @@ from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 
 COLORS = np.array([
        [0.89411765, 0.10196078, 0.10980392, 1.        ],
@@ -170,7 +170,7 @@ class TaylorDiagram(object):
         return contours
 
 
-def plot_taylor(trues:dict,
+def taylor_plot(trues:dict,
                 simulations:dict,
                 axis_locs:dict=None,
                 cont_kws:dict=None,
@@ -181,7 +181,7 @@ def plot_taylor(trues:dict,
                 **kwargs
                 )->None:
     """
-    Helper function to plot Taylor's [1] plot.
+    Helper function to plot [Taylor's](https://doi.org/10.1029/2000JD900719) plot.
 
     Arguments:
         trues dict :
@@ -199,65 +199,83 @@ def plot_taylor(trues:dict,
                        'scenario2': 212}.
             Default is None.
         cont_kws dict :
-            keyword arguments related to contours. Following args can be used
-            - levels level of contours
-            - colors color of contours
-            - label_fs fontsize of labels
-            - label_fmt format of labels
-            - linewidths float or sequence of floats
-            - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
+            keyword arguments related to contours. Following args can be used:
+                - levels level of contours
+                - colors color of contours
+                - label_fs fontsize of labels
+                - label_fmt format of labels
+                - linewidths float or sequence of floats
+                - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
             https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
 
         grid_kws dict :
-            keyword arguments related to grid. Following args can be used
-            - title_fontsize: int, fontsize of the axis title
-            - which {'major', 'minor', 'both'}
-            - axis {'both', 'x', 'y'},
+            keyword arguments related to grid. Following args can be used.
+            Following keyword arguments are allowed
+                - title_fontsize: int, fontsize of the axis title
+                - which {'major', 'minor', 'both'}
+                - axis {'both', 'x', 'y'},
             any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
 
         leg_kws dict :
-            keyword arguments related to legends
-            - position defaults to `center`
-            - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
-            - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
-            - markerscale float, default: rcParams["legend.markerscale"] (default: 1.0)
+            keyword arguments related to legends:
+                - position defaults to `center`
+                - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
+                - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
+                - markerscale float, default: rcParams["legend.markerscale"] (default: 1.0)
             https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
         axis_fontdict dict :
-            dictionary defining propertiies of axis labels
+            dictionary defining propertiies of left, bottom and top axis labels
+            ```python
             axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
                              'bottom': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14},
                              'top': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14}}
+            ```
+            The user can define properties of either one or all axis.
 
         axis_kws dict :
             dictionary containing general parameters related to axis such as title.
 
         kwargs dict :
-            Following keyword arguments are optional
-            - add_ith_interval: bool
-            - plot_bias: bool, if True, the size of the markers will be used to represent bias. The markers will be
-                       triangles with their sides up/down depending upon value of bias.
-            - ref_color: str, color of refrence dot
-            - intervals: list, if add_ith_interval is True, then this argument is used. It must be list of lists or list of
-                       tuples, where the inner tuple/list must consist of two values one each for x and y.
-            - colors: 2d numpy array, defining colors. The first dimension should be equal to number of models.
-            - extend: bool, default False, if True, will plot negative correlation
-            - save: bool, if True, will save the plot
-            - figsize: tuple defining figsize, default is (11,8).
+            Following keyword arguments are optional:
+                - add_ith_interval: bool
+
+                - plot_bias: bool, if True, the size of the markers will be used to
+                    represent bias. The markers will be triangles with their sides up/down
+                    depending upon value of bias.
+
+                - ref_color: str, color of refrence dot
+
+                - sim_marker : marker to use for simulations. It can be any valid
+                    marker for matplotlib axis/plot. If None, then counting is used.
+                    If string, then same marker is used for all simulations. If dict,
+                    keys of dict should match with names of models in `simulations` dictionary.
+
+                - true_label: label to use for `trues`. Default is 'Reference'.
+
+                - intervals: list, if add_ith_interval is True, then this argument is used. It
+                    must be list of lists or list of tuples, where the inner tuple/list must
+                    consist of two values one each for x and y.
+
+                - colors: 2d numpy array, defining colors. The first dimension
+                    should be equal to number of models.
+
+                - extend: bool, default False, if True, will plot negative correlation
+
+                - save: bool, if True, will save the plot
+
+                - figsize: tuple defining figsize, default is (11,8).
     return:
         None
-
-    References:
-        [1]  https://doi.org/10.1029/2000JD900719
 
     Example
     ---------
     ```python
     >>>import numpy as np
-    >>>from AI4Water.utils import plot_taylor
+    >>>from AI4Water.utils import taylor_plot
     >>>np.random.seed(92)
-    >>>plot_taylor(trues={'site1': np.random.normal(20, 40, 10)},
+    >>>taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
     ...            simulations={
     ...             "site1":
     ...                    {"LSTM": np.random.normal(20, 40, 10),
@@ -291,6 +309,8 @@ def plot_taylor(trues:dict,
     title = kwargs.get('title', "")
     figsize = kwargs.get("figsize", (11, 8))  # widht and heigt respectively
     bbox_inches=kwargs.get("bbox_inches", None)
+    sim_marker = kwargs.get("sim_marker", None)
+    true_label = kwargs.get("true_label", "Reference")
 
     if axis_locs is None:
         axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
@@ -313,10 +333,16 @@ def plot_taylor(trues:dict,
         if scen not in axis_locs:
             raise KeyError(msg(scen, "axis_locs"))
 
-    def get_marker(er, idx):
+    def get_marker(er, idx, _name):
         ls = ''
         ms = 10
         marker = '$%d$' % (idx + 1)
+
+        if sim_marker is not None:
+            if isinstance(sim_marker, str):
+                return sim_marker
+            elif isinstance(sim_marker, dict):
+                return sim_marker[_name]
 
         if plot_bias:
             pbias = er.pbias()
@@ -337,6 +363,11 @@ def plot_taylor(trues:dict,
                          'right': {},
                          'bottom': {},
                          'top': {}}
+    else:
+        assert isinstance(axis_fontdict, dict)
+        for k in ['left', 'right', 'bottom', 'top']:
+            if k not in axis_fontdict:
+                axis_fontdict[k] = {}
 
     add_grid = True
     if grid_kws is None:
@@ -348,7 +379,7 @@ def plot_taylor(trues:dict,
         dia = TaylorDiagram(trues[season],
                             fig=fig,
                             rect=axis_locs[season],
-                            label='Reference',
+                            label=true_label,
                             axis_fontdict=axis_fontdict,
                             extend=extend)
 
@@ -361,11 +392,11 @@ def plot_taylor(trues:dict,
         # Add samples to Taylor diagram
         idx = 0
         for model_name, model in simulations[season].items():
-            er = Metrics(trues[season], model)
+            er = RegressionMetrics(trues[season], model)
             stddev = np.std(model)
             corrcoef = er.corr_coeff()
 
-            marker, ms, ls, = get_marker(er, idx)
+            marker, ms, ls, = get_marker(er, idx, model_name)
 
             dia.add_sample(stddev, corrcoef,
                            marker=marker,

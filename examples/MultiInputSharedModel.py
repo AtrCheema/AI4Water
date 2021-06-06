@@ -16,7 +16,7 @@ class MultiInputSharedModel(Model):
 
     def test_data(self, data, **kwargs):
         x, _, labels = self.fetch_data(data=data, **kwargs)
-        return [x], [labels]
+        return [x], None, [labels]
 
     def train_data(self, **kwargs):
 
@@ -36,7 +36,7 @@ class MultiInputSharedModel(Model):
         x_data = np.vstack(x_data)
         y_data = np.vstack(y_data)
 
-        return x_data, y_data
+        return x_data, None, y_data
 
     def val_data(self, **kwargs):
 
@@ -45,7 +45,7 @@ class MultiInputSharedModel(Model):
 
         self.out_cols = self.config['outputs']  # setting the actual output columns back to original
 
-        return x, labels
+        return x, None, labels
 
     def fit(self, st=0, en=None, indices=None, **callbacks):
 
@@ -55,7 +55,7 @@ class MultiInputSharedModel(Model):
 
         val_data = self.val_data(st=st, en=en, indices=indices)
 
-        history = self._fit(train_data[0], train_data[1], validation_data=val_data, **callbacks)
+        history = self._fit(train_data[0], train_data[2], validation_data=(val_data[0], val_data[2]), **callbacks)
 
         visualizer.plot_loss(history.history)
 
@@ -71,8 +71,8 @@ class MultiInputSharedModel(Model):
         for idx, out in enumerate(out_cols):
 
             self.out_cols = [self.config['outputs']['output'][idx]]  # because fetch_data depends upon self.outs
-            scaler_key = str(idx) + scaler_key
-            inputs, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=scaler_key,
+            _scaler_key = str(idx) + scaler_key
+            inputs, _, true_outputs = self.test_data(st=st, en=en, indices=indices, scaler_key=_scaler_key,
                                                    use_datetime_index=use_datetime_index, data=self.data[idx])
 
 
@@ -87,7 +87,7 @@ class MultiInputSharedModel(Model):
                                                             true_outputs[0],
                                                             in_cols=self.in_cols,
                                                             out_cols=out,
-                                                            scaler_key=scaler_key)
+                                                            scaler_key=_scaler_key)
 
             self.out_cols = self.config['outputs']  # setting the actual output columns back to original
             

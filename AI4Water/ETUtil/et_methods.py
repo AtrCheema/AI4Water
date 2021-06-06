@@ -7,11 +7,25 @@ from AI4Water.ETUtil.global_variables import LAMBDA
 # TODO, classify methods which require wind_speed, or which require solar_rad.
 
 class ETBase(Utils):
-    """ according to Jensen and Haise method
-    https://doi.org/10.1061/JRCEA4.0000287
-    """
-    def __init__(self, input_df, units, constants, **kwargs):
+    """This is the base class for evapotranspiration calculation. It calculates
+     etp according to [Jensen and Haise](https://doi.org/10.1061/JRCEA4.0000287)
+     method. Any new ETP calculation must inherit from it and must implement
+     the `__call__` method.
 
+    """
+    def __init__(self,
+                 input_df: pd.DataFrame,
+                 units:dict,
+                 constants:dict,
+                 **kwargs
+                 ):
+        """
+        Arguments:
+            input_df :
+            units :
+            constants :
+            kwargs :
+        """
         self.name = self.__class__.__name__
 
         super(ETBase, self).__init__(input_df.copy(),
@@ -49,11 +63,16 @@ class ETBase(Utils):
                 raise ValueError("Timeseries {} is required for calculation of ETP using {}"
                                  .format(_ts, self.name))
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args,
+                 transform: bool=False,
+                 **kwargs):
         """
         as given (eq 9) in Xu and Singh, 2000 and implemented in [1]
 
         uses:  a_s, b_s, ct=0.025, tx=-3
+        Arguments:
+            transform : whether to transform the calculated etp to frequecies
+                other than at which it is calculated.
 
     [1] https://github.com/DanluGuo/Evapotranspiration/blob/8efa0a2268a3c9fedac56594b28ac4b5197ea3fe/R/Evapotranspiration.R#L2734
         """
@@ -63,7 +82,7 @@ class ETBase(Utils):
         tmp1 = np.multiply(np.multiply(self.cons['ct'], np.add(self.input['temp'], self.cons['tx'])), rs)
         et = np.divide(tmp1, LAMBDA)
 
-        self.post_process(et, kwargs.get('transform', False))
+        self.post_process(et, transform=transform)
         return et
 
     def post_process(self, et, transform=False):

@@ -1157,3 +1157,18 @@ def plot(*args, show=True, **kwargs):
     if show:
         plt.show()
     return axis
+
+
+class JsonEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if 'int' in obj.__class__.__name__:
+            return int(obj)
+        elif 'float' in obj.__class__.__name__:
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif 'bool' in obj.__class__.__name__:
+            return bool(obj)
+        else:
+            return super(JsonEncoder, self).default(obj)

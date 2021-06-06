@@ -128,7 +128,12 @@ class Plots(object):
                 plt.ylabel("Channel Units")
         else:
             plt.ylabel('Examples' if 'weight' not in label.lower() else '')
-            plt.xlabel(kwargs.get('xlabel', ''))
+            xlabels = kwargs.get('xlabel', None)
+            if xlabels is not None:
+                if len(xlabels)<30:
+                    plt.xlabel(xlabels, rotation=90)
+            else:
+                plt.xlabel("Inputs")
 
         plt.colorbar()
         plt.title(label)

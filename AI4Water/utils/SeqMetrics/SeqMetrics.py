@@ -1,11 +1,12 @@
-from math import sqrt
-from scipy.special import xlogy
-from scipy.stats import gmean, kendalltau
-import numpy as np
-import warnings
 import json
+import warnings
+import numpy as np
+from math import sqrt
+from typing import Union
+from scipy.stats import gmean, kendalltau
 
 from AI4Water.utils.utils import ts_features
+from AI4Water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute
@@ -41,12 +42,15 @@ EPS = 1e-10  # epsilon
 
 class Metrics(object):
     """
-    Calculates more than 100 regression performance metrics related to sequence data.
+    This class does some pre-processign and handles metadata regaring true and
+    predicted arrays.
 
-     The arguments other than `true` and `predicted` are dynamic i.e. they can be changed from outside the class.
-     This means the user can change their value after creating the class. This will be useful if we want to
-     calculate an error once by ignoring NaN and then by not ignoring the NaNs. However, the user has to run
-     the method `treat_arrays` in order to have the changed values impact on true and predicted arrays.
+    The arguments other than `true` and `predicted` are dynamic i.e. they can be
+    changed from outside the class. This means the user can change their value after
+    creating the class. This will be useful if we want to calculate an error once by
+    ignoring NaN and then by not ignoring the NaNs. However, the user has to run
+    the method `treat_arrays` in order to have the changed values impact on true and
+    predicted arrays.
 
     """
 
@@ -62,52 +66,23 @@ class Metrics(object):
         Arguments:
             true array/list: ture/observed/actual values
             predicted array/list: simulated values
-            replace_nan float/int: default None. if not None, then NaNs in true and predicted
-                will be replaced by this value.
+            replace_nan float/int: default None. if not None, then NaNs in true
+                and predicted will be replaced by this value.
             replace_inf float/int: default None, if not None, then inf vlaues in true and
                 predicted will be replaced by this value.
-            remove_zero bool: default False, if True, the zero values in true or predicted
-                arrays will be removed. If a zero is found in one array, the corresponding
-                value in the other array will also be removed.
-            remove_neg bool: default False, if True, the negative values in true or predicted arrays will be removed.
+            remove_zero bool: default False, if True, the zero values in true
+                or predicted arrays will be removed. If a zero is found in one
+                array, the corresponding value in the other array will also be
+                removed.
+            remove_neg bool: default False, if True, the negative values in true
+                or predicted arrays will be removed.
 
-        Examples:
-        ```python
-        import numpy as np
-        from AI4Water.utils.SeqMetrics import Metrics
-        t = np.random.random(10)
-        p = np.random.random(10)
-        errors = Metrics(t,p)
-        all_errors = errors.calculate_all()
-        ```
         """
         self.true, self.predicted = self._pre_process(true, predicted)
         self.replace_nan = replace_nan
         self.replace_inf = replace_inf
         self.remove_zero = remove_zero
         self.remove_neg = remove_neg
-        self.all_methods = [method for method in dir(self) if callable(getattr(self, method)) if
-                            not method.startswith('_') if method not in ['calculate_all',
-                                                                         'stats',
-                                                                         "treat_arrays",
-                                                                         "scale_free_metrics",
-                                                                         "scale_dependent_metrics",
-                                                                         "composite_metrics",
-                                                                         "relative_metrics",
-                                                                         "percentage_metrics"]]
-
-        # if arrays contain negative values, following three errors can not be computed
-        for array in [self.true, self.predicted]:
-
-            assert len(array) > 0, "Input arrays should not be empty"
-
-            if len(array[array < 0.0]) > 0:
-                self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
-                                                                             'mean_poisson_deviance',
-                                                                             'mean_square_log_error')]
-            if (array <= 0).any():  # mean tweedie error is not computable
-                self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
-                                                                             'mean_poisson_deviance')]
 
     @property
     def replace_nan(self):
@@ -158,7 +133,8 @@ class Metrics(object):
 
         return true, predicted
 
-    def _assert_1darray(self, array_like) -> np.ndarray:
+    @staticmethod
+    def _assert_1darray(array_like) -> np.ndarray:
         """Makes sure that the provided `array_like` is 1D numpy array"""
         if not isinstance(array_like, np.ndarray):
             if not isinstance(array_like, list):
@@ -188,7 +164,8 @@ class Metrics(object):
             if m not in ["brier_score"]:
                 try:
                     error = float(getattr(self, m)())
-                except TypeError:  # some errors might not have been computed and returned a non float-convertible value e.g. None
+                # some errors might not have been computed and returned a non float-convertible value e.g. None
+                except TypeError:
                     error = getattr(self, m)()
                 errors[m] = error
                 if verbose:
@@ -264,6 +241,179 @@ class Metrics(object):
         """Absolute error """
         return np.abs(self.true - self.predicted)
 
+    def scale_free_metrics(self):
+            pass
+
+    def scale_dependent_metrics(self):
+            pass
+
+    def stats(self, verbose: bool = False) -> dict:
+        """ returs some important stats about true and predicted values."""
+        _stats = dict()
+        _stats['true'] = ts_features(self.true)
+        _stats['predicted'] = ts_features(self.predicted)
+
+        if verbose:
+            print("\nName            True         Predicted  ")
+            print("----------------------------------------")
+            for k in _stats['true'].keys():
+                print("{:<25},  {:<10},  {:<10}"
+                      .format(k, round(_stats['true'][k], 4), round(_stats['predicted'][k])))
+
+        return _stats
+
+    def percentage_metrics(self):
+            pass
+
+    def relative_metrics(self):
+            pass
+
+    def composite_metrics(self):
+            pass
+
+    def treat_values(self):
+        """
+        This function is applied by default at the start/at the time of initiating
+        the class. However, it can used any time after that. This can be handy
+        if we want to calculate error first by ignoring nan and then by no ignoring
+        nan.
+        Adopting from https://github.com/BYU-Hydroinformatics/HydroErr/blob/master/HydroErr/HydroErr.py#L6210
+        Removes the nan, negative, and inf values in two numpy arrays
+        """
+        sim_copy = np.copy(self.predicted)
+        obs_copy = np.copy(self.true)
+
+        # Treat missing data in observed_array and simulated_array, rows in simulated_array or
+        # observed_array that contain nan values
+        all_treatment_array = np.ones(obs_copy.size, dtype=bool)
+
+        if np.any(np.isnan(obs_copy)) or np.any(np.isnan(sim_copy)):
+            if self.replace_nan is not None:
+                # Finding the NaNs
+                sim_nan = np.isnan(sim_copy)
+                obs_nan = np.isnan(obs_copy)
+                # Replacing the NaNs with the input
+                sim_copy[sim_nan] = self.replace_nan
+                obs_copy[obs_nan] = self.replace_nan
+
+                warnings.warn("Elements(s) {} contained NaN values in the simulated array and "
+                              "elements(s) {} contained NaN values in the observed array and have been "
+                              "replaced (Elements are zero indexed).".format(np.where(sim_nan)[0],
+                                                                             np.where(obs_nan)[0]),
+                              UserWarning)
+            else:
+                # Getting the indices of the nan values, combining them, and informing user.
+                nan_indices_fcst = ~np.isnan(sim_copy)
+                nan_indices_obs = ~np.isnan(obs_copy)
+                all_nan_indices = np.logical_and(nan_indices_fcst, nan_indices_obs)
+                all_treatment_array = np.logical_and(all_treatment_array, all_nan_indices)
+
+                warnings.warn("Row(s) {} contained NaN values and the row(s) have been "
+                              "removed (Rows are zero indexed).".format(np.where(~all_nan_indices)[0]),
+                              UserWarning)
+
+        if np.any(np.isinf(obs_copy)) or np.any(np.isinf(sim_copy)):
+            if self.replace_nan is not None:
+                # Finding the NaNs
+                sim_inf = np.isinf(sim_copy)
+                obs_inf = np.isinf(obs_copy)
+                # Replacing the NaNs with the input
+                sim_copy[sim_inf] = self.replace_inf
+                obs_copy[obs_inf] = self.replace_inf
+
+                warnings.warn("Elements(s) {} contained Inf values in the simulated array and "
+                              "elements(s) {} contained Inf values in the observed array and have been "
+                              "replaced (Elements are zero indexed).".format(np.where(sim_inf)[0],
+                                                                             np.where(obs_inf)[0]),
+                              UserWarning)
+            else:
+                inf_indices_fcst = ~(np.isinf(sim_copy))
+                inf_indices_obs = ~np.isinf(obs_copy)
+                all_inf_indices = np.logical_and(inf_indices_fcst, inf_indices_obs)
+                all_treatment_array = np.logical_and(all_treatment_array, all_inf_indices)
+
+                warnings.warn(
+                    "Row(s) {} contained Inf or -Inf values and the row(s) have been removed (Rows "
+                    "are zero indexed).".format(np.where(~all_inf_indices)[0]),
+                    UserWarning
+                )
+
+        # Treat zero data in observed_array and simulated_array, rows in simulated_array or
+        # observed_array that contain zero values
+        if self.remove_zero:
+            if (obs_copy == 0).any() or (sim_copy == 0).any():
+                zero_indices_fcst = ~(sim_copy == 0)
+                zero_indices_obs = ~(obs_copy == 0)
+                all_zero_indices = np.logical_and(zero_indices_fcst, zero_indices_obs)
+                all_treatment_array = np.logical_and(all_treatment_array, all_zero_indices)
+
+                warnings.warn(
+                    "Row(s) {} contained zero values and the row(s) have been removed (Rows are "
+                    "zero indexed).".format(np.where(~all_zero_indices)[0]),
+                    UserWarning
+                )
+
+        # Treat negative data in observed_array and simulated_array, rows in simulated_array or
+        # observed_array that contain negative values
+
+        # Ignore runtime warnings from comparing
+        if self.remove_neg:
+            with np.errstate(invalid='ignore'):
+                obs_copy_bool = obs_copy < 0
+                sim_copy_bool = sim_copy < 0
+
+            if obs_copy_bool.any() or sim_copy_bool.any():
+                neg_indices_fcst = ~sim_copy_bool
+                neg_indices_obs = ~obs_copy_bool
+                all_neg_indices = np.logical_and(neg_indices_fcst, neg_indices_obs)
+                all_treatment_array = np.logical_and(all_treatment_array, all_neg_indices)
+
+                warnings.warn("Row(s) {} contained negative values and the row(s) have been "
+                              "removed (Rows are zero indexed).".format(np.where(~all_neg_indices)[0]),
+                              UserWarning)
+
+        self.true = obs_copy[all_treatment_array]
+        self.predicted = sim_copy[all_treatment_array]
+
+        return
+
+
+class RegressionMetrics(Metrics):
+    """
+    Calculates more than 100 regression performance metrics related to sequence data.
+
+    Example
+    ---------
+    ```python
+    import numpy as np
+    from AI4Water.utils.SeqMetrics import RegressionMetrics
+    t = np.random.random(10)
+    p = np.random.random(10)
+    errors = RegressionMetrics(t,p)
+    all_errors = errors.calculate_all()
+    ```
+    """
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+        self.all_methods = list_subclass_methods(RegressionMetrics, True)
+
+        # if arrays contain negative values, following three errors can not be computed
+        for array in [self.true, self.predicted]:
+
+            assert len(array) > 0, "Input arrays should not be empty"
+
+            if len(array[array < 0.0]) > 0:
+                self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
+                                                                             'mean_poisson_deviance',
+                                                                             'mean_square_log_error')]
+            if (array <= 0).any():  # mean tweedie error is not computable
+                self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
+                                                                             'mean_poisson_deviance')]
+        """
+        Initializes `Metrics`.
+        """
     def abs_pbias(self) -> float:
         """ Absolute Percent bias"""
         _apb = 100.0 * sum(abs(self.predicted - self.true)) / sum(self.true)  # Absolute percent bias
@@ -309,7 +459,7 @@ class Metrics(object):
         Modifying from https://github.com/UBC-MDS/RegscorePy/blob/master/RegscorePy/aic.py
         """
         assert p > 0
-        self.assert_greater_than_one # noac
+        self.assert_greater_than_one  # noac
 
         n = len(self.true)
         resid = np.subtract(self.predicted, self.true)
@@ -343,9 +493,7 @@ class Metrics(object):
         """Amemiya’s Prediction Criterion"""
         k = 1
         n = len(self.predicted)
-        resid = np.subtract(self.predicted, self.true)
-        sse = np.sum(np.power(resid, 2))  # sum of squared errors
-        return float(((n + k) / (n - k)) * (1/n) * sse)
+        return float(((n + k) / (n - k)) * (1/n) * self.sse())
 
     def bias(self) -> float:
         """
@@ -369,9 +517,7 @@ class Metrics(object):
         assert p >= 0
 
         n = len(self.true)
-        residual = np.subtract(self.predicted, self.true)
-        SSE = np.sum(np.power(residual, 2))
-        return float(n * np.log(SSE / n) + p * np.log(n))
+        return float(n * np.log(self.sse() / n) + p * np.log(n))
 
     def brier_score(self) -> float:
         """
@@ -424,9 +570,6 @@ class Metrics(object):
         correlation_coefficient = np.corrcoef(self.true, self.predicted)[0, 1]
         return float(correlation_coefficient)
 
-    def composite_metrics(self):
-            pass
-
     def covariance(self) -> float:
         """
         Covariance
@@ -438,7 +581,7 @@ class Metrics(object):
         covariance = np.mean((self.true - obs_mean) * (self.predicted - sim_mean))
         return float(covariance)
 
-    def cronbach_alpha(self)->float:
+    def cronbach_alpha(self) -> float:
         """
         It is a measure of internal consitency of data
         https://stats.idre.ucla.edu/spss/faq/what-does-cronbachs-alpha-mean/
@@ -500,7 +643,7 @@ class Metrics(object):
         """
         return float(np.linalg.norm(self.true - self.predicted))
 
-    def exp_var_score(self, weights=None) -> float:
+    def exp_var_score(self, weights=None) -> Union[float, None]:
         """
         Explained variance score
         https://stackoverflow.com/questions/24378176/python-sci-kit-learn-metrics-difference-between-r2-score-and-explained-varian
@@ -766,7 +909,7 @@ class Metrics(object):
 
         return float(kgenp_c2m_)
 
-    def KLsym(self) -> float:
+    def KLsym(self) -> Union[float, None]:
         """Symmetric kullback-leibler divergence"""
         if not all((self.true == 0) == (self.predicted == 0)):
             return None  # ('KL divergence not defined when only one distribution is 0.')
@@ -1100,7 +1243,7 @@ class Metrics(object):
         nse_ = self.nse()
         nse_c2m_ = nse_ / (2 - nse_)
 
-        return (nse_c2m_)
+        return nse_c2m_
 
     def log_nse(self, epsilon=0.0) -> float:
         """
@@ -1149,9 +1292,6 @@ class Metrics(object):
         bot2 = np.sqrt(np.sum((self.predicted - sim_mean) ** 2))
 
         return float(top / (bot1 * bot2))
-
-    def percentage_metrics(self):
-            pass
 
     def rmsle(self) -> float:
         """Root mean square log error. Compared to RMSE, RMSLE only considers the relative error between predicted and
@@ -1269,9 +1409,6 @@ class Metrics(object):
         so that the resulting statistic and reported values can apply to various constitu-ents."""
         return float(self.rmse() / np.std(self.true))
 
-    def relative_metrics(self):
-            pass
-
     def rmsse(self, seasonality: int = 1) -> float:
         """ Root Mean Squared Scaled Error """
         q = np.abs(self._error()) / self.mae(self.true[seasonality:], self._naive_prognose(seasonality))
@@ -1295,27 +1432,6 @@ class Metrics(object):
         c = np.linalg.norm(self.predicted - np.mean(self.predicted))
         e = b * c
         return float(np.arccos(a / e))
-
-    def scale_free_metrics(self):
-            pass
-
-    def scale_dependent_metrics(self):
-            pass
-
-    def stats(self, verbose: bool = False) -> dict:
-        """ returs some important stats about true and predicted values."""
-        _stats = dict()
-        _stats['true'] = ts_features(self.true)
-        _stats['predicted'] = ts_features(self.predicted)
-
-        if verbose:
-            print("\nName            True         Predicted  ")
-            print("----------------------------------------")
-            for k in _stats['true'].keys():
-                print("{:<25},  {:<10},  {:<10}"
-                      .format(k, round(_stats['true'][k], 4), round(_stats['predicted'][k])))
-
-        return _stats
 
     def smdape(self) -> float:
         """
@@ -1494,182 +1610,7 @@ class Metrics(object):
         ft_wmape_forecast = ft_actual_prod_mape_sum / ft_actual_sum
         return float(ft_wmape_forecast)
 
-    def treat_values(self):
-        """
-        This function is applied by default at the start/at the time of initiating
-        the class. However, it can used any time after that. This can be handy
-        if we want to calculate error first by ignoring nan and then by no ignoring
-        nan.
-        Adopting from https://github.com/BYU-Hydroinformatics/HydroErr/blob/master/HydroErr/HydroErr.py#L6210
-        Removes the nan, negative, and inf values in two numpy arrays
-        """
-        sim_copy = np.copy(self.predicted)
-        obs_copy = np.copy(self.true)
 
-        # Treat missing data in observed_array and simulated_array, rows in simulated_array or
-        # observed_array that contain nan values
-        all_treatment_array = np.ones(obs_copy.size, dtype=bool)
-
-        if np.any(np.isnan(obs_copy)) or np.any(np.isnan(sim_copy)):
-            if self.replace_nan is not None:
-                # Finding the NaNs
-                sim_nan = np.isnan(sim_copy)
-                obs_nan = np.isnan(obs_copy)
-                # Replacing the NaNs with the input
-                sim_copy[sim_nan] = self.replace_nan
-                obs_copy[obs_nan] = self.replace_nan
-
-                warnings.warn("Elements(s) {} contained NaN values in the simulated array and "
-                              "elements(s) {} contained NaN values in the observed array and have been "
-                              "replaced (Elements are zero indexed).".format(np.where(sim_nan)[0],
-                                                                             np.where(obs_nan)[0]),
-                              UserWarning)
-            else:
-                # Getting the indices of the nan values, combining them, and informing user.
-                nan_indices_fcst = ~np.isnan(sim_copy)
-                nan_indices_obs = ~np.isnan(obs_copy)
-                all_nan_indices = np.logical_and(nan_indices_fcst, nan_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_nan_indices)
-
-                warnings.warn("Row(s) {} contained NaN values and the row(s) have been "
-                              "removed (Rows are zero indexed).".format(np.where(~all_nan_indices)[0]),
-                              UserWarning)
-
-        if np.any(np.isinf(obs_copy)) or np.any(np.isinf(sim_copy)):
-            if self.replace_nan is not None:
-                # Finding the NaNs
-                sim_inf = np.isinf(sim_copy)
-                obs_inf = np.isinf(obs_copy)
-                # Replacing the NaNs with the input
-                sim_copy[sim_inf] = self.replace_inf
-                obs_copy[obs_inf] = self.replace_inf
-
-                warnings.warn("Elements(s) {} contained Inf values in the simulated array and "
-                              "elements(s) {} contained Inf values in the observed array and have been "
-                              "replaced (Elements are zero indexed).".format(np.where(sim_inf)[0],
-                                                                             np.where(obs_inf)[0]),
-                              UserWarning)
-            else:
-                inf_indices_fcst = ~(np.isinf(sim_copy))
-                inf_indices_obs = ~np.isinf(obs_copy)
-                all_inf_indices = np.logical_and(inf_indices_fcst, inf_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_inf_indices)
-
-                warnings.warn(
-                    "Row(s) {} contained Inf or -Inf values and the row(s) have been removed (Rows "
-                    "are zero indexed).".format(np.where(~all_inf_indices)[0]),
-                    UserWarning
-                )
-
-        # Treat zero data in observed_array and simulated_array, rows in simulated_array or
-        # observed_array that contain zero values
-        if self.remove_zero:
-            if (obs_copy == 0).any() or (sim_copy == 0).any():
-                zero_indices_fcst = ~(sim_copy == 0)
-                zero_indices_obs = ~(obs_copy == 0)
-                all_zero_indices = np.logical_and(zero_indices_fcst, zero_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_zero_indices)
-
-                warnings.warn(
-                    "Row(s) {} contained zero values and the row(s) have been removed (Rows are "
-                    "zero indexed).".format(np.where(~all_zero_indices)[0]),
-                    UserWarning
-                )
-
-        # Treat negative data in observed_array and simulated_array, rows in simulated_array or
-        # observed_array that contain negative values
-
-        # Ignore runtime warnings from comparing
-        if self.remove_neg:
-            with np.errstate(invalid='ignore'):
-                obs_copy_bool = obs_copy < 0
-                sim_copy_bool = sim_copy < 0
-
-            if obs_copy_bool.any() or sim_copy_bool.any():
-                neg_indices_fcst = ~sim_copy_bool
-                neg_indices_obs = ~obs_copy_bool
-                all_neg_indices = np.logical_and(neg_indices_fcst, neg_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_neg_indices)
-
-                warnings.warn("Row(s) {} contained negative values and the row(s) have been "
-                              "removed (Rows are zero indexed).".format(np.where(~all_neg_indices)[0]),
-                              UserWarning)
-
-        self.true = obs_copy[all_treatment_array]
-        self.predicted = sim_copy[all_treatment_array]
-
-        return
-
-
-def _foo(denominator, numerator):
-    nonzero_numerator = numerator != 0
-    nonzero_denominator = denominator != 0
-    valid_score = nonzero_numerator & nonzero_denominator
-    output_scores = np.ones(1)
-
-    output_scores[valid_score] = 1 - (numerator[valid_score] /
-                                      denominator[valid_score])
-    output_scores[nonzero_numerator & ~nonzero_denominator] = 0.
-    return output_scores
-
-
-def _mean_tweedie_deviance(y_true, y_pred, power=0, weights=None):
-    # copying from https://github.com/scikit-learn/scikit-learn/blob/95d4f0841d57e8b5f6b2a570312e9d832e69debc/sklearn/metrics/_regression.py#L659
-
-    message = ("Mean Tweedie deviance error with power={} can only be used on "
-               .format(power))
-    if power < 0:
-        # 'Extreme stable', y_true any real number, y_pred > 0
-        if (y_pred <= 0).any():
-            raise ValueError(message + "strictly positive y_pred.")
-        dev = 2 * (np.power(np.maximum(y_true, 0), 2 - power)
-                   / ((1 - power) * (2 - power))
-                   - y_true * np.power(y_pred, 1 - power) / (1 - power)
-                   + np.power(y_pred, 2 - power) / (2 - power))
-    elif power == 0:
-        # Normal distribution, y_true and y_pred any real number
-        dev = (y_true - y_pred) ** 2
-    elif power < 1:
-        raise ValueError("Tweedie deviance is only defined for power<=0 and "
-                         "power>=1.")
-    elif power == 1:
-        # Poisson distribution, y_true >= 0, y_pred > 0
-        if (y_true < 0).any() or (y_pred <= 0).any():
-            raise ValueError(message + "non-negative y_true and strictly "
-                                       "positive y_pred.")
-        dev = 2 * (xlogy(y_true, y_true / y_pred) - y_true + y_pred)
-    elif power == 2:
-        # Gamma distribution, y_true and y_pred > 0
-        if (y_true <= 0).any() or (y_pred <= 0).any():
-            raise ValueError(message + "strictly positive y_true and y_pred.")
-        dev = 2 * (np.log(y_pred / y_true) + y_true / y_pred - 1)
-    else:
-        if power < 2:
-            # 1 < p < 2 is Compound Poisson, y_true >= 0, y_pred > 0
-            if (y_true < 0).any() or (y_pred <= 0).any():
-                raise ValueError(message + "non-negative y_true and strictly "
-                                           "positive y_pred.")
-        else:
-            if (y_true <= 0).any() or (y_pred <= 0).any():
-                raise ValueError(message + "strictly positive y_true and "
-                                           "y_pred.")
-
-        dev = 2 * (np.power(y_true, 2 - power) / ((1 - power) * (2 - power))
-                   - y_true * np.power(y_pred, 1 - power) / (1 - power)
-                   + np.power(y_pred, 2 - power) / (2 - power))
-
-    return float(np.average(dev, weights=weights))
-
-
-def _geometric_mean(a, axis=0, dtype=None):
-    """ Geometric mean """
-    if not isinstance(a, np.ndarray):  # if not an ndarray object attempt to convert it
-        log_a = np.log(np.array(a, dtype=dtype))
-    elif dtype:  # Must change the default dtype allowing array type
-        if isinstance(a, np.ma.MaskedArray):
-            log_a = np.log(np.ma.asarray(a, dtype=dtype))
-        else:
-            log_a = np.log(np.asarray(a, dtype=dtype))
-    else:
-        log_a = np.log(a)
-    return float(np.exp(log_a.mean(axis=axis)))
+class ClassificationMetrics(Metrics):
+    """Calculates classification metrics."""
+    pass

@@ -21,6 +21,11 @@ except ImportError:
     plotly = None
 
 try:
+    import dill
+except ImportError:
+    dill = None
+
+try:
     import skopt
     from skopt import gp_minimize
     from skopt import BayesSearchCV
@@ -57,7 +62,7 @@ except ImportError:
     Study = None
 
 from AI4Water import Model
-from AI4Water.utils.SeqMetrics import Metrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.hyper_opt.utils import get_one_tpe_x_iter
 from AI4Water.utils.utils import Jsonize, dateandtime_now
 from AI4Water.hyper_opt.utils import skopt_space_from_hp_space
@@ -66,6 +71,8 @@ from AI4Water.hyper_opt.utils import Categorical, Real, Integer
 from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
 from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
+from AI4Water.utils.utils import JsonEncoder
+
 try:
     from AI4Water.hyper_opt.testing import plot_param_importances
 except ModuleNotFoundError:
@@ -101,11 +108,13 @@ class HyperOpt(object):
     are available in this class as well. Moreover, you can use this class just as you use one of its underlying library.
 
     Sklearn is great but
+
       - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
 
       - sklearn does not provide Bayesian optimization
 
     On the other hand BayesSearchCV of skopt library
+
       - extends sklearn such that the sklearn-based regressors/classifiers could be used for Bayesian but then it can be
         used only for sklearn-based regressors/classifiers
 
@@ -152,14 +161,15 @@ class HyperOpt(object):
     - eval_with_best: evaluates the objective_fn on best parameters
     - best_paras(): returns the best parameters from optimization.
 
-
-    Examples:
     The following examples illustrate how we can uniformly apply different optimization algorithms.
+
+    Examples
+    ---------
     ```python
     >>>from AI4Water import Model
     >>>from AI4Water.hyper_opt import HyperOpt, Categorical, Integer, Real
     >>>from AI4Water.utils.datasets import load_u1
-    >>>from AI4Water.utils.SeqMetrics import Metrics
+    >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
     # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
@@ -174,7 +184,7 @@ class HyperOpt(object):
     ...
     ...    model.fit(indices="random")
     ...
-    ...    t, p = model.predict(indices=model.test_indices, pref='test')
+    ...    t, p = model.predict(indices=model.test_indices, prefix='test')
     ...    mse = Metrics(t, p).mse()
     ...
     ...    return mse
@@ -350,9 +360,9 @@ class HyperOpt(object):
                 must be one of "random", "grid" "bayes" and "tpe", defining which
                 optimization algorithm to use.
             objective_fn callable:
-                It can be either sklearn/xgboost based regressor/classifier
-                or any function whose returned
-                values can act as objective function for the optimization problem.
+                Any callable function whose returned value is to be minimized.
+                It can also be either sklearn/xgboost based regressor/classifier.
+                If you are using `ai4water_args` then you don't need to define this.
             backend str:
                 Defines which backend library to use for the `algorithm`. For
                 example the user can specify whether to use `optuna` or `hyper_opt`
@@ -404,23 +414,6 @@ class HyperOpt(object):
 
         elif self.use_skopt_bayes:
             self.optfn = BayesSearchCV(estimator=objective_fn, search_spaces=param_space, **kwargs)
-
-        elif self.use_skopt_gpmin:
-            self.fit = self.own_fit
-
-        elif self.use_own:
-            self.predict = self._predict
-            if self.algorithm == "grid" and self.backend != 'optuna':
-                self.fit = self.grid_search
-            elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
-                self.fit = self.random_search
-            elif self.backend == 'hyperopt':
-                self.fit = self.fmin
-            elif self.backend == 'optuna':
-                self.fit = self.optuna_objective
-        else:
-            raise NotImplementedError(f"""No fit function found for algorithm {self.algorithm}
-                                          with backend {self.backend}""")
 
     @property
     def backend(self):
@@ -607,6 +600,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 if isinstance(v, list):
                     s = space_from_list(v, k)
                 elif isinstance(v, Dimension):
+                    # it is possible that the user has not specified the name so assign the names
+                    # because we have keys.
+                    if v.name is None or v.name.startswith('real_') or v.name.startswith('integer_'):
+                        v.name = k
                     s = v
                 elif isinstance(v, Apply) or 'rv_frozen' in v.__class__.__name__:
                     s = skopt_space_from_hp_space(v, k)
@@ -684,6 +681,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         s = v
                     elif isinstance(v, tuple) or isinstance(v, list):
                         s = Categorical(v, name=k)
+                    elif isinstance(v, Apply) or 'rv_frozen' in v.__class__.__name__:
+                        if self.algorithm == 'random':
+                            s = Real(v.kwds['loc'], v.kwds['loc'] + v.kwds['scale'], name=k, prior=v.dist.name)
+                        else:
+                            s = skopt_space_from_hp_space(v)
                     else:
                         raise NotImplementedError(f"unknown type {v}, {type(v)}")
                     _space[k] = s
@@ -795,6 +797,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if as_list:
                 return list(self.study.best_trial.params.values())
             return self.study.best_trial.params
+        elif self.use_skopt_bayes or self.use_sklearn:
+            paras = self.optfn.best_params_
         else:
             best_y = list(sorted(self.results.keys()))[0]
             paras = sort_x_iters(self.results[best_y], list(self.param_space.keys()))
@@ -802,6 +806,43 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if as_list:
             return list(paras.values())
         return paras
+
+    def fit(self, *args, **kwargs):
+        """Makes and calls the underlying fit method"""
+
+        if self.use_sklearn or self.use_skopt_bayes:
+            fit_fn =  self.optfn.fit
+
+        elif self.use_skopt_gpmin:
+            fit_fn = self.own_fit
+
+        elif self.use_own:
+            self.predict = self._predict
+            if self.algorithm == "grid" and self.backend != 'optuna':
+                fit_fn = self.grid_search
+            elif self.algorithm == 'random' and self.backend not in ['optuna', 'hyperopt']:
+                fit_fn = self.random_search
+            elif self.backend == 'hyperopt':
+                fit_fn = self.fmin
+            elif self.backend == 'optuna':
+                fit_fn = self.optuna_objective
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError(f"""No fit function found for algorithm {self.algorithm}
+                                          with backend {self.backend}""")
+        a = fit_fn(*args, **kwargs)
+
+        serialized = self.serialize()
+        fname  = os.path.join(self.opt_path, 'serialized.json')
+        with open(fname, 'w') as fp:
+            json.dump(serialized, fp, sort_keys=True, indent=4, cls=JsonEncoder)
+
+        if dill is not None and self.backend != "sklearn":  # todo, why not sklearn
+            with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
+                dill.dump(self.objective_fn, fp)
+
+        return a
 
     def ai4water_model(self,
                        pp=False,
@@ -834,7 +875,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         model.fit(indices="random")
 
         t, p = model.predict(indices=model.test_indices, pp=pp)
-        mse = Metrics(t, p).mse()
+        mse = RegressionMetrics(t, p).mse()
 
         error = round(mse, 7)
         self.results[error] = sort_x_iters(kwargs, self.original_para_order())
@@ -1054,7 +1095,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
-            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4)
+            json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         setattr(self, 'trials', trials)
         #self.results = trials.results
@@ -1078,7 +1119,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return {k:v.as_hp() for k,v in self.space().items()}
 
     def xy_of_iterations(self)->dict:
-
+        # todo, not in original order
         if self.backend == "optuna":
             return {trial.value:trial.params for trial in self.study.trials}
         elif self.backend == "hyperopt":
@@ -1190,14 +1231,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
                 plt.close('all')
                 df = pd.DataFrame.from_dict(importance_paras)
-                df.boxplot(rot=70)
+                axis = df.boxplot(rot=70, return_type="axes")
+                axis.set_ylabel("Relative Importance")
                 plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
-                    json.dump(importances, fp, indent=4, sort_keys=True)
+                    json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
 
                 with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
-                    json.dump(importance_paras, fp, indent=4, sort_keys=True)
+                    json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
 
         return
 
@@ -1288,6 +1330,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             results = json.load(fp)
         return
 
+    def serialize(self):
+        return {'fun': '',
+                'x': '',
+                "best_paras": Jsonize(self.best_paras())(),
+                'space': {k: v.serialize() for k,v in self.space().items()},
+                'fun_vals': self.func_vals(),
+                #'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
+                'algorithm': self.algorithm,
+                'backend': self.backend,
+                'opt_path': self.opt_path
+                }
+
     def optuna_study(self)->Study:
         """
         Attempts to create an optuna Study instance so that
@@ -1357,11 +1411,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         fname = os.path.join(self.opt_path, "iterations.json")
         with open(fname, "w") as fp:
-            json.dump(jsonized_iterations, fp, sort_keys=True, indent=4)
+            json.dump(jsonized_iterations, fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         fname = os.path.join(self.opt_path, "iterations_sorted.json")
         with open(fname, "w") as fp:
-            json.dump(dict(sorted(jsonized_iterations.items())), fp, sort_keys=True, indent=4)
+            json.dump(dict(sorted(jsonized_iterations.items())), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
 
 def space_from_list(v:list, k:str)->Dimension:

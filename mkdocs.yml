@@ -6,6 +6,8 @@ repo_url: https://github.com/AtrCheema/AI4Water/tree/master
 
 theme:
   name: "material"
+  favicon: images/favicon.png
+  logo: images/favicon.png
 
 plugins:
 - search

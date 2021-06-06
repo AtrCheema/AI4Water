@@ -7,6 +7,33 @@ import urllib.request as ulib
 import urllib.parse as urlparse
 
 
+# following files must exist withing data folder for CAMELS-GB data
+DATA_FILES = {
+    'CAMELS-GB': [
+        'CAMELS_GB_climatic_attributes.csv',
+        'CAMELS_GB_humaninfluence_attributes.csv',
+        'CAMELS_GB_hydrogeology_attributes.csv',
+        'CAMELS_GB_hydrologic_attributes.csv',
+        'CAMELS_GB_hydrometry_attributes.csv',
+        'CAMELS_GB_landcover_attributes.csv',
+        'CAMELS_GB_soil_attributes.csv',
+        'CAMELS_GB_topographic_attributes.csv'
+    ],
+    'HYSETS': [  # following files must exist in a folder containing HYSETS dataset.
+        'HYSETS_2020_ERA5.nc',
+        'HYSETS_2020_ERA5Land.nc',
+        'HYSETS_2020_ERA5Land_SWE.nc',
+        'HYSETS_2020_Livneh.nc',
+        'HYSETS_2020_nonQC_stations.nc',
+        'HYSETS_2020_SCDNA.nc',
+        'HYSETS_2020_SNODAS_SWE.nc',
+        'HYSETS_elevation_bands_100m.csv',
+        'HYSETS_watershed_boundaries.zip',
+        'HYSETS_watershed_properties.txt'
+    ]
+}
+
+
 def download_all_http_directory(url, outpath=None, filetypes=".zip", match_name=None):
     """
     Download all the files which are of category filetypes at the location of
@@ -90,11 +117,12 @@ def download(url, out=None):
         filename = filename + '1'
     shutil.move(tmpfile, filename)
 
-    #print headers
+    # print headers
     return filename
 
 
 __current_size = 0
+
 
 def callback_progress(blocks, block_size, total_size, bar_function):
     """callback function for urlretrieve that is called when connection is
@@ -140,4 +168,32 @@ def bar(current_size, total_size, width):
     percent = current_size/total_size * 100
     if round(percent % 1, 4) == 0.0:
         print(f"{round(percent)}% of {round(total_size*1e-6, 2)} MB downloaded")
+    return
+
+
+def check_attributes(attributes, check_against:list)->list:
+    if attributes == 'all' or attributes is None:
+        attributes = check_against
+    elif not isinstance(attributes, list):
+        assert isinstance(attributes, str)
+        assert attributes in check_against
+        attributes = [attributes]
+    else:
+        assert isinstance(attributes, list), f'unknown attributes {attributes}'
+
+    assert all(elem in check_against for elem in attributes)
+
+    return attributes
+
+
+def sanity_check(dataset_name, path):
+    if dataset_name in DATA_FILES:
+        if dataset_name == 'CAMELS-GB':
+            if not os.path.exists(os.path.join(path, 'data')):
+                raise FileNotFoundError(f"No folder named `data` exists inside {path}")
+            else:
+                data_path = os.path.join(path, 'data')
+                for file in DATA_FILES[dataset_name]:
+                    if not os.path.exists(os.path.join(data_path, file)):
+                        raise FileNotFoundError(f"File {file} must exist inside {data_path}")
     return

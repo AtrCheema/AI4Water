@@ -1,4 +1,5 @@
 import os
+from typing import Union
 from collections import OrderedDict
 
 
@@ -11,9 +12,8 @@ import matplotlib.dates as mdates
 
 from AI4Water.utils.spatial_utils import find_records
 from AI4Water.utils.spatial_utils import plot_shapefile
-from AI4Water.utils.spatial_utils import get_total_area, get_lu_paras, GifUtil
+from AI4Water.utils.spatial_utils import get_total_area, GifUtil
 from AI4Water.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
-from AI4Water.utils.utils import process_axis
 
 
 M2ToAcre = 0.0002471     # meter square to Acre
@@ -23,53 +23,104 @@ COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B
 
 class MakeHRUs(object):
     """
-    Distributes a given time series data for HRUs in a catchment according to the `hru_definition`.
-    Currently it is supposed that only land use changes with time.
-    Arguments:
-        hru_definition str: definition of HRU, determines how an HRU should be
-            defined. The number and size of HRUs depend upon this parameter.
-        index dict: index representing time variation of land use. The keys should
-            represent unit of time and values should be the path of land use
-            shape file during that time period. All features in all land use
-            shapefiles must have an attribute "NAME".
-        soil_shape str: path of soil shapefile. Only required if hru_definition
-            contains soil. All features in slope shapefiles must have an attribute "NAME"
-        slope_shape str: path of slope shapefile.
-        subbasins_shape str: path of sub-basin shape file. All features must hvae
-            an attribute "id".
+    Distributes a given time series data for HRUs in a catchment according to
+    the `hru_definition`. Currently it is supposed that only land use changes
+    with time.
+
+    Example
+    ----------
+    ```python
+    >>>import os
+    >>>from AI4Water.utils.spatial_processing import MakeHRUs
+    >>> # shapefile_paths is the path where shapefiles are located. todo
+    >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
+    >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
+    >>>hru_object = MakeHRUs('unique_lu_sub',
+    ...     index={2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
+    ...     2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}},
+    ...                  subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
+    ...                 )
+    >>>hru_object.call()
+    ```
     """
 
     HRU_DEFINITIONS = [
-        'unique_lu_sub',
         'unique_sub',
         'unique_lu',
-        'unique_soil_sub',
+        'unique_soil',
+        'unique_slope',
+        'unique_lu_sub',
         'unique_lu_soil',
-        'unique_lu_soil_sub'
+        'unique_lu_slope',
+        'unique_soil_sub',
+        'unique_soil_slope',
+        'unique_slope_sub',
+        'unique_lu_soil_sub',
+        'unique_lu_soil_slope',
     ]
 
     def __init__(self,
-                 hru_definition,
-                 index,
-                 soil_shape=None,
-                 slope_shape=None,
-                 subbasins_shape=None,
-                 slope_categories=None,
-                 verbosity=0
+                 hru_definition:str,
+                 index:dict,
+                 soil_shape: Union[dict, None] = None,
+                 slope_shape: Union[dict, None]=None,
+                 subbasins_shape: Union[None, dict] = None,
+                 verbosity: int = 1
                  ):
+        """
+        Arguments:
+            hru_definition : hru definition. For valid hru_definitions check `MakeHRUs.HRU_DEFINITIONS`
+            index : dictionary defining shapefiles of landuse which change with time.
+                For example in following a land use shapefile for two years is defined.
+                All attributes in land use shapefiles must have the feature `NAME`.
+                ```python
+                {2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
+                2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}}
+                ```
+            soil_shape : only applicable if `soil` exists in hru_definition.
+                All attributes in land use soil.shp must have the feature `NAME`.
+                ```python
+                {'shapefile': os.path.join(shapefile_paths, 'soil.shp'), 'feature': 'NAME'}
+                ```
+            slope_shape : only applicable if `slope` exists in hru_definition.
+                All attributes in slope.shp shapefiles must have the feature `percent`.
+                ```python
+                {'shapefile': os.path.join(shapefile_paths, 'slope.shp'), 'feature': 'percent'}
+                ```
+            subbasins_shape : only applicable if `sub` exists in hru_definition.
+                All attributes in land use shapefiles must have the feature `id`.
+                ```python
+                {'shapefile': os.path.join(shapefile_paths, 'subbasins.shp'), 'feature': 'id'}
+                ```
+            verbosity : Determines verbosity.
+        """
 
         self.hru_definition = hru_definition
+
+        assert hru_definition in self.HRU_DEFINITIONS, f"""
+        invalid value for hru_definition '{hru_definition}' provided.
+        Allowed values are 
+        {self.HRU_DEFINITIONS}"""
+
+        self.combinations = hru_definition.split('_')[1:]
+
+        if len(self.combinations)<2:
+            if isinstance(index, dict):
+                if not all([i.__class__.__name__=='NoneType' for i in index.values()]):
+                    assert all([i.__class__.__name__=='NoneType' for i in [soil_shape, slope_shape, subbasins_shape]]), f"""
+                    hru consists of only one feature i.e. {self.combinations[0]}. Thus if index is provided then not
+                    other shapefile must be given.
+                    """
+
         self.index = index
         self.soil_shape = soil_shape
         self.slope_shape = slope_shape
-        self.slope=slope_categories
-        self.subbasins_shape=subbasins_shape
+        self.sub_shape = subbasins_shape
         self.hru_paras = OrderedDict()
         self.hru_geoms = OrderedDict()
         self.all_hrus = []
         self.hru_names = []
         self.verbosity = verbosity
-        self.use_sub=True
 
         st, en = list(index.keys())[0], list(index.keys())[-1]
         # initiating yearly dataframes
@@ -83,45 +134,152 @@ class MakeHRUs(object):
                                                               freq='12m'))
 
     def call(self, plot_hrus=True):
+        """
+        Makes the HRUs.
+        Arguments:
+            plot_hrus : If true, the exact area hrus will be plotted as well.
+        """
+        for _yr, shp_file in self.index.items():
 
-        for yr, shp_file in self.index.items():
-
-            _hru_paras, _hru_geoms = self.get_hrus(shp_file, yr)
+            _hru_paras, _hru_geoms = self.get_hrus(shp_file, _yr)
             self.hru_paras.update(_hru_paras)
 
             if plot_hrus:
-                self.plot_hrus(year=yr, _polygon_dict=self.hru_geoms, nrows=3, ncols=4,
+                self.plot_hrus(year=_yr, _polygon_dict=self.hru_geoms, nrows=3, ncols=4,
                                bbox=self.slope_shape, annotate=False, save=False,
                                name=self.hru_definition)
         return
 
-    def get_hrus(self, _lu_name, year):
+    def get_hrus(self,
+                 idx_shp,  # shapefile whose area distribution changes with time e.g land use
+                 year
+                 ):
         """
         lu_path: path of landuse shapefile
         :return:
 
         """
-        lu_reader = shapefile.Reader(_lu_name)
-        sub_reader = shapefile.Reader(self.subbasins_shape)
-        soil_reader = shapefile.Reader(self.soil_shape)
-        slope_reader = shapefile.Reader(self.slope_shape)
-
-        lu_area_list_acre, lu_shp_geom_list = get_areas_geoms(lu_reader)
-        sub_area_list_acre, sub_shp_geom_list = get_areas_geoms(sub_reader)
-        soil_area_list_acre, soil_shp_geom_list = get_areas_geoms(soil_reader)
-        slop_area_list_acre, slop_shp_geom_list = get_areas_geoms(slope_reader)
 
         if self.verbosity > 0:
             print('Checking validity of landuse shapefile')
-        lu_shp_geom_list_new = check_shp_validity(lu_shp_geom_list, len(lu_reader.shapes()), name='landuse')
-        soil_shp_geom_list_new = check_shp_validity(soil_shp_geom_list, len(soil_reader.shapes()), name='soil_shape')
-        slop_shp_geom_list = check_shp_validity(slop_shp_geom_list, len(slope_reader.shapes()), name='slope_shape')
 
-        if self.use_sub:
-            self.sub_shp_geom_list = sub_shp_geom_list
-        else:
-            self.sub_shp_geom_list = slop_shp_geom_list
-            no_of_subs = len(slope_reader.shapes())
+        hru_paras = OrderedDict()
+        a = 0
+
+        if len(self.combinations) ==1:
+            shp_name = self.combinations[0]
+            if idx_shp is None:
+                shp_file = getattr(self, f'{shp_name}_shape')['shapefile']
+                feature = getattr(self, f'{shp_name}_shape')['feature']
+            else:
+                shp_file = idx_shp['shapefile']
+                feature = idx_shp['feature']
+
+            shp_reader = shapefile.Reader(shp_file)
+            shp_area_list_acre, shp_geom_list = get_areas_geoms(shp_reader)
+            if 'sub' not in self.hru_definition:
+                shp_geom_list = check_shp_validity(shp_geom_list, len(shp_reader.shapes()), name=shp_name)
+
+            self.tot_cat_area = get_total_area(shp_geom_list)
+
+            for shp in range(len(shp_reader.shapes())):
+                code = f'{str(year)}_{shp_name}_{find_records(shp_file, feature, shp)}'
+                hru_paras[code] = {'yearless_key': code[4:]}
+                intersection = shp_geom_list[shp]
+                self.hru_geoms[code] = [intersection, shp_geom_list[shp]]
+                self._foo(code, intersection)
+
+        if len(self.combinations) == 2:
+            first_shp_name = self.combinations[0]
+            second_shp_name = self.combinations[1]
+
+            if idx_shp is None:
+                first_shp_file = getattr(self, f'{first_shp_name}_shape')['shapefile']
+                first_feature = getattr(self, f'{first_shp_name}_shape')['feature']
+            else:
+                first_shp_file = idx_shp['shapefile']
+                first_feature = idx_shp['feature']
+
+            second_shp_file = getattr(self, f'{second_shp_name}_shape')['shapefile']
+            second_feature = getattr(self, f'{second_shp_name}_shape')['feature']
+
+            first_shp_reader = shapefile.Reader(first_shp_file)
+            second_shp_reader = shapefile.Reader(second_shp_file)
+
+            first_shp_area_list_acre, first_shp_geom_list = get_areas_geoms(first_shp_reader)
+            second_shp_area_list_acre, second_shp_geom_list = get_areas_geoms(second_shp_reader)
+
+            if 'sub' not in self.hru_definition:
+                second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()), name=second_shp_name)
+                self.tot_cat_area = get_total_area(first_shp_geom_list)
+            else:
+                self.tot_cat_area = get_total_area(second_shp_geom_list)
+
+            for j in range(len(second_shp_reader.shapes())):
+                for lu in range(len(first_shp_reader.shapes())):
+                    a += 1
+
+                    intersection = second_shp_geom_list[j].intersection(first_shp_geom_list[lu])
+
+                    lu_code = find_records(first_shp_file, first_feature, lu)
+                    sub_code = find_records(second_shp_file, second_feature, j)
+                    sub_code = f'_{second_shp_name}_' + str(sub_code)
+                    code = str(year) + sub_code + f'_{first_shp_name}_' + lu_code #, lu_code
+
+                    self.hru_geoms[code] = [intersection, second_shp_geom_list[j], first_shp_geom_list[lu]]
+
+                    hru_paras[code] = {'yearless_key': code[4:]}
+                    self._foo(code, intersection)
+
+        if len(self.combinations) == 3:
+            first_shp_name = self.combinations[0]
+            second_shp_name = self.combinations[1]
+            third_shp_name = self.combinations[2]
+
+            if idx_shp is None:
+                first_shp_file = getattr(self, f'{first_shp_name}_shape')['shapefile']
+                first_feature = getattr(self, f'{first_shp_name}_shape')['feature']
+            else:
+                first_shp_file = idx_shp['shapefile']
+                first_feature = idx_shp['feature']
+
+            second_shp_file = getattr(self, f'{second_shp_name}_shape')['shapefile']
+            second_feature = getattr(self, f'{second_shp_name}_shape')['feature']
+            third_shp_file = getattr(self, f'{third_shp_name}_shape')['shapefile']
+            third_feature = getattr(self, f'{third_shp_name}_shape')['feature']
+
+            first_shp_reader = shapefile.Reader(first_shp_file)
+            second_shp_reader = shapefile.Reader(second_shp_file)
+            third_shp_reader = shapefile.Reader(third_shp_file)
+
+            first_shp_area_list_acre, first_shp_geom_list = get_areas_geoms(first_shp_reader)
+            second_shp_area_list_acre, second_shp_geom_list = get_areas_geoms(second_shp_reader)
+            third_shp_area_list_acre, third_shp_geom_list = get_areas_geoms(third_shp_reader)
+
+            if 'sub' not in self.hru_definition:  # todo
+                second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()), name=second_shp_name)
+                self.tot_cat_area = get_total_area(first_shp_geom_list)
+            else:
+                self.tot_cat_area = get_total_area(second_shp_geom_list)
+
+            for s in range(len(third_shp_reader.shapes())):
+                for j in range(len(second_shp_reader.shapes())):
+                    for lu in range(len(first_shp_reader.shapes())):
+
+                        intersection = second_shp_geom_list[j].intersection(first_shp_geom_list[lu])
+
+                        sub = third_shp_geom_list[s]
+                        intersection = sub.intersection(intersection)
+
+                        sub_code = f'_{third_shp_name}_' + str(find_records(third_shp_file, third_feature, s))
+                        lu_code = find_records(first_shp_file, first_feature, lu)
+                        soil_code = find_records(second_shp_file, second_feature, j)
+                        code = str(year) + sub_code + f'_{second_shp_name}_' + str(soil_code) + f'_{first_shp_name}_' + lu_code
+
+                        self.hru_geoms[code] = [intersection, second_shp_geom_list[j], first_shp_geom_list[lu]]
+
+                        hru_paras[code] = {'yearless_key': code[4:]}
+                        self._foo(code, intersection)
 
         # if sum(LuAreaListAcre) > sum(SubAreaListAcre):
         #     print('Land use area is bigger than subbasin area')
@@ -144,213 +302,22 @@ class MakeHRUs(object):
         # else:
         #     print('Land use area is equal to subbasin area')
 
-        self.tot_cat_area = get_total_area(self.sub_shp_geom_list)
-        a = 0
-        hru_paras = OrderedDict()
-
-        if self.hru_definition == 'unique_lu_sub':
-            for j in range(len(sub_reader.shapes())):
-                for lu in range(len(lu_reader.shapes())):
-                    a += 1
-                    code = self.get_hru_paras(year, self.sub_shp_geom_list, j, lu_shp_geom_list_new, lu,
-                                              self.sub_shp_geom_list,
-                                              lu_shp=self.index[year])
-
-                    hru_paras[code] = {'yearless_key': code[2:]}
-
-        elif self.hru_definition == 'unique_lu':
-            for lu in range(len(lu_reader.shapes())):
-                code = self.get_hru_paras(year, lu_shp_geom_list_new, lu, lu_shp=_lu_name)
-                hru_paras[code] = {'yearless_key': code[2:]}
-
-        elif self.hru_definition == 'unique_sub':
-            for j in range(len(sub_reader.shapes())):
-                # raise NotImplementedError
-                code = self.get_hru_paras(year, self.sub_shp_geom_list, j)
-                #         lu = SubShpGeomList[j]
-                #         area = lu.area * M2ToAcre
-                #         dist = SubShpGeomList[j].find_records('dist_outle', j)  # getting distance to outlet of each hru
-                #         code, _ = self.get_code(year=year, sub_feat=SubShpGeomList[j], sub_feat_ind=j)
-                #         lu_percent_x = area / tot_cat_area
-                #         Hru_paras[code] = {'area': area, 'area_percent': lu_percent_x,
-                #                             'distance_to_outlet': dist, 'yearless_key': code[2:]}
-                hru_paras[code] = {'yearless_key': code[2:]}
-
-        elif self.hru_definition == 'unique_soil_sub':
-            for j in range(len(sub_reader.shapes())):
-                for lu in range(len(soil_reader.shapes())):
-                    code = self.get_hru_paras(year, self.sub_shp_geom_list, j, soil_shp_geom_list_new, lu)
-
-                    hru_paras[code] = {'yearless_key': code[2:]}
-
-        elif self.hru_definition == 'unique_lu_soil':
-            for j in range(len(soil_reader.shapes())):
-                for lu in range(len(lu_reader.shapes())):
-                    code = self.get_hru_paras(year, soil_shp_geom_list_new, j, lu_shp_geom_list_new, lu,
-                                              j, lu_shp=_lu_name)
-                    hru_paras[code] = {'yearless_key': code[2:]}
-
-        # for the case when an HRU is unique lu in unique soil but within a unique sub-basin/soil
-        elif self.hru_definition == 'unique_lu_soil_sub':
-            for s in range(len(sub_reader.shapes())):
-                for j in range(len(soil_reader.shapes())):
-                    for lu in range(len(lu_reader.shapes())):
-                        code = self.get_hru_paras(year, soil_shp_geom_list_new, j, lu_shp_geom_list_new, lu,
-                                                  s, lu_shp=self.index[year])
-                        hru_paras[code] = {'yearless_key': code[2:]}
-
         self.hru_names = list(set(self.hru_names))
 
         return hru_paras, self.hru_geoms
 
-
-    def get_hru_paras(self, year, first_shps, first_shp_idx, second_shps=None, second_shp_idx=None,
-                      subbasin_idx=None, lu_shp=None):
-
-        if second_shps is not None:
-            intersection = first_shps[first_shp_idx].intersection(second_shps[second_shp_idx])
-        else:
-            intersection = first_shps[first_shp_idx]
-
-        if second_shps is not None:
-            if self.hru_definition == 'unique_lu_soil_sub':
-                # in this case an HRU is intersection of soil and lu but inside a sub-basin
-                sub = self.sub_shp_geom_list[subbasin_idx]
-                intersection = sub.intersection(intersection)
-                code, lu_code = self.get_code(year=year, lu_feature=second_shps[second_shp_idx],
-                                              lu_feat_ind=second_shp_idx, sub_feat=first_shps[first_shp_idx],
-                                              sub_feat_ind=first_shp_idx,
-                                              subbasin_feat=self.sub_shp_geom_list[subbasin_idx],
-                                              subbasin_idx=subbasin_idx,
-                                              lu_shp=lu_shp)
-            else:
-                code, lu_code = self.get_code(year=year, lu_feature=second_shps[second_shp_idx],
-                                              lu_feat_ind=second_shp_idx,
-                                              sub_feat=first_shps[first_shp_idx],
-                                              sub_feat_ind=first_shp_idx,
-                                              lu_shp=lu_shp)
-        else:
-            if self.hru_definition == 'unique_lu':
-                code = self.get_code(year=year, lu_feature=first_shps[first_shp_idx],
-                                     lu_feat_ind=first_shp_idx, lu_shp=lu_shp)
-
-            elif self.hru_definition == 'unique_sub':
-                code, _ = self.get_code(year=year, sub_feat=first_shps[first_shp_idx],
-                                     sub_feat_ind=first_shp_idx)
-            else:
-                raise ValueError
-
-        hru_name = code[3:]
-        year = '20' + code[0:2]
+    def _foo(self, code, intersection):
+        hru_name = code[5:]
+        year = code[0:4]
         row_index = pd.to_datetime(year + '0131', format='%Y%m%d', errors='ignore')
         self.hru_names.append(hru_name)
         self.all_hrus.append(code)
-
         anarea = intersection.area * M2ToAcre
 
         # saving value of area for currnet HRU and for for current year in dictionary
         self.area.loc[row_index, hru_name] = anarea
-
-        if second_shps is not None:
-            self.hru_geoms[code] = [intersection, first_shps[first_shp_idx], second_shps[second_shp_idx]]
-        else:
-            self.hru_geoms[code] = [intersection, first_shps[first_shp_idx]]
-
         self.area_frac_cat.loc[row_index, hru_name] = anarea / self.tot_cat_area
-
-        dist = None
-        if 'sub' in self.hru_definition and self.use_sub:
-            # getting distance to outlet of each hru
-            sub_shp = self.sub_shp_geom_list[first_shp_idx]
-            dist = find_records(self.subbasins_shape, 'DistOutlet', first_shp_idx)
-        self.dist_to_out.loc[row_index, hru_name] = dist
-
-        cn = None
-        if 'lu' in self.hru_definition:
-            cn = get_lu_paras(code, 'cn')
-        self.curve_no.loc[row_index, hru_name] = cn
-
-        return code
-
-    def get_code(self, year, lu_feature=None, lu_feat_ind=None, sub_feat=None, sub_feat_ind=None,
-                 subbasin_feat=None, subbasin_idx=None, lu_shp=None):
-        if len(str(year)) > 3:
-            year = str(year)[2:]
-
-        if self.hru_definition == 'unique_lu_sub':
-            # lu_feature = feature
-            ina, inb = 'NAME', lu_feat_ind
-            lu_code = find_records(lu_shp, ina, inb)
-            if self.use_sub:
-                sub_code = find_records(self.subbasins_shape, 'id', sub_feat_ind)
-                sub_code = '_sub_' + str(sub_code)
-            else:
-                sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
-                sub_code = '_slope_' + SLOPE[sub_code]
-            return str(year) + sub_code + '_lu_' + lu_code, lu_code
-
-        elif self.hru_definition == 'unique_lu_slope':
-            ina, inb = 'NAME', lu_feat_ind
-            lu_code = find_records(lu_shp, ina, inb)
-            sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
-            sub_code = '_slope_' + SLOPE[sub_code]
-            return str(year) + sub_code + '_lu_' + lu_code, lu_code
-
-        elif self.hru_definition == 'unique_sub':
-            if self.use_sub:
-                sub_code = find_records(self.subbasins_shape, 'id', sub_feat_ind)
-                sub_code = '_sub_' + str(sub_code)
-            else:
-                sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
-                sub_code = '_slope_' + SLOPE[sub_code]
-            return str(year) + sub_code, sub_code[5:]
-
-        elif self.hru_definition == 'unique_lu':
-            ina, inb = 'NAME', lu_feat_ind
-            lu_code = find_records(lu_shp, ina, inb)
-            return str(year) + "_lu_" + lu_code
-
-        elif self.hru_definition == 'unique_slope':
-            ina, inb = 'NAME', lu_feat_ind
-            lu_code = find_records(self.slope_shape, ina, sub_feat_ind)
-            return str(year) + "_lu_" + lu_code
-
-        elif self.hru_definition == 'unique_soil':
-            lu_code = find_records(self.soil_shape, "NAME", sub_feat_ind)
-            return str(year) + "_lu_" + lu_code
-
-        elif self.hru_definition == 'unique_soil_sub':
-            ina, inb = 'NAME', lu_feat_ind
-            soil_code = find_records(self.soil_shape, ina, inb)
-            if self.use_sub:
-                sub_code = find_records(self.subbasins_shape, 'id', sub_feat_ind)
-                sub_code = '_sub_' + str(sub_code)
-            else:
-                sub_code = sub_feat_ind  # sub_feat.find_records('id', sub_feat_ind)
-                sub_code = '_slope_' + SLOPE[sub_code]
-            return str(year) + sub_code + '_soil_' + soil_code, soil_code
-
-        elif self.hru_definition == 'unique_lu_soil':
-            ina, inb = 'NAME', lu_feat_ind
-            lu_code = find_records(lu_shp, ina, inb)
-            ina = 'NAME'
-            soil_code = find_records(self.soil_shape, ina, sub_feat_ind)
-            return f'{year}_{soil_code}_{lu_code}', soil_code
-
-        elif self.hru_definition == 'unique_lu_soil_sub':
-            if self.use_sub:
-                sub_code = '_sub_' + str(find_records(self.subbasins_shape, 'id', subbasin_idx))
-            else:
-                sub_code = subbasin_idx  # sub_feat.find_records('id', sub_feat_ind)
-                sub_code = '_slope_' + SLOPE[sub_code]
-            ina, inb = 'NAME', lu_feat_ind
-            lu_code = find_records(lu_shp, ina, inb)
-            ina = 'NAME'
-            soil_code = find_records(self.soil_shape, ina, sub_feat_ind)
-
-            return str(year) + sub_code + '_soil_' + str(soil_code) + '_lu_' + lu_code, soil_code
-        else:
-            raise NotImplementedError
+        return
 
     def plot_hrus(self, year, bbox, _polygon_dict, annotate=False, nrows=3,
                   ncols=4, save=False, name='',
@@ -358,7 +325,7 @@ class MakeHRUs(object):
 
         polygon_dict = OrderedDict()
         for k, v in _polygon_dict.items():
-            if str(year)[2:] in k[0:3]:
+            if str(year) in k[0:4]:
                 polygon_dict[k] = v
 
         # sorting dictionary based on keys so that it puts same HRU at same place for each year
@@ -543,17 +510,29 @@ class MakeHRUs(object):
         plt.show()
         return
 
-    def draw_pie(self, year, n_merge, title=False, save=False, name=None, **kwargs):
+    def draw_pie(self, year:int,
+                 n_merge:int=0,
+                 title:bool=False,
+                 save:bool=False,
+                 name:str=None,
+                 **kwargs):
         """
         todo draw nested pie chart for all years
         https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.pie.html
         Draws a pie chart showing relative area of HRUs for a particular year.
         Since the hrus can change with time, selecting one year is based on supposition
         that area of hrus remain constant during the whole year.
-        year: int, the year for which area of hrus will be used.
-        title: bool,
-        save: bool,
-        name: str
+        Arguments:
+            year : int, the year for which area of hrus will be used.
+            n_merge : number of hrus to merge
+            title :
+            save :
+            name :
+            kwargs : Following keyword arguments are allowed
+                shadow
+                strartangle
+                autopct
+                textprops
         """
         shadow = kwargs.get('shadow', True)
         startangle = kwargs.get('startangle', 90)
@@ -566,9 +545,17 @@ class MakeHRUs(object):
         merged = area[area.index[0]:area.index[n_merge-1]]
         rest = area[area.index[n_merge]:]
 
-        merged_vals = sum(merged.values)
-        vals = list(rest.values) + [merged_vals]
-        labels = list(rest.keys())  + ['{} HRUs'.format(n_merge)]
+        if n_merge==0:
+            assert len(merged) == len(area)
+            merged_vals= []
+            merged_labels =  []
+        else:
+            merged_vals = [sum(merged.values)]
+            merged_labels = ['{} HRUs'.format(n_merge)]
+
+        vals = list(rest.values) + merged_vals
+        labels = list(rest.keys()) + merged_labels
+
         explode = [0 for _ in range(len(vals))]
         explode[-1] = 0.1
 
@@ -588,31 +575,3 @@ class MakeHRUs(object):
             plt.savefig(f'{len(self.hru_names)}hrus_for_{year}_{name}.png', dpi=300)
         plt.show()
         return
-
-
-if __name__=="__main__":
-
-    SLOPE = {0: '0-13',
-             1: '13-26',
-             2: '26-39',
-             3: '39-53'}
-
-    Soil_shp = "D:\\Laos\\data\\landuse\\shapefiles\\soilmap.shp"
-
-    SubBasin_shp = "D:\\Laos\\data\\landuse\\shapefiles\\subs1.shp"
-    slope_shp = "D:\\Laos\\data\\landuse\\shapefiles\\slope_corrected_small.shp"
-
-    years = {2011:"D:\\Laos\\data\\landuse\\shapefiles\\LU2011.shp",
-            2012:"D:\\Laos\\data\\landuse\\shapefiles\\LU2012.shp",
-            2013:"D:\\Laos\\data\\landuse\\shapefiles\\LU2013.shp",
-            2014:"D:\\Laos\\data\\landuse\\shapefiles\\LU2014.shp",
-           # 2015:"D:\\Laos\\data\\landuse\\shapefiles\\LU2015.shp"
-             }
-    hru_object = MakeHRUs('unique_lu_soil',    # unique_lu_soil:3
-                          index=years,
-                          subbasins_shape=SubBasin_shp,
-                          soil_shape=Soil_shp,
-                          slope_shape=slope_shp)
-    hru_object.call()
-    for yr in years:
-        hru_object.draw_pie(yr,  title=False, n_merge=4, save=True, textprops={'fontsize': '12'})
