@@ -12,9 +12,8 @@ import matplotlib.dates as mdates
 
 from AI4Water.utils.spatial_utils import find_records
 from AI4Water.utils.spatial_utils import plot_shapefile
-from AI4Water.utils.spatial_utils import get_total_area, get_lu_paras, GifUtil
+from AI4Water.utils.spatial_utils import get_total_area, GifUtil
 from AI4Water.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
-from AI4Water.utils.utils import process_axis
 
 
 M2ToAcre = 0.0002471     # meter square to Acre
@@ -185,7 +184,7 @@ class MakeHRUs(object):
 
             for shp in range(len(shp_reader.shapes())):
                 code = f'{str(year)}_{shp_name}_{find_records(shp_file, feature, shp)}'
-                hru_paras[code] = {'yearless_key': code}
+                hru_paras[code] = {'yearless_key': code[4:]}
                 intersection = shp_geom_list[shp]
                 self.hru_geoms[code] = [intersection, shp_geom_list[shp]]
                 self._foo(code, intersection)
@@ -229,7 +228,7 @@ class MakeHRUs(object):
 
                     self.hru_geoms[code] = [intersection, second_shp_geom_list[j], first_shp_geom_list[lu]]
 
-                    hru_paras[code] = {'yearless_key': code}
+                    hru_paras[code] = {'yearless_key': code[4:]}
                     self._foo(code, intersection)
 
         if len(self.combinations) == 3:
@@ -275,11 +274,11 @@ class MakeHRUs(object):
                         sub_code = f'_{third_shp_name}_' + str(find_records(third_shp_file, third_feature, s))
                         lu_code = find_records(first_shp_file, first_feature, lu)
                         soil_code = find_records(second_shp_file, second_feature, j)
-                        code = str(year)[2:] + sub_code + f'_{second_shp_name}_' + str(soil_code) + f'_{first_shp_name}_' + lu_code
+                        code = str(year) + sub_code + f'_{second_shp_name}_' + str(soil_code) + f'_{first_shp_name}_' + lu_code
 
                         self.hru_geoms[code] = [intersection, second_shp_geom_list[j], first_shp_geom_list[lu]]
 
-                        hru_paras[code] = {'yearless_key': code[2:]}
+                        hru_paras[code] = {'yearless_key': code[4:]}
                         self._foo(code, intersection)
 
         # if sum(LuAreaListAcre) > sum(SubAreaListAcre):
