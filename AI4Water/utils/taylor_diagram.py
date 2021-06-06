@@ -201,28 +201,38 @@ def taylor_plot(trues:dict,
         cont_kws dict :
             keyword arguments related to contours. Following args can be used:
                 - levels level of contours
+
                 - colors color of contours
+
                 - label_fs fontsize of labels
+
                 - label_fmt format of labels
+
                 - linewidths float or sequence of floats
+
                 - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
-            https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
+            For details [see](https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html)
 
         grid_kws dict :
             keyword arguments related to grid. Following args can be used.
             Following keyword arguments are allowed
                 - title_fontsize: int, fontsize of the axis title
+
                 - which {'major', 'minor', 'both'}
+
                 - axis {'both', 'x', 'y'},
-            any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
+            any kwargs from [here](https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html)
 
         leg_kws dict :
             keyword arguments related to legends:
                 - position defaults to `center`
+
                 - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
+
                 - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
+
                 - markerscale float, default: rcParams["legend.markerscale"] (default: 1.0)
-            https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
+            For details see [here](https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html)
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
         axis_fontdict dict :
@@ -495,7 +505,7 @@ if __name__ == "__main__":
                  site3=223,
                  site4=224)
 
-    plot_taylor(trues=observations,
+    taylor_plot(trues=observations,
                 simulations=simus,
                 axis_locs=rects,
                 plot_bias=True,
