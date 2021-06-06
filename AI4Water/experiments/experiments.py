@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from AI4Water import Model
 from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import RegressionMetrics
-from AI4Water.utils.taylor_diagram import plot_taylor
+from AI4Water.utils.taylor_diagram import taylor_plot
 from AI4Water.hyper_opt import Real, Categorical, Integer
 from AI4Water.utils.utils import init_subplots, process_axis
 from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
@@ -304,7 +304,7 @@ Available cases are {self.models} and you wanted to exclude
         fname = kwargs.get('name', 'taylor.png')
         fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
-        plot_taylor(
+        taylor_plot(
             trues=self.trues,
             simulations=simulations,
             figsize=figsize,
