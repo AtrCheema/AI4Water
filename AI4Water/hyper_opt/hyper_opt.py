@@ -838,7 +838,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         with open(fname, 'w') as fp:
             json.dump(serialized, fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
-        if dill is not None:
+        if dill is not None and self.backend != "sklearn":  # todo, why not sklearn
             with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
                 dill.dump(self.objective_fn, fp)
 
