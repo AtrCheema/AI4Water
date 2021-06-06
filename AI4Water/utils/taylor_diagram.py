@@ -199,36 +199,40 @@ def taylor_plot(trues:dict,
                        'scenario2': 212}.
             Default is None.
         cont_kws dict :
-            keyword arguments related to contours. Following args can be used
-            - levels level of contours
-            - colors color of contours
-            - label_fs fontsize of labels
-            - label_fmt format of labels
-            - linewidths float or sequence of floats
-            - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
+            keyword arguments related to contours. Following args can be used:
+                - levels level of contours
+                - colors color of contours
+                - label_fs fontsize of labels
+                - label_fmt format of labels
+                - linewidths float or sequence of floats
+                - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
             https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
 
         grid_kws dict :
-            keyword arguments related to grid. Following args can be used
-            - title_fontsize: int, fontsize of the axis title
-            - which {'major', 'minor', 'both'}
-            - axis {'both', 'x', 'y'},
+            keyword arguments related to grid. Following args can be used.
+            Following keyword arguments are allowed
+                - title_fontsize: int, fontsize of the axis title
+                - which {'major', 'minor', 'both'}
+                - axis {'both', 'x', 'y'},
             any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
 
         leg_kws dict :
-            keyword arguments related to legends
-            - position defaults to `center`
-            - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
-            - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
-            - markerscale float, default: rcParams["legend.markerscale"] (default: 1.0)
+            keyword arguments related to legends:
+                - position defaults to `center`
+                - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
+                - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
+                - markerscale float, default: rcParams["legend.markerscale"] (default: 1.0)
             https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
         axis_fontdict dict :
-            dictionary defining propertiies of axis labels
+            dictionary defining propertiies of left, bottom and top axis labels
+            ```python
             axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
                              'bottom': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14},
                              'top': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14}}
+            ```
+            The user can define properties of either one or all axis.
 
         axis_kws dict :
             dictionary containing general parameters related to axis such as title.
@@ -359,6 +363,11 @@ def taylor_plot(trues:dict,
                          'right': {},
                          'bottom': {},
                          'top': {}}
+    else:
+        assert isinstance(axis_fontdict, dict)
+        for k in ['left', 'right', 'bottom', 'top']:
+            if k not in axis_fontdict:
+                axis_fontdict[k] = {}
 
     add_grid = True
     if grid_kws is None:
