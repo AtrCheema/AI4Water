@@ -89,22 +89,6 @@ def get_total_area(file_to_read):
     return shape_area
 
 
-def get_lu_paras(code, para):
-    """get some landuse related constand parameters"""
-    val = None
-    dict_ = {'Urban': {'cn': 58, 'albedo': 16},
-             'Forest': {'cn': 77, 'albedo': 16},
-             'Teak': {'cn': 82, 'albedo': 18},
-             'Crop': {'cn': 80, 'albedo': 23}}
-    for key in dict_:
-        if key in code:
-            val = dict_[key][para]
-
-    if val is None:
-        raise ValueError('value of curve number cannot be none, wrong landuse provided.')
-    return val
-
-
 class GifUtil(object):
 
     def __init__(self, folder,initials=None, contains=None):
