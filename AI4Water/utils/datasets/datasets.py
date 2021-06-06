@@ -759,7 +759,9 @@ class ETPTelesinaItaly(Datasets):
 class MtropicsLaos(Datasets):
     """
     Downloads and prepares hydrological, climate and land use data for Laos from
-    https://mtropics.obs-mip.fr/catalogue-m-tropics/
+    [Mtropics](https://mtropics.obs-mip.fr/catalogue-m-tropics/) website and
+    [ird](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
+    data servers.
     """
     target = ['Ecoli_mpn100']
 
@@ -831,15 +833,17 @@ class MtropicsLaos(Datasets):
                     en: Union[str, pd.Timestamp] = '20210406 15:05:00',
                     features: Union[list, str] = 'Ecoli_mpn100'
                     )->pd.DataFrame:
-        """Fetches e. coli and physio-chemical features at the outlet. NaNs represent
-        missing values. The data is randomly sampled between 2011 to 2021 during
-        rainfall events. Total 368 E. coli observation points are available now.
-        doi:  https://doi.org/10.23708/EWOYNK
+        """Fetches E. coli and physio-chemical features at the outlet [Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK).
+         NaNs represent missing values. The data is randomly sampled between 2011
+         to 2021 during rainfall events. Total 368 E. coli observation points are available now.
         Arguments:
-            st :
-            en :
+            st : start of data. By default the data is fetched from the point it
+                is available.
+            en : end of data. By default the data is fetched til the point it is
+                available.
             features : physi-chemical features to fetch. By default only E. coli
-                concentration is returned
+                concentration is returned. To check the names of available physio-
+                chemical features see `MtropicsLaos.physio_chem_features`
         Returns:
             a pandas dataframe consisting of features as columns.
         """
@@ -1062,16 +1066,38 @@ class MtropicsLaos(Datasets):
 
 
 class MtropcsThailand(Datasets):
-    pass
+    url = {
+        "pcp.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=27c65b5f-59cb-87c1-4fdf-628e6143d8c4",
+        #"hydro.zip":
+        #    "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=9e6f7144-8984-23bd-741a-06378fabd72",
+        "rain_gauge.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0a12ffcf-42bc-0289-1c55-a769ef19bb16",
+        "weather_station.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=fa0bca5f-caee-5c68-fed7-544fe121dcf5 "
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._download()
 
 class MtropicsVietnam(Datasets):
-    pass
+    url = {
+        "pcp.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=d74ab1b0-379b-71cc-443b-662a73b7f596",
+        "hydro.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=85fb6717-4095-a2a2-34b5-4f1b70cfd304",
+        #"lu.zip":
+        #    "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=c3724992-a043-4bbf-8ac1-bc6f9a608c1c",
+        "rain_guage.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3d3382d5-08c1-2595-190b-8568a1d2d6af",
+        "weather_station.zip":
+            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=8df40086-4232-d8d0-a1ed-56c860818989"
+    }
 
-class MtropcsCameroon(Datasets):
-    pass
-
-class MtropicsIndia(Datasets):
-    pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._download()
 
 
 def unzip_all_in_dir(dir_name, ext=".gz"):

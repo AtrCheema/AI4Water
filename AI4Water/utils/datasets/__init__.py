@@ -39,6 +39,8 @@ from AI4Water.utils.datasets.datasets import RiverIsotope
 from AI4Water.utils.datasets.datasets import EtpPcpSamoylov
 from AI4Water.utils.datasets.datasets import SWECanada
 from AI4Water.utils.datasets.datasets import MtropicsLaos
+from AI4Water.utils.datasets.datasets import MtropcsThailand
+from AI4Water.utils.datasets.datasets import MtropicsVietnam
 
 
 def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
