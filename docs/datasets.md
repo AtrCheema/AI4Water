@@ -7,6 +7,11 @@
     handler: python
     rendering:
         show_root_heading: true
+
+::: AI4Water.utils.datasets.datasets.MtropicsLaos
+    handler: python
+    rendering:
+        show_root_heading: true
         
 ::: AI4Water.utils.datasets.camels.Camels
     handler: python

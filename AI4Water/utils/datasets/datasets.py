@@ -827,11 +827,17 @@ class MtropicsLaos(Datasets):
         return files
 
     def fetch_ecoli(self,
+                    st: Union[str, pd.Timestamp] = '20110525 10:00:00',
+                    en: Union[str, pd.Timestamp] = '20210406 15:05:00',
                     features: Union[list, str] = 'Ecoli_mpn100'
                     )->pd.DataFrame:
-        """Fetches e. coli and physio-chemical features at the outlet.
+        """Fetches e. coli and physio-chemical features at the outlet. NaNs represent
+        missing values. The data is randomly sampled between 2011 to 2021 during
+        rainfall events. Total 368 E. coli observation points are available now.
         doi:  https://doi.org/10.23708/EWOYNK
         Arguments:
+            st :
+            en :
             features : physi-chemical features to fetch. By default only E. coli
                 concentration is returned
         Returns:
@@ -854,14 +860,24 @@ class MtropicsLaos(Datasets):
 
         features = check_attributes(_features, list(self.physio_chem_features.values()))
 
-        return df[features]
+        return df[st:en][features]
 
     def fetch_rain_gauges(self,
                           st: Union[str, pd.Timestamp] = "20010101",
                           en: Union[str, pd.Timestamp] = "20191231",
                           ):
         """
-        fetches data from 7 rain gauges which is collected at daily time step.
+        fetches data from 7 rain gauges which is collected at daily time step
+        from 2001 to 2019.
+        Arguments:
+            st : start of data. By default the data is fetched from the point it
+                is available.
+            en : end of data. By default the data is fetched til the point it is
+                available.
+        Returns:
+            a dataframe of 7 columns, where each column represnets a rain guage
+            observations. The length of dataframe depends upon range defined by
+            `st` and `en` arguments.
         """
         # todo, does nan means 0 rainfall?
         fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.f')
@@ -922,7 +938,16 @@ class MtropicsLaos(Datasets):
                   en: Union[str, pd.Timestamp] = '20200101 00:06:00',
                   freq:str = '6min'
                   )->pd.DataFrame:
-        """Fetches the precipication data"""
+        """
+        Fetches the precipication data which is collected at 6 minutes time-step
+        from 2001 to 2020.
+        Arguments:
+            st : starting point of data to be fetched.
+            en : end point of data to be fetched.
+            freq : frequency at which the data is to be returned.
+        Returns:
+            pandas dataframe of precipitation data
+        """
         # todo allow change in frequency
 
         fname = os.path.join(self.ds_dir, 'pcp', 'pcp.f')
@@ -940,13 +965,23 @@ class MtropicsLaos(Datasets):
             df = pd.read_feather(fname)
 
         df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
+        df.columns = ['pcp']
 
         return df[st:en]
 
     def fetch_hydro(self,
+                    st: Union[str, pd.Timestamp] = '20010101 00:06:00',
+                    en: Union[str, pd.Timestamp] = '20200101 00:06:00',
                     ):
         """
-        fetches water level and suspended particulate matter
+        fetches water level and suspended particulate matter. Both data are from
+        2001 to 2019 but are randomly sampled.
+        Arguments:
+            st : starting point of data to be fetched.
+            en : end point of data to be fetched.
+        Returns:
+            a tuple of pandas dataframes of water level and suspended particulate
+            matter.
         """
         wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.f')
         spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.f')
@@ -985,7 +1020,7 @@ class MtropicsLaos(Datasets):
         wl.index = pd.to_datetime(wl.pop('index'))
         spm.index = pd.to_datetime(spm.pop('index'))
 
-        return wl, spm
+        return wl[st:en], spm[st:en]
 
     def fetch(self,
               inputs: Union[None, list],
@@ -1007,7 +1042,7 @@ class MtropicsLaos(Datasets):
             **kwargs dict:
 
         returns:
-            a dataframe of shape (inputs+target, st:en)
+            a dataframe of shape `(inputs+target, st:en)`
 
         Example:
         --------
