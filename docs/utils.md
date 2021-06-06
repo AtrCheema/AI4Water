@@ -32,7 +32,7 @@ Some utility functions
         show_root_heading: true
         
 **`plot_taylor`**
-::: AI4Water.utils.taylor_diagram.plot_taylor
+::: AI4Water.utils.taylor_diagram.taylor_plot
     handler: python
     rendering:
         show_root_heading: true

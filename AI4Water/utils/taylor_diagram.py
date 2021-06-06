@@ -170,7 +170,7 @@ class TaylorDiagram(object):
         return contours
 
 
-def plot_taylor(trues:dict,
+def taylor_plot(trues:dict,
                 simulations:dict,
                 axis_locs:dict=None,
                 cont_kws:dict=None,
@@ -236,21 +236,31 @@ def plot_taylor(trues:dict,
         kwargs dict :
             Following keyword arguments are optional:
                 - add_ith_interval: bool
+
                 - plot_bias: bool, if True, the size of the markers will be used to
                     represent bias. The markers will be triangles with their sides up/down
                     depending upon value of bias.
+
                 - ref_color: str, color of refrence dot
+
                 - sim_marker : marker to use for simulations. It can be any valid
                     marker for matplotlib axis/plot. If None, then counting is used.
                     If string, then same marker is used for all simulations. If dict,
                     keys of dict should match with names of models in `simulations` dictionary.
-                - true_label : label to use for `trues`. Default is 'Reference'.
+
+                - true_label: label to use for `trues`. Default is 'Reference'.
+
                 - intervals: list, if add_ith_interval is True, then this argument is used. It
                     must be list of lists or list of tuples, where the inner tuple/list must
                     consist of two values one each for x and y.
-                - colors: 2d numpy array, defining colors. The first dimension should be equal to number of models.
+
+                - colors: 2d numpy array, defining colors. The first dimension
+                    should be equal to number of models.
+
                 - extend: bool, default False, if True, will plot negative correlation
+
                 - save: bool, if True, will save the plot
+
                 - figsize: tuple defining figsize, default is (11,8).
     return:
         None
@@ -259,9 +269,9 @@ def plot_taylor(trues:dict,
     ---------
     ```python
     >>>import numpy as np
-    >>>from AI4Water.utils import plot_taylor
+    >>>from AI4Water.utils import taylor_plot
     >>>np.random.seed(92)
-    >>>plot_taylor(trues={'site1': np.random.normal(20, 40, 10)},
+    >>>taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
     ...            simulations={
     ...             "site1":
     ...                    {"LSTM": np.random.normal(20, 40, 10),
