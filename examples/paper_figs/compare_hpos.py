@@ -15,6 +15,8 @@ from AI4Water.utils.utils import dateandtime_now
 
 tf.compat.v1.disable_eager_execution()
 
+SEP = os.sep
+
 seed = 313
 np.random.seed(seed)
 random.seed(seed)
@@ -51,7 +53,7 @@ for m in ['tpe',
           'random'
             ]:
 
-    _suffix = f"{suffix}\\{m}"
+    _suffix = f"{suffix}{SEP}{m}"
 
     def objective_fn(**suggestion):
 
@@ -87,7 +89,7 @@ for m in ['tpe',
 
     optimizer = HyperOpt(m, objective_fn=objective_fn, param_space=d, num_iterations=50, x0=x0,
                          use_named_args=True,
-                         opt_path=os.path.join(os.getcwd(), f'results\\{_suffix}'))
+                         opt_path=os.path.join(os.getcwd(), f'results{SEP}{_suffix}'))
 
     r = optimizer.fit()
     results[m] = optimizer
