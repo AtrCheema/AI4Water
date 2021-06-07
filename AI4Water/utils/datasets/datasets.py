@@ -823,7 +823,8 @@ class MtropicsLaos(Datasets):
             _process_laos_shpfiles(shp_file, op)
 
     def fetch_lu(self, processed=False):
-        """returns landuse data as list of shapefiles"""
+        """returns landuse data as list of shapefiles.
+        doi: https://doi.org/10.1038/s41598-017-04385-2"""
         lu_dir = os.path.join(self.ds_dir, f"{'lu1' if processed else 'lu'}")
         files = glob.glob(f'{lu_dir}/*.shp')
         return files
@@ -833,7 +834,8 @@ class MtropicsLaos(Datasets):
                     en: Union[str, pd.Timestamp] = '20210406 15:05:00',
                     features: Union[list, str] = 'Ecoli_mpn100'
                     )->pd.DataFrame:
-        """Fetches E. coli and physio-chemical features at the outlet [Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK).
+        """Fetches E. coli and physio-chemical features at the outlet
+        [Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK).
          NaNs represent missing values. The data is randomly sampled between 2011
          to 2021 during rainfall events. Total 368 E. coli observation points are available now.
         Arguments:
@@ -872,7 +874,7 @@ class MtropicsLaos(Datasets):
                           ):
         """
         fetches data from 7 rain gauges which is collected at daily time step
-        from 2001 to 2019.
+        from 2001 to 2019. [doi](https://doi.org/10.1038/s41598-017-04385-2)
         Arguments:
             st : start of data. By default the data is fetched from the point it
                 is available.
@@ -909,7 +911,7 @@ class MtropicsLaos(Datasets):
                                    ) -> pd.DataFrame:
         """
         fetches hourly weather station data which consits of air temperature,
-        humidity, wind speed and solar radiation.
+        humidity, wind speed and solar radiation. [doi](https://doi.org/10.1038/s41598-017-04385-2)
         Arguments:
             st : start of data to be feteched.
             en : end of data to be fetched.
@@ -944,7 +946,7 @@ class MtropicsLaos(Datasets):
                   )->pd.DataFrame:
         """
         Fetches the precipication data which is collected at 6 minutes time-step
-        from 2001 to 2020.
+        from 2001 to 2020. [doi](https://doi.org/10.1038/s41598-017-04385-2)
         Arguments:
             st : starting point of data to be fetched.
             en : end point of data to be fetched.

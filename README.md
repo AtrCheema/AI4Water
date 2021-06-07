@@ -80,13 +80,13 @@ Build a `Model` by providing all the arguments to initiate it.
 
 ```python
 from AI4Water import Model
-from AI4Water.data import load_30min
-data = load_30min()
+from AI4Water.utils.datasets import arg_beach
+data = arg_beach()
 model = Model(
         model = {'layers': {"LSTM": 64}},
         data = data,
-        inputs=['input1', 'input2', 'input3'],   # columns in csv file to be used as input
-        outputs = ['target5'],     # columns in csv file to be used as output
+        inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        outputs = ['tetx_coppml'],     # columns in csv file to be used as output
         lookback = 12
 )
 ```
@@ -137,19 +137,20 @@ classification and regression problems by making use of `model` keyword argument
 However, integration of ML based models is not complete yet.
 ```python
 from AI4Water import Model
-import pandas as pd 
+from AI4Water.utils.datasets import arg_beach
 
-df = pd.read_csv('data/data_30min.csv')  # path for data file
+data = arg_beach()  # path for data file
 
-model = Model(batches="2d",
-              inputs=['input1', 'input2', 'input3', 'input4'],
-              outputs=['target7'],
-              lookback=1,
-              val_fraction=0.0,
-              #  any regressor from https://scikit-learn.org/stable/modules/classes.html
-              model={"randomforestregressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
+model = Model(
+        batches="2d",
+        inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        outputs = ['tetx_coppml'],  
+        lookback=1,
+        val_fraction=0.0,
+        #  any regressor from https://scikit-learn.org/stable/modules/classes.html
+        model={"randomforestregressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
-              data=df
+        data=data
               )
 
 history = model.fit(st=0, en=150)
