@@ -6,7 +6,11 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import xlogy
-import plotly.graph_objects as go
+
+try:
+    import plotly.graph_objects as go
+except ModuleNotFoundError:
+    go = None
 
 
 def take(st, en, d):
@@ -114,6 +118,9 @@ def plot_metrics_between(errors: dict,
 
 def plot_radial(errors:dict, low:int, up:int, save=True, save_path=None, **kwargs):
     """Plots all the errors in errors dictionary. low and up are used to draw the limits of radial plot."""
+    if go is None:
+        print("can not plot radial plot because plotly is not installed.")
+        return
 
     fill = kwargs.get('fill', None)
     fillcolor = kwargs.get('fillcolor', None)
