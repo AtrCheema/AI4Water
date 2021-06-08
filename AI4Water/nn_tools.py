@@ -83,8 +83,10 @@ class NN(AttributeStore):
         lyr_cache = {}
         wrp_layer = None  # indicator for wrapper layers
         first_layer = True
+        idx = 0
 
         for lyr, lyr_args in layers_config.items():
+            idx += 0
 
             lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
 
@@ -99,9 +101,13 @@ class NN(AttributeStore):
                     layer_outputs = inputs
 
                 elif lyr_name.upper() != "INPUT":
-                    # for simple dense layer based models, lookback will not be used
-                    def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
-                    layer_outputs = LAYERS["INPUT"](shape=def_shape)
+                    if 'input_shape' in lyr_config:  # input_shape is given in the first layer so make input layer
+                        layer_outputs = LAYERS["INPUT"](shape=lyr_config['input_shape'])
+                    else:
+                        # for simple dense layer based models, lookback will not be used
+                        def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
+                        layer_outputs = LAYERS["INPUT"](shape=def_shape)
+
                     # first layer is built so next iterations will not be for first layer
                     first_layer = False
                     # put the first layer in memory to be used for model compilation
@@ -226,6 +232,8 @@ class NN(AttributeStore):
                 outs = list(self.outs.values())[0]
             else:
                 change_shape = False
+        elif self.outs is None:  # outputs are not known yet
+            change_shape = False
         else:
             raise NotImplementedError
 
