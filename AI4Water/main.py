@@ -365,6 +365,9 @@ class Model(NN, Plots):
 
         if isinstance(self.in_cols, dict):
             return {k: len(inp) for k, inp in self.in_cols.items()}
+        elif self.in_cols is None:  # when data is not defined
+            assert self.data is None
+            return None
         else:
             return len(self.in_cols)
 
@@ -373,6 +376,9 @@ class Model(NN, Plots):
 
         if isinstance(self.out_cols, dict):
             return {k: len(inp) for k, inp in self.out_cols.items()}
+        elif self.out_cols is None:  # when data is not defined
+            assert self.data is None
+            return None
         else:
             return len(self.out_cols)
 
@@ -443,6 +449,9 @@ class Model(NN, Plots):
         # overwrite this function for a customized loss function.
         # this function should return something which can be accepted as 'loss' by the keras Model.
         # It can be a string or callable.
+        if callable(self.config['loss']):
+            return self.config['loss']
+
         return LOSSES[self.config['loss'].upper()]
 
     def fetch_data(self,
@@ -1314,6 +1323,8 @@ class Model(NN, Plots):
 
                 if getattr(self, 'quantiles', None) is not None:
                     assert model_output_shape[0] == len(self.quantiles) * self.outs
+                elif self.problem == 'classification':
+                    pass
                 else:
                     assert model_output_shape == outputs.shape[1:], f"""
 ShapeMismatchError: Shape of model's output is {model_output_shape}
@@ -2197,6 +2208,8 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     def loss_name(self):
         if isinstance(self._model.loss, str):
             return self._model.loss
+        elif hasattr(self._model.loss, 'name'):
+            return self._model.loss.name
         else:
             return self._model.loss.__name__
 
