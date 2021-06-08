@@ -152,13 +152,14 @@ def process_io(data, **kwargs):
     if isinstance(outputs, str):
         outputs = [outputs]
 
-    if inputs is None:  #when inputs and outputs are not defined.
-        assert isinstance(data, pd.DataFrame)
-        if outputs is None:
-            inputs = list(data.columns)[0:-1]
-            outputs = [list(data.columns)[-1]]
-        elif isinstance(outputs, list):
-            inputs = [col for col in list(data.columns) if col not in outputs]
+    if inputs is None:  # when inputs and outputs are not defined.
+        if data is not None:  # when no data is given, inputs and outputs can not be defined.
+            assert isinstance(data, pd.DataFrame)
+            if outputs is None:
+                inputs = list(data.columns)[0:-1]
+                outputs = [list(data.columns)[-1]]
+            elif isinstance(outputs, list):
+                inputs = [col for col in list(data.columns) if col not in outputs]
 
     kwargs['inputs'] = inputs
     kwargs['outputs'] = outputs
@@ -194,13 +195,25 @@ def _make_model(data, **kwargs):
             def_prob = "classification"
         def_cat = "ML"
 
+    if 'loss' in kwargs:
+        if callable(kwargs['loss']) and hasattr(kwargs['loss'], 'name'):
+            loss_name = kwargs['loss'].name
+        else:
+            loss_name = kwargs['loss']
+        if loss_name in [
+            'sparse_categorical_crossentropy',
+            'categorical_crossentropy',
+            'binary_crossentropy'
+        ]:
+            def_prob = 'classification'
+
     model_args = {
 
         'model': {'type': dict, 'default': default_model, 'lower': None, 'upper': None, 'between': None},
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},   # for auto-encoders
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
         'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
-        'loss':         {'type': str, 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
+        'loss':         {'type': [str, 'callable'], 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
         'quantiles':    {'type': list, 'default': None, 'lower': None, 'upper': None, 'between': None},
         'epochs':       {'type': int, 'default': 14, 'lower': None, 'upper': None, 'between': None},
         'min_val_loss': {'type': float, 'default': 0.0001, 'lower': None, 'upper': None, 'between': None},
@@ -337,7 +350,11 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     if dtype is not None:
         if isinstance(dtype, list):
             val_type = type(val)
-            if val_type not in dtype:
+            if 'callable' in dtype:
+                if callable(val):
+                    pass
+
+            elif val_type not in dtype:
                 raise TypeError("{} must be any of the type {} but it is of type {}"
                                 .format(key, dtype, val.__class__.__name__))
         elif not isinstance(val, dtype):
