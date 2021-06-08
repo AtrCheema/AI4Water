@@ -203,6 +203,8 @@ class scaled_dot_product_attention(layers.Layer):
 
         return output, attention_weights
 
+MHW_COUNTER = 0
+ENC_COUNTER = 0
 
 class MultiHeadAttention(tf.keras.layers.Layer):
 
@@ -213,11 +215,14 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
         assert d_model % self.num_heads == 0
 
+        global MHW_COUNTER
+        MHW_COUNTER +=1
+
         self.depth = d_model // self.num_heads
 
-        self.wq = tf.keras.layers.Dense(d_model, name="wq")
-        self.wk = tf.keras.layers.Dense(d_model, name="wk")
-        self.wv = tf.keras.layers.Dense(d_model, name="wv")
+        self.wq = tf.keras.layers.Dense(d_model, name=f"wq_{MHW_COUNTER}")
+        self.wk = tf.keras.layers.Dense(d_model, name=f"wk_{MHW_COUNTER}")
+        self.wv = tf.keras.layers.Dense(d_model, name=f"wv_{MHW_COUNTER}")
 
         self.dense = tf.keras.layers.Dense(d_model)
 
@@ -267,11 +272,14 @@ class EncoderLayer(tf.keras.layers.Layer):
     def __init__(self, d_model, num_heads, dff, rate=0.1, **kwargs):
         super(EncoderLayer, self).__init__(**kwargs)
 
+        global MHW_COUNTER
+        MHW_COUNTER +=1
+
         self.mha = MultiHeadAttention(d_model, num_heads)
         #self.ffn = point_wise_feed_forward_network(d_model, dff)
 
-        self.swished_dense = layers.Dense(dff, activation='swish', name='swished_dense')
-        self.ffn_output = layers.Dense(d_model, name='ffn_output')
+        self.swished_dense = layers.Dense(dff, activation='swish', name=f'swished_dense_{MHW_COUNTER}')
+        self.ffn_output = layers.Dense(d_model, name=f'ffn_output_{MHW_COUNTER}')
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
@@ -279,7 +287,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         self.dropout1 = tf.keras.layers.Dropout(rate)
         self.dropout2 = tf.keras.layers.Dropout(rate)
 
-    def __call__(self, x, training, mask):
+    def __call__(self, x, training=True, mask=None):
         attn_output, attn_weights = self.mha(x, x, x, mask)  # (batch_size, input_seq_len, d_model)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(x + attn_output)  # (batch_size, input_seq_len, d_model)
@@ -298,7 +306,8 @@ class EncoderLayer(tf.keras.layers.Layer):
 class TransformerEncoder(tf.keras.layers.Layer):
 
     def __init__(self, num_layers, d_model, num_heads, dff,
-                 maximum_position_encoding, rate=0.1, return_weights=False, **kwargs):
+                 maximum_position_encoding,
+                 rate=0.1, return_weights=False, **kwargs):
         super(TransformerEncoder, self).__init__(**kwargs)
 
         self.d_model = d_model
@@ -335,7 +344,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         return config
 
     #def call(self, x, training, mask=None):
-    def __call__(self, x, training, mask=None, *args, **kwargs):
+    def __call__(self, x, training=True, mask=None, *args, **kwargs):
 
         seq_len = tf.shape(x)[1]
 
