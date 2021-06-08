@@ -5,6 +5,7 @@ import time
 import pprint
 import random
 import warnings
+from typing import Union
 from types import MethodType
 
 import h5py
@@ -129,8 +130,8 @@ class Model(NN, Plots):
             subsequences int: Default is 3.
                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
             val_data str/None: Default is None.
-                If you want to use same data for training and test purpose, then set
-                this argument to 'same'.
+                Data to be used for validation. If you want to use same data for
+                validation and test purpose, then set this argument to 'same'.
             val_fraction float:
                 The fraction of the complete data to be used for validation. Set to 0.0 if
                 no validation data is to be used.
@@ -1278,8 +1279,16 @@ class Model(NN, Plots):
                         return self.config['val_data']
                 else:
                     # validation data needs to be fetched based upon fraction from self.data
-
-                    return self.config['val_data']
+                    train_args = getattr(self, '_train_args', None)
+                    if train_args is not None:   # this method is called after fit
+                        st, en, indices = train_args['st'], train_args['en'], train_args['indices']
+                        if en is not None and indices is None: # st/en were defined and val data is to be same as test
+                            # bcz in to_tf_data we expect val data to be x,y todo
+                            x, _y, y = self.train_data(st=en, **kwargs)
+                            assert np.isnan(y).sum() == 0  # currently not implemented  todo
+                            return x, y
+                    else:
+                        return self.config['val_data']
             else:
                 # `val_data` might have been provided (then use it as it is) or it is None
                 val_data = self.config['val_data']
@@ -1287,25 +1296,29 @@ class Model(NN, Plots):
         return val_data
 
     def fit(self,
-            st=0,
-            en=None,
-            indices=None,
+            st:int=0,
+            en:int=None,
+            indices:Union[str, list, np.ndarray]=None,
             data=None,
-            data_keys=None,
+            data_keys:str=None,
             **callbacks):
         """
         Trains the model with data which is taken from data accoring to `st`, `en`
         or `indices` or `data_keys` or `data` arguments.
 
         Arguments:
-        -----------
-            st int: starting index of data to be used
-            en int: end index of data to be used
-            indices list: indices of data to be used. If given, `st` and `en` will be ignored.
-            data : if not None, it will directlry passed to fit ignorign `st`, `en` and `indices`
-            data_keys list: allowed only if self.data is a dictionary. You can decided which to use
-                use for training by specifying the keys of self.data dictionary
+            st : starting index of data to be used
+            en : end index of data to be used
+            indices : indices of data to be used. If given, `st` and `en` will be ignored.
+            data : if not None, it will directlry passed to fit ignoring `st`, `en` and `indices`
+            data_keys : list: allowed only if self.data is a dictionary. You can
+                decided which keys from self.data to use use for training by
+                specifying the keys of self.data dictionary
+        Returns:
+            A keras history object in case of deep learning model with tensorflow
+            as backend or anything returned by `fit` method of underlying model.
         """
+        setattr(self, '_train_args', {'st': st, 'en': en, 'indices': indices})
         visualizer = Visualizations(path=self.path)
         self.is_training = True
         if data_keys is not None and self.num_input_layers == 1:

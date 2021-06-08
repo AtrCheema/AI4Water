@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from AI4Water import Model
 from AI4Water.backend import get_sklearn_models
 from AI4Water.utils.imputation import Imputation
-from AI4Water.utils.datasets import load_nasdaq
+from AI4Water.utils.datasets import load_nasdaq, arg_beach
 from AI4Water.utils.visualizations import Interpret
 from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
@@ -65,9 +65,9 @@ def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=N
 def get_layers(o=1, forecast_len=1):
 
     return {
-            "LSTM": {"config": {"units": 1}},
-            "Dense": {"config": {"units": o*forecast_len }},
-            "Reshape": {"config": {"target_shape": (o, forecast_len)}}
+            "LSTM": {"units": 1},
+            "Dense": {"units": o*forecast_len },
+            "Reshape": {"target_shape": (o, forecast_len)}
         }
 
 
@@ -601,36 +601,47 @@ class TestUtils(unittest.TestCase):
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
             return
 
-    # def test_ignore_nan1_and_data(self):  # todo failing on linux
-    #     if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
-    #         warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
-    #     else:
-    #         df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
-    #
-    #         layers = {
-    #             "Flatten": {"config": {}},
-    #             "Dense": {"config": {"units": 2}},
-    #             "Reshape": {"config": {"target_shape": (2, 1)}}}
-    #
-    #         model = Model(allow_nan_labels=1,
-    #                       transformation=None,
-    #                       val_data="same",
-    #                       val_fraction=0.0,
-    #                       model={'layers':layers},
-    #                       inputs=['in1', 'in2'],
-    #                       outputs=['out1', 'out2'],
-    #                       epochs=10,
-    #                       verbosity=1,
-    #                       data=df.copy())
-    #
-    #         history = model.fit(indices='random')
-    #
-    #         self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
-    #
-    #         testx, _, testy = model.test_data(indices=model.test_indices)
-    #
-    #         np.allclose(testy[4][0], df[['out1']].iloc[29])
-    #         return
+    def test_same_val_data_with_st_en_defined(self):
+        model = Model(model={'layers': {'LSTM': 8}},
+                      data=arg_beach(),
+                      verbosity=2,
+                      batch_size=4,
+                      val_data="same")
+        model.fit(st=0, en=400)
+        val_data = model.val_data()
+        train_data = model.train_data() # this should return true train data todo
+        return
+
+    def test_ignore_nan1_and_data(self):  # todo failing on linux
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+        else:
+            df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+
+            layers = {
+                "Flatten": {"config": {}},
+                "Dense": {"config": {"units": 2}},
+                "Reshape": {"config": {"target_shape": (2, 1)}}}
+
+            model = Model(allow_nan_labels=1,
+                          transformation=None,
+                          val_data="same",
+                          val_fraction=0.0,
+                          model={'layers':layers},
+                          inputs=['in1', 'in2'],
+                          outputs=['out1', 'out2'],
+                          epochs=10,
+                          verbosity=1,
+                          data=df.copy())
+
+            history = model.fit(indices='random')
+
+            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+
+            testx, _, testy = model.test_data(indices=model.test_indices)
+
+            np.allclose(testy[4][0], df[['out1']].iloc[29])
+            return
 
     def test_jsonize(self):
         a = [np.array([2.0])]
