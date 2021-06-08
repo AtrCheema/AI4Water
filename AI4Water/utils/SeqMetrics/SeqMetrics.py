@@ -55,29 +55,33 @@ class Metrics(object):
     """
 
     def __init__(self,
-                 true,
-                 predicted,
-                 replace_nan=None,
-                 replace_inf=None,
-                 remove_zero=False,
-                 remove_neg=False):
+                 true: Union[np.ndarray, list],
+                 predicted: Union[np.ndarray, list],
+                 replace_nan: Union[int, float, None] = None,
+                 replace_inf: Union[int, float, None] = None,
+                 remove_zero: bool = False,
+                 remove_neg: bool = False,
+                 metric_type: str = 'regression'
+                 ):
 
         """
         Arguments:
-            true array/list: ture/observed/actual values
-            predicted array/list: simulated values
-            replace_nan float/int: default None. if not None, then NaNs in true
+            true : array like, ture/observed/actual/target values
+            predicted : array like, simulated values
+            replace_nan : default None. if not None, then NaNs in true
                 and predicted will be replaced by this value.
-            replace_inf float/int: default None, if not None, then inf vlaues in true and
+            replace_inf : default None, if not None, then inf vlaues in true and
                 predicted will be replaced by this value.
-            remove_zero bool: default False, if True, the zero values in true
+            remove_zero : default False, if True, the zero values in true
                 or predicted arrays will be removed. If a zero is found in one
                 array, the corresponding value in the other array will also be
                 removed.
-            remove_neg bool: default False, if True, the negative values in true
+            remove_neg : default False, if True, the negative values in true
                 or predicted arrays will be removed.
+            metric_type : type of metric.
 
         """
+        self.metric_type = metric_type
         self.true, self.predicted = self._pre_process(true, predicted)
         self.replace_nan = replace_nan
         self.replace_inf = replace_inf
@@ -133,8 +137,7 @@ class Metrics(object):
 
         return true, predicted
 
-    @staticmethod
-    def _assert_1darray(array_like) -> np.ndarray:
+    def _assert_1darray(self, array_like) -> np.ndarray:
         """Makes sure that the provided `array_like` is 1D numpy array"""
         if not isinstance(array_like, np.ndarray):
             if not isinstance(array_like, list):
@@ -149,10 +152,17 @@ class Metrics(object):
             else:
                 np_array = np.array(array_like).reshape(-1, )
         else:
-            # maybe the dimension is >1 so make sure it is more
-            np_array = array_like.reshape(-1, )
+            if np.ndim(array_like)>1:
+                sec_dim = array_like.shape[1]
+                if self.metric_type != 'classification' and sec_dim>1:
+                    raise ValueError(f"Array must not be 2d but it has shape {array_like.shape}")
+                np_array = array_like
+            else:
+                # maybe the dimension is >1 so make sure it is more
+                np_array = array_like.reshape(-1, )
 
-        assert len(np_array.shape) == 1
+        if self.metric_type != 'classification':
+            assert len(np_array.shape) == 1
         return np_array
 
     def calculate_all(self, statistics=False, verbose=False, write=False, name=None):
@@ -421,7 +431,9 @@ class RegressionMetrics(Metrics):
 
     def acc(self) -> float:
         """Anomaly correction coefficient.
-        Reference: Langland et al., 2012. Miyakoda et al., 1972. Murphy et al., 1989."""
+        Reference:
+            [Langland et al., 2012](https://doi.org/10.3402/tellusa.v64i0.17531).
+            Miyakoda et al., 1972. Murphy et al., 1989."""
         a = self.predicted - np.mean(self.predicted)
         b = self.true - np.mean(self.true)
         c = np.std(self.true, ddof=1) * np.std(self.predicted, ddof=1) * self.predicted.size
@@ -438,15 +450,16 @@ class RegressionMetrics(Metrics):
 
     def agreement_index(self) -> float:
         """
-        Agreement Index (d) developed by Willmott (1981). It detects additive and pro-portional differences in the
-        observed and simulated means and vari-ances [1]. It is overly sensitive to extreme values due to the squared
+        Agreement Index (d) developed by [Willmott, 1981](https://doi.org/10.1080/02723646.1981.10642213).
+        It detects additive and pro-portional differences in the observed and
+        simulated means and vari-ances [Moriasi et al., 2015](https://doi.org/10.13031/trans.58.10715).
+        It is overly sensitive to extreme values due to the squared
         differences [2]. It can also be used as a substitute for R2 to identify the degree to which model predic-tions
         are error-free [2].
             .. math::
             d = 1 - \\frac{\\sum_{i=1}^{N}(e_{i} - s_{i})^2}{\\sum_{i=1}^{N}(\\left | s_{i} - \\bar{e}
              \\right | + \\left | e_{i} - \\bar{e} \\right |)^2}
 
-        [1] Moriasi et al., 2015
         [2] Legates and McCabe, 199
         """
         agreement_index = 1 - (np.sum((self.true - self.predicted) ** 2)) / (np.sum(
@@ -455,7 +468,7 @@ class RegressionMetrics(Metrics):
 
     def aic(self, p=1) -> float:
         """
-        Akaike’s Information Criterion
+        [Akaike’s Information Criterion](https://doi.org/10.1007/978-1-4612-1694-0_15)
         Modifying from https://github.com/UBC-MDS/RegscorePy/blob/master/RegscorePy/aic.py
         """
         assert p > 0
@@ -467,7 +480,7 @@ class RegressionMetrics(Metrics):
         return float(n * np.log(rss / n) + 2 * p)
 
     def aitchison(self, center='mean') -> float:
-        """ Aitchison distance. used in https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf"""
+        """Aitchison distance. used in [Zhang et al., 2020](https://doi.org/10.5194/hess-24-2505-2020)"""
         lx = np.log(self.true)
         ly = np.log(self.predicted)
         if center.upper() == 'MEAN':
@@ -497,7 +510,7 @@ class RegressionMetrics(Metrics):
 
     def bias(self) -> float:
         """
-        Bias as shown in  https://doi.org/10.1029/97WR03495
+        Bias as shown in  https://doi.org/10.1029/97WR03495 and given by [Gupta et al., 1998](https://doi.org/10.1080/02626667.2018.1552002
             .. math::
             Bias=\\frac{1}{N}\\sum_{i=1}^{N}(e_{i}-s_{i})
         """
@@ -1196,7 +1209,7 @@ class RegressionMetrics(Metrics):
 
     def nse_alpha(self) -> float:
         """
-        Alpha decomposition of the NSE, see Gupta et al. 2009
+        Alpha decomposition of the NSE, see [Gupta et al. 2009](https://doi.org/10.1029/97WR03495)
         used in kratzert et al., 2018
         Returns
         -------
@@ -1208,7 +1221,7 @@ class RegressionMetrics(Metrics):
 
     def nse_beta(self) -> float:
         """
-        Beta decomposition of NSE. See Gupta et. al 2009
+        Beta decomposition of NSE. See [Gupta et. al 2009](https://doi.org/10.1016/j.jhydrol.2009.08.003)
         used in kratzert et al., 2018
         Returns
         -------
@@ -1613,4 +1626,18 @@ class RegressionMetrics(Metrics):
 
 class ClassificationMetrics(Metrics):
     """Calculates classification metrics."""
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, metric_type='classification', **kwargs)
+
+    def cross_entropy(self, epsilon=1e-12):
+        """
+        Computes cross entropy between targets (encoded as one-hot vectors)
+        and predictions.
+        Input: predictions (N, k) ndarray
+               targets (N, k) ndarray
+        Returns: scalar
+        """
+        predictions = np.clip(self.predicted, epsilon, 1. - epsilon)
+        N = predictions.shape[0]
+        ce = -np.sum(self.true * np.log(predictions + 1e-9)) / N
+        return ce
