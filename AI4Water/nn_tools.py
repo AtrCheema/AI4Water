@@ -221,6 +221,8 @@ class NN(AttributeStore):
         automatically a dense layer matching the number of outputs and
         then reshapes it to match the following dimention (outs, forecast_len/horizons)
         """
+        if self.problem=='classification':
+            return current_outputs
         new_outputs = current_outputs
         shape = current_outputs.shape
         quantiles = 1 if getattr(self, 'quantiles', None) is None else len(self.quantiles)
