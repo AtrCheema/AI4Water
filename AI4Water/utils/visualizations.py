@@ -221,7 +221,8 @@ class Interpret(Plot):
         Gets attention components of tft layer from AI4Water's Model.
         Arguments:
         model : a AI4Water's Model instance.
-        train_data_args : keyword arguments which will passed to train_data method to fetch processed input data
+        train_data_args : keyword arguments which will passed to `training_data`
+        method to fetch processed input data
 
         returns:
             dictionary containing attention components of tft as numpy arrays. Following four attention

@@ -445,15 +445,19 @@ class Model(NN, Plots):
     def input_layer_names(self) -> list:
 
         return [lyr.name.split(':')[0] for lyr in self._model.inputs]
-    
+
     @property
-    def num_classes(self):
-        _num_classes = 0
+    def classes(self):
+        _classes = []
         if self.problem == 'classification':
             if self.outs==1:
                 array = self.data[self.out_cols].values
-                _num_classes = np.unique(array[~np.isnan(array)])
-        return _num_classes
+                _classes = np.unique(array[~np.isnan(array)])
+        return _classes
+
+    @property
+    def num_classes(self):
+        return len(self.classes)
 
     def loss(self):
         # overwrite this function for a customized loss function.
@@ -1108,9 +1112,10 @@ class Model(NN, Plots):
 
             elif getattr(self, 'test_indices', None) is not None:  # test indices are available
                 kwargs['indices'] = self.test_indices
-            elif _train_args['en'] is not None:
-                kwargs['st'] = _train_args['en']
 
+            # when source is `test` but actuall callee is `predict` method with st/en defined
+            elif _train_args['en'] is not None and kwargs.get('en', None) is None:
+                kwargs['st'] = _train_args['en']
 
         transformation = self.config['transformation']
         if isinstance(self.data, dict):
@@ -1142,6 +1147,10 @@ class Model(NN, Plots):
             label = label.reshape(-1, label.shape[1])
 
         x, prev_y, label = self.check_batches(x, prev_y, label)
+
+        if self.problem == 'classification':
+            assert label.shape[1] == 1
+            label = tf.keras.utils.to_categorical(label, self.num_classes)
 
         if isinstance(label, dict) and not use_split_data:
             assert len(self._model.outputs) == len(label)
@@ -1182,7 +1191,21 @@ class Model(NN, Plots):
 
         return true, predicted
 
-    def process_results(self,
+    def process_class_results(self,
+                              true: np.ndarray,
+                              predicted: np.ndarray,
+                              prefix=None,
+                              index=None,
+                              remove_nans=True):
+
+        pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
+        true_labels = [f"true_{i}" for i in range(true.shape[1])]
+        fname = os.path.join(self.path, f"{prefix}_prediction.csv")
+        pd.DataFrame(np.concatenate([true, predicted], axis=1), columns=true_labels + pred_labels, index=index).to_csv(fname)
+
+        return true, predicted
+
+    def process_regres_results(self,
                         true: np.ndarray,
                         predicted: np.ndarray,
                         prefix=None,
@@ -1391,7 +1414,8 @@ class Model(NN, Plots):
                 if getattr(self, 'quantiles', None) is not None:
                     assert model_output_shape[0] == len(self.quantiles) * self.outs
                 elif self.problem == 'classification':
-                    pass
+                    assert model_output_shape[0] == self.num_classes
+                    assert model_output_shape[0] == outputs.shape[1]
                 else:
                     assert model_output_shape == outputs.shape[1:], f"""
 ShapeMismatchError: Shape of model's output is {model_output_shape}
@@ -1554,7 +1578,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         predicted = self.prediction_step(inputs)
 
-        if self.problem.upper().startswith("CLASS"):
+        if self.problem.upper().startswith("CLASS") and self.category == "ML":  # todo, should be for DL as well
             self.roc_curve(inputs, true_outputs)
 
         if self.config['transformation']:
@@ -1573,7 +1597,10 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         if self.quantiles is None:
 
             if pp:
-                self.process_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index)
+                if self.problem == 'regression':
+                    self.process_regres_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index)
+                else:
+                    self.process_class_results(true_outputs, predicted, prefix=prefix, index=dt_index)
 
         else:
             assert self.outs == 1
