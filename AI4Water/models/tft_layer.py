@@ -132,6 +132,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             # Isolate only known future inputs.
             future_inputs = known_combined_layer[:, encoder_steps:, :]  # (num_examples, 24, hidden_units, num_outputs)
         else:
+            assert self.time_steps == self.encoder_steps
             future_inputs=None
 
         def static_combine_and_mask(embedding):
@@ -384,8 +385,14 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
             queries=atten_input
         else:
             queries=atten_input[:, self.encoder_steps:]
+
+        # queries (batch_size, time_steps, hidden_units
+        # atten_input (batch_size, time_steps, hidden_units
         atten_output, self_att = self_attn_layer(queries,
                                                  atten_input, atten_input, mask=mask)
+
+        # atten_output (batch_size, time_steps, hidden_units)
+        # self_att (num_heads, batch_size, time_steps, time_steps
         # x =  (num_examples, time_steps, hidden_units)
         atten_output, _ = apply_gating_layer(  # # x =  (num_examples, time_steps, hidden_units)
             atten_output,
