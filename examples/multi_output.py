@@ -16,7 +16,7 @@ tf.compat.v1.disable_eager_execution()
 class MultiSite(InputAttentionModel):
     """ This is only for two outputs currently. """
 
-    def train_data(self, data=None, data_keys=None, **kwargs):
+    def training_data(self, data=None, data_keys=None, **kwargs):
         data= self.data if data is None else data
         train_x, train_y, train_label = self.fetch_data(data,
                                                         inps=self.in_cols,

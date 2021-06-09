@@ -48,11 +48,11 @@ class Plots(object):
         self.config = config
 
     @property
-    def train_data(self):
+    def training_data(self):
         raise AttributeError
 
     @property
-    def val_data(self):
+    def validation_data(self):
         raise AttributeError
 
     @property
@@ -216,14 +216,14 @@ class Plots(object):
 
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
-        x, _, y = self.train_data(**kwargs)
+        x, _, y = self.training_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='training')
 
         return
 
     def plot_val_data(self, how='3d', save=True,  **kwargs):
 
-        x, y = self.val_data(**kwargs)
+        x, y = self.validation_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='validation')
 
         return

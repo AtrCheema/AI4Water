@@ -177,7 +177,7 @@ arguments in the layer must be enclosed in a `config` dictionary within the laye
 from AI4Water import Model
 class MyModel(Model):
 
-    def train_data(self, **kwargs) -> (list, list):
+    def training_data(self, **kwargs) -> (list, list):
         """ write code which returns x and y where x consits of [(samples, 5, 10), (samples, 10)] and y consits of 
             list [(samples, 1)]
          """

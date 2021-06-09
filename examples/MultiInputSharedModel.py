@@ -18,7 +18,7 @@ class MultiInputSharedModel(Model):
         x, _, labels = self.fetch_data(data=data, **kwargs)
         return [x], None, [labels]
 
-    def train_data(self, **kwargs):
+    def training_data(self, **kwargs):
 
         x_data = []
         y_data = []
@@ -38,7 +38,7 @@ class MultiInputSharedModel(Model):
 
         return x_data, None, y_data
 
-    def val_data(self, **kwargs):
+    def validation_data(self, **kwargs):
 
         self.out_cols = [self.config['outputs'][-1]]  # because fetch_data depends upon self.outs
         x, _, labels = self.fetch_data(data=self.data[-1], **kwargs)
@@ -51,9 +51,9 @@ class MultiInputSharedModel(Model):
 
         visualizer = Visualizations(path=self.path)
 
-        train_data = self.train_data(st=st, en=en, indices=indices)
+        train_data = self.training_data(st=st, en=en, indices=indices)
 
-        val_data = self.val_data(st=st, en=en, indices=indices)
+        val_data = self.validation_data(st=st, en=en, indices=indices)
 
         history = self._fit(train_data[0], train_data[2], validation_data=(val_data[0], val_data[2]), **callbacks)
 

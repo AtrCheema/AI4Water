@@ -234,7 +234,7 @@ class Interpret(Plot):
         if model is None:
             model = self.model
 
-        x, _, _ = model.train_data(**train_data_args)
+        x, _, _ = model.training_data(**train_data_args)
         attention_components = {}
 
         for k, v in model.TemporalFusionTransformer_attentions.items():

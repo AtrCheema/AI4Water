@@ -445,6 +445,15 @@ class Model(NN, Plots):
     def input_layer_names(self) -> list:
 
         return [lyr.name.split(':')[0] for lyr in self._model.inputs]
+    
+    @property
+    def num_classes(self):
+        _num_classes = 0
+        if self.problem == 'classification':
+            if self.outs==1:
+                array = self.data[self.out_cols].values
+                _num_classes = np.unique(array[~np.isnan(array)])
+        return _num_classes
 
     def loss(self):
         # overwrite this function for a customized loss function.
@@ -898,7 +907,7 @@ class Model(NN, Plots):
             y_train = outputs
 
             assert len(val_data) <= 3
-            x_val, y_val = val_data
+            x_val, prev_y_val, y_val = val_data
 
         else:
             return inputs, outputs, val_data
@@ -967,6 +976,7 @@ class Model(NN, Plots):
             if hasattr(indices, '__len__'):
                 if self.is_training:
                     setattr(self, 'train_indices', indices)
+                    # todo test indices must also be defined here.
                 return indices
 
         if isinstance(self.data, dict):
@@ -1036,18 +1046,25 @@ class Model(NN, Plots):
 
         return interval_length
 
-    def train_data(self, data=None, data_keys=None, use_split_data=False, **kwargs):
+    def training_data(self, *args, **kwargs):
+        return self.make_data(source='training', *args, **kwargs)
+
+    def make_data(self, source, data=None, data_keys=None, use_split_data=False, **kwargs):
         """
-        Prepares data on which to train the NN.
+        Prepares data on which to train the NN. This method is called whenever
+        `training_data`, `validation_data` or `test_data` method is called but
+        with different `source` which tells it from where it has been called or
+        what kind of data is being fetched.
         It is possible that self.data is dictionary but self.ins and self.outs are not dictionaries.
         This means same in_cols and out_cols exist in all dataframes of self.data.
         use_split_data: bool, if data is a dictionary then if we want x,y as dictionary as well, then
                         this argument can be set to True. In such a case, x and prev_y and y will
                         be dictionaries of arrays.
         """
+        assert source in ['training', 'validation', 'test']
 
         # For cases we don't want to use any of data-preprocessing utils,
-        # the train_data can be called directly with 'data'
+        # the make_data can be called directly with 'data'
         # keyword argumentnt, and that will be returned.
         if data is not None:
             return data
@@ -1062,6 +1079,38 @@ class Model(NN, Plots):
         if use_split_data:
             assert isinstance(self.data, dict)
             assert isinstance(data_keys, list)
+
+        _train_args = getattr(self, '_train_args', {'en': None})
+
+        # when `training_data` is called independently after `fit` has been called
+        # then `training_data()` must always return only training data. So we
+        # should remember the arguments to fetch training data. Saving the training data
+        # in memory can be very memory inefficient otherwise.
+        if source=='training':
+            if getattr(self, 'train_indices', None) is not None:
+                kwargs['indices'] = self.train_indices
+            elif kwargs.get('indices', None) is None and kwargs.get('en', None) is None:
+                kwargs.update(getattr(self, '_train_args', {}))
+        elif source=='test':
+            if kwargs.get('indices', None) is not None:
+                pass # kwargs['indices'] = getattr(self, 'train_inidces', None)
+
+            # st/en were used to define training_data, and test_indices are also not there
+            # and en is also not in kwargs and val and test data are same,
+            # so define test data from where train data is ended
+            elif self.config['val_data']=='same' and kwargs.get('en', None) is None:
+
+                # self.test_indices are available
+                if getattr(self, 'test_indices', None) is not None:
+                    kwargs['indices'] = self.test_indices
+                else:
+                    kwargs['st'] = _train_args['en']
+
+            elif getattr(self, 'test_indices', None) is not None:  # test indices are available
+                kwargs['indices'] = self.test_indices
+            elif _train_args['en'] is not None:
+                kwargs['st'] = _train_args['en']
+
 
         transformation = self.config['transformation']
         if isinstance(self.data, dict):
@@ -1088,6 +1137,9 @@ class Model(NN, Plots):
         else:
             x, prev_y, label = self.fetch_data(self.data, self.in_cols, self.out_cols,
                                                transformation=self.config['transformation'], **kwargs)
+
+        if self.problem == 'classification':  # for clsasification, it should be 2d
+            label = label.reshape(-1, label.shape[1])
 
         x, prev_y, label = self.check_batches(x, prev_y, label)
 
@@ -1251,7 +1303,7 @@ class Model(NN, Plots):
 
         return
 
-    def val_data(self, **kwargs):
+    def validation_data(self, **kwargs):
         """ This method can be overwritten in child classes. """
         val_data = None
         if self.config['val_data'] is not None:
@@ -1270,11 +1322,11 @@ class Model(NN, Plots):
 
                 if hasattr(self, 'test_indices'):
                     if self.test_indices is not None:
-                        x, prev_y, label = self.train_data(indices=self.test_indices, **kwargs)
+                        x, prev_y, label = self.make_data(source='validation', indices=self.test_indices, **kwargs)
 
                         if self.category.upper() == "ML" and self.outs == 1:
                             label = label.reshape(-1, )
-                        return x, label
+                        return x, prev_y, label
                     else:  # indices are not set and we need to divide data into test and validation
                         return self.config['val_data']
                 else:
@@ -1284,9 +1336,9 @@ class Model(NN, Plots):
                         st, en, indices = train_args['st'], train_args['en'], train_args['indices']
                         if en is not None and indices is None: # st/en were defined and val data is to be same as test
                             # bcz in to_tf_data we expect val data to be x,y todo
-                            x, _y, y = self.train_data(st=en, **kwargs)
+                            x, _y, y = self.make_data(source='validation', st=en, **kwargs)
                             assert np.isnan(y).sum() == 0  # currently not implemented  todo
-                            return x, y
+                            return x, _y,  y
                     else:
                         return self.config['val_data']
             else:
@@ -1318,7 +1370,9 @@ class Model(NN, Plots):
             A keras history object in case of deep learning model with tensorflow
             as backend or anything returned by `fit` method of underlying model.
         """
+        # save the train args in the memory
         setattr(self, '_train_args', {'st': st, 'en': en, 'indices': indices})
+
         visualizer = Visualizations(path=self.path)
         self.is_training = True
         if data_keys is not None and self.num_input_layers == 1:
@@ -1326,7 +1380,7 @@ class Model(NN, Plots):
         else:
             indices = self.get_indices(indices)
 
-        train_data = self.train_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
+        train_data = self.training_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
         inputs, outputs = maybe_three_outputs(train_data)
 
         if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
@@ -1346,7 +1400,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         self.info['training_start'] = dateandtime_now()
 
         if self.category.upper() == "DL":
-            history = self._fit(inputs, outputs, self.val_data(), **callbacks)
+            history = self._fit(inputs, outputs, self.validation_data(), **callbacks)
 
             visualizer.plot_loss(history.history)
 
@@ -1382,7 +1436,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if kwargs['data'] is not None:
                 return kwargs['data']
 
-        return self.train_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
+        return self.make_data(source='test', scaler_key=scaler_key, data_keys=data_keys, **kwargs)
 
     def prediction_step(self, inputs):
         if self.category.upper() == "DL":
@@ -1394,6 +1448,54 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
         return predicted
 
+    def evaluate(self, data_type='training', **kwargs):
+        """
+        Arguments:
+            data_type : which data type to use, valid values are `training`, `test`
+                and `validation`. You can also provide your own x,y values as keyword
+                arguments. In such a case, this argument will have no meaning.
+            kwargs : any keyword argument for the `evaluate` method of the underlying
+                model.
+        """
+        assert data_type in ['training', 'test', 'validation']
+
+        # get the relevant data
+        data = getattr(self, f'{data_type}_data')()
+
+        if data_type == 'validation':
+            if data is None:
+                print('validation data can not be fetched because it was set randomly inside training loop')
+                return None
+
+        x, prev_y, y = data
+
+
+        # the user provided x,y and batch_size values should have priority
+        x = kwargs.get('x', x)
+        y = kwargs.get('y', y)
+        batch_size = kwargs.get('batch_size', self.config['batch_size'])
+
+        eval_output =  self._model.evaluate(
+            x=x,
+            y=y,
+            batch_size=batch_size,
+            verbose=self.verbosity,
+            **kwargs
+        )
+
+        acc, loss = None, None
+
+        if self.category == "DL":
+            loss, acc = eval_output
+
+        eval_report = f"{'*'*30}\n{dateandtime_now()}\n Accuracy: {acc}\n Loss: {loss}\n"
+
+        fname = os.path.join(self.path, 'eval_report.txt')
+        with open(fname, 'a+') as fp:
+            fp.write(eval_report)
+
+        return eval_output
+
     def predict(self,
                 st=0,
                 en=None,
@@ -1402,7 +1504,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 data_keys=None,
                 scaler_key: str = None,
                 prefix: str = 'test',
-                use_datetime_index=False,
+                use_datetime_index:bool = False,
                 pp=True
                 ):
         """
@@ -1420,9 +1522,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                 that was used when the data was transformed. By default that is '0'.
                 If the data was not transformed with Model, then make sure that
                 data_config['transformation'] is None.
-            use_datetime_index bool: whether to sort the results. Should only be
+            use_datetime_index : whether to sort the results. Should only be
                 used if the data is indexed by pd.DatetimeIndex and `indices` is random.
-            prefix str: prefix used with names of saved results
+            prefix : prefix used with names of saved results
         Returns:
             a tuple of arrays. The first is true and the second is predicted.
         """

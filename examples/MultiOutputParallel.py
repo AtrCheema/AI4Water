@@ -31,7 +31,7 @@ class MultiOutputParallel(Model):
     def __init__(self, **kwargs):
         super(MultiOutputParallel, self).__init__(**kwargs)
 
-    def train_data(self, **kwargs):
+    def training_data(self, **kwargs):
 
         outs = len(self.config['outputs'])
 
@@ -76,7 +76,7 @@ class MultiOutputParallel(Model):
 
         indices = self.get_indices(indices)
 
-        x, y = self.train_data(st=st, en=en, indices=indices)
+        x, y = self.training_data(st=st, en=en, indices=indices)
 
         (x, y, sample_weights, val_x, val_y, val_sample_weights) = training_utils.split_training_and_validation_data(
             x, y, None, self.config['val_fraction'])
@@ -286,7 +286,7 @@ class MultiOutputParallel(Model):
 
 class ConvLSTMMultiOutput(MultiOutputParallel):
 
-    def train_data(self, **kwargs):
+    def training_data(self, **kwargs):
 
         outs = len(self.config['outputs'])
 
@@ -340,7 +340,7 @@ class LSTMAutoEncMultiOutput(MultiOutputParallel):
 
         super(LSTMAutoEncMultiOutput, self).__init__(**kwargs)
 
-    def train_data(self, **kwargs):
+    def training_data(self, **kwargs):
 
         outs = len(self.config['outputs'])
 
