@@ -30,7 +30,7 @@ predictions = np.array([[0.25,0.25,0.25,0.25],
 targets = np.array([[0,0,0,1],
                    [0,0,0,1]])
 
-class_metrics = ClassificationMetrics(targets, predictions)
+class_metrics = ClassificationMetrics(targets, predictions, categorical=True)
 
 class test_errors(unittest.TestCase):
 
@@ -91,6 +91,10 @@ class test_errors(unittest.TestCase):
     def test_ce(self):
         # https://stackoverflow.com/a/47398312/5982232
         self.assertAlmostEqual(class_metrics.cross_entropy(), 0.71355817782)
+        return
+
+    def test_class_all(self):
+        all_metrics = class_metrics.calculate_all()
         return
 
 if __name__ == "__main__":

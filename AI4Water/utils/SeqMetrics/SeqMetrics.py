@@ -3,7 +3,12 @@ import warnings
 import numpy as np
 from math import sqrt
 from typing import Union
+
+from sklearn import preprocessing
+from sklearn.metrics import hinge_loss
 from scipy.stats import gmean, kendalltau
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 
 from AI4Water.utils.utils import ts_features
 from AI4Water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
@@ -156,10 +161,10 @@ class Metrics(object):
                 sec_dim = array_like.shape[1]
                 if self.metric_type != 'classification' and sec_dim>1:
                     raise ValueError(f"Array must not be 2d but it has shape {array_like.shape}")
-                np_array = array_like
+                np_array = np.array(array_like).reshape(-1, ) if self.metric_type != 'classification' else array_like
             else:
                 # maybe the dimension is >1 so make sure it is more
-                np_array = array_like.reshape(-1, )
+                np_array = array_like.reshape(-1, ) if self.metric_type != 'classification' else array_like
 
         if self.metric_type != 'classification':
             assert len(np_array.shape) == 1
@@ -1626,8 +1631,53 @@ class RegressionMetrics(Metrics):
 
 class ClassificationMetrics(Metrics):
     """Calculates classification metrics."""
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, *args, categorical=False, **kwargs):
+        self.categorical = categorical
         super().__init__(*args, metric_type='classification', **kwargs)
+        self.true_labels = self._true_labels()
+        self.true_logits = self._true_logits()
+        self.pred_labels = self._pred_labels()
+        self.pred_logits = self._pred_logits()
+
+        all_methods = list_subclass_methods(ClassificationMetrics, True)
+        self.all_methods=  [m for m in all_methods if not m.startswith('_')]
+
+    def _num_classes(self):
+        return len(self._classes())
+
+    def _classes(self):
+        array = self.true_labels
+        return np.unique(array[~np.isnan(array)])
+
+    def _true_labels(self):
+        """retuned array is 1d"""
+        if self.categorical:
+            return np.argmax(self.true, axis=1)
+        assert self.true.ndim == 1
+        return self.true
+
+    def _true_logits(self):
+        """returned array is 2d"""
+        if self.categorical:
+            return self.true
+        lb = preprocessing.LabelBinarizer()
+        return lb.fit_transform(self.true)
+
+    def _pred_labels(self):
+        """returns 1d"""
+        if self.categorical:
+            return np.argmax(self.predicted, axis=1)
+        lb = preprocessing.LabelBinarizer()
+        lb.fit(self.true_labels)
+        return lb.inverse_transform(self.predicted)
+
+    def _pred_logits(self):
+        """returned array is 2d"""
+        if self.categorical:
+            return self.true
+        # we can't do it
+        return None
 
     def cross_entropy(self, epsilon=1e-12):
         """
@@ -1641,3 +1691,16 @@ class ClassificationMetrics(Metrics):
         N = predictions.shape[0]
         ce = -np.sum(self.true * np.log(predictions + 1e-9)) / N
         return ce
+
+    # def hinge_loss(self):
+    #     """hinge loss using sklearn"""
+    #     if self.pred_logits is not None:
+    #         return hinge_loss(self.true_labels, self.pred_logits)
+    #     return None
+
+    def balanced_accuracy_score(self):
+        return balanced_accuracy_score(self.true_labels, self.pred_labels)
+
+    def accuracy(self):
+        return accuracy_score(self.true_labels, self.pred_labels)
+

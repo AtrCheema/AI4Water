@@ -27,7 +27,7 @@ from AI4Water.utils.plotting_tools import Plots
 from AI4Water.utils.transformations import Transformations
 from AI4Water.utils.imputation import Imputation
 from AI4Water.models.custom_training import train_step, test_step
-from AI4Water.utils.SeqMetrics import RegressionMetrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from AI4Water.utils.visualizations import Visualizations, Interpret
 
 
@@ -1208,6 +1208,12 @@ class Model(NN, Plots):
         true_labels = [f"true_{i}" for i in range(true.shape[1])]
         fname = os.path.join(self.path, f"{prefix}_prediction.csv")
         pd.DataFrame(np.concatenate([true, predicted], axis=1), columns=true_labels + pred_labels, index=index).to_csv(fname)
+        metrics = ClassificationMetrics(true, predicted, categorical=True)
+
+        save_config_file(self.path,
+                         errors=metrics.calculate_all(),
+                         name=f"{prefix}_{dateandtime_now()}.json"
+                         )
 
         return true, predicted
 
