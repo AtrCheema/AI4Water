@@ -177,10 +177,8 @@ def _make_model(data, **kwargs):
     kwargs = process_io(data, **kwargs)
 
     default_model = {'layers': {
-        "Dense_0": {'config': {'units': 64, 'activation': 'relu'}},
-        "Flatten": {"config": {}},
-        "Dense_3": {'config':  {'units': 1}},
-        "Reshape": {"config": {"target_shape": (1, 1)}}
+        "Dense_0": {'units': 2, 'activation': 'relu'},
+        "Flatten": {},
     }}
 
     kwargs = check_kwargs(**kwargs)

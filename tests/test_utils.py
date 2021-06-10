@@ -463,7 +463,7 @@ class TestUtils(unittest.TestCase):
                                  {"LSTM": 2}
                       },
                       lookback=lookback,
-                      verbosity=1)
+                      verbosity=0)
 
         model.fit(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)

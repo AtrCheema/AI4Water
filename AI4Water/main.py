@@ -999,6 +999,8 @@ class Model(NN, Plots):
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
                 tot_obs = np.sum(idx)
             else:
+                more = len(self.intervals) * (self.lookback * self.config[
+                    'input_step']) if self.intervals is not None else self.lookback * self.config['input_step']
                 if self.outs == 1:
                     # TODO it is being supposed that intervals correspond with Nans. i.e. all values outside intervals
                     # are NaNs. However this can be wrong when the user just wants to skip some chunks of data even
@@ -1006,16 +1008,22 @@ class Model(NN, Plots):
                     # required. In such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that
                     # creates problems when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide
                     # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
-                    more = len(self.intervals) * self.lookback if self.intervals is not None else self.lookback
                     tot_obs = data.shape[0] - int(data[out_cols].isna().sum()) - more
-                    if self.forecast_len > 1:
-                        tot_obs -= self.forecast_len
+
                 else:
                     # data contains nans and target series are > 1, we want to make sure that they have same nan counts
                     tot_obs = data.shape[0] - int(data[out_cols[0]].isna().sum())
                     nans = data[out_cols].isna().sum()
                     assert np.all(
                         nans.values == int(nans.sum() / len(out_cols))), f"toal nan values in data are {nans}."
+                    tot_obs -= more
+
+
+                if self.forecast_len > 1:
+                    tot_obs -= self.forecast_len
+
+                if self.forecast_step > 0:
+                    tot_obs -= self.forecast_step
 
             idx = np.arange(tot_obs)
             train_indices, test_idx = train_test_split(idx, test_size=self.config['test_fraction'],
@@ -1095,14 +1103,12 @@ class Model(NN, Plots):
                 kwargs['indices'] = self.train_indices
             elif kwargs.get('indices', None) is None and kwargs.get('en', None) is None:
                 kwargs.update(getattr(self, '_train_args', {}))
-        elif source=='test':
-            if kwargs.get('indices', None) is not None:
-                pass # kwargs['indices'] = getattr(self, 'train_inidces', None)
+        elif source=='test' and kwargs.get('indices', None) is None:
 
             # st/en were used to define training_data, and test_indices are also not there
             # and en is also not in kwargs and val and test data are same,
             # so define test data from where train data is ended
-            elif self.config['val_data']=='same' and kwargs.get('en', None) is None:
+            if self.config['val_data']=='same' and kwargs.get('en', None) is None:
 
                 # self.test_indices are available
                 if getattr(self, 'test_indices', None) is not None:
@@ -1329,6 +1335,11 @@ class Model(NN, Plots):
     def validation_data(self, **kwargs):
         """ This method can be overwritten in child classes. """
         val_data = None
+
+        # val_dataset already exists in memory so this is not first time this method is called
+        if isinstance(getattr(self, 'val_dataset', None), tf.data.Dataset):
+            return self.val_dataset
+
         if self.config['val_data'] is not None:
             if isinstance(self.config['val_data'], str):
 
@@ -1355,7 +1366,9 @@ class Model(NN, Plots):
                 else:
                     # validation data needs to be fetched based upon fraction from self.data
                     train_args = getattr(self, '_train_args', None)
-                    if train_args is not None:   # this method is called after fit
+                    # this method is called after fit but when self.data is not available
+                    # we can not use make_data.
+                    if train_args is not None and self.data is not None:
                         st, en, indices = train_args['st'], train_args['en'], train_args['indices']
                         if en is not None and indices is None: # st/en were defined and val data is to be same as test
                             # bcz in to_tf_data we expect val data to be x,y todo
@@ -1363,6 +1376,7 @@ class Model(NN, Plots):
                             assert np.isnan(y).sum() == 0  # currently not implemented  todo
                             return x, _y,  y
                     else:
+                        # self.val_dataset will be made
                         return self.config['val_data']
             else:
                 # `val_data` might have been provided (then use it as it is) or it is None
@@ -1398,9 +1412,21 @@ class Model(NN, Plots):
 
         visualizer = Visualizations(path=self.path)
         self.is_training = True
-        if data_keys is not None and self.num_input_layers == 1:
-            pass
-        else:
+
+        # when no input is given and test/val_fraction are >0.0 then all data should not
+        # be treated as training data. We calculate first training fraction as then set
+        # the indices as 'random' to get the indices by fraction. But self.data should be
+        # available.
+        if data is None and indices is None and en is None and data_keys is None and self.data is not None:
+            if self.config['val_data']=='same':
+                if self.config['val_fraction']>0.0:
+                    self.config['val_fraction'] = 0.0
+
+            train_fraction = 1 - (self.config['val_fraction'] + self.config['test_fraction'])
+            if train_fraction<0.9999:
+                indices = 'random'
+
+        if data_keys is None:  # data keys have preference over indices
             indices = self.get_indices(indices)
 
         train_data = self.training_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
@@ -1413,6 +1439,8 @@ class Model(NN, Plots):
 
                 if getattr(self, 'quantiles', None) is not None:
                     assert model_output_shape[0] == len(self.quantiles) * self.outs
+
+                # todo, it is assumed that there is softmax as the last layer
                 elif self.problem == 'classification':
                     assert model_output_shape[0] == self.num_classes
                     assert model_output_shape[0] == outputs.shape[1]
@@ -1460,6 +1488,12 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             if kwargs['data'] is not None:
                 return kwargs['data']
 
+        # user has defined its own data by overwriting training_data/validation_data
+        # and `val_data` is same as test data, thus avoid the situation if the user
+        # has not overwritten test_data method.
+        if self.config['val_data'] == "same" and self.data is None:
+            return self.validation_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
+
         return self.make_data(source='test', scaler_key=scaler_key, data_keys=data_keys, **kwargs)
 
     def prediction_step(self, inputs):
@@ -1474,38 +1508,33 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
 
     def evaluate(self, data_type='training', **kwargs):
         """
+        calls the `evaluate` method of underlying `model`.
         Arguments:
             data_type : which data type to use, valid values are `training`, `test`
                 and `validation`. You can also provide your own x,y values as keyword
                 arguments. In such a case, this argument will have no meaning.
             kwargs : any keyword argument for the `evaluate` method of the underlying
                 model.
+        Returns:
+            whatever is returned by `evaluate` method of underlying model.
         """
         assert data_type in ['training', 'test', 'validation']
 
         # get the relevant data
         data = getattr(self, f'{data_type}_data')()
 
-        if data_type == 'validation':
-            if data is None:
+        if data is None and data_type == 'validation':
                 print('validation data can not be fetched because it was set randomly inside training loop')
                 return None
 
-        x, prev_y, y = data
-
-
-        # the user provided x,y and batch_size values should have priority
-        x = kwargs.get('x', x)
-        y = kwargs.get('y', y)
-        batch_size = kwargs.get('batch_size', self.config['batch_size'])
-
-        eval_output =  self._model.evaluate(
-            x=x,
-            y=y,
-            batch_size=batch_size,
-            verbose=self.verbosity,
-            **kwargs
-        )
+        # this will mostly be the validation data.
+        if  isinstance(data, tf.data.Dataset):
+            if 'x' not in kwargs:
+                eval_output = self._model.evaluate(self.val_dataset, **kwargs)
+            else:  # give priority to xy
+                eval_output = self._evaluate_with_xy(**kwargs)
+        else:
+            eval_output = self._evaluate_with_xy(data, **kwargs)
 
         acc, loss = None, None
 
@@ -1519,6 +1548,22 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
             fp.write(eval_report)
 
         return eval_output
+
+    def _evaluate_with_xy(self, data, **kwargs):
+        x, prev_y, y = data
+
+        # the user provided x,y and batch_size values should have priority
+        x = kwargs.get('x', x)
+        y = kwargs.get('y', y)
+        batch_size = kwargs.get('batch_size', self.config['batch_size'])
+
+        return self._model.evaluate(
+            x=x,
+            y=y,
+            batch_size=batch_size,
+            verbose=self.verbosity,
+            **kwargs
+        )
 
     def predict(self,
                 st=0,

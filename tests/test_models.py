@@ -186,7 +186,7 @@ class test_MultiInputModels(unittest.TestCase):
                 o = np.random.random((_examples, 1, 1))
                 return [in1, in2, in3, in4], None, o
 
-        model = MyModel(val_data='same', verbosity=1, #data=arg_beach()
+        model = MyModel(val_data='same', verbosity=0,
                         )
         hist = model.fit()
         self.assertGreater(len(hist.history['loss']), 1)
