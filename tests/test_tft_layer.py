@@ -43,6 +43,8 @@ y = np.random.random((n, tot_steps - num_encoder_steps, len(quantiles)))
 class Test_TFT(unittest.TestCase):
 
     def test_as_model(self):
+        params['total_time_steps'] = 192
+        params['future_inputs'] = True
 
         time_dim = params['total_time_steps']
         if params['total_time_steps'] > params['num_encoder_steps']:
@@ -79,6 +81,8 @@ class Test_TFT(unittest.TestCase):
         return
 
     def test_as_layer(self):
+        params['total_time_steps'] = 192
+        params['future_inputs'] = True
         layers = {
             "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs'])}},
             "TemporalFusionTransformer": {"config": params},
@@ -97,6 +101,29 @@ class Test_TFT(unittest.TestCase):
         self.assertEqual(num_paras, 7411)
         return
 
+    def test_as_layer_for_nowcasting(self):
+        params['total_time_steps'] = num_encoder_steps
+        params['future_inputs'] = False
+        layers = {
+            "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs'])}},
+            "TemporalFusionTransformer": {"config": params},
+            "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
+            "Dense": {"config": {"units": output_size * len(quantiles)}}
+        }
+        model = Model(model={'layers':layers},
+                      inputs=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
+                      outputs=['out1', 'out2', 'out3'],
+                      verbosity=1)
+        x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
+        y = np.random.random((n, len(quantiles), 1))
+        model._model.fit(x=x,y=y, validation_split=0.3)
+
+        num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
+        assert model.forecast_len == 1
+        assert model.forecast_step == 0
+        assert model.outs == len(quantiles)
+        self.assertEqual(num_paras, 5484)
+        return
 
 if __name__ == "__main__":
     unittest.main()
