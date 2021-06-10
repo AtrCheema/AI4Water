@@ -5,6 +5,7 @@
         members:
             - __init__
             - fit
+            - evaluate
             - predict
             - interpret
             - view_model
