@@ -3,7 +3,7 @@ import unittest
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from AI4Water.utils.SeqMetrics import RegressionMetrics
+from AI4Water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from AI4Water.utils.SeqMetrics.utils import plot_metrics
 
 import numpy as np
@@ -24,6 +24,13 @@ not_metrics = ['calculate_all',
                "composite_metrics",
                "relative_metrics",
                "percentage_metrics"]
+
+predictions = np.array([[0.25,0.25,0.25,0.25],
+                        [0.01,0.01,0.01,0.96]])
+targets = np.array([[0,0,0,1],
+                   [0,0,0,1]])
+
+class_metrics = ClassificationMetrics(targets, predictions)
 
 class test_errors(unittest.TestCase):
 
@@ -79,6 +86,11 @@ class test_errors(unittest.TestCase):
         errs = RegressionMetrics(data[:, 0], data[:, 1])
         np.testing.assert_almost_equal(0.348, errs.mrae(), 2)
         assert errs.mare() * 100.0 == errs.mape()
+        return
+
+    def test_ce(self):
+        # https://stackoverflow.com/a/47398312/5982232
+        self.assertAlmostEqual(class_metrics.cross_entropy(), 0.71355817782)
         return
 
 if __name__ == "__main__":
