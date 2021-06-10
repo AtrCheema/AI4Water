@@ -93,6 +93,8 @@ def train_predict(model):
     model.fit()
     model.predict()
 
+    test_evaluation(model)
+
     return x,y
 
 
@@ -103,7 +105,7 @@ def test_train_val_test_data(data, val_data, **kwargs):
         val_data=val_data,
         test_fraction=0.2,
         epochs=2,
-        verbosity=1)
+        verbosity=0)
 
     model.fit(**kwargs)
 
@@ -112,23 +114,47 @@ def test_train_val_test_data(data, val_data, **kwargs):
 
     if val_data is None:
         assert _val_data is None
+    elif isinstance(_val_data, tf.data.Dataset):
+        pass
     else:
         val_x, _, val_y = model.validation_data()
 
     test_x, _, test_y = model.test_data()
 
-    if val_data is not None:
+    if val_data == 'same' and not isinstance(_val_data, tf.data.Dataset):
         assert test_x[0].shape == val_x[0].shape
 
     if kwargs.get('indices', None) is not None:
-        assert train_x[0].shape == (162, 15, 13)
-        assert test_x[0].shape == (41, 15, 13)
+        assert train_x[0].shape == (162, model.lookback, data.shape[1]-1)
+        assert test_x[0].shape == (41, model.lookback, data.shape[1]-1)
 
     elif kwargs.get('en', 0) == 400:
-        assert train_x[0].shape == (19, 15, 13)
-        assert test_x[0].shape == (199, 15, 13)
+        assert train_x[0].shape == (19, model.lookback, data.shape[1]-1)
+        assert test_x[0].shape == (199, model.lookback, data.shape[1]-1)
 
     return train_x, train_y
+
+
+def test_evaluation(model):
+
+    model.evaluate('training')
+    train_x, _, train_y = model.training_data()
+
+    model.evaluate('validation')
+    val_data = model.validation_data()
+
+    model.evaluate('test')
+    test_x, _, test_y = model.test_data()
+
+    if model.config['val_data'] == "same":
+        if isinstance(val_data, tf.data.Dataset):
+            # check that val_data and test_data are same
+            pass
+        else:
+            val_x,_,y = val_data
+            assert test_x[0].shape == val_x[0].shape
+
+    return
 
 
 class TestUtils(unittest.TestCase):
@@ -201,11 +227,7 @@ class TestUtils(unittest.TestCase):
             inputs = in_cols,
             outputs= out_cols,
             forecast_step=10,
-            model={'layers':{
-            "LSTM": {"config": {"units": 1}},
-            "Dense": {"config": {"units": 1}},
-            "Reshape": {"config": {"target_shape": (1, 1)}}
-        }}
+            model={'layers':{"LSTM": 1}}
         )
 
         x, y = train_predict(model)
@@ -345,20 +367,20 @@ class TestUtils(unittest.TestCase):
                             outputs=out_cols)
         Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
-    # def test_same_test_val_data_with_chunk(self):
-    #     #TODO not a good test, must check that individual elements in returned arrayare correct
-    #
-    #     x, y = test_train_val_test_data(data=nasdaq_df, st=0, en=3000, val_data="same")
-    #
-    #     self.assertEqual(len(x[0]), len(y))
-    #
-    #    return
+    def test_same_test_val_data_with_chunk(self):
+        #TODO not a good test, must check that individual elements in returned arrayare correct
 
-    # def test_same_test_val_data(self):  # todo, failing in plotting
-    #
-    #     x,y = test_train_val_test_data(data=nasdaq_df, val_data="same")
-    #     self.assertEqual(len(x[0]), len(y))
-    #     return
+        x, y = test_train_val_test_data(data=nasdaq_df, st=0, en=3000, val_data="same")
+
+        self.assertEqual(len(x[0]), len(y))
+
+        return
+
+    def test_same_test_val_data(self):  # todo, failing in plotting
+
+        x,y = test_train_val_test_data(data=nasdaq_df, val_data="same")
+        self.assertEqual(len(x[0]), len(y))
+        return
 
     def test_same_val_data_with_st_en_defined(self):
         x, y = test_train_val_test_data(data=arg_beach(), st=0, en=400, val_data="same")
@@ -437,20 +459,18 @@ class TestUtils(unittest.TestCase):
                       inputs=in_cols,
                       outputs=out_cols,
                       epochs=2,
-                      model={'layers':{
-                          "LSTM": {"config": {"units": 2}},
-                          "Dense": {"config": {"units": 1}},
-                          "Reshape": {"config": {"target_shape": (1, 1)}}
-                      }
+                      model={'layers':
+                                 {"LSTM": 2}
                       },
                       lookback=lookback,
-                      verbosity=0)
+                      verbosity=1)
 
         model.fit(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
         # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
         for i in range(100):
             self.assertEqual(int(t[i]), model.train_indices[i] + 10000)
+        test_evaluation(model)
         return
 
     def test_random_idx_with_nan_in_outputs(self):
@@ -490,6 +510,9 @@ class TestUtils(unittest.TestCase):
 
         assert np.max(model.test_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
         assert np.max(model.train_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
+
+        test_evaluation(model)
+
         return
 
     def test_random_idx_with_nan_inputs(self):
@@ -507,11 +530,13 @@ class TestUtils(unittest.TestCase):
                       epochs=1,
                       data=df,
                       input_nans={'fillna': {'method': 'bfill'}},
-                      verbosity=1)
+                      verbosity=0)
 
         model.fit(indices='random')
 
         x, _, y = model.training_data(indices=model.train_indices)
+
+        test_evaluation(model)
 
         for i in range(100):
             idx = model.train_indices[i]
@@ -530,18 +555,20 @@ class TestUtils(unittest.TestCase):
         df = get_df_with_nans(inputs=True, outputs=True, frac=0.1)
 
         model = Model(inputs=['in1', 'in2'],
-                                   outputs=['out1'],
-                                   transformation=None,
+                      outputs=['out1'],
+                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
                       data=df,
                                    input_nans={'fillna': {'method': 'bfill'}},
-                      verbosity=1)
+                      verbosity=0)
 
         model.fit(indices='random')
 
         x, _, y = model.training_data(indices=model.train_indices)
+
+        test_evaluation(model)
 
         # for i in range(100):
         #     idx = model.train_indices[i]
@@ -552,6 +579,7 @@ class TestUtils(unittest.TestCase):
 
         assert np.max(model.test_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
         assert np.max(model.train_indices) < (model.data.shape[0] - int(model.data[model.out_cols].isna().sum()))
+
         return
 
     def test_ffill(self):
@@ -592,9 +620,9 @@ class TestUtils(unittest.TestCase):
             df = get_df_with_nans(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
 
             layers = {
-                "Flatten": {"config": {}},
-                "Dense": {"config": {"units": 2}},
-                "Reshape": {"config": {"target_shape": (2,1)}}}
+                "Flatten": {},
+                "Dense": 2,
+                "Reshape": {"target_shape": (2,1)}}
 
             model = Model(allow_nan_labels=True,
                           model={'layers':layers},
@@ -608,6 +636,9 @@ class TestUtils(unittest.TestCase):
 
             self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+
+            test_evaluation(model)
+
             return
 
     def test_nan_labels1(self):
@@ -617,9 +648,9 @@ class TestUtils(unittest.TestCase):
             df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
 
             layers = {
-                "Flatten": {"config": {}},
-                "Dense": {"config": {"units": 2}},
-                "Reshape": {"config": {"target_shape": (2 ,1)}}}
+                "Flatten": {},
+                "Dense": 2,
+                "Reshape": {"target_shape": (2 ,1)}}
 
             model = Model(allow_nan_labels=1,
                           transformation=None,
@@ -634,6 +665,9 @@ class TestUtils(unittest.TestCase):
 
             self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+
+            test_evaluation(model)
+
             return
 
     # def test_ignore_nan1_and_data(self):  # todo failing on linux

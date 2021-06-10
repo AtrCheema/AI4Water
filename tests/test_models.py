@@ -59,6 +59,27 @@ def make_layers(outs):
     }
     return layers
 
+
+def test_evaluation(model):
+
+    model.evaluate('training')
+    train_x, _, train_y = model.training_data()
+
+    model.evaluate('validation')
+    val_data = model.validation_data()
+
+    model.evaluate('test')
+    test_data = model.test_data()
+    if not isinstance(test_data, tf.data.Dataset):
+        test_x, _, test_y = test_data
+
+    if model.config['val_data'] == 'same' and not isinstance(val_data, tf.data.Dataset):
+        val_x,_,y = val_data
+        assert test_x[0].shape == val_x[0].shape
+
+    return
+
+
 def build_and_run(outputs, transformation=None, indices=None):
     model = Model(
         model={"layers": make_layers(len(outputs['inp_1d']))},
@@ -72,6 +93,9 @@ def build_and_run(outputs, transformation=None, indices=None):
     )
 
     model.fit(indices=indices)
+
+    test_evaluation(model)
+
     return model.predict(indices=model.test_indices if indices else None)
 
 class test_MultiInputModels(unittest.TestCase):
@@ -150,20 +174,23 @@ class test_MultiInputModels(unittest.TestCase):
                 conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
                 s = tf.keras.layers.Concatenate()([out1, conc2])
                 out = Dense(1, name='output')(s)
+                out = tf.keras.layers.Reshape((1,1))(out)
                 return [inp1, inp2, inp3, inp4], out
 
-            def train_data(self, data=None, data_keys=None, **kwargs):
+            def training_data(self, data=None, data_keys=None, **kwargs):
 
                 in1 = np.random.random((_examples, 10, 5))
                 in2 = np.random.random((_examples, 10, 4))
                 in3 = np.random.random((_examples, 10))
                 in4 = np.random.random((_examples, 9))
-                o = np.random.random((_examples, 1))
-                return [in1, in2, in3, in4], o
+                o = np.random.random((_examples, 1, 1))
+                return [in1, in2, in3, in4], None, o
 
-        model = MyModel(val_data='same', verbosity=0, data=arg_beach())
+        model = MyModel(val_data='same', verbosity=1, #data=arg_beach()
+                        )
         hist = model.fit()
         self.assertGreater(len(hist.history['loss']), 1)
+        test_evaluation(model)
         return
 
     def test_customize_loss(self):
@@ -215,6 +242,7 @@ class test_MultiInputModels(unittest.TestCase):
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
         model.fit(st=0, en=1500)
+        test_evaluation(model)
         return
 
 if __name__ == "__main__":
