@@ -10,8 +10,13 @@ import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from AI4Water.backend import xgboost
 
+try:
+    import plotly
+except ModuleNotFoundError:
+    plotly = None
+
+from AI4Water.backend import xgboost
 from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.utils import _missing_vals
 from AI4Water.utils.utils import find_tot_plots, init_subplots, Jsonize
@@ -25,8 +30,25 @@ from AI4Water.utils.transformations import Transformations
 
 class Plot(object):
 
-    def __init__(self, path = None):
+    def __init__(self, path = None, backend='plotly'):
         self.path = path
+        self.backend = backend
+
+    @property
+    def backend(self):
+        return self._backend
+
+    @backend.setter
+    def backend(self, x):
+
+        _backend = x
+        assert x in ['plotly', 'matplotlib'], f"unknown backend {x}. Allowed values are `plotly` and `matplotlib`"
+
+        if x=='plotly':
+            if plotly is None:
+                _backend = 'matplotlib'
+
+        self._backend = _backend
 
     @property
     def path(self):
@@ -411,14 +433,22 @@ def scatter_numpy(self, dim, index, src):
 
 class Visualizations(Plot):
 
-    def __init__(self, data=None, config: dict=None, path=None, dpi=300, in_cols=None, out_cols=None):
+    def __init__(self,
+                 data=None,
+                 config: dict=None,
+                 path=None,
+                 dpi=300,
+                 in_cols=None,
+                 out_cols=None,
+                 backend:str='plotly'
+                 ):
         self.config = config
         self.data=data
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
 
-        super().__init__(path)
+        super().__init__(path, backend=backend)
 
     @property
     def config(self):
@@ -511,11 +541,11 @@ class Visualizations(Plot):
         }
 
         sub_plots = {1: {'axis': (1,1), 'width': 9, 'height': 6},
-                     2: {'axis': (1, 1), 'width': 9, 'height': 6},
-                     3: {'axis': (1, 2), 'wdith': 9, 'height': 6},
-                     4: {'axis': (1, 2), 'width': 9, 'height': 6},
-                     5: {'axis': (3, 1), 'width': 8, 'height': 12},
-                     6: {'axis': (3, 1), 'width': 8, 'height': 12},
+                     2: {'axis': (1, 2), 'width': 9, 'height': 6},
+                     3: {'axis': (1, 3), 'width': 9, 'height': 6},
+                     4: {'axis': (2, 2), 'width': 9, 'height': 6},
+                     5: {'axis': (5, 1), 'width': 8, 'height': 12},
+                     6: {'axis': (3, 2), 'width': 8, 'height': 12},
                      7: {'axis': (3, 2), 'width': 20, 'height': 20},
                      8: {'axis': (4, 2), 'width': 20, 'height': 20},
                      9: {'axis': (5, 2), 'width': 20, 'height': 20},
