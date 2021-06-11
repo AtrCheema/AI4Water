@@ -2255,7 +2255,12 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
                                                                                                np.ndim(gradient)))
 
     def view_model(self, **kwargs):
-        """ shows all activations, weights and gradients of the model."""
+        """shows all activations, weights and gradients of the model.
+
+        Arguments:
+            kwargs : keyword arguments for specifying the data. These arguments
+                must be same which are used by `fit` method for specifying data.
+        """
 
         if self.category.upper() == "DL":
             self.plot_act_grads(**kwargs)
@@ -2268,7 +2273,9 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     def interpret(self, save=True, **kwargs):
         """
         Interprets the underlying model. Call it after training.
+
         Example
+        -------
         ```python
         model.fit()
         model.interpret()
@@ -2410,18 +2417,20 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
     def from_config(cls,
                     config_path:str,
                     data,
-                    make_new_path:bool=False, **kwargs):
+                    make_new_path:bool=False,
+                    **kwargs):
         """
         Loads the model from a config file.
+
         Arguments:
-            config_path str: complete path of config file
+            config_path : complete path of config file
             data : data for Model
-            make_new_path bool: If true, then it means we want to use the config
+            make_new_path : If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
                 should not load the weights in such a case.
-            kwargs dict:
+            kwargs : any additional keyword arguments for the `Model`
         return:
-            Model
+            a `Model` instance
         """
         with open(config_path, 'r') as fp:
             config = json.load(fp)

@@ -124,11 +124,12 @@ class Transformations(scaler_container):
     Following shows how to apply log transformation on an array containing zeros
     by making use of the argument `replace_zeros`. The zeros in the input array
     will be replaced internally but will be inserted back afterwards.
+
     ```python
     >>>import pandas as pd
     >>>a = pd.DataFrame([10, 2, 0])
     >>>Transformations(a, 'log', replace_zeros=True)()
-    ...[2.302585, 0.693147, 0.0]
+    ... [2.302585, 0.693147, 0.0]
     ```
     """
 
