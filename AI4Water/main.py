@@ -450,11 +450,13 @@ class Model(NN, Plots):
     def classes(self):
         _classes = []
         if self.problem == 'classification':
-            if self.outs==1:  # multi_class prblem
+            if 'binary' in self.loss_name():  # either binary or multi-label
+                _classes = self.out_cols
+            else:
+                assert self.outs==1  # multi_class prblem
                 array = self.data[self.out_cols].values
                 _classes = np.unique(array[~np.isnan(array)])
-            else:   # mutli-label problem
-                _classes = self.out_cols
+
         return _classes
 
     @property
@@ -465,8 +467,11 @@ class Model(NN, Plots):
     def class_prob_type(self):
         _type = None
         if self.problem == 'classification':
-            if self.outs>1 and self.loss_name() in ['binary_crossentropy']:
-                _type = 'multi_label'
+            if self.loss_name() in ['binary_crossentropy']:
+                if self.outs>1:
+                    _type = 'multi_label'
+                else:
+                    _type = 'binary'
             else:
                 _type = 'multi_class'
         return _type
@@ -1167,11 +1172,12 @@ class Model(NN, Plots):
         x, prev_y, label = self.check_batches(x, prev_y, label)
 
         if self.problem == 'classification':
-            if label.shape[1]>1:  # mutlti-label problem
-                assert self.loss_name() in ['binary_crossentropy']
-            else:
+            if self.class_prob_type == 'multi_class':
                 assert label.shape[1] == 1
                 label = tf.keras.utils.to_categorical(label, self.num_classes)
+            else:   # mutlti_label/binary problem
+                # todo, is only binary_crossentropy is binary/multi_label problem?
+                assert self.loss_name() in ['binary_crossentropy']
 
         if isinstance(label, dict) and not use_split_data:
             assert len(self._model.outputs) == len(label)
@@ -1486,7 +1492,7 @@ class Model(NN, Plots):
 
                 # todo, it is assumed that there is softmax as the last layer
                 elif self.problem == 'classification':
-
+                    # todo, don't know why it is working
                     assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
                         {self.num_classes} while model's output has {model_output_shape[0]} nodes """
                     assert model_output_shape[0] == outputs.shape[1]
