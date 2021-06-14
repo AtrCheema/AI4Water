@@ -136,24 +136,28 @@ class HyperOpt(object):
     Scenarios:
     ---------------
     Use scenarios of this class can be one of the following:
-      1. Apply grid/random/bayesian search for sklearn based regressor/classifier
-      2. Apply grid/random/bayesian search for custom regressor/classifier/model/function
-      3. Apply grid/random/bayesian search for AI4Water. This may be the easierst one, if user is familier with AI4Water. Only
+
+        1. Apply grid/random/bayesian search for sklearn based regressor/classifier
+
+        2. Apply grid/random/bayesian search for custom regressor/classifier/model/function
+
+        3. Apply grid/random/bayesian search for AI4Water. This may be the easierst one, if user is familier with AI4Water. Only
          supported for ml models and not for dl models. For dl based AI4Water's models, consider scenario 2.
 
-    Attributes
+    Attributes:
     --------------
     For scenario 1, all attributes of corresponding classes of skopt and sklean as available from HyperOpt.
     For scenario 2 and 3, some additional attributes are available.
 
-    - results: dict
-    - gpmin_results: dict
-    - skopt_results
-    - hp_space
-    - skopt_space
-    - space: dict, only for scenario 3.
-    - title: str, name of the folder in which all results will be saved. By default this is same as name of `algorithm`. For
-             `AI4Water` based models, this is more detailed, containing problem type etc.
+        results dict:
+        gpmin_results dict:
+        skopt_results :
+        hp_space :
+        skopt_space :
+        space dict: only for scenario 3.
+        title str: name of the folder in which all results will be saved. By
+            default this is same as name of `algorithm`. For `AI4Water` based
+            models, this is more detailed, containing problem type etc.
 
 
     Methods

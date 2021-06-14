@@ -1218,6 +1218,7 @@ class Model(NN, Plots):
                               prefix=None,
                               index=None,
                               remove_nans=True):
+        """post-processes classification results."""
 
         if self.class_prob_type == 'multi_class':
             pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
@@ -1238,6 +1239,12 @@ class Model(NN, Plots):
                 fpath = os.path.join(self.path, _class)
                 if not os.path.exists(fpath):
                     os.makedirs(fpath)
+
+                metrics = ClassificationMetrics(_true, _pred, categorical=False)
+                save_config_file(fpath,
+                                 errors=metrics.calculate_all(),
+                                 name=f"{prefix}_{_class}_{dateandtime_now()}.json"
+                                 )
 
                 fname = os.path.join(fpath, f"{prefix}_{_class}.csv")
                 array = np.concatenate([_true.reshape(-1, 1), _pred.reshape(-1, 1)], axis=1)
