@@ -450,14 +450,26 @@ class Model(NN, Plots):
     def classes(self):
         _classes = []
         if self.problem == 'classification':
-            if self.outs==1:
+            if self.outs==1:  # multi_class prblem
                 array = self.data[self.out_cols].values
                 _classes = np.unique(array[~np.isnan(array)])
+            else:   # mutli-label problem
+                _classes = self.out_cols
         return _classes
 
     @property
     def num_classes(self):
         return len(self.classes)
+
+    @property
+    def class_prob_type(self):
+        _type = None
+        if self.problem == 'classification':
+            if self.outs>1 and self.loss_name() in ['binary_crossentropy']:
+                _type = 'multi_label'
+            else:
+                _type = 'multi_class'
+        return _type
 
     def loss(self):
         # overwrite this function for a customized loss function.
@@ -1155,8 +1167,11 @@ class Model(NN, Plots):
         x, prev_y, label = self.check_batches(x, prev_y, label)
 
         if self.problem == 'classification':
-            assert label.shape[1] == 1
-            label = tf.keras.utils.to_categorical(label, self.num_classes)
+            if label.shape[1]>1:  # mutlti-label problem
+                assert self.loss_name() in ['binary_crossentropy']
+            else:
+                assert label.shape[1] == 1
+                label = tf.keras.utils.to_categorical(label, self.num_classes)
 
         if isinstance(label, dict) and not use_split_data:
             assert len(self._model.outputs) == len(label)
@@ -1204,16 +1219,32 @@ class Model(NN, Plots):
                               index=None,
                               remove_nans=True):
 
-        pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
-        true_labels = [f"true_{i}" for i in range(true.shape[1])]
-        fname = os.path.join(self.path, f"{prefix}_prediction.csv")
-        pd.DataFrame(np.concatenate([true, predicted], axis=1), columns=true_labels + pred_labels, index=index).to_csv(fname)
-        metrics = ClassificationMetrics(true, predicted, categorical=True)
+        if self.class_prob_type == 'multi_class':
+            pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
+            true_labels = [f"true_{i}" for i in range(true.shape[1])]
+            fname = os.path.join(self.path, f"{prefix}_prediction.csv")
+            pd.DataFrame(np.concatenate([true, predicted], axis=1), columns=true_labels + pred_labels, index=index).to_csv(fname)
+            metrics = ClassificationMetrics(true, predicted, categorical=True)
 
-        save_config_file(self.path,
-                         errors=metrics.calculate_all(),
-                         name=f"{prefix}_{dateandtime_now()}.json"
-                         )
+            save_config_file(self.path,
+                             errors=metrics.calculate_all(),
+                             name=f"{prefix}_{dateandtime_now()}.json"
+                             )
+        else:
+            for idx, _class in enumerate(self.out_cols):
+                _true = true[:, idx]
+                _pred = predicted[:, idx]
+
+                fpath = os.path.join(self.path, _class)
+                if not os.path.exists(fpath):
+                    os.makedirs(fpath)
+
+                fname = os.path.join(fpath, f"{prefix}_{_class}.csv")
+                array = np.concatenate([_true.reshape(-1, 1), _pred.reshape(-1, 1)], axis=1)
+                pd.DataFrame(array,
+                             columns=['true', 'predicted'],
+                             index=index).to_csv(fname)
+
 
         return true, predicted
 
@@ -1448,7 +1479,9 @@ class Model(NN, Plots):
 
                 # todo, it is assumed that there is softmax as the last layer
                 elif self.problem == 'classification':
-                    assert model_output_shape[0] == self.num_classes
+
+                    assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
+                        {self.num_classes} while model's output has {model_output_shape[0]} nodes """
                     assert model_output_shape[0] == outputs.shape[1]
                 else:
                     assert model_output_shape == outputs.shape[1:], f"""
@@ -2495,6 +2528,7 @@ while the targets in prepared have shape {outputs.shape[1:]}."""
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
         `monthly`."""
+        # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
         visualizer = Visualizations(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols)
 
         # plot number if missing vals
