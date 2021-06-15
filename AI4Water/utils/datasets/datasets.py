@@ -110,6 +110,7 @@
 # https://zenodo.org/record/3341592#.YEx5RtyRWUk
 # https://zenodo.org/record/3931582#.YEx5W9yRWUk
 # https://zenodo.org/record/3528098#.YEx64NyRWUk
+# https://hess.copernicus.org/articles/25/3105/2021/
 
 
 # air
@@ -151,6 +152,7 @@
 # https://zenodo.org/record/854619#.YExnityRWUk
 # https://essd.copernicus.org/articles/13/1289/2021/
 # https://essd.copernicus.org/articles/13/1307/2021/
+# https://www.tr32db.uni-koeln.de/search/view.php?dataID=1786
 
 
 # geologic
@@ -165,6 +167,14 @@
 # https://zenodo.org/record/4542076#.YExuxtyRWUk
 # https://zenodo.org/record/4489056#.YExoBtyRWUk
 # https://zenodo.org/record/1157344#.YExnqNyRWUk
+
+
+# soil
+# https://www.tr32db.uni-koeln.de/search/view.php?dataID=1839
+# https://www.tr32db.uni-koeln.de/search/view.php?dataID=1838
+# https://www.tr32db.uni-koeln.de/search/view.php?dataID=1837
+# https://www.tr32db.uni-koeln.de/search/view.php?dataID=1760
+# https://www.tr32db.uni-koeln.de/search/view.php?dataID=1761
 
 
 import glob
