@@ -105,8 +105,7 @@ class Model(NN, Plots):
                 can define any keyword arguments which is accepted by that layer in
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
-                on how to buld neural networks using such layered API see
-                https://ai4water.readthedocs.io/en/latest/build_dl_models/
+                on how to buld neural networks using such layered API [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -166,23 +165,20 @@ class Model(NN, Plots):
                 ```python
                 {'fillna': {'method': 'ffill'}}
                 ```
-                For details about fillna keyword options see
-                https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
+                For details about fillna keyword options [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
                 For `interpolate`, the user can specify  the type of interpolation
                 for example
                 ```python
                 {'interpolate': {'method': 'spline', 'order': 2}}
                 ``` will perform spline interpolation with 2nd order.
-                For other possible options/keyword arguments for interpolate see
-                https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
+                For other possible options/keyword arguments for interpolate [see](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html)
                 The filling or interpolation is done columnwise, however, the user
                 can specify how to do for each column by providing the above mentioned
                 arguments as dictionary or list. The sklearn based imputation methods
                 can also be used in a similar fashion. For KNN
                 {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
                 {'IterativeImputer': {'n_nearest_features': 2}}
-                For more on sklearn based imputation methods see
-                https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
+                For more on sklearn based imputation methods [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
             metrics str/list:
                 metrics to be monitored. e.g. ['nse', 'pbias']
             batches str:
@@ -199,7 +195,10 @@ class Model(NN, Plots):
             outputs lsit/dict:
                 list of column names from `data` to be used as output. If dict,
                 then it must be consistent with `data`. Default is None,which
-                means the last column of data will be used as output.
+                means the last column of data will be used as output. In case
+                of multi-class classification, the output column is not supposed
+                to be one-hot-encoded rather in the form of [0,1,2,0,1,2,1,2,0]
+                for 3 classes. One-hot-encoding is done inside the model.
             intervals tuple/None: default is None.
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means chunk/rows
@@ -452,8 +451,8 @@ class Model(NN, Plots):
         if self.problem == 'classification':
             if 'binary' in self.loss_name():  # either binary or multi-label
                 _classes = self.out_cols
-            else:
-                assert self.outs==1  # multi_class prblem
+            else:  # multi_class prblem
+                assert self.outs==1, f"for multi-class classification, the output should not be one-hot encoded"
                 array = self.data[self.out_cols].values
                 _classes = np.unique(array[~np.isnan(array)])
 
@@ -474,6 +473,7 @@ class Model(NN, Plots):
                     _type = 'binary'
             else:
                 _type = 'multi_class'
+                assert self.outs==1, f"for multi-class classification, the output should not be one-hot encoded"
         return _type
 
     def loss(self):
