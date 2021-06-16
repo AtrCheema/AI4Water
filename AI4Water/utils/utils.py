@@ -232,7 +232,8 @@ def _make_model(data, **kwargs):
                                         'hidden_layer_units': 62
                                     }, 'lower': None, 'upper': None, 'between': None},
         'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]}
+        'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]},
+        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None, 'betwee': ['tensorflow', 'pytorch']}
     }
 
     data_args = {

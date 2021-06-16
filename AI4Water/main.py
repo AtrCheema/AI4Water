@@ -289,7 +289,7 @@ class Model(NN, Plots):
         self.problem = self.config['problem']
         self.info = {}
 
-        Plots.__init__(self, self.path, self.problem, self.category, self._model,
+        Plots.__init__(self, self.path, self.problem, self.category, self,#._model,
                        config=maker.config)
 
         self.build()  # will initialize ML models or build NNs

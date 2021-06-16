@@ -148,3 +148,6 @@ VERSION_INFO = {
     'tpot': str(tpot.__version__) if tpot else None,
     'eager_execution': tf.executing_eagerly() if tf is not None else None
 }
+
+
+BACKEND = 'tensorflow'
