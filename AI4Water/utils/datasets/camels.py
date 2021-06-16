@@ -214,7 +214,7 @@ class Camels(Datasets):
                                   st=None,
                                   en=None,
                                   as_dataframe:bool = False,
-                                  **kwargs) -> Union[dict, pd.DataFrame, xr.Dataset]:
+                                  **kwargs):
         """Reads attributes of more than one stations.
         Arguments:
             stations : list of stations for which data is to be fetched.

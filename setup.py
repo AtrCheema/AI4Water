@@ -40,7 +40,9 @@ extra_requires = [
 'optuna',
 'hyperopt',
 
-'netCDF4'  # for reading data
+# for reading data
+'netCDF4',
+ 'xarray',
 ]
 
 all_requirements = min_requirements + extra_requires

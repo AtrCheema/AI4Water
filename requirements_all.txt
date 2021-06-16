@@ -26,3 +26,5 @@ optuna
 hyperopt
 
 dill
+
+xarray
