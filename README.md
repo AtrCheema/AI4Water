@@ -101,6 +101,12 @@ Make predictions from it
 true, predicted = model.predict()
 ```
 
+The model object returned from initiating AI4Wwater's `Model` is same as that of Keras' `Model`
+We can verify it by checking its type
+```python
+isinstance(model, tf.keras.Model)  # True
+``` 
+
 
 ## Using your own pre-processed data
 You can use your own pre-processed data without using any of pre-processing tools of AI4Water. You will need to provide

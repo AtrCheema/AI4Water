@@ -38,8 +38,10 @@ class TestBuiltTFConfig(unittest.TestCase):
         "Dense_2": {'units': 16, 'activation': 'relu'},
         "Dense_3": 1
     }, 1)
-        assert model._model.count_params() == 3201
-        assert model._model.layers.__len__() == 8
+
+
+        assert model.trainable_parameters() == 3201
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_lstm(self):
@@ -52,8 +54,8 @@ class TestBuiltTFConfig(unittest.TestCase):
                   },
             12)
 
-        assert model._model.count_params() == 31137
-        assert model._model.layers.__len__() == 6
+        assert model.trainable_parameters() == 31137
+        assert model.nn_layers().__len__() == 6
 
     def test_1dcnn(self):
 
@@ -67,8 +69,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
                   },
         12)
-        assert model._model.count_params() == 5377
-        assert model._model.layers.__len__() == 9
+        assert model.trainable_parameters() == 5377
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_lstmcnn(self):
@@ -84,8 +86,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         },
             12)
-        assert model._model.count_params() == 31233
-        assert model._model.layers.__len__() == 10
+        assert model.trainable_parameters() == 31233
+        assert model.nn_layers().__len__() == 10
         return
 
     def test_convlstm(self):
@@ -99,8 +101,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         },
             12)
-        assert model._model.count_params() == 187265
-        assert model._model.layers.__len__() == 7
+        assert model.trainable_parameters() == 187265
+        assert model.nn_layers().__len__() == 7
 
     def test_cnnlstm(self):
         sub_sequences = 3
@@ -131,8 +133,8 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
         15)
 
-        assert model._model.count_params() == 39697
-        assert model._model.layers.__len__() == 15
+        assert model.trainable_parameters() == 39697
+        assert model.nn_layers().__len__() == 15
         return
 
     def test_lstm_autoenc(self):
@@ -145,8 +147,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "relu_1": {},
             'Dense': 1
         }, 12)
-        assert model._model.count_params() == 124101
-        assert model._model.layers.__len__() == 8
+        assert model.trainable_parameters() == 124101
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_tcn(self):
@@ -162,8 +164,8 @@ class TestBuiltTFConfig(unittest.TestCase):
                                'dropout_rate': 0.0},
             'Dense': 1
         }, 12)
-        assert model._model.count_params() == 92545
-        assert model._model.layers.__len__() == 4
+        assert model.trainable_parameters() == 92545
+        assert model.nn_layers().__len__() == 4
 
     def test_multi_inputs(self):
 
@@ -186,8 +188,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dropout": 0.4,
             "Dense_2": 1
         }, 5)
-        assert model._model.count_params() == 20857
-        assert model._model.layers.__len__() == 10
+        assert model.trainable_parameters() == 20857
+        assert model.nn_layers().__len__() == 10
 
     def test_multi_output(self):
 
@@ -211,8 +213,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         },
         15)
-        assert model._model.count_params() == 31491
-        assert model._model.layers.__len__() == 9
+        assert model.trainable_parameters() == 31491
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_add_args(self):
@@ -242,8 +244,8 @@ class TestBuiltTFConfig(unittest.TestCase):
 
             "Dense": 1
         }, 15)
-        assert model._model.count_params() == 50243
-        assert model._model.layers.__len__() == 10
+        assert model.trainable_parameters() == 50243
+        assert model.nn_layers().__len__() == 10
         return
 
     def test_lambda(self):
@@ -254,8 +256,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         },
         10)
-        assert model._model.count_params() == 5281
-        assert model._model.layers.__len__() == 5
+        assert model.trainable_parameters() == 5281
+        assert model.nn_layers().__len__() == 5
         return
 
 

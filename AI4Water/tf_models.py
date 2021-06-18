@@ -5,7 +5,7 @@ import pandas as pd
 
 from AI4Water.main import Model
 from AI4Water.backend import keras
-from AI4Water.main import print_something
+from AI4Water._main import print_something
 from AI4Water.nn_tools import check_act_fn
 from AI4Water.layer_definition import MyTranspose, MyDot
 

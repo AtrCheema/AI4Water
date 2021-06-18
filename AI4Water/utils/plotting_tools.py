@@ -40,11 +40,11 @@ rnn_info = {"LSTM": {'rnn_type': 'LSTM',
 class Plots(object):
     # TODO initialte this class with at least path
 
-    def __init__(self, path, problem, category, model, config):
+    def __init__(self, path, problem, category, config, model=None):
         self.path = path
         self.problem = problem
         self.category=category
-        self._model = model
+        self.ml_model = model
         self.config = config
 
     @property
@@ -384,19 +384,19 @@ class Plots(object):
 
     def roc_curve(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
-        plot_roc_curve(self._model, *x, y.reshape(-1, ))
+        plot_roc_curve(self.ml_model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="roc", where="results")
         return
 
     def confusion_matrx(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
-        plot_confusion_matrix(self._model, *x, y.reshape(-1, ))
+        plot_confusion_matrix(self.ml_model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="confusion_matrix", where="results")
         return
 
     def precision_recall_curve(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
-        plot_precision_recall_curve(self._model, *x, y.reshape(-1, ))
+        plot_precision_recall_curve(self.ml_model, *x, y.reshape(-1, ))
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
 
@@ -404,13 +404,13 @@ class Plots(object):
         """For kwargs see https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree"""
         plt.close('')
         if which == "sklearn":
-            if hasattr(self._model, "tree_"):
-                tree.plot_tree(self._model, **kwargs)
+            if hasattr(self.ml_model, "tree_"):
+                tree.plot_tree(self.ml_model, **kwargs)
         else:  # xgboost
             if xgboost is None:
                 warnings.warn("install xgboost to use plot_tree method")
             else:
-                xgboost.plot_tree(self._model, **kwargs)
+                xgboost.plot_tree(self.ml_model, **kwargs)
         self.save_or_show(save, fname="decision_tree", where="results")
         return
 
@@ -429,10 +429,10 @@ class Plots(object):
                 if np.ndim(y) > 2:
                     y = np.squeeze(y, axis=2)
 
-                trees.viz_leaf_samples(self._model, *x, self.in_cols)
+                trees.viz_leaf_samples(self.ml_model, *x, self.in_cols)
                 self.save_or_show(save, fname="viz_leaf_samples", where="plots")
 
-                trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
+                trees.ctreeviz_leaf_samples(self.ml_model, *x, y, self.in_cols)
                 self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
 
     def box_plot(self,

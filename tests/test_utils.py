@@ -71,6 +71,15 @@ def get_layers(o=1, forecast_len=1):
         }
 
 
+default_model = {
+    'layers': {
+        "Dense_0": {'units': 64, 'activation': 'relu'},
+        "Flatten": {},
+        "Dense_3": 1,
+        "Reshape": {"target_shape": (1, 1)}
+    }
+}
+
 def build_model(**kwargs):
 
     model = Model(
@@ -101,6 +110,7 @@ def train_predict(model):
 def test_train_val_test_data(data, val_data, **kwargs):
 
     model = Model(
+        model=default_model,
         data=data,
         val_data=val_data,
         test_fraction=0.2,
@@ -177,7 +187,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(int(x[0][0].sum()), 140455,)
         self.assertEqual(int(y[0]), 10016)
-        self.assertEqual(model.outs, 1)
+        self.assertEqual(model.num_outs, 1)
         self.assertEqual(model.forecast_step, 0)
         return
 
@@ -192,7 +202,7 @@ class TestUtils(unittest.TestCase):
 
         x, y = train_predict(model)
 
-        self.assertEqual(model.outs, 5)
+        self.assertEqual(model.num_outs, 5)
         self.assertEqual(model.ins, 1)
         self.assertEqual(model.forecast_step, 0)
 
@@ -213,7 +223,7 @@ class TestUtils(unittest.TestCase):
 
         x, y = train_predict(model)
 
-        self.assertEqual(model.outs, 1)
+        self.assertEqual(model.num_outs, 1)
         self.assertEqual(model.forecast_step, 1)
         self.assertEqual(int(x[0][-1].sum()), 157325)
         self.assertEqual(int(y[-1].sum()), 10499)
@@ -252,7 +262,7 @@ class TestUtils(unittest.TestCase):
         x, y = train_predict(model)
 
         self.assertEqual(model.forecast_step, 10)
-        self.assertEqual(model.outs, 5)
+        self.assertEqual(model.num_outs, 5)
         self.assertEqual(int(x[0][-1].sum()), 3402)
         self.assertEqual(int(y[-1].sum()), 32495)
         self.assertEqual(int(x[0][0].sum()), 91)
@@ -275,7 +285,7 @@ class TestUtils(unittest.TestCase):
 
         x, y = train_predict(model)
 
-        self.assertEqual(model.outs, 1)
+        self.assertEqual(model.num_outs, 1)
         self.assertEqual(model.forecast_step, 2)
         self.assertEqual(model.forecast_len, 3)
         self.assertEqual(int(x[0][-1].sum()), 157220)
@@ -304,7 +314,7 @@ class TestUtils(unittest.TestCase):
 
         x, y = train_predict(model)
 
-        self.assertEqual(model.outs, 3)
+        self.assertEqual(model.num_outs, 3)
         self.assertEqual(model.forecast_step, 1)
         self.assertEqual(model.forecast_len, 3)
         self.assertEqual(int(x[0][-1].sum()), 52353)
@@ -364,7 +374,8 @@ class TestUtils(unittest.TestCase):
     def test_plot_feature_importance(self):
 
         model = build_model(inputs=in_cols,
-                            outputs=out_cols)
+                            outputs=out_cols,
+                            model=default_model)
         Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
     def test_same_test_val_data_with_chunk(self):
@@ -479,13 +490,15 @@ class TestUtils(unittest.TestCase):
         df = get_df_with_nans(inputs=False, outputs=True, frac=0.8)
 
         model = Model(inputs=['in1', 'in2'],
-                                   outputs=['out1'],
-                                   transformation=None,
-                                   val_data='same',
-                                   test_fraction=0.3,
-                                   epochs=1,
-                                   data=df,
-                                   verbosity=0)
+                      outputs=['out1'],
+                      model=default_model,
+                      transformation=None,
+                      val_data='same',
+                      test_fraction=0.3,
+                      epochs=1,
+                      data=df,
+                      verbosity=0
+                      )
 
         model.fit(indices='random')
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
@@ -523,6 +536,7 @@ class TestUtils(unittest.TestCase):
         df = get_df_with_nans(inputs=True, frac=0.1)
 
         model = Model(inputs=['in1', 'in2'],
+                      model=default_model,
                       outputs=['out1'],
                       transformation=None,
                       val_data='same',
@@ -556,12 +570,13 @@ class TestUtils(unittest.TestCase):
 
         model = Model(inputs=['in1', 'in2'],
                       outputs=['out1'],
+                      model=default_model,
                       transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
                       data=df,
-                                   input_nans={'fillna': {'method': 'bfill'}},
+                      input_nans={'fillna': {'method': 'bfill'}},
                       verbosity=0)
 
         model.fit(indices='random')

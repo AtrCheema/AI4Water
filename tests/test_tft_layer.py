@@ -8,7 +8,7 @@ import tensorflow as tf
 import numpy as np
 
 from AI4Water.models.tft_layer import TemporalFusionTransformer
-from AI4Water import Model
+from AI4Water.functional import Model
 
 tf.compat.v1.disable_eager_execution()
 np.random.seed(313)
@@ -94,10 +94,15 @@ class Test_TFT(unittest.TestCase):
                       inputs=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
                       outputs=['out1', 'out2', 'out3'],
                       verbosity=0)
-        h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
-        #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
+        if model.api == 'functional':
+            h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
+        else:
+            h = model.fit_fn(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
 
-        num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         self.assertEqual(num_paras, 7411)
         return
 
@@ -116,12 +121,15 @@ class Test_TFT(unittest.TestCase):
                       verbosity=1)
         x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
         y = np.random.random((n, len(quantiles), 1))
-        model._model.fit(x=x,y=y, validation_split=0.3)
-
-        num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
+        if model.api == 'functional':
+            model._model.fit(x=x,y=y, validation_split=0.3)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
+        else:
+            model.fit_fn(x=x,y=y, validation_split=0.3)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
         assert model.forecast_len == 1
         assert model.forecast_step == 0
-        assert model.outs == len(quantiles)
+        assert model.num_outs == len(quantiles)
         self.assertEqual(num_paras, 5484)
         return
 

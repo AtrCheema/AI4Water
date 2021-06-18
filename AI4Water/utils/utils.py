@@ -82,7 +82,7 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
         fpath = path
 
     if 'config' in data:
-        if 'model' in data['config']:
+        if data['config'].get('model', None) is not None:
             model = data['config']['model']
             if 'layers' not in model:  # because ML args which come algorithms may not be of json serializable.
                 model = Jsonize(model)()
@@ -119,7 +119,7 @@ def check_kwargs(**kwargs):
 
     # If learning rate for XGBoost is not provided use same as default for NN
     lr = kwargs.get("lr", 0.001)
-    if 'model' in kwargs:
+    if kwargs.get('model', None) is not None:
         model = kwargs['model']
         if 'layers' not  in model:
             if list(model.keys())[0].startswith("XGB"):
@@ -176,22 +176,20 @@ def _make_model(data, **kwargs):
     """
     kwargs = process_io(data, **kwargs)
 
-    default_model = {'layers': {
-        "Dense_0": {'units': 2, 'activation': 'relu'},
-        "Flatten": {},
-    }}
-
     kwargs = check_kwargs(**kwargs)
 
     def_prob = "regression"  # default problem
-    model = kwargs.get('model', default_model)
-    if 'layers' in model:
-        def_cat = "DL"
-        # for DL, the default problem case will be regression
-    else:
-        if list(model.keys())[0].startswith("CLASS"):
-            def_prob = "classification"
-        def_cat = "ML"
+    model = kwargs.get('model', None)
+    def_cat = None
+
+    if model is not None:
+        if 'layers' in model:
+            def_cat = "DL"
+            # for DL, the default problem case will be regression
+        else:
+            if list(model.keys())[0].startswith("CLASS"):
+                def_prob = "classification"
+            def_cat = "ML"
 
     if 'loss' in kwargs:
         if callable(kwargs['loss']) and hasattr(kwargs['loss'], 'name'):
@@ -207,7 +205,7 @@ def _make_model(data, **kwargs):
 
     model_args = {
 
-        'model': {'type': dict, 'default': default_model, 'lower': None, 'upper': None, 'between': None},
+        'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},   # for auto-encoders
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
         'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
@@ -295,7 +293,10 @@ def _make_model(data, **kwargs):
         # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
         # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
         # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
-        "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None}
+        "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'prefix':            {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'path':              {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}

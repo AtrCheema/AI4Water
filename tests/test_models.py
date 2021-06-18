@@ -7,9 +7,15 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input
+from sklearn.datasets import make_classification
+from sklearn.datasets import make_multilabel_classification
 
 from AI4Water import Model
-from AI4Water.utils.datasets import load_nasdaq, arg_beach
+from AI4Water.functional import Model as FModel
+from AI4Water.utils.datasets import load_nasdaq
+
+
+tf.compat.v1.disable_eager_execution()
 
 
 examples = 200
@@ -127,8 +133,8 @@ class test_MultiInputModels(unittest.TestCase):
                       data=load_nasdaq(),
                       verbosity=0)
 
-        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
-        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
+        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
 
         return
 
@@ -139,8 +145,8 @@ class test_MultiInputModels(unittest.TestCase):
                       data=load_nasdaq(),
                       verbosity=0)
 
-        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
-        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
+        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
         return
 
     def test_add_no_output_layer(self):
@@ -151,8 +157,8 @@ class test_MultiInputModels(unittest.TestCase):
                       data=load_nasdaq(),
                       verbosity=0)
 
-        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
-        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
+        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
         return
 
     def test_same_val_data(self):
@@ -160,7 +166,7 @@ class test_MultiInputModels(unittest.TestCase):
         # tf.data was created successfully and keras Model accepted it to train as well.
         _examples = 200
 
-        class MyModel(Model):
+        class MyModel(FModel):
             def add_layers(self, layers_config:dict, inputs=None):
                 input_layer_names = ['input1', 'input2', 'input3', 'input4']
 
@@ -186,8 +192,8 @@ class test_MultiInputModels(unittest.TestCase):
                 o = np.random.random((_examples, 1, 1))
                 return [in1, in2, in3, in4], None, o
 
-        model = MyModel(val_data='same', verbosity=0,
-                        )
+        model = MyModel(val_data='same', verbosity=0, category="DL")
+
         hist = model.fit()
         self.assertGreater(len(hist.history['loss']), 1)
         test_evaluation(model)
@@ -243,6 +249,106 @@ class test_MultiInputModels(unittest.TestCase):
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
         model.fit(st=0, en=1500)
         test_evaluation(model)
+        return
+
+
+def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation='softmax'):
+
+    inputs = [f'input_{n}' for n in range(10)]
+
+    if is_multilabel:
+        outputs = [f'target_{n}' for n in range(n_classes)]
+        X, y = make_multilabel_classification(n_samples=100, n_features=len(inputs), n_classes=n_classes,
+                                              n_labels=2, random_state=0)
+        y = y.reshape(-1, n_classes)
+
+    else:
+        outputs = ['target']
+        X, y = make_classification(n_samples=100, n_features=len(inputs), n_informative=n_classes, n_classes=n_classes,
+                               random_state=1)
+        y = y.reshape(-1, 1)
+
+    df = pd.DataFrame(np.concatenate([X, y], axis=1), columns=inputs + outputs)
+
+    model = Model(data=df,
+                  model={'layers': {
+                      'Dense_0': 10,
+                      'Flatten': {},
+                      'Dense_1': n_classes, 'activation': activation}},
+                  inputs=inputs,
+                  loss=loss,
+                  outputs=outputs,
+                  verbosity=0,
+                  )
+    model.fit()
+    test_evaluation(model)
+
+    assert model.problem == 'classification'
+    assert len(model.classes) == n_classes
+    assert model.num_classes == n_classes
+    return model
+
+
+class TestClassifications(unittest.TestCase):
+
+    def test_binary_classification(self):
+
+        model = build_and_run_class_problem(2, 'binary_crossentropy')
+
+        assert model.is_binary
+        assert not model.is_multiclass
+        assert not model.is_multilabel
+
+        return
+
+    def test_multiclass_classification(self):
+
+        model = build_and_run_class_problem(3, 'binary_crossentropy')
+
+        assert not model.is_binary
+        assert model.is_multiclass
+        assert not model.is_multilabel
+
+        return
+
+    def test_multilabel_classification(self):
+
+        model = build_and_run_class_problem(5, 'binary_crossentropy', is_multilabel=True)
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_multilabel_classification_with_categorical(self):
+
+        model = build_and_run_class_problem(5, 'categorical_crossentropy', is_multilabel=True)
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_multilabel_classification_with_binary_sigmoid(self):
+
+        model = build_and_run_class_problem(5, 'binary_crossentropy', is_multilabel=True, activation='sigmoid')
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_multilabel_classification_with_categorical_sigmoid(self):
+
+        model = build_and_run_class_problem(5, 'categorical_crossentropy', is_multilabel=True, activation='sigmoid')
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
         return
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ from tensorflow import keras
 from sklearn.model_selection import train_test_split
 from tensorflow.python.keras.engine import training_utils
 
-from AI4Water import Model
+from AI4Water.functional import Model
 from examples import LSTMAutoEnc_Config
 from AI4Water.utils.utils import check_min_loss
 
