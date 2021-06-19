@@ -15,7 +15,6 @@
     rendering:
         show_root_heading: true
 
-# Model
 ::: AI4Water.main.Model
     handler: python
     selection:
@@ -26,7 +25,6 @@
     rendering:
         show_root_heading: true
 
-# Functional Model
 ::: AI4Water.functional.Model
     handler: python
     selection:
