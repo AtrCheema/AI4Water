@@ -2,48 +2,62 @@
 __all__ = ["ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "LAYERS", "OPTIMIZERS", "tcn"]
 
 # it is supposed that tf is available
-
-import tensorflow as tf
-
-import AI4Water.utils.tf_losses as tf_losses
-from AI4Water.nbeats_keras import NBeats
-import AI4Water.models.attention_layers as attns
-from AI4Water.utils.utils import get_attributes
-from AI4Water.models.tft_layer import TemporalFusionTransformer
+from .backend import get_attributes
 
 try:
-    from .private_layers import PrivateLayers
-except (ModuleNotFoundError, ImportError):
-    PrivateLayers = None
+    import tensorflow as tf
+except ModuleNotFoundError:
+    tf = None
+
 
 try:
     import tcn
 except ModuleNotFoundError:
     tcn = None
 
-keras = tf.keras
+LOSSES = {}
+LAYERS = {}
 
-LOSSES = {
-    'nse': tf_losses.tf_nse,
-    'kge': tf_losses.tf_kge,
-}
-LOSSES.update(get_attributes(aus=tf.keras, what='losses'))
+if tcn is not None:
+    LAYERS.update({"TCN": tcn.TCN if tcn is not None else None})
 
-LAYERS = {
-    "TCN": tcn.TCN if tcn is not None else None,
+if tf is not None:
+    import AI4Water.utils.tf_losses as tf_losses
+    from AI4Water.nbeats_keras import NBeats
+    import AI4Water.models.attention_layers as attns
+    from AI4Water.utils.utils import get_attributes
+    from AI4Water.models.tft_layer import TemporalFusionTransformer
+    keras = tf.keras
+    LOSSES.update({
+        'nse': tf_losses.tf_nse,
+        'kge': tf_losses.tf_kge,
+    })
+    LOSSES.update(get_attributes(aus=tf.keras, what='losses'))
+else:
+    NBeats, TemporalFusionTransformer, attns, keras = None, None, None, None
+
+if tf is not None:
+    LAYERS.update({"TEMPORALFUSIONTRANSFORMER": TemporalFusionTransformer})
+    LAYERS.update(get_attributes(aus=tf.keras, what='layers'))
+
+if keras is not None:
     # Concatenate and concatenate act differently, so if we want to use Concatenate, then use Concat not Concatenate
     # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
-    "CONCAT": keras.layers.Concatenate,
-    "NBEATS": NBeats,
-    "TEMPORALFUSIONTRANSFORMER": TemporalFusionTransformer,
-}
+    LAYERS["CONCAT"] =  keras.layers.Concatenate
 
-LAYERS.update(get_attributes(aus=tf.keras, what='layers'))
+    # tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
+    LAYERS["MULTIPLY"] = keras.layers.Multiply
 
-# tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
-LAYERS["MULTIPLY"] = keras.layers.Multiply
+if NBeats is not None:
+    LAYERS.update({"NBEATS": NBeats,})
 
-LAYERS.update(get_attributes(aus=attns, what='attn_layers'))
+if attns is not None:
+    LAYERS.update(get_attributes(aus=attns, what='attn_layers'))
+
+try:
+    from .private_layers import PrivateLayers
+except (ModuleNotFoundError, ImportError):
+    PrivateLayers = None
 
 if PrivateLayers is not None:
     # add private layers to dictionary
@@ -73,6 +87,13 @@ ACTIVATION_FNS = {
     'RELU': 'relu',  # keras.layers.Activation('relu', name=name),
     'TANH': 'tanh',
     'ELU': 'elu',
+    "HARDSIGMOID": 'hard_sigmoid',
+    "LINEAR": 'linear',
+
+}
+
+if tf is not None:
+    ACTIVATION_FNS.update({
     'LEAKYRELU': tf.nn.leaky_relu,
     'CRELU': tf.nn.crelu,
     'SELU': tf.nn.selu,  # tf.keras.activations.selu, # https://arxiv.org/pdf/1706.02515.pdf
@@ -81,10 +102,9 @@ ACTIVATION_FNS = {
     "SOFTSIGN": tf.nn.softsign,
     "SOFTPLUS": tf.nn.softplus,
     'SIGMOID': tf.nn.sigmoid,
-    "HARDSIGMOID": 'hard_sigmoid',
-    "LINEAR": 'linear',
     "SWISH": tf.nn.swish,  # https://arxiv.org/pdf/1710.05941.pdf
-}
+    })
 
-
-OPTIMIZERS = get_attributes(aus=tf.keras, what='optimizers')
+OPTIMIZERS = {}
+if tf is not None:
+    OPTIMIZERS.update(get_attributes(aus=tf.keras, what='optimizers'))

@@ -4,9 +4,15 @@ from weakref import WeakKeyDictionary
 
 try:
     from AI4Water.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS, tf
-    MODEL = tf.keras.Model
 except ModuleNotFoundError:
     tf = None
+
+from .backend import BACKEND
+
+if BACKEND == 'tensorflow':
+    from AI4Water.tf_attributes import LAYERS, tf
+else:
+    from .pytorch_attributes import LAYERS
 
 
 class AttributeNotSetYet:
@@ -130,8 +136,9 @@ class NN(AttributeStore):
             outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
             call_args = lyr_args['call_args'] if 'call_args' in lyr_args else None
 
-        if isinstance(config, tf.keras.layers.Lambda):
-            config = tf.keras.layers.serialize(config)
+        if tf is not None:
+            if isinstance(config, tf.keras.layers.Lambda):
+                config = tf.keras.layers.serialize(config)
 
         return config, inputs, outputs, call_args
 
@@ -143,7 +150,7 @@ class NN(AttributeStore):
         else:
             args = []
 
-        if 'name' not in config:
+        if 'name' not in config and BACKEND != 'pytorch':
             config['name'] = lyr_name
 
         activation = None

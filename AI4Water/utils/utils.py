@@ -89,7 +89,7 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
                 data['config']['model'] = model
 
     with open(fpath, 'w') as fp:
-        json.dump(data, fp, sort_keys=sort_keys, indent=4)
+        json.dump(data, fp, sort_keys=sort_keys, indent=4, cls=JsonEncoder)
 
     return
 
@@ -540,20 +540,6 @@ def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
             json.dump(od, sfp, sort_keys=True, indent=True)
 
     return best_results
-
-
-def get_attributes(aus, what:str) ->dict:
-    """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
-    capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
-    are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
-    losses, in that case the error will be generated from tensorflow. We are not catching those error right now."""
-    all_attrs = {}
-    for l in dir(getattr(aus, what)):
-        attr = getattr(getattr(aus, what), l)
-        if callable(attr) and not l.startswith('_'):
-            all_attrs[l.upper()] = attr
-
-    return all_attrs
 
 
 def train_val_split(x, y, validation_split):
@@ -1187,5 +1173,7 @@ class JsonEncoder(json.JSONEncoder):
             return obj.tolist()
         elif 'bool' in obj.__class__.__name__:
             return bool(obj)
+        elif callable(obj) and hasattr(obj, '__module__'):
+            return obj.__module__
         else:
             return super(JsonEncoder, self).default(obj)

@@ -5,12 +5,23 @@ __all__ = ["tf", "keras", "torch",
 import os
 import sys
 
-from AI4Water.utils.utils import get_attributes
-
 try:
     import sklearn
 except ModuleNotFoundError:
     sklearn = None
+
+def get_attributes(aus, what:str) ->dict:
+    """ gets all callable attributes of aus e.g. from tf.keras.what and saves them in dictionary with their names all
+    capitalized so that calling them becomes case insensitive. It is possible that some of the attributes of tf.keras.layers
+    are callable but still not a valid `layer`, sor some attributes of tf.keras.losses are callable but still not valid
+    losses, in that case the error will be generated from tensorflow. We are not catching those error right now."""
+    all_attrs = {}
+    for l in dir(getattr(aus, what)):
+        attr = getattr(getattr(aus, what), l)
+        if callable(attr) and not l.startswith('_'):
+            all_attrs[l.upper()] = attr
+
+    return all_attrs
 
 def get_sklearn_models():
 

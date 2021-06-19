@@ -1,6 +1,9 @@
 # https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit
 
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except ModuleNotFoundError:
+    tf = None
 
 #@tf.function
 def train_step(keras_model, data):

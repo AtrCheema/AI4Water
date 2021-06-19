@@ -5,11 +5,19 @@ from typing import Any, Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+
+try:
+    import seaborn as sns
+except ModuleNotFoundError:
+    sns = None
+
+try:
+    import tensorflow as tf
+except ModuleNotFoundError:
+    tf = None
 
 try:
     import plotly
@@ -17,6 +25,7 @@ except ModuleNotFoundError:
     plotly = None
 
 from AI4Water.backend import xgboost
+
 from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.utils import _missing_vals
 from AI4Water.utils.utils import find_tot_plots, init_subplots, Jsonize

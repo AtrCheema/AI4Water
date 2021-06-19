@@ -9,18 +9,22 @@ except ModuleNotFoundError:
     torch = None
 
 from ._main import BaseModel
-from AI4Water.tf_attributes import ACTIVATION_LAYERS, LAYERS, tf, OPTIMIZERS, tcn
+from AI4Water.tf_attributes import ACTIVATION_LAYERS, tf, OPTIMIZERS, tcn
 from .nn_tools import get_call_args
 
 
 from .backend import BACKEND
 
+if BACKEND == 'tensorflow':
+    from .tf_attributes import LAYERS
+else:
+    from .pytorch_attributes import LAYERS
 
-if BACKEND =='tensorflow':
+if BACKEND =='tensorflow' and tf is not None:
     MODEL = tf.keras.Model
 else:
     assert torch is not None
-    MODEL = torch.nn
+    MODEL = torch.nn.Module
 
 
 class Model(MODEL, BaseModel):
@@ -43,7 +47,7 @@ class Model(MODEL, BaseModel):
                  prefix=None,
                  **kwargs):
 
-        if BACKEND == 'tensorflow':
+        if BACKEND == 'tensorflow' and tf is not None:
             if tf.__version__ in  ["2.3.0"]:
                 raise NotImplementedError("""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
@@ -60,11 +64,15 @@ class Model(MODEL, BaseModel):
                            outputs=outputs, inputs=inputs,
                            **kwargs)
 
-        if self.category == "DL" and BACKEND == 'tensorflow':
+        self.config['backend'] = BACKEND
+
+        if self.category == "DL":
             self.initialize_layers(self.config['model']['layers'])
-            outs = self.call(self.input_lyrs)
-            setattr(self, 'output_lyrs', outs)
-            MODEL.__init__(self, inputs=self.input_lyrs, outputs=self.output_lyrs)
+
+            if BACKEND == 'tensorflow':
+                outs = self.call(self.input_lyrs)
+                setattr(self, 'output_lyrs', outs)
+                MODEL.__init__(self, inputs=self.input_lyrs, outputs=self.output_lyrs)
 
         self.build(self._get_dummy_input_shape())  # will initialize ML models or build NNs
 
@@ -101,6 +109,8 @@ class Model(MODEL, BaseModel):
     def num_input_layers(self) -> int:
         if self.category.upper() != "DL":
             return np.inf
+        if BACKEND == 'pytorch':
+            return 1
         else:
             return len(self.inputs)
 
@@ -110,13 +120,11 @@ class Model(MODEL, BaseModel):
         return [lyr.name.split(':')[0] for lyr in self.inputs]
 
     def _get_dummy_input_shape(self):
+        shape = ()
+        if BACKEND == 'tensorflow' and self.category == "DL":
+            if isinstance(self.inputs, list):
+                shape = self.inputs[0].shape
 
-        if isinstance(self.inputs, list) and self.category == "DL":
-            shape = self.inputs[0].shape
-        elif self.category == "ML":
-            shape = ()
-        else:
-            raise NotImplementedError
         return shape
 
     @property
@@ -416,7 +424,8 @@ class Model(MODEL, BaseModel):
                     self.summary()
 
             self.plot_model(self)
-        else:
+
+        elif self.category == "ML":
             self.build_ml_model()
 
         if not getattr(self, 'from_check_point', False):
@@ -428,6 +437,9 @@ class Model(MODEL, BaseModel):
 
     def first_layer_shape(self):
         """ instead of tuple, returning a list so that it can be moified if needed"""
+        if BACKEND == 'pytorch':
+            return [-1, self.ins]
+
         if self.num_input_layers > 1:
             shapes = {}
             for lyr in self.inputs:
