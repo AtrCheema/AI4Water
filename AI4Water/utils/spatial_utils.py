@@ -3,7 +3,10 @@ import random
 import warnings
 from collections import OrderedDict
 
-import imageio
+try:
+    import imageio
+except ModuleNotFoundError:
+    imageio = None
 
 MSG = f"""
         If you installed shapely using pip, try to resintall it 
@@ -24,7 +27,11 @@ except ModuleNotFoundError:
     warnings.warn(MSG, UserWarning)
     shape = None  # so that docs can be built
 
-import shapefile
+try:
+    import shapefile
+except ModuleNotFoundError:
+    shapefile = None
+
 import matplotlib.pyplot as plt
 import numpy as np
 

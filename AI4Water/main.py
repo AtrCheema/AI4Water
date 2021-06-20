@@ -387,14 +387,14 @@ class Model(MODEL, BaseModel):
 
     def forward(self, *inputs: Any, **kwargs: Any):
         outs = inputs
-        for idx, lyr in enumerate(self.lyr_cache):
-            _lyr = getattr(self, lyr)
+        for idx, (lyr_name, lyr) in enumerate(self.initiated_layers.items()):
+            #_lyr = getattr(self, lyr)
             if idx==0:
                 assert isinstance(inputs, tuple) and len(inputs) == 1
                 actual_inputs, = inputs
             else:
                 actual_inputs = inputs
-            outs = _lyr(actual_inputs)
+            outs = lyr(actual_inputs.float())
 
             inputs = outs
 

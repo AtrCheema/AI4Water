@@ -11,12 +11,14 @@ with open('version.py') as fv:
     exec(fv.read())
 
 min_requirements = [
-        'numpy',
-        'seaborn',
-        'scikit-learn',
-        'pandas',
-        'matplotlib',
-        'scikit-optimize'
+    'numpy',
+    'seaborn',
+    'scikit-learn',
+    'pandas',
+    'matplotlib',
+    'scikit-optimize',
+    'joblib',
+    'requests',
     ]
 
 extra_requires = [
@@ -31,7 +33,6 @@ extra_requires = [
 'catboost',
 'plotly',
 'tpot',
-'joblib',
 # spatial processing
 'imageio',
 # shapely manually download the wheel file and install

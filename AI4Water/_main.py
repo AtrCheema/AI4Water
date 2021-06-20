@@ -8,7 +8,11 @@ import warnings
 from typing import Union
 from types import MethodType
 
-import h5py
+try:
+    import h5py
+except ModuleNotFoundError:
+    h5py = None
+
 import joblib
 import matplotlib  # for version info
 import numpy as np
@@ -2517,11 +2521,12 @@ class BaseModel(NN, Plots):
 
     def write_cache(self, _fname, input_x, input_y, label_y):
         fname = os.path.join(self.path, _fname)
-        h5 = h5py.File(fname, 'w')
-        h5.create_dataset('input_X', data=input_x)
-        h5.create_dataset('input_Y', data=input_y)
-        h5.create_dataset('label_Y', data=label_y)
-        h5.close()
+        if h5py is not None:
+            h5 = h5py.File(fname, 'w')
+            h5.create_dataset('input_X', data=input_x)
+            h5.create_dataset('input_Y', data=input_y)
+            h5.create_dataset('label_Y', data=label_y)
+            h5.close()
         return
 
     def eda(self, freq=None, cols=None, **kwargs):
@@ -2630,7 +2635,7 @@ class BaseModel(NN, Plots):
         VERSION_INFO.update({'numpy': str(np.__version__),
                              'pandas': str(pd.__version__),
                              'matplotlib': str(matplotlib.__version__),
-                             'h5py': h5py.__version__,
+                             'h5py': h5py.__version__ if h5py is not None else None,
                             'joblib': joblib.__version__})
         self.info['version_info'] = VERSION_INFO
         return
