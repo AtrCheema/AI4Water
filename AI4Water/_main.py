@@ -34,14 +34,20 @@ from AI4Water.models.custom_training import train_step, test_step
 from AI4Water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from AI4Water.utils.visualizations import Visualizations, Interpret
 
+from .backend import BACKEND
+
 LOSSES = {}
-if tf is not None:
+
+if BACKEND == 'tensorflow' and tf is not None:
+
     import AI4Water.keract_mod as keract
     from AI4Water.tf_attributes import LOSSES
-elif torch is not None:  # TODO, what if both tf and torch are installed and we want to run pytorch-based model?
-    from AI4Water.torch_attributes import LOSSES as pt_losses
 
-    LOSSES.update(pt_losses)
+elif BACKEND == 'pytorch' and torch is not None:
+    from AI4Water.pytorch_attributes import LOSSES
+    from torch.utils.data import Dataset
+    from .utils.torch_utils import to_torch_dataset
+
 
 
 def reset_seed(seed):
@@ -53,6 +59,8 @@ def reset_seed(seed):
             tf.compat.v1.random.set_random_seed(seed)
         elif int(tf.__version__.split('.')[0]) > 1:
             tf.random.set_seed(seed)
+    if torch is not None:
+        torch.manual_seed(seed)
 
 class BaseModel(NN, Plots):
     """
@@ -498,6 +506,9 @@ class BaseModel(NN, Plots):
         if callable(self.config['loss']):
             return self.config['loss']
 
+        if self.config['backend']=='pytorch':
+            return LOSSES[self.config['loss'].upper()]()
+
         return LOSSES[self.config['loss'].upper()]
 
     @property
@@ -819,6 +830,18 @@ class BaseModel(NN, Plots):
 
     def get_callbacks(self, val_data_present, **callbacks):
 
+
+        if self.config['backend'] == 'pytorch':
+            return self.cbs_for_pytorch(val_data_present, **callbacks)
+        else:
+            return self.cbs_for_tf(val_data_present, **callbacks)
+
+    def cbs_for_pytorch(self, *args, **kwargs):
+        """callbacks for pytorch training."""
+        return []
+
+    def cbs_for_tf(self, val_data_present, **callbacks):
+
         _callbacks = list()
 
         _monitor = 'val_loss' if val_data_present else 'loss'
@@ -865,18 +888,18 @@ class BaseModel(NN, Plots):
 
         return val_data_present
 
-    def DO_fit(self, *args, **kwargs):
+    def DO_fit(self, x, **kwargs):
         """If nans are present in y, then tf.keras.model.fit is called as it is otherwise it is called with custom
         train_step and test_step which avoids calculating loss at points containing nans."""
         if kwargs.pop('nans_in_y_exist'):
-            if not isinstance(args[0], tf.data.Dataset):  # when x is tf.Dataset, we don't have y in kwargs
+            if not isinstance(x, tf.data.Dataset):  # when x is tf.Dataset, we don't have y in kwargs
                 y = kwargs['y']
                 assert np.isnan(y).sum() > 0
                 kwargs['y'] = np.nan_to_num(y)  # In graph mode, masking of nans does not work
             self._model.train_step = MethodType(train_step, self._model)
             self._model.test_step = MethodType(test_step, self._model)
 
-        return self.fit_fn(*args, **kwargs)
+        return self.fit_fn(x, **kwargs)
 
     def _FIT(self, inputs, outputs, validation_data, validation_steps=None, **callbacks):
 
@@ -895,16 +918,16 @@ class BaseModel(NN, Plots):
 
         inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
 
-        validation_split = 0.0 if isinstance(inputs, tf.data.Dataset) else self.config['val_fraction']
+        validation_split = 0.0 if inputs.__class__.__name__ in ['TorchDataset'] else self.config['val_fraction']
 
         callbacks = self.get_callbacks(self.use_val_data(validation_split, validation_data), **callbacks)
 
         st = time.time()
 
-        self.DO_fit(inputs,
-                    y=None if isinstance(inputs, tf.data.Dataset) else outputs,
+        self.DO_fit(x=inputs,
+                    y=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
                     epochs=self.config['epochs'],
-                    batch_size=None if isinstance(inputs, tf.data.Dataset) else self.config['batch_size'],
+                    batch_size=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else self.config['batch_size'],
                     validation_split=validation_split,
                     validation_data=validation_data,
                     callbacks=callbacks,
@@ -967,7 +990,10 @@ class BaseModel(NN, Plots):
             print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
 
         if self.num_input_layers == 1:
-            train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
+            if self.config['backend']=='pytorch':
+                train_dataset = to_torch_dataset(x_train[0], y_train)
+            else:
+                train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
 
         # x_train contains more than one input
         elif self.num_input_layers > 1 and isinstance(x_train, list):
@@ -978,27 +1004,33 @@ class BaseModel(NN, Plots):
         else:
             raise NotImplementedError
 
-        if self.config['shuffle']:
-            train_dataset = train_dataset.shuffle(self.config['buffer_size'])
+        if self.config['backend']=='tensorflow':
+            if self.config['shuffle']:
+                train_dataset = train_dataset.shuffle(self.config['buffer_size'])
 
-        train_dataset = train_dataset.batch(self.config['batch_size'],
+            train_dataset = train_dataset.batch(self.config['batch_size'],
                                             drop_remainder=self.config['drop_remainder'])
+
         if x_val is not None:
             if self.num_input_layers == 1:
                 if isinstance(x_val, list):
                     x_val = x_val[0]
                 assert isinstance(x_val, np.ndarray)
-                val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
+                if self.config['backend'] == 'pytorch':
+                    val_dataset = to_torch_dataset(x_val, y_val)
+                else:
+                    val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
             else:
                 val_dataset = tf.data.Dataset.from_tensor_slices((
                 {k: v for k, v in zip(self.input_layer_names, x_val)}, y_val
             ))
 
-            if self.config['shuffle']:
-                val_dataset = val_dataset.shuffle(self.config['buffer_size'])
+            if self.config['backend'] == 'tensorflow':
+                if self.config['shuffle']:
+                    val_dataset = val_dataset.shuffle(self.config['buffer_size'])
 
-            val_dataset = val_dataset.batch(self.config['batch_size'],
-                                            drop_remainder=self.config['drop_remainder'])
+                val_dataset = val_dataset.batch(self.config['batch_size'],
+                                                drop_remainder=self.config['drop_remainder'])
         else:
             val_dataset = val_data
 
@@ -1387,7 +1419,7 @@ class BaseModel(NN, Plots):
         val_data = None
 
         # val_dataset already exists in memory so this is not first time this method is called
-        if isinstance(getattr(self, 'val_dataset', None), tf.data.Dataset):
+        if getattr(self, 'val_dataset', None).__class__.__name__ in ['BatchDataset', 'TorchDataset']:
             return self.val_dataset
 
         if self.config['val_data'] is not None:
@@ -1677,11 +1709,11 @@ class BaseModel(NN, Plots):
         first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
 
         if self.category == 'DL':
-            predict_args = {'x': inputs, 'batch_size': self.config['batch_size'], 'verbose': self.verbosity}
+            predicted = self.predict_fn(x= inputs,
+                                        batch_size = self.config['batch_size'],
+                                        verbose= self.verbosity)
         else:
-            predict_args = inputs
-
-        predicted = self.predict_fn(*predict_args)
+            predicted = self.predict_fn(*inputs)
 
         if self.problem.upper().startswith("CLASS") and self.category == "ML":  # todo, should be for DL as well
             self.roc_curve(inputs, true_outputs)
@@ -1893,7 +1925,10 @@ class BaseModel(NN, Plots):
     def get_opt_args(self):
         """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
         in sub-classes"""
-        return {'lr': self.config['lr']}
+        kwargs = {'lr': self.config['lr']}
+        if self.config['backend'] == 'pytorch':
+            kwargs.update({'params': self.parameters()})  # parameters from pytorch model
+        return kwargs
 
     def get_metrics(self) -> list:
         """ returns the performance metrics specified"""
@@ -2513,6 +2548,9 @@ class BaseModel(NN, Plots):
             # loads the weights of keras model from weight file `w_file`.
             if self.api == 'functional':
                 self._model.load_weights(weight_file_path)
+            elif self.config['backend'] == 'pytorch':
+                fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
+                self.load_state_dict(torch.load(fpath))
             else:
                 self.load_weights(weight_file_path)
         if self.verbosity > 0:

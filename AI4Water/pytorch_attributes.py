@@ -10,6 +10,8 @@ LAYERS = {}
 
 LOSSES = {}
 
+OPTIMIZERS = {}
+
 if torch is not None:
     LAYERS.update(get_attributes(torch, 'nn'))
 
@@ -23,3 +25,4 @@ if torch is not None:
                    "KLDivLoss": torch.nn.KLDivLoss,
 
                    })
+    OPTIMIZERS.update(get_attributes(torch, 'optim'))

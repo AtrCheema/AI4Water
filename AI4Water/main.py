@@ -1,4 +1,5 @@
-from typing import Any, Union
+import os
+from typing import Any
 from collections import OrderedDict
 
 import numpy as np
@@ -9,22 +10,23 @@ except ModuleNotFoundError:
     torch = None
 
 from ._main import BaseModel
-from AI4Water.tf_attributes import ACTIVATION_LAYERS, tf, OPTIMIZERS, tcn
+from AI4Water.tf_attributes import ACTIVATION_LAYERS, tcn
 from .nn_tools import get_call_args
 
-
-from .backend import BACKEND
-
-if BACKEND == 'tensorflow':
-    from .tf_attributes import LAYERS
-else:
-    from .pytorch_attributes import LAYERS
+from .backend import BACKEND, tf, torch
 
 if BACKEND =='tensorflow' and tf is not None:
     MODEL = tf.keras.Model
-else:
-    assert torch is not None
+    from .tf_attributes import LAYERS, OPTIMIZERS
+
+elif BACKEND == 'pytorch' and torch is not None:
     MODEL = torch.nn.Module
+    from .pytorch_attributes import LAYERS, OPTIMIZERS
+    from torch.utils.data import DataLoader
+    from .utils.torch_utils import to_torch_dataset
+
+else:
+    class MODEL(object): pass
 
 
 class Model(MODEL, BaseModel):
@@ -133,8 +135,12 @@ class Model(MODEL, BaseModel):
 
     @property
     def fit_fn(self):
-        if self.category == "DL" and BACKEND == 'tensorflow':
-            return super().fit
+        if self.category == "DL":
+            if BACKEND == 'tensorflow':
+                return super().fit
+            elif BACKEND == 'pytorch':
+                return self.fit_pytorch
+
         return self._model.fit  # e.g. for ML models
 
     @property
@@ -145,8 +151,11 @@ class Model(MODEL, BaseModel):
 
     @property
     def predict_fn(self):
-        if self.category == "DL" and BACKEND == 'tensorflow':
-            return super().predict
+        if self.category == "DL":
+            if BACKEND == 'tensorflow':
+                return super().predict
+            elif BACKEND == 'pytorch':
+                return self.predict_pytorch
         return self._model.predict
 
     def initialize_layers(self, layers_config:dict, inputs=None):
@@ -400,6 +409,12 @@ class Model(MODEL, BaseModel):
 
         return outs
 
+    def get_optimizer(self):
+        opt_args = self.get_opt_args()
+        optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
+
+        return optimizer
+
     def build(self, input_shape):
         if self.category == "DL" and BACKEND == 'tensorflow':
             # Initialize the graph
@@ -409,11 +424,8 @@ class Model(MODEL, BaseModel):
                 outputs=self.output_lyrs
             )
 
-            opt_args = self.get_opt_args()
-            optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
-
             super().compile(
-                loss=self.loss(), optimizer=optimizer, metrics=self.get_metrics())
+                loss=self.loss(), optimizer=self.get_optimizer(), metrics=self.get_metrics())
 
             self.info['model_parameters'] = self.trainable_parameters()
 
@@ -471,6 +483,129 @@ class Model(MODEL, BaseModel):
 
     def loss_name(self):
         return self.loss
+
+    def _get_train_val_loaders(self, x, **kwargs):
+
+        if isinstance(x, list) and len(x) == 1:
+            x = x[0]
+            if isinstance(x, torch.utils.data.Dataset):
+                train_dataset = x
+            else:
+                train_dataset = to_torch_dataset(x, kwargs['y'])
+        elif isinstance(x, torch.utils.data.Dataset):
+            train_dataset = x
+
+        train_loader = DataLoader(train_dataset,
+                                  batch_size=self.config['batch_size'],
+                                  shuffle=self.config['shuffle']
+                                  )
+        val_dataset = None
+        if 'validation_data' in kwargs:
+            if isinstance(kwargs['validation_data'], torch.utils.data.Dataset):
+                val_dataset = kwargs['validation_data']
+
+        val_loader = None
+        if val_dataset is not None:
+            val_loader = DataLoader(val_dataset, batch_size=self.config['batch_size'])
+
+        return train_loader, val_loader
+
+    def fit_pytorch(self,  x, **kwargs):
+        """Trains the pytorch model."""
+
+        criterion = self.loss()
+        optimizer = self.get_optimizer()
+        val_epoch_loss = None
+
+        train_loader, val_loader = self._get_train_val_loaders(x, **kwargs)
+
+        train_loss = np.full(self.config['epochs'], np.nan)
+        val_loss = np.full(self.config['epochs'], np.nan)
+
+        for epoch in range(self.config['epochs']):
+
+            train_epoch_loss = self.train_for_epoch(train_loader, criterion, optimizer)
+
+            if val_loader is not None:
+                val_epoch_loss = self.validate_for_epoch(val_loader, criterion)
+
+                if val_epoch_loss<np.nanmin(val_loss):
+                    torch.save(self.state_dict(), self._weight_fname(epoch, val_epoch_loss))
+            elif train_epoch_loss < np.nanmin(train_loss):
+                torch.save(self.state_dict(), self._weight_fname(epoch, train_epoch_loss))
+
+            print(f' epoch: {epoch} loss: {train_epoch_loss} val_loss: {val_epoch_loss}')
+
+            train_loss[epoch] = train_epoch_loss
+            val_loss[epoch] = val_epoch_loss
+
+        class History(object):
+            history = {'loss': train_loss,
+                       'val_loss': val_loss
+                       }
+
+        setattr(self, 'history', History())
+
+        return History
+
+    def _weight_fname(self, epoch, loss):
+        return os.path.join(self.w_path, f"weights_{epoch}_{loss}")
+
+    def train_for_epoch(self, train_loader, criterion, optimizer):
+        """Trains pytorch model for one complete epoch"""
+
+        epoch_loss = np.full(len(train_loader), np.nan)
+
+        for i, (batch_x, batch_y) in enumerate(train_loader):
+            pred_y = self(batch_x.float())
+
+            loss = criterion(batch_y.float(), pred_y)
+            loss = loss.float()
+            loss.backward()
+
+            optimizer.step()
+            optimizer.zero_grad()
+
+            epoch_loss[i] = loss.item()
+
+        train_epoch_loss = round(float(np.average(epoch_loss)), 4)
+
+        return train_epoch_loss
+
+    def validate_for_epoch(self, data_loader, criterion):
+
+        epoch_loss = np.full(len(data_loader), np.nan)
+
+        for i, (batch_x, batch_y) in enumerate(data_loader):
+            pred_y = self(batch_x.float())
+
+            loss = criterion(batch_y.float(), pred_y)
+
+            epoch_loss[i] = loss.item()
+
+        return round(float(np.mean(epoch_loss)), 4)
+
+    def predict_pytorch(self, x, **kwargs):
+
+        if isinstance(x, torch.utils.data.Dataset):
+            dataset = x
+        elif isinstance(x, np.ndarray):
+            dataset = to_torch_dataset(x=x)
+        elif isinstance(x, list) and len(x)==1:
+            dataset = to_torch_dataset(x[0])
+        else:
+            raise ValueError
+
+        data_loader = DataLoader(dataset, batch_size=self.config['batch_size'])
+
+        predictions = []
+        for i, batch_x in enumerate(data_loader):
+
+            y_pred_ = self(batch_x.float())
+            predictions.append(y_pred_.detach().numpy())
+
+
+        return np.concatenate(predictions, axis=0)
 
 
 def is_input(tensor, name=''):
