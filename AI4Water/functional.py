@@ -6,29 +6,32 @@ from .nn_tools import get_add_call_args, get_call_args
 
 
 class Model(BaseModel):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.KModel = keras.models.Model if keras is not None else None
-
-        self.build()
     """
     Inherits from `BaseModel`
     Model class for functional implementation. This class is usefull, if you want
-    to use the functional API of keras build your own NN structure. In such as case 
+    to use the functional API of keras build your own NN structure. In such as case
     you can construct your NN structure by overwriting `add_layers`. Another
     advantage of this class is that sometimes, model_subclsasing is not possible
     for example due to some bugs in tensorflow. In such a case this class can
     be used. Otherwise all the features of AI4Water are available in this class
     as well.
-    
+
     Example:
     --------
     ```python
     from AI4Model.functional import Model
     ```
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initializes and builds the NN/ML model.
+        """
+        super().__init__(*args, **kwargs)
+
+        self.KModel = keras.models.Model if keras is not None else None
+
+        self.build()
 
     @property
     def api(self):
@@ -125,26 +128,38 @@ class Model(BaseModel):
 
     def add_layers(self, layers_config:dict, inputs=None):
         """
-        @param layers_config: `dict`, wholse keys can be one of the following:
-            `config`: `dict`/lambda, Every layer must contain initializing arguments as `config` dictionary. The `config`
-                                     dictionary for every layer can contain `name` key and its value must be `str`
-                                     type. If `name` key  is not provided in the config, the provided layer name will be
-                                     used as its name e.g in following case
-                                       layers = {'LSTM': {'config': {'units': 16}}}
-                                     the name of `LSTM` layer will be `LSTM` while in follwoing case
-                                        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
-                                     the name of the lstm will be `MyLSTM`.
-            `inputs`: str/list,  The calling arguments for the list. If `inputs` key is missing for a layer, it will be
-                                 supposed that either this is an Input layer or it uses previous outputs as inputs.
-            `outputs`: str/list  We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
-                                 list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
-            `call_args`: str/list  We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
-                                   a list of strings.
-        @param inputs: if None, it will be supposed the the `Input` layer either exists in `layers_config` or an Input
-        layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
-        layer and the remaining NN architecture will be built as defined in `layers_config`. This can be handy when we
-        want to use this method several times to build a complex or parallel NN structure.
-        avoid `Input` in layer names.
+        Builds the NN from dictionary.
+        Arguments:
+            layers_config : wholse keys can be one of the following:
+                `config`: `dict`/lambda, Every layer must contain initializing
+                    arguments as `config` dictionary. The `config` dictionary
+                    for every layer can contain `name` key and its value must be
+                    `str` type. If `name` key  is not provided in the config,
+                    the provided layer name will be used as its name e.g in following case
+                        layers = {'LSTM': {'config': {'units': 16}}}
+                    the name of `LSTM` layer will be `LSTM` while in follwoing case
+                        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
+                    the name of the lstm will be `MyLSTM`.
+                `inputs`: str/list,  The calling arguments for the list. If `inputs`
+                    key is missing for a layer, it will be supposed that either
+                    this is an Input layer or it uses previous outputs as inputs.
+                `outputs`: str/list  We can specifity the outputs from a layer
+                    by using the `outputs` key. The value to `outputs` must be a
+                    string or list of strings specifying the name of outputs from
+                    current layer which can be used later in the mdoel.
+                `call_args`: str/list  We can also specify additional call arguments
+                    by `call_args` key. The value to `call_args` must be a string
+                    or a list of strings.
+            inputs : if None, it will be supposed the the `Input` layer either
+                exists in `layers_config` or an Input layer will be created
+                within this method before adding any other layer. If not None,
+                then it must be in `Input` layer and the remaining NN architecture
+                will be built as defined in `layers_config`. This can be handy
+                when we want to use this method several times to build a complex
+                or parallel NN structure. avoid `Input` in layer names.
+        Returns:
+            inputs :
+            outputs :
         """
         lyr_cache = {}
         wrp_layer = None  # indicator for wrapper layers

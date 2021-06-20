@@ -22,6 +22,8 @@
             - __init__
             - initialize_layers
             - call
+            - forward
+            - fit_pytorch
     rendering:
         show_root_heading: true
 

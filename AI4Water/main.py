@@ -49,6 +49,11 @@ class Model(MODEL, BaseModel):
                  prefix=None,
                  **kwargs):
 
+        """
+        Initializes the layers of NN model using `initialize_layers` method. All
+        other input arguments goes to `BaseModel`.
+
+        """
         if BACKEND == 'tensorflow' and tf is not None:
             if tf.__version__ in  ["2.3.0"]:
                 raise NotImplementedError("""
