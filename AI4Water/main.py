@@ -1,4 +1,3 @@
-import os
 from typing import Any
 from collections import OrderedDict
 
@@ -73,6 +72,10 @@ class Model(MODEL, BaseModel):
 
         self.config['backend'] = BACKEND
 
+        if torch is not None:
+            from .pytorch_training import Learner
+            self.torch_learner = Learner
+
         if self.category == "DL":
             self.initialize_layers(self.config['model']['layers'])
 
@@ -82,6 +85,15 @@ class Model(MODEL, BaseModel):
                 MODEL.__init__(self, inputs=self.input_lyrs, outputs=self.output_lyrs)
 
         self.build(self._get_dummy_input_shape())  # will initialize ML models or build NNs
+
+    @property
+    def torch_learner(self):
+        return self._torch_learner
+
+    @torch_learner.setter
+    def torch_learner(self, x):
+        """So that learner can be changed."""
+        self._torch_learner = x
 
     @property
     def layer_names(self):
@@ -167,27 +179,17 @@ class Model(MODEL, BaseModel):
         """
         Initializes the layers/weights/variables which are to be used in `forward`
         or `call` method.
-        @param layers_config: `dict`, wholse keys can be one of the following:
-            `config`: `dict`/lambda, Every layer must contain initializing arguments as `config` dictionary. The `config`
-                                     dictionary for every layer can contain `name` key and its value must be `str`
-                                     type. If `name` key  is not provided in the config, the provided layer name will be
-                                     used as its name e.g in following case
-                                       layers = {'LSTM': {'config': {'units': 16}}}
-                                     the name of `LSTM` layer will be `LSTM` while in follwoing case
-                                        layers = {'LSTM': {'config': {'units': 16, 'name': 'MyLSTM'}}}
-                                     the name of the lstm will be `MyLSTM`.
-            `inputs`: str/list,  The calling arguments for the list. If `inputs` key is missing for a layer, it will be
-                                 supposed that either this is an Input layer or it uses previous outputs as inputs.
-            `outputs`: str/list  We can specifity the outputs from a layer by using the `outputs` key. The value to `outputs` must be a string or
-                                 list of strings specifying the name of outputs from current layer which can be used later in the mdoel.
-            `call_args`: str/list  We can also specify additional call arguments by `call_args` key. The value to `call_args` must be a string or
-                                   a list of strings.
+        Arguments:
+            layers_config : python dictionary to define neural network. For details
+                [see](https://ai4water.readthedocs.io/en/latest/build_dl_models.html)
 
-        @param inputs: if None, it will be supposed the the `Input` layer either exists in `layers_config` or an Input
-        layer will be created withing this method before adding any other layer. If not None, then it must be in `Input`
-        layer and the remaining NN architecture will be built as defined in `layers_config`. This can be handy when we
-        want to use this method several times to build a complex or parallel NN structure.
-        avoid `Input` in layer names.
+            inputs : if None, it will be supposed the the `Input` layer either
+                exists in `layers_config` or an Input layer will be created
+                withing this method before adding any other layer. If not None,
+                then it must be in `Input` layer and the remaining NN architecture
+                will be built as defined in `layers_config`. This can be handy
+                when we want to use this method several times to build a complex
+                or parallel NN structure. Avoid `Input` in layer names.
         """
         layers_config = layers_config.copy()
         input_lyrs = []
@@ -202,9 +204,16 @@ class Model(MODEL, BaseModel):
             lyr_name, args, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
             if BACKEND == 'pytorch':
-                lyr_initiated = LAYERS[lyr_name.upper()](**lyr_config)
+
+                if first_layer:
+                    first_layer = False
+
+                if callable(lyr_config):
+                    lyr_initiated = lyr_config
+                else:
+                    lyr_initiated = LAYERS[lyr_name.upper()](**lyr_config)
                 setattr(self, lyr, lyr_initiated)
-                initiated_layers[lyr] = lyr_initiated
+                initiated_layers[lyr] = {"layer": lyr_initiated, "named_outs": named_outs, 'call_args': call_args, 'inputs': lyr_inputs}
 
             else:
                 # may be user has defined layers without input layer, in this case add Input layer as first layer
@@ -341,7 +350,6 @@ class Model(MODEL, BaseModel):
     def call(self, inputs, training=None, mask=None):
         outs = inputs
 
-
         # inputs can be a list of tensors
         if isinstance(inputs, list):
             cache = {i.name.split(':')[0]: i for i in inputs}
@@ -400,17 +408,64 @@ class Model(MODEL, BaseModel):
         return outs
 
     def forward(self, *inputs: Any, **kwargs: Any):
+
         outs = inputs
-        for idx, (lyr_name, lyr) in enumerate(self.initiated_layers.items()):
-            #_lyr = getattr(self, lyr)
+
+        # if inputs is a list, then just save it in cache
+        if isinstance(inputs, dict):
+            cache = inputs
+
+        # inputs can be a list of tensors but as a ListWrapper
+        elif inputs.__class__.__name__ == "Listwrapper":
+            cache = {i.name.split(':')[0]: i for i in inputs}
+
+        elif isinstance(inputs, tuple) or isinstance(inputs, list):
+            cache = {}
+            for idx, i in enumerate(inputs):
+                _name = i.name if i.name is not None else f'input_{idx}'
+                cache[_name] = i
+
+        # hopefully this is just one tensor
+        else:
+            cache = {inputs.name: inputs}
+
+        for idx, (lyr_name, lyr_args) in enumerate(self.initiated_layers.items()):
+            lyr = lyr_args['layer']
+            named_outs = lyr_args['named_outs']
+            call_args = lyr_args['call_args']
+            _inputs = lyr_args['inputs']
+
             if idx==0:
                 assert isinstance(inputs, tuple) and len(inputs) == 1
-                actual_inputs, = inputs
-            else:
-                actual_inputs = inputs
-            outs = lyr(actual_inputs.float())
+                _inputs = 'input_0'
 
+            if _inputs is None:
+                _inputs = prev_output_name
+
+            call_args, add_args = get_call_args(_inputs, cache, call_args, lyr_name)
+
+            # actuall call
+            outs = lyr(call_args, **add_args)
+
+            if named_outs is not None:
+                if isinstance(outs, list):
+                    assert len(named_outs) == len(outs)
+                    for name, out_tensor in zip(named_outs, outs):
+                        if name in cache:
+                            raise ValueError(f"Duplicate layer found with name {name}")
+                        cache[name] = out_tensor
+                if isinstance(outs, tuple):
+                    assert len(named_outs) == len(outs)
+                    for name, out_tensor in zip(named_outs, outs):
+                        if name in cache:
+                            raise ValueError(f"Duplicate layer found with name {name}")
+                        cache[name] = out_tensor
+                else:
+                    cache[named_outs] = outs
+
+            cache[lyr_name] = outs
             inputs = outs
+            prev_output_name = lyr_name
 
         return outs
 
@@ -455,7 +510,10 @@ class Model(MODEL, BaseModel):
     def first_layer_shape(self):
         """ instead of tuple, returning a list so that it can be moified if needed"""
         if BACKEND == 'pytorch':
-            return [-1, self.ins]
+            if self.lookback == 1:
+                return [-1, self.ins]
+            else:
+                return [-1, self.lookback, self.ins]
 
         if self.num_input_layers > 1:
             shapes = {}
@@ -489,106 +547,22 @@ class Model(MODEL, BaseModel):
     def loss_name(self):
         return self.loss
 
-    def _get_train_val_loaders(self, x, **kwargs):
-
-        if isinstance(x, list) and len(x) == 1:
-            x = x[0]
-            if isinstance(x, torch.utils.data.Dataset):
-                train_dataset = x
-            else:
-                train_dataset = to_torch_dataset(x, kwargs['y'])
-        elif isinstance(x, torch.utils.data.Dataset):
-            train_dataset = x
-
-        train_loader = DataLoader(train_dataset,
-                                  batch_size=self.config['batch_size'],
-                                  shuffle=self.config['shuffle']
-                                  )
-        val_dataset = None
-        if 'validation_data' in kwargs:
-            if isinstance(kwargs['validation_data'], torch.utils.data.Dataset):
-                val_dataset = kwargs['validation_data']
-
-        val_loader = None
-        if val_dataset is not None:
-            val_loader = DataLoader(val_dataset, batch_size=self.config['batch_size'])
-
-        return train_loader, val_loader
-
     def fit_pytorch(self,  x, **kwargs):
         """Trains the pytorch model."""
 
-        criterion = self.loss()
-        optimizer = self.get_optimizer()
-        val_epoch_loss = None
 
-        train_loader, val_loader = self._get_train_val_loaders(x, **kwargs)
+        learner = self.torch_learner(model=self,
+                          batch_size=self.config['batch_size'],
+                          num_epochs=self.config['epochs'],
+                          shuffle=self.config['shuffle'],
+                          to_monitor=self.config['metrics'],
+                          patience=self.config['patience']
+                          )
 
-        train_loss = np.full(self.config['epochs'], np.nan)
-        val_loss = np.full(self.config['epochs'], np.nan)
+        history = learner.fit(x, **kwargs)
 
-        for epoch in range(self.config['epochs']):
-
-            train_epoch_loss = self.train_for_epoch(train_loader, criterion, optimizer)
-
-            if val_loader is not None:
-                val_epoch_loss = self.validate_for_epoch(val_loader, criterion)
-
-                if val_epoch_loss<np.nanmin(val_loss):
-                    torch.save(self.state_dict(), self._weight_fname(epoch, val_epoch_loss))
-            elif train_epoch_loss < np.nanmin(train_loss):
-                torch.save(self.state_dict(), self._weight_fname(epoch, train_epoch_loss))
-
-            print(f' epoch: {epoch} loss: {train_epoch_loss} val_loss: {val_epoch_loss}')
-
-            train_loss[epoch] = train_epoch_loss
-            val_loss[epoch] = val_epoch_loss
-
-        class History(object):
-            history = {'loss': train_loss,
-                       'val_loss': val_loss
-                       }
-
-        setattr(self, 'history', History())
-
-        return History
-
-    def _weight_fname(self, epoch, loss):
-        return os.path.join(self.w_path, f"weights_{epoch}_{loss}")
-
-    def train_for_epoch(self, train_loader, criterion, optimizer):
-        """Trains pytorch model for one complete epoch"""
-
-        epoch_loss = np.full(len(train_loader), np.nan)
-
-        for i, (batch_x, batch_y) in enumerate(train_loader):
-            pred_y = self(batch_x.float())
-
-            loss = criterion(batch_y.float(), pred_y)
-            loss = loss.float()
-            loss.backward()
-
-            optimizer.step()
-            optimizer.zero_grad()
-
-            epoch_loss[i] = loss.item()
-
-        train_epoch_loss = round(float(np.average(epoch_loss)), 4)
-
-        return train_epoch_loss
-
-    def validate_for_epoch(self, data_loader, criterion):
-
-        epoch_loss = np.full(len(data_loader), np.nan)
-
-        for i, (batch_x, batch_y) in enumerate(data_loader):
-            pred_y = self(batch_x.float())
-
-            loss = criterion(batch_y.float(), pred_y)
-
-            epoch_loss[i] = loss.item()
-
-        return round(float(np.mean(epoch_loss)), 4)
+        setattr(self, 'history', history)
+        return history
 
     def predict_pytorch(self, x, **kwargs):
 

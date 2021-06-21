@@ -144,7 +144,10 @@ class NN(AttributeStore):
 
     def check_lyr_config(self, lyr_name: str, config: dict):
 
-        if not isinstance(config, dict):
+        if callable(config):
+            return lyr_name, [], config, None
+        
+        elif not isinstance(config, dict):
             args = [config]
             config = {}
         else:

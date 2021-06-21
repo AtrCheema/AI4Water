@@ -1,22 +1,30 @@
-import pandas as pd
-import numpy as np
-import AI4Water
-from torch import nn
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-
 from AI4Water import Model
-from AI4Water.utils.utils import plot
-from AI4Water.utils.torch_utils import to_torch_dataset
+
 
 from AI4Water.utils.datasets import arg_beach
 
 
-#examples = 1000
-#data = np.arange(int(examples*9)).reshape(-1,examples).transpose()
-#df = pd.DataFrame(data, columns=[f'in_{i}' for i in range(data.shape[1])])
 df = arg_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm',
        'pcp6_mm', 'pcp12_mm'])
+
+def build_and_fit(nn_model, parameters):
+    model = Model(
+        model=nn_model,
+        data=df,
+        lookback=12,
+        epochs=10,
+        transformation='minmax',
+        lr=0.0001,
+        batch_size=4,
+        test_fraction=0.0,
+        val_fraction=0.0,
+        patience=10,
+        # val_data="same",
+    )
+
+    assert model.trainable_parameters() == parameters
+    model.fit()
+    return model
 
 default_model = {'layers':{
     "Linear_0": {"in_features": 8, "out_features": 64},
@@ -29,21 +37,20 @@ default_model = {'layers':{
     "Linear_3": {"in_features": 16, "out_features": 1},
 }}
 
+build_and_fit(default_model, 3201)
 
-model = Model(
-    model=default_model,
-    data=df,
-    lookback=1,
-    epochs=5,
-    transformation='minmax',
-    lr=0.0001,
-    batch_size=4,
-    val_data="same",
-)
+default_model = {'layers':{
+    'LSTM_0': {"config": {'input_size': 8, 'hidden_size': 64, "batch_first": True},
+               "outputs": ['lstm0_output', 'states_0']},
+    'LSTM_1': {"config": {'input_size': 64, 'hidden_size': 32, "batch_first": True, "dropout": 0.3},
+               "outputs": ["lstm1_output", 'states_1'],
+               "inputs": "lstm0_output"},
+    'slice': {"config": lambda x: x[:, -1, :],
+              "inputs": "lstm1_output"},
+    "Linear": {"in_features": 32, "out_features": 1},
+}}
 
-assert model.trainable_parameters() == 3201
-model.fit()
-model.predict()
+build_and_fit(default_model, 31521)
 
 
 
