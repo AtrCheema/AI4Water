@@ -7,16 +7,19 @@ from .nn_tools import get_add_call_args, get_call_args
 
 class Model(BaseModel):
     """
-    Inherits from `BaseModel`
-    Model class for functional implementation. This class is usefull, if you want
-    to use the functional API of keras build your own NN structure. In such as case
-    you can construct your NN structure by overwriting `add_layers`. Another
-    advantage of this class is that sometimes, model_subclsasing is not possible
-    for example due to some bugs in tensorflow. In such a case this class can
-    be used. Otherwise all the features of AI4Water are available in this class
-    as well.
+    Inherits from `BaseModel`.
 
-    Example:
+    For ML/non-Neural Network based models, there is not difference in functional
+    or sub-clsasing api. For DL/NN-based models, this class implements functional
+    api and differs from subclassing api in internal implementation of NN. This
+    class is usefull, if you want to use the functional API of keras to build
+    your own NN structure. In such as case you can construct your NN structure
+    by overwriting `add_layers`. Another advantage of this class is that sometimes,
+    model_subclsasing is not possible for example due to some bugs in tensorflow.
+    In such a case this class can be used. Otherwise all the features of AI4Water
+    are available in this class as well.
+
+    Example
     --------
     ```python
     from AI4Model.functional import Model

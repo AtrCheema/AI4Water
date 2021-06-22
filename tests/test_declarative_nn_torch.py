@@ -8,18 +8,19 @@ df = arg_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm
        'pcp6_mm', 'pcp12_mm'])
 
 def build_and_fit(nn_model, parameters):
+
     model = Model(
         model=nn_model,
         data=df,
-        lookback=12,
-        epochs=10,
+        lookback=1,
+        epochs=50,
         transformation='minmax',
         lr=0.0001,
         batch_size=4,
         test_fraction=0.0,
         val_fraction=0.0,
         patience=10,
-        # val_data="same",
+        #val_data="same",
     )
 
     assert model.trainable_parameters() == parameters

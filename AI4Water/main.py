@@ -38,7 +38,6 @@ class Model(MODEL, BaseModel):
     """
 
     def __init__(self,
-                 #*,
                  data=None,
                  verbosity=1,
                  outputs=None,
@@ -55,9 +54,14 @@ class Model(MODEL, BaseModel):
         """
         if BACKEND == 'tensorflow' and tf is not None:
             if tf.__version__ in  ["2.3.0"]:
-                raise NotImplementedError("""
+                raise NotImplementedError(f"""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
-            You can use functional API instead.""")
+            You can use functional API instead by using
+            from AI4Water.functional import Model
+            instead of 
+            from AI4Water import Model
+            Or change the tensorflow version. Current version is {tf.__version__}. 
+            """)
 
         tf_kwargs = {}
         for arg in ['inputs', 'outputs']:
@@ -408,7 +412,7 @@ class Model(MODEL, BaseModel):
         return outs
 
     def forward(self, *inputs: Any, **kwargs: Any):
-
+        """implements forward pass implementation for pytorch based NN models."""
         outs = inputs
 
         # if inputs is a list, then just save it in cache

@@ -45,7 +45,6 @@ if BACKEND == 'tensorflow' and tf is not None:
 
 elif BACKEND == 'pytorch' and torch is not None:
     from AI4Water.pytorch_attributes import LOSSES
-    from torch.utils.data import Dataset
     from .utils.torch_utils import to_torch_dataset
 
 
@@ -2546,7 +2545,7 @@ class BaseModel(NN, Plots):
                 self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.
-            if self.api == 'functional':
+            if self.api == 'functional' and self.config['backend'] == 'tensorflow':
                 self._model.load_weights(weight_file_path)
             elif self.config['backend'] == 'pytorch':
                 fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict

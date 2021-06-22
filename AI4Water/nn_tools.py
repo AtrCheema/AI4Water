@@ -146,7 +146,7 @@ class NN(AttributeStore):
 
         if callable(config):
             return lyr_name, [], config, None
-        
+
         elif not isinstance(config, dict):
             args = [config]
             config = {}

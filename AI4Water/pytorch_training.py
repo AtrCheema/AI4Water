@@ -3,10 +3,20 @@ import os
 import numpy as np
 
 from .backend import torch
-from .utils.torch_utils import to_torch_dataset
+from .utils.torch_utils import to_torch_dataset, TorchMetrics
 
 DataLoader = torch.utils.data.DataLoader
 
+F = {
+    'mse': [np.nanmin, np.less],
+    'nse': [np.nanmax, np.greater],
+    'r2': [np.nanmax, np.greater],
+    'pbias': [np.nanmin, np.less],
+    'mape': [np.nanmin, np.less],
+    'rmse': [np.nanmin, np.less],
+    'nrmse': [np.nanmin, np.less],
+    'kge': [np.nanmax, np.greater],
+}
 
 class AttributeContainer(object):
 
@@ -19,8 +29,8 @@ class AttributeContainer(object):
         self.train_loader = None
         self.criterion = None
         self.optimizer = None
-        self.val_epoch_loss = None
-        self.train_epoch_loss = None
+        self.val_epoch_losses = {}
+        self.train_epoch_losses = None
         self.train_metrics = {metric: np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.val_metrics = {f'val_{metric}': np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.best_epoch = 0   # todo,
@@ -67,42 +77,61 @@ class Learner(AttributeContainer):
     def train_for_epoch(self):
         """Trains pytorch model for one complete epoch"""
 
-        epoch_loss = np.full(len(self.train_loader), np.nan)
+        epoch_losses = {metric: np.full(len(self.train_loader), np.nan) for metric in self.to_monitor}
+
+        num_outs = self.model.num_outs
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
             pred_y = self.model(batch_x.float())
 
-            loss = self.criterion(batch_y.float(), pred_y)
+            loss = self.criterion(batch_y.float().view(-1, num_outs), pred_y.view(-1, num_outs))
             loss = loss.float()
             loss.backward()
 
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-            epoch_loss[i] = loss.item()
+            # calculate metrics for each mini-batch
+            er = TorchMetrics(batch_y, pred_y)
 
-        self.train_epoch_loss = round(float(np.average(epoch_loss)), 4)
+            for k, v in epoch_losses.items():
+                v[i] = getattr(er, k)().detach().item()
+
+        # take the mean for all mini-batches without considering infinite values
+        self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
 
         return
 
     def validate_for_epoch(self):
         """If validation data is available, then it performs the validation """
+
         if self.val_loader is not None:
 
-            epoch_loss = np.full(len(self.val_loader), np.nan)
+            epoch_losses = {metric: np.full(len(self.val_loader), np.nan) for metric in self.to_monitor}
 
             for i, (batch_x, batch_y) in enumerate(self.val_loader):
+
                 pred_y = self.model(batch_x.float())
 
-                loss = self.criterion(batch_y.float(), pred_y)
+                # calculate metrics for each mini-batch
+                er = TorchMetrics(batch_y, pred_y)
 
-                epoch_loss[i] = loss.item()
+                for k,v in epoch_losses.items():
+                    v[i] = getattr(er, k)().detach().item()
 
-            self.val_epoch_loss = round(float(np.mean(epoch_loss)), 4)
+            # take the mean for all mini-batches
+            self.val_epoch_losses = {f'val_{k}': round(float(np.mean(v)), 4) for k, v in epoch_losses.items()}
 
-            if self.val_epoch_loss<np.nanmin(self.val_metrics['val_loss']):
-                torch.save(self.model.state_dict(), self._weight_fname(self.epoch, self.val_epoch_loss))
-                self.best_epoch = self.epoch
+            for k, v in self.val_epoch_losses.items():
+                metric = k.split('_')[1]
+                f1 = F[metric][0]
+                f2 = F[metric][1]
+
+                if f2(v , f1(self.val_metrics[k])):
+
+                    torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
+                    self.best_epoch = self.epoch
+                    break  # weights are saved for this epoch so no need to check other metrics
 
         return
 
@@ -136,7 +165,11 @@ class Learner(AttributeContainer):
         return train_loader, val_loader
 
     def on_train_begin(self, x, **kwargs):
-
+        print("{}{}{}".format('*'*25, 'Training Started', '*'*25))
+        print("{:<7} {:<15} {:<15} {:<15} {:<15}".format('Epoch: ',
+                                                         *self.train_metrics.keys(),
+                                                         *self.train_metrics.keys()))
+        print("{}".format('*' * 70))
         self.criterion = self.model.loss()
         self.optimizer = self.model.get_optimizer()
 
@@ -145,7 +178,8 @@ class Learner(AttributeContainer):
         return
 
     def on_train_end(self):
-
+        self.train_metrics['loss'] = self.train_metrics.pop('mse')
+        self.val_metrics['val_loss'] = self.val_metrics.pop('val_mse')
         class History(object):
             history = {}
             history.update(self.train_metrics)
@@ -155,8 +189,12 @@ class Learner(AttributeContainer):
 
     def update_metrics(self):
 
-        self.train_metrics['loss'][self.epoch] = self.train_epoch_loss
-        self.val_metrics['val_loss'][self.epoch] = self.val_epoch_loss
+        for k, v in self.train_metrics.items():
+            v[self.epoch] = self.train_epoch_losses[k]
+
+        if self.val_loader is not None:
+            for k, v in self.val_metrics.items():
+                v[self.epoch] = self.val_epoch_losses[k]
 
         return
 
@@ -164,14 +202,21 @@ class Learner(AttributeContainer):
         return
 
     def on_epoch_end(self):
+        formatter = "{:<7}" + "{:<15.5f} " * (len(self.val_epoch_losses) + len(self.train_epoch_losses))
 
         if self.val_loader is None:
-            if self.train_epoch_loss < np.nanmin(self.train_metrics['loss']):
-                torch.save(self.model.state_dict(), self._weight_fname(self.epoch, self.train_epoch_loss))
 
-                self.best_epoch = self.epoch
+            for k, v in self.train_epoch_losses.items():
+                f1 = F[k][0]
+                f2 = F[k][1]
 
-        print(f' epoch: {self.epoch} loss: {self.train_epoch_loss} val_loss: {self.val_epoch_loss}')
+                if f2(v , f1(self.train_metrics[k])):
+
+                    torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
+                    self.best_epoch = self.epoch
+                    break
+
+        print(formatter.format(self.epoch, *self.train_epoch_losses.values(), *self.val_epoch_losses.values()))
 
         self.update_metrics()
 
@@ -180,14 +225,12 @@ class Learner(AttributeContainer):
 
 def get_metrics_to_monitor(metrics):
     if metrics is None:
-        _metrics = ['loss']
+        _metrics = ['mse']
     elif isinstance(metrics, list):
-        if 'loss' in metrics:
-            _metrics = metrics
-        else:
-            _metrics = metrics + ['loss']
+
+        _metrics = metrics + ['mse']
     else:
         assert isinstance(metrics, str)
-        _metrics = ['loss', metrics]
+        _metrics = ['mse', metrics]
 
-    return _metrics
+    return list(set(_metrics))
