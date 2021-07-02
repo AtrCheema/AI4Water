@@ -20,11 +20,11 @@ COLORS = np.array([
        [0.13778617, 0.06228198, 0.33547859, 1.        ],
        [0.96707953, 0.46268314, 0.45772886, 1.],
        [0.17221373, 0.53023578, 0.96788307, 1.],
-        [0.92875036, 0.09364162, 0.33348078, 1.],  
-        [0.93950089, 0.64582256, 0.16928645, 1.],    
-        [0.06802773, 0.46382623, 0.49007703, 1.],   
-        [0.13684922, 0.98802401, 0.34518303, 1.],   
-        [0.54829269, 0.15069842, 0.06147751, 1.],    
+        [0.92875036, 0.09364162, 0.33348078, 1.],
+        [0.93950089, 0.64582256, 0.16928645, 1.],
+        [0.06802773, 0.46382623, 0.49007703, 1.],
+        [0.13684922, 0.98802401, 0.34518303, 1.],
+        [0.54829269, 0.15069842, 0.06147751, 1.],
        [0.6       , 0.6       , 0.6       , 1.        ]])
 
 RECTS = {1: (111,),
@@ -53,17 +53,20 @@ class TaylorDiagram(object):
         Set up Taylor diagram axes, i.e. single quadrant polar
         plot, using `mpl_toolkits.axisartist.floating_axes`.
         Parameters:
-        :refstd: reference standard deviation to be compared to
-        :fig: input Figure or None
-        :rect: subplot definition
-        :label: reference label
-        :srange: stddev axis extension, in units of *refstd*
-        :extend: extend diagram to negative correlations
-        :param axis_fontdict: dictionary must consist of at least three dictionaries 'left', 'right', 'top'
+            true : true array or a dictionary containing standard deviation of the true
+            fig : input Figure or None
+            rect : subplot definition
+            label : reference label
+            srange : stddev axis extension, in units of *refstd*
+            extend : extend diagram to negative correlations
+            axis_fontdict : dictionary must consist of at least three dictionaries 'left', 'right', 'top'
         """
 
         #self.refstd = refstd            # Reference standard deviation
-        self.refstd = np.std(true)
+        if isinstance(true, dict):
+            self.refstd = true['std']
+        else:
+            self.refstd = np.std(true)
 
         tr = PolarAxes.PolarTransform()
 
@@ -113,6 +116,7 @@ class TaylorDiagram(object):
 
         ax.axis["right"].set_axis_direction("top")    # "Y-axis"
         ax.axis["right"].toggle(ticklabels=True)
+        ax.axis["right"].label.set_text("Standard deviation")  # todo, not working
         ax.axis['right'].label.set_fontsize(axis_fontdict['left'].get('fontsize', 18))
         ax.axis['right'].label.set_color(axis_fontdict['left'].get('color', 'k'))
         ax.axis['right'].major_ticklabels.set_fontsize(axis_fontdict['left'].get('ticklabel_fs', 10))
@@ -186,7 +190,8 @@ def taylor_plot(trues:dict,
     Arguments:
         trues dict :
             a dictionary of length > 1, whose keys are scenarios and values
-            represent true/observations at that scenarios.
+            represent true/observations at that scenarios. The values can also
+            be a dictionary containing `std`, which stands for standard deviation.
         simulations dict :
             A dictionary of length > 1 whose keys are scenarios and whose values
             are also dictionary. Each sub-dictionary i.e. dictionary of scenario
@@ -201,38 +206,28 @@ def taylor_plot(trues:dict,
         cont_kws dict :
             keyword arguments related to contours. Following args can be used:
                 - levels level of contours
-
                 - colors color of contours
-
                 - label_fs fontsize of labels
-
                 - label_fmt format of labels
-
                 - linewidths float or sequence of floats
-
                 - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
-            For details [see](https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html)
+            https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
 
         grid_kws dict :
             keyword arguments related to grid. Following args can be used.
             Following keyword arguments are allowed
                 - title_fontsize: int, fontsize of the axis title
-
                 - which {'major', 'minor', 'both'}
-
                 - axis {'both', 'x', 'y'},
-            any kwargs from [here](https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html)
+            any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
 
         leg_kws dict :
             keyword arguments related to legends:
                 - position defaults to `center`
-
                 - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
-
                 - numpoints int, default: rcParams["legend.numpoints"] (default: 1)
-
                 - markerscale float, default: rcParams["legend.markerscale"] (default: 1.0)
-            For details see [here](https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html)
+            https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
         axis_fontdict dict :
@@ -301,12 +296,49 @@ def taylor_plot(trues:dict,
     ...    leg_kws={'fontsize': 16, 'markerscale': 2}
     ...            )
     ```
+    Sometimes we don't have actual true and simulation values as arrays. We can
+    still make Taylor plot using by providing only standard deviation and coefficient
+    of correlation (R) values.
+    ```python
+    >>>trues = {
+    >>>'Scenario 1': {'std': 4.916}}
+    >>>predictions = {
+    ...     'Scenario 1': {
+    ...    'Model 1': {'std': 2.80068, 'corr_coeff': 0.49172, 'pbias': -8.85},
+    ...    'Model 2': {'std': 3.47, 'corr_coeff': 0.67, 'pbias': -19.76},
+    ...    'Model 3': {'std': 3.53, 'corr_coeff': 0.596, 'pbias': 7.81},
+    ...    'Model 4': {'std': 2.36, 'corr_coeff': 0.27, 'pbias': -22.78},
+    ...    'Model 5': {'std': 2.97, 'corr_coeff': 0.452, 'pbias': -7.99}}}
+
+    >>>taylor_plot(trues,
+    ...        predictions,
+    ...        add_grid=True,
+    ...        plot_bias=True,
+    ...        grid_kws={},
+    ...        )
+    ```
     """
+    # todo replicate https://bookdown.org/david_carslaw/openair/sec-TaylorDiagram.html
+    values = False
+
+    if all([isinstance(v, dict) for v in trues.values()]):  # we are given std, corr_coeff values
+        values = True
+    else:  # we are given actual arrays
+        assert all([isinstance(np.array(v), np.ndarray) for v in trues.values()])
+        assert all([len(array) > 1 for array in trues.values()]), f"""one or more array in true values has less than 2 values
+                                                        {pprint.pprint({key: len(array) for key, array in trues.items()},
+                                                                       width=20)}"""
     scenarios = trues.keys()
 
-    assert all([len(array)>1 for array in trues.values()]), f"""one or more array in true values has less than 2 values
-                                                    {pprint.pprint({key:len(array) for key, array in trues.items()},
-                                                                   width=20)}"""
+    figsizes = {
+        1 : (8,6),
+        2 : (11, 9),
+        3: (11, 9),
+        4: (12, 10)
+    }
+
+    n_plots = len(trues)
+    assert n_plots == len(simulations)
 
     add_ith_interval = kwargs.get('add_idth_interval', False)
     ref_color = kwargs.get('ref_color', 'r')
@@ -317,7 +349,7 @@ def taylor_plot(trues:dict,
     name = kwargs.get('name', 'taylor.png')
     plot_bias = kwargs.get('plot_bias', False)
     title = kwargs.get('title', "")
-    figsize = kwargs.get("figsize", (11, 8))  # widht and heigt respectively
+    figsize = kwargs.get("figsize", figsizes[n_plots])  # widht and heigt respectively
     bbox_inches=kwargs.get("bbox_inches", None)
     sim_marker = kwargs.get("sim_marker", None)
     true_label = kwargs.get("true_label", "Reference")
@@ -325,8 +357,7 @@ def taylor_plot(trues:dict,
     if axis_locs is None:
         axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
 
-    n_plots = len(trues)
-    assert n_plots == len(simulations)
+
 
     sims = list(simulations.values())
     models = len(sims[0])
@@ -343,10 +374,8 @@ def taylor_plot(trues:dict,
         if scen not in axis_locs:
             raise KeyError(msg(scen, "axis_locs"))
 
-    def get_marker(er, idx, _name):
-        ls = ''
-        ms = 10
-        marker = '$%d$' % (idx + 1)
+    def get_marker(third_value, _name):
+        marker = 'o'
 
         if sim_marker is not None:
             if isinstance(sim_marker, str):
@@ -354,14 +383,14 @@ def taylor_plot(trues:dict,
             elif isinstance(sim_marker, dict):
                 return sim_marker[_name]
 
-        if plot_bias:
-            pbias = er.pbias()
-            if pbias >= 0.0:
+        if third_value:
+
+            if third_value >= 0.0:
                 marker = "^"
             else:
                 marker = "v"
 
-        return marker, ms, ls
+        return marker
 
     plt.close('all')
     fig = plt.figure(figsize=figsize)
@@ -402,16 +431,29 @@ def taylor_plot(trues:dict,
         # Add samples to Taylor diagram
         idx = 0
         for model_name, model in simulations[season].items():
-            er = RegressionMetrics(trues[season], model)
-            stddev = np.std(model)
-            corrcoef = er.corr_coeff()
+            if values:
+                assert isinstance(model, dict)
+                stddev = model['std']
+                corrcoef = model['corr_coeff']
+                third_val = None
 
-            marker, ms, ls, = get_marker(er, idx, model_name)
+                if len(model)>2:
+                    third_name = list(model.keys())[2]
+                    third_val = list(model.values())[2]
+            else:
+                er = RegressionMetrics(trues[season], model)
+                stddev = np.std(model)
+                corrcoef = er.corr_coeff()
+                third_val = None
+                if plot_bias:
+                    third_val = er.pbias()
+
+            marker = get_marker(third_val, model_name)
 
             dia.add_sample(stddev, corrcoef,
                            marker=marker,
-                           ms=ms,
-                           ls=ls,
+                           ms=10,
+                           ls='ls',
                            # mfc='k', mec='k', # B&W
                            mfc=colors[idx], mec=colors[idx],  # Colors
                            label=model_name)
