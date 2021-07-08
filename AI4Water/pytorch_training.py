@@ -34,6 +34,31 @@ class AttributeContainer(object):
         self.train_metrics = {metric: np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.val_metrics = {f'val_{metric}': np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.best_epoch = 0   # todo,
+        self.use_cuda = torch.cuda.is_available()
+
+    @property
+    def use_cuda(self):
+        return self._use_cuda
+
+    @use_cuda.setter
+    def use_cuda(self, x):
+        self._use_cuda = x
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, x):
+        self._optimizer = x
+
+    @property
+    def loss(self):
+        return self._loss
+
+    @loss.setter
+    def loss(self, x):
+        self._loss = x
 
 
 class Learner(AttributeContainer):
@@ -47,7 +72,20 @@ class Learner(AttributeContainer):
                  shuffle: bool = True,
                  to_monitor:list=None
                  ):
-
+        """
+        Arguments:
+            model : a pytorch model having following attributes and methods
+                - num_outs
+                - w_path
+                - `loss`
+                - `get_optimizer`
+            batch_size : batch size
+            num_epochs : Number of epochs for which to train the model
+            patience : how many epochs to wait before stopping the training in
+                case `to_monitor` does not improve.
+            shuffle :
+            to_monitor : list of metrics to monitor
+        """
         super().__init__(num_epochs, to_monitor)
 
         self.model = model
@@ -170,8 +208,8 @@ class Learner(AttributeContainer):
                                                          *self.train_metrics.keys(),
                                                          *self.train_metrics.keys()))
         print("{}".format('*' * 70))
-        self.criterion = self.model.loss()
-        self.optimizer = self.model.get_optimizer()
+        self.criterion = getattr(self.model, 'loss', self.loss)()
+        self.optimizer = getattr(self.model, 'optimizer', self.optimizer)()
 
         self.train_loader, self.val_loader = self._get_train_val_loaders(x, **kwargs)
 
@@ -180,6 +218,7 @@ class Learner(AttributeContainer):
     def on_train_end(self):
         self.train_metrics['loss'] = self.train_metrics.pop('mse')
         self.val_metrics['val_loss'] = self.val_metrics.pop('val_mse')
+        
         class History(object):
             history = {}
             history.update(self.train_metrics)
