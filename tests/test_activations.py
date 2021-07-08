@@ -31,23 +31,26 @@ class TestActivations(unittest.TestCase):
                       lookback=1,
                       model={'layers': layers},
                       data=df,
+                      transformation='minmax',
                       verbosity=0
                       )
 
-        val = {
+        val_losses = {
             '21_nt': [0.09297575600513237, 0.09400989675627566],
             '23_posix': [0.0870760977268219, 0.1053781732916832],
             '24_posix': [0.0870760977268219, 0.1053781732916832],
             '21_posix': [0.09297575600513237, 0.095427157656984],
             '20_posix': [0.09297575600513237, 0.095427157656984],
             '23_nt': [0.0870760977268219, 0.1053781732916832],
-            '24_nt': [0.0870760977268219, 0.1053781732916832]
+            '24_nt': [0.0870760977268219, 0.1053781732916832],
+            '25_nt_subclassing': [0.04127213731408119, 0.04080097749829292],
+            '24_nt_functional': [0.04127213731408119, 0.04080097749829292],
         }
 
         history = model.fit()
         if int(tf.__version__.split('.')[0]) > 1:
-            for t,p in zip(history.history['val_loss'], val[version+'_'+os.name]):
-                self.assertAlmostEqual(t,p, 2)
+            for t,p in zip(history.history['val_loss'], val_losses[f"{version}_{os.name}_{model.api}"]):
+                self.assertAlmostEqual(t, p, 2)
         return
 
     def test_as_fns(self):
@@ -63,22 +66,25 @@ class TestActivations(unittest.TestCase):
                       lookback=1,
                       model={'layers': layers},
                       data=df,
+                      transformation='minmax',
                       verbosity=0
                       )
 
         history = model.fit()
-        val = {
+        val_losses = {
             '21_nt': [0.8971164431680119, 0.7911620726129243],
             '23_nt': [0.10781528055667877, 0.09552989155054092],
             '24_nt': [0.10781528055667877, 0.09552989155054092],
             '23_posix': [0.10781528055667877, 0.09552989155054092],
             '24_posix': [0.10781528055667877, 0.09552989155054092],
             '21_posix': [0.10688107734841351, 0.0938945620801094],
-            '20_posix': [0.8971164431680119, 0.10688107734841351]
+            '20_posix': [0.8971164431680119, 0.10688107734841351],
+            '25_nt_subclassing': [0.05252218618988991, 0.040802694857120514],
+            '24_nt_functional': [0.05252218618988991, 0.040802694857120514],
         }
 
         if int(tf.__version__.split('.')[0]) > 1:
-            for t,p in zip(history.history['val_loss'], val[version + '_' + os.name]):
+            for t,p in zip(history.history['val_loss'], val_losses[f"{version}_{os.name}_{model.api}"]):
                 self.assertAlmostEqual(t,p, 2)
         return
 
