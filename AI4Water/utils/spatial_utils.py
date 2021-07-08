@@ -15,17 +15,6 @@ MSG = f"""
         https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
         and then istalling using the wheel file using following command
         pip install path/to/wheel.whl"""
-try:
-    from shapely.geometry import shape
-except FileNotFoundError:
-    raise FileNotFoundError(MSG)
-
-except OSError:
-    warnings.warn(MSG, UserWarning)
-    shape = None  # so that docs can be built
-except ModuleNotFoundError:
-    warnings.warn(MSG, UserWarning)
-    shape = None  # so that docs can be built
 
 try:
     import shapefile
@@ -53,6 +42,19 @@ def get_sorted_dict(dictionary):
 def get_areas_geoms(shp_reader):
     """returns lists containing areas of all records in shapefile and geometries of all records
      in shape file and number of records in shapefile"""
+
+    try:
+        from shapely.geometry import shape
+    except FileNotFoundError:
+        raise FileNotFoundError(MSG)
+
+    except OSError:
+        warnings.warn(MSG, UserWarning)
+        shape = None  # so that docs can be built
+    except ModuleNotFoundError:
+        warnings.warn(MSG, UserWarning)
+        shape = None  # so that docs can be built
+
     shapes = shp_reader.shapes()
 
     geometries = [None] * len(shapes)  # a container for geometries of shapefile
