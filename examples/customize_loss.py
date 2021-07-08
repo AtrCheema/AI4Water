@@ -56,8 +56,8 @@ quantiles = [0.005, 0.025, 0.165, 0.250, 0.500, 0.750, 0.835, 0.975, 0.995]
 
 # Initiate Model
 model = QuantileModel(
-    inputs=['input_' + str(i) for i in range(cols - 1)],
-    outputs=['input_' + str(cols - 1)],
+    input_features=['input_' + str(i) for i in range(cols - 1)],
+    output_features=['input_' + str(cols - 1)],
     lookback=1,
     model={'layers':layers},
     epochs=10,
