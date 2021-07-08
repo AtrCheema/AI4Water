@@ -17,7 +17,6 @@ from AI4Water.utils.datasets import load_nasdaq, arg_beach
 from AI4Water.utils.visualizations import Interpret
 from AI4Water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
-tf.compat.v1.disable_eager_execution()
 
 seed = 313
 np.random.seed(seed)
@@ -83,7 +82,7 @@ default_model = {
 def build_model(**kwargs):
 
     model = Model(
-        data=data1,
+        data=data1.astype(np.float32),
         verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
@@ -178,8 +177,8 @@ class TestUtils(unittest.TestCase):
         # test x, y output is fom t not t+1 and number of outputs are 1
         # forecast_length = 1 i.e we are predicting one horizon
         model = build_model(
-            inputs = in_cols,
-            outputs= out_cols,
+            input_features = in_cols,
+            output_features = out_cols,
             model={'layers':get_layers()}
         )
 
@@ -195,8 +194,8 @@ class TestUtils(unittest.TestCase):
         # test x, y when output is fom t not t+1 and number of inputs are 1 and outputs > 1
         # forecast_length = 1 i.e we are predicting one horizon
         model = build_model(
-            inputs = ['input_0'],
-            outputs= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
+            input_features = ['input_0'],
+            output_features= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
             model={'layers':get_layers(5)}
         )
 
@@ -215,8 +214,8 @@ class TestUtils(unittest.TestCase):
         # forecast_length = 1 i.e we are predicting one horizon
 
         model = build_model(
-            inputs = ['input_0', 'input_1', 'input_2',  'input_3', 'input_4'],
-            outputs= ['output'],
+            input_features = ['input_0', 'input_1', 'input_2',  'input_3', 'input_4'],
+            output_features= ['output'],
             forecast_step=1,
             model={'layers':get_layers()}
         )
@@ -234,8 +233,8 @@ class TestUtils(unittest.TestCase):
         # forecast_length = 1 i.e we are predicting one horizon
 
         model = build_model(
-            inputs = in_cols,
-            outputs= out_cols,
+            input_features = in_cols,
+            output_features= out_cols,
             forecast_step=10,
             model={'layers':{"LSTM": 1}}
         )
@@ -250,11 +249,11 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_ForecastStep10_Outs5(self):
-        # when we want to predict t+10 given number of inputs are 1 and outputs are > 1
+        # when we want to predict t+10 given number of input_features are 1 and outputs are > 1
         # forecast_length = 1 i.e we are predicting one horizon
         model = build_model(
-            inputs = ['input_0'],
-            outputs= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
+            input_features = ['input_0'],
+            output_features= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
             forecast_step=10,
             model={'layers':get_layers(5)}
         )
@@ -276,8 +275,8 @@ class TestUtils(unittest.TestCase):
         31
         """
         model = build_model(
-            inputs = in_cols,
-            outputs= out_cols,
+            input_features = in_cols,
+            output_features= out_cols,
             forecast_step=2,
             forecast_length = 3,
             model={'layers':get_layers(1, 3)}
@@ -304,8 +303,8 @@ class TestUtils(unittest.TestCase):
         """
 
         model = build_model(
-            inputs = ['input_0', 'input_1', 'input_2'],
-            outputs= ['input_3', 'input_4', 'output'],
+            input_features = ['input_0', 'input_1', 'input_2'],
+            output_features= ['input_3', 'input_4', 'output'],
             forecast_step=1,
             forecast_length = 3,
             model={'layers':get_layers(3,3)}
@@ -331,8 +330,8 @@ class TestUtils(unittest.TestCase):
         forecast_length = 3
         """
         model = build_model(
-            inputs = ['input_0', 'input_1', 'input_2'],
-            outputs= ['input_3', 'input_4', 'output'],
+            input_features = ['input_0', 'input_1', 'input_2'],
+            output_features= ['input_3', 'input_4', 'output'],
             forecast_step=2,
             forecast_length = 3,
             input_step=3,
@@ -355,8 +354,8 @@ class TestUtils(unittest.TestCase):
         forecast_length = 10
         """
         model = build_model(
-            inputs = ['input_0', 'input_1', 'input_2'],
-            outputs= ['input_3', 'input_4', 'output'],
+            input_features = ['input_0', 'input_1', 'input_2'],
+            output_features= ['input_3', 'input_4', 'output'],
             forecast_step=10,
             forecast_length = 10,
             input_step=10,
@@ -373,8 +372,8 @@ class TestUtils(unittest.TestCase):
 
     def test_plot_feature_importance(self):
 
-        model = build_model(inputs=in_cols,
-                            outputs=out_cols,
+        model = build_model(input_features=in_cols,
+                            output_features=out_cols,
                             model=default_model)
         Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
@@ -466,15 +465,15 @@ class TestUtils(unittest.TestCase):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
 
         model = Model(
-                      data=data1,
-                      inputs=in_cols,
-                      outputs=out_cols,
-                      epochs=2,
-                      model={'layers':
-                                 {"LSTM": 2}
-                      },
-                      lookback=lookback,
-                      verbosity=0)
+            data=data1.astype(np.float32),
+            input_features=in_cols,
+            output_features=out_cols,
+            epochs=2,
+            model={'layers':
+                       {"LSTM": 2, "Dense": 1}
+                   },
+            lookback=lookback,
+            verbosity=0)
 
         model.fit(indices="random")
         t,p = model.predict(indices=model.train_indices, use_datetime_index=True)
@@ -489,8 +488,8 @@ class TestUtils(unittest.TestCase):
         # for training and testing given val_data is 'same'.
         df = get_df_with_nans(inputs=False, outputs=True, frac=0.8)
 
-        model = Model(inputs=['in1', 'in2'],
-                      outputs=['out1'],
+        model = Model(input_features=['in1', 'in2'],
+                      output_features=['out1'],
                       model=default_model,
                       transformation=None,
                       val_data='same',
@@ -535,9 +534,9 @@ class TestUtils(unittest.TestCase):
 
         df = get_df_with_nans(inputs=True, frac=0.1)
 
-        model = Model(inputs=['in1', 'in2'],
+        model = Model(input_features=['in1', 'in2'],
                       model=default_model,
-                      outputs=['out1'],
+                      output_features=['out1'],
                       transformation=None,
                       val_data='same',
                       test_fraction=0.3,
@@ -568,8 +567,8 @@ class TestUtils(unittest.TestCase):
 
         df = get_df_with_nans(inputs=True, outputs=True, frac=0.1)
 
-        model = Model(inputs=['in1', 'in2'],
-                      outputs=['out1'],
+        model = Model(input_features=['in1', 'in2'],
+                      output_features=['out1'],
                       model=default_model,
                       transformation=None,
                       val_data='same',
@@ -641,8 +640,8 @@ class TestUtils(unittest.TestCase):
 
             model = Model(allow_nan_labels=True,
                           model={'layers':layers},
-                          inputs=['in1', 'in2'],
-                          outputs=['out1', 'out2'],
+                          input_features=['in1', 'in2'],
+                          output_features=['out1', 'out2'],
                           epochs=10,
                           verbosity=0,
                           data=df)
@@ -670,8 +669,8 @@ class TestUtils(unittest.TestCase):
             model = Model(allow_nan_labels=1,
                           transformation=None,
                           model={'layers': layers},
-                          inputs=['in1', 'in2'],
-                          outputs=['out1', 'out2'],
+                          input_features=['in1', 'in2'],
+                          output_features=['out1', 'out2'],
                           epochs=10,
                           verbosity=0,
                           data=df.copy())
