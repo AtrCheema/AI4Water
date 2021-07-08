@@ -14,10 +14,10 @@ units = 16
 outs = 1
 batch_shape = (batch_size, lookback,  ins)
 layers = {
-    "Input": {"config": {"shape": (lookback, ins)}},
-    "LSTM": {"config": {"units": units, "return_sequences": True}},
-    "Flatten": {"config": {}},
-    "Dense": {"config": {"units": outs}},
+    "Input": {"shape": (lookback, ins)},
+    "LSTM": {"units": units, "return_sequences": True},
+    "Flatten": {},
+    "Dense": outs,
 }
 
 model = Model(
@@ -25,8 +25,8 @@ model = Model(
     lookback=lookback,
     epochs=epochs,
     batch_size=batch_size,
-    inputs=[f'in_{i}' for i in range(ins)],
-    outputs = ['out'],
+    input_features=[f'in_{i}' for i in range(ins)],
+    output_features = ['out'],
     data=None)
 
 x = np.random.random((examples, lookback, ins))
