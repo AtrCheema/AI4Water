@@ -12,8 +12,8 @@ df = pd.DataFrame(np.concatenate([data_class['data'], data_class['target'].resha
 
 model = Model(
     data=df,
-    inputs=data_class['feature_names'].tolist(),
-    outputs=['target'],
+    input_features=data_class['feature_names'].tolist(),
+    output_features=['target'],
     val_fraction=0.0,
     model={"DecisionTreeClassifier":{"max_depth": 4, "random_state": 313}},
     transformation=None,

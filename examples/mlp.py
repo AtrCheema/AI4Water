@@ -5,12 +5,12 @@ import tensorflow as tf
 from AI4Water import Model
 from AI4Water.utils.datasets import arg_beach
 
-tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()  # because we want to view model
 
 mlp_model = {'layers': {
     "Dense_0": {'units': 64, 'activation': 'relu'},
     "Flatten": {},
-    "Dense_3": {'units': 1},
+    "Dense_3": 1,
 }}
 
 df = arg_beach()
@@ -24,8 +24,8 @@ model = Model(data=df,
               batch_size=16,
               lookback=1,
               model = mlp_model,
-              inputs=input_features,
-              outputs=[outputs],
+              input_features=input_features,
+              output_features=[outputs],
               lr=0.0001
               )
 
