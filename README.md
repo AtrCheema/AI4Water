@@ -165,9 +165,8 @@ preds, obs = model.predict(st=150, en=220)
 ```
 
 ## Disclaimer
-Athough the purpose of this repo is purportedly `all_in_one` model, however there is no `one_for_all` model. For each
-deep learning proble, the model needs to be build accordingly. I made this repo to teach myself deep learning for time
-series prediction. 
+The library is still under development. Fundamental changes are expected without prior notice or
+without regard of backward compatability.
 
 #### Related
 
