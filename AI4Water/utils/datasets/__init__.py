@@ -126,3 +126,6 @@ def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     target = [target]
 
     return df[inputs + target]
+
+all_datasets = ['CAMELS_AUS', 'CAMELS_CL', 'CAMELS_US', 'CAMELS_GB', 'CAMELS_BR', 'CAMELS_CL', 'LamaH', 'HYPE',
+                'HYSETS']

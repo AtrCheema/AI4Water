@@ -92,6 +92,12 @@
 # https://zenodo.org/record/322827#.YEx69tyRWUk
 # https://zenodo.org/record/1050301#.YEx6y9yRWUk
 # https://zenodo.org/record/4734372#.YKc9QKGRWUk
+# https://www.nature.com/articles/s41597-019-0288-y#Abs1
+# https://catalogue-imos.aodn.org.au/geonetwork/srv/api/records/9e2ba32a-5da3-4ea5-b750-e6279680dd71
+#https://daac.ornl.gov/cgi-bin/dsviewer.pl?ds_id=1566
+# https://doi.pangaea.de/10.1594/PANGAEA.885860
+# https://doi.pangaea.de/10.1594/PANGAEA.913939
+# https://www.nature.com/articles/s41597-019-0346-5#Sec8
 
 
 # ETP
@@ -111,6 +117,8 @@
 # https://zenodo.org/record/3931582#.YEx5W9yRWUk
 # https://zenodo.org/record/3528098#.YEx64NyRWUk
 # https://hess.copernicus.org/articles/25/3105/2021/
+# https://www.nature.com/articles/s41597-019-0282-4#Sec12
+# https://www.nature.com/articles/sdata201880#Tab3
 
 
 # air
@@ -124,7 +132,8 @@
 
 # Water Quality
 # https://zenodo.org/record/1495558#.YExqFtyRWUk
-
+#https://www.nature.com/articles/sdata201798#Sec18
+# https://www.nature.com/articles/s41597-020-0455-1#Sec11
 
 # Flow
 # https://zenodo.org/record/3941890#.YExp5NyRWUk
@@ -167,6 +176,11 @@
 # https://zenodo.org/record/4542076#.YExuxtyRWUk
 # https://zenodo.org/record/4489056#.YExoBtyRWUk
 # https://zenodo.org/record/1157344#.YExnqNyRWUk
+# https://www.nature.com/articles/s41597-020-0450-6
+# https://www.nature.com/articles/sdata201542#Abs1
+# https://www.nature.com/articles/s41597-019-0228-x
+# https://zenodo.org/record/4058167
+# https://www.nature.com/articles/sdata2018224#Sec10
 
 
 # soil
