@@ -91,15 +91,15 @@ class NN(AttributeStore):
             num_outs = outs * quantiles
             if shape[-1] != num_outs:  # we add a Dense layer followed by reshaping it
 
-                dense = tf.keras.layers.Dense(num_outs)
+                dense = LAYERS["DENSE"](num_outs, name="model_output")
                 dense_out = dense(current_outputs)
                 self.update_cache(lyr_cache, dense.name, dense)
-                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len))
+                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len), name="output_reshaped")
                 new_outputs = reshape(dense_out)
                 self.update_cache(lyr_cache, reshape.name, reshape)
 
             else:  # just reshape the output to match (?, num_outputs, horizons)
-                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len))
+                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len), name="output_reshaped")
                 new_outputs = reshape(current_outputs)
                 self.update_cache(lyr_cache, reshape.name, reshape)
         elif len(shape) > 3:
