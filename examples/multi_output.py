@@ -25,13 +25,16 @@ class MultiSite(InputAttentionModel):
                                                         **kwargs)
 
         inputs = [train_x]
-        for out in range(self.outs):
+        for out in range(self.num_outs):
             s0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_s']))
             h0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_h']))
 
             inputs = inputs + [s0_train, h0_train]
 
         return inputs, train_label
+
+    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
+        return self.training_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
 
     def build(self):
 
@@ -41,17 +44,17 @@ class MultiSite(InputAttentionModel):
         self.config['enc_config'] = self.enc_config
 
         predictions = []
-        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')  # Enter time series data
+        enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input1')  # Enter time series data
         inputs = [enc_input]
 
-        for out in range(self.outs):
+        for out in range(self.num_outs):
             lstm_out1, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False, suf=str(out))
             act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]
 
         predictions = keras.layers.Concatenate()(predictions)
-        predictions = keras.layers.Reshape(target_shape=(2, 1))(predictions)
+        predictions = keras.layers.Reshape(target_shape=(self.num_outs, 1))(predictions)
 
         print('predictions: ', predictions)
 
@@ -71,8 +74,8 @@ if __name__ == "__main__":
         data=df,
         batch_size=4,
         lookback=15,
-        inputs=input_features,
-        outputs=outputs,
+        input_features=input_features,
+        output_features=outputs,
         lr=0.0001,
         epochs=2,
         val_fraction=0.3,  # TODO why less than 0.3 give error here?
