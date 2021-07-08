@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from AI4Water.main import Model
+from AI4Water.functional import Model as FModel
 from AI4Water.backend import keras
 from AI4Water._main import print_something
 from AI4Water.nn_tools import check_act_fn
@@ -13,7 +14,7 @@ layers = keras.layers
 KModel = keras.models.Model
 
 
-class DualAttentionModel(Model):
+class DualAttentionModel(FModel):
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m
                    'm': 20,  # length of hidden state m
@@ -44,7 +45,9 @@ class DualAttentionModel(Model):
 
         super(DualAttentionModel, self).__init__(**kwargs)
 
-    def build(self):
+        setattr(self, 'category', "DL")
+
+    def build(self, input_shape=None):
 
         self.config['dec_config'] = self.dec_config
         self.config['enc_config'] = self.enc_config
@@ -54,8 +57,8 @@ class DualAttentionModel(Model):
 
         h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
         s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
-        input_y = layers.Input(shape=(self.lookback - 1, self.outs), name='input_y')
-        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input')
+        input_y = layers.Input(shape=(self.lookback - 1, self.num_outs), name='input_y')
+        enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input')
 
         enc_lstm_out, h0, s0 = self._encoder(enc_input, self.config['enc_config'])
 
@@ -70,7 +73,7 @@ class DualAttentionModel(Model):
             print('output from Encoder LSTM:', enc_out)
 
         h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
-        h = layers.Reshape((self.outs, self.dec_config['p']))(h)
+        h = layers.Reshape((self.num_outs, self.dec_config['p']))(h)
         # concatenation of decoder hidden state and the context vector.
         last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
 
@@ -87,8 +90,8 @@ class DualAttentionModel(Model):
         if self.verbosity > 1:
             print('result:', result)
 
-        output = layers.Dense(self.outs)(result)
-        output = layers.Reshape(target_shape=(self.outs, self.forecast_len))(output)
+        output = layers.Dense(self.num_outs)(result)
+        output = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(output)
 
         self._model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
 
@@ -112,7 +115,7 @@ class DualAttentionModel(Model):
         enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
         if self.verbosity > 2:
             print('encoder attention output:', enc_attn_out)
-        enc_lstm_in = layers.Reshape((self.lookback, self.ins), name='enc_lstm_input_'+suf)(enc_attn_out)
+        enc_lstm_in = layers.Reshape((self.lookback, self.num_ins), name='enc_lstm_input_'+suf)(enc_attn_out)
         if self.verbosity > 2:
             print('input to encoder LSTM:', enc_lstm_in)
 
@@ -162,7 +165,7 @@ class DualAttentionModel(Model):
             if self.verbosity > 2:
                 print('context:', _context)
             x = layers.Lambda(lambda x: _input[:, t, :])(_input)
-            x = layers.Reshape((1, self.ins))(x)
+            x = layers.Reshape((1, self.num_ins))(x)
             if self.verbosity > 2:
                 print('x:', x)
             _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
@@ -225,7 +228,7 @@ class DualAttentionModel(Model):
             print('y_prev into decoder: ', _y)
         for t in range(self.lookback-1):
             y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)
-            y_prev = layers.Reshape((1, self.outs))(y_prev)   # (None,1,1)
+            y_prev = layers.Reshape((1, self.num_outs))(y_prev)   # (None,1,1)
             if self.verbosity > 2:
                 print('\ny_prev at {}'.format(t), y_prev)
             _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (None,1,20)
@@ -233,7 +236,7 @@ class DualAttentionModel(Model):
             y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
             if self.verbosity > 2:
                 print('y_prev1 at {}:'.format(t), y_prev)
-            y_prev = layers.Dense(self.outs, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
+            y_prev = layers.Dense(self.num_outs, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
             if self.verbosity > 2:
                 print('y_prev2 at {}:'.format(t), y_prev)
             _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??
@@ -281,12 +284,12 @@ class InputAttentionModel(DualAttentionModel):
         setattr(self, 'method', 'input_attention')
         print('building input attention')
 
-        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')
+        enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input1')
         lstm_out, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False)
 
         act_out = layers.LeakyReLU()(lstm_out)
-        predictions = layers.Dense(self.outs)(act_out)
-        predictions = layers.Reshape(target_shape=(self.outs, self.forecast_len))(predictions)
+        predictions = layers.Dense(self.num_outs)(act_out)
+        predictions = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(predictions)
         if self.verbosity > 2:
             print('predictions: ', predictions)
 
@@ -326,7 +329,7 @@ class OutputAttentionModel(DualAttentionModel):
 
         setattr(self, 'method', 'output_attention')
 
-        inputs = layers.Input(shape=(self.lookback, self.ins))
+        inputs = layers.Input(shape=(self.lookback, self.num_ins))
 
         self.de_densor_We = layers.Dense(self.enc_config['m'])
         h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
@@ -416,7 +419,10 @@ class NBeatsModel(Model):
                                           transformation=self.config['transformation'],
                                           **kwargs)
 
-        return [x, exo_x[:, :, 0:-1]], label   # TODO  .reshape(-1, 1, 1) ?
+        return [x, exo_x[:, :, 0:-1]], exo_x[:, :, 0:-1], label   # TODO  .reshape(-1, 1, 1) ?
+
+    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
+        return self.training_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
 
     def get_batches(self, df, ins, outs):
         df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
@@ -425,8 +431,8 @@ class NBeatsModel(Model):
     def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
 
         _, inputs, dt_index = Model.deindexify_input_data(self,
-                                                                    inputs,
-                                                                    sort=sort,
-                                                                    use_datetime_index=use_datetime_index)
+                                                          inputs,
+                                                          sort=sort,
+                                                          use_datetime_index=use_datetime_index)
 
-        return inputs[1], inputs, dt_index
+        return inputs[0], inputs, dt_index
