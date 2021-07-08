@@ -15,9 +15,6 @@ from AI4Water.functional import Model as FModel
 from AI4Water.utils.datasets import load_nasdaq
 
 
-tf.compat.v1.disable_eager_execution()
-
-
 examples = 200
 lookback = 10
 inp_1d = ['prec', 'temp']
@@ -90,8 +87,8 @@ def build_and_run(outputs, transformation=None, indices=None):
     model = Model(
         model={"layers": make_layers(len(outputs['inp_1d']))},
         lookback=lookback,
-        inputs = {"inp_1d": inp_1d, "inp_2d": inp_2d},
-        outputs=outputs,
+        input_features = {"inp_1d": inp_1d, "inp_2d": inp_2d},
+        output_features=outputs,
         data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d},
         transformation = transformation,
         epochs=2,
@@ -237,13 +234,13 @@ class test_MultiInputModels(unittest.TestCase):
 
         # Initiate Model
         model = QuantileModel(
-            inputs=['input_' + str(i) for i in range(cols - 1)],
-            outputs=['input_' + str(cols - 1)],
+            input_features=['input_' + str(i) for i in range(cols - 1)],
+            output_features=['input_' + str(cols - 1)],
             lookback=1,
             verbosity=0,
             model={'layers': layers},
             epochs=2,
-            data=data,
+            data=data.astype(np.float32),
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
@@ -254,30 +251,30 @@ class test_MultiInputModels(unittest.TestCase):
 
 def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation='softmax'):
 
-    inputs = [f'input_{n}' for n in range(10)]
+    input_features = [f'input_{n}' for n in range(10)]
 
     if is_multilabel:
         outputs = [f'target_{n}' for n in range(n_classes)]
-        X, y = make_multilabel_classification(n_samples=100, n_features=len(inputs), n_classes=n_classes,
+        X, y = make_multilabel_classification(n_samples=100, n_features=len(input_features), n_classes=n_classes,
                                               n_labels=2, random_state=0)
         y = y.reshape(-1, n_classes)
 
     else:
         outputs = ['target']
-        X, y = make_classification(n_samples=100, n_features=len(inputs), n_informative=n_classes, n_classes=n_classes,
+        X, y = make_classification(n_samples=100, n_features=len(input_features), n_informative=n_classes, n_classes=n_classes,
                                random_state=1)
         y = y.reshape(-1, 1)
 
-    df = pd.DataFrame(np.concatenate([X, y], axis=1), columns=inputs + outputs)
+    df = pd.DataFrame(np.concatenate([X, y], axis=1), columns=input_features + outputs)
 
     model = Model(data=df,
                   model={'layers': {
                       'Dense_0': 10,
                       'Flatten': {},
                       'Dense_1': n_classes, 'activation': activation}},
-                  inputs=inputs,
+                  input_features=input_features,
                   loss=loss,
-                  outputs=outputs,
+                  output_features=outputs,
                   verbosity=0,
                   )
     model.fit()
