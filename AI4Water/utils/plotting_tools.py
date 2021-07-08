@@ -65,19 +65,19 @@ class Plots(object):
 
     @property
     def in_cols(self):
-        return self.config['inputs']
+        return self.config['input_features']
 
     @property
     def out_cols(self):
-        return self.config['outputs']
+        return self.config['output_features']
 
     @property
     def ins(self):
-        return len(self.config['inputs'])
+        return len(self.config['input_features'])
 
     @property
     def outs(self):
-        return self.config['outputs']
+        return self.config['output_features']
 
     @property
     def lookback(self):

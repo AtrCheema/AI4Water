@@ -1,12 +1,14 @@
-import warnings
 import os
 import json
+import wrapt
 import datetime
+import warnings
 from typing import Union
 from shutil import rmtree
 from copy import deepcopy
 from typing import Any, Dict, Tuple
 from collections import OrderedDict
+import collections.abc as collections_abc
 
 import scipy
 import numpy as np
@@ -144,25 +146,25 @@ class make_model(object):
 
 def process_io(data, **kwargs):
 
-    inputs = kwargs.get('inputs', None)
-    outputs = kwargs.get('outputs', None)
+    input_features = kwargs.get('input_features', None)
+    output_features = kwargs.get('output_features', None)
 
-    if isinstance(inputs, str):
-        inputs = [inputs]
-    if isinstance(outputs, str):
-        outputs = [outputs]
+    if isinstance(input_features, str):
+        input_features = [input_features]
+    if isinstance(output_features, str):
+        output_features = [output_features]
 
-    if inputs is None:  # when inputs and outputs are not defined.
-        if data is not None:  # when no data is given, inputs and outputs can not be defined.
+    if input_features is None:  # when input_features and output_features are not defined.
+        if data is not None:  # when no data is given, input_features and output_features can not be defined.
             assert isinstance(data, pd.DataFrame)
-            if outputs is None:
-                inputs = list(data.columns)[0:-1]
-                outputs = [list(data.columns)[-1]]
-            elif isinstance(outputs, list):
-                inputs = [col for col in list(data.columns) if col not in outputs]
+            if output_features is None:
+                input_features = list(data.columns)[0:-1]
+                output_features = [list(data.columns)[-1]]
+            elif isinstance(output_features, list):
+                input_features = [col for col in list(data.columns) if col not in output_features]
 
-    kwargs['inputs'] = inputs
-    kwargs['outputs'] = outputs
+    kwargs['input_features'] = input_features
+    kwargs['output_features'] = output_features
     return kwargs
 
 
@@ -231,7 +233,7 @@ def _make_model(data, **kwargs):
                                     }, 'lower': None, 'upper': None, 'between': None},
         'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]},
-        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None, 'betwee': ['tensorflow', 'pytorch']}
+        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None, 'between': ['tensorflow', 'pytorch']}
     }
 
     data_args = {
@@ -272,9 +274,9 @@ def _make_model(data, **kwargs):
         'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
         # if true, model will use previous predictions as input
         'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},
-        # If the model takes one kind of inputs that is it consists of only 1 Input layer, then the shape of the batches
+        # If the model takes one kind of input_features that is it consists of only 1 Input layer, then the shape of the batches
         # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
-        # cases, either all the inputs are of same shape or they  are not. In second case, we should overwrite `train_paras`
+        # cases, either all the input_features are of same shape or they  are not. In second case, we should overwrite `train_paras`
         # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
         # for Dense layer.
         'batches':           {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
@@ -287,9 +289,9 @@ def _make_model(data, **kwargs):
         # whether to use future input data for multi horizon prediction or not
         'known_future_inputs': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
         # input features in data_frame
-        'inputs':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'input_features':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
-        'outputs':           {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'output_features':           {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
         # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
         # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
@@ -297,6 +299,7 @@ def _make_model(data, **kwargs):
         'prefix':            {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
         'path':              {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
+        'kmodel':            {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -304,7 +307,7 @@ def _make_model(data, **kwargs):
     config = {key:val['default'] for key,val in data_args.items()}
 
     for key, val in kwargs.items():
-        arg_name = key.lower()
+        arg_name = key.lower()  # todo, why this?
 
         if arg_name in model_config:
             update_dict(arg_name, val, model_args, model_config)
@@ -328,13 +331,14 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
 
     config.update(model_config)
 
-    assert type(config['inputs']) == type(config['outputs']), f"""
-inputs is of type {config['inputs'].__class__.__name__} but outputs is of type {config['outputs'].__class__.__name__}.
-Inputs and outputs must be of same type.
+    assert type(config['input_features']) == type(config['output_features']), f"""
+        input_features is of type {config['input_features'].__class__.__name__}
+        but output_features is of type {config['output_features'].__class__.__name__}.
+        Input_features and output_features must be of same type.
 """
 
-    if isinstance(config['inputs'], dict):
-        for data in [config['inputs'], config['outputs']]:
+    if isinstance(config['input_features'], dict):
+        for data in [config['input_features'], config['output_features']]:
             for k,v in data.items():
                 assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
     return config
@@ -378,17 +382,22 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     return
 
 
-def get_index(idx_array, fmt='%Y%m%d%H%M'):
+def to_datetime_index(idx_array, fmt='%Y%m%d%H%M')->pd.DatetimeIndex:
     """ converts a numpy 1d array into pandas DatetimeIndex type."""
 
     if not isinstance(idx_array, np.ndarray):
         raise TypeError
 
-    return pd.to_datetime(idx_array.astype(str), format=fmt)
+    idx = pd.to_datetime(idx_array.astype(str), format=fmt)
+    idx.freq = pd.infer_freq(idx)
+    return idx
 
 
 class Jsonize(object):
-    """Converts the objects to basic python types so that they can be written to json files.
+    """Converts the objects to json compatible format i.e to native python types.
+    If the object is sequence then each member of the sequence is checked and
+    converted if needed. Same goes for nested sequences like lists of lists
+    or list of dictionaries.
     Examples:
     ---------
     >>>import numpy as np
@@ -409,20 +418,43 @@ class Jsonize(object):
             return int(self.obj)
         if 'float' in self.obj.__class__.__name__:
             return float(self.obj)
+
         if isinstance(self.obj, dict):
             return {k:self.stage2(v) for k,v in self.obj.items()}
+
         if hasattr(self.obj, '__len__') and not isinstance(self.obj, str):
             return [self.stage2(i) for i in self.obj]
+
+        # if obj is a python 'type'
+        if type(self.obj).__name__ == type.__name__:
+            return self.obj.__name__
+
+        if isinstance(self.obj, collections_abc.Mapping):
+            return dict(self.obj)
+
+        if self.obj is Ellipsis:
+            return {'class_name': '__ellipsis__'}
+
+        if isinstance(self.obj, wrapt.ObjectProxy):
+            return self.obj.__wrapped__
+
         return str(self.obj)
 
     def stage2(self, obj):
         """Serializes one object"""
         if any([isinstance(obj, _type) for _type in [bool, set, type(None)]]) or callable(obj):
             return obj
+
         if 'int' in obj.__class__.__name__:
             return int(obj)
+
         if 'float' in obj.__class__.__name__:
             return float(obj)
+
+        # tensorflow tensor shape
+        if obj.__class__.__name__ == 'TensorShape':
+            return obj.as_list()
+
         if isinstance(obj, dict):  # iterate over obj until it is a dictionary
             return {k: self.stage2(v) for k, v in obj.items()}
 
@@ -438,8 +470,22 @@ class Jsonize(object):
             else: # when object is []
                 return obj
 
+        # if obj is a python 'type'
+        if type(obj).__name__ == type.__name__:
+            return obj.__name__
+
+        if obj is Ellipsis:
+            return {'class_name': '__ellipsis__'}
+
+        if isinstance(obj, wrapt.ObjectProxy):
+            return obj.__wrapped__
+
         # last solution, it must be of of string type
         return str(obj)
+
+def jsonize(obj):
+    """functional interface to `Jsonize` class"""
+    return Jsonize(obj)()
 
 
 def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:

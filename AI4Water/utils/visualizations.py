@@ -179,8 +179,8 @@ class Interpret(Plot):
             json.dump(Jsonize(importance)(), fp)
 
         use_prev = self.model.config['use_predicted_output']
-        all_cols = self.model.config['inputs'] if use_prev else self.model.config['inputs'] + \
-                                                                                self.model.config['outputs']
+        all_cols = self.model.config['input_features'] if use_prev else self.model.config['input_features'] + \
+                                                                                self.model.config['output_features']
         plt.close('all')
         plt.figure()
         plt.title("Feature importance")
