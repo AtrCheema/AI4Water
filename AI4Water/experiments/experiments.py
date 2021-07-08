@@ -8,14 +8,20 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from AI4Water import Model
 from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.utils.taylor_diagram import taylor_plot
 from AI4Water.hyper_opt import Real, Categorical, Integer
 from AI4Water.utils.utils import init_subplots, process_axis
 from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
-from AI4Water.backend import VERSION_INFO
+from AI4Water.backend import VERSION_INFO, tf
+
+if tf is not None:
+    if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+        from AI4Water.functional import Model
+        print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+    else:
+        from AI4Water import Model
 
 try:
     import catboost
