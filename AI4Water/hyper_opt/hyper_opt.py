@@ -61,7 +61,7 @@ except ImportError:
     optuna, plot_parallel_coordinate, plot_contour, plot_edf, = None, None, None, None
     Study = None
 
-from AI4Water import Model
+from AI4Water.backend import tf
 from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.hyper_opt.utils import get_one_tpe_x_iter
 from AI4Water.utils.utils import Jsonize, dateandtime_now
@@ -72,6 +72,13 @@ from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
 from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
 from AI4Water.utils.utils import JsonEncoder
+
+if tf is not None:
+    if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+        from AI4Water.functional import Model
+        print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+    else:
+        from AI4Water import Model
 
 try:
     from AI4Water.hyper_opt.testing import plot_param_importances
@@ -189,7 +196,7 @@ class HyperOpt(object):
     ...    model.fit(indices="random")
     ...
     ...    t, p = model.predict(indices=model.test_indices, prefix='test')
-    ...    mse = Metrics(t, p).mse()
+    ...    mse = RegressionMetrics(t, p).mse()
     ...
     ...    return mse
     ```
@@ -949,17 +956,17 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             search_result = gp_minimize(func=self.model_for_gpmin(),
                                         dimensions=self.dims(),
                                         **kwargs)
-        except ValueError:
+        except ValueError as e:
             if int(''.join(sklearn.__version__.split('.')[1]))>22:
                 raise ValueError(f"""
                     For bayesian optimization, If your sklearn version is above 0.23,
                     then this error may be related to 
                     https://github.com/kiudee/bayes-skopt/issues/90 .
                     Try to lower the sklearn version to 0.22 and run again.
-                    {traceback.print_stack()}
+                    {e}
                     """)
             else:
-                raise ValueError(traceback.print_stack())
+                raise ValueError(e)
 
         # the `space` in search_results may not be in same order as originally provided.
         space = search_result['space']
