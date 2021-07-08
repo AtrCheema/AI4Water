@@ -17,8 +17,8 @@ data = arg_beach(inputs, outputs)
 
 def build_model(layers, lookback):
     model = Model(model={'layers': layers},
-        inputs=inputs,
-        outputs=outputs,
+        input_features=inputs,
+        output_features=outputs,
         lookback=lookback,
         data=data,
         verbosity=0
