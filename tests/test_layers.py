@@ -8,10 +8,13 @@ import numpy as np
 import tensorflow as tf
 
 from AI4Water import Model
+from AI4Water.functional import Model as FModel
 from AI4Water import NBeatsModel
 from AI4Water.utils.datasets import arg_beach, load_nasdaq
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
+
+#tf.compat.v1.disable_eager_execution()
 
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'wind_speed_mps',
                   'rel_hum']
@@ -25,6 +28,7 @@ def make_and_run(
         epochs=4,
         batch_size=16,
         data_type='other',
+        return_model=False,
         **kwargs):
 
     if data_type == "nasdaq":
@@ -51,8 +55,8 @@ def make_and_run(
         batch_size=batch_size,
         lookback=lookback,
         lr=0.001,
-        inputs=inputs,
-        outputs = outputs,
+        input_features=inputs,
+        output_features = outputs,
         epochs=epochs,
         model={'layers': kwargs.pop('layers')},
         **kwargs
@@ -61,6 +65,9 @@ def make_and_run(
     _ = model.fit(indices='random')
 
     _,  pred_y = model.predict(use_datetime_index=False)
+
+    if return_model:
+        return pred_y, model
 
     return pred_y
 
@@ -87,6 +94,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1312.3688450753175,
             '115_posix': 1265.676495072539,
+            '25_nt': 158.6142,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1405.3555436921633), 3)
         return
@@ -103,6 +111,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1408.9016057021054,
             '115_posix': 1327.6904604995418,
+            '25_nt': 131.04134,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1434.2028425805552), 3)
         return
@@ -134,8 +143,11 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
+        trues = {
+            '25_nt': 77.85861968
+        }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1483.734244648907, 2)  # TODO failing with higher precision
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1483.734244648907), 2)  # TODO failing with higher precision
 
     def test_RaffelAttention(self):
         # LSTM  + Raffel Attention
@@ -150,6 +162,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1361.6870130712944,
             '115_posix':  1443.1860088206834,
+            '25_nt': 118.26399,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1353.11274522034), 4)
@@ -170,6 +183,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1327.5073743917194,
             '115_posix': 1430.7282310875908,
+            '25_nt': 66.52947,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1356.0140036362777), 2)  # TODO failing with higher precision
 
@@ -182,12 +196,15 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
-        prediction = make_and_run(Model, layers=lyrs)
+        prediction, model = make_and_run(FModel, layers=lyrs, return_model=True)
         trues = {
             '21_posix': 1522.6872986943176,
             '115_posix': 1549.689167207415,
+            '21_nt_functional': 165.6065673828125,
+            '25_nt': 131,
+            '25_nt_functional': 222.57863,
         }
-        self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1409.7687666416527), 4)
+        self.assertAlmostEqual(float(prediction.sum()), trues.get(f'{PLATFORM}_{model.api}', 1409.7687666416527), 4)
 
     def test_HierarchicalAttention(self):
         # LSTM + HierarchicalAttention model
@@ -198,8 +215,13 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
+        trues = {
+            '21_posix': 1376.5340244296872,
+            '115_posix': 1376.5340244296872,
+            '25_nt': 80.872604,
+        }
         prediction = make_and_run(Model, layers=lyrs)
-        self.assertAlmostEqual(float(prediction.sum()), 1376.5340244296872, 3)
+        self.assertAlmostEqual(float(prediction.sum()),  trues.get(PLATFORM, 1376.5340244296872), 3)
 
     def test_CNNModel(self):
         # CNN based model
@@ -217,6 +239,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1347.4325338505837,
             '115_posix': 1272.8471532368762,
+            '25_nt': 163.878662109375,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1347.498777542553), 4)
 
@@ -233,6 +256,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
+            '25_nt': 63.53640365600586,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1475.2777905818857), 4)
         return
@@ -250,7 +274,8 @@ class TestModels(unittest.TestCase):
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
             trues = {
-                '23_nt': 1372.9329818539659
+                '23_nt': 1372.9329818539659,
+                '25_nt': 1.849501132965088,
             }
             self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision
         except ModuleNotFoundError:
@@ -281,10 +306,15 @@ class TestModels(unittest.TestCase):
 
         predictions = make_and_run(NBeatsModel, layers=layers, forecast_length=forecsat_length, data_type="nasdaq",
                                    transformation=None)
+
+        trues = {
+            '25_nt': 780467456
+        }
+
         if PLATFORM.upper() in ["WIN32"]:
             self.assertAlmostEqual(float(predictions.sum()), 781079416.2836407, 4)  # 780862696.2410148
         else:
-            self.assertGreater(float(predictions.sum()), 80000.0)  # TODO reproduction failing on linux
+            self.assertAlmostEqual(float(predictions.sum()), trues.get(PLATFORM, 80000.0))  # TODO reproduction failing on linux
 
 
 if __name__ == "__main__":
