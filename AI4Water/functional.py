@@ -30,9 +30,13 @@ class Model(BaseModel):
         """
         Initializes and builds the NN/ML model.
         """
+        self._go_up = True
         super().__init__(*args, **kwargs)
 
-        self.KModel = keras.models.Model if keras is not None else None
+        def_KModel = None
+        if keras is not None:
+            def_KModel = keras.models.Model
+        self.KModel = kwargs.get('KModel', def_KModel)
 
         self.build()
 
@@ -281,9 +285,14 @@ class Model(BaseModel):
                         _ins = v.op.inputs
                         if len(_ins) == 0:
                             inputs.append(v)
-            else:  # not sure if this is the proper way of checking if a layer receives an input or not!
+            # not sure if this is the proper way of checking if a layer receives an input or not!
+            elif int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
                 if hasattr(v, '_keras_mask'):
                     inputs.append(v)
+            else: # in tf 2.5, non-tf.keras.Input tensors can also have _keras_mask attribute but it is not None
+                if hasattr(v, '_keras_mask'):
+                    if v._keras_mask is None:
+                        inputs.append(v)
 
         # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
         # {Input_1, Input -> Dense }, thus it makes Dense as output and first 2 as inputs, so throwing warning
@@ -300,11 +309,7 @@ class Model(BaseModel):
 
         k_model = self.KModel(inputs=model_inputs, outputs=outputs)
 
-
-        opt_args = self.get_opt_args()
-        optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
-
-        k_model.compile(loss=self.loss(), optimizer=optimizer, metrics=self.get_metrics(), **compile_args)
+        k_model.compile(loss=self.loss(), optimizer=self.get_optimizer(), metrics=self.get_metrics(), **compile_args)
 
         if self.verbosity > 0:
             k_model.summary()
@@ -314,8 +319,7 @@ class Model(BaseModel):
 
     def build(self):
 
-        if self.verbosity > 0:
-            print('building {} based model for {} problem'.format(self.category, self.problem))
+        self.print_info()
 
         if self.category.upper() == "DL":
             if self.config.get('model', None) is None:
@@ -331,6 +335,8 @@ class Model(BaseModel):
 
             if self.verbosity > 0:
                 if 'tcn' in self.config['model']['layers']:
+                    if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
+                        setattr(self._model, '_layers', self._model.layers)  # tf >= 2.5 does not have _layers and tcn uses _layers
                     tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
         else:
             self.build_ml_model()

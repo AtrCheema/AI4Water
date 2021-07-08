@@ -24,7 +24,7 @@ from AI4Water.nn_tools import NN
 from AI4Water.backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from AI4Water.backend import tpot_models
 from AI4Water.backend import imputations, sklearn_models
-from AI4Water.utils.utils import maybe_create_path, save_config_file, get_index, dateandtime_now
+from AI4Water.utils.utils import maybe_create_path, save_config_file, to_datetime_index, dateandtime_now
 from AI4Water.utils.utils import train_val_split, split_by_indices, ts_features, make_model, prepare_data
 from AI4Water.utils.utils import find_best_weight
 from AI4Water.utils.plotting_tools import Plots
@@ -41,25 +41,33 @@ LOSSES = {}
 if BACKEND == 'tensorflow' and tf is not None:
 
     import AI4Water.keract_mod as keract
-    from AI4Water.tf_attributes import LOSSES
+    from AI4Water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif BACKEND == 'pytorch' and torch is not None:
-    from AI4Water.pytorch_attributes import LOSSES
+    from AI4Water.pytorch_attributes import LOSSES, OPTIMIZERS
     from .utils.torch_utils import to_torch_dataset
 
 
 
-def reset_seed(seed):
-    np.random.seed(seed)
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    if tf is not None:
-        if int(tf.__version__.split('.')[0]) == 1:
-            tf.compat.v1.random.set_random_seed(seed)
-        elif int(tf.__version__.split('.')[0]) > 1:
-            tf.random.set_seed(seed)
-    if torch is not None:
-        torch.manual_seed(seed)
+def reset_seed(seed:Union[int, None]):
+    """
+    Arguments:
+        seed : Value of seed to set. If None, then it means we don't wan't to set
+        the seed."""
+    if seed:
+        np.random.seed(seed)
+        random.seed(seed)
+        os.environ['PYTHONHASHSEED'] = str(seed)
+        if tf is not None:
+            if int(tf.__version__.split('.')[0]) == 1:
+                tf.compat.v1.random.set_random_seed(seed)
+            elif int(tf.__version__.split('.')[0]) > 1:
+                tf.random.set_seed(seed)
+        if torch is not None:
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = True
 
 class BaseModel(NN, Plots):
     """
@@ -72,13 +80,14 @@ class BaseModel(NN, Plots):
                  path: str = None,
                  verbosity: int = 1,
                  model: dict = None,
-                 inputs: Union[list, str, dict] = None,
-                 outputs: Union[list, str, dict] = None,
+                 input_features: Union[list, str, dict] = None,
+                 output_features: Union[list, str, dict] = None,
                  lr: float = 0.001,
                  allow_nan_labels :int = 0,
                  input_nans: Union[None, dict] = None,
                  intervals: Union[tuple, None] = None,
                  transformation: Union[str, dict, list, None] = None,
+                 #_go_up=True,
                  **kwargs):
         """
          The Model class can take a large number of possible arguments depending
@@ -179,21 +188,27 @@ class BaseModel(NN, Plots):
                  to pandas .fillna() or .iterpolate() method. For example, to do
                  forward filling, the user can do as following
                  ```python
-                 {'fillna': {'method': 'ffill'}}
+                 >>>{'fillna': {'method': 'ffill'}}
                  ```
                  For details about fillna keyword options [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
                  For `interpolate`, the user can specify  the type of interpolation
                  for example
                  ```python
-                 {'interpolate': {'method': 'spline', 'order': 2}}
-                 ``` will perform spline interpolation with 2nd order.
+                 >>>{'interpolate': {'method': 'spline', 'order': 2}}
+                 ```
+                 will perform spline interpolation with 2nd order.
                  For other possible options/keyword arguments for interpolate [see](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html)
                  The filling or interpolation is done columnwise, however, the user
                  can specify how to do for each column by providing the above mentioned
                  arguments as dictionary or list. The sklearn based imputation methods
                  can also be used in a similar fashion. For KNN
-                 {'KNNImputer': {'n_neighbors': 3}}    or for iterative imputation
-                 {'IterativeImputer': {'n_nearest_features': 2}}
+                 ```python
+                 >>>{'KNNImputer': {'n_neighbors': 3}}
+                 ```
+                 or for iterative imputation
+                 ```python
+                 >>>{'IterativeImputer': {'n_nearest_features': 2}}
+                 ```
                  For more on sklearn based imputation methods [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
              metrics str/list:
                  metrics to be monitored. e.g. ['nse', 'pbias']
@@ -203,12 +218,12 @@ class BaseModel(NN, Plots):
                  random seed for reproducibility
              data pd.DataFrame/dict: default is None
                  a pandas dataframe or a dictionary of pandas dataframes.
-             inputs list/dict:
+             input_features list/dict:
                  list of column names from `data` to be used as input. If dict,
                  then it must be consistent with `data`. Default is None, which
                  means the all the columns of data except last one will be used
                  as inputs.
-             outputs lsit/dict:
+             output_features lsit/dict:
                  list of column names from `data` to be used as output. If dict,
                  then it must be consistent with `data`. Default is None,which
                  means the last column of data will be used as output. In case
@@ -242,7 +257,7 @@ class BaseModel(NN, Plots):
                  ```python
                  transformation = 'minmax'
                  ```
-                 T apply different transformations on different input and output features
+                 To apply different transformations on different input and output features
                  ```python
                  transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
                                  {'method': 'zscore', 'features': ['input3', 'output']}
@@ -279,35 +294,36 @@ class BaseModel(NN, Plots):
          >>>y, obs = model.predict()
          ```
          """
-        maker = make_model(data, inputs=inputs, outputs=outputs, model=model, prefix=prefix,
-                           path=path, verbosity=verbosity, lr=lr, allow_nan_labels=allow_nan_labels,
-                           input_nans=input_nans, intervals=intervals, transformation=transformation,
-                           **kwargs)
+        if self._go_up:
+            maker = make_model(data, input_features=input_features, output_features=output_features, model=model, prefix=prefix,
+                               path=path, verbosity=verbosity, lr=lr, allow_nan_labels=allow_nan_labels,
+                               input_nans=input_nans, intervals=intervals, transformation=transformation,
+                               **kwargs)
 
-        # data_config, model_config = config['data_config'], config['model_config']
-        reset_seed(maker.config['seed'])
-        if tf is not None:
-            # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
-            # file, they may share same graph.
-            tf.keras.backend.clear_session()
+            # data_config, model_config = config['data_config'], config['model_config']
+            reset_seed(maker.config['seed'])
+            if tf is not None:
+                # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
+                # file, they may share same graph.
+                tf.keras.backend.clear_session()
 
-        NN.__init__(self, config=maker.config)
+            NN.__init__(self, config=maker.config)
 
-        self.intervals = maker.config['intervals']
-        _in_cols, _out_cols = self.config['inputs'], self.config['outputs']
-        if _in_cols is None and isinstance(data, pd.DataFrame):
-            _in_cols, _out_cols = list(data.columns)[0:-1], list(data.columns)[-1]
-        self.in_cols = _in_cols
-        self.out_cols = _out_cols
-        self.data = data
-        self.path = maybe_create_path(path=path, prefix=prefix)
-        self.verbosity = verbosity
-        self.category = self.config['category']
-        self.problem = self.config['problem']
-        self.info = {}
+            self.intervals = maker.config['intervals']
+            _in_cols, _out_cols = self.config['input_features'], self.config['output_features']
+            if _in_cols is None and isinstance(data, pd.DataFrame):
+                _in_cols, _out_cols = list(data.columns)[0:-1], list(data.columns)[-1]
+            self.in_cols = _in_cols
+            self.out_cols = _out_cols
+            self.data = data
+            self.path = maybe_create_path(path=path, prefix=prefix)
+            self.verbosity = verbosity
+            self.category = self.config['category']
+            self.problem = self.config['problem']
+            self.info = {}
 
-        Plots.__init__(self, self.path, self.problem, self.category,
-                       config=maker.config)
+            Plots.__init__(self, self.path, self.problem, self.category,
+                           config=maker.config)
 
     @property
     def quantiles(self):
@@ -465,6 +481,8 @@ class BaseModel(NN, Plots):
         if self.is_binary or self.is_multiclass:
             if self.num_outs == 1:
                 _defualt = True
+        if self.is_binary and self.category == 'ML':  # todo, don't do for ML algorithms
+            _defualt = False
 
         return _defualt
 
@@ -519,7 +537,7 @@ class BaseModel(NN, Plots):
         return NotImplementedError
 
     @property
-    def predict_fn(self):
+    def predict_fn(self, *args, **kwargs):
         return NotImplementedError
 
     @property
@@ -537,6 +555,13 @@ class BaseModel(NN, Plots):
     @property
     def layer_names(self):
         return NotImplementedError
+
+    @property
+    def dl_model(self):
+        if self.api == "subclassing":
+            return self
+        else:
+            return self._model
 
     def first_layer_shape(self):
         return NotImplementedError
@@ -1254,6 +1279,10 @@ class BaseModel(NN, Plots):
             print_something(prev_y, "prev_y")
             print_something(label, "target")
 
+        if label.dtype == np.int and self.category == "DL" and self.problem == 'regression':
+            # because predictions are always floating point and corresponding tensors are also floating point
+            label = label.astype(np.float32)
+
         if isinstance(x, np.ndarray):
             return [x], prev_y, label
 
@@ -1635,9 +1664,14 @@ class BaseModel(NN, Plots):
         x, prev_y, y = data
 
         # the user provided x,y and batch_size values should have priority
-        x = kwargs.get('x', x)
-        y = kwargs.get('y', y)
-        batch_size = kwargs.get('batch_size', self.config['batch_size'])
+        if 'x' in kwargs:
+            x = kwargs.pop('x')
+        if 'y' in kwargs:
+            y = kwargs.pop('y')
+        if 'batch_size' in kwargs:
+            batch_size = kwargs.pop('batch_size')
+        else:
+            batch_size = self.config['batch_size']
 
         return self.evaluate_fn(
             x=x,
@@ -1881,11 +1915,11 @@ class BaseModel(NN, Plots):
 
         if use_datetime_index:
             if np.ndim(first_input) == 2:
-                dt_index = get_index(np.array(first_input[:, 0], dtype=np.int64))
+                dt_index = to_datetime_index(np.array(first_input[:, 0], dtype=np.int64))
             elif np.ndim(first_input) == 3:
-                dt_index = get_index(np.array(first_input[:, -1, 0], dtype=np.int64))
+                dt_index = to_datetime_index(np.array(first_input[:, -1, 0], dtype=np.int64))
             elif np.ndim(first_input) == 4:
-                dt_index = get_index(np.array(first_input[:, -1, -1, 0], dtype=np.int64))
+                dt_index = to_datetime_index(np.array(first_input[:, -1, -1, 0], dtype=np.int64))
 
             # remove the first of first inputs which is datetime index
             first_input = first_input[..., 1:].astype(np.float32)
@@ -2101,7 +2135,7 @@ class BaseModel(NN, Plots):
         _, inputs, _ = self.deindexify_input_data(inputs, sort=True,
                                                   use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        activations = keract.get_activations(self._model, inputs, layer_names=layer_names, auto_compile=True)
+        activations = keract.get_activations(self.dl_model, inputs, layer_names=layer_names, auto_compile=True)
         if return_input:
             return activations, inputs
         return activations
@@ -2126,7 +2160,7 @@ class BaseModel(NN, Plots):
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        return keract.get_gradients_of_trainable_weights(self._model, x, y)
+        return keract.get_gradients_of_trainable_weights(self.dl_model, x, y)
 
     def gradients_of_activations(self, st=0, en=None, indices=None, data=None, layer_name=None, **kwargs) -> dict:
 
@@ -2135,12 +2169,12 @@ class BaseModel(NN, Plots):
 
         _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
 
-        return keract.get_gradients_of_activations(self._model, x, y, layer_names=layer_name)
+        return keract.get_gradients_of_activations(self.dl_model, x, y, layer_names=layer_name)
 
-    def trainable_weights(self, weights: list = None):
+    def trainable_weights_(self, weights: list = None):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
-        for weight in self._model.trainable_weights:
+        for weight in self.dl_model.trainable_weights:
             if tf.executing_eagerly():
                 weights[weight.name] = weight.numpy()
             else:
@@ -2153,7 +2187,8 @@ class BaseModel(NN, Plots):
         lstm_names = []
         for lyr, config in self.config['model']['layers'].items():
             if "LSTM" in lyr.upper():
-                prosp_name = config["config"]['name'] if "name" in config['config'] else lyr
+                config = config.get('config', config)
+                prosp_name = config.get('name', lyr)
 
                 lstm_names.append(prosp_name)
 
@@ -2178,7 +2213,7 @@ class BaseModel(NN, Plots):
         return lstm_weights
 
     def plot_weights(self, weights=None, save=True):
-        weights = self.trainable_weights(weights=weights)
+        weights = self.trainable_weights_(weights=weights)
 
         if self.verbosity > 0:
             print("Plotting trainable weights of layers of the model.")
@@ -2417,7 +2452,7 @@ class BaseModel(NN, Plots):
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 
         assert self.num_outs == 1
-        target = self.config['outputs'][0]
+        target = self.config['output_features'][0]
 
         x = np.zeros((len(df), self.lookback, df.shape[1] - 1))
         prev_y = np.zeros((len(df), self.lookback, 1))
@@ -2501,8 +2536,21 @@ class BaseModel(NN, Plots):
         return:
             a `Model` instance
         """
+        config, path = cls._get_config_and_path(cls, config_path, make_new_path)
+
+        return cls(**config['config'],
+                   data=data,
+                   path=path,
+                   **kwargs)
+
+    @staticmethod
+    def _get_config_and_path(cls, config_path, make_new_path):
+        """Sets some attributes of the cls so that it can be built from config.
+        Also fetches config and path which are used to initiate cls."""
         with open(config_path, 'r') as fp:
             config = json.load(fp)
+
+        if 'path' in config['config']: config['config'].pop('path')
 
         idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
         with open(idx_file, 'r') as fp:
@@ -2521,10 +2569,7 @@ class BaseModel(NN, Plots):
             cls.allow_weight_loading = True
             path = os.path.dirname(config_path)
 
-        return cls(**config['config'],
-                   data=data,
-                   path=path,
-                   **kwargs)
+        return config, path
 
     def update_weights(self, weight_file: str):
         """
@@ -2677,6 +2722,24 @@ class BaseModel(NN, Plots):
         self.info['version_info'] = VERSION_INFO
         return
 
+    def print_info(self):
+        class_type = None
+        if self.is_binary:
+            class_type = "binary"
+        elif self.is_multiclass:
+            class_type = "multi-class"
+        elif self.is_multilabel:
+            class_type = "multi-label"
+
+        if self.verbosity > 0:
+            print('building {} model for {} {} problem'.format(self.category, class_type, self.problem))
+        return
+
+    def get_optimizer(self):
+        opt_args = self.get_opt_args()
+        optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
+
+        return optimizer
 
 def impute_df(df: pd.DataFrame, how: str, **kwargs):
     """Given the dataframe df, will input missing values by how e.g. by df.fillna or df.interpolate"""
