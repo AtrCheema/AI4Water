@@ -3,6 +3,7 @@ __all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", 
 import numpy as np
 import pandas as pd
 
+from AI4Water.backend import tf
 from AI4Water.main import Model
 from AI4Water.functional import Model as FModel
 from AI4Water.backend import keras
@@ -57,10 +58,14 @@ class DualAttentionModel(FModel):
 
         h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
         s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
+
+        #h_de0 = tf.zeros((self.config['batch_size'], self.dec_config['n_hde0']), name='dec_1st_hidden_state')
+        #s_de0 = tf.zeros((self.config['batch_size'], self.dec_config['n_sde0']), name='dec_1st_cell_state')
+
         input_y = layers.Input(shape=(self.lookback - 1, self.num_outs), name='input_y')
         enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input')
 
-        enc_lstm_out, h0, s0 = self._encoder(enc_input, self.config['enc_config'])
+        enc_lstm_out = self._encoder(enc_input, self.config['enc_config'])
 
         if self.verbosity > 2:
             print('encoder output before reshaping: ', enc_lstm_out)
@@ -93,11 +98,15 @@ class DualAttentionModel(FModel):
         output = layers.Dense(self.num_outs)(result)
         output = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(output)
 
-        self._model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
+        self._model = self.compile(model_inputs=[enc_input, input_y, s_de0, h_de0], outputs=output)
 
         return
 
     def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, h0=None):
+
+        if not self.config['drop_remainder']:
+            self.config['drop_remainder'] = True
+            print(f"setting `drop_remainder` to {self.config['drop_remainder']}")
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We_'+suf)
         _config, act_str = check_act_fn({'activation': config['enc_lstm1_act']})
@@ -107,10 +116,10 @@ class DualAttentionModel(FModel):
 
         # initialize the first cell state
         if s0 is None:
-            s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_'+suf)
+            s0 =  tf.zeros((self.config['batch_size'], config['n_s']), name=f'enc_first_cell_state_{suf}')
         # initialize the first hidden state
         if h0 is None:
-            h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_'+suf)
+            h0 = tf.zeros((self.config['batch_size'], config['n_h']), name=f'enc_first_hidden_state_{suf}')
 
         enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
         if self.verbosity > 2:
@@ -126,7 +135,7 @@ class DualAttentionModel(FModel):
 
         if self.verbosity > 2:
             print('Output from LSTM out: ', enc_lstm_out)
-        return enc_lstm_out, h0, s0
+        return enc_lstm_out
 
     def one_encoder_attention_step(self, h_prev, s_prev, x, t, suf: str = '1'):
         """
@@ -268,24 +277,30 @@ class DualAttentionModel(FModel):
 
         h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
 
+        x, prev_y, labels = self.check_batches([x, prev_y, h_de0, s_de0], prev_y, labels)
+        x, prev_y, h_de0, s_de0 = x
+
         if self.verbosity > 0:
             print_something([x, prev_y, s0, h0, h_de0, s_de0], "input_x")
             print_something(labels, "target")
 
-        return [x, prev_y, s0, h0, h_de0, s_de0], prev_y, labels
+        return [x, prev_y, h_de0, s_de0], prev_y, labels
+
+    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
+        return self.training_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
 
 
 class InputAttentionModel(DualAttentionModel):
 
-    def build(self):
+    def build(self, input_shape=None):
 
         self.config['enc_config'] = self.enc_config
 
         setattr(self, 'method', 'input_attention')
-        print('building input attention')
+        print('building input attention model')
 
         enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input1')
-        lstm_out, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False)
+        lstm_out= self._encoder(enc_input, self.enc_config, lstm2_seq=False)
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.num_outs)(act_out)
@@ -293,7 +308,7 @@ class InputAttentionModel(DualAttentionModel):
         if self.verbosity > 2:
             print('predictions: ', predictions)
 
-        self._model = self.compile(model_inputs=[enc_input, s0, h0], outputs=predictions)
+        self._model = self.compile(model_inputs=[enc_input], outputs=predictions)
 
         return
 
@@ -311,14 +326,13 @@ class InputAttentionModel(DualAttentionModel):
             idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
             prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
 
-        s0 = np.zeros((x.shape[0], n_s_feature_dim))
-        h0 = np.zeros((x.shape[0], n_h_feature_dim))
+        x, prev_y, labels = self.check_batches(x, prev_y, labels)
 
         if self.verbosity > 0:
-            print_something([x, prev_y, s0, h0], "input_x")
+            print_something(x, "input_x")
             print_something(labels, "target")
 
-        return [x, s0, h0], prev_y, labels
+        return [x], prev_y, labels
 
 
 class OutputAttentionModel(DualAttentionModel):

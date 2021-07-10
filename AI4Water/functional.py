@@ -7,9 +7,9 @@ from .nn_tools import get_add_call_args, get_call_args
 
 class Model(BaseModel):
     """
-    Inherits from `BaseModel`.
+    Model class with Functional API and inherits from `BaseModel`.
 
-    For ML/non-Neural Network based models, there is not difference in functional
+    For ML/non-Neural Network based models, there is no difference in functional
     or sub-clsasing api. For DL/NN-based models, this class implements functional
     api and differs from subclassing api in internal implementation of NN. This
     class is usefull, if you want to use the functional API of keras to build

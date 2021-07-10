@@ -923,6 +923,14 @@ class BaseModel(NN, Plots):
             self._model.train_step = MethodType(train_step, self._model)
             self._model.test_step = MethodType(test_step, self._model)
 
+        # todo, why do we need it here, IA and DA are failing without it when drop_remainder is set to True??
+        if self.config['drop_remainder'] and kwargs['validation_split']>0.0 and kwargs['validation_data'] is None:
+            if isinstance(x, np.ndarray) or isinstance(x, list):
+                train_x, train_y, val_x, val_y = train_val_split(x, kwargs['y'], kwargs['validation_split'])
+                val_x, _, val_y = self.check_batches(val_x, None, val_y)
+                kwargs['validation_data'] = val_x, val_y
+                x, _, kwargs['y'] = self.check_batches(train_x, None, train_y)
+
         return self.fit_fn(x, **kwargs)
 
     def _FIT(self, inputs, outputs, validation_data, validation_steps=None, **callbacks):
