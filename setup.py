@@ -44,6 +44,9 @@ extra_requires = [
 # for reading data
 'netCDF4',
  'xarray',
+
+# for jsonizing
+'wrapt',
 ]
 
 all_requirements = min_requirements + extra_requires

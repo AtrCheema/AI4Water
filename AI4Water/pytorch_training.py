@@ -3,10 +3,15 @@ import os
 import numpy as np
 
 from .backend import torch
-from .utils.torch_utils import to_torch_dataset, TorchMetrics
+
+# only so that docs can be built without having torch to be installed
+try:
+    from .utils.torch_utils import to_torch_dataset, TorchMetrics
+except ModuleNotFoundError:
+    to_torch_dataset, TorchMetrics = None,None
+
 from .utils.SeqMetrics.SeqMetrics import RegressionMetrics
 
-DataLoader = torch.utils.data.DataLoader
 
 F = {
     'mse': [np.nanmin, np.less],
@@ -212,6 +217,9 @@ class Learner(AttributeContainer):
         # take the mean for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
 
+        if self.use_cuda:
+            torch.cuda.empty_cache()
+
         return
 
     def validate_for_epoch(self):
@@ -385,7 +393,7 @@ class Learner(AttributeContainer):
 
             if batch_size is None: batch_size = len(dataset)
 
-            data_loader = DataLoader(
+            data_loader = torch.utils.data.DataLoader(
                 dataset,
                 batch_size=batch_size,
                 shuffle=self.shuffle
