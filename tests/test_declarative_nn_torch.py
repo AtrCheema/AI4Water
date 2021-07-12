@@ -7,12 +7,12 @@ from AI4Water.utils.datasets import arg_beach
 df = arg_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm',
        'pcp6_mm', 'pcp12_mm'])
 
-def build_and_fit(nn_model, parameters):
+def build_and_fit(nn_model, parameters, lookback=1):
 
     model = Model(
         model=nn_model,
         data=df,
-        lookback=1,
+        lookback=lookback,
         epochs=50,
         transformation='minmax',
         lr=0.0001,
@@ -20,6 +20,7 @@ def build_and_fit(nn_model, parameters):
         test_fraction=0.0,
         val_fraction=0.0,
         patience=10,
+        verbosity=0,
         #val_data="same",
     )
 
@@ -51,7 +52,7 @@ default_model = {'layers':{
     "Linear": {"in_features": 32, "out_features": 1},
 }}
 
-build_and_fit(default_model, 31521)
+build_and_fit(default_model, 31521, lookback=12)
 
 
 

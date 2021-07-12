@@ -36,6 +36,10 @@ class AttributeContainer(object):
         self.best_epoch = 0   # todo,
         self.use_cuda = torch.cuda.is_available()
 
+        def_path = os.path.join(os.getcwd(), 'results')
+        if not os.path.exists(def_path): os.mkdir(def_path)
+        self.path = def_path
+
     @property
     def use_cuda(self):
         return self._use_cuda
@@ -60,6 +64,14 @@ class AttributeContainer(object):
     def loss(self, x):
         self._loss = x
 
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, x):
+        self._path = x
+
 
 class Learner(AttributeContainer):
     """Trains the pytorch model. Motivated from fastai"""
@@ -70,7 +82,8 @@ class Learner(AttributeContainer):
                  num_epochs: int = 14,
                  patience: int = 100,
                  shuffle: bool = True,
-                 to_monitor:list=None
+                 to_monitor:list=None,
+                 verbosity=0,
                  ):
         """
         Arguments:
@@ -92,10 +105,11 @@ class Learner(AttributeContainer):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.patience = patience
+        self.verbosity = verbosity
 
-    def fit(self, x, **kwargs):
+    def fit(self, x, y=None, **kwargs):
         """Runs the training loop for pytorch model"""
-        self.on_train_begin(x, **kwargs)
+        self.on_train_begin(x, y=y, **kwargs)
 
         for epoch in range(self.num_epochs):
 
@@ -107,7 +121,8 @@ class Learner(AttributeContainer):
             self.on_epoch_end()
 
             if epoch - self.best_epoch > self.patience:
-                print(f"Stopping early because improvment did not happen since {self.best_epoch}th epoch")
+                if self.verbosity>0:
+                    print(f"Stopping early because improvment in loss did not happen since {self.best_epoch}th epoch")
                 break
 
         return self.on_train_end()
@@ -117,7 +132,10 @@ class Learner(AttributeContainer):
 
         epoch_losses = {metric: np.full(len(self.train_loader), np.nan) for metric in self.to_monitor}
 
-        num_outs = self.model.num_outs
+        if hasattr(self.model, 'num_outs'):
+            num_outs = self.model.num_outs
+        else:
+            num_outs = self.num_outs
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
             pred_y = self.model(batch_x.float())
@@ -174,18 +192,31 @@ class Learner(AttributeContainer):
         return
 
     def _weight_fname(self, epoch, loss):
-        return os.path.join(self.model.w_path, f"weights_{epoch}_{loss}")
 
-    def _get_train_val_loaders(self, x, **kwargs):
+        return os.path.join(getattr(self.model, 'w_path', self.path), f"weights_{epoch}_{loss}")
+
+    def _get_train_val_loaders(self, x, y=None, **kwargs):
 
         if isinstance(x, list) and len(x) == 1:
             x = x[0]
             if isinstance(x, torch.utils.data.Dataset):
                 train_dataset = x
             else:
-                train_dataset = to_torch_dataset(x, kwargs['y'])
+                train_dataset = to_torch_dataset(x, y)
+
         elif isinstance(x, torch.utils.data.Dataset):
             train_dataset = x
+
+        elif isinstance(x, torch.Tensor):
+            if len(x.shape)==1:
+                self.num_outs = 1
+            else:
+                self.num_outs = x.shape[-1]
+
+            train_dataset = to_torch_dataset(x=x,y=y)
+
+        else:
+            raise NotImplementedError
 
         train_loader = DataLoader(train_dataset,
                                   batch_size=self.batch_size,
@@ -202,16 +233,30 @@ class Learner(AttributeContainer):
 
         return train_loader, val_loader
 
-    def on_train_begin(self, x, **kwargs):
-        print("{}{}{}".format('*'*25, 'Training Started', '*'*25))
-        print("{:<7} {:<15} {:<15} {:<15} {:<15}".format('Epoch: ',
-                                                         *self.train_metrics.keys(),
-                                                         *self.train_metrics.keys()))
-        print("{}".format('*' * 70))
-        self.criterion = getattr(self.model, 'loss', self.loss)()
-        self.optimizer = getattr(self.model, 'optimizer', self.optimizer)()
+    def on_train_begin(self, x, y=None, **kwargs):
 
-        self.train_loader, self.val_loader = self._get_train_val_loaders(x, **kwargs)
+        self.cbs = kwargs.get('callbacks', [])
+
+        if self.verbosity>0:
+            print("{}{}{}".format('*'*25, 'Training Started', '*'*25))
+            formatter = "{:<7}" + " {:<15}" * (len(self.train_metrics) + len(self.val_metrics))
+            print(formatter.format('Epoch: ',
+                                   *self.train_metrics.keys(),
+                                   *self.train_metrics.keys()))
+
+            print("{}".format('*' * 70))
+        if hasattr(self.model, 'loss'):
+            self.criterion = self.model.loss()
+        else:
+            self.criterion = self.loss
+
+        if hasattr(self.model, 'get_optimizer'):
+            self.optimizer = self.model.get_optimizer()
+        else:
+            self.optimizer = self.optimizer
+
+
+        self.train_loader, self.val_loader = self._get_train_val_loaders(x, y=y, **kwargs)
 
         return
 
@@ -243,7 +288,7 @@ class Learner(AttributeContainer):
     def on_epoch_end(self):
         formatter = "{:<7}" + "{:<15.5f} " * (len(self.val_epoch_losses) + len(self.train_epoch_losses))
 
-        if self.val_loader is None:
+        if self.val_loader is None:  # otherwise model is already saved based upon validation performance
 
             for k, v in self.train_epoch_losses.items():
                 f1 = F[k][0]
@@ -255,7 +300,16 @@ class Learner(AttributeContainer):
                     self.best_epoch = self.epoch
                     break
 
-        print(formatter.format(self.epoch, *self.train_epoch_losses.values(), *self.val_epoch_losses.values()))
+        if self.verbosity>0:
+            print(formatter.format(self.epoch, *self.train_epoch_losses.values(), *self.val_epoch_losses.values()))
+
+        for cb in self.cbs:
+            if self.epoch % cb['after_epochs'] == 0:
+                cb['func'](epoch=self.epoch,
+                           model=self.model,
+                           train_data = self.train_loader,
+                           val_data = self.val_loader
+                           )
 
         self.update_metrics()
 
