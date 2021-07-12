@@ -546,7 +546,8 @@ class Visualizations(Plot):
             'pbias': "Percent Bias",
             "nse": "Nash-Sutcliff Efficiency",
             "kge": "Kling-Gupta Efficiency",
-            "tf_r2": "$R^{2}$"
+            "tf_r2": "$R^{2}$",
+            "r2": "$R^{2}$"
         }
 
         sub_plots = {1: {'axis': (1,1), 'width': 9, 'height': 6},

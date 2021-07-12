@@ -64,3 +64,5 @@ h = learner.fit(x=X,
                 y=Y,
                 callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
                 )
+m = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
+assert len(m) == 3
