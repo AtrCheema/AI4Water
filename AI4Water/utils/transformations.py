@@ -65,6 +65,10 @@ class scaler_container(object):
 
     def __init__(self):
         self.scalers = {}
+        self.transforming_straight = True
+        self.zero_indices = None
+        self.nan_indices = None
+        self.index = None
 
 
 class Transformations(scaler_container):
@@ -98,26 +102,38 @@ class Transformations(scaler_container):
               eemd:   ensemble empirical mode decomposition
 
     To transform a datafrmae using any of the above methods use
-        scaler = Scalers(data=df, method=method)
-        scaler.transform()
-        or
-        scaler = Scalers(data=df)
-        normalized_df4, scaler_dict = scaler.transform_with_method()
-        or
-        scaler = Scalers(data=df, method=method)
-        normalized_df, scaler_dict = scaler()
-        or using one liner
-        normalized_df, scaler = Scalers(data=df, method=method, features=cols)('normalize')
+    ```python
+    >>>scaler = Transformations(data=[1,2,3,5], method='zscore')
+    >>>scaler.transform()
+    ```
+    or
+    ```python
+    >>>scaler = Transformations(data=pd.DataFrame([1,2,3]))
+    >>>normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
+    ```
+
+    or
+    ```python
+    >>>scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
+    >>>normalized_df, scaler_dict = scaler()
+    ```
+
+    or using one liner
+    ```python
+    >>>normalized_df, scaler = Transformations(data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
+     ...                                      method='log', features=['a'])('transform')
+    ```
+
     where `method` can be any of the above mentioned methods.
 
     Example
     ----------
     ```python
     >>>from AI4Water.utils.transformations import Transformations
-    >>>from AI4Water.data import load_u1
+    >>>from AI4Water.utils.datasets import load_u1
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    >>>transformer = Transformations(data=data[inputs], method='pca', n_components=10)
+    >>>transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
     >>>new_data = transformer.transform()
     ```
 
@@ -126,11 +142,16 @@ class Transformations(scaler_container):
     will be replaced internally but will be inserted back afterwards.
 
     ```python
-    >>>import pandas as pd
+    >>>from AI4Water.utils.transformations import Transformations
     >>>a = pd.DataFrame([10, 2, 0])
-    >>>Transformations(a, 'log', replace_zeros=True)()
-    ... [2.302585, 0.693147, 0.0]
+    >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
+    >>>transformed_data = transformer.transform()
+    ...[0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
+    >>>original_data = transformer.inverse_transform(data=transformed_data)
     ```
+
+    Note: `tan` and `cumsum` do not return original data upon inverse transformation.
+        Same holds true for methods which causes change in dimension
     """
 
     available_transformers = {
@@ -154,7 +175,7 @@ class Transformations(scaler_container):
     mod_dim_methods = dim_red_methods + dim_expand_methods
 
     def __init__(self,
-                 data: pd.DataFrame,
+                 data: Union[pd.DataFrame, np.ndarray, list],
                  method: str = 'minmax',
                  features: list=None,
                  replace_nans: bool = False,
@@ -165,7 +186,7 @@ class Transformations(scaler_container):
                  ):
         """
         Arguments:
-            data : a dataframe or numpy ndarray. The transformed or inversely
+            data : a dataframe or numpy ndarray or array like. The transformed or inversely
                 transformed value will have the same type as data and will have
                 the same index as data (in case data is dataframe).
             method : method by which to transform and consequencly inversely
@@ -212,11 +233,12 @@ class Transformations(scaler_container):
         Calls the `transform` and `inverse_transform` methods.
         """
         if what.upper().startswith("TRANS"):
+            self.transforming_straight = True
 
             return self.transform(return_key=return_key, **kwargs)
 
         elif what.upper().startswith("INV"):
-
+            self.transforming_straight = False
             return self.inverse_transform(**kwargs)
 
         else:
@@ -238,6 +260,8 @@ class Transformations(scaler_container):
             if transformer.lower() in list(self.available_transformers.keys()) + ["log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
+        else:
+            raise AttributeError(f'Transformations has not attribute {item}')
 
     @property
     def data(self):
@@ -291,6 +315,9 @@ class Transformations(scaler_container):
         if isinstance(data, pd.DataFrame):
             data = data
         else:
+            data = np.array(data)
+            if data.ndim == 1:
+                data = data.reshape(-1, 1)
             assert isinstance(data, np.ndarray)
             data = pd.DataFrame(data, columns=['data'+str(i) for i in range(data.shape[1])])
 
@@ -322,7 +349,7 @@ class Transformations(scaler_container):
                 if self.method.lower() == "cumsum":
                     warnings.warn("Warning: nan values found and they may cause problem")
 
-        if self.replace_zeros:
+        if self.replace_zeros and self.transforming_straight:
             indices = {}
             for col in data.columns:
                 # find index containing 0s in corrent column of dataframe
@@ -428,6 +455,8 @@ class Transformations(scaler_container):
 
     def inverse_transform_with_sklearn(self, **kwargs):
 
+        self.transforming_straight = False
+
         scaler = self.get_scaler_from_dict(**kwargs)
 
         to_transform = self.get_features(**kwargs)
@@ -449,6 +478,7 @@ class Transformations(scaler_container):
         return data
 
     def transform(self, return_key=False, **kwargs):
+        self.transforming_straight = True
         """
         Transforms the data
         """
@@ -458,6 +488,7 @@ class Transformations(scaler_container):
         """
         Inverse transforms the data.
         """
+        self.transforming_straight = False
         if 'key' in kwargs or 'scaler' in kwargs:
             pass
         elif len(self.scalers) ==1:
@@ -513,7 +544,7 @@ class Transformations(scaler_container):
                 else:
                     _df = self.data[col]
 
-                df = pd.concat([df, _df], axis=1, sort=True)
+                df = pd.concat([df, _df], axis=1)
         else:
             df = trans_df
 

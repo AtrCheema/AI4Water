@@ -8,12 +8,17 @@ import pandas as pd
 
 from AI4Water.utils.transformations import Transformations
 from AI4Water import Model
+from AI4Water.utils.datasets import load_u1
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
 
 def build_and_run(transformation, data, inputs, outputs):
-    model = Model(data=data, inputs=inputs, outputs=outputs, transformation=transformation, verbosity=0)
+    model = Model(data=data,
+                  input_features=inputs,
+                  output_features=outputs,
+                  transformation=transformation,
+                  verbosity=0)
     tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
 
     pred, true = model.denormalize_data(inputs=tr_data[inputs],
@@ -47,24 +52,36 @@ def run_method1(method,
 def run_method2(method,
                 replace_nans=False,
                 data=None,
+                index=None,
                 **kwargs):
 
-    scaler = Transformations(data=df if data is None else data,
+    data = df if data is None else data
+
+    if index:
+        data.index = pd.date_range("20110101", periods=len(data), freq="D")
+
+    scaler = Transformations(data,
                              replace_nans=replace_nans,
                              method=method,
                              **kwargs)
 
-    normalized_df2, scaler_dict = scaler.transform(return_key=True)
+    normalized_df, scaler_dict = scaler.transform(return_key=True)
 
-    denormalized_df2 = scaler.inverse_transform(data=normalized_df2, key=scaler_dict['key'])
-    return normalized_df2, denormalized_df2
+    denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
+    return data, normalized_df, denormalized_df
 
 def run_method3(method,
                 replace_nans=False,
                 data=None,
+                index=None,
                 **kwargs):
 
-    scaler = Transformations(data=df if data is None else data,
+    data = df if data is None else data
+
+    if index:
+        data.index = pd.date_range("20110101", periods=len(data), freq="D")
+
+    scaler = Transformations(data,
                              replace_nans=replace_nans,
                              method=method,
                              **kwargs)
@@ -72,11 +89,12 @@ def run_method3(method,
     normalized_df3, scaler_dict = scaler(return_key=True)
     denormalized_df3 = scaler('inverse', data=normalized_df3, key=scaler_dict['key'])
 
-    return normalized_df3, denormalized_df3
+    return data, normalized_df3, denormalized_df3
 
 
 def run_method4(method,
                 replace_nans=False,
+                index=None,
                 data=None, **kwargs):
 
     scaler = Transformations(data=df if data is None else data,
@@ -95,6 +113,8 @@ def run_plot_pca(scaler, y, dim):
 def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False, assert_equality=True,
                     insert_ones=False):
     a = np.random.random((10, 4))
+    a[0, 0] = np.nan
+    a[0, 1] = 1.
 
     if insert_nans or insert_zeros:
         a[2:4, 1] = np.nan
@@ -120,33 +140,36 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
 
     _, dfo1 = run_method1(method=method, replace_nans=True, data=df3, **kwargs)
 
-    _, dfo2 = run_method2(method=method, replace_nans=True, data=df3, **kwargs)
+    _, _, dfo2 = run_method2(method=method, replace_nans=True, data=df3, **kwargs)
 
-    _, dfo3 = run_method3(method=method, replace_nans=True, data=df3, **kwargs)
+    _, _, dfo3 = run_method3(method=method, replace_nans=True, data=df3, **kwargs)
 
     _, dfo4 = run_method4(method=method, replace_nans=True, data=df3, **kwargs)
 
     if assert_equality:
-        np.allclose(df3, dfo1, equal_nan=True)
-        np.allclose(df3, dfo2, equal_nan=True)
-        np.allclose(df3, dfo3, equal_nan=True)
-        np.allclose(df3, dfo4, equal_nan=True)
+        #assert np.allclose(df3, dfo1, equal_nan=True)
+        assert np.allclose(df3, dfo2, equal_nan=True)
+        assert np.allclose(df3, dfo3, equal_nan=True)
+        assert np.allclose(df3, dfo4, equal_nan=True)
     return
 
 class test_Scalers(unittest.TestCase):
 
-    def run_method(self, method, cols=None):
+    def run_method(self, method, cols=None, index=None, assert_equality=False):
 
         cols = ['data1', 'data2'] if cols is None else cols
         print(f"testing: {method} with {cols} features")
 
         normalized_df1, denormalized_df1 = run_method1(method, cols)
 
-        normalized_df2, denormalized_df2 = run_method2(method)
+        orig_data, normalized_df2, denormalized_df2 = run_method2(method, index=index, features=cols)
 
-        normalized_df3, denormalized_df3 = run_method3(method)
+        orig_data, normalized_df3, denormalized_df3 = run_method3(method, index=index)
 
-        normalized_df4, denormalized_df4 = run_method4(method)
+        normalized_df4, denormalized_df4 = run_method4(method, index=index)
+
+        if assert_equality:
+            assert np.allclose(orig_data, denormalized_df2)
 
         if len(cols) < 2:
             self.check_features(denormalized_df1)
@@ -181,49 +204,52 @@ class test_Scalers(unittest.TestCase):
         self.run_method("log", cols=["data1"])
 
     def test_robust_scaler_with_feat(self):
-        self.run_method("robust", cols=["data1"])
+        self.run_method("robust", cols=["data1"], assert_equality=True)
 
     def test_minmax_scaler_with_feat(self):
-        self.run_method("minmax", cols=["data1"])
+        self.run_method("minmax", cols=["data1"], assert_equality=True)
+
+    def test_minmax_scaler_with_feat_and_index(self):
+        self.run_method("minmax", cols=["data1"], index=True, assert_equality=True)
 
     def test_maxabs_scaler_with_feat(self):
-        self.run_method("maxabs", cols=["data1"])
+        self.run_method("maxabs", cols=["data1"], assert_equality=True)
 
     def test_zscore_scaler_with_feat(self):
-        self.run_method("minmax", cols=["data1"])
+        self.run_method("minmax", cols=["data1"], assert_equality=True)
 
     def test_power_scaler_with_feat(self):
-        self.run_method("maxabs", cols=["data1"])
+        self.run_method("maxabs", cols=["data1"], assert_equality=True)
 
     def test_quantile_scaler_with_feat(self):
-        self.run_method("quantile", cols=["data1"])
+        self.run_method("quantile", cols=["data1"], assert_equality=True)
 
     def test_log_scaler(self):
-        self.run_method("log")
+        self.run_method("log", assert_equality=True)
 
     def test_log10_scaler(self):
-        self.run_method("log10")
+        self.run_method("log10", assert_equality=True)
 
     def test_log2_scaler(self):
-        self.run_method("log2")
+        self.run_method("log2", assert_equality=True)
 
     def test_robust_scaler(self):
-        self.run_method("robust")
+        self.run_method("robust", assert_equality=True)
 
     def test_minmax_scaler(self):
-        self.run_method("minmax")
+        self.run_method("minmax", assert_equality=True)
 
     def test_maxabs_scaler(self):
-        self.run_method("maxabs")
+        self.run_method("maxabs", assert_equality=True)
 
     def test_zscore_scaler(self):
-        self.run_method("minmax")
+        self.run_method("minmax", assert_equality=True)
 
     def test_power_scaler(self):
-        self.run_method("maxabs")
+        self.run_method("maxabs", assert_equality=True)
 
     def test_quantile_scaler(self):
-        self.run_method("quantile")
+        self.run_method("quantile", assert_equality=True)
 
     def test_pca(self):
         self.run_decomposition(method="pca")
@@ -252,16 +278,16 @@ class test_Scalers(unittest.TestCase):
     def run_decomposition(self, method):
         df_len, features, components = 10, 5, 5
         for run_method in [1,2, 3]:
-            trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
+            _, trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
             self.assertEqual(trans_df.shape, orig_df.shape)
 
     def run_decomposition_with_components(self, method):
         df_len, features, components = 10, 5, 4
         for run_method in [1,2,3]:
-            trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
+            _, trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
             self.assertEqual(trans_df.shape, (df_len,components))
             self.assertEqual(orig_df.shape, (df_len, features))
-    #
+
     def do_decomposition(self, df_len, features, components, m, method):
         print(f"testing {method} with {features} features and {components} components with {m} call method")
 
@@ -286,7 +312,7 @@ class test_Scalers(unittest.TestCase):
         normalized_df, scaler_dict = scaler.transform(return_key=True)
         denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
 
-        return normalized_df, denormalized_df
+        return None, normalized_df, denormalized_df
 
     def test_plot_pca3d(self):
         from sklearn import datasets
@@ -326,11 +352,11 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_tan_with_nans(self):
-        run_log_methods("tan", index=None)
+        run_log_methods("tan", index=None, assert_equality=False)
         return
 
     def test_tan_with_index(self):
-        run_log_methods("tan", True)
+        run_log_methods("tan", True, assert_equality=False)
         return
 
     def test_cumsum_with_index(self):
@@ -401,7 +427,17 @@ class test_Scalers(unittest.TestCase):
         for i,j in zip(data['out1'], pred):
             self.assertAlmostEqual(i, float(j), 5)
         return
-    #
+
+    def test_example(self):
+        data = load_u1()
+        inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
+        transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
+        new_data = transformer.transform()
+        orig_data = transformer.inverse_transform(data=new_data)
+        np.allclose(data[inputs].values, orig_data.values)
+
+        return
+
     # def test_multiple_transformation_multiple_inputs(self):
     #     # TODO
     #     return

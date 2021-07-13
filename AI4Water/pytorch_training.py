@@ -10,6 +10,7 @@ try:
 except ModuleNotFoundError:
     to_torch_dataset, TorchMetrics = None,None
 
+from .utils.utils import dateandtime_now
 from .utils.SeqMetrics.SeqMetrics import RegressionMetrics
 
 
@@ -42,7 +43,7 @@ class AttributeContainer(object):
         self.best_epoch = 0   # todo,
         self.use_cuda = torch.cuda.is_available()
 
-        def_path = os.path.join(os.getcwd(), 'results')
+        def_path = os.path.join(os.getcwd(), 'results', dateandtime_now())
         if not os.path.exists(def_path): os.mkdir(def_path)
         self.path = def_path
 

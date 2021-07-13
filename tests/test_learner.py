@@ -49,7 +49,7 @@ def criterion_cross(labels, outputs):
 
 model = Net(1, 2, 1)
 learner = Learner(model=model,
-                  num_epochs=1000,
+                  num_epochs=301,
                   batch_size=1,
                   shuffle=False)
 learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
