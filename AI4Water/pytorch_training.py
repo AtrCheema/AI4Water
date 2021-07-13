@@ -87,7 +87,7 @@ class Learner(AttributeContainer):
     """Trains the pytorch model. Motivated from fastai"""
 
     def __init__(self,
-                 model: torch.nn.Module,
+                 model , #torch.nn.Module,
                  batch_size:int = 32,
                  num_epochs: int = 14,
                  patience: int = 100,
