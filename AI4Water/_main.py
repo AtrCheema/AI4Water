@@ -26,7 +26,7 @@ from AI4Water.backend import tpot_models
 from AI4Water.backend import imputations, sklearn_models
 from AI4Water.utils.utils import maybe_create_path, save_config_file, to_datetime_index, dateandtime_now
 from AI4Water.utils.utils import train_val_split, split_by_indices, ts_features, make_model, prepare_data
-from AI4Water.utils.utils import find_best_weight
+from AI4Water.utils.utils import find_best_weight, reset_seed
 from AI4Water.utils.plotting_tools import Plots
 from AI4Water.utils.transformations import Transformations
 from AI4Water.utils.imputation import Imputation
@@ -48,26 +48,6 @@ elif BACKEND == 'pytorch' and torch is not None:
     from .utils.torch_utils import to_torch_dataset
 
 
-
-def reset_seed(seed:Union[int, None]):
-    """
-    Arguments:
-        seed : Value of seed to set. If None, then it means we don't wan't to set
-        the seed."""
-    if seed:
-        np.random.seed(seed)
-        random.seed(seed)
-        os.environ['PYTHONHASHSEED'] = str(seed)
-        if tf is not None:
-            if int(tf.__version__.split('.')[0]) == 1:
-                tf.compat.v1.random.set_random_seed(seed)
-            elif int(tf.__version__.split('.')[0]) > 1:
-                tf.random.set_seed(seed)
-        if torch is not None:
-            torch.manual_seed(seed)
-            torch.cuda.manual_seed(seed)
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = True
 
 class BaseModel(NN, Plots):
     """
@@ -301,7 +281,7 @@ class BaseModel(NN, Plots):
                                **kwargs)
 
             # data_config, model_config = config['data_config'], config['model_config']
-            reset_seed(maker.config['seed'])
+            reset_seed(maker.config['seed'], os, random, np, tf, torch)
             if tf is not None:
                 # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
                 # file, they may share same graph.

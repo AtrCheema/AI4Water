@@ -18,6 +18,41 @@ import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
 
+def reset_seed(seed:Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
+    """
+    Sets the random seed for a given module if the module is not None
+    Arguments:
+        seed : Value of seed to set. If None, then it means we don't wan't to set
+        the seed.
+        os : alias for `os` module of python
+        random : alias for `random` module of python
+        np : alias for `numpy` module
+        tf : alias for `tensorflow` module.
+        torch : alias for `pytorch` module.
+        """
+    if seed:
+        if np:
+            np.random.seed(seed)
+
+        if random:
+            random.seed(seed)
+
+        if os:
+            os.environ['PYTHONHASHSEED'] = str(seed)
+
+        if tf:
+            if int(tf.__version__.split('.')[0]) == 1:
+                tf.compat.v1.random.set_random_seed(seed)
+            elif int(tf.__version__.split('.')[0]) > 1:
+                tf.random.set_seed(seed)
+
+        if torch:
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = True
+    return
+
 def maybe_create_path(prefix=None, path=None):
     if path is None:
         save_dir = dateandtime_now()
