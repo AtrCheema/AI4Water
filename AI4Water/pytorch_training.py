@@ -87,7 +87,7 @@ class Learner(AttributeContainer):
     """Trains the pytorch model. Motivated from fastai"""
 
     def __init__(self,
-                 model,
+                 model: torch.nn.Module,
                  batch_size:int = 32,
                  num_epochs: int = 14,
                  patience: int = 100,
@@ -108,6 +108,43 @@ class Learner(AttributeContainer):
                 case `to_monitor` does not improve.
             shuffle :
             to_monitor : list of metrics to monitor
+
+        Example
+        --------
+        ```python
+        >>>from torch import nn
+        >>>class Net(nn.Module):
+        >>>    def __init__(self, D_in, H, D_out):
+        ...        super(Net, self).__init__()
+        ...        # hidden layer
+        ...        self.linear1 = nn.Linear(D_in, H)
+        ...        self.linear2 = nn.Linear(H, D_out)
+        >>>    def forward(self, x):
+        ...        l1 = self.linear1(x)
+        ...        a1 = sigmoid(l1)
+        ...        yhat = sigmoid(self.linear2(a1))
+        ...        return yhat
+        ...
+        >>>learner = Learner(model=Net(1, 2, 1),
+        ...                      num_epochs=501,
+        ...                      patience=50,
+        ...                      batch_size=1,
+        ...                      shuffle=False)
+        ...
+        >>>learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+        >>>def criterion_cross(labels, outputs):
+        ...    out = -1 * torch.mean(labels * torch.log(outputs) + (1 - labels) * torch.log(1 - outputs))
+        ...    return out
+        >>>learner.loss = criterion_cross
+        ...
+        >>>X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
+        >>>Y = torch.zeros(X.shape[0])
+        >>>Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
+        ...
+        >>>learner.fit(X, Y)
+        >>>metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
+        >>>t,p = learner.predict(X, y=Y, name='training')
+        ```
         """
         super().__init__(num_epochs, to_monitor)
 
@@ -352,7 +389,7 @@ class Learner(AttributeContainer):
             best_weights = os.path.basename(weight_file_path)
         else:
             w_path = getattr(self.model, 'w_path', self.path)
-            best_weights = find_best_weight(w_path)
+            best_weights = find_best_weight(w_path, epoch_identifier=self.best_epoch)
             weight_file_path = os.path.join(w_path, best_weights)
         if best_weights is not None:
             fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
