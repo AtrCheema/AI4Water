@@ -102,53 +102,34 @@ class Transformations(scaler_container):
               eemd:   ensemble empirical mode decomposition
 
     To transform a datafrmae using any of the above methods use
+
     ```python
     >>>scaler = Transformations(data=[1,2,3,5], method='zscore')
     >>>scaler.transform()
     ```
+
     or
+
     ```python
     >>>scaler = Transformations(data=pd.DataFrame([1,2,3]))
     >>>normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
     ```
 
     or
+
     ```python
     >>>scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
     >>>normalized_df, scaler_dict = scaler()
     ```
 
     or using one liner
+
     ```python
     >>>normalized_df, scaler = Transformations(data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
-     ...                                      method='log', features=['a'])('transform')
+    ...                                      method='log', features=['a'])('transform')
     ```
 
     where `method` can be any of the above mentioned methods.
-
-    Example
-    ----------
-    ```python
-    >>>from AI4Water.utils.transformations import Transformations
-    >>>from AI4Water.utils.datasets import load_u1
-    >>>data = load_u1()
-    >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    >>>transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
-    >>>new_data = transformer.transform()
-    ```
-
-    Following shows how to apply log transformation on an array containing zeros
-    by making use of the argument `replace_zeros`. The zeros in the input array
-    will be replaced internally but will be inserted back afterwards.
-
-    ```python
-    >>>from AI4Water.utils.transformations import Transformations
-    >>>a = pd.DataFrame([10, 2, 0])
-    >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
-    >>>transformed_data = transformer.transform()
-    ...[0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
-    >>>original_data = transformer.inverse_transform(data=transformed_data)
-    ```
 
     Note: `tan` and `cumsum` do not return original data upon inverse transformation.
         Same holds true for methods which causes change in dimension
@@ -212,6 +193,31 @@ class Transformations(scaler_container):
             kwargs : any arguments which are to be provided to transformer on
                 INTIALIZATION and not during transform or inverse transform e.g.
                 `n_components` for pca.
+
+        Example
+        ---------
+        ```python
+        >>>from AI4Water.utils.transformations import Transformations
+        >>>from AI4Water.utils.datasets import load_u1
+        >>>data = load_u1()
+        >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
+        >>>transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
+        >>>new_data = transformer.transform()
+        ```
+
+        Following shows how to apply log transformation on an array containing zeros
+        by making use of the argument `replace_zeros`. The zeros in the input array
+        will be replaced internally but will be inserted back afterwards.
+
+        ```python
+        >>>from AI4Water.utils.transformations import Transformations
+        >>>a = pd.DataFrame([10, 2, 0])
+        >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
+        >>>transformed_data = transformer.transform()
+        ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
+        >>>original_data = transformer.inverse_transform(data=transformed_data)
+        ```
+
         """
         super().__init__()
 
@@ -481,12 +487,23 @@ class Transformations(scaler_container):
         self.transforming_straight = True
         """
         Transforms the data
+
+        Arguments:
+            return_key : whether to return the scaler or not. If True, then a
+                tuple is returned which consists of transformed data and scaler itself.
+            kwargs :
         """
         return getattr(self, "transform_with_" + self.method.lower())(return_key=return_key, **kwargs)
 
-    def inverse_transform(self, **kwargs):
+    def inverse_transform(self, data,  **kwargs):
         """
         Inverse transforms the data.
+        Arguments:
+            data : data on which to apply inverse transformation
+            kwargs : any of the folliwng keyword arguments
+                key : key to fetch scaler
+                scaler : scaler to use for inverse transformation. If not given, then
+                    the available scaler is used.
         """
         self.transforming_straight = False
         if 'key' in kwargs or 'scaler' in kwargs:
@@ -494,7 +511,7 @@ class Transformations(scaler_container):
         elif len(self.scalers) ==1:
             kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
 
-        return getattr(self, "inverse_transform_with_" + self.method.lower())(**kwargs)
+        return getattr(self, "inverse_transform_with_" + self.method.lower())(data=data, **kwargs)
 
     def get_features(self, **kwargs) -> pd.DataFrame:
         # use the provided data if given otherwise use self.data
