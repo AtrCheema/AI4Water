@@ -37,16 +37,3 @@
             - add_layers
     rendering:
         show_root_heading: true
-
-# Pytorch Learner
-::: AI4Water.pytorch_training.Learner
-    handler: python
-    selection:
-        members:
-            - __init__
-            - fit
-            - evaluate
-            - predict
-            - update_weights
-    rendering:
-        show_root_heading: true
