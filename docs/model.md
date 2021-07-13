@@ -47,5 +47,6 @@
             - fit
             - evaluate
             - predict
+            - update_weights
     rendering:
         show_root_heading: true

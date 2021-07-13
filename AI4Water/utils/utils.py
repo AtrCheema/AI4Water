@@ -505,6 +505,8 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
 
 def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5"):
     """Given weights in w_path, find the best weight."""
+    # todo, if we are monitoring more than two metrics whose desired behaviour
+    #  is opposite to each other then this method does not work as desired.
     assert best in ['min', 'max']
     all_weights = os.listdir(w_path)
     losses = {}

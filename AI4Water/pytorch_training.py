@@ -12,7 +12,7 @@ try:
 except ModuleNotFoundError:
     to_torch_dataset, TorchMetrics = None,None
 
-from .utils.utils import dateandtime_now
+from .utils.utils import dateandtime_now, find_best_weight
 from .utils.SeqMetrics.SeqMetrics import RegressionMetrics
 from .utils.visualizations import regplot
 
@@ -159,7 +159,8 @@ class Learner(AttributeContainer):
                 - a torch.utils.data.Dataset
                 - a torch.utils.data.DataLoader
                 - a torch.Tensor
-            y :
+            y : only relevent if `x` is torch.Tensor. It comprises labels for
+                correspoing x.
             batch_size : None means make prediction on whole data in one go
             reg_plot : whether to plot regression line or not
             name : string to be used for title and name of saved plot
@@ -197,7 +198,8 @@ class Learner(AttributeContainer):
                 - a torch.utils.data.Dataset
                 - a torch.utils.data.DataLoader
                 - a torch.Tensor
-            y :
+            y : only relevent if `x` is torch.Tensor. It comprises labels for
+                correspoing x.
             batch_size : None means make prediction on whole data in one go
             metrics : name of performance metric to measure. It can be a single metric
                 or a list of metrics. Allowed metrics are anyone from
@@ -319,12 +321,14 @@ class Learner(AttributeContainer):
         else:
             self.optimizer = self.optimizer
 
-
         self.train_loader, self.val_loader = self._get_train_val_loaders(x, y=y, validation_data=validation_data)
 
         return
 
     def on_train_end(self):
+
+        self.update_weights()
+
         self.train_metrics['loss'] = self.train_metrics.pop('mse')
         self.val_metrics['val_loss'] = self.val_metrics.pop('val_mse')
         
@@ -334,6 +338,28 @@ class Learner(AttributeContainer):
             history.update(self.val_metrics)
 
         return History()
+
+    def update_weights(self, weight_file_path:str = None):
+        """If `weight_file_path` is not given then it finds the best weights
+        and updates the model with best wieghts.
+
+        Arguments:
+            weight_file_path : complete path of weights which are to be loaded
+        """
+
+        if weight_file_path:
+            assert os.path.exists(weight_file_path)
+            best_weights = os.path.basename(weight_file_path)
+        else:
+            w_path = getattr(self.model, 'w_path', self.path)
+            best_weights = find_best_weight(w_path)
+            weight_file_path = os.path.join(w_path, best_weights)
+        if best_weights is not None:
+            fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
+            self.model.load_state_dict(torch.load(fpath))
+            if self.verbosity > 0:
+                print("{} Successfully loaded weights from {} file {}".format('*' * 10, best_weights, '*' * 10))
+        return
 
     def update_metrics(self):
 

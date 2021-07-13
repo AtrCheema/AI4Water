@@ -1580,14 +1580,14 @@ class BaseModel(NN, Plots):
 
             visualizer.plot_loss(history.history)
 
-            # load the best weights so that the best weights can be used during model.predict calls
-            best_weights = find_best_weight(os.path.join(self.path, 'weights'))
-            if best_weights is None:
-                warnings.warn("best weights could not be found and are not loaded", UserWarning)
-            else:
-                self.allow_weight_loading = True
-                self.update_weights(best_weights)
-
+            if self.config['backend'] != 'pytorch':
+                # load the best weights so that the best weights can be used during model.predict calls
+                best_weights = find_best_weight(os.path.join(self.path, 'weights'))
+                if best_weights is None:
+                    warnings.warn("best weights could not be found and are not loaded", UserWarning)
+                else:
+                    self.allow_weight_loading = True
+                    self.update_weights(best_weights)
         else:
             history = self._model.fit(*inputs, outputs.reshape(-1, ))
             model_name = list(self.config['model'].keys())[0]
@@ -2600,9 +2600,6 @@ class BaseModel(NN, Plots):
             # loads the weights of keras model from weight file `w_file`.
             if self.api == 'functional' and self.config['backend'] == 'tensorflow':
                 self._model.load_weights(weight_file_path)
-            elif self.config['backend'] == 'pytorch':
-                fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
-                self.load_state_dict(torch.load(fpath))
             else:
                 self.load_weights(weight_file_path)
         if self.verbosity > 0:
