@@ -538,10 +538,15 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
     return results
 
 
-def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5"):
-    """Given weights in w_path, find the best weight."""
-    # todo, if we are monitoring more than two metrics whose desired behaviour
-    #  is opposite to each other then this method does not work as desired.
+def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5", epoch_identifier:int=None):
+    """Given weights in w_path, find the best weight.
+    if epoch_identifier is given, it will be given priority to find best_weights
+    The file_names are supposed in following format FileName_Epoch_Error.ext
+
+    Note: if we are monitoring more than two metrics whose desired behaviour
+        is opposite to each other then this method does not work as desired. However
+        this can be avoided by specifying `epoch_identifier`.
+    """
     assert best in ['min', 'max']
     all_weights = os.listdir(w_path)
     losses = {}
@@ -550,11 +555,20 @@ def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5"):
         val_loss = str(float(wname.split('_')[2]))  # converting to float so that trailing 0 is removed
         losses[val_loss] = {'loss': wname.split('_')[2], 'epoch': wname.split('_')[1]}
 
-    loss_array = np.array([float(l) for l in losses.keys()])
-    if len(loss_array)==0:
-        return None
-    best_loss = getattr(np, best)(loss_array)
-    best_weight = f"weights_{losses[str(best_loss)]['epoch']}_{losses[str(best_loss)]['loss']}.hdf5"
+    best_weight = None
+    if epoch_identifier:
+        for v in losses.values():
+            if str(epoch_identifier) in v['epoch']:
+                best_weight = f"weights_{v['epoch']}_{v['loss']}.hdf5"
+                break
+
+    else:
+        loss_array = np.array([float(l) for l in losses.keys()])
+        if len(loss_array)==0:
+            return None
+        best_loss = getattr(np, best)(loss_array)
+        best_weight = f"weights_{losses[str(best_loss)]['epoch']}_{losses[str(best_loss)]['loss']}.hdf5"
+
     return best_weight
 
 
