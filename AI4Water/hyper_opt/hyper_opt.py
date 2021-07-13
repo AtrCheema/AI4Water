@@ -106,13 +106,16 @@ ALGORITHMS = {
 
 class HyperOpt(object):
     """
-    The purpose of this class is to provide a uniform and simplifed interface to use hyperopt, optuna, scikit-optimize
-    and scikit-learn based RandomizeSearchCV, GridSearchCV. Thus this class sits on top of hyperopt, optuna,
-    scikit-optimize and scikit-learn. Ideally this class should provide all the functionalities
-    of beforementioned libaries with a uniform interface. It however also complements these libraries by combining
-    their functionalities and adding some additional functionalities to them. On the other hand this class should not
-    limit or complicate the use of its underlying libraries. This means all the functionalities of underlying libraries
-    are available in this class as well. Moreover, you can use this class just as you use one of its underlying library.
+    The purpose of this class is to provide a uniform and simplifed interface to
+    use hyperopt, optuna, scikit-optimize and scikit-learn based RandomizeSearchCV,
+    GridSearchCV. Thus this class sits on top of hyperopt, optuna, scikit-optimize
+    and scikit-learn. Ideally this class should provide all the functionalities of
+    beforementioned libaries with a uniform interface. It however also complements
+    these libraries by combining their functionalities and adding some additional
+    functionalities to them. On the other hand this class should not limit or
+    complicate the use of its underlying libraries. This means all the functionalities
+    of underlying libraries are available in this class as well. Moreover, you can use
+    this class just as you use one of its underlying library.
 
     Sklearn is great but
 
@@ -185,7 +188,8 @@ class HyperOpt(object):
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>outputs = ['target']
-    >>>def objective_fn(**suggestion):
+    >>>def objective_fn(**suggestion)->float:
+    ...   # the objective function must receive new parameters as keyword arguments
     ...    model = Model(
     ...        inputs=inputs,
     ...        outputs=outputs,
@@ -197,12 +201,12 @@ class HyperOpt(object):
     ...
     ...    t, p = model.predict(indices=model.test_indices, prefix='test')
     ...    mse = RegressionMetrics(t, p).mse()
-    ...
+    ...    # the objective function must return a scaler value which needs to be minimized
     ...    return mse
     ```
 
     # Define search space
-
+    The search splace determines pool from which parameters are chosen during optimization.
     ```python
     >>>num_samples=5   # only relavent for random and grid search
     >>>search_space = [

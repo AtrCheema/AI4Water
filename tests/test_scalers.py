@@ -162,14 +162,15 @@ class test_Scalers(unittest.TestCase):
 
         normalized_df1, denormalized_df1 = run_method1(method, cols)
 
-        orig_data, normalized_df2, denormalized_df2 = run_method2(method, index=index, features=cols)
+        orig_data2, normalized_df2, denormalized_df2 = run_method2(method, index=index, features=cols)
 
-        orig_data, normalized_df3, denormalized_df3 = run_method3(method, index=index)
+        orig_data3, normalized_df3, denormalized_df3 = run_method3(method, index=index)
 
         normalized_df4, denormalized_df4 = run_method4(method, index=index)
 
         if assert_equality:
-            assert np.allclose(orig_data, denormalized_df2)
+            assert np.allclose(orig_data2, denormalized_df2)
+            #assert np.allclose(orig_data3, normalized_df3)  # todo
 
         if len(cols) < 2:
             self.check_features(denormalized_df1)

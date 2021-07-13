@@ -173,9 +173,9 @@ class Transformations(scaler_container):
             method : method by which to transform and consequencly inversely
                 transform the data. default is 'minmax'. see `Transformations.available_transformers`
                 for full list.
-            features : list of strings, if data is datafrmae, then this list is the
-                features on which we want to apply transformation. The remaining
-                columns will remain same/unchanged.
+            features : string or list of strings. Only applicable if `data` is
+                dataframe. It defines the columns on which we want to apply transformation.
+                The remaining columns will remain same/unchanged.
             replace_nans : If true, then will replace the nan values in data with
                 some fixed value `replace_with` before transformation. The nan
                 values will be put back at their places after transformation so
@@ -211,7 +211,6 @@ class Transformations(scaler_container):
 
         ```python
         >>>from AI4Water.utils.transformations import Transformations
-        >>>a = pd.DataFrame([10, 2, 0])
         >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
         >>>transformed_data = transformer.transform()
         ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
@@ -495,12 +494,12 @@ class Transformations(scaler_container):
         """
         return getattr(self, "transform_with_" + self.method.lower())(return_key=return_key, **kwargs)
 
-    def inverse_transform(self, data,  **kwargs):
+    def inverse_transform(self, **kwargs):
         """
         Inverse transforms the data.
         Arguments:
-            data : data on which to apply inverse transformation
             kwargs : any of the folliwng keyword arguments
+                data : data on which to apply inverse transformation
                 key : key to fetch scaler
                 scaler : scaler to use for inverse transformation. If not given, then
                     the available scaler is used.
@@ -511,7 +510,7 @@ class Transformations(scaler_container):
         elif len(self.scalers) ==1:
             kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
 
-        return getattr(self, "inverse_transform_with_" + self.method.lower())(data=data, **kwargs)
+        return getattr(self, "inverse_transform_with_" + self.method.lower())(**kwargs)
 
     def get_features(self, **kwargs) -> pd.DataFrame:
         # use the provided data if given otherwise use self.data
