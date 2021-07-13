@@ -46,5 +46,6 @@
             - __init__
             - fit
             - evaluate
+            - predict
     rendering:
         show_root_heading: true

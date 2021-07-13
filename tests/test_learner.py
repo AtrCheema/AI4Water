@@ -1,5 +1,4 @@
-
-
+import numpy as np
 import torch
 import torch.nn as nn
 from torch import sigmoid
@@ -66,3 +65,6 @@ h = learner.fit(x=X,
                 )
 m = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
 assert len(m) == 3
+t,p = learner.predict(X, y=Y, name='training')
+assert isinstance(t, np.ndarray)
+assert isinstance(p, np.ndarray)

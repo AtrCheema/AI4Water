@@ -1195,10 +1195,11 @@ def validate_freq(df, freq):
     return
 
 
-def regplot(true, pred, **kwargs):
+def regplot(true, pred, name, **kwargs):
     """
     :param true: array like
     :param pred, array like
+    :param name, name to be used for title
     Following kwargs are allowed:
         figsize: tuple
         colorbar: for plt.colorbar
@@ -1229,7 +1230,7 @@ def regplot(true, pred, **kwargs):
     points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
 
     if kwargs.get('annotate', True):
-        plt.annotate(f'$R^{2}$: {round(RegressionMetrics(true, pred).r2(), 3)}', xy=(0.50, 0.95), xycoords='axes fraction',
+        plt.annotate(f'$R^{2}$: {round(RegressionMetrics(true, pred).r2(), 3)}', xy=(0.2, 0.95), xycoords='axes fraction',
                  horizontalalignment='right', verticalalignment='top', fontsize=16)
 
     if kwargs.get('colorbar', False):
@@ -1238,5 +1239,6 @@ def regplot(true, pred, **kwargs):
     sns.regplot(x=true, y=pred, scatter=False, color=".1")
     plt.xlabel('Observed', fontsize=14)
     plt.ylabel('Predicted', fontsize=14)
+    plt.title(name, fontsize=26)
 
     return

@@ -1,5 +1,7 @@
 import os
+from typing import Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .backend import torch
@@ -12,6 +14,7 @@ except ModuleNotFoundError:
 
 from .utils.utils import dateandtime_now
 from .utils.SeqMetrics.SeqMetrics import RegressionMetrics
+from .utils.visualizations import regplot
 
 
 F = {
@@ -149,7 +152,45 @@ class Learner(AttributeContainer):
 
         return self.on_train_end()
 
-    def evaluate(self, x, y=None, batch_size=None, metrics='r2'):
+    def predict(self, x, y=None, batch_size:int=None, reg_plot:bool = True, name:str = None):
+        """Makes prediction on the given data
+        Arguments:
+            x : data on which to evalute. It can be
+                - a torch.utils.data.Dataset
+                - a torch.utils.data.DataLoader
+                - a torch.Tensor
+            y :
+            batch_size : None means make prediction on whole data in one go
+            reg_plot : whether to plot regression line or not
+            name : string to be used for title and name of saved plot
+        Returns:
+            a tuple of true and predicted arrays
+        """
+        true, pred = self._eval(x=x, y=y, batch_size=batch_size)
+
+        if reg_plot:
+            regplot(true, pred, name=name)
+            plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
+
+        return true, pred
+
+    def _eval(self, x, y=None, batch_size=None):
+        loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size)
+
+        true, pred = [], []
+
+        for i, (batch_x, batch_y) in enumerate(loader):
+
+            pred_y = self.model(batch_x.float())
+            true.append(batch_y)
+            pred.append(pred_y)
+
+        true = torch.stack(true, 1).view(-1, 1)
+        pred = torch.stack(pred, 1).view(-1, 1)
+
+        return true.detach().numpy(), pred.detach().numpy()
+
+    def evaluate(self, x, y=None, batch_size:int=None, metrics:Union[str, list]='r2'):
         """Evaluates the `model` on the given data.
         Arguments:
             x : data on which to evalute. It can be
@@ -167,20 +208,9 @@ class Learner(AttributeContainer):
 
         assert isinstance(metrics, list)
 
-        loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size)
+        true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
-        true, pred = [], []
-
-        for i, (batch_x, batch_y) in enumerate(loader):
-
-            pred_y = self.model(batch_x.float())
-            true.append(batch_y)
-            pred.append(pred_y)
-
-        true = torch.stack(true, 1).view(-1, 1)
-        pred = torch.stack(pred, 1).view(-1, 1)
-
-        evaluator = RegressionMetrics(true.detach().numpy(), pred.detach().numpy())
+        evaluator = RegressionMetrics(true, pred)
 
         errors = {}
 
