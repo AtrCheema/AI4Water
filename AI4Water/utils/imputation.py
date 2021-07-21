@@ -1,3 +1,5 @@
+from typing import Union
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -56,12 +58,17 @@ class Imputation(object):
         >>>imputer.method = 'KNNImputer'
         >>>imputer(n_neighbors=3)
     """
-    def __init__(self, data:pd.DataFrame, method:str, imputer_args:dict=None):
-        self.data = data
+    def __init__(self,
+                 data:Union[pd.DataFrame, np.ndarray, list],
+                 method:str='KNNImputer',
+                 features=None,
+                 imputer_args:dict=None
+                 ):
+        self.data = self.maybe_make_df(data)
         self.method = method
+        self.features = features or self.data.columns
         self.imputer_args={} if imputer_args is None else imputer_args
         self.new_data = None
-
 
     @property
     def method(self):
@@ -69,37 +76,49 @@ class Imputation(object):
 
     @method.setter
     def method(self, x):
-        if x not in ['fillna', 'interpolate']:
-            assert x.upper() in imputations, f"unknown imputation method {x} defined"
         self._method = x
 
-    def __call__(self, data=None, *args, **kwargs):
+    def call(self, *args, **kwargs):
+        raise NotImplementedError(f"You must ovewrite the `call` method to implement {self.method} method")
+
+    def __call__(self, *args, **kwargs):
         """
-        if data is provided, this will overwrite orignal data/self.orig_data.
         If kwargs are provided they will overwrite self.imputer_args. This helps to use same instance of
         Imputantion class with different args.
         """
         if kwargs:
-            _kwargs = kwargs
+            kwargs = kwargs
         else:
-            _kwargs = self.imputer_args
+            kwargs = self.imputer_args
 
-        if data is not None:
-            df = data.copy()
+        if self.method.lower() in ['fillna', 'interpolate']:  # it is a pandas based
+            for col in self.data.columns:
+                if col in self.features:
+                    self.data[col] = getattr(self.data[col], self.method)(**kwargs)
+
+        elif self.method.upper() in imputations:
+            imputer = imputations[self.method.upper()](**kwargs)
+
+            data = self.data.copy()  # making a copy so that non-imputed features remain intact
+            _data = self.data[self.features].values
+            data_ = imputer.fit_transform(_data)
+
+            if isinstance(data_, np.ndarray):
+                data_= pd.DataFrame(data_, columns=self.features, index=self.data.index)
+
+            data[self.features] = data_
+
+            setattr(self, 'data', data)
+
         else:
-            df = self.data.copy()
+            return self.call()
 
-        if self.method.lower() in ['fillna', 'interpolate']:
-            for col in df.columns:
-                df[col] = getattr(df[col], self.method)(**_kwargs)
-        else:
-            _imputer = imputations[self.method.upper()](**_kwargs)
-            df = _imputer.fit_transform(df.values)
-            if isinstance(df, np.ndarray):
-                df = pd.DataFrame(df, columns=self.data.columns, index=self.data.index)
+        if self._dtype == 'list':
+            self.data = self.data.values.reshape(-1,).tolist()
+        elif self._dtype == 'ndarray':
+            self.data = self.data.values
 
-        setattr(self, 'new_data', df)
-        return df
+        return self.data
 
     def plot(self, cols=None, st=0, en=None):
         """
@@ -146,11 +165,17 @@ class Imputation(object):
 
         return indices
 
+    def maybe_make_df(self, data):
+        setattr(self, '_dtype', data.__class__.__name__)
 
-if __name__ == "__main__":
+        data = data.copy()
 
-    df = pd.DataFrame(np.sin(np.arange(100)))
-    df.loc[df.sample(frac=0.4).index, 0] = np.nan
-    imputer = Imputation(df, method='interpolate', imputer_args={'method': 'cubic'})
-    imputer()
-    imputer.plot()
+        if isinstance(data, pd.DataFrame):
+            data = data
+        else:
+            data = np.array(data)
+            if data.ndim == 1:
+                data = data.reshape(-1, 1)
+            assert isinstance(data, np.ndarray)
+            data = pd.DataFrame(data, columns=['data'+str(i) for i in range(data.shape[1])])
+        return data
