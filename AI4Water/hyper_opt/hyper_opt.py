@@ -186,13 +186,13 @@ class HyperOpt(object):
     >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
     # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
-    >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    >>>outputs = ['target']
+    >>>input_features = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
+    >>>output_features = ['target']
     >>>def objective_fn(**suggestion)->float:
     ...   # the objective function must receive new parameters as keyword arguments
     ...    model = Model(
-    ...        inputs=inputs,
-    ...        outputs=outputs,
+    ...        input_features=input_features,
+    ...        output_features=output_features,
     ...        model={"xgboostregressor": suggestion},
     ...        data=data,
     ...        verbosity=0)
@@ -273,8 +273,8 @@ class HyperOpt(object):
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
     ...           ai4water_args={'model': 'XGBoostRegressor',
-    ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-    ...                        'outputs': ['target']},
+    ...                        'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+    ...                        'output_features': ['target']},
     ...           data=data,
     ...           )
     >>>opt.fit()
@@ -286,8 +286,8 @@ class HyperOpt(object):
     ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
     ...                        'max_depth': [3, 4, 5, 6]},
     ...           ai4water_args={'model': 'XGBoostRegressor',
-    ...                        'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-    ...                        'outputs': ['target']},
+    ...                        'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+    ...                        'output_features': ['target']},
     ...           data=data,
     ...           n_iter=100
     ...           )
