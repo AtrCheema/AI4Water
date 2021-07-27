@@ -42,9 +42,10 @@ model = Model(
     data=arg_beach(),
     epochs=2,
     KModel=CustomModel,
+    train_data='random',
 )
 
-history = model.fit(indices='random')
+history = model.fit()
 
 # since the statement 'custom train_step' is printed, we have verified that tensorflow
 # used our own customized train_step during training.

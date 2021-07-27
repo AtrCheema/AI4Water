@@ -19,6 +19,7 @@ layers = {
 model = Model(
     model={'layers':layers},
     lookback=10,
+    train_data='random',
     data=arg_beach())
 
-history = model.fit(indices="random")
+history = model.fit()

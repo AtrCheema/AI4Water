@@ -23,4 +23,4 @@ model = Model(
 
 h = model.fit()
 
-x, _, y = model.training_data()
+x, y = model.training_data()

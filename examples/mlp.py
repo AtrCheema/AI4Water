@@ -26,10 +26,11 @@ model = Model(data=df,
               model = mlp_model,
               input_features=input_features,
               output_features=[outputs],
-              lr=0.0001
+              lr=0.0001,
+              train_data='random',
               )
 
-history = model.fit(indices='random')
+history = model.fit()
 
 y, obs = model.predict()
-model.view_model(st=0)
+model.view_model()

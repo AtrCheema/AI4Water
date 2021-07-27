@@ -16,14 +16,11 @@ tf.compat.v1.disable_eager_execution()
 class MultiSite(InputAttentionModel):
     """ This is only for two outputs currently. """
 
-    def training_data(self, data=None, data_keys=None, **kwargs):
-        data= self.data if data is None else data
+    def training_data(self, data='training', data_keys=None, **kwargs):
+        #data= self.data if data is None else data
         train_x, train_y, train_label = self.fetch_data(data,
-                                                        inps=self.in_cols,
-                                                        outs=self.out_cols,
-                                                        transformation=self.config['transformation'],
                                                         **kwargs)
-
+        train_x = train_x[0]
         inputs = [train_x]
         for out in range(self.num_outs):
             s0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_s']))
@@ -33,10 +30,13 @@ class MultiSite(InputAttentionModel):
 
         return inputs, train_label
 
-    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
-        return self.training_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
+    def test_data(self, data='test', **kwargs):
+        return self.training_data(data=data, **kwargs)
 
-    def build(self):
+    def validation_data(self, data='validation', **kwargs):
+        return self.training_data(data=data, **kwargs)
+
+    def build(self, input_shape=None):
 
         setattr(self, 'method', 'input_attention')
         print('building input attention')
@@ -83,17 +83,15 @@ if __name__ == "__main__":
         steps_per_epoch=38
     )
 
-
     def loss(x, _y):
         mse1 = keras.losses.MSE(x[0], _y[0])
         mse2 = keras.losses.MSE(x[1], _y[1])
 
         return mse1 + mse2
 
-
     model.loss = loss
 
-    history = model.fit(indices='random', tensorboard=True)
+    history = model.fit(callbacks={'tensorboard':True})
 
     y, obs = model.predict()
-    activations = model.activations(st=0, en=1400)
+    activations = model.activations()

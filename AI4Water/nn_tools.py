@@ -53,7 +53,6 @@ class NN(AttributeStore):
         self.lookback = self.config['lookback']
         AttributeStore.__init__(self)
 
-
     @property
     def lookback(self):
         return self._lookback

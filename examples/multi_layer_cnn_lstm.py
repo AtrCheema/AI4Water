@@ -48,6 +48,6 @@ model = Model(
               )
 
 # This model is built only to showcase how to build multi layer model by manipulating config
-# history = model.fit(indices='random')
+# history = model.fit()
 
-#y, obs = model.predict(st=0, use_datetime_index=False, marker='.', linestyle='')
+#y, obs = model.predict()

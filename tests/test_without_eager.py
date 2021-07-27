@@ -17,17 +17,18 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
 
     model = input_model(
         data=df,
-        verbosity=0,
+        verbosity=1,
         batch_size=64,
         lookback=lookback,
         lr=0.001,
         epochs=epochs,
+        train_data='random',
         **kwargs
     )
 
-    _ = model.fit(indices='random')
+    _ = model.fit()
 
-    _, pred_y = model.predict(use_datetime_index=False)
+    _, pred_y = model.predict()
 
     return pred_y
 
@@ -39,6 +40,11 @@ class TestModels(unittest.TestCase):
 
         prediction = make_and_run(InputAttentionModel)
         self.assertGreater(float(prediction[0].sum()), 0.0)
+
+    # def test_InputAttentionModel_with_drop_remainder(self):
+    #
+    #     prediction = make_and_run(InputAttentionModel, drop_remainder=True)
+    #     self.assertGreater(float(prediction[0].sum()), 0.0)
 
     def test_DualAttentionModel(self):
         # DualAttentionModel based model

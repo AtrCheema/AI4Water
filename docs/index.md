@@ -60,8 +60,8 @@ data = arg_beach()
 model = Model(
         model = {'layers': {"LSTM": 64}},
         data = data,
-        inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
-        outputs = ['tetx_coppml'],     # columns in csv file to be used as output
+        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        output_features = ['tetx_coppml'],     # columns in csv file to be used as output
         lookback = 12
 )
 ```
@@ -94,8 +94,8 @@ model = Model(
             batch_size=batch_size,
             lookback=lookback,
             transformation=None,
-            inputs=inputs,
-            outputs=outputs,
+            input_features=inputs,
+            output_features=outputs,
             lr=0.001
               )
 x = np.random.random((batch_size*10, lookback, len(inputs)))
@@ -118,8 +118,8 @@ data = arg_beach()  # path for data file
 
 model = Model(
         batches="2d",
-        inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
-        outputs = ['tetx_coppml'],  
+        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        output_features = ['tetx_coppml'],  
         lookback=1,
         val_fraction=0.0,
         #  any regressor from https://scikit-learn.org/stable/modules/classes.html

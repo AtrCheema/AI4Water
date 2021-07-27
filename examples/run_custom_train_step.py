@@ -41,10 +41,11 @@ model = CustomModel(
     lr=8.95e-5,
     data=arg_beach(),
     epochs=2,
+    train_data='random',
 )
 
 
 
-history = model.fit(indices='random')
+history = model.fit()
 
 #y, obs = model.predict()

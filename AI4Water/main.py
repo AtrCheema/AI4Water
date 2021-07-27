@@ -41,8 +41,6 @@ class Model(MODEL, BaseModel):
     def __init__(self,
                  data=None,
                  verbosity=1,
-                 #outputs=None,
-                 #inputs=None,
                  model=None,
                  path=None,
                  prefix=None,
@@ -270,7 +268,7 @@ class Model(MODEL, BaseModel):
                             initialized_layer = LAYERS["INPUT"](shape=lyr_config['input_shape'])
                         else:
                             # for simple dense layer based models, lookback will not be used
-                            def_shape = (self.num_ins,) if self.lookback == 1 else (self.lookback, self.num_ins)
+                            def_shape = (self.dh.num_ins,) if self.lookback == 1 else (self.lookback, self.dh.num_ins)
                             initialized_layer = LAYERS["INPUT"](shape=def_shape)
 
                         # first layer is built so next iterations will not be for first layer
@@ -419,6 +417,7 @@ class Model(MODEL, BaseModel):
         return input_lyrs#, outs
 
     def call(self, inputs, training=None, mask=None, run_call=True):
+
         version = ''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')
         return getattr(self, f'call_{version}')(inputs, training, mask, run_call=run_call)
 

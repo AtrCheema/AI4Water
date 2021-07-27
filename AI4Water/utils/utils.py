@@ -176,7 +176,7 @@ class make_model(object):
 
     def __init__(self,data, **kwargs):
 
-        self.config = _make_model(data, **kwargs)
+        self.config, self.data_config = _make_model(data, **kwargs)
 
 
 def process_io(data, **kwargs):
@@ -259,29 +259,46 @@ def _make_model(data, **kwargs):
                                                   'dec_units': 64}, 'lower': None, 'upper': None, 'between': None},
         'nbeats_options': {'type': dict, 'default': {
                                         'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
-                                        'forecast_length': 1,
+                                        'forecast_len': 1,
                                         'stack_types': ('generic', 'generic'),
                                         'nb_blocks_per_stack': 2,
                                         'thetas_dim': (4, 4),
                                         'share_weights_in_stack': True,
                                         'hidden_layer_units': 62
                                     }, 'lower': None, 'upper': None, 'between': None},
-        'category':      {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'problem':       {'type': str, 'default': def_prob, 'lower': None, 'upper': None, 'between': ["regression", "classification"]},
-        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None, 'between': ['tensorflow', 'pytorch']}
+        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None, 'between': ['tensorflow', 'pytorch']},
+        # buffer_size is only relevant if 'val_data' is same and shuffle is true. https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
+        # It is used to shuffle tf.Dataset of training data.
+        'buffer_size': {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
+        # comes handy if we want to skip certain batches from last
+        'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
+        # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
+        'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
+        # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
+        'metrics': {"type": list, "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
+        # if true, model will use previous predictions as input  # todo, where it is used?
+        'use_predicted_output': {"type": bool, "default": True, 'lower': None, 'upper': None, 'between': None},
+        # todo, is it  redundant?
+        # If the model takes one kind of input_features that is it consists of only 1 Input layer, then the shape of the batches
+        # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
+        # cases, either all the input_features are of same shape or they  are not. In second case, we should overwrite `train_paras`
+        # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
+        # for Dense layer.
+        'batches': {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
+        'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'path': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
     }
 
     data_args = {
-        # buffer_size is only relevant if 'val_data' is same and shuffle is true. https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
-        # It is used to shuffle tf.Dataset of training data.
-        'buffer_size':       {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
-        # how many future values we want to predict
-        'forecast_length':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # comes handy if we want to skip certain batches from last
-        'batches_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
         # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
         # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
-        'drop_remainder':    {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
+        'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
+        'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
+        'problem': {'type': str, 'default': def_prob, 'lower': None, 'upper': None,
+                    'between': ["regression", "classification"]},
+        # how many future values we want to predict
+        'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
         # can be None or any of the method defined in AI4Water.utils.transformatinos.py
         'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax', 'lower': None, 'upper': None, 'between': None},
         # The term lookback has been adopted from Francois Chollet's "deep learning with keras" book. This means how many
@@ -289,32 +306,21 @@ def _make_model(data, **kwargs):
         # for any non timeseries forecasting related problems.
         'lookback':          {"type": int,   "default": 15, 'lower': 1, 'upper': None, 'between': None},
         'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
+        'train_data': {'type': None, 'default': None, 'lower': None, 'upper': None, 'between': None},
         # fraction of data to be used for validation
         'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
         # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
         # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
         # If this is not string and not None, this will overwite `val_fraction`
         'val_data':          {"type": None,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
-        # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
-        'steps_per_epoch':   {"type": int,   "default": None, 'lower': None, 'upper': None, 'between': None},
         # fraction of data to be used for test
         'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
         # write the data/batches as hdf5 file
-        'cache_data':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
-
+        'save':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
 
-        'input_nans':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
-        # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
-        'metrics':           {"type": list,  "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
-        # if true, model will use previous predictions as input
-        'use_predicted_output': {"type": bool , "default": True, 'lower': None, 'upper': None, 'between': None},
-        # If the model takes one kind of input_features that is it consists of only 1 Input layer, then the shape of the batches
-        # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
-        # cases, either all the input_features are of same shape or they  are not. In second case, we should overwrite `train_paras`
-        # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
-        # for Dense layer.
-        'batches':           {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
+        'nan_filler':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
+
         # for reproducability
         'seed':              {"type": int, "default": 313, 'lower': None, 'upper': None, 'between': None},
         # how many steps ahead we want to predict
@@ -331,10 +337,8 @@ def _make_model(data, **kwargs):
         # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
         # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
-        'prefix':            {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
-        'path':              {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
-        'kmodel':            {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]}
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -376,7 +380,13 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
         for data in [config['input_features'], config['output_features']]:
             for k,v in data.items():
                 assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
-    return config
+
+    _data_config = {}
+    for key, val in config.items():
+        if key in data_args:
+            _data_config[key] = val
+
+    return config, _data_config
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):
@@ -887,27 +897,27 @@ def prepare_data(
     27, 37, 47     outputs=3, forecast_len=1,  horizon/forecast_step=0,
 
     if we predict
-    28, 38, 48     outputs=3, forecast_length=1,  horizon/forecast_step=1,
+    28, 38, 48     outputs=3, forecast_len=1,  horizon/forecast_step=1,
 
     if we predict
     27, 37, 47
-    28, 38, 48     outputs=3, forecast_length=2,  horizon/forecast_step=0,
+    28, 38, 48     outputs=3, forecast_len=2,  horizon/forecast_step=0,
 
     if we predict
     28, 38, 48
-    29, 39, 49   outputs=3, forecast_length=3,  horizon/forecast_step=1,
+    29, 39, 49   outputs=3, forecast_len=3,  horizon/forecast_step=1,
     30, 40, 50
 
     if we predict
-    38            outputs=1, forecast_length=3, forecast_step=0
+    38            outputs=1, forecast_len=3, forecast_step=0
     39
     40
 
     if we predict
-    39            outputs=1, forecast_length=1, forecast_step=2
+    39            outputs=1, forecast_len=1, forecast_step=2
 
     if we predict
-    39            outputs=1, forecast_length=3, forecast_step=2
+    39            outputs=1, forecast_len=3, forecast_step=2
     40
     41
 
@@ -936,7 +946,7 @@ def prepare_data(
     num_inputs=2, num_outputs=3, lookback_steps=4, forecast_len=3, forecast_step=1, known_future_inputs=True
 
     The general shape of output/target/label is
-    (examples, num_outputs, forecast_length)
+    (examples, num_outputs, forecast_len)
 
     The general shape of inputs/x is
     (examples, lookback_steps+forecast_len-1, ....num_inputs)
@@ -1044,7 +1054,7 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
 
     x = np.stack(x)
     prev_y = np.array([np.array(i, dtype=np.float32) for i in prev_y], dtype=np.float32)
-    # transpose because we want labels to be of shape (examples, outs, forecast_length)
+    # transpose because we want labels to be of shape (examples, outs, forecast_len)
     y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
 
 

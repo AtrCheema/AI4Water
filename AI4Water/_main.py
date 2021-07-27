@@ -5,7 +5,6 @@ import time
 import pprint
 import random
 import warnings
-from typing import Union
 from types import MethodType
 
 try:
@@ -18,21 +17,19 @@ import matplotlib  # for version info
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 
 from AI4Water.nn_tools import NN
 from AI4Water.backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from AI4Water.backend import tpot_models
-from AI4Water.backend import imputations, sklearn_models
-from AI4Water.utils.utils import maybe_create_path, save_config_file, to_datetime_index, dateandtime_now
-from AI4Water.utils.utils import train_val_split, split_by_indices, ts_features, make_model, prepare_data
+from AI4Water.backend import sklearn_models
+from AI4Water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
+from AI4Water.utils.utils import ts_features, make_model
 from AI4Water.utils.utils import find_best_weight, reset_seed
 from AI4Water.utils.plotting_tools import Plots
-from AI4Water.utils.transformations import Transformations
-from AI4Water.utils.imputation import Imputation
 from AI4Water.models.custom_training import train_step, test_step
 from AI4Water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from AI4Water.utils.visualizations import Visualizations, Interpret
+from AI4Water._data import DataHandler
 
 from .backend import BACKEND
 
@@ -45,7 +42,6 @@ if BACKEND == 'tensorflow' and tf is not None:
 
 elif BACKEND == 'pytorch' and torch is not None:
     from AI4Water.pytorch_attributes import LOSSES, OPTIMIZERS
-    from .utils.torch_utils import to_torch_dataset
 
 
 
@@ -55,19 +51,22 @@ class BaseModel(NN, Plots):
     """
 
     def __init__(self,
-                 data=None,
+                 model: dict = None,
+                 data = None,
+                 lr: float = 0.001,
+                 optimizer = 'adam',
+                 loss = 'mse',
+                 quantiles = None,
+                 epochs:int = 14,
+                 min_val_loss:float = 0.0001,
+                 patience = 100,
+                 save_model = True,
+                 metrics = None,
+                 seed:int = 313,
                  prefix: str = None,
                  path: str = None,
                  verbosity: int = 1,
-                 model: dict = None,
-                 input_features: Union[list, str, dict] = None,
-                 output_features: Union[list, str, dict] = None,
-                 lr: float = 0.001,
-                 allow_nan_labels :int = 0,
-                 input_nans: Union[None, dict] = None,
-                 intervals: Union[tuple, None] = None,
-                 transformation: Union[str, dict, list, None] = None,
-                 #_go_up=True,
+                 accept_additional_args:bool = False,
                  **kwargs):
         """
          The Model class can take a large number of possible arguments depending
@@ -125,126 +124,18 @@ class BaseModel(NN, Plots):
                  minimum value of validatin loss/error to be used for early stopping.
              patience int:
                  number of epochs to wait before early stopping.
-             shuffle bool:
-                 whether to shuffle the training data or not.
              save_model bool:,
                  whether to save the model or not. For neural networks, the model will
                  be saved only an improvement in training/validation loss is observed.
                  Otherwise model is not saved.
              subsequences int: Default is 3.
                  The number of sub-sequences. Relevent for building CNN-LSTM based models.
-             val_data str/None: Default is None.
-                 Data to be used for validation. If you want to use same data for
-                 validation and test purpose, then set this argument to 'same'.
-             val_fraction float:
-                 The fraction of the complete data to be used for validation. Set to 0.0 if
-                 no validation data is to be used.
-             test_fraction float:,
-                 Fraction of the complete data to be used for test purpose. Must be greater
-                 than 0.0.
-             allow_nan_labels int:
-                 Default: 0. whether to allow examples nan labels or not. if > 0,
-                 and if target values contain Nans, those samples will not be
-                 ignored and will be fed as it is to training and test steps.
-                 In such a case a customized training and evaluation
-                 step is performed where the loss is not calculated for predictions
-                 corresponding to nan observations. Thus this option can be useful
-                 when we are predicting more than 1 target and the some of the samples
-                 have some of their labels missing. In such a scenario, if we set this
-                 optin to True, we don't need to ignore those samples at all during data
-                 preparation. This option should be set to > 0 only when using tensorflow
-                 for deep learning models. if == 1, then if an example has label [nan, 1]
-                 it will not be removed while the example with label [nan, nan]
-                 will be ignored/removed. If ==2, both examples (mentioned before) will be
-                 considered/will not be removed. This means for multi-outputs, we can end
-                 up having examples whose all labels are nans. if the number of outputs
-                 are just one. Then this must be set to 2 in order to use samples with nan labels.
-             input_nans None/dict: default is None.
-                 This determines how to deal with missing values in the input data.
-                 The default value is None, which will raise error if missing/nan values
-                 are encountered in the input data. The user can however specify a
-                 dictionary whose key must be either `fillna` or `interpolate` the value
-                 of this dictionary should be the keyword arguments will be forwarded
-                 to pandas .fillna() or .iterpolate() method. For example, to do
-                 forward filling, the user can do as following
-                 ```python
-                 >>>{'fillna': {'method': 'ffill'}}
-                 ```
-                 For details about fillna keyword options [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
-                 For `interpolate`, the user can specify  the type of interpolation
-                 for example
-                 ```python
-                 >>>{'interpolate': {'method': 'spline', 'order': 2}}
-                 ```
-                 will perform spline interpolation with 2nd order.
-                 For other possible options/keyword arguments for interpolate [see](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html)
-                 The filling or interpolation is done columnwise, however, the user
-                 can specify how to do for each column by providing the above mentioned
-                 arguments as dictionary or list. The sklearn based imputation methods
-                 can also be used in a similar fashion. For KNN
-                 ```python
-                 >>>{'KNNImputer': {'n_neighbors': 3}}
-                 ```
-                 or for iterative imputation
-                 ```python
-                 >>>{'IterativeImputer': {'n_nearest_features': 2}}
-                 ```
-                 For more on sklearn based imputation methods [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
              metrics str/list:
                  metrics to be monitored. e.g. ['nse', 'pbias']
              batches str:
                  either `2d` or 3d`.
              seed int:
                  random seed for reproducibility
-             data pd.DataFrame/dict: default is None
-                 a pandas dataframe or a dictionary of pandas dataframes.
-             input_features list/dict:
-                 list of column names from `data` to be used as input. If dict,
-                 then it must be consistent with `data`. Default is None, which
-                 means the all the columns of data except last one will be used
-                 as inputs.
-             output_features lsit/dict:
-                 list of column names from `data` to be used as output. If dict,
-                 then it must be consistent with `data`. Default is None,which
-                 means the last column of data will be used as output. In case
-                 of multi-class classification, the output column is not supposed
-                 to be one-hot-encoded rather in the form of [0,1,2,0,1,2,1,2,0]
-                 for 3 classes. One-hot-encoding is done inside the model.
-             intervals tuple/None: default is None.
-                 tuple of tuples where each tuple consits of two integers, marking
-                 the start and end of interval. An interval here means chunk/rows
-                 from the input file/dataframe to be skipped when when preparing
-                 data/batches for NN. This happens when we have for example some
-                 missing values at some time in our data.
-                 For further usage see `examples/using_intervals`
-             lookback int: The term lookback has been adopted from Francois Chollet's
-                 "deep learning
-                 with keras" book. This means how many
-                 historical time-steps of data, we want to feed to at time-step to
-                 predict next value. This value must be one for any non timeseries
-                 forecasting related problems.
-             forecast_length int: how many future values/horizons we want to predict. default is 1.
-             forecast_step int: how many steps ahead we want to predict. default is
-                 0 which means nowcasting.
-             batch_size int: size of a batch. default is 32.
-             input_step int: step size of input data. default is 1.
-             transformation str/list/dict/None: type of transformation to be applied.
-                 The transformation can be any transformation name from
-                 AI4Water.utils.transformations.py. The user can specify more than
-                 one transformation. Moreover, the user can also determine which
-                 transformation to be applied on which input feature. Default is 'minmax'.
-                 To apply a single transformation on all the data
-                 ```python
-                 transformation = 'minmax'
-                 ```
-                 To apply different transformations on different input and output features
-                 ```python
-                 transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
-                                 {'method': 'zscore', 'features': ['input3', 'output']}
-                                 ]
-                 ```
-                 Here `input1`, `input2`, `input3` and `outptu` are the columns in the
-                 `data`.
              prefix str:
                  prefix to be used for the folder in which the results are saved.
                  default is None, which means within
@@ -257,8 +148,7 @@ class BaseModel(NN, Plots):
              accept_additional_args bool:  Default is False
                  If you want to pass any additional argument, then this argument
                  must be set to True, otherwise an error will be raise.
-             kwargs : any argument for model building/pre-processing etc.
-                     for details see make_model in utils.utils.py
+             kwargs : keyword arguments for `DataHandler` class
 
          Example
          ---------
@@ -270,14 +160,27 @@ class BaseModel(NN, Plots):
          ...              batch_size=16,
          ...           model={'layers': {'LSTM': 64}},
          ...)
-         >>>history = model.fit(indices='random')
+         >>>history = model.fit()
          >>>y, obs = model.predict()
          ```
          """
         if self._go_up:
-            maker = make_model(data, input_features=input_features, output_features=output_features, model=model, prefix=prefix,
-                               path=path, verbosity=verbosity, lr=lr, allow_nan_labels=allow_nan_labels,
-                               input_nans=input_nans, intervals=intervals, transformation=transformation,
+            maker = make_model(data,
+                               model=model,
+                               prefix=prefix,
+                               path=path,
+                               verbosity=verbosity,
+                               lr=lr,
+                               optimizer=optimizer,
+                               loss = loss,
+                               quantiles = quantiles,
+                               epochs = epochs,
+                               min_val_loss=min_val_loss,
+                               patience = patience,
+                               save_model = save_model,
+                               metrics = metrics or ['nse'],
+                               accept_additional_args = accept_additional_args,
+                               seed = seed,
                                **kwargs)
 
             # data_config, model_config = config['data_config'], config['model_config']
@@ -287,15 +190,10 @@ class BaseModel(NN, Plots):
                 # file, they may share same graph.
                 tf.keras.backend.clear_session()
 
+            self.dh = DataHandler(source=data, **maker.data_config)
+
             NN.__init__(self, config=maker.config)
 
-            self.intervals = maker.config['intervals']
-            _in_cols, _out_cols = self.config['input_features'], self.config['output_features']
-            if _in_cols is None and isinstance(data, pd.DataFrame):
-                _in_cols, _out_cols = list(data.columns)[0:-1], list(data.columns)[-1]
-            self.in_cols = _in_cols
-            self.out_cols = _out_cols
-            self.data = data
             self.path = maybe_create_path(path=path, prefix=prefix)
             self.verbosity = verbosity
             self.category = self.config['category']
@@ -304,6 +202,20 @@ class BaseModel(NN, Plots):
 
             Plots.__init__(self, self.path, self.problem, self.category,
                            config=maker.config)
+
+    def __getattr__(self, item):
+        # instead of doing model.dh.training
+        if item in [
+            'training_data', 'test_data', 'validation_data',  # this allows overwriting of training/val/test data
+            'inverse_transform',
+            'test_indices', 'train_indices',
+            'num_outs', 'forecast_len', 'forecast_step', 'num_ins',
+            'classes', 'num_classes', 'is_binary', 'is_multiclass', 'is_multilabel',
+            'output_features',
+                    ]:
+            return getattr(self.dh, item)
+        else:
+            raise AttributeError(f'BaseModel has no attribute named {item}')
 
     @property
     def quantiles(self):
@@ -320,151 +232,6 @@ class BaseModel(NN, Plots):
     @property
     def data_path(self):
         return os.path.join(self.path, 'data')
-
-    @property
-    def forecast_step(self):
-        # should only be changed using self.data_config
-        return self.config['forecast_step']
-
-    @property
-    def forecast_len(self):
-        # should only be changed using self.data_config
-        return self.config['forecast_length']
-
-    @property
-    def data(self):
-        # so that .data attribute can be customized
-        return self._data
-
-    @data.setter
-    def data(self, x):
-        if isinstance(x, pd.DataFrame):
-            # self.in_cols = self.config['inputs']
-            #_outs = self.config['outputs']
-            # if self.in_cols is None:
-            #    self.in_cols, self.out_cols = list(x.columns)[0:-1], [list(x.columns)[-1]]
-            #    self.config['inputs'], self.config['outputs'] = self.in_cols, self.out_cols
-            _data = x[self.in_cols + self.out_cols]
-        else:
-            _data = x
-        self._data = _data
-
-    @property
-    def intervals(self):
-        # so that itnervals can be set from outside the Model class. A use case can be when we want to implement
-        # intervals during train time but not during test/predict time.
-        return self._intervals
-
-    @intervals.setter
-    def intervals(self, x: list):
-        self._intervals = x
-
-    @property
-    def in_cols(self):
-        return self._in_cols
-
-    @in_cols.setter
-    def in_cols(self, x):
-        self._in_cols = x
-
-    @property
-    def out_cols(self):
-        return self._out_cols
-
-    @out_cols.setter
-    def out_cols(self, x):
-        self._out_cols = x
-
-    @property
-    def num_ins(self):
-
-        if isinstance(self.in_cols, dict):
-            return {k: len(inp) for k, inp in self.in_cols.items()}
-        elif self.in_cols is None:  # when data is not defined
-            assert self.data is None
-            return None
-        else:
-            return len(self.in_cols)
-
-    @property
-    def num_outs(self):
-
-        if isinstance(self.out_cols, dict):
-            return {k: len(inp) for k, inp in self.out_cols.items()}
-        elif self.out_cols is None:  # when data is not defined
-            assert self.data is None
-            return None
-        else:
-            return len(self.out_cols)
-
-    @property
-    def classes(self):
-        _classes = []
-        if self.problem == 'classification':
-            if self.num_outs==1:  # for binary/multiclass
-                array = self.data[self.out_cols].values
-                _classes = np.unique(array[~np.isnan(array)])
-            else:  # for one-hot encoded
-                _classes = self.out_cols
-
-        return _classes
-
-    @property
-    def num_classes(self):
-        return len(self.classes)
-
-    @property
-    def is_binary(self)->bool:
-        """Returns True if the porblem is binary classification"""
-        _default = False
-        if self.problem == 'classification':
-            if self.num_outs == 1:
-                array = self.data[self.out_cols].values
-                unique_vals = np.unique(array[~np.isnan(array)])
-                if len(unique_vals) == 2:
-                    _default = True
-            else:
-                pass # todo, check when output columns are one-hot encoded
-
-        return _default
-
-    @property
-    def is_multiclass(self)->bool:
-        """Returns True if the porblem is multiclass classification"""
-        _default = False
-        if self.problem == 'classification':
-            if self.num_outs == 1:
-                array = self.data[self.out_cols].values
-                unique_vals = np.unique(array[~np.isnan(array)])
-                if len(unique_vals) > 2:
-                    _default = True
-            else:
-                pass # todo, check when output columns are one-hot encoded
-
-        return _default
-
-    @property
-    def is_multilabel(self)->bool:
-        """Returns True if the porblem is multilabel classification"""
-        _default = False
-        if self.problem == 'classification':
-            if self.num_outs > 1:
-                _default = True
-
-        return _default
-
-    @property
-    def _to_categorical(self):
-        # whether we have to convert y into one-hot encoded form
-        _defualt = False
-
-        if self.is_binary or self.is_multiclass:
-            if self.num_outs == 1:
-                _defualt = True
-        if self.is_binary and self.category == 'ML':  # todo, don't do for ML algorithms
-            _defualt = False
-
-        return _defualt
 
     def nn_layers(self):
         if hasattr(self, 'layers'):
@@ -510,10 +277,12 @@ class BaseModel(NN, Plots):
 
     @property
     def fit_fn(self):
+        # this points to the Keras's fit method
         return NotImplementedError
 
     @property
     def evaluate_fn(self):
+        # this points to the Keras's evaluate method
         return NotImplementedError
 
     @property
@@ -545,203 +314,6 @@ class BaseModel(NN, Plots):
 
     def first_layer_shape(self):
         return NotImplementedError
-
-    def fetch_data(self,
-                   data: pd.DataFrame,
-                   inps,
-                   outs,
-                   transformation=None,
-                   st: int = 0,
-                   en=None,
-                   shuffle: bool = False,  # TODO, is this arg requried?
-                   write_data=False,
-                   noise: int = 0,
-                   indices: list = None,
-                   scaler_key: str = '0',
-                   use_datetime_index=False):
-        """
-        :param data:
-        :param inps,
-        :param outs
-        :param transformation:
-        :param st:
-        :param en:
-        :param shuffle:
-        :param write_data: writes the created batches/generated data in h5 file. The filename will be data_scaler_key.h5
-        :param noise:
-        :param indices:
-        :param scaler_key: in case we are calling fetch_data multiple times, each data will be scaled with a unique
-                   MinMaxScaler object and can be saved with a unique key in memory.
-        :param use_datetime_index: if True, first value in returned `x` will be datetime index. This can be used when
-                                fetching data during predict but must be separated before feeding in NN for prediction.
-        :return:
-        """
-        data = data.copy()
-        if st is not None:
-            assert isinstance(st, int), "starting point must be integer."
-        if indices is not None:
-            assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
-            if en is not None or st != 0:
-                raise ValueError(f'When using indices, st and en can not be used. while st:{st}, and en:{en}')
-        if en is None:
-            en = data.shape[0]
-
-        # # add random noise in the data
-        df = self.add_noise(data, noise)
-
-        if transformation:  # TODO when train_dataand test_data are externally set, normalization can't be done.
-            df, _ = self.normalize(df, scaler_key, transformation)
-
-        # indexification should happen after transformation, because datetime column should not be transformed.
-        df = self.indexify_data(df, use_datetime_index)
-
-        if self.intervals is None:
-
-            df = df[st:en]
-            if isinstance(df, pd.DataFrame):
-                df = df.values
-
-            x, y, label = self.get_batches(df,
-                                           len(inps),
-                                           len(outs)
-                                           )
-            if indices is not None and not isinstance(indices, str):
-
-                if getattr(self, 'nans_removed_4m_st', 0) == 0:
-                    # Either NaNs were not present in outputs or present but not at the start
-                    if not hasattr(self, 'nans_removed_4m_st'):
-                        # NaNs were not present in outputs
-                        additional = self.config['forecast_length'] + 1 if self.config['forecast_length'] > 1 else 0
-                        to_subtract = self.lookback + additional - 1
-                    else:
-                        # Either not present at the start or ?
-                        # TODO
-                        # verify this situation
-                        to_subtract = 0
-                        # so that when get_batches is called next time, with new data, this should be False by default
-                        self.nans_removed_4m_st = 0
-                else:
-                    # nans were present in output columns which were removed
-                    if getattr(self, 'nans_removed_4m_st', 0) > 0:
-                        additional = self.config['forecast_length'] + 1 if self.config['forecast_length'] > 1 else 0
-                        self.offset = abs(self.lookback + additional - self.nans_removed_4m_st - 1)
-                        if self.lookback > 1:
-                            warnings.warn(f"""lookback is {self.lookback}, due to which first {self.nans_removed_4m_st}
-                                              nan containing values were skipped from start. This may lead to some wrong
-                                              examples at the start or an offset of {self.offset} in indices.""",
-                                          UserWarning)
-                        to_subtract = self.offset
-                        self.nans_removed_4m_st = 0
-                    # we don't want to subtract anything from indices, possibly because the number of nans removed from
-                    # start are > lookback.
-                    elif self.nans_removed_4m_st == -9999:
-                        to_subtract = 0
-                    else:
-                        # because the x,y,z have some initial values removed
-                        to_subtract = self.lookback - 1
-                indices = np.subtract(np.array(indices), to_subtract).tolist()
-
-                # if indices are given then this should be done after `get_batches` method
-                x = x[indices]
-                y = y[indices]
-                label = label[indices]
-        else:
-            xs, ys, labels = [], [], []
-            for _st, _en in self.intervals:
-                df1 = df[_st:_en]
-
-                df.columns = self.in_cols + self.out_cols
-                df1.columns = self.in_cols + self.out_cols
-
-                if df1.shape[0] > 0:
-                    x, y, label = self.get_batches(df1.values,
-                                                   len(self.in_cols),
-                                                   len(self.out_cols))
-                    xs.append(x)
-                    ys.append(y)
-                    labels.append(label)
-
-            if indices is None:
-                x = np.vstack(xs)[st:en]
-                y = np.vstack(ys)[st:en]
-                label = np.vstack(labels)[st:en]
-            else:
-                x = np.vstack(xs)[indices]
-                y = np.vstack(ys)[indices]
-                label = np.vstack(labels)[indices]
-
-        if shuffle:
-            x, y, label = unison_shuffled_copies(x, y, label)
-
-        x = self.conform_shape(x, datetime_index=use_datetime_index)
-
-        if use_datetime_index:
-            self.in_cols.remove("dt_index")
-            if 'dt_index' in df:  # TODO, is it necessary?
-                df.pop('dt_index')  # because self.data belongs to class, this should remain intact.
-
-        # x = x.astype(np.float32)
-
-        if write_data:
-            self.write_cache('data_' + scaler_key, x, y, label)
-
-        return x, y, label
-
-    def indexify_data(self, data, use_datetime_index: bool):
-
-        if use_datetime_index:
-            assert isinstance(data.index, pd.DatetimeIndex), """\nInput dataframe must have index of type
-             pd.DateTimeIndex. A dummy datetime index can be inserted by using following command:
-            `data.index = pd.date_range("20110101", periods=len(data), freq='H')`
-            If the data file already contains `datetime` column, then use following command
-            `data.index = pd.to_datetime(data['datetime'])`
-            or use set `use_datetime_index` in `predict` method to False.
-            """
-            dt_index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
-            # pandas will add the 'datetime' column as first column. This columns will only be used to keep
-            # track of indices of train and test data.
-            data.insert(0, 'dt_index', dt_index)
-            self.in_cols = ['dt_index'] + self.in_cols
-
-        return data
-
-    def add_noise(self, df, noise):
-
-        if noise > 0:
-            x = pd.DataFrame(np.random.randint(0, 1, (len(df), noise)))
-            df = pd.concat([df, x], axis=1)
-            prev_inputs = self.in_cols
-            self.in_cols = prev_inputs + list(x.columns)
-            ys = []
-            for y in self.out_cols:
-                ys.append(df.pop(y))
-            df[self.out_cols] = ys
-
-        return df
-
-    def normalize(self, df, key, transformation):
-        """ should return the transformed dataframe and the key with which scaler is put in memory. """
-        # todo, isn't it better to save the instance of Transformation class in the memory?
-        scaler = None
-
-        if transformation is not None:
-
-            if isinstance(transformation, dict):
-                df, scaler = Transformations(data=df, **transformation)('transformation', return_key=True)
-                self.scalers[key] = scaler
-
-            # we want to apply multiple transformations
-            elif isinstance(transformation, list):
-                for idx, trans in enumerate(transformation):
-                    if trans['method'] is not None:
-                        df, scaler = Transformations(data=df, **trans)('transformation', return_key=True)
-                        self.scalers[f'{key}_{trans["method"]}_{idx}'] = scaler
-            else:
-                assert isinstance(transformation, str)
-                df, scaler = Transformations(data=df, method=transformation)('transformation', return_key=True)
-                self.scalers[key] = scaler
-
-        return df, scaler
 
     def check_batches(self, x, prev_y, y: np.ndarray):
         """
@@ -832,24 +404,27 @@ class BaseModel(NN, Plots):
         else:
             raise ValueError(" {} Input layers found".format(input_layers))
 
-    def get_callbacks(self, val_data_present, **callbacks):
+    def get_callbacks(self, val_data, callbacks=None):
 
 
         if self.config['backend'] == 'pytorch':
-            return self.cbs_for_pytorch(val_data_present, **callbacks)
+            return self.cbs_for_pytorch(val_data, callbacks)
         else:
-            return self.cbs_for_tf(val_data_present, **callbacks)
+            return self.cbs_for_tf(val_data, callbacks)
 
     def cbs_for_pytorch(self, *args, **kwargs):
         """callbacks for pytorch training."""
         return []
 
-    def cbs_for_tf(self, val_data_present, **callbacks):
+    def cbs_for_tf(self, val_data, callbacks=None):
+
+        if callbacks is None:
+            callbacks = {}
 
         _callbacks = list()
 
-        _monitor = 'val_loss' if val_data_present else 'loss'
-        fname = "{val_loss:.5f}.hdf5" if val_data_present else "{loss:.5f}.hdf5"
+        _monitor = 'val_loss' if val_data else 'loss'
+        fname = "{val_loss:.5f}.hdf5" if val_data else "{loss:.5f}.hdf5"
 
         if int(''.join(tf.__version__.split('.')[0:2])) <= 115:
             for lyr_name in self.layer_names:
@@ -880,22 +455,36 @@ class BaseModel(NN, Plots):
 
         return _callbacks
 
-    def use_val_data(self, val_split, val_data):
+    def get_val_data(self, val_data):
         """Finds out if there is val_data or not"""
-        val_data_present = False
-        if val_split > 0.0:
-            val_data_present = True
+        validation_data = None
 
-        # it is possible that val_split=0.0 but we do have val_data.
         if val_data is not None:
-            val_data_present = True
+            if isinstance(val_data, tuple):
+                x = val_data[0]
+                if x is not None:
+                    if isinstance(x, np.ndarray):
+                        if x.size>0:
+                            validation_data = val_data
+                    elif isinstance(x, dict):  # x may be a dictionary
+                        for k,v in x.items():
+                            if v.size>0:
+                                validation_data = val_data
+                                break
+                    elif isinstance(x, list):
+                        for v in x:
+                            if v.size>0:
+                                validation_data = val_data
+                                break
+                    else:
+                        raise ValueError(f'Unrecognizable validattion data {val_data.__class__.__name__}')
 
-        return val_data_present
+        return validation_data
 
     def DO_fit(self, x, **kwargs):
         """If nans are present in y, then tf.keras.model.fit is called as it is otherwise it is called with custom
         train_step and test_step which avoids calculating loss at points containing nans."""
-        if kwargs.pop('nans_in_y_exist'):
+        if kwargs.pop('nans_in_y_exist'):  # todo, for model-subclassing?
             if not isinstance(x, tf.data.Dataset):  # when x is tf.Dataset, we don't have y in kwargs
                 y = kwargs['y']
                 assert np.isnan(y).sum() > 0
@@ -903,17 +492,9 @@ class BaseModel(NN, Plots):
             self._model.train_step = MethodType(train_step, self._model)
             self._model.test_step = MethodType(test_step, self._model)
 
-        # todo, why do we need it here, IA and DA are failing without it when drop_remainder is set to True??
-        if self.config['drop_remainder'] and kwargs['validation_split']>0.0 and kwargs['validation_data'] is None:
-            if isinstance(x, np.ndarray) or isinstance(x, list):
-                train_x, train_y, val_x, val_y = train_val_split(x, kwargs['y'], kwargs['validation_split'])
-                val_x, _, val_y = self.check_batches(val_x, None, val_y)
-                kwargs['validation_data'] = val_x, val_y
-                x, _, kwargs['y'] = self.check_batches(train_x, None, train_y)
-
         return self.fit_fn(x, **kwargs)
 
-    def _FIT(self, inputs, outputs, validation_data, validation_steps=None, **callbacks):
+    def _FIT(self, inputs, outputs, validation_data, validation_steps=None, callbacks=None, **kwargs):
 
         nans_in_y_exist = False
         if isinstance(outputs, np.ndarray):
@@ -928,19 +509,23 @@ class BaseModel(NN, Plots):
                 if np.isnan(out_array).sum() > 0:
                     nans_in_y_exist = True
 
-        inputs, outputs, validation_data = self.to_tf_data(inputs, outputs, validation_data)
-
-        validation_split = 0.0 if inputs.__class__.__name__ in ['TorchDataset'] else self.config['val_fraction']
-
-        callbacks = self.get_callbacks(self.use_val_data(validation_split, validation_data), **callbacks)
+        validation_data = self.get_val_data(validation_data)
+        callbacks = self.get_callbacks(validation_data, callbacks=callbacks)
 
         st = time.time()
+
+        outputs = get_values(outputs)
+
+        if validation_data is not None:
+            val_outs = validation_data[-1]
+            val_outs = get_values(val_outs)
+            validation_data = (validation_data[0], val_outs)
+
 
         self.DO_fit(x=inputs,
                     y=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
                     epochs=self.config['epochs'],
                     batch_size=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else self.config['batch_size'],
-                    validation_split=validation_split,
                     validation_data=validation_data,
                     callbacks=callbacks,
                     shuffle=self.config['shuffle'],
@@ -948,108 +533,12 @@ class BaseModel(NN, Plots):
                     verbose=self.verbosity,
                     nans_in_y_exist=nans_in_y_exist,
                     validation_steps=validation_steps,
+                    **kwargs,
                     )
 
         self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 
         return self.post_kfit()
-
-    def to_tf_data(self, inputs, outputs, val_data):
-        """This method has only effect when we want to use same data for validation and test. This will work in following
-           scenarios:
-            if val_data is string,
-            if val_data is is defined by user and is in (x,y) form.
-        In both above scenarios, val_dataset will be returned which will be instance of tf.data.Dataset. (since the name
-        to_tf_data) The test and validation data is set as Model's attribute in such cases.
-        Following attributes will be generated
-          - val_dataset
-          - train_dataset
-        """
-
-        if isinstance(val_data, str):
-            # we need to get validation data from training data depending upon value of 'val_fraction' and convert it
-            # to tf.data
-            val_frac = self.config['test_fraction']  # assuming that val_fraction has been set to 0.0
-            if not hasattr(self, 'test_indices'):
-                self.test_indices = None
-            if self.test_indices is not None:
-                x_train, y_train, x_val, y_val = split_by_indices(inputs, outputs,
-                                                                  self.test_indices)
-            elif self.train_indices == 'random':  # val_data needs to be defined randomly
-                # split the data into train/val randomly
-                self.train_indices, self.test_indices = train_test_split(np.arange(outputs.shape[0]),
-                                                                         test_size=self.config['test_fraction'])
-                x_train, y_train = split_by_indices(inputs, outputs, self.train_indices)
-                x_val, y_val = split_by_indices(inputs, outputs, self.test_indices)
-            else:
-                # split the data into train/val by chunk not randomly
-                x_train, y_train, x_val, y_val = train_val_split(inputs, outputs, val_frac)
-
-        elif hasattr(val_data, '__len__'):
-            # val_data has already been in the form of x,y paris
-            x_train = inputs
-            y_train = outputs
-
-            assert len(val_data) <= 3
-            x_val, prev_y_val, y_val = val_data
-
-        else:
-            return inputs, outputs, val_data
-
-        if self.verbosity > 0.0:
-            self.info['train_examples'] = len(y_train)
-            self.info['val_examples'] = len(y_val)
-            print(f"Train on {len(y_train)} and validation on {len(y_val)} examples")
-
-        if self.num_input_layers == 1:
-            if self.config['backend']=='pytorch':
-                train_dataset = to_torch_dataset(x_train[0], y_train)
-            else:
-                train_dataset = tf.data.Dataset.from_tensor_slices((x_train[0], y_train))
-
-        # x_train contains more than one input
-        elif self.num_input_layers > 1 and isinstance(x_train, list):
-            assert len(self.ai4w_outputs) == 1
-            train_dataset = tf.data.Dataset.from_tensor_slices((
-                {k: v for k, v in zip(self.input_layer_names, x_train)}, y_train
-            ))
-        else:
-            raise NotImplementedError
-
-        if self.config['backend']=='tensorflow':
-            if self.config['shuffle']:
-                train_dataset = train_dataset.shuffle(self.config['buffer_size'])
-
-            train_dataset = train_dataset.batch(self.config['batch_size'],
-                                            drop_remainder=self.config['drop_remainder'])
-
-        if x_val is not None:
-            if self.num_input_layers == 1:
-                if isinstance(x_val, list):
-                    x_val = x_val[0]
-                assert isinstance(x_val, np.ndarray)
-                if self.config['backend'] == 'pytorch':
-                    val_dataset = to_torch_dataset(x_val, y_val)
-                else:
-                    val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
-            else:
-                val_dataset = tf.data.Dataset.from_tensor_slices((
-                {k: v for k, v in zip(self.input_layer_names, x_val)}, y_val
-            ))
-
-            if self.config['backend'] == 'tensorflow':
-                if self.config['shuffle']:
-                    val_dataset = val_dataset.shuffle(self.config['buffer_size'])
-
-                val_dataset = val_dataset.batch(self.config['batch_size'],
-                                                drop_remainder=self.config['drop_remainder'])
-        else:
-            val_dataset = val_data
-
-        self.val_dataset = val_dataset
-        self.train_dataset = train_dataset
-
-        return train_dataset, outputs, val_dataset
 
     def post_kfit(self):
         """Does some stuff after Keras model.fit has been called"""
@@ -1066,227 +555,10 @@ class BaseModel(NN, Plots):
 
         return history
 
-    def get_indices(self, indices=None):
-        # return the indices if it indices are list or array like
-        if not isinstance(indices, str):
-            if hasattr(indices, '__len__'):
-                if self.is_training:
-                    setattr(self, 'train_indices', indices)
-                    # todo test indices must also be defined here.
-                return indices
-
-        if isinstance(self.data, dict):
-            key = list(self.out_cols.keys())[0] if isinstance(self.out_cols, dict) else self.out_cols[0]
-            data = self.data[key]
-            out_cols = self.out_cols[key] if isinstance(self.out_cols, dict) else self.out_cols
-        else:
-            data = self.data
-            out_cols = self.out_cols
-        # returns only train indices if `indices` is None
-        if isinstance(indices, str) and indices.upper() == 'RANDOM':
-            if self.config['allow_nan_labels'] == 2:
-                tot_obs = self.data.shape[0]
-            elif self.config['allow_nan_labels'] == 1:
-                label_y = self.data[self.out_cols].values
-                idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
-                tot_obs = np.sum(idx)
-            else:
-                more = len(self.intervals) * (self.lookback * self.config[
-                    'input_step']) if self.intervals is not None else self.lookback * self.config['input_step']
-                if self.num_outs == 1:
-                    # TODO it is being supposed that intervals correspond with Nans. i.e. all values outside intervals
-                    # are NaNs. However this can be wrong when the user just wants to skip some chunks of data even
-                    # though they are not NaNs. In this case, there will be no NaNs and tot_obs will be more than
-                    # required. In such case we have to use `self.vals_in_intervals` to calculate tot_obs. But that
-                    # creates problems when larger intervals are provided. such as [NaN, NaN, 1, 2, 3, NaN] we provide
-                    # (0, 5) instead of (2, 4). Is it correct/useful to provide (0, 5)?
-                    tot_obs = data.shape[0] - int(data[out_cols].isna().sum()) - more
-
-                else:
-                    # data contains nans and target series are > 1, we want to make sure that they have same nan counts
-                    tot_obs = data.shape[0] - int(data[out_cols[0]].isna().sum())
-                    nans = data[out_cols].isna().sum()
-                    assert np.all(
-                        nans.values == int(nans.sum() / len(out_cols))), f"toal nan values in data are {nans}."
-                    tot_obs -= more
-
-
-                if self.forecast_len > 1:
-                    tot_obs -= self.forecast_len
-
-                if self.forecast_step > 0:
-                    tot_obs -= self.forecast_step
-
-            idx = np.arange(tot_obs)
-            train_indices, test_idx = train_test_split(idx, test_size=self.config['test_fraction'],
-                                                       random_state=self.config['seed'])
-            setattr(self, 'test_indices', list(test_idx))
-            indices = list(train_indices)
-
-        if self.is_training:
-            setattr(self, 'train_indices', indices)
-            if self.config['val_data'] == 'same':
-                if isinstance(indices, list):
-                    # indices have been provided externally so use them instead.
-                    return indices
-                else:
-                    # indices have not been created here and `indices` is None which we don't want to feed to fetch_data
-                    return None
-
-        return indices
-
-    def vals_in_intervals(self):
-        """
-        Supposing that when intervals are present than nans are present only outsite the intervals and No Nans are
-        present within intervals.
-        Not implementing it for the time being when self.num_outs>1.
-        """
-        if self.intervals is not None:
-            interval_length = 0
-            for interval in self.intervals:
-                interval_length += interval[1] - interval[0]
-        else:
-            interval_length = self.data.shape[0]
-
-        return interval_length
-
-    def training_data(self, *args, **kwargs):
-        return self.make_data(source='training', *args, **kwargs)
-
-    def make_data(self, source, data=None, data_keys=None, use_split_data=False, **kwargs):
-        """
-        Prepares data on which to train the NN. This method is called whenever
-        `training_data`, `validation_data` or `test_data` method is called but
-        with different `source` which tells it from where it has been called or
-        what kind of data is being fetched.
-        It is possible that self.data is dictionary but self.num_ins and self.num_outs are not dictionaries.
-        This means same in_cols and out_cols exist in all dataframes of self.data.
-        use_split_data: bool, if data is a dictionary then if we want x,y as dictionary as well, then
-                        this argument can be set to True. In such a case, x and prev_y and y will
-                        be dictionaries of arrays.
-        """
-        assert source in ['training', 'validation', 'test']
-
-        # For cases we don't want to use any of data-preprocessing utils,
-        # the make_data can be called directly with 'data'
-        # keyword argumentnt, and that will be returned.
-        if data is not None:
-            return data
-
-        if data_keys:  # if data_keys is provided
-            assert isinstance(self.data, dict)  # self.data must be a dictionary
-            assert isinstance(data_keys, list)  # data_keys must be a list
-            assert all(data_name in self.data for data_name in data_keys)  # all keys in data_keys must be valid
-        else:
-            # use all the keys unless the user has requested for some
-            data_keys = self.data.keys() if isinstance(self.data, dict) else None
-        if use_split_data:
-            assert isinstance(self.data, dict)
-            assert isinstance(data_keys, list)
-
-        _train_args = getattr(self, '_train_args', {'en': None})
-
-        # when `training_data` is called independently after `fit` has been called
-        # then `training_data()` must always return only training data. So we
-        # should remember the arguments to fetch training data. Saving the training data
-        # in memory can be very memory inefficient otherwise.
-        if source=='training':
-            if getattr(self, 'train_indices', None) is not None:
-                kwargs['indices'] = self.train_indices
-            elif kwargs.get('indices', None) is None and kwargs.get('en', None) is None:
-                kwargs.update(getattr(self, '_train_args', {}))
-        elif source=='test' and kwargs.get('indices', None) is None:
-
-            # st/en were used to define training_data, and test_indices are also not there
-            # and en is also not in kwargs and val and test data are same,
-            # so define test data from where train data is ended
-            if self.config['val_data']=='same' and kwargs.get('en', None) is None:
-
-                # self.test_indices are available
-                if getattr(self, 'test_indices', None) is not None:
-                    kwargs['indices'] = self.test_indices
-                else:
-                    kwargs['st'] = _train_args['en']
-
-            elif getattr(self, 'test_indices', None) is not None:  # test indices are available
-                kwargs['indices'] = self.test_indices
-
-            # when source is `test` but actuall callee is `predict` method with st/en defined
-            elif _train_args['en'] is not None and kwargs.get('en', None) is None:
-                kwargs['st'] = _train_args['en']
-
-        transformation = self.config['transformation']
-        if isinstance(self.data, dict):
-            x, prev_y, label = {}, {}, {}
-            for k in data_keys:
-                data = self.data[k]
-
-                _x, _y, _label = self.fetch_data(
-                    data,
-                    self.in_cols[k] if isinstance(self.in_cols, dict) else self.in_cols,
-                    self.out_cols.get(k, []) if isinstance(self.out_cols, dict) else self.out_cols,
-                    transformation=transformation[k] if isinstance(transformation, dict) else transformation,
-                    **kwargs)
-                x[k] = _x
-                prev_y[k] = _y
-                if _label.sum() != 0.0:
-                    label[k] = _label
-
-            if self.num_input_layers == 1 and not use_split_data:
-                # tile all the arrays in x and label
-                x = np.concatenate(list(x.values()))
-                prev_y = np.concatenate(list(prev_y.values()))
-                label = np.concatenate(list(label.values()))
-        else:
-            x, prev_y, label = self.fetch_data(self.data, self.in_cols, self.out_cols,
-                                               transformation=self.config['transformation'], **kwargs)
-
-        if self.problem == 'classification':  # for clsasification, it should be 2d
-            label = label.reshape(-1, label.shape[1])
-
-        x, prev_y, label = self.check_batches(x, prev_y, label)
-
-        if self.problem == 'classification':
-            if self._to_categorical:
-                assert label.shape[1] == 1
-                label = tf.keras.utils.to_categorical(label, self.num_classes)
-            # else:   # mutlti_label/binary problem
-            #     # todo, is only binary_crossentropy is binary/multi_label problem?
-            #     pass #assert self.loss_name() in ['binary_crossentropy']
-
-        if isinstance(label, dict) and not use_split_data:
-            assert len(self.ai4w_outputs) == len(label)
-            if len(label) == 1:
-                label = list(label.values())[0]
-
-        if self.category.upper() == "ML" and self.num_outs == 1:
-            label = label.reshape(-1, )
-
-        if self.verbosity > 0:
-            print_something(x, "input_x")
-            print_something(prev_y, "prev_y")
-            print_something(label, "target")
-
-        if label.dtype == np.int and self.category == "DL" and self.problem == 'regression':
-            # because predictions are always floating point and corresponding tensors are also floating point
-            label = label.astype(np.float32)
-
-        if isinstance(x, np.ndarray):
-            return [x], prev_y, label
-
-        elif isinstance(x, list):
-            return x, prev_y, label
-
-        elif isinstance(x, dict):
-            return x, prev_y, label
-
-        else:
-            raise ValueError
-
     def maybe_not_3d_data(self, true, predicted):
 
         if true.ndim < 3:
-            assert self.forecast_len == 1
+            assert self.forecast_len == 1, f'{self.forecast_len}'
             axis = 2 if true.ndim == 2 else (1, 2)
             true = np.expand_dims(true, axis=axis)
 
@@ -1301,8 +573,8 @@ class BaseModel(NN, Plots):
                               true: np.ndarray,
                               predicted: np.ndarray,
                               prefix=None,
-                              index=None,
-                              remove_nans=True):
+                              index=None
+                              ):
         """post-processes classification results."""
 
         if self.is_multiclass:
@@ -1354,11 +626,16 @@ class BaseModel(NN, Plots):
         # for cases if they are 2D/1D, add the third dimension.
         true, predicted = self.maybe_not_3d_data(true, predicted)
 
+        forecast_len = self.forecast_len
+        if isinstance(forecast_len, dict):
+            forecast_len = np.unique(list(forecast_len.values())).item()
+
+
         out_cols = list(self.out_cols.values())[0] if isinstance(self.out_cols, dict) else self.out_cols
         for idx, out in enumerate(out_cols):
 
             horizon_errors = {metric_name:[] for metric_name in ['nse', 'rmse']}
-            for h in range(self.forecast_len):
+            for h in range(forecast_len):
 
                 errs = dict()
 
@@ -1389,7 +666,7 @@ class BaseModel(NN, Plots):
 
                 [horizon_errors[p].append(getattr(errors, p)()) for p in horizon_errors.keys()]
 
-            if self.forecast_len>1:
+            if forecast_len>1:
                 visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
         return
 
@@ -1430,109 +707,46 @@ class BaseModel(NN, Plots):
 
         return
 
-    def validation_data(self, **kwargs):
-        """ This method can be overwritten in child classes. """
-        val_data = None
-
-        # val_dataset already exists in memory so this is not first time this method is called
-        if getattr(self, 'val_dataset', None).__class__.__name__ in ['BatchDataset', 'TorchDataset']:
-            return self.val_dataset
-
-        if self.config['val_data'] is not None:
-            if isinstance(self.config['val_data'], str):
-
-                assert self.config['val_data'].lower() == "same"
-
-                # It is good that the user knows  explicitly that either of val_fraction or test_fraction is used so
-                # one of them must be set to 0.0
-                if self.config['val_fraction'] > 0.0:
-                    warnings.warn(f"Setting val_fraction from {self.config['val_fraction']} to 0.0")
-                    self.config['val_fraction'] = 0.0
-
-                assert self.config[
-                           'test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.config['test_fraction']}"
-
-                if hasattr(self, 'test_indices'):
-                    if self.test_indices is not None:
-                        x, prev_y, label = self.make_data(source='validation', indices=self.test_indices, **kwargs)
-
-                        if self.category.upper() == "ML" and self.num_outs == 1:
-                            label = label.reshape(-1, )
-                        return x, prev_y, label
-                    else:  # indices are not set and we need to divide data into test and validation
-                        return self.config['val_data']
-                else:
-                    # validation data needs to be fetched based upon fraction from self.data
-                    train_args = getattr(self, '_train_args', None)
-                    # this method is called after fit but when self.data is not available
-                    # we can not use make_data.
-                    if train_args is not None and self.data is not None:
-                        st, en, indices = train_args['st'], train_args['en'], train_args['indices']
-                        if en is not None and indices is None:  # st/en were defined and val data is to be same as test
-                            # bcz in to_tf_data we expect val data to be x,y todo
-                            x, _y, y = self.make_data(source='validation', st=en, **kwargs)
-                            assert np.isnan(y).sum() == 0  # currently not implemented  todo
-                            return x, _y, y
-                    else:
-                        # self.val_dataset will be made
-                        return self.config['val_data']
-            else:
-                # `val_data` might have been provided (then use it as it is) or it is None
-                val_data = self.config['val_data']
-
-        return val_data
-
     def fit(self,
-            st: int = 0,
-            en: int = None,
-            indices: Union[str, list, np.ndarray] = None,
-            data=None,
-            data_keys: str = None,
-            **callbacks):
+            data:str = 'training',
+            callbacks=None,
+            **kwargs
+            ):
         """
         Trains the model with data which is taken from data accoring to `st`, `en`
         or `indices` or `data_keys` or `data` arguments.
 
         Arguments:
-            st : starting index of data to be used
-            en : end index of data to be used
-            indices : indices of data to be used. If given, `st` and `en` will be ignored.
-            data : if not None, it will directlry passed to fit ignoring `st`, `en` and `indices`
-            data_keys : list: allowed only if self.data is a dictionary. You can
-                decided which keys from self.data to use use for training by
-                specifying the keys of self.data dictionary
+            data : data to use for model training. Default is 'training.
+            callbacks : Any callback compatible with keras
+            kwargs : Any keyword argument for the `fit` method of the underlying algorithm.
+                if 'x' is present in kwargs, that will take precedent over `data`.
         Returns:
             A keras history object in case of deep learning model with tensorflow
             as backend or anything returned by `fit` method of underlying model.
         """
 
-        return self.call_fit(st, en, indices, data, data_keys, **callbacks)
+        assert data in ['training', 'test', 'validation']
 
-    def call_fit(self, st=0, en=None, indices=None, data=None, data_keys=None, **callbacks):
-        # save the train args in the memory
-        setattr(self, '_train_args', {'st': st, 'en': en, 'indices': indices})
+        return self.call_fit(data=data, callbacks=callbacks, **kwargs)
+
+    def call_fit(self,
+                 data='training',
+                 callbacks=None,
+                 **kwargs):
 
         visualizer = Visualizations(path=self.path)
         self.is_training = True
 
-        # when no input is given and test/val_fraction are >0.0 then all data should not
-        # be treated as training data. We calculate first training fraction as then set
-        # the indices as 'random' to get the indices by fraction. But self.data should be
-        # available.
-        if data is None and indices is None and en is None and data_keys is None and self.data is not None:
-            if self.config['val_data'] == 'same':
-                if self.config['val_fraction'] > 0.0:
-                    self.config['val_fraction'] = 0.0
-
-            train_fraction = 1 - (self.config['val_fraction'] + self.config['test_fraction'])
-            if train_fraction < 0.9999:
-                indices = 'random'
-
-        if data_keys is None:  # data keys have preference over indices
-            indices = self.get_indices(indices)
-
-        train_data = self.training_data(st=st, en=en, indices=indices, data=data, data_keys=data_keys)
-        inputs, outputs = maybe_three_outputs(train_data)
+        if 'x' not in kwargs:
+            train_data = getattr(self, f'{data}_data')()
+            inputs, outputs = maybe_three_outputs(train_data)
+        else:
+            outputs = None
+            if 'y' in kwargs:
+                outputs = kwargs['y']
+                kwargs.pop('y')
+            inputs = kwargs.pop('x')
 
         if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
             if isinstance(self.ai4w_outputs, list):
@@ -1556,7 +770,7 @@ class BaseModel(NN, Plots):
         self.info['training_start'] = dateandtime_now()
 
         if self.category.upper() == "DL":
-            history = self._FIT(inputs, outputs, self.validation_data(), **callbacks)
+            history = self._FIT(inputs, outputs, self.validation_data(), callbacks=callbacks, **kwargs)
 
             visualizer.plot_loss(history.history)
 
@@ -1569,7 +783,7 @@ class BaseModel(NN, Plots):
                     self.allow_weight_loading = True
                     self.update_weights(best_weights)
         else:
-            history = self._model.fit(*inputs, outputs.reshape(-1, ))
+            history = self._model.fit(inputs, outputs.reshape(-1, ))
             model_name = list(self.config['model'].keys())[0]
             fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
 
@@ -1586,20 +800,6 @@ class BaseModel(NN, Plots):
         self.is_training = False
         return history
 
-    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
-        """ just providing it so that it can be overwritten in sub-classes."""
-        if 'data' in kwargs:
-            if kwargs['data'] is not None:
-                return kwargs['data']
-
-        # user has defined its own data by overwriting training_data/validation_data
-        # and `val_data` is same as test data, thus avoid the situation if the user
-        # has not overwritten test_data method.
-        if self.config['val_data'] == "same" and self.data is None:
-            return self.validation_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
-
-        return self.make_data(source='test', scaler_key=scaler_key, data_keys=data_keys, **kwargs)
-
     def evaluate(self, data_type='training', **kwargs):
         """
         calls the `evaluate` method of underlying `model`.
@@ -1614,15 +814,16 @@ class BaseModel(NN, Plots):
         """
         return self.call_evaluate(data_type, **kwargs)
 
-    def call_evaluate(self, data_type='training', **kwargs):
-        assert data_type in ['training', 'test', 'validation']
+    def call_evaluate(self, data_type=None, **kwargs):
 
-        # get the relevant data
-        data = getattr(self, f'{data_type}_data')()
 
-        if data is None and data_type == 'validation':
-            print('validation data can not be fetched because it was set randomly inside training loop')
-            return None
+        data=None
+        if data_type:
+            assert data_type in ['training', 'test', 'validation']
+
+            # get the relevant data
+            data = getattr(self, f'{data_type}_data')()
+
 
         # this will mostly be the validation data.
         if isinstance(data, tf.data.Dataset):
@@ -1632,6 +833,9 @@ class BaseModel(NN, Plots):
 
             else:  # give priority to xy
                 eval_output = self._evaluate_with_xy(**kwargs)
+
+        elif 'x' in kwargs:  # expecting it to be called by keras' fit loop
+            return self.evaluate_fn(**kwargs)
         else:
             eval_output = self._evaluate_with_xy(data, **kwargs)
 
@@ -1649,7 +853,7 @@ class BaseModel(NN, Plots):
         return eval_output
 
     def _evaluate_with_xy(self, data, **kwargs):
-        x, prev_y, y = data
+        x, y = data
 
         # the user provided x,y and batch_size values should have priority
         if 'x' in kwargs:
@@ -1661,6 +865,8 @@ class BaseModel(NN, Plots):
         else:
             batch_size = self.config['batch_size']
 
+        y = get_values(y)
+
         return self.evaluate_fn(
             x=x,
             y=y,
@@ -1670,91 +876,70 @@ class BaseModel(NN, Plots):
         )
 
     def predict(self,
-                st=0,
-                en=None,
-                indices=None,
-                data=None,
-                data_keys=None,
-                scaler_key: str = None,
+                data: str='test',
                 prefix: str = 'test',
-                use_datetime_index: bool = False,
-                pp=True
-                ):
+                process_results=True,
+                **kwargs
+                )->tuple:
         """
         Makes prediction from the trained model.
         Arguments:
-            st :
-            en :
-            indices :
-            data :
-            data_keys :
-            scaler_key : if None, the data will not be indexed along date_time index.
-            pp : post processing
-            data : if not None, this will diretly passed to predict. If
-                data_config['transformation'] is True, do provide the scaler_key
-                that was used when the data was transformed. By default that is '0'.
-                If the data was not transformed with Model, then make sure that
-                data_config['transformation'] is None.
-            use_datetime_index : whether to sort the results. Should only be
-                used if the data is indexed by pd.DatetimeIndex and `indices` is random.
+            data : which data to use. values are `training`, `test` or `validation`.
+                By default, `test` data is used for predictions.
+            process_results : post processing of results
             prefix : prefix used with names of saved results
+            kwargs : any keyword argument for `fit` method.
         Returns:
             a tuple of arrays. The first is true and the second is predicted.
         """
-        return self.call_predict(st, en, indices, data, data_keys, scaler_key, prefix, use_datetime_index, pp)
+        assert data in ['training', 'test', 'validation']
 
-    def call_predict(self, st=0, en=None, indices=None, data=None, data_keys=None, scaler_key: str = None,
-                         prefix: str = 'test', use_datetime_index: bool = False, pp=True):
+        return self.call_predict(data=data, prefix=prefix, process_results=process_results, **kwargs)
 
-        if indices is not None:
-            if not hasattr(self, 'predict_indices'):
-                setattr(self, 'predict_indices', indices)
+    def call_predict(self, data='test',
+                         prefix: str = 'test', process_results=True, **kwargs):
 
-        if data is not None:
-            if scaler_key is None:
-                if self.config['transformation'] is not None:
-                    raise ValueError(
-                        f"""The transformation argument in config_file was set to {self.config['transformation']}
-                                        but a scaler_key given. Provide the either 'scaler_key' argument while calling
-                                        'predict' or set the transformation while initializing model to None."""
-                    )
-        if scaler_key is None:
-            scaler_key = '5'
+        transformation_key = '5'
 
-        data = self.test_data(st=st, en=en, indices=indices, data=data,
-                              scaler_key=scaler_key,
-                              data_keys=data_keys,
-                              use_datetime_index=use_datetime_index)
-        inputs, true_outputs = maybe_three_outputs(data)
+        if 'x' not in kwargs:
+            data = getattr(self, f'{data}_data')(key=transformation_key)
+            inputs, true_outputs = maybe_three_outputs(data)
+        else:
+            inputs, true_outputs = kwargs['x'], kwargs.get('y', None)
 
-        first_input, inputs, dt_index = self.deindexify_input_data(inputs, use_datetime_index=use_datetime_index)
+        #first_input, inputs, dt_index = self.dh.deindexify(inputs, key=scaler_key)
 
         if self.category == 'DL':
             predicted = self.predict_fn(x= inputs,
                                         batch_size = self.config['batch_size'],
-                                        verbose= self.verbosity)
+                                        verbose= self.verbosity,
+                                        **kwargs)
         else:
-            predicted = self.predict_fn(*inputs)
+            predicted = self.predict_fn(*inputs, **kwargs)
 
         if self.problem.upper().startswith("CLASS") and self.category == "ML":  # todo, should be for DL as well
             self.roc_curve(inputs, true_outputs)
 
-        if self.config['transformation']:
-            transformation = self.config['transformation']
-            if isinstance(self.out_cols, dict):
-                assert len(self.out_cols) == 1
-                for k, out_cols in self.out_cols.items():
-                    predicted, true_outputs = self.denormalize_data(inputs[k], predicted, true_outputs,
-                                                                    self.in_cols[k], out_cols,
-                                                                    scaler_key, transformation[k])
-            else:
-                predicted, true_outputs = self.denormalize_data(first_input, predicted, true_outputs,
-                                                                self.in_cols, self.out_cols,
-                                                                scaler_key, self.config['transformation'])
+        if self.dh.source_is_dict or self.dh.source_is_list:
+            true_outputs = self.inverse_transform(true_outputs, key=transformation_key)
+            if isinstance(predicted, np.ndarray):
+                assert len(true_outputs) == 1
+                predicted = {list(true_outputs.keys())[0]: predicted}
+            predicted = self.inverse_transform(predicted, key=transformation_key)
+
+        else:
+            true_outputs = self.inverse_transform(true_outputs, key=transformation_key)
+            predicted = self.inverse_transform(predicted, key=transformation_key)
+
+        true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
 
         if self.quantiles is None:
 
-            if pp:
+            # it true_outputs and predicted are dictionary of len(1) then just get the values
+            true_outputs = get_values(true_outputs)
+            predicted = get_values(predicted)
+
+            if process_results:
                 if self.problem == 'regression':
                     self.process_regres_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index)
                 else:
@@ -1767,170 +952,6 @@ class BaseModel(NN, Plots):
             self.plot_all_qs(true_outputs, predicted)
 
         return true_outputs, predicted
-
-    def impute(self, method, imputer_args=None, inputs=False, outputs=False, cols=None):
-        """impute the missing data. One of either inputs, outputs or cols can be used.
-        method: imputation algorithm
-        imputer_args: the keyword arguments for the imputation algorithm.
-        cols: columns on which imputation to be applied.
-        >>>from AI4Water import Model
-        >>>model = Model()
-        >>>model.impute('interpolate', {'method': 'linear'}, cols=outputs)
-        or
-        >>>model.impute(cols=outputs, method='SimpleImputer', imputer_args={})
-        """
-        # TODO, put it in config
-        if cols is not None:
-            if not isinstance(cols, list):
-                assert isinstance(cols, str)
-                cols = [cols]
-            assert not inputs and not outputs
-        else:
-            if inputs:
-                cols = self.in_cols
-            elif outputs:
-                cols = self.out_cols
-        # if self.data is dataframe, default
-        if isinstance(self.data, pd.DataFrame):
-            initial_nans = sum(self.data[cols].isna().sum())
-            self.data[cols] = Imputation(self.data[cols], method=method, imputer_args=imputer_args)()
-            if self.verbosity > 0:
-                print(f"Number of nans changed from {initial_nans} to {self.data[cols].isna().sum()}")
-        # may be self.data is list of dataframes
-        elif isinstance(self.data, list):
-            data_holder = []
-            for data in self.data:
-                if isinstance(data, pd.DataFrame):
-                    initial_nans = data[cols].isna().sum()
-                    data[cols] = Imputation(data[cols], method=method, imputer_args=imputer_args)()
-                    if self.verbosity > 0:
-                        print(f"Number of nans changed from {initial_nans} to {data[cols].isna().sum()}")
-                data_holder.append(data)
-            self.data = data_holder
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    initial_nans = data[cols].isna().sum()
-                    data[cols] = Imputation(data[cols], method=method, imputer_args=imputer_args)()
-                    if self.verbosity > 0:
-                        print(f"Number of nans changed from {initial_nans} to {data[cols].isna().sum()}")
-                    self.data[data_name] = data
-        return
-
-    def denormalize_data(self,
-                         inputs: np.ndarray,
-                         predicted: np.ndarray,
-                         true: np.ndarray,
-                         in_cols,
-                         out_cols,
-                         scaler_key: str,
-                         transformation=None):
-        """
-        predicted, true are arrays of shape (examples, outs, forecast_len)
-        """
-        # todo, do we need **trans/**transformation such as replace_nans/repace_zeros during inverse transformation?
-        # for cases if they are 2D, add the third dimension.
-        true, predicted = self.maybe_not_3d_data(true, predicted)
-
-        if transformation:
-            if np.ndim(inputs) == 4:
-                inputs = inputs[:, -1, 0, :]
-            elif np.ndim(inputs) == 5:
-                inputs = inputs[:, -1, 0, -1, :]
-            elif np.ndim(inputs) == 3:
-                inputs = inputs[:, -1, :]
-            elif np.ndim(inputs) == 2:
-                pass
-            else:
-                raise ValueError(f"Input data has dimension {np.ndim(inputs)}.")
-
-            true_denorm = np.full(true.shape, np.nan)
-            pred_denorm = np.full(predicted.shape, np.nan)
-
-            for h in range(self.forecast_len):
-                t = true[:, :, h]
-                p = predicted[:, :, h]
-                in_obs = np.hstack([inputs, t])
-                in_pred = np.hstack([inputs, p])
-
-                in_obs = pd.DataFrame(in_obs, columns=in_cols + out_cols)
-                in_pred = pd.DataFrame(in_pred, columns=in_cols + out_cols)
-                if isinstance(transformation, list):  # for cases when we used multiple transformatinos
-                    for idx, trans in reversed(list(enumerate(transformation))):  # idx and trans both in reverse form
-                        if trans['method'] is not None:
-                            scaler = self.scalers[f'{scaler_key}_{trans["method"]}_{idx}']['scaler']
-                            in_obs = Transformations(data=in_obs, **trans)(what='inverse', scaler=scaler)
-                            in_pred = Transformations(data=in_pred, **trans)(what='inverse', scaler=scaler)
-                elif isinstance(transformation, dict):
-                    scaler = self.scalers[scaler_key]['scaler']
-                    in_obs = Transformations(data=in_obs, **transformation)(what='inverse', scaler=scaler)
-                    in_pred = Transformations(data=in_pred, **transformation)(what='inverse', scaler=scaler)
-                else:
-                    assert isinstance(transformation, str)
-                    scaler = self.scalers[scaler_key]['scaler']
-                    in_obs = Transformations(data=in_obs, method=transformation)(what='inverse', scaler=scaler)
-                    in_pred = Transformations(data=in_pred, method=transformation)(what='inverse', scaler=scaler)
-
-                in_obs_den = in_obs.values
-                in_pred_den = in_pred.values
-                true_denorm[:, :, h] = in_obs_den[:, -len(out_cols):]
-                pred_denorm[:, :, h] = in_pred_den[:, -len(out_cols):]
-
-            predicted = pred_denorm
-            true = true_denorm
-
-        return predicted, true
-
-    def deindexify_input_data(self, inputs: list, sort: bool = False, use_datetime_index: bool = False):
-        """Removes the index columns from inputs. If inputs is a list then it removes index column from each
-        of the input in inputs. Index column is usually datetime column. It is added to keep track of indices of
-        input data.
-        """
-
-        # `first_input` is only used to extract datetime_index.
-        if isinstance(inputs, list):
-            first_input = inputs[0]
-        elif isinstance(inputs, dict):
-            first_input = list(inputs.values())[0]
-        elif isinstance(inputs, np.ndarray):
-            first_input = inputs
-        else:
-            raise NotImplementedError
-
-        dt_index = np.arange(len(first_input))
-        new_inputs = inputs
-
-        if use_datetime_index:
-            if np.ndim(first_input) == 2:
-                dt_index = to_datetime_index(np.array(first_input[:, 0], dtype=np.int64))
-            elif np.ndim(first_input) == 3:
-                dt_index = to_datetime_index(np.array(first_input[:, -1, 0], dtype=np.int64))
-            elif np.ndim(first_input) == 4:
-                dt_index = to_datetime_index(np.array(first_input[:, -1, -1, 0], dtype=np.int64))
-
-            # remove the first of first inputs which is datetime index
-            first_input = first_input[..., 1:].astype(np.float32)
-
-            if sort:
-                first_input = first_input[np.argsort(dt_index.to_pydatetime())]
-
-            if isinstance(inputs, list):
-                new_inputs = []
-                for idx, _input in enumerate(inputs):
-                    if sort:
-                        _input = _input[np.argsort(dt_index.to_pydatetime())]
-                    new_inputs.append(_input[..., 1:])
-            elif isinstance(inputs, dict):
-                new_inputs = {}
-                for inp_name, _inp in inputs.values():
-                    if sort:
-                        _inp = _inp[np.argsort(dt_index.to_pydatetime())]
-                    new_inputs[inp_name] = _inp[..., 1:]
-            else:
-                raise NotImplementedError
-
-        return first_input, new_inputs, dt_index
 
     def plot_model(self, nn_model):
         kwargs = {}
@@ -1991,146 +1012,21 @@ class BaseModel(NN, Plots):
         return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
                                self.config['allow_nan_labels'])
 
-    def imputation(self, df, ins: int, outs):
+    def activations(self, layer_names=None, return_input=False, x=None, data:str='training'):
 
-        if self.config['input_nans'] is not None:
-
-            if not isinstance(df, pd.DataFrame):
-                df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
-
-            if isinstance(self.config['input_nans'], list):
-                # separate imputation method to be applied on each column/feature of df
-                assert len(self.config['input_nans']) == ins
-
-            elif isinstance(self.config['input_nans'], dict):
-                kwargs = list(self.config['input_nans'].values())[0]
-
-                if len(self.config['input_nans']) > 1:
-
-                    for key, val in self.config['input_nans'].items():
-                        how = list(val.keys())[0]
-                        kwargs = list(val.values())[0]
-                        df[key] = impute_df(pd.DataFrame(df[key]), how, **kwargs)
-                else:
-                    df[self.in_cols] = impute_df(df[self.in_cols], list(self.config['input_nans'].keys())[0], **kwargs)
-
-            else:
-                raise ValueError(f"Unknown value '{self.config['input_nans']} to deal with with nans in inputs")
-
-        if isinstance(df, pd.DataFrame):
-            df = df.values
-
-        return df
-
-    def get_batches(self, df, ins, outs):
-
-        df = self.imputation(df, ins, outs)
-
-        if self.num_input_layers > 1:
-            # if the model takes more than 1 input, we must define what kind of inputs must be made because
-            # using this method means we are feeding same shaped inputs so we can easily say, 2d or 3d. If the
-            # the model takes more than 1 input and they are of different shapes, theen the user has to (is this
-            # common sense?) overwrite `train_paras` and or `test_paras` methods.
-            if self.config['batches'].upper() == "2D":
-                return self.get_2d_batches(df, ins, outs)
-            else:
-                return self.check_nans(df, *prepare_data(df,
-                                                         num_outputs=outs,
-                                                         lookback_steps=self.lookback,
-                                                         input_steps=self.config['input_step'],
-                                                         forecast_step=self.forecast_step,
-                                                         forecast_len=self.forecast_len,
-                                                         known_future_inputs=self.config['known_future_inputs']),
-                                       outs, self.lookback,
-                                       self.config['allow_nan_labels'])
-        else:
-            if len(self.first_layer_shape()) == 2:
-                return self.get_2d_batches(df, ins, outs)
-
-            else:
-                return self.check_nans(df, *prepare_data(df,
-                                                         num_outputs=outs,
-                                                         lookback_steps=self.lookback,
-                                                         input_steps=self.config['input_step'],
-                                                         forecast_step=self.forecast_step,
-                                                         forecast_len=self.forecast_len,
-                                                         known_future_inputs=self.config['known_future_inputs']),
-                                       outs, self.lookback,
-                                       self.config['allow_nan_labels'])
-
-    def check_nans(self, data, input_x, input_y, label_y, outs, lookback, allow_nan_labels, allow_input_nans=False):
-        """Checks whether anns are present or not and checks shapes of arrays being prepared.
-        """
-        # TODO, nans in inputs should be ignored at all cost because this causes error in results,
-        #  when we set allow_nan_labels to True, then this should apply only to target/labels, and examples with
-        #  nans in inputs should still be ignored.
-        if isinstance(data, pd.DataFrame):
-            nans = data[self.out_cols].isna()
-            data = data.values
-        else:
-            nans = np.isnan(data[:, -outs:])  # df[self.out_cols].isna().sum()
-        if int(nans.sum()) > 0:
-            if allow_nan_labels == 2:
-                print("\n{} Allowing NANs in predictions {}\n".format(10 * '*', 10 * '*'))
-            elif allow_nan_labels == 1:
-                print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
-                idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
-                input_x = input_x[idx]
-                input_y = input_y[idx]
-                label_y = label_y[idx]
-                if int(np.isnan(data[:, -outs:][0:lookback]).sum() / outs) >= lookback:
-                    self.nans_removed_4m_st = -9999
-            else:
-                if self.method == 'dual_attention':
-                    raise ValueError
-                if outs > 1:
-                    for out in range(outs):
-                        assert nans[:, out].sum() == int(nans.sum() / outs), f"""
-                            output columns {out} contains {nans[:, out].sum()} nans while the average
-                            nans are {int(nans.sum() / outs)}. This means output columns contains nan
-                            values at different indices. Try `allow_nan_labels`>0.
-                            """
-
-                if self.verbosity > 0:
-                    print('\n{} Removing Samples with nan labels  {}\n'.format(10 * '*', 10 * '*'))
-                if outs == 1:
-                    # find out how many nans were present from start of data until lookback, these nans will be removed
-                    self.nans_removed_4m_st = np.isnan(data[:, -outs:][0:lookback]).sum()
-                nan_idx = np.isnan(label_y) if outs == 1 else np.isnan(label_y[:, 0])  # y.isna()
-                # nan_idx_t = nan_idx[self.lookback - 1:]
-                # non_nan_idx = ~nan_idx_t.values
-                non_nan_idx = np.array([all(i.reshape(-1, )) for i in np.invert(nan_idx)])
-                label_y = label_y[non_nan_idx]
-                input_x = input_x[non_nan_idx]
-                input_y = input_y[non_nan_idx]
-
-                assert np.isnan(label_y).sum() < 1, "label still contains {} nans".format(np.isnan(label_y).sum())
-
-        assert input_x.shape[0] == input_y.shape[0] == label_y.shape[0], "shapes are not same"
-
-        if not allow_input_nans:
-            assert np.isnan(input_x).sum() == 0, "input still contains {} nans".format(np.isnan(input_x).sum())
-
-        return input_x, input_y, label_y
-
-    def activations(self, layer_names=None, return_input=False, **kwargs):
         # if layer names are not specified, this will get get activations of allparameters
-        data = self.test_data(**kwargs)
-        inputs, _ = maybe_three_outputs(data)
+        if x is None:
+            data = getattr(self, f'{data}_data')()
+            x, y = maybe_three_outputs(data)
 
-        # samples/examples in inputs may not be ordered/sorted so we should order them
-        # remvoe the first column from x data
-        _, inputs, _ = self.deindexify_input_data(inputs, sort=True,
-                                                  use_datetime_index=kwargs.get('use_datetime_index', False))
-
-        activations = keract.get_activations(self.dl_model, inputs, layer_names=layer_names, auto_compile=True)
+        activations = keract.get_activations(self.dl_model, x, layer_names=layer_names, auto_compile=True)
         if return_input:
-            return activations, inputs
+            return activations, x
         return activations
 
-    def display_activations(self, layer_name: str = None, st=0, en=None, indices=None, **kwargs):
+    def display_activations(self, layer_name: str = None, x=None, data:str='training', **kwargs):
         # not working currently because it requres the shape of activations to be (1, output_h, output_w, num_filters)
-        activations = self.activations(st=st, en=en, indices=indices, layer_names=layer_name)
+        activations = self.activations(x=x, data=data, layer_names=layer_name)
 
         assert isinstance(activations, dict)
 
@@ -2141,25 +1037,29 @@ class BaseModel(NN, Plots):
 
         keract.display_activations(activations=activations, **kwargs)
 
-    def gradients_of_weights(self, **kwargs) -> dict:
+    def gradients_of_weights(self, x=None, y=None, data:str='training') -> dict:
 
-        data = self.test_data(**kwargs)
-        x, y = maybe_three_outputs(data)
-
-        _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
+        if x is None:
+            data = getattr(self, f'{data}_data')()
+            x, y = maybe_three_outputs(data)
 
         return keract.get_gradients_of_trainable_weights(self.dl_model, x, y)
 
-    def gradients_of_activations(self, st=0, en=None, indices=None, data=None, layer_name=None, **kwargs) -> dict:
+    def gradients_of_activations(self, x=None, y=None, data:str='training', layer_name=None) -> dict:
+        """
+        either x,y or data is required
+        x = input data. Will overwrite `data`
+        y = corresponding label of x. Will overwrite `data`.
+        data : one of `training`, `test` or `validation`
+        """
 
-        data = self.test_data(st=st, en=en, indices=indices, data=data)
-        x, y = maybe_three_outputs(data)
-
-        _, x, _ = self.deindexify_input_data(x, sort=True, use_datetime_index=kwargs.get('use_datetime_index', False))
+        if x is None:
+            data = getattr(self, f'{data}_data')()
+            x, y = maybe_three_outputs(data)
 
         return keract.get_gradients_of_activations(self.dl_model, x, y, layer_names=layer_name)
 
-    def trainable_weights_(self, weights: list = None):
+    def trainable_weights_(self):
         """ returns all trainable weights as arrays in a dictionary"""
         weights = {}
         for weight in self.dl_model.trainable_weights:
@@ -2186,22 +1086,23 @@ class BaseModel(NN, Plots):
         """Finds RNN related weights and combine kernel, recurrent curnel and bias
         of each layer into a list."""
         lstm_weights = {}
-        if "LSTM" in self.config['model']['layers']:
-            lstms = self.find_num_lstms()
-            for lstm in lstms:
-                lstm_w = []
-                for w in ["kernel", "recurrent_kernel", "bias"]:
-                    w_name = lstm + "/lstm_cell/" + w
-                    for k, v in weights.items():
-                        if w_name in k:
-                            lstm_w.append(v)
+        if self.config['model'] is not None and 'layers' in self.config['model']:
+            if "LSTM" in self.config['model']['layers']:
+                lstms = self.find_num_lstms()
+                for lstm in lstms:
+                    lstm_w = []
+                    for w in ["kernel", "recurrent_kernel", "bias"]:
+                        w_name = lstm + "/lstm_cell/" + w
+                        for k, v in weights.items():
+                            if w_name in k:
+                                lstm_w.append(v)
 
-                lstm_weights[lstm] = lstm_w
+                    lstm_weights[lstm] = lstm_w
 
         return lstm_weights
 
-    def plot_weights(self, weights=None, save=True):
-        weights = self.trainable_weights_(weights=weights)
+    def plot_weights(self, save=True):
+        weights = self.trainable_weights_()
 
         if self.verbosity > 0:
             print("Plotting trainable weights of layers of the model.")
@@ -2235,11 +1136,11 @@ class BaseModel(NN, Plots):
             else:
                 print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
 
-    def plot_layer_outputs(self, save: bool = True, lstm_activations=False, **kwargs):
+    def plot_layer_outputs(self, save: bool = True, lstm_activations=False, x=None, data:str='training'):
         """Plots outputs of intermediate layers except input and output.
         If called without any arguments then it will plot outputs of all layers.
         By default do not plot LSTM activations."""
-        activations = self.activations(**kwargs)
+        activations = self.activations(x=x, data=data)
 
         if self.verbosity > 0:
             print("Plotting activations of layers")
@@ -2247,7 +1148,7 @@ class BaseModel(NN, Plots):
         for lyr_name, activation in activations.items():
             # activation may be tuple e.g if input layer receives more than 1 input
             if isinstance(activation, np.ndarray):
-                self._plot_layer_outputs(activation, lyr_name, save)
+                self._plot_layer_outputs(activation, lyr_name, save, lstm_activations=lstm_activations)
 
             elif isinstance(activation, tuple):
                 for act in activation:
@@ -2452,7 +1353,7 @@ class BaseModel(NN, Plots):
         for j in range(self.lookback):
             prev_y[:, j, 0] = df[target].shift(self.lookback - j - 1).fillna(method="bfill")
 
-        fl = self.config['forecast_length']
+        fl = self.config['forecast_len']
         _y = np.zeros((df.shape[0], fl))
         for i in range(df.shape[0] - fl):
             _y[i - 1, :] = df[target].values[i:i + fl]
@@ -2596,7 +1497,7 @@ class BaseModel(NN, Plots):
             h5.close()
         return
 
-    def eda(self, freq=None, cols=None, **kwargs):
+    def eda(self, freq=None, cols=None):
         """Performs comprehensive Exploratory Data Analysis.
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
@@ -2726,27 +1627,6 @@ class BaseModel(NN, Plots):
 
         return optimizer
 
-def impute_df(df: pd.DataFrame, how: str, **kwargs):
-    """Given the dataframe df, will input missing values by how e.g. by df.fillna or df.interpolate"""
-    if how.lower() not in ['fillna', 'interpolate', 'knnimputer', 'iterativeimputer', 'simpleimputer']:
-        raise ValueError(f"Unknown method to fill missing values `{how}`.")
-
-    if how.lower() in ['fillna', 'interpolate']:
-        for col in df.columns:
-            df[col] = getattr(df[col], how)(**kwargs)
-    else:
-        imputer = imputations[how.upper()](**kwargs)
-        df = imputer.fit_transform(df.values)
-
-    return df
-
-
-def unison_shuffled_copies(a, b, c):
-    """makes sure that all the arrays are permuted similarly"""
-    assert len(a) == len(b) == len(c)
-    p = np.random.permutation(len(a))
-    return a[p], b[p], c[p]
-
 
 def print_something(something, prefix=''):
     """prints shape of some python object"""
@@ -2768,3 +1648,11 @@ def maybe_three_outputs(data, num_outputs=2):
             return data[0], data[2]
     elif num_outputs == 3:
         return data[0], data[1], data[2]
+
+
+def get_values(outputs):
+
+    if isinstance(outputs, dict) and len(outputs) == 1:
+        outputs = list(outputs.values())[0]
+
+    return outputs

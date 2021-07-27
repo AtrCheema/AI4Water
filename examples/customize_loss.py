@@ -13,15 +13,9 @@ from AI4Water import Model
 
 class QuantileModel(Model):
 
-    def denormalize_data(self,
-                         inputs: np.ndarray,
-                         predicted: np.ndarray,
-                         true: np.ndarray,
-                         in_cols, out_cols,
-                         scaler_key: str,
-                         transformation=None):
-
-        return predicted, true
+    def inverse_transform(self, data, key):
+        # todo
+        return data
 
     def loss(self):
 
@@ -65,9 +59,9 @@ model = QuantileModel(
     quantiles=quantiles)
 
 # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-model.fit(st=0, en=1500)
+model.fit()
 
 # make predictions on a chunk of test data, which was retained while training
-true_y, pred_y = model.predict(st=1500, en=1700)
+true_y, pred_y = model.predict()
 
 model.plot_quantile(true_y, pred_y, 3, 5)

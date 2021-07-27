@@ -12,7 +12,7 @@ from AI4Water.utils.datasets import arg_beach
 
 class CustomModel(Model):
 
-    def fit(self, st=0, en=None, indices=None, **callbacks):
+    def fit(self, data='training', callbacks=None, **kwargs):
         self.is_training = True
         # Instantiate an optimizer.
         optimizer = self.get_optimizer()
@@ -27,11 +27,9 @@ class CustomModel(Model):
         # Prepare the training dataset.
         batch_size = self.config['batch_size']
 
-        indices = self.get_indices(indices)
+        train_x, train_label = self.training_data()
 
-        train_x, train_y, train_label = self.training_data(st=st, en=en, indices=indices)
-
-        train_dataset = tf.data.Dataset.from_tensor_slices((train_x[0], train_label))
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_label))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
 
         for epoch in range(self.config['epochs']):
@@ -86,7 +84,6 @@ layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
           "Dense": 1
           }
 
-
 model = CustomModel(model={'layers':layers},
                     batch_size=12,
                     lookback=15,
@@ -94,8 +91,9 @@ model = CustomModel(model={'layers':layers},
                     allow_nan_labels=2,
                     epochs=10,
                     data=arg_beach(),
+                    train_data='random'
                     )
-history = model.fit(indices='random', tensorboard=True)
+history = model.fit(callbacks={'tensorboard':True})
 
-test_pred, test_obs = model.predict(indices=model.test_indices)
-train_pred, train_obs = model.predict(indices=model.train_indices)
+test_pred, test_obs = model.predict()
+train_pred, train_obs = model.predict(data='training')

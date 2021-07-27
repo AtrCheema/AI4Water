@@ -66,7 +66,7 @@ def make_layers(outs):
 def test_evaluation(model):
 
     model.evaluate('training')
-    train_x, _, train_y = model.training_data()
+    train_x, train_y = model.training_data()
 
     model.evaluate('validation')
     val_data = model.validation_data()
@@ -74,10 +74,10 @@ def test_evaluation(model):
     model.evaluate('test')
     test_data = model.test_data()
     if not isinstance(test_data, tf.data.Dataset):
-        test_x, _, test_y = test_data
+        test_x, test_y = test_data
 
     if model.config['val_data'] == 'same' and not isinstance(val_data, tf.data.Dataset):
-        val_x,_,y = val_data
+        val_x, y = val_data
         assert test_x[0].shape == val_x[0].shape
 
     return
@@ -91,15 +91,16 @@ def build_and_run(outputs, transformation=None, indices=None):
         output_features=outputs,
         data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d},
         transformation = transformation,
+        train_data=indices,
         epochs=2,
         verbosity=0
     )
 
-    model.fit(indices=indices)
+    model.fit()
 
     test_evaluation(model)
 
-    return model.predict(indices=model.test_indices if indices else None)
+    return model.predict()
 
 class test_MultiInputModels(unittest.TestCase):
 
@@ -181,13 +182,19 @@ class test_MultiInputModels(unittest.TestCase):
                 return [inp1, inp2, inp3, inp4], out
 
             def training_data(self, data=None, data_keys=None, **kwargs):
-
+                print('using customized training data')
                 in1 = np.random.random((_examples, 10, 5))
                 in2 = np.random.random((_examples, 10, 4))
                 in3 = np.random.random((_examples, 10))
                 in4 = np.random.random((_examples, 9))
                 o = np.random.random((_examples, 1, 1))
-                return [in1, in2, in3, in4], None, o
+                return [in1, in2, in3, in4], o
+
+            def validation_data(self, *args, **kwargs):
+                return self.training_data(*args, **kwargs)
+
+            def test_data(self, *args, **kwargs):
+                return self.training_data(*args, **kwargs)
 
         model = MyModel(val_data='same', verbosity=0, category="DL")
 
@@ -241,10 +248,11 @@ class test_MultiInputModels(unittest.TestCase):
             model={'layers': layers},
             epochs=2,
             data=data.astype(np.float32),
+            train_data = np.arange(1500),
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-        model.fit(st=0, en=1500)
+        model.fit()
         test_evaluation(model)
         return
 
