@@ -31,7 +31,7 @@ def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, s
 
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_dataframe=False):
     print(f"test_dynamic_data for {dataset.name}")
-    df = dataset.fetch(stations=stations, static_attributes=None, as_dataframe=as_dataframe)
+    df = dataset.fetch(stations=stations, static_features=None, as_dataframe=as_dataframe)
 
     if as_dataframe:
         check_dataframe(dataset, df, num_stations, stn_data_len)
@@ -42,14 +42,14 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_datafram
 
 def test_all_data(dataset, stations, stn_data_len, as_dataframe=False):
 
-    df = dataset.fetch(stations, static_attributes='all', as_ts=False, as_dataframe=as_dataframe)
+    df = dataset.fetch(stations, static_features='all', as_ts=False, as_dataframe=as_dataframe)
 
     if as_dataframe:
         check_dataframe(dataset, df['dynamic'], stations, stn_data_len)
     else:
         check_dataset(dataset, df['dynamic'], stations, stn_data_len)
 
-    assert df['static'].shape == (stations, len(dataset.static_attributes)), f"shape is {df['static'].shape}"
+    assert df['static'].shape == (stations, len(dataset.static_features)), f"shape is {df['static'].shape}"
 
     return
 
@@ -57,13 +57,13 @@ def check_dataframe(dataset, df, num_stations, data_len):
     assert isinstance(df, pd.DataFrame)
     assert df.shape[1] == num_stations, f'dataset lenth is {df.shape[1]} while target is {num_stations}'
     for col in df.columns:
-        #     for dyn_attr in dataset.dynamic_attributes:
+        #     for dyn_attr in dataset.dynamic_features:
         #         stn_data = df[col]  # (stn_data_len*dynamic_features, )
         #         _stn_data_len = len(stn_data.iloc[stn_data.index.get_level_values('dynamic_features') == dyn_attr])
         #         assert _stn_data_len>=stn_data_len, f"{col} for {dataset.name} is not of length {stn_data_len}"
         stn_data = df[col].unstack()
         # data for each station must minimum be of this shape
-        assert stn_data.shape == (data_len, len(dataset.dynamic_attributes)), f"""
+        assert stn_data.shape == (data_len, len(dataset.dynamic_features)), f"""
             for {col} station of {dataset.name} the shape is {stn_data.shape}"""
     return
 
@@ -72,37 +72,37 @@ def check_dataset(dataset, xds, num_stations, data_len):
     assert isinstance(xds, xr.Dataset)
     assert len(xds.data_vars) == num_stations, f'for {dataset.name}, {len(xds.data_vars)} data_vars are present'
     for var in xds.data_vars:
-        assert xds[var].data.shape == (data_len, len(dataset.dynamic_attributes)), f"""shape of data is 
-        {xds[var].data.shape} and not {data_len, len(dataset.dynamic_attributes)}"""
+        assert xds[var].data.shape == (data_len, len(dataset.dynamic_features)), f"""shape of data is 
+        {xds[var].data.shape} and not {data_len, len(dataset.dynamic_features)}"""
 
     for dyn_attr in xds.coords['dynamic_features'].data:
-        assert dyn_attr in dataset.dynamic_attributes
+        assert dyn_attr in dataset.dynamic_features
     return
 
 
 def test_static_data(dataset, stations, target):
     print(f"test_static_data for {dataset.name}")
-    df = dataset.fetch(stations=stations, dynamic_attributes=None, static_attributes='all')
+    df = dataset.fetch(stations=stations, dynamic_features=None, static_features='all')
 
     assert len(df) == target, f'length of data is {len(df)} and not {target}'
-    assert df.shape == (target, len(dataset.static_attributes)), f'for {dataset.name}, v is of shape {df.shape} and not of {len(dataset.static_attributes)}'
+    assert df.shape == (target, len(dataset.static_features)), f'for {dataset.name}, v is of shape {df.shape} and not of {len(dataset.static_features)}'
 
     return
 
 
 def test_attributes(dataset, static_attr_len, dyn_attr_len, stations):
     print(f"test_attributes for {dataset.name}")
-    static_attributes = dataset.static_attributes
-    assert len(static_attributes) == static_attr_len
-    assert isinstance(static_attributes, list)
-    assert all([isinstance(i, str) for i in static_attributes])
+    static_features = dataset.static_features
+    assert len(static_features) == static_attr_len, f'for {dataset.name} static_features are {len(static_features)} and not {static_attr_len}'
+    assert isinstance(static_features, list)
+    assert all([isinstance(i, str) for i in static_features])
 
     assert os.path.exists(dataset.ds_dir)
 
-    dynamic_attributes = dataset.dynamic_attributes
-    assert len(dynamic_attributes) == dyn_attr_len, f'length of dynamic attributes: {len(dynamic_attributes)}'
-    assert isinstance(dynamic_attributes, list)
-    assert all([isinstance(i, str) for i in dynamic_attributes])
+    dynamic_features = dataset.dynamic_features
+    assert len(dynamic_features) == dyn_attr_len, f'length of dynamic attributes: {len(dynamic_features)}'
+    assert isinstance(dynamic_features, list)
+    assert all([isinstance(i, str) for i in dynamic_features])
 
     test_stations(dataset, stations)
 
@@ -118,11 +118,11 @@ def test_stations(dataset, stations_len):
     return
 
 
-def test_fetch_dynamic_attributes(dataset, stn_id, as_dataframe=False):
-    print(f"test_fetch_dynamic_attributes for {dataset.name}")
-    df = dataset.fetch_dynamic_attributes(stn_id, as_dataframe=as_dataframe)
+def test_fetch_dynamic_features(dataset, stn_id, as_dataframe=False):
+    print(f"test_fetch_dynamic_features for {dataset.name}")
+    df = dataset.fetch_dynamic_features(stn_id, as_dataframe=as_dataframe)
     if as_dataframe:
-        assert df.unstack().shape[1] == len(dataset.dynamic_attributes), f'for {dataset.name}, num_dyn_attributes are {df.shape[1]}'
+        assert df.unstack().shape[1] == len(dataset.dynamic_features), f'for {dataset.name}, num_dyn_attributes are {df.shape[1]}'
     else:
         assert isinstance(df, xr.Dataset)
         assert len(df.data_vars) == 1
@@ -143,21 +143,21 @@ def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataf
 
 def test_fetch_static_attribue(dataset, stn_id):
     print(f"test_fetch_static_attribue for {dataset.name}")
-    df = dataset.fetch(stn_id, dynamic_attributes=None, static_attributes='all')
-    assert len(df.loc[stn_id, :]) == len(dataset.static_attributes), f'shape is: {df[stn_id].shape}'
+    df = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
+    assert len(df.loc[stn_id, :]) == len(dataset.static_features), f'shape is: {df[stn_id].shape}'
     return
 
 
 def test_st_en_with_static_and_dynamic(dataset, station, as_dataframe=False, yearly_steps=366):
-    data = dataset.fetch([station], static_attributes='all', st='19880101', en='19881231', as_dataframe=as_dataframe)
+    data = dataset.fetch([station], static_features='all', st='19880101', en='19881231', as_dataframe=as_dataframe)
     if as_dataframe:
         check_dataframe(dataset, data['dynamic'], 1, yearly_steps)
     else:
         check_dataset(dataset, data['dynamic'], 1, yearly_steps)
 
-    assert data['static'].shape == (1, len(dataset.static_attributes))
+    assert data['static'].shape == (1, len(dataset.static_features))
 
-    data = dataset.fetch_dynamic_attributes(station, st='19880101', en='19881231', as_dataframe=as_dataframe)
+    data = dataset.fetch_dynamic_features(station, st='19880101', en='19881231', as_dataframe=as_dataframe)
     if as_dataframe:
         check_dataframe(dataset, data, 1, yearly_steps)
     else:
@@ -167,19 +167,26 @@ def test_st_en_with_static_and_dynamic(dataset, station, as_dataframe=False, yea
 #
 # ds_cl = CAMELS_CL()
 # data = ds_cl.fetch(as_dataframe=True)
-hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
+#hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
 
 # def test_hysets():
 #     s = hy.stations()
-#     xds1 = hy.fetch(100, static_attributes=None, st="2000")
-#     #xds2 = hy.fetch(20, static_attributes='all', st="2000")
+#     xds1 = hy.fetch(100, static_features=None, st="2000")
+#     #xds2 = hy.fetch(20, static_features='all', st="2000")
 #     #xds3 = hy.fetch(s)
-#     #xds4 = hy.fetch_dynamic_attributes(2, st="1980")
-#     #xds5 = hy.fetch_static_attributes(2, st="1980")
+#     #xds4 = hy.fetch_dynamic_features(2, st="1980")
+#     #xds5 = hy.fetch_static_features(2, st="1980")
 
-# st = hy.fetch_static_attributes(station=s[0])
+# st = hy.fetch_static_features(station=s[0])
 
 
+def test_selected_dynamic_features(dataset):
+
+    features = dataset.dynamic_features[0:2]
+    data = dataset.fetch(dataset.stations()[0], dynamic_features=features, as_dataframe=True)
+    data = data.unstack()
+    assert data.shape[1] == 2
+    return
 
 def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
                  test_df=True, yearly_steps=366):
@@ -204,8 +211,8 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
     test_attributes(dataset, num_static_attrs, num_dyn_attrs, num_stations)
 
     # make sure dynamic data from one station have 10 attributes
-    test_fetch_dynamic_attributes(dataset, random.choice(dataset.stations()))
-    test_fetch_dynamic_attributes(dataset, random.choice(dataset.stations()), True)
+    test_fetch_dynamic_features(dataset, random.choice(dataset.stations()))
+    test_fetch_dynamic_features(dataset, random.choice(dataset.stations()), True)
 
     # make sure that dynamic data from 3 stations each have 10 attributes
     test_fetch_dynamic_multiple_stations(dataset, 3,  dyn_data_len)
@@ -216,13 +223,16 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 
     test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), yearly_steps=yearly_steps)
     test_st_en_with_static_and_dynamic(dataset, random.choice(dataset.stations()), True, yearly_steps=yearly_steps)
+
+    # test that selected dynamic features can be retrieved successfully
+    test_selected_dynamic_features(dataset)
     return
 
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
         ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\data\CAMELS\CAMELS-GB")
-        test_dataset(ds_gb, 671, 16436, 145, 10)
+        test_dataset(ds_gb, 671, 16436, 290, 10)
         return
 
     def test_aus(self):
@@ -295,8 +305,8 @@ class TestCamels(unittest.TestCase):
 #         test_attributes(ds_cl, 104, 12, 516)
 #         return
 #
-#     def test_fetch_dynamic_attributes(self):
-#         test_fetch_dynamic_attributes(ds_cl, '6003001', 12)
+#     def test_fetch_dynamic_features(self):
+#         test_fetch_dynamic_features(ds_cl, '6003001', 12)
 #
 #     def test_fetch_dynamic_multiple_stations(self):
 #         test_fetch_dynamic_multiple_stations(ds_cl, 5, 12)

@@ -43,8 +43,8 @@ class Camels(Datasets):
 
     Attributes:
         ds_dir str/path: diretory of the dataset
-        dynamic_attributes list: tells which dynamic attributes are available in this dataset
-        static_attributes list: a list of static attributes.
+        dynamic_features list: tells which dynamic attributes are available in this dataset
+        static_features list: a list of static attributes.
         static_attribute_categories list: tells which kinds of static attributes
             are present in this category.
 
@@ -58,14 +58,14 @@ class Camels(Datasets):
             their guage_id or  by just saying that we need data of 20 stations
             which will then be chosen randomly.
 
-        fetch_dynamic_attributes :
+        fetch_dynamic_features :
             fetches speficied dynamic attributes of one specified station. If the
             dynamic attribute is not specified, all dynamic attributes will be
             fetched for the specified station. If station is not specified, the
             specified dynamic attributes will be fetched for all stations.
 
-        fetch_static_attributes :
-            works same as `fetch_dynamic_attributes` but for `static` attributes.
+        fetch_static_features :
+            works same as `fetch_dynamic_features` but for `static` attributes.
             Here if the `category` is not specified then static attributes of
             the specified station for all categories are returned.
         stations : returns list of stations
@@ -80,10 +80,10 @@ class Camels(Datasets):
     def stations(self):
         raise NotImplementedError
 
-    def _read_dynamic_from_csv(self, station, dynamic_attributes):
+    def _read_dynamic_from_csv(self, station, dynamic_features):
         raise NotImplementedError
 
-    def fetch_static_attributes(self, station, static_attributes):
+    def fetch_static_features(self, station, static_features):
         raise NotImplementedError
 
     @property
@@ -134,8 +134,8 @@ class Camels(Datasets):
 
     def fetch(self,
               stations: Union[str, list, int, float, None] = None,
-              dynamic_attributes: Union[list, str, None] = 'all',
-              static_attributes: Union[str, list, None] = None,
+              dynamic_features: Union[list, str, None] = 'all',
+              static_features: Union[str, list, None] = None,
               st: Union[None, str] = None,
               en: Union[None, str] = None,
               **kwargs
@@ -150,9 +150,9 @@ class Camels(Datasets):
                 stations/gauge_ids. If None (default), then attributes of all
                 available stations. If float, it will be supposed that the user
                 wants data of this fraction of stations.
-            dynamic_attributes : If not None, then it is the attributes to be
+            dynamic_features : If not None, then it is the attributes to be
                 fetched. If None, then all available attributes are fetched
-            static_attributes : list of static attributes to be fetches. None
+            static_features : list of static attributes to be fetches. None
                 means no static attribute will be fetched.
             st : starting date of data to be returned. If None, the data will be
                 returned from where it is available.
@@ -180,7 +180,7 @@ class Camels(Datasets):
         else:
             raise TypeError(f"Unknown value provided for stations {stations}")
 
-        return self.fetch_stations_attributes(stations, dynamic_attributes, static_attributes,
+        return self.fetch_stations_attributes(stations, dynamic_features, static_features,
                                               st=st, en=en,
                                               **kwargs)
 
@@ -189,7 +189,7 @@ class Camels(Datasets):
         if not os.path.exists(self.dyn_fname):
             # saving all the data in netCDF file using xarray
             print(f'converting data to netcdf format for faster io operations')
-            data = self.fetch(static_attributes=None)
+            data = self.fetch(static_features=None)
             data_vars = {}
             coords = {}
             for k, v in data.items():
@@ -209,8 +209,8 @@ class Camels(Datasets):
 
     def fetch_stations_attributes(self,
                                   stations: list,
-                                  dynamic_attributes='all',
-                                  static_attributes=None,
+                                  dynamic_features='all',
+                                  static_features=None,
                                   st=None,
                                   en=None,
                                   as_dataframe:bool = False,
@@ -218,9 +218,9 @@ class Camels(Datasets):
         """Reads attributes of more than one stations.
         Arguments:
             stations : list of stations for which data is to be fetched.
-            dynamic_attributes : list of dynamic attributes to be fetched.
+            dynamic_features : list of dynamic attributes to be fetched.
                 if 'all', then all dynamic attributes will be fetched.
-            static_attributes : list of static attributes to be fetched.
+            static_features : list of static attributes to be fetched.
                 If `all`, then all static attributes will be fetched. If None,
                 then no static attribute will be fetched.
             st : start of data to be fetched.
@@ -233,50 +233,50 @@ class Camels(Datasets):
             are by default returned as xr.Dataset unless as_dataframe is False, in
             such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
             it consists of `data_vars` equal to number of stations and for each
-            station, the DataArray is of dimensions (time, dynamic_attributes).
+            station, the DataArray is of dimensions (time, dynamic_features).
             In case, when the returned object is pandas DataFrame, the first index
             is `time` and second index is `dyanamic_features`. Static attributes
-            are always returned as pandas Series. If `dynamic_attributes` is None,
-            then they are not returned. Same holds true for `static_attributes`.
+            are always returned as pandas Series. If `dynamic_features` is None,
+            then they are not returned. Same holds true for `static_features`.
             If both are not None, then the returned type is a dictionary with
             `static` and `dynamic` keys.
 
         Raises:
-            ValueError, if both dynamic_attributes and static_attributes are None
+            ValueError, if both dynamic_features and static_features are None
             """
         st, en = self._check_length(st, en)
 
-        if dynamic_attributes is not None:
+        if dynamic_features is not None:
 
-            dynamic_attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
+            dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
 
             if not os.path.exists(self.dyn_fname):
                 # read from csv files
                 # following code will run only once when fetch is called inside init method
-                dyn = self._read_dynamic_from_csv(stations, dynamic_attributes)
+                dyn = self._read_dynamic_from_csv(stations, dynamic_features)
 
             else:
                 dyn = xr.load_dataset(self.dyn_fname)  # daataset
-                dyn = dyn[stations].sel(dynamic_features=dynamic_attributes, time=slice(st, en))
+                dyn = dyn[stations].sel(dynamic_features=dynamic_features, time=slice(st, en))
                 if as_dataframe:
                     dyn = dyn.to_dataframe(['time', 'dynamic_features'])
 
-            if static_attributes is not None:
-                static = self.fetch_static_attributes(stations, static_attributes)
+            if static_features is not None:
+                static = self.fetch_static_features(stations, static_features)
                 stns = {'dynamic': dyn, 'static': static}
             else:
                 stns = dyn
 
-        elif static_attributes is not None:
+        elif static_features is not None:
 
-            return self.fetch_static_attributes(stations, static_attributes)
+            return self.fetch_static_features(stations, static_features)
 
         else:
             raise ValueError
 
         return stns
 
-    def fetch_dynamic_attributes(self,
+    def fetch_dynamic_features(self,
                                  stn_id,
                                  attributes='all',
                                  st=None,
@@ -295,8 +295,8 @@ class Camels(Datasets):
 
     def fetch_station_attributes(self,
                                  station: str,
-                                 dynamic_attributes: Union[str, list, None] = 'all',
-                                 static_attributes: Union[str, list, None] = None,
+                                 dynamic_features: Union[str, list, None] = 'all',
+                                 static_features: Union[str, list, None] = None,
                                  as_ts: bool = False,
                                  st: Union[str, None] = None,
                                  en: Union[str, None] = None,
@@ -305,8 +305,8 @@ class Camels(Datasets):
         Fetches attributes for one station.
         Arguments:
             station : station id/gauge id for which the data is to be fetched.
-            dynamic_attributes
-            static_attributes
+            dynamic_features
+            static_features
             as_ts : whether static attributes are to be converted into a time
                 series or not. If yes then the returned time series will be of
                 same length as that of dynamic attribtues.
@@ -320,20 +320,20 @@ class Camels(Datasets):
         st, en = self._check_length(st, en)
 
         station_df = pd.DataFrame()
-        if dynamic_attributes:
-            dynamic = self.fetch_dynamic_attributes(station, dynamic_attributes, st=st, en=en, **kwargs)
+        if dynamic_features:
+            dynamic = self.fetch_dynamic_features(station, dynamic_features, st=st, en=en, **kwargs)
             station_df = pd.concat([station_df, dynamic])
 
-            if static_attributes is not None:
-                static = self.fetch_static_attributes(station, static_attributes)
+            if static_features is not None:
+                static = self.fetch_static_features(station, static_features)
 
                 if as_ts:
                     station_df = pd.concat([station_df, static], axis=1)
                 else:
                     station_df ={'dynamic': station_df, 'static': static}
 
-        elif static_attributes is not None:
-            station_df = self.fetch_static_attributes(station, static_attributes)
+        elif static_features is not None:
+            station_df = self.fetch_static_features(station, static_features)
 
         return station_df
 
@@ -394,13 +394,13 @@ class LamaH(Camels):
 
 
     @property
-    def dynamic_attributes(self):
+    def dynamic_features(self):
         station = self.stations()[0]
         df = self.read_ts_of_station(station)
         return df.columns.to_list()
 
     @property
-    def static_attributes(self) -> list:
+    def static_features(self) -> list:
         fname = os.path.join(self.data_type_dir, f'1_attributes{SEP}Catchment_attributes.csv')
         df = pd.read_csv(fname, sep=';', index_col='ID')
         return df.columns.to_list()
@@ -427,7 +427,7 @@ class LamaH(Camels):
 
     def _read_dynamic_from_csv(self,
                                stations,
-                               dynamic_attributes:Union[str, list]='all'
+                               dynamic_features:Union[str, list]='all'
                                ):
         """Reads attributes of one station"""
 
@@ -437,7 +437,7 @@ class LamaH(Camels):
 
             station_df = pd.DataFrame()
 
-            if dynamic_attributes is not None:
+            if dynamic_features is not None:
 
                 dynamic_df = self.read_ts_of_station(station)
 
@@ -447,19 +447,19 @@ class LamaH(Camels):
 
         return stations_attributes
 
-    def fetch_static_attributes(self,
+    def fetch_static_features(self,
                                 station,
-                                static_attributes=None
+                                static_features=None
                                 ):
 
         fname = os.path.join(self.data_type_dir, f'1_attributes{SEP}Catchment_attributes.csv')
 
         df = pd.read_csv(fname, sep=';', index_col='ID')
 
-        if static_attributes is not None:
-            static_attributes = check_attributes(static_attributes, self.static_attributes)
+        if static_features is not None:
+            static_features = check_attributes(static_features, self.static_features)
 
-        df = df[static_attributes]
+        df = df[static_features]
 
         if isinstance(station, list):
             stations = [int(i) for i in station]
@@ -504,7 +504,7 @@ class HYSETS(Camels):
     Q_SRC = ['ERA5', 'ERA5Land', 'ERA5Land_SWE', 'Livneh', 'nonQC_stations', 'SCDNA', 'SNODAS_SWE']
     SWE_SRC = ['ERA5Land_SWE', 'SNODAS_SWE']
     OTHER_SRC = [src for src in Q_SRC if src not in  ['ERA5Land_SWE', 'SNODAS_SWE']]
-    dynamic_attributes = ['discharge', 'swe', 'tasmin', 'tasmax', 'pr']
+    dynamic_features = ['discharge', 'swe', 'tasmin', 'tasmax', 'pr']
 
     def __init__(self,
                  path:str,
@@ -527,7 +527,7 @@ class HYSETS(Camels):
                 ERAS5Land_SWE: discharge, swe
                 ERA5Land : discharge, pr, tasmax, tasmin
 
-            all sources have following dynamic_attributes with following shapes
+            all sources have following dynamic_features with following shapes
                 time                           (25202,)
                 watershedID                    (14425,)
                 drainage_area                  (14425,)
@@ -603,7 +603,7 @@ class HYSETS(Camels):
         self._ds_dir = x
 
     @property
-    def static_attributes(self):
+    def static_features(self):
         df = self.read_static_data()
         return df.columns.to_list()
 
@@ -620,48 +620,48 @@ class HYSETS(Camels):
 
     def fetch_stations_attributes(self,
                                   stations: list,
-                                  dynamic_attributes: Union[str, list, None] = 'all',
-                                  static_attributes: Union[str, list, None] = None,
+                                  dynamic_features: Union[str, list, None] = 'all',
+                                  static_features: Union[str, list, None] = None,
                                   **kwargs):
 
         stations = check_attributes(stations, self.stations())
         stations = [int(stn) for stn in stations]
 
-        dyn =  self._fetch_dynamic_attributes(stations=stations,
-                                              dynamic_attributes=dynamic_attributes,
+        dyn =  self._fetch_dynamic_features(stations=stations,
+                                              dynamic_features=dynamic_features,
                                               **kwargs)
-        if static_attributes is None:
+        if static_features is None:
             return dyn
 
-        return {'dynamic': dyn, 'static': self._fetch_static_attributes(station=stations,
-                                                                       static_attributes=static_attributes,
+        return {'dynamic': dyn, 'static': self._fetch_static_features(station=stations,
+                                                                       static_features=static_features,
                                                                         **kwargs
                                                                         )}
 
-    def fetch_dynamic_attributes(self,
+    def fetch_dynamic_features(self,
                                  station,
-                                 dynamic_attributes='all',
+                                 dynamic_features='all',
                                  st=None,
                                  en=None,
                                  to_dataframe=False):
         """Fetches dynamic attributes of one station."""
         station = [int(station)]
-        return self._fetch_dynamic_attributes(stations=station,
-                                              dynamic_attributes=dynamic_attributes,
+        return self._fetch_dynamic_features(stations=station,
+                                              dynamic_features=dynamic_features,
                                               st=st,
                                               en=en,
                                               to_dataframe=to_dataframe)
 
-    def _fetch_dynamic_attributes(self,
+    def _fetch_dynamic_features(self,
                                  stations:list,
-                                 dynamic_attributes='all',
+                                 dynamic_features='all',
                                  st=None,
                                  en=None,
                                  to_dataframe=False):
         """Fetches dynamic attributes of station."""
 
         st, en = self._check_length(st, en)
-        attrs = check_attributes(dynamic_attributes, self.dynamic_attributes)
+        attrs = check_attributes(dynamic_features, self.dynamic_features)
 
         stations = np.subtract(stations, 1).tolist()
         # maybe we don't need to read all variables
@@ -683,28 +683,28 @@ class HYSETS(Camels):
 
         return xds
 
-    def _fetch_static_attributes(self,
+    def _fetch_static_features(self,
                                  station,
-                                 static_attributes='all',
+                                 static_features='all',
                                  st=None,
                                  en=None,
                                  as_ts=False):
 
         df = self.read_static_data()
 
-        static_attributes = check_attributes(static_attributes, self.static_attributes)
+        static_features = check_attributes(static_features, self.static_features)
 
-        return self.to_ts(df.loc[station][static_attributes], st=st, en=en, as_ts=as_ts)
+        return self.to_ts(df.loc[station][static_features], st=st, en=en, as_ts=as_ts)
 
-    def fetch_static_attributes(self,
+    def fetch_static_features(self,
                                 station,
-                                static_attributes='all',
+                                static_features='all',
                                 st=None,
                                 en=None,
                                 as_ts=False):
 
         station = [station]
-        return self._fetch_static_attributes(station, static_attributes, st, en, as_ts)
+        return self._fetch_static_features(station, static_features, st, en, as_ts)
 
     def read_static_data(self):
         fname = os.path.join(self.ds_dir, 'HYSETS_watershed_properties.txt')
@@ -729,7 +729,7 @@ class CAMELS_US(Camels):
                'elev_bands': f'elev{SEP}daymet',
                'hru': f'hru_forcing{SEP}daymet'}
 
-    dynamic_attributes = ['dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
+    dynamic_features = ['dayl(s)', 'prcp(mm/day)', 'srad(W/m2)',
                           'swe(mm)', 'tmax(C)', 'tmin(C)', 'vp(Pa)', 'Flow']
 
     def __init__(self, data_source='basin_mean_daymet'):
@@ -765,8 +765,8 @@ class CAMELS_US(Camels):
         return "20141231"
 
     @property
-    def static_attributes(self):
-        static_fpath = os.path.join(self.ds_dir, 'static_attributes.csv')
+    def static_features(self):
+        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
             cols = []
@@ -793,12 +793,12 @@ class CAMELS_US(Camels):
 
     def _read_dynamic_from_csv(self,
                                stations,
-                               dynamic_attributes:Union[str, list]='all'
+                               dynamic_features:Union[str, list]='all'
                                ):
         dyn = {}
         for station in stations:
 
-            attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
+            attributes = check_attributes(dynamic_features, self.dynamic_features)
 
             assert isinstance(station, str)
             df = None
@@ -835,11 +835,11 @@ class CAMELS_US(Camels):
 
         return dyn
 
-    def fetch_static_attributes(self, station, static_attributes):
+    def fetch_static_features(self, station, static_features):
 
-        attributes = check_attributes(static_attributes, self.static_attributes)
+        attributes = check_attributes(static_features, self.static_features)
 
-        static_fpath = os.path.join(self.ds_dir, 'static_attributes.csv')
+        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
             static_df = pd.DataFrame()
@@ -911,7 +911,7 @@ class CAMELS_BR(Camels):
         return all_files
 
     @property
-    def dynamic_attributes(self) -> list:
+    def dynamic_features(self) -> list:
         return list(CAMELS_BR.folders.keys())
 
     @property
@@ -923,8 +923,8 @@ class CAMELS_BR(Camels):
         return static_attrs
 
     @property
-    def static_attributes(self):
-        static_fpath = os.path.join(self.ds_dir, 'static_attributes.csv')
+    def static_features(self):
+        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes','01_CAMELS_BR_attributes')}/*.txt")
             cols = []
@@ -971,7 +971,7 @@ class CAMELS_BR(Camels):
             to_exclude = []
 
         stations = {}
-        for dyn_attr in self.dynamic_attributes:
+        for dyn_attr in self.dynamic_features:
             if dyn_attr not in to_exclude:
                 stations[dyn_attr] = self.all_stations(dyn_attr)
 
@@ -985,13 +985,13 @@ class CAMELS_BR(Camels):
         returns the dynamic/time series attribute/attributes for one station id.
         ```python
         >>>dataset = CAMELS_BR()
-        >>>pcp = dataset.fetch_dynamic_attributes('10500000', 'precipitation_cpc')
+        >>>pcp = dataset.fetch_dynamic_features('10500000', 'precipitation_cpc')
         ...# fetch all time series data associated with a station.
-        >>>x = dataset.fetch_dynamic_attributes('51560000', dataset.dynamic_attributes)
+        >>>x = dataset.fetch_dynamic_features('51560000', dataset.dynamic_features)
         ```
         """
 
-        attributes = check_attributes(attributes, self.dynamic_attributes)
+        attributes = check_attributes(attributes, self.dynamic_features)
 
         dyn = {}
         for stn_id in stations:
@@ -1017,7 +1017,7 @@ class CAMELS_BR(Camels):
 
         return dyn
 
-    def fetch_static_attributes(self,
+    def fetch_static_features(self,
                                 stn_id,
                                 attributes=None
                                 ) -> pd.DataFrame:
@@ -1037,7 +1037,7 @@ class CAMELS_BR(Camels):
         -------
         ```python
         >>>dataset = Camels('CAMELS-BR')
-        >>>df = dataset.fetch_static_attributes(11500000, 'climate')
+        >>>df = dataset.fetch_static_features(11500000, 'climate')
         ```
         """
         if isinstance(stn_id, str):
@@ -1049,9 +1049,9 @@ class CAMELS_BR(Camels):
         else:
             raise ValueError
 
-        attributes = check_attributes(attributes, self.static_attributes)
+        attributes = check_attributes(attributes, self.static_features)
 
-        static_fpath = os.path.join(self.ds_dir, 'static_attributes.csv')
+        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(f"{os.path.join(self.ds_dir, '01_CAMELS_BR_attributes','01_CAMELS_BR_attributes')}/*.txt")
             static_df = pd.DataFrame()
@@ -1070,7 +1070,7 @@ class CAMELS_GB(Camels):
     This dataset must be manually downloaded by the user.
     The path of the downloaded folder must be provided while initiating this class.
     """
-    dynamic_attributes = ["precipitation", "pet", "temperature", "discharge_spec", "discharge_vol", "peti",
+    dynamic_features = ["precipitation", "pet", "temperature", "discharge_spec", "discharge_vol", "peti",
                           "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
 
     def __init__(self, path=None):
@@ -1108,11 +1108,11 @@ class CAMELS_GB(Camels):
         return "20150930"
 
     @property
-    def static_attributes(self):
+    def static_features(self):
         files = glob.glob(f"{os.path.join(self.ds_dir, 'data')}/*.csv")
         cols = []
         for f in files:
-            if 'static_attributes.csv' not in f:
+            if 'static_features.csv' not in f:
                 df = pd.read_csv(f, nrows=1, index_col='gauge_id')
                 cols += (list(df.columns))
         return cols
@@ -1149,14 +1149,14 @@ class CAMELS_GB(Camels):
 
         return dyn
 
-    def fetch_static_attributes(self,
+    def fetch_static_features(self,
                                 stn_id,
                                 attributes='all'
                                 ) -> pd.DataFrame:
         """Fetches static attributes of one station for one or more category as dataframe."""
 
-        attributes = check_attributes(attributes, self.static_attributes)
-        static_fname = 'static_attributes.csv'
+        attributes = check_attributes(attributes, self.static_features)
+        static_fname = 'static_features.csv'
         static_fpath = os.path.join(self.ds_dir, 'data', static_fname)
         if os.path.exists(static_fpath):
             static_df = pd.read_csv(static_fpath, index_col='gauge_id')
@@ -1284,8 +1284,8 @@ class CAMELS_AUS(Camels):
         return attributes
 
     @property
-    def static_attributes(self) -> list:
-        static_fpath = os.path.join(self.ds_dir, 'static_attributes.csv')
+    def static_features(self) -> list:
+        static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
         if not os.path.exists(static_fpath):
             files = glob.glob(f"{os.path.join(self.ds_dir, '04_attributes', '04_attributes')}/*.csv")
             cols = []
@@ -1299,14 +1299,14 @@ class CAMELS_AUS(Camels):
         return cols
 
     @property
-    def dynamic_attributes(self) -> list:
+    def dynamic_features(self) -> list:
         return list(self.folders.keys())
 
     def _read_static(self, stations, attributes,
                      st=None, en=None):
 
-        attributes = check_attributes(attributes, self.static_attributes)
-        static_fname = 'static_attributes.csv'
+        attributes = check_attributes(attributes, self.static_features)
+        static_fname = 'static_features.csv'
         static_fpath = os.path.join(self.ds_dir, static_fname)
         if os.path.exists(static_fpath):
             static_df = pd.read_csv(static_fpath, index_col='station_id')
@@ -1320,11 +1320,11 @@ class CAMELS_AUS(Camels):
 
         return self.to_ts(pd.DataFrame(static_df.loc[stations][attributes]), st, en)
 
-    def _read_dynamic_from_csv(self, stations, dynamic_attributes, **kwargs):
+    def _read_dynamic_from_csv(self, stations, dynamic_features, **kwargs):
 
         dyn_attrs = {}
         dyn = {}
-        for _attr in dynamic_attributes:
+        for _attr in dynamic_features:
 
             _path = os.path.join(self.ds_dir, f'{self.folders[_attr]}.csv')
             _df = pd.read_csv(_path, na_values=['-99.99'])
@@ -1337,13 +1337,13 @@ class CAMELS_AUS(Camels):
         for stn in stations:
             stn_df = pd.DataFrame()
             for attr, attr_df in dyn_attrs.items():
-                if attr in dynamic_attributes:
+                if attr in dynamic_features:
                     stn_df[attr] = attr_df[stn]
             dyn[stn] = stn_df
 
         return dyn
 
-    def fetch_static_attributes(self,
+    def fetch_static_features(self,
                                 stn_id,
                                 attribute='all',
                                 **kwargs) -> pd.DataFrame:
@@ -1386,7 +1386,7 @@ class CAMELS_CL(Camels):
         "CAMELScl_catchment_boundaries.zip": "https://store.pangaea.de/Publications/Alvarez-Garreton-etal_2018/",
     }
 
-    dynamic_attributes = ['streamflow_m3s', 'streamflow_mm',
+    dynamic_features = ['streamflow_m3s', 'streamflow_mm',
                           'precip_cr2met', 'precip_chirps', 'precip_mswep', 'precip_tmpa',
                           'tmin_cr2met', 'tmax_cr2met', 'tmean_cr2met',
                           'pet_8d_modis', 'pet_hargreaves',
@@ -1431,7 +1431,7 @@ class CAMELS_CL(Camels):
         return "20180309"
 
     @property
-    def static_attributes(self) -> list:
+    def static_features(self) -> list:
         path = os.path.join(self.ds_dir, f"1_CAMELScl_attributes{SEP}1_CAMELScl_attributes.txt")
         df = pd.read_csv(path, sep='\t', index_col='gauge_id')
         return df.index.to_list()
@@ -1439,7 +1439,7 @@ class CAMELS_CL(Camels):
     def stations(self) -> list:
         """Tells all station ids for which a data of a specific attribute is available."""
         _stations = {}
-        for dyn_attr in self.dynamic_attributes:
+        for dyn_attr in self.dynamic_features:
             for _dir in self._all_dirs:
                 if dyn_attr in _dir:
                     fname = os.path.join(self.ds_dir, f"{_dir}{SEP}{_dir}.txt")
@@ -1450,8 +1450,8 @@ class CAMELS_CL(Camels):
 
     def fetch_stations_attributes(self,
                                   stations: list,
-                                  dynamic_attributes='all',
-                                  static_attributes=None,
+                                  dynamic_features='all',
+                                  static_features=None,
                                   st=None,
                                   en=None,
                                   as_dataframe=False,
@@ -1462,27 +1462,27 @@ class CAMELS_CL(Camels):
             are by default returned as xr.Dataset unless as_dataframe is False, in
             such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
             it consists of `data_vars` equal to number of stations and for each
-            station, the DataArray is of dimensions (time, dynamic_attributes).
+            station, the DataArray is of dimensions (time, dynamic_features).
             In case, when the returned object is pandas DataFrame, the first index
             is `time` and second index is `dyanamic_features`. Static attributes
-            are always returned as pandas Series. If `dynamic_attributes` is None,
-            then they are not returned. Same holds true for `static_attributes`.
+            are always returned as pandas Series. If `dynamic_features` is None,
+            then they are not returned. Same holds true for `static_features`.
             If both are not None, then the returned type is a dictionary with
             `static` and `dynamic` keys.
 
         Raises:
-            ValueError, if both dynamic_attributes and static_attributes are None
+            ValueError, if both dynamic_features and static_features are None
             """
         dyn = {}
         st, en = self._check_length(st, en)
 
-        if static_attributes is not None:
-            static_attributes = check_attributes(static_attributes, self.static_attributes)
+        if static_features is not None:
+            static_features = check_attributes(static_features, self.static_features)
 
         assert all(stn in self.stations() for stn in stations)
 
-        if dynamic_attributes is not None:
-            dynamic_attributes = check_attributes(dynamic_attributes, self.dynamic_attributes)
+        if dynamic_features is not None:
+            dynamic_features = check_attributes(dynamic_features, self.dynamic_features)
 
             if not os.path.exists(self.dyn_fname):
                 # read from csv files
@@ -1492,7 +1492,7 @@ class CAMELS_CL(Camels):
 
                 # reading all dynnamic attributes
                 dyn_attrs = {}
-                for attr in dynamic_attributes:
+                for attr in dynamic_features:
                     fname = [f for f in self._all_dirs if '_'+attr in f][0]
                     fname = os.path.join(self.ds_dir, f'{fname}{SEP}{fname}.txt')
                     _df = pd.read_csv(fname, sep='\t', index_col=['gauge_id'])
@@ -1503,23 +1503,23 @@ class CAMELS_CL(Camels):
                 for stn in stations:
                     stn_df = pd.DataFrame()
                     for attr, attr_df in dyn_attrs.items():
-                        if attr in dynamic_attributes:
+                        if attr in dynamic_features:
                             stn_df[attr] = attr_df[stn]
                     dyn[stn] = stn_df[st:en]
             else:
                 dyn = xr.load_dataset(self.dyn_fname)  # daataset
-                dyn = dyn[stations].sel(dynamic_features=dynamic_attributes, time=slice(st, en))
+                dyn = dyn[stations].sel(dynamic_features=dynamic_features, time=slice(st, en))
                 if as_dataframe:
                     dyn = dyn.to_dataframe(['time', 'dynamic_features'])
 
-            if static_attributes is not None:
-                static = self._read_static(stations, static_attributes)
+            if static_features is not None:
+                static = self._read_static(stations, static_features)
                 stns = {'dynamic': dyn, 'static': static}
             else:
                 stns = dyn
 
-        elif static_attributes is not None:
-            return self._read_static(stations, static_attributes)
+        elif static_features is not None:
+            return self._read_static(stations, static_features)
         else:
             raise ValueError
 
@@ -1542,7 +1542,7 @@ class CAMELS_CL(Camels):
 
         return stns_df
 
-    def fetch_dynamic_attributes(self,
+    def fetch_dynamic_features(self,
                                  stn_id,
                                  attributes='all',
                                  st=None,
@@ -1555,7 +1555,7 @@ class CAMELS_CL(Camels):
         st, en = self._check_length(st, en)
 
         if attributes == 'all':
-            attributes = self.dynamic_attributes
+            attributes = self.dynamic_features
 
         assert isinstance(stn_id, str), f"provide only one station_id. You provided {stn_id}"
 
@@ -1574,7 +1574,7 @@ class CAMELS_CL(Camels):
 
         return df
 
-    def fetch_static_attributes(self,
+    def fetch_static_features(self,
                                 station,
                                 attributes=None,
                                 st=None,
@@ -1595,7 +1595,7 @@ class HYPE(Camels):
         "https://zenodo.org/record/581435",
         "https://zenodo.org/record/4029572"
     ]
-    dynamic_attributes = [
+    dynamic_features = [
         'AET_mm',
         'Baseflow_mm',
         'Infiltration_mm',
@@ -1632,7 +1632,7 @@ class HYPE(Camels):
         return list(_stations)
 
     @property
-    def static_attributes(self):
+    def static_features(self):
         return []
 
     def _read_dynamic_from_csv(self,
@@ -1640,10 +1640,10 @@ class HYPE(Camels):
                                attributes:Union[str, list]='all',
                                ):
 
-        dynamic_attributes = check_attributes(attributes, self.dynamic_attributes)
+        dynamic_features = check_attributes(attributes, self.dynamic_features)
 
         _dynamic_attributes = []
-        for dyn_attr in dynamic_attributes:
+        for dyn_attr in dynamic_features:
             pref, suff = dyn_attr.split('_')[0], dyn_attr.split('_')[-1]
             _dyn_attr = f"{pref}_{self.time_step}_{suff}"
             _dynamic_attributes.append(_dyn_attr)
@@ -1674,7 +1674,7 @@ class HYPE(Camels):
 
         return stns_dfs
 
-    def fetch_static_attributes(self, station, static_attributes):
+    def fetch_static_features(self, station, static_features):
         return pd.DataFrame(index= station)
 
     @property
