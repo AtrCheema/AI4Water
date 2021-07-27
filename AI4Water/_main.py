@@ -796,7 +796,7 @@ class BaseModel(NN, Plots):
         self.is_training = False
         return history
 
-    def load_best_wegiths(self):
+    def load_best_weights(self):
         if self.config['backend'] != 'pytorch':
             # load the best weights so that the best weights can be used during model.predict calls
             best_weights = find_best_weight(os.path.join(self.path, 'weights'))
