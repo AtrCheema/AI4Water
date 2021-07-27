@@ -5,6 +5,7 @@ import time
 import pprint
 import random
 import warnings
+from typing import Union, Callable
 from types import MethodType
 
 try:
@@ -55,13 +56,14 @@ class BaseModel(NN, Plots):
                  data = None,
                  lr: float = 0.001,
                  optimizer = 'adam',
-                 loss = 'mse',
+                 loss:Union[str, Callable] = 'mse',
                  quantiles = None,
                  epochs:int = 14,
                  min_val_loss:float = 0.0001,
-                 patience = 100,
-                 save_model = True,
-                 metrics = None,
+                 patience:int = 100,
+                 save_model:bool = True,
+                 metrics:Union[str, list] = None,
+                 cross_validator:dict=None,
                  seed:int = 313,
                  prefix: str = None,
                  path: str = None,
@@ -132,6 +134,14 @@ class BaseModel(NN, Plots):
                  The number of sub-sequences. Relevent for building CNN-LSTM based models.
              metrics str/list:
                  metrics to be monitored. e.g. ['nse', 'pbias']
+             cross_validator :
+                selects the type of cross validation to be applied. It can be any
+                cross validator from sklear.model_selection. Default is None, which
+                means validation will be done using `validation_data`. To use
+                kfold cross validation,
+                ```python
+                cross_validator = {'kfold': {'n_splits': 5}}
+                ```
              batches str:
                  either `2d` or 3d`.
              seed int:
@@ -179,6 +189,7 @@ class BaseModel(NN, Plots):
                                patience = patience,
                                save_model = save_model,
                                metrics = metrics or ['nse'],
+                               cross_validator = cross_validator,
                                accept_additional_args = accept_additional_args,
                                seed = seed,
                                **kwargs)
@@ -774,24 +785,9 @@ class BaseModel(NN, Plots):
 
             visualizer.plot_loss(history.history)
 
-            if self.config['backend'] != 'pytorch':
-                # load the best weights so that the best weights can be used during model.predict calls
-                best_weights = find_best_weight(os.path.join(self.path, 'weights'))
-                if best_weights is None:
-                    warnings.warn("best weights could not be found and are not loaded", UserWarning)
-                else:
-                    self.allow_weight_loading = True
-                    self.update_weights(best_weights)
+            self.load_best_weights()
         else:
-            history = self._model.fit(inputs, outputs.reshape(-1, ))
-            model_name = list(self.config['model'].keys())[0]
-            fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
-
-            if "TPOT" not in model_name.upper():
-                joblib.dump(self._model, fname)
-
-            if model_name.lower().startswith("xgb"):
-                self._model.save_model(fname + ".json")
+            history = self.fit_ml_models(inputs, outputs)
 
         self.info['training_end'] = dateandtime_now()
         self.save_config()
@@ -799,6 +795,58 @@ class BaseModel(NN, Plots):
 
         self.is_training = False
         return history
+
+    def load_best_wegiths(self):
+        if self.config['backend'] != 'pytorch':
+            # load the best weights so that the best weights can be used during model.predict calls
+            best_weights = find_best_weight(os.path.join(self.path, 'weights'))
+            if best_weights is None:
+                warnings.warn("best weights could not be found and are not loaded", UserWarning)
+            else:
+                self.allow_weight_loading = True
+                self.update_weights(best_weights)
+        return
+
+    def fit_ml_models(self, inputs, outputs):
+
+        history = self._model.fit(inputs, outputs.reshape(-1, ))
+        model_name = list(self.config['model'].keys())[0]
+        fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
+
+        if "TPOT" not in model_name.upper():
+            joblib.dump(self._model, fname)
+
+        if model_name.lower().startswith("xgb"):
+            self._model.save_model(fname + ".json")
+        return history
+
+    def cross_val_score(self, scoring='mse'):
+
+        scores = []
+
+        cross_validator = list(self.config['cross_validator'].keys())[0]
+        cross_validator_args = self.config['cross_validator'][cross_validator]
+
+        if callable(cross_validator):
+            splits = cross_validator(**cross_validator_args)
+        else:
+            splits = getattr(self.dh, f'{cross_validator}_splits')(**cross_validator_args)
+
+        for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
+
+            self._model.fit(train_x, y=train_y.reshape(-1, self.num_outs))
+
+            pred = self._model.predict(test_x)
+
+            metrics = RegressionMetrics(test_y.reshape(-1, self.num_outs), pred)
+            val_score = getattr(metrics, scoring)()
+
+            scores.append(val_score)
+
+            if self.verbosity>0:
+                print(f'fold: {fold} val_loss: {val_score}')
+
+        return np.mean(scores)
 
     def evaluate(self, data_type='training', **kwargs):
         """

@@ -240,6 +240,10 @@ def _make_model(data, **kwargs):
         ]:
             def_prob = 'classification'
 
+    accept_additional_args = False
+    if 'accept_additional_args' in kwargs:
+        accept_additional_args = kwargs.pop('accept_additional_args')
+
     model_args = {
 
         'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
@@ -288,6 +292,7 @@ def _make_model(data, **kwargs):
         'prefix': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
         'path': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
+        'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
     }
 
     data_args = {
@@ -355,7 +360,7 @@ def _make_model(data, **kwargs):
             update_dict(arg_name, val, data_args, config)
 
         # config may contain additional user defined args which will not be checked
-        elif not kwargs.get('accept_additional_args', False):
+        elif not accept_additional_args:
             raise ValueError(f"Unknown keyworkd argument '{key}' provided")
         else:
             config[key] = val
@@ -391,10 +396,10 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):
     """Updates the dictionary with key, val if the val is of type dtype."""
-    dtype = dict_to_lookup[key]['type']
-    low = dict_to_lookup[key]['lower']
-    up = dict_to_lookup[key]['upper']
-    between = dict_to_lookup[key]['between']
+    dtype = dict_to_lookup[key].get('type', None)
+    low = dict_to_lookup[key].get('lower', None)
+    up = dict_to_lookup[key].get('upper', None)
+    between = dict_to_lookup[key].get('between', None)
 
     if dtype is not None:
         if isinstance(dtype, list):

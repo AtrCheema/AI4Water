@@ -8,7 +8,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, LeaveOneOut
 from sklearn.preprocessing import OneHotEncoder
 
 from .utils.utils import prepare_data, jsonize
@@ -723,9 +723,33 @@ class DataHandler(AttributeContainer):
         ```
         """
 
+        x,y = self._get_xy()
 
-        tr_x, prev_y, tr_y = self.training_data()
-        val_x, prev_y, val_y = self.validation_data()
+        kf = KFold(n_splits=n_splits, random_state=self.config['seed'] if self.config['shuffle'] else None,
+                   shuffle=self.config['shuffle'])
+        spliter = kf.split(x)
+
+        for tr_idx, test_idx in spliter:
+
+            yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
+
+    def LeaveOneOut_splits(self):
+        """Yields leave one out splits"""
+        x,y = self._get_xy()
+
+        kf = LeaveOneOut()
+
+        for tr_idx, test_idx in kf.split(x):
+
+            yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
+
+    def _get_xy(self):
+        if self.teacher_forcing:
+            tr_x, prev_y, tr_y = self.training_data()
+            val_x, prev_y, val_y = self.validation_data()
+        else:
+            tr_x, tr_y = self.training_data()
+            val_x, val_y = self.validation_data()
 
         def check_if_none(X, Y):
 
@@ -748,14 +772,7 @@ class DataHandler(AttributeContainer):
 
         else:
             raise NotImplementedError
-
-        kf = KFold(n_splits=n_splits, random_state=self.config['seed'] if self.config['shuffle'] else None,
-                   shuffle=self.config['shuffle'])
-        spliter = kf.split(x)
-
-        for tr_idx, test_idx in spliter:
-
-            yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
+        return x, y
 
     def make_val_frac_zero(self):
 
