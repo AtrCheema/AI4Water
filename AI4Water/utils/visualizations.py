@@ -510,14 +510,21 @@ class Visualizations(Plot):
 
         # it is quite possible that when data is datetime indexed, then it is not equalidistant and large amount of graph
         # will have not data in that case lines plot will create a lot of useless interpolating lines where no data is present.
-        style = '.' if isinstance(true.index, pd.DatetimeIndex) else '-'
-
-        if np.isnan(true.values).sum() > 0:
-            style = '.' # For Nan values we should be using this style otherwise nothing is plotted.
+        if isinstance(true.index, pd.DatetimeIndex) and pd.infer_freq(true.index) is not None:
+            style = '.'
+            true = true
+            predicted = predicted
+        else:
+            if np.isnan(true.values).sum() > 0:
+                style = '.'  # For Nan values we should be using this style otherwise nothing is plotted.
+            else:
+                style = '-'
+                true = true.values
+                predicted = predicted.values
 
         ms = 4 if style == '.' else 2
 
-        axis.plot(predicted, style, color='r', linestyle='--', marker='', label='Prediction')
+        axis.plot(predicted, style, color='r',  marker='', label='Prediction')
 
         axis.plot(true, style, color='b', marker='o', fillstyle='none',  markersize=ms, label='True')
 
