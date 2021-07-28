@@ -53,7 +53,21 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     in detail in [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)
     Arguments:
         inputs list: features to use as input. By default all environmental data
-            is used.
+            is used. Logically one or more from following can be considered as
+            target
+                - ecoli
+                - 16s
+                - inti1
+                - Total_args
+                - tetx_coppml
+                - sul1_coppml
+                - blaTEM_coppml
+                - aac_coppml
+                - Total_otus
+                - otu_5575
+                - otu_273
+                - otu_94
+
         target list/str: feature/features to use as target/output. By default
             `tetx_coppml` is used as target.
     Returns:
