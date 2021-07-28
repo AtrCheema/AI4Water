@@ -53,8 +53,24 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     in detail in [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)
     Arguments:
         inputs list: features to use as input. By default all environmental data
-            is used. Logically one or more from following can be considered as
-            target
+            is used which consists of following parameters
+                - tide_cm
+                - wat_temp_c
+                - sal_psu
+                - air_temp_c
+                - pcp_mm
+                - pcp3_mm
+                - pcp6_mm
+                - pcp12_mm
+                - wind_dir_deg
+                - wind_speed_mps
+                - air_p_hpa
+                - mslp_hpa
+                - rel_hum
+
+        target list/str: feature/features to use as target/output. By default
+            `tetx_coppml` is used as target.
+            Logically one or more from following can be considered as target
                 - ecoli
                 - 16s
                 - inti1
@@ -67,9 +83,6 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
                 - otu_5575
                 - otu_273
                 - otu_94
-
-        target list/str: feature/features to use as target/output. By default
-            `tetx_coppml` is used as target.
     Returns:
         a pandas dataframe with inputs and target and indexed
             with pandas.DateTimeIndex
