@@ -458,7 +458,9 @@ class BaseModel(NN, Plots):
         ))
 
         if 'tensorboard' in callbacks:
-            _callbacks.append(keras.callbacks.TensorBoard(log_dir=self.path, histogram_freq=1))
+            tb_kwargs = callbacks['tensorboard']
+            if 'log_dir' not in tb_kwargs: tb_kwargs['log_dir'] = self.path
+            _callbacks.append(keras.callbacks.TensorBoard(**tb_kwargs))
             callbacks.pop('tensorboard')
 
         for key, val in callbacks.items():
@@ -720,7 +722,7 @@ class BaseModel(NN, Plots):
 
     def fit(self,
             data:str = 'training',
-            callbacks=None,
+            callbacks:dict=None,
             **kwargs
             ):
         """
@@ -729,7 +731,8 @@ class BaseModel(NN, Plots):
 
         Arguments:
             data : data to use for model training. Default is 'training.
-            callbacks : Any callback compatible with keras
+            callbacks : Any callback compatible with keras. If you want to log the output
+                to tensorboard, then just use `callbacks={'tensorboard':{}}`
             kwargs : Any keyword argument for the `fit` method of the underlying algorithm.
                 if 'x' is present in kwargs, that will take precedent over `data`.
         Returns:
