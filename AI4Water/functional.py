@@ -333,7 +333,7 @@ class Model(BaseModel):
 
             self.info['model_parameters'] = int(self._model.count_params()) if self._model is not None else None
 
-            if self.verbosity > 0:
+            if self.verbosity > 0 and self.config['model'] is not None:
                 if 'tcn' in self.config['model']['layers']:
                     if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
                         setattr(self._model, '_layers', self._model.layers)  # tf >= 2.5 does not have _layers and tcn uses _layers
