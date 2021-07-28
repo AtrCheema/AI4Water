@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 
 from AI4Water import DataHandler
-from AI4Water._data import MultiLocDataHandler
-from AI4Water.utils.utils import to_datetime_index
+from AI4Water._data import MultiLocDataHandler 
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
@@ -134,10 +133,10 @@ def compare_individual_item(source, key, cols, y, data_loader):
     if y is None:
         return
 
-    if isinstance(source.index, pd.DatetimeIndex):
-        train_index = to_datetime_index(data_loader.indexes[key])
-    else:
-        train_index = data_loader.indexes[key]
+    #if isinstance(source.index, pd.DatetimeIndex):
+    #    train_index = to_datetime_index(data_loader.indexes[key])
+    #else:
+    train_index = data_loader.indexes[key]
 
     if y.__class__.__name__ in ['DataFrame']:
         y = y.values
@@ -1286,6 +1285,24 @@ class TestAllCases(object):
             assert loader.source_is_df
         return
 
+
+def test_with_random_with_transformation_of_features():
+    examples = 100
+    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
+    data = pd.DataFrame(data, columns=['a', 'b', 'c'], index=pd.date_range('20110101', periods=len(data), freq='D'))
+    data['date'] = data.index
+    config = {'input_features':['b'],
+              'output_features': ['c'],
+              'lookback': 5,
+              'train_data': 'random'}
+
+    dh = DataHandler(data, **config)
+
+    x,y = dh.training_data()
+
+    return
+
+
 def test_random_with_intervals():
     data = np.random.randint(0, 1000, (40560, 14))
     input_features = [f'input_{i}' for i in range(13)]
@@ -1511,25 +1528,26 @@ def test_multisource_multi_loc():
 
 
 test_multisource_multi_loc()
-# test_random_with_intervals()
-# test_AI4WaterDataSets()
-# test_multisource_basic()
-# test_multisource_basic2()
-# test_multisource_basic3()
+test_with_random_with_transformation_of_features()
+test_random_with_intervals()
+test_AI4WaterDataSets()
+test_multisource_basic()
+test_multisource_basic2()
+test_multisource_basic3()
 
 
 # TestAllCases(input_features = ['a', 'b'],
 #             output_features=['c'], lookback=1, save=False, allow_nan_labels=2)
 
 # # # ##testing single dataframe with single output and multiple inputs
-# TestAllCases(input_features = ['a', 'b'],
-#            output_features=['c'], allow_nan_labels=2, save=False)
+TestAllCases(input_features = ['a', 'b'],
+           output_features=['c'], allow_nan_labels=2, save=False)
+#
+# # ## ##testing single dataframe with multiple output and sing inputs
+TestAllCases(input_features = ['a'],
+            output_features=['b', 'c'], allow_nan_labels=1, save=False)
 # #
-# # # ## ##testing single dataframe with multiple output and sing inputs
-# TestAllCases(input_features = ['a'],
-#             output_features=['b', 'c'], allow_nan_labels=1, save=False)
-# # #
-# # #  ##testing single dataframe with all inputs and not output
-# TestAllCases(input_features = ['a', 'b', 'c'],
-#             output_features=None)
+# #  ##testing single dataframe with all inputs and not output
+TestAllCases(input_features = ['a', 'b', 'c'],
+            output_features=None)
 

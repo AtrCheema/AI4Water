@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold, LeaveOneOut
 from sklearn.preprocessing import OneHotEncoder
 
-from .utils.utils import prepare_data, jsonize
+from .utils.utils import prepare_data, jsonize, to_datetime_index
 from .utils.datasets import all_datasets
 from .utils.transformations import Transformations
 from .utils.imputation import Imputation
@@ -428,7 +428,7 @@ class DataHandler(AttributeContainer):
             assert isinstance(_outputs, list)
 
         elif isinstance(self.source, dict):
-            assert isinstance(_outputs, dict)
+            assert isinstance(_outputs, dict), f'data is of type dict while output_features are of type {_outputs.__class__.__name__}'
             for k in self.source.keys():
                 if k not in _outputs:
                     _outputs[k] = []
@@ -847,7 +847,7 @@ class DataHandler(AttributeContainer):
 
         if x is not None and deindexify and not isinstance(data, np.ndarray):
         #    if x.shape[0] >0:
-             x, self.indexes[key] = data_maker.deindexify(x)
+             x, self.indexes[key] = data_maker.deindexify(x, key)
 
         #if 'dummy_id' in data_maker.output_features:
         #    x, prev_y, y = deindexify_y(x, prev_y, y, np.argmax(self.lookback).item())
@@ -899,7 +899,7 @@ class DataHandler(AttributeContainer):
             x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
 
             if not isinstance(self.source, np.ndarray):
-                x, self.indexes[key] = data_maker.deindexify(x)
+                x, self.indexes[key] = data_maker.deindexify(x, key)
 
         elif self.is_multi_source:
 
@@ -921,7 +921,7 @@ class DataHandler(AttributeContainer):
                     _x, _prev_y, _y = self.check_for_batch_size(_x, _prev_y, _y)
 
                     if not isinstance(self.source[idx], np.ndarray):  # todo, one source is indexified and other is not?
-                        _x, self.indexes[_key] = data_maker.deindexify(_x)
+                        _x, self.indexes[_key] = data_maker.deindexify(_x, f'{key}_{idx}')
 
                     x.append(_x)
                     prev_y.append(_prev_y)
@@ -956,7 +956,7 @@ class DataHandler(AttributeContainer):
 
                     # todo, one source may be indexified and other is not?
                     if not isinstance(self.source[src_name], np.ndarray):
-                        _x, self.indexes[_key] = data_maker.deindexify(_x)
+                        _x, self.indexes[_key] = data_maker.deindexify(_x, f'{key}_{src_name}')
 
                     x[src_name], prev_y[src_name], y[src_name] = _x, _prev_y, _y
 
@@ -1061,7 +1061,7 @@ class DataHandler(AttributeContainer):
                     pass
                 else:
                     x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
-                    x, self.indexes[key] = data_maker.deindexify(x)
+                    x, self.indexes[key] = data_maker.deindexify(x, key)
 
         return x, prev_y, y
 
@@ -1260,7 +1260,7 @@ class DataHandler(AttributeContainer):
                     pass
                 else:
                     x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
-                    x, self.indexes[key] = data_maker.deindexify(x)
+                    x, self.indexes[key] = data_maker.deindexify(x, key)
 
         return x, prev_y, y
 
@@ -1592,6 +1592,7 @@ class MakeData(object):
 
         self.scalers = {}
         self.indexes = {}
+        self.dt_indexes = {}  # saves the information whether an index was datetime index or not?
 
     def check_nans(self, data, input_x, input_y, label_y, outs, lookback):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.
@@ -1670,8 +1671,10 @@ class MakeData(object):
         # for dataframes
         if isinstance(data.index, pd.DatetimeIndex):
             index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
+            self.dt_indexes[key] = True
         else:
             index = list(map(int, np.array(data.index)))
+            self.dt_indexes[key] = False
         # pandas will add the 'datetime' column as first column. This columns will only be used to keep
         # track of indices of train and test data.
         data.insert(0, 'index', index)
@@ -1681,7 +1684,7 @@ class MakeData(object):
         self.indexes[key] = index
         return data
 
-    def deindexify(self, data):
+    def deindexify(self, data, key):
 
         if isinstance(data, np.ndarray):
             _data, _index = deindexify_nparray(data)
@@ -1694,6 +1697,8 @@ class MakeData(object):
         else:
             raise NotImplementedError
 
+        if self.dt_indexes[key]:
+            _index = to_datetime_index(_index)
         return _data, _index
 
     def get_batches(self, data, num_ins, num_outs):
