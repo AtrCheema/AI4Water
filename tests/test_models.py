@@ -12,7 +12,7 @@ from sklearn.datasets import make_multilabel_classification
 
 from AI4Water import Model
 from AI4Water.functional import Model as FModel
-from AI4Water.utils.datasets import load_nasdaq
+from AI4Water.utils.datasets import load_nasdaq, arg_beach
 
 
 examples = 200
@@ -355,6 +355,24 @@ class TestClassifications(unittest.TestCase):
         assert model.is_multilabel
 
         return
+
+    def test_basic_multi_output(self):
+        model = Model(
+            model= {'layers': {'LSTM': {'units': 32},
+                               'Dense': {'units': 2},
+                               'Reshape': {'target_shape': (2,1)}}},
+            lookback=5,
+            output_features = ['blaTEM_coppml', 'tetx_coppml'],
+            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml'])
+        )
+
+        model.fit()
+        t,p = model.predict()
+
+        assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
+
+        for out in model.output_features:
+            assert out in os.listdir(model.path)
 
 if __name__ == "__main__":
     unittest.main()
