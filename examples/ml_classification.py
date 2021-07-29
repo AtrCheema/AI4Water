@@ -22,4 +22,13 @@ model = Model(
 
 h = model.fit()
 
-model.view_model()
+# make prediction on test data
+t,p = model.predict()
+
+# get some useful plots
+model.interpret()
+
+#**********Evaluate the model on test data using only input
+x,y = model.test_data()
+pred = model.evaluate(x=x) # using only `x`
+

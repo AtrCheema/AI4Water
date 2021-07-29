@@ -603,6 +603,8 @@ class BaseModel(NN, Plots):
                              name=f"{prefix}_{dateandtime_now()}.json"
                              )
         else:
+            if predicted.ndim==1:
+                predicted = predicted.reshape(-1,1)
             for idx, _class in enumerate(self.out_cols):
                 _true = true[:, idx]
                 _pred = predicted[:, idx]
@@ -855,11 +857,12 @@ class BaseModel(NN, Plots):
 
         return np.mean(scores)
 
-    def evaluate(self, data_type='training', **kwargs):
+    def evaluate(self, data='training', **kwargs):
         """
+        Evalutes the performance of the model on a given data.
         calls the `evaluate` method of underlying `model`.
         Arguments:
-            data_type : which data type to use, valid values are `training`, `test`
+            data : which data type to use, valid values are `training`, `test`
                 and `validation`. You can also provide your own x,y values as keyword
                 arguments. In such a case, this argument will have no meaning.
             kwargs : any keyword argument for the `evaluate` method of the underlying
@@ -867,21 +870,18 @@ class BaseModel(NN, Plots):
         Returns:
             whatever is returned by `evaluate` method of underlying model.
         """
-        return self.call_evaluate(data_type, **kwargs)
+        return self.call_evaluate(data, **kwargs)
 
-    def call_evaluate(self, data_type=None, **kwargs):
+    def call_evaluate(self, data=None, **kwargs):
 
-
-        data=None
-        if data_type:
-            assert data_type in ['training', 'test', 'validation']
+        if data:
+            assert data in ['training', 'test', 'validation']
 
             # get the relevant data
-            data = getattr(self, f'{data_type}_data')()
-
+            data = getattr(self, f'{data}_data')()
 
         # this will mostly be the validation data.
-        if isinstance(data, tf.data.Dataset):
+        if data is not None and isinstance(data, tf.data.Dataset):
             if 'x' not in kwargs:
                 #if self.api == 'functional':
                 eval_output = self.evaluate_fn(self.val_dataset, **kwargs)
@@ -890,6 +890,8 @@ class BaseModel(NN, Plots):
                 eval_output = self._evaluate_with_xy(**kwargs)
 
         elif 'x' in kwargs:  # expecting it to be called by keras' fit loop
+            if self.category == 'ML':
+                return self._model.predict(kwargs['x'])
             return self.evaluate_fn(**kwargs)
         else:
             eval_output = self._evaluate_with_xy(data, **kwargs)
@@ -970,7 +972,7 @@ class BaseModel(NN, Plots):
                                         verbose= self.verbosity,
                                         **kwargs)
         else:
-            predicted = self.predict_fn(*inputs, **kwargs)
+            predicted = self.predict_fn(inputs, **kwargs)
 
         if self.problem.upper().startswith("CLASS") and self.category == "ML":  # todo, should be for DL as well
             self.roc_curve(inputs, true_outputs)
