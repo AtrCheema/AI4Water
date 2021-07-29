@@ -692,11 +692,11 @@ class DataHandler(AttributeContainer):
 
     @property
     def num_ins(self):
-        if self.source_is_df:
+        if self.source_is_df or self.data is None:
             return len(self.input_features)
-        elif self.source_is_list:
+        elif self.source_is_list or self.data is None:
             return [len(in_feat) for in_feat in self.input_features]
-        elif self.source_is_dict:
+        elif self.source_is_dict or self.data is None:
             return {k:len(in_feat) for k, in_feat in self.input_features.items()}
         else:
             raise NotImplementedError
