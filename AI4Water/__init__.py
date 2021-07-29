@@ -3,7 +3,7 @@ main models are pytorch based and Model.
 All tensorflow based models can be implemented purely using Model.
 """
 from AI4Water.main import Model
-from AI4Water._data import DataHandler
+from AI4Water._data import DataHandler, SiteDistributedDataHandler
 
 try:
     from AI4Water.pytorch_models import IMVLSTMModel

@@ -1724,8 +1724,10 @@ class MakeData(object):
             else:
                 raise TypeError(f"unknown data type {data.__class__.__name__} for data ")
 
-        # for case when there is not lookback, i.e first layer is dense layer and takes 2D input
-        input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
+        if outs>0:
+            input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
+        else:
+            input_x, input_y, label_y = data[:, 0:ins], np.random.random((len(data), outs)), np.random.random((len(data), outs))
 
         assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
             """.format(self.lookback)
@@ -1801,6 +1803,270 @@ class MakeData(object):
             data.pop('index')
 
         return x, prev_y, y
+
+
+class SiteDistributedDataHandler(object):
+    """This class is useful to prepare data when we have data of different
+    sites/locations. A `site` here refers to a specific context i.e. data
+    of one site is different from another site. In such a case, training
+    and test spearation can be done in following two ways
+
+    1) We may wish to use data of some sites for training and data of some
+        other sites for validation and/or test. In such a case, provide
+        the names of sites for `training_sites`, `validation_sites` and
+        `test_sites`.
+
+    1) We may wish to use a fraction of data from each site for training
+        validation and test. In such a case, do not provide any argument
+        for `training_sites`, `validation_sites` and `test_sites`, rather
+        define the validation and test fraction for each site using the
+        keyword arguments.
+
+    Note: The output first two axis of the output data are swapped.
+    That means the x will have shape:
+        (num_examples, num_sites, lookback, input_features)
+    And the `y` will have shape:
+        (num_examples, num_sites, num_outs, forecast_len)
+    See Example for more illustration
+    """
+    def __init__(self,
+                 data:dict,
+                 config:dict,
+                 training_sites:list=None,
+                 validation_sites:list=None,
+                 test_sites:list=None
+                 ):
+        """
+        Initiates data data
+
+        Arguments:
+            data : Must be a dictionary of data for each site.
+            config : Must be a dictionary of keyword arguments for each site
+            training_sites : List of names of sites to be used as training.
+                If `None`, data from all sites will be used to extract training
+                data based upon keyword arguments of corresponding site.
+            validation_sites : List of names of sites to be used as validation.
+            test_sites : List of names of sites to be used as test.
+
+        Methods:
+            training_data
+            validation_data
+            test_data
+
+        Example
+        -------
+        ```python
+            examples = 50
+            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
+            df = pd.DataFrame(data, columns=['a', 'b', 'c'],
+                                index=pd.date_range('20110101', periods=examples, freq='D'))
+            config = {'input_features': ['a', 'b'],
+                      'output_features': ['c'],
+                      'lookback': 4}
+            data = {'0': df, '1': df, '2': df, '3': df}
+            configs = {'0': config, '1': config, '2': config, '3': config}
+
+            dh = SiteDistributedDataHandler(data, configs)
+            train_x, train_y = dh.training_data()
+            val_x, val_y = dh.validation_data()
+            test_x, test_y = dh.test_data()
+
+            dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
+            train_x, train_y = dh.training_data()
+            val_x, val_y = dh.validation_data()
+            test_x, test_y = dh.test_data()
+        ```
+
+        A slightly more complicated example where each data consits of 2 sources
+        ```python
+            examples = 40
+            data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
+            cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
+                                        index=pd.date_range('20110101', periods=examples, freq='D'))
+            static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(),
+                               columns=['len', 'dep', 'width'],
+                               index=pd.date_range('20110101', periods=examples, freq='D'))
+
+            config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
+                      'output_features': {'cont_data': ['d']},
+                      'lookback': {'cont_data': 4, 'static_data':1}
+                      }
+
+            data = {'cont_data': cont_df, 'static_data': static_df}
+            datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
+            configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
+
+            dh = SiteDistributedDataHandler(datas, configs)
+            train_x, train_y = dh.training_data()
+            val_x, val_y = dh.validation_data()
+            test_x, test_y = dh.test_data()
+
+            dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
+                                            validation_sites=['3', '4'], test_sites=['5', '6'])
+            train_x, train_y = dh.training_data()
+            val_x, val_y = dh.validation_data()
+            test_x, test_y = dh.test_data()
+        ```
+        """
+        assert isinstance(data, dict), f'data must be of type dict but it is of type {data.__class__.__name__}'
+        self.data = data
+
+        new_config = self.process_config(config)
+
+        if training_sites is not None:
+            assert all([isinstance(obj, list) for obj in [training_sites, validation_sites, test_sites]])
+
+            for site in [training_sites, validation_sites, test_sites]:
+                for s in site:
+                    assert s in data
+
+        self.config = new_config
+        self.training_sites = training_sites
+        self.validation_sites = validation_sites
+        self.test_sites = test_sites
+        self.dhs = {}
+
+    def process_config(self, config):
+        assert isinstance(config, dict)
+        if len(config) > 1:
+            for k in self.data.keys():
+                assert k in config, f'{k} present in data but not available in config'
+            new_config = config.copy()
+        else:
+            new_config = {}
+            for k in self.data.keys():
+                new_config[k] = config
+        return new_config
+
+    def training_data(self, *args, **kwargs):
+
+        x, y = [], []
+
+        training_sites = self.training_sites
+        if training_sites is None:
+            training_sites = self.data.keys()
+
+        for site in training_sites:
+
+            src, conf = self.data[site], self.config[site]
+
+            conf['verbosity'] = 0
+            if self.training_sites is not None:
+                conf['test_fraction'] = 0.0
+                conf['val_fraction'] = 0.0
+
+            dh = DataHandler(src, **conf)
+            self.dhs[site] = dh  # save in memory
+            _x, _y = dh.training_data()
+
+            x.append(_x)
+            y.append(_y)
+
+        x = self.stack(x)
+        y = self.stack(y)
+
+        print(f"{'*' * 5} Training data {'*' * 5}")
+        print_something(x, 'x')
+        print_something(y, 'y')
+
+        return x, y
+
+    def validation_data(self):
+        x, y = [], []
+
+        validation_sites = self.validation_sites
+        if validation_sites is None:
+            validation_sites = self.data.keys()
+
+        for site in validation_sites:
+
+            src, conf = self.data[site], self.config[site]
+
+            if self.validation_sites is not None:
+                # we have sites, so all the data from these sites is used as validation
+                conf['test_fraction'] = 0.0
+                conf['val_fraction'] = 0.0
+                conf['verbosity'] = 0
+
+                dh = DataHandler(src, **conf)
+                self.dhs[site] = dh  # save in memory
+                _x, _y = dh.training_data()
+            else:
+                conf['verbosity'] = 0
+                dh = DataHandler(src, **conf)
+                _x, _y = dh.validation_data()
+
+            x.append(_x)
+            y.append(_y)
+
+        x = self.stack(x)
+        y = self.stack(y)
+
+        print(f"{'*' * 5} Validation data {'*' * 5}")
+        print_something(x, 'x')
+        print_something(y, 'y')
+
+        return x, y
+
+    def test_data(self):
+        x, y = [], []
+
+        test_sites = self.test_sites
+        if test_sites is None:
+            test_sites = self.data.keys()
+
+        for site in test_sites:
+
+            src, conf = self.data[site], self.config[site]
+
+            if self.test_sites is not None:
+                # we have sites, so all the data from these sites is used as test
+                conf['test_fraction'] = 0.0
+                conf['val_fraction'] = 0.0
+                conf['verbosity'] = 0
+
+                dh = DataHandler(src, **conf)
+                self.dhs[site] = dh  # save in memory
+                _x, _y = dh.training_data()
+            else:
+                conf['verbosity'] = 0
+                dh = DataHandler(src, **conf)
+                _x, _y = dh.test_data()
+
+            x.append(_x)
+            y.append(_y)
+
+        x = self.stack(x)
+        y = self.stack(y)
+
+        print(f"{'*' * 5} Test data {'*' * 5}")
+        print_something(x, 'x')
+        print_something(y, 'y')
+
+        return x, y
+
+    @staticmethod
+    def stack(data:list):
+        if isinstance(data[0], np.ndarray):
+            data = np.stack(data)
+            data = data.swapaxes(0,1)
+
+        elif isinstance(data[0], dict):
+            new_data = {k:None for k in data[0].keys()}
+            for src_name in new_data.keys():
+                temp = []
+                for src in data:
+
+                    temp.append(src[src_name])
+
+                new_data[src_name] = np.stack(temp).swapaxes(0,1)
+
+            data = new_data
+
+        else:
+            raise ValueError
+
+        return data
 
 
 class MultiLocDataHandler(object):

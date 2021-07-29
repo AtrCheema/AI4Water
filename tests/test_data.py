@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from AI4Water import DataHandler
-from AI4Water._data import MultiLocDataHandler 
+from AI4Water._data import MultiLocDataHandler, SiteDistributedDataHandler
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
@@ -99,7 +99,7 @@ def check_num_examples(train_x, val_x, test_x, val_ex, test_ex, data_loader):
     return
 
 
-def check_inverse_transformation(source, data_loader, y, cols, key):
+def check_inverse_transformation(data, data_loader, y, cols, key):
     if cols is None:
         # not output columns, so not checking
         return
@@ -108,7 +108,7 @@ def check_inverse_transformation(source, data_loader, y, cols, key):
     if data_loader.source_is_df:
         train_y_ = data_loader.inverse_transform(data=pd.DataFrame(y.reshape(-1, len(cols)), columns=cols), key=key)
         train_y_, index = data_loader.deindexify(train_y_, key=key)
-        compare_individual_item(source, key, cols, train_y_, data_loader)
+        compare_individual_item(data, key, cols, train_y_, data_loader)
 
     elif data_loader.source_is_list:
         #for idx in range(data_loader.num_sources):
@@ -118,24 +118,21 @@ def check_inverse_transformation(source, data_loader, y, cols, key):
         train_y_, _ = data_loader.deindexify(train_y_, key=key)
 
         for idx, y in enumerate(train_y_):
-            compare_individual_item(source[idx], f'{key}_{idx}', cols[idx], y, data_loader)
+            compare_individual_item(data[idx], f'{key}_{idx}', cols[idx], y, data_loader)
 
     elif data_loader.source_is_dict:
         train_y_ = data_loader.inverse_transform(data=y, key=key)
         train_y_, _ = data_loader.deindexify(train_y_, key=key)
 
         for src_name, val in train_y_.items():
-            compare_individual_item(source[src_name], f'{key}_{src_name}', cols[src_name], val, data_loader)
+            compare_individual_item(data[src_name], f'{key}_{src_name}', cols[src_name], val, data_loader)
 
 
-def compare_individual_item(source, key, cols, y, data_loader):
+def compare_individual_item(data, key, cols, y, data_loader):
 
     if y is None:
         return
 
-    #if isinstance(source.index, pd.DatetimeIndex):
-    #    train_index = to_datetime_index(data_loader.indexes[key])
-    #else:
     train_index = data_loader.indexes[key]
 
     if y.__class__.__name__ in ['DataFrame']:
@@ -144,20 +141,20 @@ def compare_individual_item(source, key, cols, y, data_loader):
     for i, v in zip(train_index, y):
         if len(cols) == 1:
             if isinstance(train_index, pd.DatetimeIndex):
-                # if true value in source is None, y's value should also be None
-                if np.isnan(source[cols].loc[i]).item():
+                # if true value in data is None, y's value should also be None
+                if np.isnan(data[cols].loc[i]).item():
                     assert np.isnan(v).item()
                 else:
-                    assert int(round(source[cols].loc[i])) == int(round(v.item())), f'{int(source[cols].loc[i])}:, {int(v)}'
+                    assert int(round(data[cols].loc[i])) == int(round(v.item())), f'{int(data[cols].loc[i])}:, {int(v)}'
             else:
                 if isinstance(v, np.ndarray):
                     v = int(round(v.item()))
-                assert int(source[cols].iloc[i]) == int(round(v)), f'{int(source[cols].iloc[i])}, : {v}'
+                assert int(data[cols].iloc[i]) == int(round(v)), f'{int(data[cols].iloc[i])}, : {v}'
         else:
             if isinstance(train_index, pd.DatetimeIndex):
-                assert abs(source[cols].loc[i].sum() - np.nansum(v)) <= 0.00001, f'{source[cols].loc[i].sum()},: {v}'
+                assert abs(data[cols].loc[i].sum() - np.nansum(v)) <= 0.00001, f'{data[cols].loc[i].sum()},: {v}'
             else:
-                assert abs(source[cols].iloc[i].sum() - v.sum()) <= 0.00001
+                assert abs(data[cols].iloc[i].sum() - v.sum()) <= 0.00001
 
 
 def check_kfold_splits(data_handler):
@@ -207,13 +204,13 @@ def assert_uniquenes(train_y, val_y, test_y, out_cols, data_loader):
     return
 
 
-def build_and_test_loader(source, config, out_cols, train_ex=None, val_ex=None, test_ex=None, save=True,
+def build_and_test_loader(data, config, out_cols, train_ex=None, val_ex=None, test_ex=None, save=True,
                           assert_uniqueness=True, check_examples=True,
                           true_train_y=None, true_val_y=None, true_test_y=None):
 
     config['teacher_forcing'] = True  # todo
 
-    data_loader = DataHandler(source=source, save=save, **config)
+    data_loader = DataHandler(data=data, save=save, **config)
     #dl = DataLoader.from_h5('data.h5')
     train_x, prev_y, train_y = data_loader.training_data(key='train')
     assert_xy_equal_len(train_x, prev_y, train_y, data_loader, train_ex)
@@ -227,16 +224,16 @@ def build_and_test_loader(source, config, out_cols, train_ex=None, val_ex=None, 
     if check_examples:
         check_num_examples(train_x, val_x, test_x, val_ex, test_ex, data_loader)
 
-    if isinstance(source, str):
-        source = data_loader.source
+    if isinstance(data, str):
+        data = data_loader.data
 
-    check_inverse_transformation(source, data_loader, train_y, out_cols, 'train')
+    check_inverse_transformation(data, data_loader, train_y, out_cols, 'train')
 
     if val_ex:
-        check_inverse_transformation(source, data_loader, val_y, out_cols, 'val')
+        check_inverse_transformation(data, data_loader, val_y, out_cols, 'val')
 
     if test_ex:
-        check_inverse_transformation(source, data_loader, test_y, out_cols, 'test')
+        check_inverse_transformation(data, data_loader, test_y, out_cols, 'test')
 
     check_kfold_splits(data_loader)
 
@@ -1391,38 +1388,39 @@ def test_multisource_basic():
               'output_features': output_features,
               'lookback': lookback}
 
-    build_and_test_loader(source=[df1, df2], config=config, out_cols=output_features,
+    build_and_test_loader(data=[df1, df2], config=config, out_cols=output_features,
                           train_ex=18, val_ex=8, test_ex=11,
                           save=True)
 
 
-    #  #testing source as a dictionary
+    #  #testing data as a dictionary
     config['input_features'] = {'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']}
     config['output_features'] = {'cont_data': ['c', 'd'], 'static_data': []}
-    build_and_test_loader(source={'cont_data': df1, 'static_data': df2},
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config, out_cols=config['output_features'],
                           train_ex=18, val_ex=8, test_ex=11,
                           save=True)
 
-    # #test when output_features for one source is not provided?
+    # #test when output_features for one data is not provided?
+    config['input_features'] = {'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']}
     config['output_features'] = {'cont_data': ['c', 'd']}
-    build_and_test_loader(source={'cont_data': df1, 'static_data': df2},
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config, out_cols=config['output_features'],
                           train_ex=18, val_ex=8, test_ex=11,
-                          save=True)
+                          save=False)
 
     # # #testing with transformation
     config['input_features'] = {'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']}
     config['transformation'] = {'cont_data': 'minmax', 'static_data': 'zscore'}
     config['output_features'] = {'cont_data': ['c', 'd'], 'static_data': []}
-    build_and_test_loader(source={'cont_data': df1, 'static_data': df2},
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config, out_cols=config['output_features'],
                           train_ex=18, val_ex=8, test_ex=11,
                           save=True)
 
     # # testing with `same` `val_data`
     config['val_data'] = 'same'
-    build_and_test_loader(source={'cont_data': df1, 'static_data': df2},
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config, out_cols=config['output_features'],
                           train_ex=26, val_ex=11, test_ex=11,
                           save=True)
@@ -1432,7 +1430,7 @@ def test_multisource_basic():
     config['train_data'] = random.sample(list(np.arange(37)), 25)
     config['input_features'] = {'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']}
     config['output_features'] = {'cont_data': ['c', 'd'], 'static_data': []}
-    build_and_test_loader(source={'cont_data': df1, 'static_data': df2},
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config, out_cols=config['output_features'],
                           train_ex=25, val_ex=12, test_ex=12,
                           save=True)
@@ -1454,13 +1452,13 @@ def test_multisource_basic2():
               'output_features': output_features,
               'lookback': lookback}
 
-    build_and_test_loader(source=[df1, df2], config=config, out_cols=output_features,
+    build_and_test_loader(data=[df1, df2], config=config, out_cols=output_features,
                           train_ex=18, val_ex=8, test_ex=11,
                           save=True)
 
     config['input_features'] = {'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']}
     config['output_features'] = {'cont_data': ['c', 'd'], 'static_data': ['y']}
-    build_and_test_loader(source={'cont_data': df1, 'static_data': df2},
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config,
                           out_cols=config['output_features'],
                           train_ex=18, val_ex=8, test_ex=11,
@@ -1492,11 +1490,11 @@ def test_multisource_basic3():
               'output_features': output_features,
               'lookback': lookback}
 
-    # build_and_test_loader(source=[static_df, cont_df, disc_df], config=config, out_cols=output_features, train_ex=6,
+    # build_and_test_loader(data=[static_df, cont_df, disc_df], config=config, out_cols=output_features, train_ex=6,
     #                   val_ex=4,
     #                   test_ex=6, save=True)
 
-    data_handler = DataHandler(source=[static_df, cont_df, disc_df], **config)
+    data_handler = DataHandler(data=[static_df, cont_df, disc_df], **config)
     data_handler.training_data()
     data_handler.validation_data()
     data_handler.test_data()
@@ -1517,9 +1515,9 @@ def test_multisource_multi_loc():
 
     dh = MultiLocDataHandler()
 
-    train_x, train_y = dh.training_data(source=training_data, input_features=['a', 'b'],  output_features=['c'])
-    valx, val_y = dh.validation_data(source=val_data, input_features=['a', 'b'], output_features=['c'])
-    test_x, test_y = dh.test_data(source=test_data, input_features=['a', 'b'], output_features=['c'])
+    train_x, train_y = dh.training_data(data=training_data, input_features=['a', 'b'],  output_features=['c'])
+    valx, val_y = dh.validation_data(data=val_data, input_features=['a', 'b'], output_features=['c'])
+    test_x, test_y = dh.test_data(data=test_data, input_features=['a', 'b'], output_features=['c'])
 
     assert np.allclose(train_y.reshape(-1,), training_data['c'].values.reshape(-1, ))
     assert np.allclose(val_y.reshape(-1, ), val_data['c'].values.reshape(-1, ))
@@ -1527,6 +1525,89 @@ def test_multisource_multi_loc():
     return
 
 
+def test_multisource_basic4():
+    examples = 40
+    data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
+    df1 = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
+                                index=pd.date_range('20110101', periods=40, freq='D'))
+    df2 = pd.DataFrame(np.array([5,6]).repeat(40, axis=0).reshape(40, -1), columns=['len', 'dep'],
+                       index=pd.date_range('20110101', periods=40, freq='D'))
+
+    input_features = {'cont_data':['a', 'b'], 'static_data':['len', 'dep']}
+    output_features = {'cont_data': ['c', 'd']}
+    lookback = {'cont_data': 4, 'static_data': 1}
+
+    config = {'input_features': input_features,
+              'output_features': output_features,
+              'lookback': lookback}
+
+    build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
+                          config=config, out_cols=output_features,
+                          train_ex=18, val_ex=8, test_ex=11,
+                          save=False)
+    return
+
+
+def site_distributed_basic():
+    examples = 50
+    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
+    df = pd.DataFrame(data, columns=['a', 'b', 'c'],
+                        index=pd.date_range('20110101', periods=examples, freq='D'))
+    config = {'input_features': ['a', 'b'],
+              'output_features': ['c'],
+              'lookback': 4}
+    data = {'0': df, '1': df+1000, '2': df+2000, '3': df+3000}
+    configs = {'0': config, '1': config, '2': config, '3': config}
+
+    dh = SiteDistributedDataHandler(data, configs)
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+    assert train_x.shape == (23, len(data),  config['lookback'], len(config['input_features']))
+    assert val_x.shape == (10, len(data),  config['lookback'], len(config['input_features']))
+    assert test_x.shape == (14, len(data),  config['lookback'], len(config['input_features']))
+
+    dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+
+    assert train_x.shape == (len(df)-config['lookback']+1, 2,  config['lookback'], len(config['input_features']))
+    assert val_x.shape == (len(df)-config['lookback']+1, 1, config['lookback'], len(config['input_features']))
+    assert test_x.shape == (len(df)-config['lookback']+1, 1, config['lookback'], len(config['input_features']))
+
+
+def site_distributed_multiple_srcs():
+    examples = 40
+    data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
+    cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
+                                index=pd.date_range('20110101', periods=examples, freq='D'))
+    static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(), columns=['len', 'dep', 'width'],
+                       index=pd.date_range('20110101', periods=examples, freq='D'))
+
+    config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
+              'output_features': {'cont_data': ['d']},
+              'lookback': {'cont_data': 4, 'static_data':1}
+              }
+
+    data = {'cont_data': cont_df, 'static_data': static_df}
+    datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
+    configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
+
+    dh = SiteDistributedDataHandler(datas, configs)
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+
+    dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
+                                    validation_sites=['3', '4'], test_sites=['5', '6'])
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+
+
+site_distributed_basic()
+site_distributed_multiple_srcs()
 test_multisource_multi_loc()
 test_with_random_with_transformation_of_features()
 test_random_with_intervals()
@@ -1534,12 +1615,13 @@ test_AI4WaterDataSets()
 test_multisource_basic()
 test_multisource_basic2()
 test_multisource_basic3()
+# #test_multisource_basic4() todo
 
 
 # TestAllCases(input_features = ['a', 'b'],
 #             output_features=['c'], lookback=1, save=False, allow_nan_labels=2)
 
-# # # ##testing single dataframe with single output and multiple inputs
+# # ##testing single dataframe with single output and multiple inputs
 TestAllCases(input_features = ['a', 'b'],
            output_features=['c'], allow_nan_labels=2, save=False)
 #
