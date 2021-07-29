@@ -1,8 +1,8 @@
 import os
 from typing import Union
 
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
 from .backend import torch
 
@@ -47,7 +47,11 @@ class AttributeContainer(object):
         self.use_cuda = torch.cuda.is_available()
 
         def_path = os.path.join(os.getcwd(), 'results', dateandtime_now())
-        if not os.path.exists(def_path): os.mkdir(def_path)
+        if not os.path.exists(def_path):
+            if not os.path.isdir(def_path):
+                os.makedirs(def_path)
+            else:
+                os.mkdir(def_path)
         self.path = def_path
 
     @property
@@ -169,7 +173,18 @@ class Learner(AttributeContainer):
                 - an instance of torch.DataLoader
                 - a tuple of x,y pairs where x and y are tensors
                 Default is None, which means no validation is performed.
-            kwargs : can be callbacks
+            kwargs : can be `callbacks` For example to use a callable
+                as callback use following
+                ```python
+                callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
+                ```
+                where `PlotStuff` is a callable.
+                Each `callable` is provided with following keyword arguments
+                    - epoch : the current epoch at which callable is called.
+                    - model : the model
+                    - train_data : training data_loader
+                    - val_data : validation data_loader
+
         """
         self.on_train_begin(x, y=y, validation_data=validation_data, **kwargs)
 
@@ -189,7 +204,7 @@ class Learner(AttributeContainer):
 
         return self.on_train_end()
 
-    def predict(self, x, y=None, batch_size:int=None, reg_plot:bool = True, name:str = None):
+    def predict(self, x, y=None, batch_size:int=None, reg_plot:bool = True, name:str = None)->tuple:
         """Makes prediction on the given data
         Arguments:
             x : data on which to evalute. It can be
@@ -228,7 +243,12 @@ class Learner(AttributeContainer):
 
         return true.detach().numpy(), pred.detach().numpy()
 
-    def evaluate(self, x, y=None, batch_size:int=None, metrics:Union[str, list]='r2'):
+    def evaluate(self,
+                 x,
+                 y=None,
+                 batch_size:int=None,
+                 metrics:Union[str, list]='r2'
+                 ):
         """Evaluates the `model` on the given data.
         Arguments:
             x : data on which to evalute. It can be
@@ -390,7 +410,9 @@ class Learner(AttributeContainer):
         else:
             w_path = getattr(self.model, 'w_path', self.path)
             best_weights = find_best_weight(w_path, epoch_identifier=self.best_epoch)
-            weight_file_path = os.path.join(w_path, best_weights)
+            if best_weights is not None:
+                weight_file_path = os.path.join(w_path, best_weights)
+
         if best_weights is not None:
             fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
             self.model.load_state_dict(torch.load(fpath))
