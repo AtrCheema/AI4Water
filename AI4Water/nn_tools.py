@@ -120,7 +120,16 @@ class NN(AttributeStore):
         if not isinstance(lyr_args, dict):
             return lyr_args, None, None,None
 
-        if 'config' not in lyr_args:
+        if callable(lyr_name):
+            if hasattr(lyr_name, '__call__'):
+                raise ValueError
+            else:
+                config = tf.keras.layers.Lambda(lambda x: lyr_name(x))
+                inputs = lyr_args['inputs'] if 'inputs' in lyr_args else None
+                outputs = lyr_args['outputs'] if 'outputs' in lyr_args else None
+                call_args = lyr_args['call_args'] if 'call_args' in lyr_args else None
+
+        elif 'config' not in lyr_args:
             if all([arg not in lyr_args for arg in ['inputs', 'outputs', 'call_args']]):
                 config = lyr_args
                 inputs = None
@@ -142,6 +151,18 @@ class NN(AttributeStore):
         return config, inputs, outputs, call_args
 
     def check_lyr_config(self, lyr_name: str, config: dict):
+
+        if callable(lyr_name):  # lyr_name is class
+            if not isinstance(config, dict):
+                config = {}
+                args = [config]
+            else:
+                args = {}
+            if 'name' not in config and BACKEND != 'pytorch':
+                config['name'] = lyr_name.__name__
+            config, activation = check_act_fn(config)
+
+            return lyr_name.__name__, args, config, activation
 
         if callable(config):
             return lyr_name, [], config, None

@@ -176,7 +176,16 @@ class Model(BaseModel):
         for lyr, lyr_args in layers_config.items():
             idx += 0
 
+            if callable(lyr) and hasattr(lyr, '__call__'):
+                LAYERS[lyr.__name__.upper()] = lyr
+                self.config['model']['layers'] = update_layers_config(layers_config, lyr)
+                lyr = lyr.__name__
+
+
             lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
+
+            if callable(lyr) and not hasattr(lyr, '__call__'):
+                lyr = "lambda"
 
             lyr_name, args, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
@@ -217,6 +226,10 @@ class Model(BaseModel):
                         continue
                     elif  "LAMBDA" in lyr_name.upper():
                         # lyr_config is serialized lambda layer, which needs to be deserialized
+                        # by default the lambda layer takes the previous output as input
+                        # however when `call_args` are provided, they overwrite the layer_outputs
+                        if call_args is not None:  # todo, add example in docs
+                            layer_outputs = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
                         layer_outputs = tf.keras.layers.deserialize(lyr_config)(layer_outputs)
                         # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
                         # object (lambda) with the serialized version (lyr_config) so that it can be saved as json file.
@@ -252,7 +265,10 @@ class Model(BaseModel):
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                         layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
-                        layer_outputs = layer_initialized(call_args, **add_args)
+                        if isinstance(lyr_inputs, list):
+                            layer_outputs = layer_initialized(*call_args, **add_args)
+                        else:
+                            layer_outputs = layer_initialized(call_args, **add_args)
                         self.get_and_set_attrs(layer_initialized)
 
             if activation is not None:  # put the string back to dictionary to be saved in config file
@@ -367,3 +383,13 @@ class Model(BaseModel):
             return self._model.loss.name
         else:
             return self._model.loss.__name__
+
+
+def update_layers_config(layers_config, lyr):
+    new_config = {}
+    for k,v in layers_config.items():
+        if k == lyr:
+            new_config[lyr.__name__] = v
+        else:
+            new_config[k] = v
+    return new_config
