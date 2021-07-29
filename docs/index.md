@@ -90,19 +90,18 @@ inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names f
 outputs=['DummyTarget']
 
 model = Model(
-            data=None,
+            model = {'layers': {"LSTM": 64,
+                                'Dense': 1}},
             batch_size=batch_size,
             lookback=lookback,
-            transformation=None,
             input_features=inputs,
             output_features=outputs,
             lr=0.001
               )
 x = np.random.random((batch_size*10, lookback, len(inputs)))
 y = np.random.random((batch_size*10, len(outputs)))
-data = (x,y)
 
-history = model.fit(data=data)
+history = model.fit(x=x,y=y)
 
 ```
 
@@ -117,7 +116,6 @@ from AI4Water.utils.datasets import arg_beach
 data = arg_beach()  # path for data file
 
 model = Model(
-        batches="2d",
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],  
         lookback=1,
@@ -128,8 +126,8 @@ model = Model(
         data=data
               )
 
-history = model.fit(st=0, en=150)
+history = model.fit()
 
-preds, obs = model.predict(st=150, en=220)
+preds, obs = model.predict()
 ```
 
