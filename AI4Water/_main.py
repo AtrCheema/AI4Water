@@ -727,13 +727,16 @@ class BaseModel(NN, Plots):
             **kwargs
             ):
         """
-        Trains the model with data which is taken from data accoring to `st`, `en`
-        or `indices` or `data_keys` or `data` arguments.
+        Trains the model with data which is taken from data accoring to `data` arguments.
 
         Arguments:
-            data : data to use for model training. Default is 'training.
+            data : data to use for model training. Default is 'training`.
             callbacks : Any callback compatible with keras. If you want to log the output
-                to tensorboard, then just use `callbacks={'tensorboard':{}}`
+                to tensorboard, then just use `callbacks={'tensorboard':{}}` or
+                to provide additional arguments
+                ```python
+                callbacks={'tensorboard': {'histogram_freq': 1}}
+                ```
             kwargs : Any keyword argument for the `fit` method of the underlying algorithm.
                 if 'x' is present in kwargs, that will take precedent over `data`.
         Returns:
@@ -930,13 +933,13 @@ class BaseModel(NN, Plots):
     def predict(self,
                 data: str='test',
                 prefix: str = 'test',
-                process_results=True,
+                process_results:bool = True,
                 **kwargs
                 )->tuple:
         """
         Makes prediction from the trained model.
         Arguments:
-            data : which data to use. values are `training`, `test` or `validation`.
+            data : which data to use. Possible values are `training`, `test` or `validation`.
                 By default, `test` data is used for predictions.
             process_results : post processing of results
             prefix : prefix used with names of saved results
@@ -1064,7 +1067,23 @@ class BaseModel(NN, Plots):
         return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
                                self.config['allow_nan_labels'])
 
-    def activations(self, layer_names=None, return_input=False, x=None, data:str='training'):
+    def activations(self,
+                    layer_names:Union[list, str]=None,
+                    return_input=False,
+                    x=None,
+                    data:str='training'):
+        """gets the activations of any layer of the Keras Model.
+        Activation here means output of a layer of a deep learning model.
+        Arguments:
+            layer_names : name of list of names of layers whose activations are
+                to be returned.
+            return_input :
+            x : If provided, it will override `data`.
+            data : data to use to get activations. Only relevent if `x` is not
+                provided. By default training data is used. Possible values are
+                `training`, `test` or `validation`.
+
+        """
 
         # if layer names are not specified, this will get get activations of allparameters
         if x is None:

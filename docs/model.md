@@ -12,6 +12,7 @@
             - eda
             - from_config
             - update_weights
+            - activations
     rendering:
         show_root_heading: true
 

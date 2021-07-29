@@ -943,7 +943,17 @@ class TestAllCases(object):
                           'train_data': 'random',
                           }
                 tr_examples = 10 - (self.lookback - 1) if self.lookback > 1 else 10
-                loader = build_and_test_loader(data, config, self.output_features, tr_examples, 4, 6,
+                build_and_test_loader(data, config, self.output_features, tr_examples, 4, 6,
+                                               save=self.save)
+
+                config = {'input_features': self.input_features,
+                          'output_features': self.output_features,
+                          'lookback': self.lookback,
+                          'nan_filler': {'method': 'KNNImputer', 'features': ['b'], 'imputer_args': {'n_neighbors': 4}},
+                          'train_data': 'random',
+                          }
+                tr_examples = 10 - (self.lookback - 1) if self.lookback > 1 else 10
+                build_and_test_loader(data, config, self.output_features, tr_examples, 4, 6,
                                                save=self.save)
 
         return
