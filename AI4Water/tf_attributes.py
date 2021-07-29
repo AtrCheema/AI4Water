@@ -47,6 +47,9 @@ if keras is not None:
     # tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
     LAYERS["MULTIPLY"] = keras.layers.Multiply
 
+    # replacing tf.keras.add with tf.keras.Add
+    LAYERS["ADD"] = keras.layers.Add
+
 if NBeats is not None:
     LAYERS.update({"NBEATS": NBeats,})
 
