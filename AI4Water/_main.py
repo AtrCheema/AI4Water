@@ -201,7 +201,7 @@ class BaseModel(NN, Plots):
                 # file, they may share same graph.
                 tf.keras.backend.clear_session()
 
-            self.dh = DataHandler(source=data, **maker.data_config)
+            self.dh = DataHandler(data=data, **maker.data_config)
 
             NN.__init__(self, config=maker.config)
 
@@ -217,8 +217,9 @@ class BaseModel(NN, Plots):
     def __getattr__(self, item):
         # instead of doing model.dh.training
         if item in [
+            'data',
             'training_data', 'test_data', 'validation_data',  # this allows overwriting of training/val/test data
-            'inverse_transform',
+            'inverse_transform', 'deindexify',
             'test_indices', 'train_indices',
             'num_outs', 'forecast_len', 'forecast_step', 'num_ins',
             'classes', 'num_classes', 'is_binary', 'is_multiclass', 'is_multilabel',
@@ -982,7 +983,7 @@ class BaseModel(NN, Plots):
             true_outputs = self.inverse_transform(true_outputs, key=transformation_key)
             predicted = self.inverse_transform(predicted, key=transformation_key)
 
-        true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
+        true_outputs, dt_index = self.deindexify(true_outputs, key=transformation_key)
 
         if self.quantiles is None:
 

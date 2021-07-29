@@ -49,7 +49,7 @@ class DataHandler(AttributeContainer):
 
     """
     def __init__(self,
-                 source,
+                 data,
                  input_features: Union[list, dict, str, None] = None,
                  output_features: Union[list, dict, str, None] = None,
                  dataset_args:dict = None,
@@ -82,7 +82,7 @@ class DataHandler(AttributeContainer):
                  ):
         """
         Arguments:
-            source : source from which to make data. It can be one of the following:
+            data : source from which to make data. It can be one of the following:
                 pandas dataframe: each columns is a feature and each row is an example
                 xarray dataset: Tt can be xarray dataset or it
                 list of pandas dataframes :
@@ -93,9 +93,9 @@ class DataHandler(AttributeContainer):
                     supposed that each file in the directory refers to one example.
                 ai4water dataset : any of dataset name from ai4water.utils.datasets
             input_features : features to use as input
-            output_features : features to use as output. When `source` is dataframe
-                then it is list of column names from `source` to be used as output. If dict,
-                then it must be consistent with `source`. Default is None,which
+            output_features : features to use as output. When `data` is dataframe
+                then it is list of column names from `data` to be used as output. If dict,
+                then it must be consistent with `data`. Default is None,which
                 means the last column of data will be used as output. In case
                 of multi-class classification, the output column is not supposed
                 to be one-hot-encoded rather in the form of [0,1,2,0,1,2,1,2,0]
@@ -218,7 +218,7 @@ class DataHandler(AttributeContainer):
         import numpy as np
         from AI4Water import DataHandler
         data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
-        data_handler = DataHandler(source=data, lookback=5)
+        data_handler = DataHandler(data=data, lookback=5)
         x,y = data_handler.training_data()
         ```
         """
@@ -247,7 +247,7 @@ class DataHandler(AttributeContainer):
                                   seed=seed,
                                   category=category,
                                   )
-        self.source = self._process_source(source)
+        self.data = self._process_source(data)
         self.verbosity = verbosity
         self.teacher_forcing = teacher_forcing
         self.problem = problem
@@ -269,20 +269,20 @@ class DataHandler(AttributeContainer):
                 attr = self.config[item]
 
                 if not isinstance(attr, list):
-                    attr = [attr for _ in range(len(self.source))]
+                    attr = [attr for _ in range(len(self.data))]
 
-                assert len(attr) == len(self.source)
+                assert len(attr) == len(self.data)
                 return attr
 
             elif self.source_is_dict:
                 attr = self.config[item]
                 if not isinstance(attr, dict):
-                    attr = {key:attr for key in self.source.keys()}
-                assert len(attr) == len(self.source)
+                    attr = {key:attr for key in self.data.keys()}
+                assert len(attr) == len(self.data)
                 return attr
 
             else:
-                raise NotImplementedError(f"Unknown source type {self.source.__class__.__name__}")
+                raise NotImplementedError(f"Unknown data type {self.data.__class__.__name__}")
         else:
             # Default behaviour
             raise AttributeError(f"DataLoader does not have an attribute {item}")
@@ -301,7 +301,7 @@ class DataHandler(AttributeContainer):
         _classes = []
         if self.problem == 'classification':
             if self.num_outs==1:  # for binary/multiclass
-                array = self.source[self.output_features].values
+                array = self.data[self.output_features].values
                 _classes = np.unique(array[~np.isnan(array)])
             else:  # for one-hot encoded
                 _classes = self.output_features
@@ -318,7 +318,7 @@ class DataHandler(AttributeContainer):
         _default = False
         if self.problem == 'classification':
             if self.num_outs == 1:
-                array = self.source[self.output_features].values
+                array = self.data[self.output_features].values
                 unique_vals = np.unique(array[~np.isnan(array)])
                 if len(unique_vals) == 2:
                     _default = True
@@ -333,7 +333,7 @@ class DataHandler(AttributeContainer):
         _default = False
         if self.problem == 'classification':
             if self.num_outs == 1:
-                array = self.source[self.output_features].values
+                array = self.data[self.output_features].values
                 unique_vals = np.unique(array[~np.isnan(array)])
                 if len(unique_vals) > 2:
                     _default = True
@@ -384,18 +384,18 @@ class DataHandler(AttributeContainer):
             batch_dim = batch_dim_from_lookback(self.lookback)
         elif self.source_is_list:
             if isinstance(self.lookback, int):
-                batch_dim = [batch_dim_from_lookback(self.lookback) for _ in range(len(self.source))]
+                batch_dim = [batch_dim_from_lookback(self.lookback) for _ in range(len(self.data))]
             elif isinstance(self.lookback, list):
                 batch_dim = [batch_dim_from_lookback(lb) for lb in self.lookback]
             else:
                 raise NotImplementedError
         elif self.source_is_dict:
             if isinstance(self.lookback, int):
-                batch_dim = {k:batch_dim_from_lookback(self.lookback) for k,v in zip(self.source.keys(), range(len(self.source)))}
+                batch_dim = {k:batch_dim_from_lookback(self.lookback) for k,v in zip(self.data.keys(), range(len(self.data)))}
             elif isinstance(self.lookback, dict):
                 batch_dim = {k:batch_dim_from_lookback(lb) for k, lb in self.lookback.items()}
             else:
-                raise NotImplementedError(f"incompatible lookback {self.lookback} with source definition {self.source.__class__.__name__}.")
+                raise NotImplementedError(f"incompatible lookback {self.lookback} with data definition {self.data.__class__.__name__}.")
         else:
             raise NotImplementedError
 
@@ -410,13 +410,13 @@ class DataHandler(AttributeContainer):
     def input_features(self):
         _inputs = self.config['input_features']
 
-        if isinstance(self.source, list):
+        if isinstance(self.data, list):
             assert isinstance(_inputs, list)
-        elif isinstance(self.source, dict):
+        elif isinstance(self.data, dict):
             assert isinstance(_inputs, dict), f'input_features are of type {_inputs.__class__.__name__}'
         elif _inputs is None:
-            assert isinstance(self.source, pd.DataFrame)
-            _inputs = self.source.columns[0:-1]
+            assert isinstance(self.data, pd.DataFrame)
+            _inputs = self.data.columns[0:-1]
 
         return _inputs
 
@@ -424,24 +424,24 @@ class DataHandler(AttributeContainer):
     def output_features(self):
         _outputs = self.config['output_features']
 
-        if isinstance(self.source, list):
+        if isinstance(self.data, list):
             assert isinstance(_outputs, list)
 
-        elif isinstance(self.source, dict):
+        elif isinstance(self.data, dict):
             assert isinstance(_outputs, dict), f'data is of type dict while output_features are of type {_outputs.__class__.__name__}'
-            for k in self.source.keys():
+            for k in self.data.keys():
                 if k not in _outputs:
                     _outputs[k] = []
 
         elif _outputs is None:
-            assert isinstance(self.source, pd.DataFrame)
-            _outputs = [col for col in self.source.columns if col not in self.input_features]
+            assert isinstance(self.data, pd.DataFrame)
+            _outputs = [col for col in self.data.columns if col not in self.input_features]
 
         return _outputs
 
     @property
     def is_multioutput(self):
-        if isinstance(self.source, list) or isinstance(self.source, dict):
+        if isinstance(self.data, list) or isinstance(self.data, dict):
             return True
         return False
 
@@ -472,7 +472,7 @@ class DataHandler(AttributeContainer):
 
     @property
     def source_is_df(self):
-        if isinstance(self.source, pd.DataFrame):
+        if isinstance(self.data, pd.DataFrame):
             return True
         return False
 
@@ -480,60 +480,60 @@ class DataHandler(AttributeContainer):
         """Returns number of examples available where each example refers to an
         input-output pair."""
 
-        if isinstance(self.source, pd.DataFrame):
+        if isinstance(self.data, pd.DataFrame):
             # the total number of examples will be less than
-            _len = len(self.source) - (self.lookback - 1)
+            _len = len(self.data) - (self.lookback - 1)
 
-        elif isinstance(self.source, list):
+        elif isinstance(self.data, list):
             _len = 0
-            for s in self.source:
+            for s in self.data:
                 _len += len(s)
-        elif isinstance(self.source, dict):
+        elif isinstance(self.data, dict):
             _len = 0
-            for k,v in self.source.items():
+            for k,v in self.data.items():
                 _len += len(v)
         else:
             raise NotImplementedError
         return _len
 
-    def _process_source(self, source):
+    def _process_source(self, data):
 
-        if isinstance(source, str):
-            _source = self._get_source_from_str(source)
+        if isinstance(data, str):
+            _source = self._get_source_from_str(data)
             if isinstance(_source, str) and _source.endswith('.h5'):
                 self._from_h5 = True
             self.num_sources = 1
 
-        elif isinstance(source, pd.DataFrame):
-            _source = source
+        elif isinstance(data, pd.DataFrame):
+            _source = data
             self.is_multi_source = False
             self.num_sources = 1
 
-        elif source.__class__.__name__ == "Dataset":
-            _source = source
+        elif data.__class__.__name__ == "Dataset":
+            _source = data
             self.num_sources = 1
 
-        elif isinstance(source, list):
+        elif isinstance(data, list):
             _source = []
-            for s in source:
+            for s in data:
                 _source.append(self._process_one_source(s))
             self.is_multi_source = True
             self.source_is_list = True
-            self.num_sources = len(source)
+            self.num_sources = len(data)
 
-        elif isinstance(source, dict):
+        elif isinstance(data, dict):
             _source = {}
-            for s_name, s_val in source.items():
+            for s_name, s_val in data.items():
                 _source[s_name] = self._process_one_source(s_val)
             self.is_multi_source = True
             self.source_is_dict = True
-            self.num_sources = len(source)
+            self.num_sources = len(data)
 
-        elif source is None:
-            return source
+        elif data is None:
+            return data
 
         else:
-            raise ValueError(f"unregnizable source of data of type {source.__class__.__name__} given")
+            raise ValueError(f"unregnizable source of data of type {data.__class__.__name__} given")
 
         _source = self.impute(_source)
 
@@ -549,42 +549,42 @@ class DataHandler(AttributeContainer):
         else:
             raise NotImplementedError
 
-    def impute(self, source):
+    def impute(self, data):
         """Imputes the missing values in the data using `Imputation` module"""
         if self.config['nan_filler'] is not None:
 
-            if isinstance(source, pd.DataFrame):
+            if isinstance(data, pd.DataFrame):
 
-                _source = self._impute_one_source(source, self.config['nan_filler'])
+                _source = self._impute_one_source(data, self.config['nan_filler'])
 
             else:
                 raise NotImplementedError
         else:
-            _source = source
+            _source = data
 
         return _source
 
-    def _impute_one_source(self, source, impute_config):
+    def _impute_one_source(self, data, impute_config):
 
         if isinstance(impute_config, str):
             method, impute_args = impute_config, {}
-            source = Imputation(source, method=method, **impute_args)()
+            data = Imputation(data, method=method, **impute_args)()
 
         elif isinstance(impute_config, dict):
-            source = Imputation(source, **impute_config)()
+            data = Imputation(data, **impute_config)()
 
         elif isinstance(impute_config, list):
             for imp_conf in impute_config:
-                source = Imputation(source, **imp_conf)()
+                data = Imputation(data, **imp_conf)()
 
         else:
             raise NotImplementedError(f'{impute_config.__class__.__name__}')
 
-        return source
+        return data
 
     def tot_obs_for_one_df(self):
         if self.source_is_df:
-            tot_obs = tot_obs_for_one_df(self.source, self.allow_nan_labels, self.output_features, self.lookback,
+            tot_obs = tot_obs_for_one_df(self.data, self.allow_nan_labels, self.output_features, self.lookback,
                                          self.input_step,
                                          self.num_outs,
                                          self.forecast_step,
@@ -593,8 +593,8 @@ class DataHandler(AttributeContainer):
                                          )
         elif self.source_is_list:
             tot_obs = []
-            for idx, src in enumerate(self.source):
-                _tot_obs = tot_obs_for_one_df(self.source[idx],
+            for idx, src in enumerate(self.data):
+                _tot_obs = tot_obs_for_one_df(self.data[idx],
                                               self.allow_nan_labels[idx],
                                               self.output_features[idx], self.lookback[idx],
                                               self.input_step[idx], self.num_outs[idx],
@@ -606,8 +606,8 @@ class DataHandler(AttributeContainer):
 
         elif self.source_is_dict:
             tot_obs = {}
-            for src_name, src in self.source.items():
-                _tot_obs = tot_obs_for_one_df(self.source[src_name],
+            for src_name, src in self.data.items():
+                _tot_obs = tot_obs_for_one_df(self.data[src_name],
                                               self.allow_nan_labels[src_name],
                                               self.output_features[src_name],
                                               self.lookback[src_name],
@@ -701,10 +701,10 @@ class DataHandler(AttributeContainer):
             return [len(out_feat) for out_feat in self.output_features]
         elif self.source_is_dict:
             return {k:len(out_feat) for k, out_feat in self.output_features.items()}
-        elif self.source.__class__.__name__ == "NoneType":
+        elif self.data.__class__.__name__ == "NoneType":
             return None
         else:
-            raise NotImplementedError(f"Can not determine output features for data of type {self.source.__class__.__name__}")
+            raise NotImplementedError(f"Can not determine output features for data of type {self.data.__class__.__name__}")
 
     def kfold_splits(self, n_splits=5):
         """returns an iterator for kfold cross validation.
@@ -716,7 +716,7 @@ class DataHandler(AttributeContainer):
         -------
         ```python
         >>>data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
-        >>>data_handler = DataHandler(source=data, config={'lookback': 1})
+        >>>data_handler = DataHandler(data=data, config={'lookback': 1})
         >>>kfold_splits = data_handler.kfold_splits()
         >>>for (train_x, train_y), (test_x, test_y) in kfold_splits:
         ...    print(train_x, train_y, test_x, test_y)
@@ -785,12 +785,12 @@ class DataHandler(AttributeContainer):
 
     def _indexify_y(self, src:pd.DataFrame, out_features:list):
 
-        # this function is only called when source is a list/dictionary
+        # this function is only called when data is a list/dictionary
 
-        src = src.copy()  # make a copy so that df in original source is not altered
+        src = src.copy()  # make a copy so that df in original data is not altered
 
         # since there are multiple sources/dfs, we need to keep track that y's in each
-        # source are same i.e. y[10] of source[0] is same as y[10] of source[1]
+        # data are same i.e. y[10] of data[0] is same as y[10] of data[1]
         # but this should only be done if nans in y are ignored
         src['dummy_id'] = np.arange(len(src), dtype=np.int32)
 
@@ -808,10 +808,10 @@ class DataHandler(AttributeContainer):
                                ):
         """Makes the data for each source."""
 
-        source = self.source if identifier is None else self.source[identifier]
+        data = self.data if identifier is None else self.data[identifier]
         output_features = self.output_features if identifier is None else self.output_features[identifier]
         if self.source_is_list and all([flag == 0 for flag in self.allow_nan_labels]):
-            source, output_features = self._indexify_y(source, output_features)
+            data, output_features = self._indexify_y(data, output_features)
 
         data_maker = MakeData(
             input_features=self.input_features if identifier is None else self.input_features[identifier],
@@ -828,7 +828,7 @@ class DataHandler(AttributeContainer):
                               )
 
         data, scalers = data_maker.transform(
-            data=source,
+            data=data,
             transformation=self.transformation if identifier is None else self.transformation[identifier],
             key=key
         )
@@ -881,7 +881,7 @@ class DataHandler(AttributeContainer):
         """Renders the training data."""
         if self._from_h5:
 
-            return load_data_from_hdf5('training_data', self.source)
+            return load_data_from_hdf5('training_data', self.data)
 
         train_indices = self.get_train_args()
 
@@ -898,14 +898,14 @@ class DataHandler(AttributeContainer):
 
             x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
 
-            if not isinstance(self.source, np.ndarray):
+            if not isinstance(self.data, np.ndarray):
                 x, self.indexes[key] = data_maker.deindexify(x, key)
 
         elif self.is_multi_source:
 
             if self.source_is_list:
                 x, prev_y, y = [], [], []
-                for idx, src in enumerate(self.source):
+                for idx, src in enumerate(self.data):
 
                     _key = f'{key}_{idx}'
                     _x, _prev_y, _y, data_maker = self._make_data_for_one_src(
@@ -920,7 +920,7 @@ class DataHandler(AttributeContainer):
 
                     _x, _prev_y, _y = self.check_for_batch_size(_x, _prev_y, _y)
 
-                    if not isinstance(self.source[idx], np.ndarray):  # todo, one source is indexified and other is not?
+                    if not isinstance(self.data[idx], np.ndarray):  # todo, one source is indexified and other is not?
                         _x, self.indexes[_key] = data_maker.deindexify(_x, f'{key}_{idx}')
 
                     x.append(_x)
@@ -934,7 +934,7 @@ class DataHandler(AttributeContainer):
 
                 x, prev_y, y = {}, {},{}
 
-                for src_name, src in self.source.items():
+                for src_name, src in self.data.items():
 
                     _key = f'{key}_{src_name}'
 
@@ -955,7 +955,7 @@ class DataHandler(AttributeContainer):
                     _x, _prev_y, _y = self.check_for_batch_size(_x, _prev_y, _y)
 
                     # todo, one source may be indexified and other is not?
-                    if not isinstance(self.source[src_name], np.ndarray):
+                    if not isinstance(self.data[src_name], np.ndarray):
                         _x, self.indexes[_key] = data_maker.deindexify(_x, f'{key}_{src_name}')
 
                     x[src_name], prev_y[src_name], y[src_name] = _x, _prev_y, _y
@@ -965,7 +965,7 @@ class DataHandler(AttributeContainer):
             else:
                 raise NotImplementedError
 
-        elif isinstance(self.source, dict) or isinstance(self.source, list):
+        elif isinstance(self.data, dict) or isinstance(self.data, list):
             raise NotImplementedError
         else:
             raise NotImplementedError
@@ -1057,7 +1057,7 @@ class DataHandler(AttributeContainer):
             if x.shape[0] == 0:  # instead of returning arrays with 0 in first dimension, return None
                 x, prev_y, y = None, None, None
             else:  # np.ndarray is not indexified
-                if identifier and isinstance(self.source[identifier], np.ndarray):
+                if identifier and isinstance(self.data[identifier], np.ndarray):
                     pass
                 else:
                     x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
@@ -1069,7 +1069,7 @@ class DataHandler(AttributeContainer):
         """Returns the validation data"""
         if self._from_h5:
 
-            return load_data_from_hdf5('validation_data', self.source)
+            return load_data_from_hdf5('validation_data', self.data)
 
         if getattr(self, 'val_dataset', None).__class__.__name__ in ['BatchDataset', 'TorchDataset']:
             return self.val_dataset
@@ -1087,7 +1087,7 @@ class DataHandler(AttributeContainer):
             )
         elif self.source_is_list:
             x, prev_y, y = [], [], []
-            for idx, src in enumerate(self.source):
+            for idx, src in enumerate(self.data):
 
                 output_features = self.output_features[idx]
                 if all([flag == 0 for flag in self.allow_nan_labels]):
@@ -1111,7 +1111,7 @@ class DataHandler(AttributeContainer):
 
             x, prev_y, y = {}, {}, {}
 
-            for src_name, src in self.source.items():
+            for src_name, src in self.data.items():
 
                 _x, _prev_y, _y = self._make_val_data_from_src(
                     test_indices,
@@ -1123,10 +1123,10 @@ class DataHandler(AttributeContainer):
                 prev_y[src_name] = _prev_y
                 y[src_name] = _y
 
-        elif self.source.__class__.__name__ == "NoneType":
+        elif self.data.__class__.__name__ == "NoneType":
             return None, None
         else:
-            raise NotImplementedError(f"Can not calculate validation data for data of type {self.source.__class__.__name__}")
+            raise NotImplementedError(f"Can not calculate validation data for data of type {self.data.__class__.__name__}")
 
         prev_y = filter_zero_sized_arrays(prev_y)
         y = filter_zero_sized_arrays(y)
@@ -1152,12 +1152,12 @@ class DataHandler(AttributeContainer):
 
         if self._from_h5:
 
-            return load_data_from_hdf5('test_data', self.source)
+            return load_data_from_hdf5('test_data', self.data)
 
-        if self.config['val_data'] == "same" and self.source is None:
+        if self.config['val_data'] == "same" and self.data is None:
             return self.validation_data(key=key, data_keys=data_keys, **kwargs)
 
-        if self.source.__class__.__name__ == "NoneType":
+        if self.data.__class__.__name__ == "NoneType":
             return None, None
 
         train_indices, test_indices = self.get_indices()
@@ -1175,7 +1175,7 @@ class DataHandler(AttributeContainer):
         elif self.source_is_list:
             x, prev_y, y = [], [], []
 
-            for idx, src in enumerate(self.source):
+            for idx, src in enumerate(self.data):
 
                 output_features = self.output_features[idx]
                 if all([flag == 0 for flag in self.allow_nan_labels]):
@@ -1200,7 +1200,7 @@ class DataHandler(AttributeContainer):
 
             x, prev_y, y = {}, {}, {}
 
-            for src_name, src in self.source.items():
+            for src_name, src in self.data.items():
 
                 x[src_name], prev_y[src_name], y[src_name] = self.test_data_from_one_src(
                     f'{key}_{src_name}',
@@ -1256,7 +1256,7 @@ class DataHandler(AttributeContainer):
             if x.shape[0] == 0:
                 x, prev_y, y = None, None, None
             else:
-                if identifier and isinstance(self.source[identifier], np.ndarray):
+                if identifier and isinstance(self.data[identifier], np.ndarray):
                     pass
                 else:
                     x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
@@ -1414,43 +1414,43 @@ class DataHandler(AttributeContainer):
         f.close()
         return
 
-    def _get_source_from_str(self, source):
+    def _get_source_from_str(self, data):
         # dir path/file path/ ai4water dataset name
-        if source.endswith('.h5'):
-            _source = source
-        if source.endswith('.csv'):
-            _source = pd.read_csv(source)
-        elif source.endswith('.xlsx') or source.endswith('xlx'):
-            _source = pd.read_excel(source)
-        elif os.path.isfile(source):
-            assert os.path.exists(source)
-            assert len(os.listdir(source)) > 1
+        if data.endswith('.h5'):
+            _source = data
+        if data.endswith('.csv'):
+            _source = pd.read_csv(data)
+        elif data.endswith('.xlsx') or data.endswith('xlx'):
+            _source = pd.read_excel(data)
+        elif os.path.isfile(data):
+            assert os.path.exists(data)
+            assert len(os.listdir(data)) > 1
             # read from directory
             raise NotImplementedError
-        elif source in all_datasets:
-            _source = self._get_data_from_ai4w_datasets(source)
+        elif data in all_datasets:
+            _source = self._get_data_from_ai4w_datasets(data)
         else:
-            raise ValueError(f"unregnizable source of data given {source}")
+            raise ValueError(f"unregnizable source of data given {data}")
 
         return _source
 
-    def _process_one_source(self, source):
-        if isinstance(source, str):
-            _source = self._get_source_from_str(source)
-        elif isinstance(source, pd.DataFrame):
-            _source = source
-        elif isinstance(source, np.ndarray):
-            _source = source
-        # elif source.__class.__.__name__ == "Dataset":
-        #     _source = source
+    def _process_one_source(self, data):
+        if isinstance(data, str):
+            _source = self._get_source_from_str(data)
+        elif isinstance(data, pd.DataFrame):
+            _source = data
+        elif isinstance(data, np.ndarray):
+            _source = data
+        # elif data.__class.__.__name__ == "Dataset":
+        #     _source = data
 
         else:
-            raise ValueError(f"unregnizable source of data of type {source.__class__.__name__}")
+            raise ValueError(f"unregnizable source of data of type {data.__class__.__name__}")
         return _source
 
-    def _get_data_from_ai4w_datasets(self, source):
+    def _get_data_from_ai4w_datasets(self, data):
 
-        Dataset = getattr(datasets, source)
+        Dataset = getattr(datasets, data)
 
         dataset = Dataset()
         dataset_args = self.config['dataset_args']
@@ -1485,7 +1485,7 @@ class DataHandler(AttributeContainer):
                     save_in_a_group(xi, prevyi, yi, model_weights_group, prefix=idx)
                     idx += 1
             elif self.source_is_dict:
-                for src_name in self.source.keys():
+                for src_name in self.data.keys():
                     save_in_a_group(x.get(src_name, None), prev_y.get(src_name, None), y.get(src_name, None), model_weights_group, prefix=src_name)
             else:
                 save_in_a_group(x, prev_y, y, model_weights_group)
@@ -1521,9 +1521,9 @@ def _decode_helper(obj):
   return obj
 
 
-def load_data_from_hdf5(data_type, source):
+def load_data_from_hdf5(data_type, data):
 
-    f = h5py.File(source, mode='r')
+    f = h5py.File(data, mode='r')
 
     weight_names =  ['x', 'prev_y', 'y']
 
@@ -1808,25 +1808,25 @@ class MultiLocDataHandler(object):
     def __init__(self):
         pass
 
-    def training_data(self, source, **kwargs):
+    def training_data(self, data, **kwargs):
 
-        dh = DataHandler(source=source, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
+        dh = DataHandler(data=data, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
                          **kwargs)
         setattr(self, 'train_dh', dh)
 
         return dh.training_data()
 
-    def validation_data(self, source, **kwargs):
+    def validation_data(self, data, **kwargs):
 
-        dh = DataHandler(source=source, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
+        dh = DataHandler(data=data, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
                          **kwargs)
         setattr(self, 'val_dh', dh)
 
         return dh.training_data()
 
-    def test_data(self, source, **kwargs):
+    def test_data(self, data, **kwargs):
 
-        dh = DataHandler(source=source, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
+        dh = DataHandler(data=data, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
                          **kwargs)
         setattr(self, 'test_dh', dh)
 
@@ -1892,19 +1892,19 @@ def conform_shape(data, shape, features=None):
     return data, dummy_features
 
 
-def consider_intervals(source, intervals):
-    _source = source
+def consider_intervals(data, intervals):
+    _source = data
     if intervals is not None:
-        if isinstance(source, pd.DataFrame):
+        if isinstance(data, pd.DataFrame):
             try:  # if indices in intervals are of same type as that of index
                 # -1 so that .loc and .iloc give same results, however this is not possible
                 # with DatetimeIndex
-                if isinstance(source.index, pd.DatetimeIndex):
-                    _source = pd.concat([source.loc[st:en] for st, en in intervals])
+                if isinstance(data.index, pd.DatetimeIndex):
+                    _source = pd.concat([data.loc[st:en] for st, en in intervals])
                 else:
-                    _source = pd.concat([source.loc[st:en - 1] for st, en in intervals])
+                    _source = pd.concat([data.loc[st:en - 1] for st, en in intervals])
             except TypeError:  # assuming indices in intervals are integers
-                _source = pd.concat([source.iloc[st:en] for st, en in intervals])
+                _source = pd.concat([data.iloc[st:en] for st, en in intervals])
 
     return _source
 
