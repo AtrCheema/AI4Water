@@ -384,7 +384,7 @@ Available cases are {self.models} and you wanted to include
         >>>data = arg_beach()
         >>>inputs = list(data.columns)[0:-1]
         >>>outputs = list(data.columns)[-1]
-        >>>experiment = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs)
+        >>>experiment = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs)
         >>>experiment.fit()
         >>>experiment.compare_errors('mse')
         >>>experiment.compare_errors('r2', 0.2, 'greater')
@@ -582,7 +582,7 @@ class MLRegressionExperiments(Experiments):
                  x0=None,
                  data=None,
                  cases=None,
-                 dl4seq_model=None,
+                 ai4water_model=None,
                  exp_name='MLExperiments',
                  num_samples=10,
                  **model_kwargs):
@@ -604,7 +604,7 @@ class MLRegressionExperiments(Experiments):
         >>>data = arg_beach()  # read data file, in this case load the default data
         >>>inputs = list(data.columns)[0:-1]  # define input and output columns in data
         >>>outputs = list(data.columns)[-1]
-        >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
+        >>>comparisons = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs,
         ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
         >>>comparisons.fit(run_type="dry_run")
         >>>comparisons.compare_errors('r2')
@@ -612,7 +612,7 @@ class MLRegressionExperiments(Experiments):
         >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
         >>>best_models = [m[1] for m in best_models.values()]
         >>> # now build a new experiment for best models and otpimize them
-        >>>comparisons = MLRegressionExperiments(data=data, inputs=inputs, outputs=outputs,
+        >>>comparisons = MLRegressionExperiments(data=data, inputs_features=inputs, output_features=outputs,
         ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
         >>>comparisons.fit(run_type="optimize", include=best_models)
         >>>comparisons.compare_errors('r2')
@@ -623,7 +623,7 @@ class MLRegressionExperiments(Experiments):
         self.x0 = x0
         self.data = data
         self.model_kws = model_kwargs
-        self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
+        self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
@@ -643,9 +643,9 @@ class MLRegressionExperiments(Experiments):
                       **kwargs):
 
         if fit_kws is None:
-            fit_kws = {'indices': 'random'}
+            fit_kws = {}
 
-        model = self.dl4seq_model(
+        model = self.ai4water_model(
             data=self.data,
             prefix=title,
             **self.model_kws,
@@ -656,17 +656,13 @@ class MLRegressionExperiments(Experiments):
 
         model.fit(**fit_kws)
 
-        en = fit_kws.get('en', None)
-
-        indices = model.test_indices if 'indices' in fit_kws else None
-        tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
+        tt, tp = model.predict(prefix='test')
 
         if view:
             model.view_model()
 
         if predict:
-            indices = model.train_indices if 'indices' in fit_kws else None
-            t, p = model.predict(en=en, indices=indices, prefix='train')
+            t, p = model.predict('training', prefix='train')
 
             return (t,p), (tt, tp)
 
@@ -879,8 +875,8 @@ class MLRegressionExperiments(Experiments):
 
     def model_KNeighborsRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
-        if hasattr(self.dl4seq_model, 'config'):
-            train_frac = self.dl4seq_model.config['train_fraction']
+        if hasattr(self.ai4water_model, 'config'):
+            train_frac = self.ai4water_model.config['train_fraction']
         else:
             train_frac = self.model_kws.get('train_fraction', 0.2)
         train_data_length = train_frac * len(self.data)
@@ -1614,7 +1610,7 @@ class TransformationExperiments(Experiments):
     >>>cases = {'model_minmax': {'transformation': 'minmax'},
     ...         'model_zscore': {'transformation': 'zscore'}}
     >>>experiment = MyTransformationExperiments(cases=cases,
-    ...                                         inputs=inputs, outputs=outputs, data=data, exp_name="testing")
+    ...                                         input_features=inputs, output_features=outputs, data=data, exp_name="testing")
     """
 
     def __init__(self,
@@ -1624,13 +1620,13 @@ class TransformationExperiments(Experiments):
                  cases=None,
                  exp_name='TransformationExperiments' ,
                  num_samples=5,
-                 dl4seq_model=None,
+                 ai4water_model=None,
                  **model_kws):
         self.data = data
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kws
-        self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
+        self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
         super().__init__(cases=cases,
                          exp_name=exp_name + f'_{dateandtime_now()}',
@@ -1642,7 +1638,7 @@ You must write the method `update_paras` which should build the Model with sugge
 and return the keyword arguments including `model`. These keyword arguments will then
 will used to build AI4Water's Model class.
 """)
-        
+
     def build_and_run(self,
                       predict=False,
                       title=None,
@@ -1652,7 +1648,7 @@ will used to build AI4Water's Model class.
         if fit_kws is None:
             fit_kws = {}
 
-        model = self.dl4seq_model(
+        model = self.ai4water_model(
             data=self.data,
             prefix=title,
             **self.update_paras(**suggested_paras),
@@ -1666,12 +1662,9 @@ will used to build AI4Water's Model class.
         history = model.fit(**fit_kws)
 
         if predict:
-            indices = model.train_indices if 'indices' in fit_kws else None
-            en = fit_kws.get('en', None)
-            trt, trp = model.predict(en=en, indices=indices, prefix='train')
+            trt, trp = model.predict('training', prefix='train')
 
-            indices = model.test_indices if 'indices' in fit_kws else None
-            testt, testp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
+            testt, testp = model.predict(prefix='test')
 
             model.config['allow_nan_labels'] = 2
             model.predict(prefix='all')
@@ -1692,9 +1685,9 @@ Validation loss during all the epochs is NaN. Suggested parameters were
         if fit_kws is None:
             fit_kws = {}
 
-        model = self.dl4seq_model.from_config(config_path=config_path, data=self.data
+        model = self.ai4water_model.from_config(config_path=config_path, data=self.data
                                               )
-        model.load_weights(weight_file=weight_file)
+        model.update_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)
 
