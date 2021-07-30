@@ -818,7 +818,13 @@ class BaseModel(NN, Plots):
 
     def fit_ml_models(self, inputs, outputs):
 
-        history = self._model.fit(inputs, outputs.reshape(-1, ))
+        if self.dh.is_multiclass:
+            outputs = outputs
+        else:
+            outputs = outputs.reshape(-1, )
+
+        history = self._model.fit(inputs, outputs)
+
         model_name = list(self.config['model'].keys())[0]
         fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
 
@@ -890,8 +896,13 @@ class BaseModel(NN, Plots):
                 eval_output = self._evaluate_with_xy(**kwargs)
 
         elif 'x' in kwargs:  # expecting it to be called by keras' fit loop
+
             if self.category == 'ML':
-                return self._model.predict(kwargs['x'])
+                if hasattr(self._model, 'evaluate'):
+                    return self._model.evaluate(kwargs['x'])
+                else:
+                    return self._model.predict(kwargs['x'])
+
             return self.evaluate_fn(**kwargs)
         else:
             eval_output = self._evaluate_with_xy(data, **kwargs)
@@ -953,8 +964,11 @@ class BaseModel(NN, Plots):
 
         return self.call_predict(data=data, prefix=prefix, process_results=process_results, **kwargs)
 
-    def call_predict(self, data='test',
-                         prefix: str = 'test', process_results=True, **kwargs):
+    def call_predict(self,
+                     data='test',
+                     prefix: str = 'test',
+                     process_results=True,
+                     **kwargs):
 
         transformation_key = '5'
 
@@ -964,8 +978,6 @@ class BaseModel(NN, Plots):
         else:
             inputs, true_outputs = kwargs['x'], kwargs.get('y', None)
 
-        #first_input, inputs, dt_index = self.dh.deindexify(inputs, key=scaler_key)
-
         if self.category == 'DL':
             predicted = self.predict_fn(x= inputs,
                                         batch_size = self.config['batch_size'],
@@ -973,9 +985,6 @@ class BaseModel(NN, Plots):
                                         **kwargs)
         else:
             predicted = self.predict_fn(inputs, **kwargs)
-
-        if self.problem.upper().startswith("CLASS") and self.category == "ML":  # todo, should be for DL as well
-            self.roc_curve(inputs, true_outputs)
 
         if self.dh.source_is_dict or self.dh.source_is_list:
             true_outputs = self.inverse_transform(true_outputs, key=transformation_key)
@@ -989,6 +998,9 @@ class BaseModel(NN, Plots):
             predicted = self.inverse_transform(predicted, key=transformation_key)
 
         true_outputs, dt_index = self.deindexify(true_outputs, key=transformation_key)
+
+        if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
+            true_outputs = true_outputs.astype(predicted.dtype)
 
         if self.quantiles is None:
 
