@@ -196,10 +196,11 @@ class Model(BaseModel):
                     lyr_cache["INPUT"] = inputs
                     first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
                     layer_outputs = inputs
-
+                    assign_dummy_name(layer_outputs, 'input')
                 elif lyr_name.upper() != "INPUT":
                     if 'input_shape' in lyr_config:  # input_shape is given in the first layer so make input layer
                         layer_outputs = LAYERS["INPUT"](shape=lyr_config['input_shape'])
+                        assign_dummy_name(layer_outputs, 'input')
                     else:
                         # for simple dense layer based models, lookback will not be used
                         def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
@@ -211,11 +212,14 @@ class Model(BaseModel):
                     lyr_cache["INPUT"] = layer_outputs
                     # add th layer which the user had specified as first layer
 
+                    assign_dummy_name(layer_outputs, 'input')
+
             if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
                 # or it uses the previous outputs as inputs
                 if lyr_name.upper() == "INPUT":
                     # it is an Input layer, hence should not be called
                     layer_outputs = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                    assign_dummy_name(layer_outputs, 'input')
                 else:
                     # it is executable and uses previous outputs as inputs
                     if lyr_name.upper() in ACTIVATION_LAYERS:
@@ -302,13 +306,9 @@ class Model(BaseModel):
                         if len(_ins) == 0:
                             inputs.append(v)
             # not sure if this is the proper way of checking if a layer receives an input or not!
-            elif int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-                if hasattr(v, '_keras_mask'):
+            else: #
+                if hasattr(v, '__dummy_name'):
                     inputs.append(v)
-            else: # in tf 2.5, non-tf.keras.Input tensors can also have _keras_mask attribute but it is not None
-                if hasattr(v, '_keras_mask'):
-                    if v._keras_mask is None:
-                        inputs.append(v)
 
         # for case when {Input -> Dense, Input_1}, this method wrongly makes Input_1 as output so in such case use
         # {Input_1, Input -> Dense }, thus it makes Dense as output and first 2 as inputs, so throwing warning
@@ -393,3 +393,11 @@ def update_layers_config(layers_config, lyr):
         else:
             new_config[k] = v
     return new_config
+
+
+def assign_dummy_name(tensor, dummy_name):
+    if isinstance(tensor, list):
+        for t in tensor:
+            setattr(t, '__dummy_name', dummy_name)
+    else:
+        setattr(tensor, '__dummy_name', dummy_name)
