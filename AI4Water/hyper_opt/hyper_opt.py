@@ -1165,7 +1165,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         self.save_iterations_as_xy()
 
-        if self.objective_fn_is_dl():
+        if self.objective_fn_is_dl:
             plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
             plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
 
