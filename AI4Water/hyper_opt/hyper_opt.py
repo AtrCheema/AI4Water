@@ -3,17 +3,15 @@ import json
 import copy
 import inspect
 import warnings
-import traceback
 from typing import Union
 from collections import OrderedDict
 
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.model_selection import ParameterGrid, ParameterSampler
-
+import sklearn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import sklearn
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import ParameterGrid, ParameterSampler
 
 try:
     import plotly
@@ -62,6 +60,8 @@ except ImportError:
     Study = None
 
 from AI4Water.backend import tf
+from AI4Water.utils.utils import JsonEncoder
+from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.utils.SeqMetrics import RegressionMetrics
 from AI4Water.hyper_opt.utils import get_one_tpe_x_iter
 from AI4Water.utils.utils import Jsonize, dateandtime_now
@@ -69,9 +69,7 @@ from AI4Water.hyper_opt.utils import skopt_space_from_hp_space
 from AI4Water.hyper_opt.utils import post_process_skopt_results
 from AI4Water.hyper_opt.utils import Categorical, Real, Integer
 from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
-from AI4Water.hyper_opt.utils import plot_convergences
 from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
-from AI4Water.utils.utils import JsonEncoder
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -107,58 +105,32 @@ ALGORITHMS = {
 class HyperOpt(object):
     """
     The purpose of this class is to provide a uniform and simplifed interface to
-    use hyperopt, optuna, scikit-optimize and scikit-learn based RandomizeSearchCV,
-    GridSearchCV. Thus this class sits on top of hyperopt, optuna, scikit-optimize
-    and scikit-learn. Ideally this class should provide all the functionalities of
+    use hyperopt, optuna, scikit-optimize and scikit-learn based hyperparameter
+    optimization methods. Ideally this class should provide all the functionalities of
     beforementioned libaries with a uniform interface. It however also complements
     these libraries by combining their functionalities and adding some additional
     functionalities to them. On the other hand this class should not limit or
     complicate the use of its underlying libraries. This means all the functionalities
-    of underlying libraries are available in this class as well. Moreover, you can use
-    this class just as you use one of its underlying library.
+    of underlying libraries are available in this class as well. Moreover, you can
+    use this class just as you use one of its underlying library.
 
-    Sklearn is great but
-
-      - sklearn based SearchCVs cna be applied only on sklearn based models and not on external models such as on NNs
-
-      - sklearn does not provide Bayesian optimization
-
-    On the other hand BayesSearchCV of skopt library
-
-      - extends sklearn such that the sklearn-based regressors/classifiers could be used for Bayesian but then it can be
-        used only for sklearn-based regressors/classifiers
-
-      - The gp_minimize function from skopt allows application of Bayesian on any regressor/classifier/model, but in that
-        case this will only be Bayesian
-
-    We wish to make a class which allows application of any of the three optimization methods on any type of
-    model/classifier/regressor. If the classifier/regressor is of sklearn-based, then for random search,
-    we use RanddomSearchCV, for grid search, we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the other
-    hand, if the model is not sklearn-based, you will still be able to implement any of the three methods. In such case,
-    the bayesian will be implemented using gp_minimize. Random search and grid search will be done by simple iterating
-    over the sample space generated as in sklearn based samplers. However, the post-processing of the results is
-    (supposed to be) done same as done in RandomSearchCV and GridSearchCV.
+    We wish to make a class which allows application of any of the optimization
+    methods on any type of model/classifier/regressor. If the classifier/regressor
+    is of sklearn-based, then for random search, we use RanddomSearchCV, for grid
+    search, we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the
+    other hand, if the model is not sklearn-based, you will still be able to implement
+    any of the three methods. In such case, the bayesian will be implemented using
+    gp_minimize. Random search and grid search will be done by simple iterating
+    over the sample space generated as in sklearn based samplers. However, the
+    post-processing of the results is (supposed to be) done same as done in
+    RandomSearchCV and GridSearchCV.
 
     The class should pass all the tests written in sklearn or skopt for corresponding classes.
 
     For detailed use of this class see [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
 
-    Scenarios:
-    ---------------
-    Use scenarios of this class can be one of the following:
-
-        1. Apply grid/random/bayesian search for sklearn based regressor/classifier
-
-        2. Apply grid/random/bayesian search for custom regressor/classifier/model/function
-
-        3. Apply grid/random/bayesian search for AI4Water. This may be the easierst one, if user is familier with AI4Water. Only
-         supported for ml models and not for dl models. For dl based AI4Water's models, consider scenario 2.
-
     Attributes:
     --------------
-    For scenario 1, all attributes of corresponding classes of skopt and sklean as available from HyperOpt.
-    For scenario 2 and 3, some additional attributes are available.
-
         results dict:
         gpmin_results dict:
         skopt_results :
@@ -195,11 +167,12 @@ class HyperOpt(object):
     ...        output_features=output_features,
     ...        model={"xgboostregressor": suggestion},
     ...        data=data,
+    ...        train_data='random',
     ...        verbosity=0)
     ...
-    ...    model.fit(indices="random")
+    ...    model.fit()
     ...
-    ...    t, p = model.predict(indices=model.test_indices, prefix='test')
+    ...    t, p = model.predict(prefix='test')
     ...    mse = RegressionMetrics(t, p).mse()
     ...    # the objective function must return a scaler value which needs to be minimized
     ...    return mse
@@ -252,7 +225,6 @@ class HyperOpt(object):
     Using Baysian with gaussian processes
     ```python
     >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
-    ...                     backend='skopt',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
     ```
@@ -366,6 +338,7 @@ class HyperOpt(object):
                  objective_fn=None,
                  eval_on_best:bool=False,
                  backend:str=None,
+                 opt_path:str = None,
                  **kwargs
                  ):
 
@@ -396,6 +369,7 @@ class HyperOpt(object):
                 if True, then after optimization, the objective_fn will
                 be evaluated on best parameters and the results will be stored in the
                 folder named "best" inside `title` folder.
+            opt_path : path to save the results
             kwargs dict:
                 Any additional keyword arguments will for the underlying optimization
                 algorithm. In case of using AI4Water model, these must be arguments
@@ -417,7 +391,8 @@ class HyperOpt(object):
         self.gpmin_results = None  #
         self.data = None
         self.eval_on_best=eval_on_best
-        self.opt_path = kwargs.pop('opt_path') if 'opt_path' in kwargs else None
+        self.opt_path = opt_path
+        self.objective_fn_is_dl = False
 
         self.gpmin_args = self.check_args(**kwargs)
 
@@ -478,8 +453,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def title(self, x):
         self._title = x + '_' + str(dateandtime_now())
 
+    @property
     def objective_fn_is_dl(self):
-        return False
+        return self._objective_fn_is_dl
+
+    @objective_fn_is_dl.setter
+    def objective_fn_is_dl(self, x):
+        self._objective_fn_is_dl = x
 
     def check_args(self, **kwargs):
         kwargs = copy.deepcopy(kwargs)
@@ -887,9 +867,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         assert model.config["model"] is not None, "Currently supported only for ml models. Make your own" \
                                                                " AI4Water model and pass it as custom model."
-        model.fit(indices="random")
+        model.fit()
 
-        t, p = model.predict(indices=model.test_indices, pp=pp)
+        t, p = model.predict(process_results=pp)
         mse = RegressionMetrics(t, p).mse()
 
         error = round(mse, 7)
@@ -898,7 +878,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         print(f"Validation mse {error}")
 
         if view_model:
-            model.predict(indices=model.train_indices, prefix='train')
+            model.predict(data='training', prefix='train')
             model.predict(prefix='all')
             model.view_model()
             if interpret:
@@ -1131,7 +1111,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def hp_space(self):
         """returns a dictionary whose values are hyperopt equivalent space instances."""
-        return {k:v.as_hp() for k,v in self.space().items()}
+        return {k:v.as_hp(False if self.algorithm=='atpe' else True) for k,v in self.space().items()}
 
     def xy_of_iterations(self)->dict:
         # todo, not in original order
@@ -1202,6 +1182,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plot_evaluations(sr, dimensions=self.best_paras(as_list=True))
             plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
 
+        self.plot_importance(raise_error=False)
+
         if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
                            save=True,
@@ -1211,8 +1193,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                  fname=os.path.join(self.opt_path, "hyperparameters.png"),
                                  save=True
                                  )
-
-        self.plot_importance(raise_error=False)
 
         if plotly is not None:
 

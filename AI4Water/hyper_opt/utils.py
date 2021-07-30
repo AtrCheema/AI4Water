@@ -44,8 +44,8 @@ class Real(_Real, Counter):
     can be fed to optimization algorithm to create grid space.
     """
     def __init__(self,
-                 low=None,
-                 high=None,
+                 low:float = None,
+                 high:float = None,
                  num_samples:int=None,
                  step:int=None,
                  grid=None,
@@ -54,6 +54,10 @@ class Real(_Real, Counter):
                  ):
         """
         Arguments:
+            low :
+            high :
+            step :
+            grid :
             num_samples: int, if given, it will be used to create grid space using the formula
         """
         if low is None:
@@ -87,14 +91,17 @@ class Real(_Real, Counter):
         else:
             self._grid = np.array(x)
 
-    def as_hp(self):
+    def as_hp(self, as_named_args=True):
 
         if self.prior == 'log-uniform':
             return hp.loguniform(self.name, low=self.low, high=self.high)
         else:
             assert self.prior in ['uniform', 'loguniform', 'normal', 'lognormal',
                                   'quniform', 'qloguniform', 'qnormal', 'qlognormal']
-            return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.high)
+            if as_named_args:
+                return getattr(hp, self.prior)(label=self.name, low=self.low, high=self.high)
+            else:
+                return getattr(hp, self.prior)(self.name, self.low, self.high)
 
     def suggest(self, _trial):
         # creates optuna trial
@@ -115,6 +122,7 @@ class Real(_Real, Counter):
             return LogUniformDistribution(low=self.low, high=self.high)
 
     def serialize(self):
+        """Serializes the `Real` object so that it can be saved in json"""
         _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
         _raum.update({'type': 'Real'})
         return _raum
@@ -138,6 +146,8 @@ class Integer(_Integer, Counter):
                  ):
         """
         Arguments:
+            low : lower limit of parameter
+            high : upper limit of parameter
             grid list/array: If given, `low` and `high` should not be given as they will be
                 calculated from this grid.
             step int: if given , it will be used to calculated grid using the formula
@@ -180,8 +190,11 @@ class Integer(_Integer, Counter):
             assert hasattr(x, '__len__'), f"unacceptable type of grid {x.__class__.__name__}"
             self._grid = np.array(x)
 
-    def as_hp(self):
-        return hp.randint(self.name, low=self.low, high=self.high)
+    def as_hp(self, as_named_args=True):
+        if as_named_args:
+            return hp.randint(self.name, low=self.low, high=self.high)
+        else:
+            return hp.randint(self.name, self.low, self.high)
 
     def suggest(self, _trial):
         # creates optuna trial
@@ -203,6 +216,7 @@ class Integer(_Integer, Counter):
             return IntLogUniformDistribution(low=self.low, high=self.high)
 
     def serialize(self):
+        """Serializes the `Integer` object so that it can be saved in json"""
         _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
         _raum.update({'type': 'Integer'})
         return _raum
@@ -211,13 +225,18 @@ class Integer(_Integer, Counter):
 class Categorical(_Categorical):
     """
     Overrides skopt's `Categorical` class. Can be converted to optuna's distribution
-    or hyper_opt's choice."""
+    or hyper_opt's choice. It uses same input arguments as received by skopt's
+    [`Categorical` class](https://scikit-optimize.github.io/stable/modules/generated/skopt.space.space.Categorical.html)
+    """
     @property
     def grid(self):
         return self.categories
 
-    def as_hp(self):
-        return hp.choice(self.name, self.categories)
+    def as_hp(self, as_named_args=True):
+        categories = self.categories
+        if isinstance(categories, tuple):
+            categories = list(self.categories)
+        return hp.choice(self.name, categories)
 
     def suggest(self, _trial):
         # creates optuna trial
@@ -227,6 +246,7 @@ class Categorical(_Categorical):
         return CategoricalDistribution(choices=self.categories)
 
     def serialize(self):
+        """Serializes the `Categorical object` so that it can be saved in json"""
         _raum = {k: Jsonize(v)() for k, v in self.__dict__.items() if not callable(v)}
         _raum.update({'type': 'Integer'})
         return _raum
@@ -257,7 +277,6 @@ def x_iter_for_tpe(trials, param_space:dict, as_list=True):
     if as_list:
         return [list(d.values()) for d in x_iters]
     return iterations
-
 
 
 def get_one_tpe_x_iter(tpe_vals, param_space:dict, sort=True):
