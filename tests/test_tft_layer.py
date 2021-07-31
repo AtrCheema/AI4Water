@@ -8,11 +8,20 @@ import tensorflow as tf
 import numpy as np
 
 from AI4Water.models.tft_layer import TemporalFusionTransformer
-from AI4Water.functional import Model
+from AI4Water.utils.utils import reset_seed
+
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from AI4Water.functional import Model
+
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from AI4Water import Model
 
 tf.compat.v1.disable_eager_execution()
-np.random.seed(313)
-tf.random.set_seed(313)
+reset_seed(313, np=np, tf=tf)
+
+# todo
+#  not working in tf 2.5
 
 num_encoder_steps = 168
 params = {
@@ -91,8 +100,8 @@ class Test_TFT(unittest.TestCase):
             "Dense": {"config": {"units": output_size * len(quantiles)}}
         }
         model = Model(model={'layers':layers},
-                      inputs=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
-                      outputs=['out1', 'out2', 'out3'],
+                      input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
+                      output_features=['out1', 'out2', 'out3'],
                       verbosity=0)
         if model.api == 'functional':
             h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
@@ -110,14 +119,15 @@ class Test_TFT(unittest.TestCase):
         params['total_time_steps'] = num_encoder_steps
         params['future_inputs'] = False
         layers = {
-            "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs'])}},
+            "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs']), 'name': "Model_Input"}},
             "TemporalFusionTransformer": {"config": params},
             "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
-            "Dense": {"config": {"units": output_size * len(quantiles)}}
+            "Dense": {"config": {"units": output_size * len(quantiles)}},
+            'Reshape': {'target_shape': (3, 1)},
         }
         model = Model(model={'layers':layers},
-                      inputs=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
-                      outputs=['out1', 'out2', 'out3'],
+                      input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
+                      output_features=['out1', 'out2', 'out3'],
                       verbosity=1)
         x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
         y = np.random.random((n, len(quantiles), 1))
@@ -127,9 +137,9 @@ class Test_TFT(unittest.TestCase):
         else:
             model.fit_fn(x=x,y=y, validation_split=0.3)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
-        assert model.forecast_len == 1
-        assert model.forecast_step == 0
-        assert model.num_outs == len(quantiles)
+        #assert model.forecast_len == 1
+        #assert model.forecast_step == 0
+        #assert model.num_outs == len(quantiles)
         self.assertEqual(num_paras, 5484)
         return
 
