@@ -129,7 +129,7 @@ class HyperOpt(object):
 
     For detailed use of this class see [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
 
-    Attributes:
+    Attributes
     --------------
         results dict:
         gpmin_results dict:
@@ -188,7 +188,14 @@ class HyperOpt(object):
     ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
     ...]
     ```
+    ```
 
+    Using Baysian with gaussian processes
+    ```python
+    >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
+    ...                     num_iterations=num_iterations )
+    >>>optimizer.fit()
+    ```
     # Using TPE with optuna
     ```python
     >>>num_iterations = 10
@@ -220,14 +227,6 @@ class HyperOpt(object):
     ...                     backend='hyperopt',
     ...                     num_iterations=num_iterations )
     >>>optimizer.fit()
-    ```
-
-    Using Baysian with gaussian processes
-    ```python
-    >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-    ```
 
     Using grid with sklearn
     ```python

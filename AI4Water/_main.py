@@ -5,7 +5,7 @@ import time
 import pprint
 import random
 import warnings
-from typing import Union, Callable
+from typing import Union, Callable, Tuple
 from types import MethodType
 
 try:
@@ -948,7 +948,7 @@ class BaseModel(NN, Plots):
                 prefix: str = 'test',
                 process_results:bool = True,
                 **kwargs
-                )->tuple:
+                )->Tuple[np.ndarray, np.ndarray]:
         """
         Makes prediction from the trained model.
         Arguments:
@@ -1496,7 +1496,7 @@ class BaseModel(NN, Plots):
                     config_path: str,
                     data,
                     make_new_path: bool = False,
-                    **kwargs):
+                    **kwargs)->"BaseModel":
         """
         Loads the model from a config file.
 

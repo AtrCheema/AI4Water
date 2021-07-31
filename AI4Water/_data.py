@@ -3,7 +3,7 @@ import os
 import copy
 import json
 import warnings
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -43,11 +43,11 @@ class DataHandler(AttributeContainer):
 
     Methods
     ------------
-    - training_data :
-    - validation_data :
-    - test_data :
-    - kfold_splits :
-    - from_disk :
+    - training_data:
+    - validation_data:
+    - test_data:
+    - kfold_splits:
+    - from_disk:
 
     """
     def __init__(self,
@@ -879,7 +879,7 @@ class DataHandler(AttributeContainer):
 
         return x, prev_y, y
 
-    def training_data(self, key=None, **kwargs):
+    def training_data(self, key:str=None, **kwargs)->Tuple[np.ndarray, np.ndarray]:
         """Renders the training data."""
         if self._from_h5:
 
@@ -1067,7 +1067,7 @@ class DataHandler(AttributeContainer):
 
         return x, prev_y, y
 
-    def validation_data(self, key='val', **kwargs):
+    def validation_data(self, key='val', **kwargs)->Tuple[np.ndarray, np.ndarray]:
         """Returns the validation data"""
         if self._from_h5:
 
@@ -1146,7 +1146,7 @@ class DataHandler(AttributeContainer):
             return x, prev_y, y
         return x, y
 
-    def test_data(self, key='test', data_keys=None, **kwargs):
+    def test_data(self, key='test', data_keys=None, **kwargs)->Tuple[np.ndarray, np.ndarray]:
         """Returns the test_data"""
         # user may have defined its own data by overwriting training_data/validation_data
         # and `val_data` is same as test data, thus avoid the situation if the user
@@ -1913,7 +1913,7 @@ class SiteDistributedDataHandler(object):
                 new_config[k] = config
         return new_config
 
-    def training_data(self):
+    def training_data(self)->Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for training data"""
         x, y = [], []
 
@@ -1946,7 +1946,7 @@ class SiteDistributedDataHandler(object):
 
         return x, y
 
-    def validation_data(self):
+    def validation_data(self)->Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for the validation data"""
         x, y = [], []
 
@@ -1983,7 +1983,7 @@ class SiteDistributedDataHandler(object):
 
         return x, y
 
-    def test_data(self):
+    def test_data(self)->Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for the test data"""
         x, y = [], []
 
@@ -2058,7 +2058,7 @@ class MultiLocDataHandler(object):
 
         return dh.training_data()
 
-    def validation_data(self, data, **kwargs):
+    def validation_data(self, data, **kwargs)->Tuple[np.ndarray, np.ndarray]:
 
         dh = DataHandler(data=data, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
                          **kwargs)
@@ -2097,7 +2097,7 @@ def load_data_from_hdf5(data_type, data):
     weight_names =  ['x', 'prev_y', 'y']
 
     g = f[data_type]
-    weight_values = [np.asarray(g[weight_name]) for weight_name in weight_names]
+    weight_values = (np.asarray(g[weight_name]) for weight_name in weight_names)
 
     f.close()
 
