@@ -45,10 +45,10 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     assert isinstance(space, dict)
     assert len(space)==paras
     assert isinstance(optimizer.xy_of_iterations(), dict)
-    assert len(optimizer.xy_of_iterations())>1
+    assert len(optimizer.xy_of_iterations()) >= optimizer.num_iterations, f'{len(optimizer.xy_of_iterations())}'
     assert isinstance(optimizer.best_paras(as_list=True), list)
     assert isinstance(optimizer.best_paras(False), dict)
-    assert len(optimizer.func_vals()) > 1
+    assert len(optimizer.func_vals()) >= optimizer.num_iterations
     assert isinstance(optimizer.skopt_space(), Space)
     if isinstance(ai4water_args, dict):
         assert 'model' in ai4water_args
@@ -518,9 +518,6 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('bayes', 'skopt', 12)
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
-
-
-
 
 
 if __name__ == "__main__":

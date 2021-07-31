@@ -89,6 +89,7 @@ except ModuleNotFoundError:
 # todo loading gpmin_results is not consistent.
 
 SEP = os.sep
+COUNTER = 0
 
 ALGORITHMS = {
     'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
@@ -131,14 +132,15 @@ class HyperOpt(object):
 
     Attributes
     --------------
-        results dict:
-        gpmin_results dict:
-        skopt_results :
-        hp_space :
-        skopt_space :
-        space dict: only for scenario 3.
-        title str: name of the folder in which all results will be saved. By
-            default this is same as name of `algorithm`. For `AI4Water` based
+    - results dict:
+    - gpmin_results dict:
+    - skopt_results :
+    - hp_space :
+    - space
+    - skopt_space :
+    - space dict:
+    - title str: name of the folder in which all results will be saved. By
+        default this is same as name of `algorithm`. For `AI4Water` based
             models, this is more detailed, containing problem type etc.
 
 
@@ -738,6 +740,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     @property
     def num_iterations(self):
+        if self.backend == 'sklearn' and self.algorithm == 'grid':
+            self.gpmin_args['num_iterations'] = len(ParameterGrid(self.param_space))
         if 'num_iterations' in self.gpmin_args:
             return self.gpmin_args['num_iterations']
         if self.algorithm in ['tpe', 'atpe', 'random'] and self.backend == 'hyperopt':
@@ -871,8 +875,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         t, p = model.predict(process_results=pp)
         mse = RegressionMetrics(t, p).mse()
 
-        error = round(mse, 7)
+        global COUNTER
+
+        error = float(f'{round(mse, 7)}_{COUNTER}')
         self.results[error] = sort_x_iters(kwargs, self.original_para_order())
+        COUNTER += 1
 
         print(f"Validation mse {error}")
 
@@ -962,7 +969,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         self.gpmin_results = search_result
 
         if len(self.results) < 1:
-            self.results = {str(round(k, 8)): self.to_kw(v) for k, v in zip(search_result.func_vals, search_result.x_iters)}
+            fv = search_result.func_vals
+            xiters = search_result.x_iters
+            self.results = {f'{round(k, 8)}_{idx}': self.to_kw(v) for idx, k, v in zip(range(self.num_iterations), fv, xiters)}
 
         post_process_skopt_results(search_result, self.results, self.opt_path)
 
@@ -1108,20 +1117,23 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if callable(self.objective_fn) and not self.use_named_args:
             return self.objective_fn(*args)
 
-    def hp_space(self):
+    def hp_space(self)->dict:
         """returns a dictionary whose values are hyperopt equivalent space instances."""
         return {k:v.as_hp(False if self.algorithm=='atpe' else True) for k,v in self.space().items()}
 
     def xy_of_iterations(self)->dict:
         # todo, not in original order
         if self.backend == "optuna":
-            return {trial.value:trial.params for trial in self.study.trials}
+            num_iters = range(self.num_iterations)
+            return {float(f'{round(trial.value, 5)}_{idx}'):trial.params for idx, trial in zip(num_iters, self.study.trials)}
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
         elif self.backend == 'skopt':
             assert self.gpmin_results is not None, f"gpmin_results is not populated yet"
             # adding idx because sometimes the difference between two func_vals is negligible
-            return {float(f'{k}_{idx}'):self.to_kw(v) for idx, k, v in zip(range(len(self.gpmin_results['func_vals'])), self.gpmin_results['func_vals'], self.gpmin_results['x_iters'])}
+            fv = self.gpmin_results['func_vals']
+            xiters = self.gpmin_results['x_iters']
+            return {float(f'{round(k, 5)}_{idx}'):self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
         else:
             # for sklearn based
             return self.results

@@ -42,6 +42,18 @@ class Real(_Real, Counter):
     """
     Extends the Real class of Skopt so that it has an attribute grid which then
     can be fed to optimization algorithm to create grid space.
+
+    Attributes
+    ------------
+    grid
+
+    Methods
+    ----------
+    - as_hp
+    - to_optuna
+    - suggest
+    - to_optuna
+    - serialize
     """
     def __init__(self,
                  low:float = None,
@@ -54,11 +66,12 @@ class Real(_Real, Counter):
                  ):
         """
         Arguments:
-            low :
-            high :
-            step :
-            grid :
-            num_samples: int, if given, it will be used to create grid space using the formula
+            low : lower limit of parameter
+            high : upper limit of parameter
+            step : used to define `grid` in conjuction with `low` and `high`
+            grid : array like, if given, `low`, `high`, `step` and `num_samples`
+                will be redundant.
+            num_samples : if given, it will be used to create grid space using the formula
         """
         if low is None:
             assert grid is not None
@@ -134,13 +147,25 @@ class Integer(_Integer, Counter):
     can be fed to optimization algorithm to create grid space. Moreover it also
     generates optuna and hyperopt compatible/equivalent instances.
 
+    Attributes
+    ------------
+    grid
+
+    Methods
+    ----------
+    - as_hp
+    - to_optuna
+    - suggest
+    - to_optuna
+    - serialize
+
     """
     def __init__(self,
-                 low=None,
-                 high=None,
-                 num_samples:int=None,
-                 step:int=None,
-                 grid=None,
+                 low:int = None,
+                 high:int = None,
+                 num_samples:int = None,
+                 step:int = None,
+                 grid:"np.ndarray, list"=None,
                  *args,
                  **kwargs
                  ):
@@ -227,6 +252,14 @@ class Categorical(_Categorical):
     Overrides skopt's `Categorical` class. Can be converted to optuna's distribution
     or hyper_opt's choice. It uses same input arguments as received by skopt's
     [`Categorical` class](https://scikit-optimize.github.io/stable/modules/generated/skopt.space.space.Categorical.html)
+
+    Methods
+    ----------
+    - as_hp
+    - to_optuna
+    - suggest
+    - to_optuna
+    - serialize
     """
     @property
     def grid(self):
