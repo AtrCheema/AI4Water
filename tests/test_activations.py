@@ -6,7 +6,12 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 
-from AI4Water import Model
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from AI4Water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from AI4Water import Model
+
 from AI4Water.utils.datasets import load_nasdaq
 
 
@@ -36,8 +41,8 @@ class TestActivations(unittest.TestCase):
                       )
 
         val_losses = {
-            '21_nt': [0.09297575600513237, 0.09400989675627566],
-            '23_posix': [0.0870760977268219, 0.1053781732916832],
+            '21_nt_subclassing': [0.038706957432889856, 0.043269214379164936],
+            '23_nt_functional': [0.049483511596918106, 0.043167594820261],
             '24_posix': [0.0870760977268219, 0.1053781732916832],
             '21_posix': [0.09297575600513237, 0.095427157656984],
             '20_posix': [0.09297575600513237, 0.095427157656984],
@@ -45,7 +50,7 @@ class TestActivations(unittest.TestCase):
             '24_nt': [0.0870760977268219, 0.1053781732916832],
             '25_nt_subclassing': [0.049483511596918106, 0.04080097749829292],
             '25_nt_functional': [0.049483511596918106, 0.04080097749829292],
-            '24_nt_functional': [0.04127213731408119, 0.04080097749829292],
+            '24_nt_functional': [0.049483511596918106, 0.04080097749829292],
         }
 
         history = model.fit()
@@ -73,8 +78,8 @@ class TestActivations(unittest.TestCase):
 
         history = model.fit()
         val_losses = {
-            '21_nt': [0.8971164431680119, 0.7911620726129243],
-            '23_nt': [0.10781528055667877, 0.09552989155054092],
+            '21_nt_subclassing': [0.02578388827527157, 0.03749684586972845],
+            '23_nt_functional': [0.025749117136001587, 0.037755679339170456],
             '24_nt': [0.10781528055667877, 0.09552989155054092],
             '23_posix': [0.10781528055667877, 0.09552989155054092],
             '24_posix': [0.10781528055667877, 0.09552989155054092],
@@ -82,7 +87,7 @@ class TestActivations(unittest.TestCase):
             '20_posix': [0.8971164431680119, 0.10688107734841351],
             '25_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
             '25_nt_functional': [0.025749117136001587, 0.040039800107479095],
-            '24_nt_functional': [0.05252218618988991, 0.040802694857120514],
+            '24_nt_functional': [0.025749117136001587, 0.040802694857120514],
         }
 
         if int(tf.__version__.split('.')[0]) > 1:
