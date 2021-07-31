@@ -453,7 +453,7 @@ def taylor_plot(trues:dict,
             dia.add_sample(stddev, corrcoef,
                            marker=marker,
                            ms=10,
-                           ls='ls',
+                           ls='',
                            # mfc='k', mec='k', # B&W
                            mfc=colors[idx], mec=colors[idx],  # Colors
                            label=model_name)

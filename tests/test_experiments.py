@@ -18,14 +18,16 @@ class TestExperiments(unittest.TestCase):
 
     def test_dryrun(self):
 
-        comparisons = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
-                                              input_nans={'SimpleImputer': {'strategy': 'mean'}} )
+        comparisons = MLRegressionExperiments(
+            data=df, input_features=input_features, output_features=outputs,
+            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features}
+        )
         exclude = []
 
         comparisons.fit(run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2')
-        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.1)
-        self.assertGreater(len(best_models), 1)
+        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01)
+        self.assertGreater(len(best_models), 1), len(best_models)
         return
 
     def test_optimize(self):
@@ -36,8 +38,11 @@ class TestExperiments(unittest.TestCase):
                        'XGBoostRFRegressor'
             ]
 
-        comparisons = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
-                                              input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
+        comparisons = MLRegressionExperiments(
+            data=df,
+            input_features=input_features, output_features=outputs,
+            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
+            exp_name="BestMLModels")
         comparisons.num_samples = 2
         comparisons.fit(run_type="optimize", opt_method="random", include=best_models, post_optimize='train_best')
         comparisons.compare_errors('r2')
@@ -45,8 +50,12 @@ class TestExperiments(unittest.TestCase):
 
     def test_from_config(self):
 
-        exp = MLRegressionExperiments(data=df, inputs=input_features, outputs=outputs,
-                                              input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
+        exp = MLRegressionExperiments(
+            data=df,
+            input_features=input_features,
+            output_features=outputs,
+            nan_filler={'method': 'SimpleImputer', 'features': input_features, 'imputer_args': {'strategy': 'mean'}},
+            exp_name="BestMLModels")
         exp.fit(run_type="dry_run",
                 include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor'],
