@@ -41,11 +41,13 @@ class DataHandler(AttributeContainer):
     and `global` attributes of `data` sources. However, this local and global
     concept comes into play only when multiple data sources are used.
 
-    Methods:
-        training_data :
-        validation_data :
-        test_data :
-        from_disk :
+    Methods
+    ------------
+    - training_data :
+    - validation_data :
+    - test_data :
+    - kfold_splits :
+    - from_disk :
 
     """
     def __init__(self,
@@ -295,15 +297,6 @@ class DataHandler(AttributeContainer):
             # Default behaviour
             raise AttributeError(f"DataLoader does not have an attribute {item}")
 
-
-    @property
-    def teacher_forcing(self):
-        return self._teacher_forcing
-
-    @teacher_forcing.setter
-    def teacher_forcing(self, x):
-        self._teacher_forcing = x
-
     @property
     def classes(self):
         _classes = []
@@ -411,8 +404,9 @@ class DataHandler(AttributeContainer):
 
     @property
     def is_multiinput(self):
-
-        return
+        if len(self.num_outs)>1:
+            return True
+        return False
 
     @property
     def input_features(self):
@@ -1513,61 +1507,6 @@ class DataHandler(AttributeContainer):
         return x, prev_y, y
 
 
-
-def decode(json_string):
-  return json.loads(json_string, object_hook=_decode_helper)
-
-
-def _decode_helper(obj):
-  """A decoding helper that is TF-object aware."""
-  if isinstance(obj, dict) and 'class_name' in obj:
-
-    if obj['class_name'] == '__tuple__':
-      return tuple(_decode_helper(i) for i in obj['items'])
-    elif obj['class_name'] == '__ellipsis__':
-      return Ellipsis
-  return obj
-
-
-def load_data_from_hdf5(data_type, data):
-
-    f = h5py.File(data, mode='r')
-
-    weight_names =  ['x', 'prev_y', 'y']
-
-    g = f[data_type]
-    weight_values = [np.asarray(g[weight_name]) for weight_name in weight_names]
-
-    f.close()
-
-    return weight_values
-
-
-def save_in_a_group(x, prev_y, y, group_name, prefix=None):
-
-    container = {}
-    if x is not None:
-        key = f'{prefix}_x' if prefix else 'x'
-        container[key] = x
-
-    if prev_y is not None:
-        key = f'{prefix}_prev_y' if prefix else 'prev_y'
-        container[key] = prev_y
-
-    if y is not None:
-        key = f'{prefix}_y' if prefix else 'y'
-        container[key] = y
-
-    for name, val in container.items():
-
-        param_dset = group_name.create_dataset(name, val.shape, dtype=val.dtype)
-        if not val.shape:
-            # scalar
-            param_dset[()] = val
-        else:
-            param_dset[:] = val
-    return
-
 class MakeData(object):
 
     def __init__(self,
@@ -1584,7 +1523,6 @@ class MakeData(object):
                  verbosity=1,
                  ):
 
-
         self.input_features = copy_features(input_features)
         self.output_features = copy_features(output_features)
         self.allow_nan_labels = allow_nan_labels
@@ -1600,14 +1538,11 @@ class MakeData(object):
 
         self.scalers = {}
         self.indexes = {}
-        self.dt_indexes = {}  # saves the information whether an index was datetime index or not?
+        self.index_types = {}  # saves the information whether an index was datetime index or not?
 
     def check_nans(self, data, input_x, input_y, label_y, outs, lookback):
         """Checks whether anns are present or not and checks shapes of arrays being prepared.
         """
-        # TODO, nans in inputs should be ignored at all cost because this causes error in results,
-        #  when we set allow_nan_labels to True, then this should apply only to target/labels, and examples with
-        #  nans in inputs should still be ignored.
         if isinstance(data, pd.DataFrame):
             nans = data[self.output_features].isna()
             nans = nans.sum().sum()
@@ -1627,7 +1562,6 @@ class MakeData(object):
                 if int(np.isnan(data[:, -outs:][0:lookback]).sum() / outs) >= lookback:
                     self.nans_removed_4m_st = -9999
             else:
-
                 if self.verbosity > 0:
                     print('\n{} Removing Examples with nan in labels  {}\n'.format(10 * '*', 10 * '*'))
                 if outs == 1:
@@ -1676,36 +1610,49 @@ class MakeData(object):
 
     def indexify(self, data:pd.DataFrame, key):
 
+        dummy_index = False
         # for dataframes
         if isinstance(data.index, pd.DatetimeIndex):
             index = list(map(int, np.array(data.index.strftime('%Y%m%d%H%M'))))  # datetime index
-            self.dt_indexes[key] = True
+            self.index_types[key] = 'dt'
+            original_index = index
         else:
-            index = list(map(int, np.array(data.index)))
-            self.dt_indexes[key] = False
+            try:
+                index = list(map(int, np.array(data.index)))
+                self.index_types[key] = 'int'
+                original_index = index
+            except ValueError:  # index may not be convertible to integer, it may be string values
+                dummy_index = np.arange(len(data), dtype=np.int64).tolist()
+                original_index = pd.Series(data.index, index=dummy_index)
+                index = dummy_index
+                self.index_types[key] = 'str'
+                self.indexes[key] = {'dummy': dummy_index, 'original': original_index}
         # pandas will add the 'datetime' column as first column. This columns will only be used to keep
         # track of indices of train and test data.
         data.insert(0, 'index', index)
 
         self.input_features = ['index'] + self.input_features
         #setattr(self, 'input_features', ['index'] + self.input_features)
-        self.indexes[key] = index
+        self.indexes[key] = {'index': index, 'dummy_index': dummy_index, 'original': original_index}
         return data
 
     def deindexify(self, data, key):
 
         if isinstance(data, np.ndarray):
-            _data, _index = deindexify_nparray(data)
+            _data, _index = self.deindexify_nparray(data, key)
         elif isinstance(data, list):
             _data, _index = [], []
             for d in data:
-                data_, index_ = deindexify_nparray(d)
+                data_, index_ = self.deindexify_nparray(d, key)
                 _data.append(data_)
                 _index.append(index_)
         else:
             raise NotImplementedError
 
-        if self.dt_indexes[key]:
+        if self.indexes[key]['dummy_index']:
+            _index = self.indexes[key]['original'].loc[_index].values.tolist()
+
+        if self.index_types[key] == 'dt':
             _index = to_datetime_index(_index)
         return _data, _index
 
@@ -1812,6 +1759,22 @@ class MakeData(object):
 
         return x, prev_y, y
 
+    def deindexify_nparray(self, data, key):
+        if data.ndim == 3:
+            _data, index = data[..., 1:].astype(np.float32), data[:, -1, 0]
+        elif data.ndim == 2:
+            _data, index = data[..., 1:].astype(np.float32), data[:, 0]
+        elif data.ndim == 4:
+            _data, index = data[..., 1:].astype(np.float32), data[:, -1, -1, 0]
+        elif data.ndim == 5:
+            _data, index = data[..., 1:].astype(np.float32), data[:, -1, -1, -1, 0]
+        else:
+            raise NotImplementedError
+
+        if self.index_types[key] != 'str':
+            index = np.array(index, dtype=np.int64)
+        return _data, index
+
 
 class SiteDistributedDataHandler(object):
     """This class is useful to prepare data when we have data of different
@@ -1820,8 +1783,8 @@ class SiteDistributedDataHandler(object):
     and test spearation can be done in one of following two ways
 
     1) We may wish to use data of some sites for training and data of some
-        other sites for validation and/or test. In such a case, provide
-        the names of sites for `training_sites`, `validation_sites` and
+        other sites for validation and/or test. In such a case,  the user must
+        provide the names of sites as `training_sites`, `validation_sites` and
         `test_sites`.
 
     1) We may wish to use a fraction of data from each site for training
@@ -1830,12 +1793,19 @@ class SiteDistributedDataHandler(object):
         define the validation and test fraction for each site using the
         keyword arguments.
 
-    Note: The output first two axis of the output data are swapped.
-    That means the x will have shape:
+    Note: The first two axis of the output data are swapped.
+    That means for 3d batches the x will have the shape:
         (num_examples, num_sites, lookback, input_features)
     And the `y` will have shape:
         (num_examples, num_sites, num_outs, forecast_len)
     See Example for more illustration
+
+    Methods
+    -----------------
+    - training_data
+    - validation_data
+    - test_data
+
     """
     def __init__(self,
                  data:dict,
@@ -1845,21 +1815,17 @@ class SiteDistributedDataHandler(object):
                  test_sites:list=None
                  ):
         """
-        Initiates data data
+        Initiates data
 
         Arguments:
             data : Must be a dictionary of data for each site.
-            config : Must be a dictionary of keyword arguments for each site
+            config : Must be a dictionary of keyword arguments for each site.
+                The keys of `data` and `config` must be same.
             training_sites : List of names of sites to be used as training.
                 If `None`, data from all sites will be used to extract training
                 data based upon keyword arguments of corresponding site.
             validation_sites : List of names of sites to be used as validation.
             test_sites : List of names of sites to be used as test.
-
-        Methods:
-            training_data
-            validation_data
-            test_data
 
         Example
         -------
@@ -2109,6 +2075,60 @@ class MultiLocDataHandler(object):
         return dh.training_data()
 
 
+def decode(json_string):
+  return json.loads(json_string, object_hook=_decode_helper)
+
+
+def _decode_helper(obj):
+  """A decoding helper that is TF-object aware."""
+  if isinstance(obj, dict) and 'class_name' in obj:
+
+    if obj['class_name'] == '__tuple__':
+      return tuple(_decode_helper(i) for i in obj['items'])
+    elif obj['class_name'] == '__ellipsis__':
+      return Ellipsis
+  return obj
+
+
+def load_data_from_hdf5(data_type, data):
+
+    f = h5py.File(data, mode='r')
+
+    weight_names =  ['x', 'prev_y', 'y']
+
+    g = f[data_type]
+    weight_values = [np.asarray(g[weight_name]) for weight_name in weight_names]
+
+    f.close()
+
+    return weight_values
+
+
+def save_in_a_group(x, prev_y, y, group_name, prefix=None):
+
+    container = {}
+    if x is not None:
+        key = f'{prefix}_x' if prefix else 'x'
+        container[key] = x
+
+    if prev_y is not None:
+        key = f'{prefix}_prev_y' if prefix else 'prev_y'
+        container[key] = prev_y
+
+    if y is not None:
+        key = f'{prefix}_y' if prefix else 'y'
+        container[key] = y
+
+    for name, val in container.items():
+
+        param_dset = group_name.create_dataset(name, val.shape, dtype=val.dtype)
+        if not val.shape:
+            # scalar
+            param_dset[()] = val
+        else:
+            param_dset[:] = val
+    return
+
 
 def make_config(**kwargs):
 
@@ -2225,20 +2245,6 @@ def tot_obs_for_one_df(data, allow_nan_labels, output_features, lookback, input_
             tot_obs -= more
 
     return tot_obs
-
-
-def deindexify_nparray(data):
-    if data.ndim == 3:
-        _data, index = data[..., 1:].astype(np.float32), np.array(data[:, -1, 0], dtype=np.int64)
-    elif data.ndim == 2:
-        _data, index = data[..., 1:].astype(np.float32), np.array(data[:, 0], dtype=np.int64)
-    elif data.ndim == 4:
-        _data, index = data[..., 1:].astype(np.float32), np.array(data[:, -1, -1, 0], dtype=np.int64)
-    elif data.ndim == 5:
-        _data, index = data[..., 1:].astype(np.float32), np.array(data[:, -1, -1, -1, 0])
-    else:
-        raise NotImplementedError
-    return _data, index
 
 
 def batch_dim_from_lookback(lookback):

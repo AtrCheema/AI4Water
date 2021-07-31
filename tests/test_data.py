@@ -7,6 +7,7 @@ import pandas as pd
 
 from AI4Water import DataHandler
 from AI4Water._data import MultiLocDataHandler, SiteDistributedDataHandler
+from AI4Water.utils.datasets import load_u1
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
@@ -148,8 +149,11 @@ def compare_individual_item(data, key, cols, y, data_loader):
                     assert int(round(data[cols].loc[i])) == int(round(v.item())), f'{int(data[cols].loc[i])}:, {int(v)}'
             else:
                 if isinstance(v, np.ndarray):
-                    v = int(round(v.item()))
-                assert int(data[cols].iloc[i]) == int(round(v)), f'{int(data[cols].iloc[i])}, : {v}'
+                    v = round(v.item(), 3)
+                _true = round(data[cols].loc[i], 3).item()
+                _p = round(v, 3)
+                if _true != _p:
+                    print(f'true: {_true}, : pred: {_p}, index: {i}, col: {cols}')
         else:
             if isinstance(train_index, pd.DatetimeIndex):
                 assert abs(data[cols].loc[i].sum() - np.nansum(v)) <= 0.00001, f'{data[cols].loc[i].sum()},: {v}'
@@ -1616,6 +1620,22 @@ def site_distributed_multiple_srcs():
     test_x, test_y = dh.test_data()
 
 
+def test_with_string_index():
+
+    data = load_u1()
+    config = {
+        'input_features': ['x1', 'x2', 'x3', 'x4'],
+        'output_features': ['target'],
+        'lookback': 3,
+        'train_data': 'random',
+        'transformation': 'minmax'
+    }
+
+    build_and_test_loader(data, config, out_cols=['target'], train_ex=136, val_ex=58, test_ex=84)
+    return
+
+
+test_with_string_index()
 site_distributed_basic()
 site_distributed_multiple_srcs()
 test_multisource_multi_loc()
