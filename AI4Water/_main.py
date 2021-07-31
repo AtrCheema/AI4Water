@@ -77,7 +77,7 @@ class BaseModel(NN, Plots):
          parameters and leave the others as it is.
 
          Arguments:
-             model dict:
+             model :
                  a dictionary defining machine learning model.
                  If you are building a non-tensorflow model
                  then this dictionary must consist of name of name of model as key
@@ -626,7 +626,7 @@ class BaseModel(NN, Plots):
                              index=index).to_csv(fname)
 
 
-        return true, predicted
+        return
 
     def process_regres_results(self,
                         true: np.ndarray,
@@ -805,7 +805,7 @@ class BaseModel(NN, Plots):
         self.is_training = False
         return history
 
-    def load_best_weights(self):
+    def load_best_weights(self)->None:
         if self.config['backend'] != 'pytorch':
             # load the best weights so that the best weights can be used during model.predict calls
             best_weights = find_best_weight(os.path.join(self.path, 'weights'))
@@ -866,7 +866,8 @@ class BaseModel(NN, Plots):
     def evaluate(self, data='training', **kwargs):
         """
         Evalutes the performance of the model on a given data.
-        calls the `evaluate` method of underlying `model`.
+        calls the `evaluate` method of underlying `model`. If the `evaluate`
+        method is not available in underlying `model`, then `predict` is called.
         Arguments:
             data : which data type to use, valid values are `training`, `test`
                 and `validation`. You can also provide your own x,y values as keyword
@@ -1022,7 +1023,7 @@ class BaseModel(NN, Plots):
 
         return true_outputs, predicted
 
-    def plot_model(self, nn_model):
+    def plot_model(self, nn_model)->None:
         kwargs = {}
         if int(tf.__version__.split('.')[1]) > 14:
             kwargs['dpi'] = 300
@@ -1033,7 +1034,7 @@ class BaseModel(NN, Plots):
             print("dot plot of model could not be plotted")
         return
 
-    def get_opt_args(self):
+    def get_opt_args(self)->dict:
         """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
         in sub-classes"""
         kwargs = {'lr': self.config['lr']}
@@ -1083,20 +1084,20 @@ class BaseModel(NN, Plots):
 
     def activations(self,
                     layer_names:Union[list, str]=None,
-                    return_input=False,
                     x=None,
-                    data:str='training'):
+                    data:str='training')->dict:
         """gets the activations of any layer of the Keras Model.
         Activation here means output of a layer of a deep learning model.
         Arguments:
             layer_names : name of list of names of layers whose activations are
                 to be returned.
-            return_input :
             x : If provided, it will override `data`.
             data : data to use to get activations. Only relevent if `x` is not
                 provided. By default training data is used. Possible values are
                 `training`, `test` or `validation`.
-
+        Returns:
+            a dictionary whose keys are names of layers and values are weights
+            of those layers as numpy arrays
         """
 
         # if layer names are not specified, this will get get activations of allparameters
@@ -1105,8 +1106,7 @@ class BaseModel(NN, Plots):
             x, y = maybe_three_outputs(data)
 
         activations = keract.get_activations(self.dl_model, x, layer_names=layer_names, auto_compile=True)
-        if return_input:
-            return activations, x
+
         return activations
 
     def display_activations(self, layer_name: str = None, x=None, data:str='training', **kwargs):
@@ -1505,7 +1505,7 @@ class BaseModel(NN, Plots):
             data : data for Model
             make_new_path : If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
-                should not load the weights in such a case.
+                would not normally update the weights in such a case.
             kwargs : any additional keyword arguments for the `Model`
         return:
             a `Model` instance
