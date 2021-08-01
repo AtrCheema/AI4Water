@@ -10,6 +10,7 @@ A uniform and simplified framework for rapid expermenting with deep leanring and
 learning based models for time series and structured data. 
 
 The specific purposes of the repository are
+
 - compliment the functionality of `keras`/`pytorch`/`sklearn` by making pre and 
  post processing easeier for time-series prediction/classification problems (also holds
  true for any 1D data).
@@ -17,9 +18,6 @@ The specific purposes of the repository are
 - save, load/reload or build models from readable json file. This repository 
  provides a framework to build layered models using python dictionary and with 
  several helper tools which fasten the process of  modeling time-series forcasting.
-
-- both of above functionalities should be available without complicating keras 
- implementation.
 
 - provide a uniform interface for optimizing hyper-parameters for 
  [skopt](https://scikit-optimize.github.io/stable/index.html);
@@ -34,13 +32,17 @@ The specific purposes of the repository are
   [cmaes](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.CmaEsSampler.html) etc. 
   See [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)  
   using its application.
+ 
+- cut short the time to write boiler plate code in developing machine learning 
+ based models.
+
 - It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` 
  by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
-- cut short the time to write boiler plate code in developing machine learning 
- based models.
+- All of the above functionalities should be available without complicating keras 
+ implementation.
 
 
 ## Installation
