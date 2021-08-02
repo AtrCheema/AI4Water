@@ -946,7 +946,7 @@ class BaseModel(NN, Plots):
 
     def predict(self,
                 data: str='test',
-                prefix: str = 'test',
+                prefix: str = None,
                 process_results:bool = True,
                 **kwargs
                 )->Tuple[np.ndarray, np.ndarray]:
@@ -967,16 +967,18 @@ class BaseModel(NN, Plots):
 
     def call_predict(self,
                      data='test',
-                     prefix: str = 'test',
+                     prefix: str = None,
                      process_results=True,
                      **kwargs):
 
         transformation_key = '5'
 
         if 'x' not in kwargs:
+            prefix = prefix or data
             data = getattr(self, f'{data}_data')(key=transformation_key)
             inputs, true_outputs = maybe_three_outputs(data)
         else:
+            prefix = prefix or 'x'
             inputs, true_outputs = kwargs['x'], kwargs.get('y', None)
 
         if self.category == 'DL':
