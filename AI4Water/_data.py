@@ -2215,7 +2215,8 @@ def tot_obs_for_one_df(data, allow_nan_labels, output_features, lookback, input_
 
     max_tot_obs = 0
     if not allow_nan_labels and intervals is None:
-        x, _, _ = prepare_data(data[input_features + output_features],
+        _data = data[input_features + output_features] if isinstance(data, pd.DataFrame) else data
+        x, _, _ = prepare_data(_data,
                                lookback, num_outputs=num_outs, input_steps=input_step,
                                forecast_step=forecast_step,
                                forecast_len=forecast_len, mask=np.nan)
