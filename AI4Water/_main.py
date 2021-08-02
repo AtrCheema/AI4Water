@@ -71,70 +71,70 @@ class BaseModel(NN, Plots):
                  accept_additional_args:bool = False,
                  **kwargs):
         """
-         The Model class can take a large number of possible arguments depending
-         upon the machine learning model/algorithm used. Not all the arguments
-         are applicable in each case. The user must define only the relevant/applicable
-         parameters and leave the others as it is.
+        The Model class can take a large number of possible arguments depending
+        upon the machine learning model/algorithm used. Not all the arguments
+        are applicable in each case. The user must define only the relevant/applicable
+        parameters and leave the others as it is.
 
-         Arguments:
-             model :
-                 a dictionary defining machine learning model.
-                 If you are building a non-tensorflow model
-                 then this dictionary must consist of name of name of model as key
-                 and the keyword arguments to that model as dictionary. For example
-                 to build a decision forest based model
-                 ```python
-                 model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
-                 ```
-                 The key 'DecisionTreeRegressor' should exactly match the name of
-                 the model from following libraries
-                             -scikit-learn
-                             -xgboost
-                             -catboost
-                             -lightgbm
-                 The value {"max_depth": 3, "criterion": "mae"} is another dictionary
-                 which can be any keyword argument which the `model` (DecisionTreeRegressor
-                 in this case) accepts. The user must refer to the documentation
-                 of the underlying library (scikit-learn for DecisionTreeRegressor)
-                 to find out complete keyword arguments applicable for a particular model.
-                 If You are building a Deep Learning model using tensorflow, then the key
-                 must be 'layers' and the value must itself be a dictionary defining layers
-                 of neural networks. For example we can build an MLP as following
-                 ```python
-                 model = {'layers': {
-                             "Dense_0": {'units': 64, 'activation': 'relu'},
-                              "Flatten": {},
-                              "Dense_3": {'units': 1}
-                             }}
-                 ```
-                 The MLP in this case consists of dense, and flatten layers. The user
-                 can define any keyword arguments which is accepted by that layer in
-                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
-                 `units` and `activation` keyword argument among others. For details
-                 on how to buld neural networks using such layered API [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
-             lr  float:, default 0.001.
-                 learning rate,
-             optimizer str/keras.optimizers like:
-                 the optimizer to be used for neural network training. Default is 'adam'
-             loss str/callable:  Default is `mse`.
-                 the cost/loss function to be used for training neural networks.
-             quantiles list: Default is None
-                 quantiles to be used when the problem is quantile regression.
-             epochs int:  Default is 14
-                 number of epochs to be used.
-             min_val_loss float:  Default is 0.0001.
-                 minimum value of validatin loss/error to be used for early stopping.
-             patience int:
-                 number of epochs to wait before early stopping.
-             save_model bool:,
-                 whether to save the model or not. For neural networks, the model will
-                 be saved only an improvement in training/validation loss is observed.
-                 Otherwise model is not saved.
-             subsequences int: Default is 3.
-                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
-             metrics str/list:
-                 metrics to be monitored. e.g. ['nse', 'pbias']
-             cross_validator :
+        Arguments:
+            model :
+                a dictionary defining machine learning model.
+                If you are building a non-tensorflow model
+                then this dictionary must consist of name of name of model as key
+                and the keyword arguments to that model as dictionary. For example
+                to build a decision forest based model
+                ```python
+                model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
+                ```
+                The key 'DecisionTreeRegressor' should exactly match the name of
+                the model from following libraries
+                            -scikit-learn
+                            -xgboost
+                            -catboost
+                            -lightgbm
+                The value {"max_depth": 3, "criterion": "mae"} is another dictionary
+                which can be any keyword argument which the `model` (DecisionTreeRegressor
+                in this case) accepts. The user must refer to the documentation
+                of the underlying library (scikit-learn for DecisionTreeRegressor)
+                to find out complete keyword arguments applicable for a particular model.
+                If You are building a Deep Learning model using tensorflow, then the key
+                must be 'layers' and the value must itself be a dictionary defining layers
+                of neural networks. For example we can build an MLP as following
+                ```python
+                model = {'layers': {
+                            "Dense_0": {'units': 64, 'activation': 'relu'},
+                             "Flatten": {},
+                             "Dense_3": {'units': 1}
+                            }}
+                ```
+                The MLP in this case consists of dense, and flatten layers. The user
+                can define any keyword arguments which is accepted by that layer in
+                TensorFlow. For example the `Dense` layer in TensorFlow can accept
+                `units` and `activation` keyword argument among others. For details
+                on how to buld neural networks using such layered API [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
+            lr  float:, default 0.001.
+                learning rate,
+            optimizer str/keras.optimizers like:
+                the optimizer to be used for neural network training. Default is 'adam'
+            loss str/callable:  Default is `mse`.
+                the cost/loss function to be used for training neural networks.
+            quantiles list: Default is None
+                quantiles to be used when the problem is quantile regression.
+            epochs int:  Default is 14
+                number of epochs to be used.
+            min_val_loss float:  Default is 0.0001.
+                minimum value of validatin loss/error to be used for early stopping.
+            patience int:
+                number of epochs to wait before early stopping.
+            save_model bool:,
+                whether to save the model or not. For neural networks, the model will
+                be saved only an improvement in training/validation loss is observed.
+                Otherwise model is not saved.
+            subsequences int: Default is 3.
+                The number of sub-sequences. Relevent for building CNN-LSTM based models.
+            metrics str/list:
+                metrics to be monitored. e.g. ['nse', 'pbias']
+            cross_validator :
                 selects the type of cross validation to be applied. It can be any
                 cross validator from sklear.model_selection. Default is None, which
                 means validation will be done using `validation_data`. To use
@@ -142,38 +142,38 @@ class BaseModel(NN, Plots):
                 ```python
                 cross_validator = {'kfold': {'n_splits': 5}}
                 ```
-             batches str:
-                 either `2d` or 3d`.
-             seed int:
-                 random seed for reproducibility
-             prefix str:
-                 prefix to be used for the folder in which the results are saved.
-                 default is None, which means within
-                 ./results/model_path
-             path str/path like:
-                 if not given, new model_path path will not be created.
-             verbosity int: default is 1.
-                 determines the amount of information being printed. 0 means no
-                 print information. Can be between 0 and 3.
-             accept_additional_args bool:  Default is False
-                 If you want to pass any additional argument, then this argument
-                 must be set to True, otherwise an error will be raise.
-             kwargs : keyword arguments for `DataHandler` class
+            batches str:
+                either `2d` or 3d`.
+            seed int:
+                random seed for reproducibility
+            prefix str:
+                prefix to be used for the folder in which the results are saved.
+                default is None, which means within
+                ./results/model_path
+            path str/path like:
+                if not given, new model_path path will not be created.
+            verbosity int: default is 1.
+                determines the amount of information being printed. 0 means no
+                print information. Can be between 0 and 3.
+            accept_additional_args bool:  Default is False
+                If you want to pass any additional argument, then this argument
+                must be set to True, otherwise an error will be raise.
+            kwargs : keyword arguments for `DataHandler` class
 
-         Example
-         ---------
-         ```python
-         >>>from AI4Water import Model
+        Example
+        ---------
+        ```python
+        >>>from AI4Water import Model
          >>>from AI4Water.utils.datasets import arg_beach
-         >>>df = arg_beach()
-         >>>model = Model(data=df,
-         ...              batch_size=16,
-         ...           model={'layers': {'LSTM': 64}},
-         ...)
-         >>>history = model.fit()
-         >>>y, obs = model.predict()
-         ```
-         """
+        >>>df = arg_beach()
+        >>>model = Model(data=df,
+        ...              batch_size=16,
+        ...           model={'layers': {'LSTM': 64}},
+        ...)
+        >>>history = model.fit()
+        >>>y, obs = model.predict()
+        ```
+        """
         if self._go_up:
             maker = make_model(data,
                                model=model,

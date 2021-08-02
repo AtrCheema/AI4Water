@@ -98,8 +98,9 @@ class Transformations(scaler_container):
 
     Following methods have only transformations and not inverse transformations.
     They can be used for feature creation.
-              emd:    empirical mode decomposition
-              eemd:   ensemble empirical mode decomposition
+
+        emd :    empirical mode decomposition
+        eemd :   ensemble empirical mode decomposition
 
     To transform a datafrmae using any of the above methods use
 
@@ -483,7 +484,6 @@ class Transformations(scaler_container):
         return data
 
     def transform(self, return_key=False, **kwargs):
-        self.transforming_straight = True
         """
         Transforms the data
 
@@ -492,6 +492,7 @@ class Transformations(scaler_container):
                 tuple is returned which consists of transformed data and scaler itself.
             kwargs :
         """
+        self.transforming_straight = True
         return getattr(self, "transform_with_" + self.method.lower())(return_key=return_key, **kwargs)
 
     def inverse_transform(self, **kwargs):
@@ -505,6 +506,7 @@ class Transformations(scaler_container):
                     the available scaler is used.
         """
         self.transforming_straight = False
+
         if 'key' in kwargs or 'scaler' in kwargs:
             pass
         elif len(self.scalers) ==1:

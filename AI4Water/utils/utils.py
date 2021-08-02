@@ -875,78 +875,131 @@ def prepare_data(
             None, which indicates all the generated examples will be returned.
 
     Returns:
-      x np.ndarray: numpy array of shape (examples, lookback, ins) consisting of input examples
-      prev_y np.ndarray: numpy array consisting of previous outputs
-      y np.ndarray: numpy array consisting of target values
+      x : numpy array of shape (examples, lookback, ins) consisting of
+        input examples
+      prev_y : numpy array consisting of previous outputs
+      y : numpy array consisting of target values
 
-    Given following example consisting of input/output pairs
-    input1, input2, output1, output2, output 3
-        1,     11,     21,       31,     41
-        2,     12,     22,       32,     42
-        3,     13,     23,       33,     43
-        4,     14,     24,       34,     44
-        5,     15,     25,       35,     45
-        6,     16,     26,       36,     46
-        7,     17,     27,       37,     47
+    Given following data consisting of input/output pairs
+
+    |input1 | input2 | output1 | output2 | output 3 |
+    |-------|--------|---------|---------|----------|
+    |   1  |   11  |   21   |    31  |   41 |
+    |   2  |   12  |   22   |    32  |   42 |
+    |   3  |   13  |   23   |    33  |   43 |
+    |   4  |   14  |   24   |    34  |   44 |
+    |   5  |   15  |   25   |    35  |   45 |
+    |   6  |   16  |   26   |    36  |   46 |
+    |   7  |   17  |   27   |    37  |   47 |
 
     If we use following 2 time series as input
-    1,     11,
-    2,     12,
-    3,     13,
-    4,     14,
-    5,     15,
-    6,     16,
-    7,     17,
-                          input_features=2, lookback=7, input_steps=1
-    and if we predict
-    27, 37, 47     outputs=3, forecast_len=1,  horizon/forecast_step=0,
+
+    |input1 | input2 |
+    |----|-----|
+    | 1  |  11 |
+    | 2  |  12 |
+    | 3  |  13 |
+    | 4  |  14 |
+    | 5  |  15 |
+    | 6  |  16 |
+    | 7  |  17 |
+
+    then  `num_inputs`=2, `lookback`=7, `input_steps`=1
+
+    and if we want to predict
+
+    | output1 | output2 | output 3 |
+    |---------|---------|----------|
+    |   27    |   37    |   47     |
+
+    then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=0,
+
+    if we want to predict
+
+    | output1 | output2 | output 3 |
+    |---------|---------|----------|
+    |28 | 38 | 48 |
+
+    then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=1,
+
+    if we want to predict predict
+
+    | output1 | output2 | output 3 |
+    |---------|---------|----------|
+    | 27 | 37 | 47 |
+    | 28 | 38 | 48 |
+
+    then `num_outputs`=3, forecast_len=2,  horizon/forecast_step=0,
+
+    if we want to predict
+
+    | output1 | output2 | output 3 |
+    |---------|---------|----------|
+    | 28 | 38 | 48 |
+    | 29 | 39 | 49 |
+    | 30 | 40 | 50 |
+
+    then `num_outputs`=3, `forecast_len`=3,  `forecast_step`=1,
+
+    if we want to predict
+
+    | output2 |
+    |----------|
+    | 38 |
+    | 39 |
+    | 40 |
+
+    then `num_outputs`=1, `forecast_len`=3, `forecast_step`=0
 
     if we predict
-    28, 38, 48     outputs=3, forecast_len=1,  horizon/forecast_step=1,
+
+    | output2 |
+    |----------|
+    | 39 |
+
+    then `num_outputs`=1, `forecast_len`=1, `forecast_step`=2
 
     if we predict
-    27, 37, 47
-    28, 38, 48     outputs=3, forecast_len=2,  horizon/forecast_step=0,
 
-    if we predict
-    28, 38, 48
-    29, 39, 49   outputs=3, forecast_len=3,  horizon/forecast_step=1,
-    30, 40, 50
+    | output2 |
+    |----------|
+    | 39 |
+    | 40 |
+    | 41 |
 
-    if we predict
-    38            outputs=1, forecast_len=3, forecast_step=0
-    39
-    40
-
-    if we predict
-    39            outputs=1, forecast_len=1, forecast_step=2
-
-    if we predict
-    39            outputs=1, forecast_len=3, forecast_step=2
-    40
-    41
+     then `num_outputs`=1, `forecast_len`=3, `forecast_step`=2
 
     If we use following two time series as input
-    1,     11,
-    3,     13,
-    5,     15,
-    7,     17,
 
-           then        input_features=2, lookback=4, input_steps=2
+    |input1 | input2 |
+    |-------|--------|
+    |1 |  11 |
+    |3 |  13 |
+    |5 |  15 |
+    |7 |  17 |
+
+    then   `num_inputs`=2, `lookback`=4, `input_steps`=2
 
     If the input is
-    1,     11,
-    2,     12,
-    3,     13,
-    4,     14,
-    5,     15,
-    6,     16,
-    7,     17,
+
+    |input1 | input2 |
+    |----|-----|
+    | 1 |  11 |
+    | 2 |  12 |
+    | 3 |  13 |
+    | 4 |  14 |
+    | 5 |  15 |
+    | 6 |  16 |
+    | 7 |  17 |
 
     and target/output is
-    25, 35, 45
-    26, 36, 46
-    27, 37, 47
+
+    | output1 | output2 | output 3 |
+    |---------|---------|----------|
+    | 25 | 35 | 45 |
+    | 26 | 36 | 46 |
+    | 27 | 37 | 47 |
+
     This means we make use of 'known future inputs'. This can be achieved using following configuration
     num_inputs=2, num_outputs=3, lookback_steps=4, forecast_len=3, forecast_step=1, known_future_inputs=True
 
