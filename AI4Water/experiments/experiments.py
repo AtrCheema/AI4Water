@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.model_selection import ParameterGrid
 
 from AI4Water.hyper_opt import HyperOpt
 from AI4Water.utils.SeqMetrics import RegressionMetrics
@@ -52,8 +53,33 @@ class Experiments(object):
     The core idea of of `Experiments` is `model`. An experiment consists of one
     or more models. The models differ from each other in their structure/idea/concept.
     When fit() is called, each model is trained.
+
+    Methods
+    --------
+    - fit
+    - taylor_plot
+    - compare_losses
+    - plot_convergence
+
+    Attributes
+    ----------
+    simulations
+    trues
+    exp_path
+    _model
+
     """
-    def __init__(self, cases=None, exp_name=None, num_samples=5):
+    def __init__(self,
+                 cases:dict=None,
+                 exp_name:str=None,
+                 num_samples:int=5
+                 ):
+        """
+        Arguments:
+            cases
+            exp_name
+            num_samples
+        """
         self.trues = {}
         self.simulations  = {}
         self.opt_results = None
@@ -109,7 +135,6 @@ class Experiments(object):
             exclude: Union[None, list, str] = '',
             post_optimize='eval_best',
             fit_kws=None,
-            predict_kws=None,
             hpo_kws: dict = None):
         """
         Runs the fit loop for the specified models.
@@ -132,7 +157,6 @@ class Experiments(object):
                 then a new model will be built and trained using the parameters of
                 the best model.
             fit_kws dict:  key word arguments that will be passed to AI4Water's model.fit
-            predict_kws dict: dict, key word arguments that will be passed to AI4Water's model.predict
             hpo_kws dict: keyword arguments for `HyperOpt` class.
         """
 
@@ -162,8 +186,8 @@ One or more models to `exclude` are not available.
 Available cases are {self.models} and you wanted to exclude
 {exclude}"""
 
-        self.trues = {'train': None,
-                      'test': None}
+        self.trues = {'train': {},
+                      'test': {}}
 
         self.simulations = {'train': {},
                             'test': {}}
@@ -262,16 +286,21 @@ Available cases are {self.models} and you wanted to exclude
         return
 
     def _populate_results(self, model_type, train_results, test_results):
-        self.trues['train'] = train_results[0]
-        self.trues['test'] = test_results[0]
 
         if not model_type.startswith('model_'):  # internally we always use model_ at the start.
             model_type = f'model_{model_type}'
+
+        # it is possible that different models slightly differ in the number of examples
+        # in training/test sets for example if `lookback` is different, thus trues and simulations
+        # must be saved for each model.
+        self.trues['train'][model_type] = train_results[0]
+        self.trues['test'][model_type] = test_results[0]
+
         self.simulations['train'][model_type] = train_results[1]
         self.simulations['test'][model_type] = test_results[1]
         return
 
-    def plot_taylor(self,
+    def taylor_plot(self,
                      include: Union[None, list] = None,
                      exclude: Union[None, list] = None,
                      figsize: tuple = (9, 7),
@@ -279,13 +308,13 @@ Available cases are {self.models} and you wanted to exclude
         """
         Arguments:
             include list:
-                if not None, must a list of models which will be included.
+                if not None, must be a list of models which will be included.
                 None will result in plotting all the models.
             exclude list:
                 if not None, must be a list of models which will excluded.
                 None will result in no exclusion
             figsize tuple:
-            kwargs dict:  all the keyword arguments from plot_taylor().
+            kwargs dict:  all the keyword arguments from taylor_plot().
         """
 
         include = self.check_include_arg(include)
@@ -310,9 +339,38 @@ Available cases are {self.models} and you wanted to exclude
         fname = kwargs.get('name', 'taylor.png')
         fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
+        train_lenths = [len(self.trues['train'][obj]) for obj in self.trues['train']]
+        if not len(set(train_lenths))<= 1:
+            warnings.warn(f'{train_lenths}')
+
+            trues = {'train': None, 'test': None}
+            for k,v in self.trues.items():
+
+                for idx, (_k,_v) in enumerate(v.items()):
+
+                    trues[k] = {'std': np.std(_v)}
+
+            _simulations = {'train': {}, 'test': {}}
+            for scen, v in simulations.items():
+
+                for (_tk, _tv), (_pk, _pv) in zip(self.trues[scen].items(), simulations[scen].items()):
+
+                    _simulations[scen][_pk] = {
+                        'std': np.std(_pv),
+                        'corr_coeff': RegressionMetrics(_tv, _pv).corr_coeff(),
+                        'pbias': RegressionMetrics(_tv, _pv).pbias()
+                    }
+        else:
+            trues = {'train': None, 'test': None}
+            for k,v in self.trues.items():
+
+                for idx, (_k,_v) in enumerate(v.items()):
+                    trues[k] = _v
+            _simulations = simulations
+
         taylor_plot(
-            trues=self.trues,
-            simulations=simulations,
+            trues=trues,
+            simulations=_simulations,
             figsize=figsize,
             name=fname,
             **kwargs
@@ -336,7 +394,7 @@ Available cases are {self.models} and you wanted to include
             matric_name: str,
             cutoff_val:float = None,
             cutoff_type:str=None,
-            save:bool = False,
+            save:bool = True,
             sort_by: str = 'test',
             ignore_nans: bool = True,
             name:str = 'ErrorComparison',
@@ -411,12 +469,12 @@ Available cases are {self.models} and you wanted to include
         for mod in self.models:
             # find the models which have been run
             if mod in self.simulations['test']:  # maybe we have not done some models by using include/exclude
-                test_matric = find_matric_array(self.trues['test'], self.simulations['test'][mod])
+                test_matric = find_matric_array(self.trues['test'][mod], self.simulations['test'][mod])
                 if test_matric is not None:
                     test_matrics.append(test_matric)
                     models[mod.split('model_')[1]] = {'test': test_matric}
 
-                    train_matric = find_matric_array(self.trues['train'], self.simulations['train'][mod])
+                    train_matric = find_matric_array(self.trues['train'][mod], self.simulations['train'][mod])
                     if train_matric is None:
                         train_matric = np.nan
                     train_matrics.append(train_matric)
@@ -478,10 +536,19 @@ Available cases are {self.models} and you wanted to include
 
     def plot_losses(self,
                     loss_name:Union[str, list]='loss',
-                    save:bool=False,
+                    save:bool=True,
                     name:str='loss_comparison',
                     **kwargs):
-        """Plots the loss curves of the evaluated models."""
+        """Plots the loss curves of the evaluated models.
+        Arguments:
+            loss_name : the name of loss value, must be recorded during training
+            save : whether to save the plot or not
+            name : name of saved file
+            kwargs : following keyword arguments can be used
+                width:
+                height:
+                bbox_inches:
+        """
 
         if not isinstance(loss_name, list):
             assert isinstance(loss_name, str)
@@ -501,6 +568,8 @@ Available cases are {self.models} and you wanted to include
         fig, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
 
         for _model, _loss in loss_curves.items():
+            if _model.startswith('model_'):
+                _model = _model.split('model_')[1]
             axis = process_axis(axis=axis, data=_loss, label=_model, **_kwargs)
 
         if save:
@@ -616,7 +685,7 @@ class MLRegressionExperiments(Experiments):
         ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
         >>>comparisons.fit(run_type="optimize", include=best_models)
         >>>comparisons.compare_errors('r2')
-        >>>comparisons.plot_taylor()  # see help(comparisons.plot_taylor()) to tweak the taylor plot
+        >>>comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
         ```
         """
         self.param_space = param_space
