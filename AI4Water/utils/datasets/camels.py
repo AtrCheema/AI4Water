@@ -180,6 +180,9 @@ class Camels(Datasets):
         else:
             raise TypeError(f"Unknown value provided for stations {stations}")
 
+        if xr is None:
+            raise ModuleNotFoundError("modeule xarray must be installed to use `datasets` module")
+
         return self.fetch_stations_attributes(stations, dynamic_features, static_features,
                                               st=st, en=en,
                                               **kwargs)
