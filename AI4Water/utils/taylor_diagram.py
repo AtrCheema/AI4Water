@@ -62,11 +62,14 @@ class TaylorDiagram(object):
             axis_fontdict : dictionary must consist of at least three dictionaries 'left', 'right', 'top'
         """
 
-        #self.refstd = refstd            # Reference standard deviation
+        # Reference standard deviation
         if isinstance(true, dict):
             self.refstd = true['std']
         else:
             self.refstd = np.std(true)
+
+        if hasattr(self.refstd, 'item'):  # if true is series/dataframe
+            self.refstd = self.refstd.item()
 
         tr = PolarAxes.PolarTransform()
 
