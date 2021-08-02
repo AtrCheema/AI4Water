@@ -54,19 +54,20 @@ class Experiments(object):
     or more models. The models differ from each other in their structure/idea/concept.
     When fit() is called, each model is trained.
 
+    Attributes
+    ------------
+    simulations
+    trues
+    exp_path
+    _model
+    models
+
     Methods
     --------
     - fit
     - taylor_plot
     - compare_losses
     - plot_convergence
-
-    Attributes
-    ----------
-    simulations
-    trues
-    exp_path
-    _model
 
     """
     def __init__(self,
@@ -571,6 +572,7 @@ Available cases are {self.models} and you wanted to include
             if _model.startswith('model_'):
                 _model = _model.split('model_')[1]
             axis = process_axis(axis=axis, data=_loss, label=_model, **_kwargs)
+            axis.legend()
 
         if save:
             fname = os.path.join(self.exp_path,f'{name}_{loss_name}.png')
