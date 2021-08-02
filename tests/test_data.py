@@ -4,10 +4,11 @@ import random
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 from AI4Water import DataHandler
 from AI4Water._data import MultiLocDataHandler, SiteDistributedDataHandler
-from AI4Water.utils.datasets import load_u1
+from AI4Water.utils.datasets import load_u1, arg_beach
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
@@ -146,7 +147,10 @@ def compare_individual_item(data, key, cols, y, data_loader):
                 if np.isnan(data[cols].loc[i]).item():
                     assert np.isnan(v).item()
                 else:
-                    assert int(round(data[cols].loc[i])) == int(round(v.item())), f'{int(data[cols].loc[i])}:, {int(v)}'
+                    _t = round(data[cols].loc[i].item(), 0)
+                    _p = round(v.item(), 0)
+                    if not np.allclose(data[cols].loc[i].item(), v.item()):
+                        print(f'true: {_t}, : pred: {_p}, index: {i}, col: {cols}')
             else:
                 if isinstance(v, np.ndarray):
                     v = round(v.item(), 3)
@@ -1634,7 +1638,26 @@ def test_with_string_index():
     build_and_test_loader(data, config, out_cols=['target'], train_ex=136, val_ex=58, test_ex=84)
     return
 
+def test_with_indices_and_nans():
+    # todo, check with two output columns
+    data = arg_beach()
+    train_idx, test_idx = train_test_split(np.arange(len(data.dropna())),
+                                           test_size=0.25, random_state=332898)
+    out_cols = [list(data.columns)[-1]]
+    config = {
+        'train_data': train_idx,
+        'input_features': list(data.columns)[0:-1],
+        'output_features': out_cols,
+        'lookback': 14,
+        'val_data': 'same'
+    }
 
+    build_and_test_loader(data,
+                          config,
+                          out_cols=out_cols, train_ex=163, val_ex=55, test_ex=55,
+                          check_examples=False, save=False)
+
+test_with_indices_and_nans()
 test_with_string_index()
 site_distributed_basic()
 site_distributed_multiple_srcs()

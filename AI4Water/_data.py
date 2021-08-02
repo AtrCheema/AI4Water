@@ -592,6 +592,7 @@ class DataHandler(AttributeContainer):
                                          self.forecast_step,
                                          self.forecast_len,
                                          self.config['intervals'],
+                                         self.input_features,
                                          )
         elif self.source_is_list:
             tot_obs = []
@@ -603,6 +604,7 @@ class DataHandler(AttributeContainer):
                                               self.forecast_step[idx],
                                               self.forecast_len[idx],
                                               self.config['intervals'],
+                                              self.input_features[idx]
                                               )
                 tot_obs.append(_tot_obs)
 
@@ -618,6 +620,7 @@ class DataHandler(AttributeContainer):
                                               self.forecast_step[src_name],
                                               self.forecast_len[src_name],
                                               self.config['intervals'],
+                                              self.input_features[src_name]
                                               )
                 tot_obs[src_name] = _tot_obs
         else:
@@ -631,10 +634,10 @@ class DataHandler(AttributeContainer):
         """
         if self.source_is_df or self.source_is_list or self.source_is_dict:
             indices = self.config['train_data']
-            if indices == 'random':
+            if isinstance(indices, str):
 
-                if isinstance(indices, str):
-                    assert indices == 'random'
+                #if isinstance(indices, str):
+                assert indices == 'random'
 
                 tot_obs = self.tot_obs_for_one_df()
 
@@ -1361,7 +1364,7 @@ class DataHandler(AttributeContainer):
                             data = transformed_data[orig_cols]  # remove the dummy data
 
             elif isinstance(transformation, dict):
-                assert data.__class__.__name__ in ['DataFrame', 'Series']
+                assert data.__class__.__name__ in ['DataFrame', 'Series'], f'data is of type {data.__class__.__name__}'
                 if any([True if f in data else False for f in transformation['features']]):
                     orig_cols = data.columns
                     scaler = self.scalers[key]
@@ -2206,9 +2209,17 @@ def consider_intervals(data, intervals):
 
 
 def tot_obs_for_one_df(data, allow_nan_labels, output_features, lookback, input_step,
-                       num_outs, forecast_step, forecast_len, intervals):
+                       num_outs, forecast_step, forecast_len, intervals, input_features:list):
 
     data = consider_intervals(data, intervals)
+
+    max_tot_obs = 0
+    if not allow_nan_labels and intervals is None:
+        x, _, _ = prepare_data(data[input_features + output_features],
+                               lookback, num_outputs=num_outs, input_steps=input_step,
+                               forecast_step=forecast_step,
+                               forecast_len=forecast_len, mask=np.nan)
+        max_tot_obs = len(x)
 
     # we need to ignore some values at the start
     more = (lookback * input_step) - 1
@@ -2238,6 +2249,7 @@ def tot_obs_for_one_df(data, allow_nan_labels, output_features, lookback, input_
 
         if num_outs == 1:
             tot_obs = data.shape[0] - int(data[output_features].isna().sum()) - more
+            tot_obs = max(tot_obs, max_tot_obs)
 
         else:
             # count by droping all the rows when nans occur in output features
