@@ -41,8 +41,6 @@ except ModuleNotFoundError:
 
 SEP = os.sep
 
-# TODO, when predicting, use best saved weights instead of last state of weights
-# TODO, show loss curve of different models in an Experiment
 # todo plots comparing different models in following youtube videos at 6:30 and 8:00 minutes.
 # https://www.youtube.com/watch?v=QrJlj0VCHys
 
@@ -617,7 +615,14 @@ Available cases are {self.models} and you wanted to include
         return
 
     @classmethod
-    def from_config(cls, config_path, **kwargs):
+    def from_config(cls, config_path:str, **kwargs)->"Experiments":
+        """Loads the experiment from the config file.
+        Arguments:
+            config_path : complete path of experiment
+            kwargs : keyword arguments to experiment
+        Returns:
+            an instance of Experiments class
+        """
         if not config_path.endswith('.json'):
             raise ValueError(f"""
 {config_path} is not a json file
