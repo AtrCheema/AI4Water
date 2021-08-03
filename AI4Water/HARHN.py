@@ -1,5 +1,5 @@
 
-from AI4Water.backend import torch
+from ai4water.backend import torch
 
 class HSGLayer(torch.nn.Module):
     def __init__(self, n_units, init_gates_closed):

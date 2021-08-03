@@ -10,7 +10,7 @@ except ModuleNotFoundError:
     torch = None
 
 from ._main import BaseModel
-from AI4Water.tf_attributes import ACTIVATION_LAYERS, tcn, tf
+from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, tf
 from .nn_tools import get_call_args
 
 from .backend import BACKEND, tf, torch
@@ -56,9 +56,9 @@ class Model(MODEL, BaseModel):
                 raise NotImplementedError(f"""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
             You can use functional API instead by using
-            from AI4Water.functional import Model
+            from ai4water.functional import Model
             instead of 
-            from AI4Water import Model
+            from ai4water import Model
             Or change the tensorflow version. Current version is {tf.__version__}. 
             """)
 
@@ -827,7 +827,7 @@ class Model(MODEL, BaseModel):
             data = kwargs['data']
 
         if 'make_new_path' in kwargs or os.path.isfile(_config):
-            # we need to build AI4Water's Model class
+            # we need to build ai4water's Model class
             config, path = BaseModel._get_config_and_path(cls, _config, kwargs.get('make_new_path', False))
             if data is not None and 'data' in kwargs:
                 kwargs.pop('data')

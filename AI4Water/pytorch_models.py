@@ -5,11 +5,11 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import os
 
-from AI4Water.backend import torch
-from AI4Water.HARHN import HARHN
-from AI4Water.imv_networks import IMVTensorLSTM
-from AI4Water.main import Model
-from AI4Water.utils.utils import check_min_loss
+from ai4water.backend import torch
+from ai4water.HARHN import HARHN
+from ai4water.imv_networks import IMVTensorLSTM
+from ai4water.main import Model
+from ai4water.utils.utils import check_min_loss
 
 
 class HARHNModel(Model):

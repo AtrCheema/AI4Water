@@ -22,10 +22,10 @@ if tcn is not None:
     LAYERS.update({"TCN": tcn.TCN if tcn is not None else None})
 
 if tf is not None:
-    import AI4Water.utils.tf_losses as tf_losses
-    from AI4Water.nbeats_keras import NBeats
-    import AI4Water.models.attention_layers as attns
-    from AI4Water.models.tft_layer import TemporalFusionTransformer
+    import ai4water.utils.tf_losses as tf_losses
+    from ai4water.nbeats_keras import NBeats
+    import ai4water.models.attention_layers as attns
+    from ai4water.models.tft_layer import TemporalFusionTransformer
     keras = tf.keras
     LOSSES.update({
         'nse': tf_losses.tf_nse,

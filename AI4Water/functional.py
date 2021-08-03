@@ -1,7 +1,7 @@
 import numpy as np
 
 from ._main import BaseModel
-from AI4Water.tf_attributes import ACTIVATION_LAYERS, LAYERS, tf, keras, OPTIMIZERS, tcn
+from ai4water.tf_attributes import ACTIVATION_LAYERS, LAYERS, tf, keras, OPTIMIZERS, tcn
 from .nn_tools import get_add_call_args, get_call_args
 
 
@@ -16,13 +16,13 @@ class Model(BaseModel):
     your own NN structure. In such as case you can construct your NN structure
     by overwriting `add_layers`. Another advantage of this class is that sometimes,
     model_subclsasing is not possible for example due to some bugs in tensorflow.
-    In such a case this class can be used. Otherwise all the features of AI4Water
+    In such a case this class can be used. Otherwise all the features of ai4water
     are available in this class as well.
 
     Example
     --------
     ```python
-    from AI4Model.functional import Model
+    from ai4water.functional import Model
     ```
     """
 
@@ -269,7 +269,9 @@ class Model(BaseModel):
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
                         layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
-                        if isinstance(lyr_inputs, list):
+                        # todo, following conditioning is not good
+                        # for concat layer inputs should be ([a,b,c]) instaed of (a,b,c)
+                        if isinstance(lyr_inputs, list) and lyr_name.upper() != "CONCAT":
                             layer_outputs = layer_initialized(*call_args, **add_args)
                         else:
                             layer_outputs = layer_initialized(call_args, **add_args)
@@ -337,7 +339,7 @@ class Model(BaseModel):
 
         self.print_info()
 
-        if self.category.upper() == "DL":
+        if self.category == "DL":
             if self.config.get('model', None) is None:
                 lyrs = None
             else:

@@ -3,13 +3,13 @@ __all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", 
 import numpy as np
 import pandas as pd
 
-from AI4Water.backend import tf
-from AI4Water.main import Model
-from AI4Water.functional import Model as FModel
-from AI4Water.backend import keras
-from AI4Water._main import print_something
-from AI4Water.nn_tools import check_act_fn
-from AI4Water.layer_definition import MyTranspose, MyDot
+from ai4water.backend import tf
+from ai4water.main import Model
+from ai4water.functional import Model as FModel
+from ai4water.backend import keras
+from ai4water._main import print_something
+from ai4water.nn_tools import check_act_fn
+from ai4water.layer_definition import MyTranspose, MyDot
 
 layers = keras.layers
 KModel = keras.models.Model

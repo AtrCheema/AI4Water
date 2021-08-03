@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
-from AI4Water.models.attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
+from ai4water.models.attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
 def _get_tensor_shape(t):
     return t.shape

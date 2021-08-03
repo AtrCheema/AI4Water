@@ -15,7 +15,7 @@ from .utils.utils import prepare_data, jsonize, to_datetime_index
 from .utils.datasets import all_datasets
 from .utils.transformations import Transformations
 from .utils.imputation import Imputation
-import AI4Water.utils.datasets as datasets
+import ai4water.utils.datasets as datasets
 
 try:
     import h5py
@@ -140,7 +140,7 @@ class DataHandler(AttributeContainer):
                 For further usage see `examples/using_intervals`
             transformation : type of transformation to be applied.
                 The transformation can be any transformation name from
-                AI4Water.utils.transformations.py. The user can specify more than
+                ai4water.utils.transformations.py. The user can specify more than
                 one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
@@ -226,7 +226,7 @@ class DataHandler(AttributeContainer):
         ```python
         import pandas as pd
         import numpy as np
-        from AI4Water import DataHandler
+        from ai4water import DataHandler
         data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
         data_handler = DataHandler(data=data, lookback=5)
         x,y = data_handler.training_data()

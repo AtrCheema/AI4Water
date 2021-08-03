@@ -1,4 +1,4 @@
-from AI4Water.backend import torch
+from ai4water.backend import torch
 nn = torch.nn
 
 

@@ -7,10 +7,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-from AI4Water.ETUtil.converter import Temp, Speed, Pressure
-from AI4Water.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA, Colors
-from AI4Water.ETUtil.global_variables import default_constants, SB_CONS
-from AI4Water.utils.utils import process_axis
+from ai4water.ETUtil.converter import Temp, Speed, Pressure
+from ai4water.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA, Colors
+from ai4water.ETUtil.global_variables import default_constants, SB_CONS
+from ai4water.utils.utils import process_axis
 
 
 class AttributeChecker:

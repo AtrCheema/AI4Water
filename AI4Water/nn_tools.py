@@ -3,14 +3,14 @@ __all__ = ["NN", "check_act_fn"]
 from weakref import WeakKeyDictionary
 
 try:
-    from AI4Water.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS, tf
+    from ai4water.tf_attributes import ACTIVATION_LAYERS, ACTIVATION_FNS, LAYERS, tf
 except ModuleNotFoundError:
     tf = None
 
 from .backend import BACKEND
 
 if BACKEND == 'tensorflow':
-    from AI4Water.tf_attributes import LAYERS, tf
+    from ai4water.tf_attributes import LAYERS, tf
 else:
     from .pytorch_attributes import LAYERS
 

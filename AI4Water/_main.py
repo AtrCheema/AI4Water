@@ -19,18 +19,18 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from AI4Water.nn_tools import NN
-from AI4Water.backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
-from AI4Water.backend import tpot_models
-from AI4Water.backend import sklearn_models
-from AI4Water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
-from AI4Water.utils.utils import ts_features, make_model
-from AI4Water.utils.utils import find_best_weight, reset_seed
-from AI4Water.utils.plotting_tools import Plots
-from AI4Water.models.custom_training import train_step, test_step
-from AI4Water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
-from AI4Water.utils.visualizations import Visualizations, Interpret
-from AI4Water._data import DataHandler
+from ai4water.nn_tools import NN
+from ai4water.backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
+from ai4water.backend import tpot_models
+from ai4water.backend import sklearn_models
+from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
+from ai4water.utils.utils import ts_features, make_model
+from ai4water.utils.utils import find_best_weight, reset_seed
+from ai4water.utils.plotting_tools import Plots
+from ai4water.models.custom_training import train_step, test_step
+from ai4water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
+from ai4water.utils.visualizations import Visualizations, Interpret
+from ai4water._data import DataHandler
 
 from .backend import BACKEND
 
@@ -38,11 +38,11 @@ LOSSES = {}
 
 if BACKEND == 'tensorflow' and tf is not None:
 
-    import AI4Water.keract_mod as keract
-    from AI4Water.tf_attributes import LOSSES, OPTIMIZERS
+    import ai4water.keract_mod as keract
+    from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif BACKEND == 'pytorch' and torch is not None:
-    from AI4Water.pytorch_attributes import LOSSES, OPTIMIZERS
+    from ai4water.pytorch_attributes import LOSSES, OPTIMIZERS
 
 
 
@@ -163,8 +163,8 @@ class BaseModel(NN, Plots):
         Example
         ---------
         ```python
-        >>>from AI4Water import Model
-         >>>from AI4Water.utils.datasets import arg_beach
+        >>>from ai4water import Model
+         >>>from ai4water.utils.datasets import arg_beach
         >>>df = arg_beach()
         >>>model = Model(data=df,
         ...              batch_size=16,
@@ -219,7 +219,8 @@ class BaseModel(NN, Plots):
         if item in [
             'data',
             'training_data', 'test_data', 'validation_data',  # this allows overwriting of training/val/test data
-            'inverse_transform', 'deindexify',
+            #'inverse_transform',
+            'deindexify',
             'test_indices', 'train_indices',
             'num_outs', 'forecast_len', 'forecast_step', 'num_ins',
             'classes', 'num_classes', 'is_binary', 'is_multiclass', 'is_multilabel',
@@ -628,12 +629,14 @@ class BaseModel(NN, Plots):
 
         return
 
-    def process_regres_results(self,
-                        true: np.ndarray,
-                        predicted: np.ndarray,
-                        prefix=None,
-                        index=None,
-                        remove_nans=True):
+    def process_regres_results(
+            self,
+            true: np.ndarray,
+            predicted: np.ndarray,
+            prefix=None,
+            index=None,
+            remove_nans=True
+    ):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
@@ -989,16 +992,8 @@ class BaseModel(NN, Plots):
         else:
             predicted = self.predict_fn(inputs, **kwargs)
 
-        if self.dh.source_is_dict or self.dh.source_is_list:
-            true_outputs = self.inverse_transform(true_outputs, key=transformation_key)
-            if isinstance(predicted, np.ndarray):
-                assert len(true_outputs) == 1
-                predicted = {list(true_outputs.keys())[0]: predicted}
-            predicted = self.inverse_transform(predicted, key=transformation_key)
 
-        else:
-            true_outputs = self.inverse_transform(true_outputs, key=transformation_key)
-            predicted = self.inverse_transform(predicted, key=transformation_key)
+        true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
 
         true_outputs, dt_index = self.deindexify(true_outputs, key=transformation_key)
 
@@ -1024,6 +1019,39 @@ class BaseModel(NN, Plots):
             self.plot_all_qs(true_outputs, predicted)
 
         return true_outputs, predicted
+
+    def inverse_transform(self,
+                          true:Union[np.ndarray, dict],
+                          predicted:Union[np.ndarray, dict],
+                          key:str
+                          )->Tuple[np.ndarray, np.ndarray]:
+
+        if self.dh.source_is_dict or self.dh.source_is_list:
+            true = self.dh.inverse_transform(true, key=key)
+            if isinstance(predicted, np.ndarray):
+                assert len(true) == 1
+                predicted = {list(true.keys())[0]: predicted}
+            predicted = self.dh.inverse_transform(predicted, key=key)
+
+        else:
+            true_shape, pred_shape = true.shape, predicted.shape
+            if isinstance(true, np.ndarray) and self.forecast_len==1 and isinstance(self.num_outs, int):
+                true = pd.DataFrame(true.reshape(len(true), self.num_outs), columns=self.out_cols)
+                predicted = pd.DataFrame(predicted.reshape(len(predicted), self.num_outs), columns=self.out_cols)
+
+            true = self.dh.inverse_transform(true, key=key)
+            predicted = self.dh.inverse_transform(predicted, key=key)
+
+
+            if predicted.__class__.__name__ in ['DataFrame', 'Series']:
+                predicted = predicted.values
+            if true.__class__.__name__ in ['DataFrame', 'Series']:
+                true = true.values
+
+            true = true.reshape(true_shape)
+            predicted = predicted.reshape(pred_shape)
+
+        return true, predicted
 
     def plot_model(self, nn_model)->None:
         kwargs = {}
@@ -1054,7 +1082,7 @@ class BaseModel(NN, Plots):
                 assert isinstance(_metrics, str)
                 _metrics = [_metrics]
 
-            from AI4Water.utils.tf_losses import nse, kge, pbias, tf_r2
+            from ai4water.utils.tf_losses import nse, kge, pbias, tf_r2
 
             METRICS = {'NSE': nse,
                        'KGE': kge,
