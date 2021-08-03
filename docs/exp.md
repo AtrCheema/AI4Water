@@ -1,5 +1,5 @@
 # Experiments
-::: AI4Water.experiments.Experiments
+::: ai4water.experiments.Experiments
     handler: python
     rendering:
         show_root_heading: true
@@ -11,3 +11,4 @@
             - plot_convergence
             - plot_taylor
             - plot_losses
+            - from_config

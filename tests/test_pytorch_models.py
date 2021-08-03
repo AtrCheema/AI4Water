@@ -5,8 +5,8 @@ from os.path import abspath
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from AI4Water.pytorch_models import HARHNModel
-from AI4Water.utils.datasets import load_nasdaq
+from ai4water.pytorch_models import HARHNModel
+from ai4water.utils.datasets import load_nasdaq
 
 lookback = 10
 epochs = 50

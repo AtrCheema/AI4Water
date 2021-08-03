@@ -1,5 +1,5 @@
 **`DataHanlder`**
-::: AI4Water.DataHandler
+::: ai4water.DataHandler
     handler: python
     selection:
         members:
@@ -13,7 +13,7 @@
         show_root_heading: true
 
 **`SiteDistributedDataHandler`**
-::: AI4Water.SiteDistributedDataHandler
+::: ai4water.SiteDistributedDataHandler
     handler: python
     selection:
         members:

@@ -8,8 +8,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from AI4Water import InputAttentionModel
-from AI4Water.utils.datasets import arg_beach
+from ai4water import InputAttentionModel
+from ai4water.utils.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     model.loss = loss
 
-    history = model.fit(callbacks={'tensorboard':True})
+    history = model.fit(callbacks={'tensorboard': {}})
 
     y, obs = model.predict()
     activations = model.activations()

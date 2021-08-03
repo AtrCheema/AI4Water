@@ -1,7 +1,7 @@
 
 
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.utils.datasets import arg_beach
 
 model = Model(
     model = {'randomforestregressor': {}},

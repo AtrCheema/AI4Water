@@ -3,7 +3,7 @@ import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from AI4Water import Model
+from ai4water import Model
 
 lookback = 10
 batch_size = 32

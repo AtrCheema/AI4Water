@@ -1,6 +1,6 @@
 import os
 
-from AI4Water.utils.spatial_processing import MakeHRUs
+from ai4water.utils.spatial_processing import MakeHRUs
 
 
 SLOPE = {0: '0-13',

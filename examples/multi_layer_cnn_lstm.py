@@ -2,8 +2,8 @@
 # We build a CNN->LSTM model consisting of 3 CNN layers followed by max pooling and then feeding its output
 # to two LSTM layers.
 
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.utils.datasets import arg_beach
 
 df = arg_beach()
 input_features = list(df.columns)[0:-1]

@@ -9,7 +9,7 @@ documentation of corresponding layer in [`Tensorflow` docs](https://www.tensorfl
 ### multi-layer perceptron
 
 ```python
-from AI4Water import Model
+from ai4water import Model
 
 import pandas as pd
 
@@ -39,7 +39,7 @@ If you do not define the last dense/fully connected layer, it will be inferred f
 model is set to produce. In following case a [`Dense`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense) layer with one `units` is added automatically at the end of 
 second `LSTM` layer.
 ```python
-from AI4Water import Model
+from ai4water import Model
 import pandas as pd
 
 layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
@@ -174,7 +174,7 @@ case whose members must be the names of the layers which must have been defined 
 arguments in the layer must be enclosed in a `config` dictionary within the layer in such cases.
 
 ```python
-from AI4Water import Model
+from ai4water import Model
 class MyModel(Model):
 
     def training_data(self, **kwargs) -> (list, list):
@@ -279,7 +279,7 @@ You can also add [`lambda`](https://www.tensorflow.org/api_docs/python/tf/keras/
 lambda layer definition in the `config` as following:
 ```python
 import tensorflow as tf
-from AI4Water import Model
+from ai4water import Model
 import pandas as pd
 
 layers = {

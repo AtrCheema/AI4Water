@@ -1,13 +1,19 @@
 import os
 import site
 import unittest
-# so that AI4Water directory is in path
+# so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
+from ai4water.utils.datasets import arg_beach
+from ai4water.private_layers import ConditionalRNN
 
 inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
 outputs = ['tetx_coppml']
@@ -248,6 +254,46 @@ class TestBuiltTFConfig(unittest.TestCase):
         assert model.nn_layers().__len__() == 10
         return
 
+    def test_custom_layer(self):
+        num_hrus = 7
+        lookback = 5
+
+        class SharedRNN(tf.keras.layers.Layer):
+
+            def __init__(self, *args, **kwargs):
+                super().__init__()
+                self.rnn = ConditionalRNN(*args, **kwargs)
+
+            def __call__(self, inputs, conditions, *args, **kwargs):
+                assert len(inputs.shape) == 4
+                assert inputs.shape[1] == conditions.shape[1]
+
+                outputs = []
+
+                for i in range(inputs.shape[1]):
+                    rnn_output = self.rnn([inputs[:, i], conditions[:, i]])
+                    rnn_output = tf.keras.layers.Dense(1, name=f'HRU_{i}')(rnn_output)
+                    outputs.append(rnn_output)
+
+                return outputs
+
+        layers = {
+            'Input_cont': {'shape': (num_hrus, lookback, 3)},  # 3 because a,b,c are input parameters
+            'Input_static': {'shape': (num_hrus, 3)},
+            SharedRNN: {'config': {'units': 32},
+                        'inputs': ['Input_cont', 'Input_static'],
+                        'outputs': 'rnn_outputs'},
+            'Add': {'name': 'total_flow'},
+            'Reshape_output': {'target_shape': (1, 1)}
+        }
+
+        model = Model(
+            model={'layers': layers},
+            verbosity=0
+        )
+        assert model.trainable_parameters() == 4967
+
+        return
     def test_lambda(self):
 
         model = build_model({

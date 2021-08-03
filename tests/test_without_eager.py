@@ -1,14 +1,14 @@
 import os
 import unittest
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)))
 
 import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from AI4Water.utils.datasets import load_nasdaq
-from AI4Water import InputAttentionModel, DualAttentionModel
+from ai4water.utils.datasets import load_nasdaq
+from ai4water import InputAttentionModel, DualAttentionModel
 
 
 def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):

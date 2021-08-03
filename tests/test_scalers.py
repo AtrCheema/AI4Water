@@ -1,33 +1,38 @@
 import os
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 import unittest
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
 import pandas as pd
 
-from AI4Water.utils.transformations import Transformations
-from AI4Water import Model
-from AI4Water.utils.datasets import load_u1
+from ai4water.utils.transformations import Transformations
+
+from ai4water.tf_attributes import tf
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
+from ai4water.utils.datasets import load_u1
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
 
 def build_and_run(transformation, data, inputs, outputs):
+
     model = Model(data=data,
                   input_features=inputs,
                   output_features=outputs,
                   transformation=transformation,
                   verbosity=0)
-    tr_data, sc = model.normalize(model.data, transformation=model.config['transformation'], key='5')
+    x, y = model.training_data(key='junk')
 
-    pred, true = model.denormalize_data(inputs=tr_data[inputs],
-                                        true=tr_data[outputs],
-                                        predicted=tr_data[outputs],
-                                        scaler_key='5',
-                                        in_cols=model.in_cols,
-                                        out_cols=model.out_cols,
-                                        transformation=model.config['transformation'])
+    pred, pred = model.inverse_transform(y, y, key='junk')
+
+    pred, index = model.deindexify(pred, key='junk')
+    pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs), columns=outputs, index=index).sort_index()
     return pred
 
 def run_method1(method,
@@ -407,8 +412,8 @@ class test_Scalers(unittest.TestCase):
 
         pred = build_and_run(transformation, data, inputs, outputs)
 
-        for i,j in zip(data['out1'], pred):
-            self.assertAlmostEqual(i, float(j), 5)
+        for i in pred.index:
+            assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])
 
         return
 
@@ -425,8 +430,28 @@ class test_Scalers(unittest.TestCase):
                           ]
         pred = build_and_run(transformation, data, inputs,outputs)
 
-        for i,j in zip(data['out1'], pred):
-            self.assertAlmostEqual(i, float(j), 5)
+        for i in pred.index:
+            assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])
+
+        return
+
+    def test_multiple_same_transformations_mutile_outputs(self):
+        """Test when we want to apply multiple transformations on one or more features"""
+        inputs = ['in1', 'inp1']
+        outputs = ['out1', 'out2']
+
+        data = pd.DataFrame(np.random.random((100, 4)), columns=inputs+outputs)
+
+        transformation = [
+            {"method": "robust", "features": outputs},
+            {"method": "robust", "features": inputs + outputs}
+                          ]
+        pred = build_and_run(transformation, data, inputs,outputs)
+
+        for i in pred.index:
+            assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])
+            assert np.allclose(data['out2'].loc[i], pred['out2'].loc[i])
+
         return
 
     def test_example(self):

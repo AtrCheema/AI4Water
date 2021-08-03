@@ -1,18 +1,18 @@
 # this file tests that given activations are working both as layers as well as activation functions withing a layer
 import unittest
 import os
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-    from AI4Water.functional import Model
+    from ai4water.functional import Model
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
 else:
-    from AI4Water import Model
+    from ai4water import Model
 
-from AI4Water.utils.datasets import load_nasdaq
+from ai4water.utils.datasets import load_nasdaq
 
 
 df = load_nasdaq()

@@ -1,16 +1,21 @@
 
 import os
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 import unittest
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
 import tensorflow as tf
 
-from AI4Water import Model
-from AI4Water.functional import Model as FModel
-from AI4Water import NBeatsModel
-from AI4Water.utils.datasets import arg_beach, load_nasdaq
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
+from ai4water.functional import Model as FModel
+from ai4water import NBeatsModel
+from ai4water.utils.datasets import arg_beach, load_nasdaq
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
@@ -95,7 +100,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1312.3688450753175,
             '115_posix': 1265.676495072539,
-            #'25_nt': 158.6142,
+            '23_nt': 286.2128473956241,
             '25_nt': 286.21284595900113,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1405.3555436921633), 3)
@@ -113,7 +118,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1408.9016057021054,
             '115_posix': 1327.6904604995418,
-            #'25_nt': 131.04134,
+            '23_nt': 195.22941200342964,
             '25_nt': 195.22941257807892,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1434.2028425805552), 3)
@@ -131,9 +136,13 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
+        trues = {
+            '23_nt': 108.09015740001126,
+        }
         if int(''.join(tf.__version__.split('.')[0:2])) <= 23:
-            prediction = make_and_run(model=Model, layers=lyrs, batch_size=batch_size, batches_per_epoch=5)
-            self.assertAlmostEqual(float(prediction.sum()), 519.6375288994583, 4)
+            prediction = make_and_run(model=Model, layers=lyrs, batch_size=batch_size,
+                                      batches_per_epoch=5, drop_remainder=True)
+            self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 519.6375288994583), 4)
         else:
             pass
 
@@ -147,7 +156,7 @@ class TestModels(unittest.TestCase):
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
         trues = {
-            #'25_nt': 77.85861968,
+            '23_nt': 204.1259977159385,
             '25_nt': 204.12599872157463
         }
         prediction, _model = make_and_run(Model, layers=lyrs, return_model=True)
@@ -167,6 +176,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1361.6870130712944,
             '115_posix':  1443.1860088206834,
+            '23_nt': 205.64932981643847,
             '25_nt': 205.64933154038607,
         }
         prediction = make_and_run(Model, layers=lyrs)
@@ -188,7 +198,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1327.5073743917194,
             '115_posix': 1430.7282310875908,
-            #'25_nt': 66.52947,
+            '23_nt': 197.95141420462951,
             '25_nt': 197.95141865816086
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1356.0140036362777), 2)  # TODO failing with higher precision
@@ -208,6 +218,7 @@ class TestModels(unittest.TestCase):
             '115_posix': 1549.689167207415,
             '21_nt_functional': 165.6065673828125,
             '25_nt': 131,
+            '23_nt_functional': 182.70824960252654,
             '25_nt_functional': 182.7082507518249,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(f'{PLATFORM}_{model.api}', 1409.7687666416527), 4)
@@ -224,6 +235,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1376.5340244296872,
             '115_posix': 1376.5340244296872,
+            '23_nt': 197.72353275519052,
             '25_nt': 197.72353304251516,
         }
         prediction = make_and_run(Model, layers=lyrs)
@@ -245,6 +257,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1347.4325338505837,
             '115_posix': 1272.8471532368762,
+            '23_nt': 188.44924334159703,
             '25_nt': 188.44923658946897,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1347.498777542553), 4)
@@ -262,6 +275,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
+            '23_nt': 192.28048198313545,
             '25_nt': 192.28047997186326,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1475.2777905818857), 4)
@@ -280,7 +294,7 @@ class TestModels(unittest.TestCase):
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
             trues = {
-                '23_nt': 1372.9329818539659,
+                '23_nt': 197.4112326089435,
                 '25_nt': 197.41123361457963,
             }
             self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision

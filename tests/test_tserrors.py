@@ -1,10 +1,10 @@
 import os
 import unittest
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from AI4Water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
-from AI4Water.utils.SeqMetrics.utils import plot_metrics
+from ai4water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
+from ai4water.utils.SeqMetrics.utils import plot_metrics
 
 import numpy as np
 

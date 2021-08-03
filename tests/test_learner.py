@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import sigmoid
 import matplotlib.pyplot as plt
 
-from AI4Water.pytorch_training import Learner
+from ai4water.pytorch_training import Learner
 
 
 class Net(nn.Module):

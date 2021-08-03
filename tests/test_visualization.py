@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from AI4Water.utils.visualizations import Visualizations
+from ai4water.utils.visualizations import Visualizations
 
 
 def get_history(keys, add_val=False):

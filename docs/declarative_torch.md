@@ -1,4 +1,4 @@
-This page describes how to build Neural Networks for pytorch using pythron dictionary in `AI4Water`.
+This page describes how to build Neural Networks for pytorch using pythron dictionary in `ai4water`.
 The user can use any layer provided by pytorch such as `Linear` or `LSTM`. Similarly the user
 can use any input argument allowed by the particular layer e.g. `bidirectional` for 
 [`LSTM`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html) and `out_features` for 
@@ -9,8 +9,8 @@ All the examples presented here are similar which were shown for [tensorflow's c
 
 ```python
 
-from AI4Water.utils.datasets import arg_beach
-from AI4Water import Model
+from ai4water.utils.datasets import arg_beach
+from ai4water import Model
 
 layers = {
     "Linear_0": {"in_features": 13, "out_features": 64},

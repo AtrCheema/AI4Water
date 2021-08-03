@@ -1,21 +1,21 @@
 
 import os
 import unittest
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 import numpy as np
 
-from AI4Water.models.tft_layer import TemporalFusionTransformer
-from AI4Water.utils.utils import reset_seed
+from ai4water.models.tft_layer import TemporalFusionTransformer
+from ai4water.utils.utils import reset_seed
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-    from AI4Water.functional import Model
+    from ai4water.functional import Model
 
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
 else:
-    from AI4Water import Model
+    from ai4water import Model
 
 tf.compat.v1.disable_eager_execution()
 reset_seed(313, np=np, tf=tf)

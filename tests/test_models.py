@@ -1,6 +1,6 @@
 import os
 import unittest
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
@@ -10,9 +10,14 @@ from tensorflow.keras.layers import Dense, Input
 from sklearn.datasets import make_classification
 from sklearn.datasets import make_multilabel_classification
 
-from AI4Water import Model
-from AI4Water.functional import Model as FModel
-from AI4Water.utils.datasets import load_nasdaq, arg_beach
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
+from ai4water.functional import Model as FModel
+from ai4water.utils.datasets import load_nasdaq, arg_beach
 
 
 examples = 200

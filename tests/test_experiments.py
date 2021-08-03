@@ -1,10 +1,10 @@
 import os
 import unittest
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from AI4Water.experiments import MLRegressionExperiments
-from AI4Water.utils.datasets import arg_beach
+from ai4water.experiments import MLRegressionExperiments
+from ai4water.utils.datasets import arg_beach
 
 
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp12_mm',
@@ -46,7 +46,7 @@ class TestExperiments(unittest.TestCase):
         comparisons.num_samples = 2
         comparisons.fit(run_type="optimize", opt_method="random", include=best_models, post_optimize='train_best')
         comparisons.compare_errors('r2')
-        comparisons.plot_taylor()
+        comparisons.taylor_plot()
 
     def test_from_config(self):
 

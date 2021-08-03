@@ -9,13 +9,13 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 
-from AI4Water import Model
+from ai4water import Model
 
 class QuantileModel(Model):
 
-    def inverse_transform(self, data, key):
+    def inverse_transform(self, true, predicted, key):
         # todo
-        return data
+        return true, predicted
 
     def loss(self):
 

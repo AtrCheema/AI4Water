@@ -2,8 +2,8 @@
 # the input_features and outputs are columns and are present in the file
 import tensorflow as tf
 
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.utils.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()  # because we want to view model
 

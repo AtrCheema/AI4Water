@@ -8,13 +8,13 @@ from typing import Union
 import pandas as pd
 import xarray as xr
 
-from AI4Water.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
-from AI4Water.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
-from AI4Water.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
-from AI4Water.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
-from AI4Water.utils.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
-from AI4Water.utils.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
-from AI4Water.utils.datasets import GeoChemMatane
+from ai4water.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
+from ai4water.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
+from ai4water.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
+from ai4water.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
+from ai4water.utils.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
+from ai4water.utils.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
+from ai4water.utils.datasets import GeoChemMatane
 
 
 

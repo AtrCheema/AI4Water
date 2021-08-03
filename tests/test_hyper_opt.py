@@ -2,7 +2,7 @@ import os
 import time
 import pickle
 import unittest
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import skopt
@@ -19,18 +19,18 @@ from sklearn.model_selection import train_test_split
 np.random.seed(313)
 
 
-from AI4Water.tf_attributes import tf
-from AI4Water.utils.utils import Jsonize
-from AI4Water.utils.SeqMetrics import RegressionMetrics
-from AI4Water.utils.datasets import load_u1
-from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
+from ai4water.tf_attributes import tf
+from ai4water.utils.utils import Jsonize
+from ai4water.utils.SeqMetrics import RegressionMetrics
+from ai4water.utils.datasets import load_u1
+from ai4water.hyper_opt import HyperOpt, Real, Categorical, Integer
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-        from AI4Water.functional import Model
+        from ai4water.functional import Model
         print(f"Switching to functional API due to tensorflow version {tf.__version__}")
     else:
-        from AI4Water import Model
+        from ai4water import Model
 
 
 
@@ -355,11 +355,11 @@ class TestHyperOpt(unittest.TestCase):
 
     def test_ai4water_grid(self):
         run_ai4water("grid")
-        print("AI4Water for grid passing")
+        print("ai4water for grid passing")
 
     def test_ai4water_random(self):
         run_ai4water("random")
-        print("AI4Water for random passing")
+        print("ai4water for random passing")
         return
 
     def test_hyperopt_basic(self):

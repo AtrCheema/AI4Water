@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from AI4Water import DataHandler
-from AI4Water._data import MultiLocDataHandler, SiteDistributedDataHandler
-from AI4Water.utils.datasets import load_u1, arg_beach
+from ai4water import DataHandler
+from ai4water._data import MultiLocDataHandler, SiteDistributedDataHandler
+from ai4water.utils.datasets import load_u1, arg_beach
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
@@ -16,7 +16,7 @@ np.random.seed(313)
 
 
 # todo, check last dimension of x,y
-# test with 3d y
+# todo test with 3d y
 
 def _check_xy_equal_len(x, prev_y, y, lookback, num_ins, num_outs, num_examples, data_type='training'):
 

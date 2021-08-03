@@ -87,14 +87,14 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
 
-    packages=['AI4Water',
-              'AI4Water/models',
-              'AI4Water/hyper_opt',
-              'AI4Water/utils',
-              'AI4Water/utils/SeqMetrics',
-              'AI4Water/utils/datasets',
-              'AI4Water/ETUtil',
-              'AI4Water/experiments'
+    packages=['ai4water',
+              'ai4water/models',
+              'ai4water/hyper_opt',
+              'ai4water/utils',
+              'ai4water/utils/SeqMetrics',
+              'ai4water/utils/datasets',
+              'ai4water/ETUtil',
+              'ai4water/experiments'
               ],
 
     install_requires=min_requirements,

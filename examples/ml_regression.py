@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from sklearn.datasets import load_diabetes
 
-from AI4Water import Model
+from ai4water import Model
 
 data_class = load_diabetes()
 cols = data_class['feature_names'] + ['target']

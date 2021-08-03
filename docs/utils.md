@@ -1,7 +1,7 @@
 Some utility functions
 
 **`Transformations`**
-::: AI4Water.utils.transformations.Transformations
+::: ai4water.utils.transformations.Transformations
     handler: python
     selection:
         members:
@@ -14,7 +14,7 @@ Some utility functions
         show_root_heading: true
 
 **`HRU Discretization`**
-::: AI4Water.utils.spatial_processing.MakeHRUs
+::: ai4water.utils.spatial_processing.MakeHRUs
     handler: python
     selection:
         members:
@@ -26,13 +26,13 @@ Some utility functions
         show_root_heading: true
         
 **`prepare_data`**
-::: AI4Water.utils.utils.prepare_data
+::: ai4water.utils.utils.prepare_data
     handler: python
     rendering:
         show_root_heading: true
         
 **`plot_taylor`**
-::: AI4Water.utils.taylor_diagram.taylor_plot
+::: ai4water.utils.taylor_diagram.taylor_plot
     handler: python
     rendering:
         show_root_heading: true

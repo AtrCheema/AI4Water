@@ -1,7 +1,5 @@
-from AI4Water import Model
-
-
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.utils.datasets import arg_beach
 
 
 df = arg_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm',

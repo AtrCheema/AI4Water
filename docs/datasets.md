@@ -1,64 +1,64 @@
-::: AI4Water.utils.datasets.arg_beach
+::: ai4water.utils.datasets.arg_beach
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.datasets.Datasets
+::: ai4water.utils.datasets.datasets.Datasets
     handler: python
     rendering:
         show_root_heading: true
 
-::: AI4Water.utils.datasets.datasets.MtropicsLaos
+::: ai4water.utils.datasets.datasets.MtropicsLaos
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.camels.Camels
+::: ai4water.utils.datasets.camels.Camels
     handler: python
     rendering:
         show_root_heading: true
 
-::: AI4Water.utils.datasets.camels.CAMELS_AUS
+::: ai4water.utils.datasets.camels.CAMELS_AUS
     handler: python
     rendering:
         show_root_heading: true
 
-::: AI4Water.utils.datasets.camels.LamaH
+::: ai4water.utils.datasets.camels.LamaH
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.camels.CAMELS_GB
+::: ai4water.utils.datasets.camels.CAMELS_GB
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.camels.CAMELS_BR
+::: ai4water.utils.datasets.camels.CAMELS_BR
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.camels.CAMELS_US
+::: ai4water.utils.datasets.camels.CAMELS_US
     handler: python
     rendering:
         show_root_heading: true
         
-::: AI4Water.utils.datasets.camels.CAMELS_CL
+::: ai4water.utils.datasets.camels.CAMELS_CL
     handler: python
     rendering:
         show_root_heading: true
           
-::: AI4Water.utils.datasets.datasets.Weisssee
+::: ai4water.utils.datasets.datasets.Weisssee
     handler: python
     rendering:
         show_root_heading: true
 
-::: AI4Water.utils.datasets.datasets.WeatherJena
+::: ai4water.utils.datasets.datasets.WeatherJena
     handler: python
     rendering:
         show_root_heading: true
    
-::: AI4Water.utils.datasets.datasets.SWECanada
+::: ai4water.utils.datasets.datasets.SWECanada
     handler: python
     rendering:
         show_root_heading: true
