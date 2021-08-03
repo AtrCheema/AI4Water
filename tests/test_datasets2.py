@@ -55,7 +55,7 @@ class TestMtropicsLaos(unittest.TestCase):
         assert ecoli.shape == (411, 1)
         assert int(ecoli.isna().sum()) == 43
         assert isinstance(ecoli.index, pd.DatetimeIndex)
-        ecoli_all = laos.fetch_ecoli('all')
+        ecoli_all = laos.fetch_ecoli(features='all')
         assert ecoli_all.shape == (411, 11)
         assert int(ecoli_all.isna().sum().sum()) == 805
         assert isinstance(ecoli_all.index, pd.DatetimeIndex)

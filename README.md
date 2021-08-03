@@ -91,8 +91,8 @@ To install the latest branch (`dev`) with all requirements use the following com
 Build a `Model` by providing all the arguments to initiate it.
 
 ```python
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.utils.datasets import arg_beach
 data = arg_beach()
 model = Model(
         model = {'layers': {"LSTM": 64}},
@@ -125,7 +125,7 @@ You can use your own pre-processed data without using any of pre-processing tool
 input output paris to `data` argument to `fit` and/or `predict` methods.
 ```python
 import numpy as np
-from AI4Water import Model  # import any of the above model
+from ai4water import Model  # import any of the above model
 
 batch_size = 16
 lookback = 15
@@ -153,8 +153,8 @@ The repository can also be used for machine learning based models such as scikit
 classification and regression problems by making use of `model` keyword arguments in `Model` function.
 However, integration of ML based models is not complete yet.
 ```python
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.utils.datasets import arg_beach
 
 data = arg_beach()  # path for data file
 
