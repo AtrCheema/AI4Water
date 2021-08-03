@@ -10,8 +10,8 @@ from scipy.stats import gmean, kendalltau
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
 
-from AI4Water.utils.utils import ts_features
-from AI4Water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
+from ai4water.utils.utils import ts_features
+from ai4water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute
@@ -401,7 +401,7 @@ class RegressionMetrics(Metrics):
     ---------
     ```python
     import numpy as np
-    from AI4Water.utils.SeqMetrics import RegressionMetrics
+    from ai4water.utils.SeqMetrics import RegressionMetrics
     t = np.random.random(10)
     p = np.random.random(10)
     errors = RegressionMetrics(t,p)

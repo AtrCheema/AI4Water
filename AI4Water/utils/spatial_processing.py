@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 
-from AI4Water.utils.spatial_utils import find_records
-from AI4Water.utils.spatial_utils import plot_shapefile
-from AI4Water.utils.spatial_utils import get_total_area, GifUtil
-from AI4Water.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
+from ai4water.utils.spatial_utils import find_records
+from ai4water.utils.spatial_utils import plot_shapefile
+from ai4water.utils.spatial_utils import get_total_area, GifUtil
+from ai4water.utils.spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
 
 
 M2ToAcre = 0.0002471     # meter square to Acre
@@ -31,7 +31,7 @@ class MakeHRUs(object):
     ----------
     ```python
     >>>import os
-    >>>from AI4Water.utils.spatial_processing import MakeHRUs
+    >>>from ai4water.utils.spatial_processing import MakeHRUs
     >>> # shapefile_paths is the path where shapefiles are located. todo
     >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
     >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')

@@ -59,27 +59,27 @@ except ImportError:
     optuna, plot_parallel_coordinate, plot_contour, plot_edf, = None, None, None, None
     Study = None
 
-from AI4Water.backend import tf
-from AI4Water.utils.utils import JsonEncoder
-from AI4Water.hyper_opt.utils import plot_convergences
-from AI4Water.utils.SeqMetrics import RegressionMetrics
-from AI4Water.hyper_opt.utils import get_one_tpe_x_iter
-from AI4Water.utils.utils import Jsonize, dateandtime_now
-from AI4Water.hyper_opt.utils import skopt_space_from_hp_space
-from AI4Water.hyper_opt.utils import post_process_skopt_results
-from AI4Water.hyper_opt.utils import Categorical, Real, Integer
-from AI4Water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
-from AI4Water.hyper_opt.utils import loss_histogram, plot_hyperparameters
+from ai4water.backend import tf
+from ai4water.utils.utils import JsonEncoder
+from ai4water.hyper_opt.utils import plot_convergences
+from ai4water.utils.SeqMetrics import RegressionMetrics
+from ai4water.hyper_opt.utils import get_one_tpe_x_iter
+from ai4water.utils.utils import Jsonize, dateandtime_now
+from ai4water.hyper_opt.utils import skopt_space_from_hp_space
+from ai4water.hyper_opt.utils import post_process_skopt_results
+from ai4water.hyper_opt.utils import Categorical, Real, Integer
+from ai4water.hyper_opt.utils import sort_x_iters, x_iter_for_tpe
+from ai4water.hyper_opt.utils import loss_histogram, plot_hyperparameters
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-        from AI4Water.functional import Model
+        from ai4water.functional import Model
         print(f"Switching to functional API due to tensorflow version {tf.__version__}")
     else:
-        from AI4Water import Model
+        from ai4water import Model
 
 try:
-    from AI4Water.hyper_opt.testing import plot_param_importances
+    from ai4water.hyper_opt.testing import plot_param_importances
 except ModuleNotFoundError:
     plot_param_importances = None
 
@@ -154,10 +154,10 @@ class HyperOpt(object):
     Examples
     ---------
     ```python
-    >>>from AI4Water import Model
-    >>>from AI4Water.hyper_opt import HyperOpt, Categorical, Integer, Real
-    >>>from AI4Water.utils.datasets import load_u1
-    >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
+    >>>from ai4water import Model
+    >>>from ai4water.hyper_opt import HyperOpt, Categorical, Integer, Real
+    >>>from ai4water.utils.datasets import load_u1
+    >>>from ai4water.utils.SeqMetrics import RegressionMetrics
     # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>input_features = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
@@ -269,7 +269,7 @@ class HyperOpt(object):
 
     # using Bayesian with AI4Water
     ```python
-    >>>from AI4Water.hyper_opt import Integer
+    >>>from ai4water.hyper_opt import Integer
     >>>opt = HyperOpt("bayes",
     ...           param_space=[Integer(low=1000, high=2000, name='n_estimators'),
     ...                        Integer(low=3, high=6, name='max_depth')],
@@ -358,7 +358,7 @@ class HyperOpt(object):
                 or `sklearn` for `grid` algorithm.
             param_space list/dict:
                 the space parameters to be optimized. We recommend the use
-                of Real, Integer and categorical classes from AI4Water/hyper_opt
+                of Real, Integer and categorical classes from ai4water/hyper_opt
                 (not from skopt.space). These classes allow a uniform way of defining
                 the parameter space for all the underlying libraries. However, to
                 make this class work exactly similar to its underlying libraries,
@@ -1075,7 +1075,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             objective_f = objective_fn
 
         elif self.use_named_args and self.use_ai4water_model:
-            # make objective_fn using AI4Water
+            # make objective_fn using ai4water
             def fitness(kws):
                 return self.ai4water_model(**kws)
             objective_f = fitness

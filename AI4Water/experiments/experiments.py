@@ -9,20 +9,20 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
 
-from AI4Water.hyper_opt import HyperOpt
-from AI4Water.utils.SeqMetrics import RegressionMetrics
-from AI4Water.utils.taylor_diagram import taylor_plot
-from AI4Water.hyper_opt import Real, Categorical, Integer
-from AI4Water.utils.utils import init_subplots, process_axis
-from AI4Water.utils.utils import clear_weights, dateandtime_now, save_config_file
-from AI4Water.backend import VERSION_INFO, tf
+from ai4water.hyper_opt import HyperOpt
+from ai4water.utils.SeqMetrics import RegressionMetrics
+from ai4water.utils.taylor_diagram import taylor_plot
+from ai4water.hyper_opt import Real, Categorical, Integer
+from ai4water.utils.utils import init_subplots, process_axis
+from ai4water.utils.utils import clear_weights, dateandtime_now, save_config_file
+from ai4water.backend import VERSION_INFO, tf
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-        from AI4Water.functional import Model
+        from ai4water.functional import Model
         print(f"Switching to functional API due to tensorflow version {tf.__version__}")
     else:
-        from AI4Water import Model
+        from ai4water import Model
 
 try:
     import catboost
@@ -76,9 +76,10 @@ class Experiments(object):
                  ):
         """
         Arguments:
-            cases
-            exp_name
-            num_samples
+            cases : python dictionary defining different cases/scenarios
+            exp_name : name of experiment, used to define path in which results are saved
+            num_samples : only relevent when you wan to optimize hyperparameters of models
+                using `grid` method
         """
         self.opt_results = None
         self.optimizer = None
@@ -154,7 +155,7 @@ class Experiments(object):
                 will be evaluated on train, test and all the data. If `train_best`,
                 then a new model will be built and trained using the parameters of
                 the best model.
-            fit_kws dict:  key word arguments that will be passed to AI4Water's model.fit
+            fit_kws dict:  key word arguments that will be passed to ai4water's model.fit
             hpo_kws dict: keyword arguments for `HyperOpt` class.
         """
 
@@ -438,8 +439,8 @@ Available cases are {self.models} and you wanted to include
         Example
         -----------
         ```python
-        >>>from AI4Water.experiments import MLRegressionExperiments
-        >>>from AI4Water.utils.datasets import arg_beach
+        >>>from ai4water.experiments import MLRegressionExperiments
+        >>>from ai4water.utils.datasets import arg_beach
         >>>data = arg_beach()
         >>>inputs = list(data.columns)[0:-1]
         >>>outputs = list(data.columns)[-1]
@@ -708,8 +709,8 @@ class MLRegressionExperiments(Experiments):
         Examples:
         --------
         ```python
-        >>>from AI4Water.utils.datasets import arg_beach
-        >>>from AI4Water.experiments import MLRegressionExperiments
+        >>>from ai4water.utils.datasets import arg_beach
+        >>>from ai4water.experiments import MLRegressionExperiments
         >>> # first compare the performance of all available models without optimizing their parameters
         >>>data = arg_beach()  # read data file, in this case load the default data
         >>>inputs = list(data.columns)[0:-1]  # define input and output columns in data
@@ -748,7 +749,10 @@ class MLRegressionExperiments(Experiments):
             for m in ['model_PoissonRegressor', 'model_TweedieRegressor']:
                 self.models.remove(m)
 
-    def build_and_run(self, predict=False, view=False, title=None,
+    def build_and_run(self,
+                      predict=True,
+                      view=False,
+                      title=None,
                       fit_kws=None,
                       **kwargs):
 
@@ -772,7 +776,7 @@ class MLRegressionExperiments(Experiments):
             model.view_model()
 
         if predict:
-            t, p = model.predict('training', prefix='train')
+            t, p = model.predict('training', prefix='training')
 
             return (t,p), (tt, tp)
 
@@ -1348,8 +1352,7 @@ class MLClassificationExperiments(Experiments):
 
     def build_and_run(self, predict=False, view=False, title=None, fit_kws=None, **kwargs):
 
-        if fit_kws is None:
-            fit_kws = {'indices': 'random'}
+        fit_kws = fit_kws or {}
 
         model = self.dl4seq_model(
             data=self.data,
@@ -1362,19 +1365,15 @@ class MLClassificationExperiments(Experiments):
 
         model.fit(**fit_kws)
 
-        indices = model.train_indices if 'indices' in fit_kws else None
-        en = fit_kws.get('en', None)
-        t, p = model.predict(en=en, indices=indices, prefix='train')
+        t, p = model.predict()
 
         if view:
             model.view_model()
 
-        indices = model.test_indices if 'indices' in fit_kws else None
-        tt, tp = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
         if predict:
-            return (t, p), (tt, tp)
+            tt, tp = model.predict('training', prefix='training')
 
-        return RegressionMetrics(tt, tp).mse()
+        return RegressionMetrics(t, t).mse()
 
     def model_AdaBoostClassifier(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
@@ -1699,8 +1698,8 @@ class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
     Examples
     --------
-    >>>from AI4Water.utils.datasets import load_u1
-    >>>from AI4Water.experiments import TransformationExperiments
+    >>>from ai4water.utils.datasets import load_u1
+    >>>from ai4water.experiments import TransformationExperiments
     >>>class MyTransformationExperiments(TransformationExperiments):
     ...
     ...    def update_paras(self, **kwargs):
@@ -1748,7 +1747,7 @@ class TransformationExperiments(Experiments):
         raise NotImplementedError(f"""
 You must write the method `update_paras` which should build the Model with suggested parameters
 and return the keyword arguments including `model`. These keyword arguments will then
-will used to build AI4Water's Model class.
+will used to build ai4water's Model class.
 """)
 
     def build_and_run(self,

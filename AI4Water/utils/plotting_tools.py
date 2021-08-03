@@ -14,12 +14,12 @@ try:
 except ModuleNotFoundError:
     trees = None
 
-from AI4Water.backend import xgboost
-from AI4Water.utils.utils import find_tot_plots, init_subplots
-from AI4Water.utils.transformations import Transformations
+from ai4water.backend import xgboost
+from ai4water.utils.utils import find_tot_plots, init_subplots
+from ai4water.utils.transformations import Transformations
 
 try:
-    from AI4Water.utils.utils_from_see_rnn import rnn_histogram
+    from ai4water.utils.utils_from_see_rnn import rnn_histogram
     from see_rnn.visuals_gen import features_0D, features_1D, features_2D
 except ModuleNotFoundError:
     rnn_histogram = None

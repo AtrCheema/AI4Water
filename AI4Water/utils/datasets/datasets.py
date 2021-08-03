@@ -222,10 +222,10 @@ except ModuleNotFoundError:
 import numpy as np
 import pandas as pd
 
-from AI4Water.utils.spatial_utils import find_records
-from AI4Water.utils.datasets.download_pangaea import PanDataSet
-from AI4Water.utils.datasets.download_zenodo import download_from_zenodo
-from AI4Water.utils.datasets.utils import download, download_all_http_directory
+from ai4water.utils.spatial_utils import find_records
+from ai4water.utils.datasets.download_pangaea import PanDataSet
+from ai4water.utils.datasets.download_zenodo import download_from_zenodo
+from ai4water.utils.datasets.utils import download, download_all_http_directory
 from .utils import check_attributes, sanity_check
 
 
@@ -1077,7 +1077,7 @@ class MtropicsLaos(Datasets):
         Example:
         --------
         ```python
-        >>>from AI4Water.utils.datasets import MtropicsLaos
+        >>>from ai4water.utils.datasets import MtropicsLaos
         >>>laos = MtropicsLaos()
         >>>inputs = ['pcp', 'air_temp']
         >>>target = ['Ecoli_mpn100']

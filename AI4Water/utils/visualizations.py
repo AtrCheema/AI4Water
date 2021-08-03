@@ -24,12 +24,12 @@ try:
 except ModuleNotFoundError:
     plotly = None
 
-from AI4Water.backend import xgboost
+from ai4water.backend import xgboost
 
-from AI4Water.utils.SeqMetrics import RegressionMetrics
-from AI4Water.utils.utils import _missing_vals
-from AI4Water.utils.utils import find_tot_plots, init_subplots, Jsonize
-from AI4Water.utils.transformations import Transformations
+from ai4water.utils.SeqMetrics import RegressionMetrics
+from ai4water.utils.utils import _missing_vals
+from ai4water.utils.utils import find_tot_plots, init_subplots, Jsonize
+from ai4water.utils.transformations import Transformations
 
 # TODO add Murphy's plot as shown in MLAir
 # https://robjhyndman.com/hyndsight/murphy-diagrams/
@@ -100,7 +100,7 @@ class Plot(object):
 class Interpret(Plot):
 
     def __init__(self, model):
-        """Interprets the AI4Water Model."""
+        """Interprets the ai4water Model."""
 
         self.model = model
 
@@ -249,9 +249,9 @@ class Interpret(Plot):
 
     def tft_attention_components(self, model=None, **train_data_args)->dict:
         """
-        Gets attention components of tft layer from AI4Water's Model.
+        Gets attention components of tft layer from ai4water's Model.
         Arguments:
-        model : a AI4Water's Model instance.
+        model : a ai4water's Model instance.
         train_data_args : keyword arguments which will passed to `training_data`
         method to fetch processed input data
 
@@ -863,7 +863,7 @@ class Visualizations(Plot):
 
     def feature_feature_corr(self, cols=None, remove_targets=True, save=True, **kwargs):
         """
-        >>>from AI4Water.utils.visualizations import Visualizations
+        >>>from ai4water.utils.visualizations import Visualizations
         >>>vis = Visualizations(data)
         >>>vis.feature_feature_corr(save=False)
         """
@@ -1214,7 +1214,7 @@ def regplot(true, pred, name, **kwargs):
         s: for plt.scatter
     :Note, This function will neither show nor saves the plot. The user has to manually
            do it after calling this function as shown below.
-    >>>from AI4Water.utils.visualizations import regplot
+    >>>from ai4water.utils.visualizations import regplot
     >>>import numpy as np
     >>>true = np.random.random(100)
     >>>pred = np.random.random(100)

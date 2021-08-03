@@ -1,5 +1,5 @@
-from AI4Water.utils.utils import make_model
-from AI4Water.utils.transformations import Transformations
-from AI4Water.utils.visualizations import Visualizations
+from ai4water.utils.utils import make_model
+from ai4water.utils.transformations import Transformations
+from ai4water.utils.visualizations import Visualizations
 
-from AI4Water.utils.taylor_diagram import taylor_plot
+from ai4water.utils.taylor_diagram import taylor_plot

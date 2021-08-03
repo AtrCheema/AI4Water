@@ -32,7 +32,7 @@ except ImportError:
     CategoricalDistribution, UniformDistribution, IntLogUniformDistribution = None, None, None
     IntUniformDistribution, DiscreteUniformDistribution, LogUniformDistribution = None, None, None
 
-from AI4Water.utils.utils import Jsonize, clear_weights
+from ai4water.utils.utils import Jsonize, clear_weights
 
 
 class Counter:

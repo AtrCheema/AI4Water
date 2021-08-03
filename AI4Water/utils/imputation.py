@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from AI4Water.backend import imputations
+from ai4water.backend import imputations
 
 seed = 313
 

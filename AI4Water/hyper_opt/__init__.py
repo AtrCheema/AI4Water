@@ -1,5 +1,5 @@
 
-from AI4Water.hyper_opt.utils import Real
-from AI4Water.hyper_opt.utils import Integer
-from AI4Water.hyper_opt.utils import Categorical
-from AI4Water.hyper_opt.hyper_opt import HyperOpt
+from ai4water.hyper_opt.utils import Real
+from ai4water.hyper_opt.utils import Integer
+from ai4water.hyper_opt.utils import Categorical
+from ai4water.hyper_opt.hyper_opt import HyperOpt

@@ -6,7 +6,7 @@ from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
-from AI4Water.utils.SeqMetrics import RegressionMetrics
+from ai4water.utils.SeqMetrics import RegressionMetrics
 
 COLORS = np.array([
        [0.89411765, 0.10196078, 0.10980392, 1.        ],
@@ -286,7 +286,7 @@ def taylor_plot(trues:dict,
     ---------
     ```python
     >>>import numpy as np
-    >>>from AI4Water.utils import taylor_plot
+    >>>from ai4water.utils import taylor_plot
     >>>np.random.seed(92)
     >>>taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
     ...            simulations={

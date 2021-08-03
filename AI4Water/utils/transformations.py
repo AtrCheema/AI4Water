@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from AI4Water.utils.utils import dateandtime_now
+from ai4water.utils.utils import dateandtime_now
 
 # TODO add logistic, tanh and more scalers.
 # rpca
@@ -198,8 +198,8 @@ class Transformations(scaler_container):
         Example
         ---------
         ```python
-        >>>from AI4Water.utils.transformations import Transformations
-        >>>from AI4Water.utils.datasets import load_u1
+        >>>from ai4water.utils.transformations import Transformations
+        >>>from ai4water.utils.datasets import load_u1
         >>>data = load_u1()
         >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
         >>>transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
@@ -211,7 +211,7 @@ class Transformations(scaler_container):
         will be replaced internally but will be inserted back afterwards.
 
         ```python
-        >>>from AI4Water.utils.transformations import Transformations
+        >>>from ai4water.utils.transformations import Transformations
         >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
         >>>transformed_data = transformer.transform()
         ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
