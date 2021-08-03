@@ -1,7 +1,7 @@
 import os
 import json
 import warnings
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -56,11 +56,11 @@ class Experiments(object):
 
     Attributes
     ------------
-    simulations
-    trues
-    exp_path
-    _model
-    models
+    - simulations
+    - trues
+    - exp_path
+    - _model
+    - models
 
     Methods
     --------
@@ -68,6 +68,7 @@ class Experiments(object):
     - taylor_plot
     - compare_losses
     - plot_convergence
+    - from_config
 
     """
     def __init__(self,
@@ -81,8 +82,6 @@ class Experiments(object):
             exp_name
             num_samples
         """
-        self.trues = {}
-        self.simulations  = {}
         self.opt_results = None
         self.optimizer = None
         self.exp_name = 'Experiments_' + str(dateandtime_now()) if exp_name is None else exp_name
@@ -98,7 +97,7 @@ class Experiments(object):
         if not os.path.exists(self.exp_path):
             os.makedirs(self.exp_path)
 
-        self.update_config(models=self.models, exp_path=self.exp_path, exp_name=self.exp_name)
+        self.update_config(models=self.models, exp_path=self.exp_path, exp_name=self.exp_name, cases=self.cases)
 
     def update_and_save_config(self, **kwargs):
         self.update_config(**kwargs)
@@ -286,7 +285,10 @@ Available cases are {self.models} and you wanted to exclude
         self._populate_results(model_type, train_results, test_results)
         return
 
-    def _populate_results(self, model_type, train_results, test_results):
+    def _populate_results(self, model_type:str,
+                          train_results:Tuple[np.ndarray, np.ndarray],
+                          test_results:Tuple[np.ndarray, np.ndarray]
+                          ):
 
         if not model_type.startswith('model_'):  # internally we always use model_ at the start.
             model_type = f'model_{model_type}'
@@ -572,7 +574,6 @@ Available cases are {self.models} and you wanted to include
             if _model.startswith('model_'):
                 _model = _model.split('model_')[1]
             axis = process_axis(axis=axis, data=_loss, label=_model, **_kwargs)
-            axis.legend()
 
         if save:
             fname = os.path.join(self.exp_path,f'{name}_{loss_name}.png')
@@ -625,8 +626,41 @@ Available cases are {self.models} and you wanted to include
             config = json.load(fp)
 
         cls.config = config
+        cls._from_config = True
 
-        return cls(exp_name=config['exp_name'], **kwargs)
+        trues = {'train': {},
+                      'test': {}}
+
+        simulations = {'train': {},
+                            'test': {}}
+
+        for model_name, model_path in config['eval_models'].items():
+
+            with open(os.path.join(model_path, 'config.json'), 'r') as fp:
+                model_config = json.load(fp)
+
+            output_features = model_config['config']['output_features']
+
+            if len(output_features)>1:
+                raise NotImplementedError
+
+            fpath = os.path.join(model_path, output_features[0])
+            fname = [f for f in os.listdir(fpath) if f.startswith('training') and f.endswith('.csv')][0]
+            train_df = pd.read_csv(os.path.join(fpath, fname), index_col='time')
+
+            fname = [f for f in os.listdir(fpath) if f.startswith('test') and f.endswith('.csv')][0]
+            test_df = pd.read_csv(os.path.join(fpath, fname), index_col='time')
+
+            trues['train'][model_name] = train_df[f'true_{output_features[0]}']
+            trues['test'][model_name] = test_df[f'true_{output_features[0]}']
+
+            simulations['train'][model_name] = train_df[f'pred_{output_features[0]}']
+            simulations['test'][model_name] = test_df[f'pred_{output_features[0]}']
+
+        cls.trues = trues
+        cls.simulations = simulations
+
+        return cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
 
 
 class MLRegressionExperiments(Experiments):
@@ -1688,9 +1722,9 @@ class TransformationExperiments(Experiments):
                  data,
                  param_space=None,
                  x0=None,
-                 cases=None,
-                 exp_name='TransformationExperiments' ,
-                 num_samples=5,
+                 cases:dict=None,
+                 exp_name:str=None,
+                 num_samples:int=5,
                  ai4water_model=None,
                  **model_kws):
         self.data = data
@@ -1699,8 +1733,10 @@ class TransformationExperiments(Experiments):
         self.model_kws = model_kws
         self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
+        exp_name = exp_name or 'TransformationExperiments' + f'_{dateandtime_now()}'
+
         super().__init__(cases=cases,
-                         exp_name=exp_name + f'_{dateandtime_now()}',
+                         exp_name=exp_name,
                          num_samples=num_samples)
 
     def update_paras(self, **suggested_paras):
