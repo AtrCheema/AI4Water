@@ -283,6 +283,7 @@ class Learner(AttributeContainer):
 
         epoch_losses = {metric: np.full(len(self.train_loader), np.nan) for metric in self.to_monitor}
 
+        # todo, it would be better to avoid reshaping/view at all
         if hasattr(self.model, 'num_outs'):
             num_outs = self.model.num_outs
         else:
@@ -291,7 +292,7 @@ class Learner(AttributeContainer):
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
             pred_y = self.model(batch_x.float())
 
-            loss = self.criterion(batch_y.float().view(-1, num_outs), pred_y.view(-1, num_outs))
+            loss = self.criterion(batch_y.float().view(len(batch_y), num_outs), pred_y.view(len(pred_y), num_outs))
             loss = loss.float()
             loss.backward()
 
@@ -478,6 +479,10 @@ class Learner(AttributeContainer):
                 dataset = x
             else:
                 dataset = to_torch_dataset(x, y)
+
+        elif isinstance(x, np.ndarray):
+            assert isinstance(y, np.ndarray)
+            dataset = to_torch_dataset(x, y)
 
         elif isinstance(x, torch.utils.data.Dataset):
             dataset = x
