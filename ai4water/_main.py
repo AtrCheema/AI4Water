@@ -218,17 +218,48 @@ class BaseModel(NN, Plots):
         # instead of doing model.dh.training
         if item in [
             'data',
-            'training_data', 'test_data', 'validation_data',  # this allows overwriting of training/val/test data
-            #'inverse_transform',
             'deindexify',
             'test_indices', 'train_indices',
             'num_outs', 'forecast_len', 'forecast_step', 'num_ins',
-            'classes', 'num_classes', 'is_binary', 'is_multiclass', 'is_multilabel',
-            'output_features',
                     ]:
             return getattr(self.dh, item)
         else:
             raise AttributeError(f'BaseModel has no attribute named {item}')
+
+    # because __getattr__ does not work with pytorch, we explicitly get attributes from
+    # DataHandler and assign them to Model
+
+    @property
+    def num_outs(self):
+        return self.dh.num_outs
+
+    @property
+    def num_ins(self):
+        return self.dh.num_ins
+
+    @property
+    def is_binary(self):
+        return self.dh.is_binary
+
+    @property
+    def is_multiclass(self):
+        return self.dh.is_multiclass
+
+    @property
+    def output_features(self):
+        return self.dh.output_features
+
+    @property
+    def classes(self):
+        return self.dh.classes
+
+    @property
+    def num_classes(self):
+        return self.dh.num_classes
+
+    @property
+    def is_multilabel(self):
+        return self.dh.is_multilabel
 
     @property
     def quantiles(self):
@@ -245,6 +276,18 @@ class BaseModel(NN, Plots):
     @property
     def data_path(self):
         return os.path.join(self.path, 'data')
+
+    # because __getattr__ does not work with pytorch, we explicitly get attributes from
+    # DataHandler and assign them to Model
+    def training_data(self, *args, **kwargs):
+
+        return self.dh.training_data(*args, **kwargs)
+
+    def validation_data(self, *args, **kwargs):
+        return self.dh.validation_data(*args, **kwargs)
+
+    def test_data(self, *args, **kwargs):
+        return self.dh.test_data(*args, **kwargs)
 
     def nn_layers(self):
         if hasattr(self, 'layers'):

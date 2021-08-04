@@ -909,6 +909,7 @@ class NumpyVersionException(Exception):
                 version {np.__version__} of numpy is not compatible with tf version {tf.__version__}
                 {self.action} numpy version."""
 
+
 def assign_dummy_name(tensor, dummy_name):
     if tf.executing_eagerly():
         setattr(tensor, '__dummy_name', dummy_name)
