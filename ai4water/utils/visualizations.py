@@ -197,10 +197,10 @@ class Interpret(Plot):
 
     def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
 
-        ins = self.model.ins
-        outs=  self.model.outs
-        in_cols = self.model.in_cols
-        out_cols = self.model.out_cols
+        ins = self.model.num_ins
+        outs=  self.model.num_outs
+        in_cols = self.model.input_features
+        out_cols = self.model.output_features
 
         assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
 
@@ -247,7 +247,7 @@ class Interpret(Plot):
                 plt.close('all')
             return
 
-    def tft_attention_components(self, model=None, **train_data_args)->dict:
+    def tft_attention_components(self, model=None, data_type='training')->dict:
         """
         Gets attention components of tft layer from ai4water's Model.
         Arguments:
@@ -266,7 +266,7 @@ class Interpret(Plot):
         if model is None:
             model = self.model
 
-        x, _, _ = model.training_data(**train_data_args)
+        x, _, _ = getattr(model, f'{data_type}_data')
         attention_components = {}
 
         for k, v in model.TemporalFusionTransformer_attentions.items():
