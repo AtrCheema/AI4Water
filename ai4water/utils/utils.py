@@ -327,7 +327,7 @@ def _make_model(data, **kwargs):
         'nan_filler':        {"type": None, "default": None, "lower": None, "upper": None, "between": None},
 
         # for reproducability
-        'seed':              {"type": int, "default": 313, 'lower': None, 'upper': None, 'between': None},
+        'seed':              {"type": None, "default": 313, 'lower': None, 'upper': None, 'between': None},
         # how many steps ahead we want to predict
         'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},
         # step size of input data
