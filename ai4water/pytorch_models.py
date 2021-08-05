@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from ai4water import Model
 from ai4water.HARHN import HARHN
 from ai4water.imv_networks import IMVTensorLSTM
-from ai4water.utils.datasets import load_u1, arg_beach
 
 
 class HARHNModel(Model):

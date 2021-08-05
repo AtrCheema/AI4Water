@@ -50,8 +50,6 @@ class DualAttentionModel(FModel):
 
     def build(self, input_shape=None):
 
-        self.num_ins = self.dh.num_ins
-
         self.config['dec_config'] = self.dec_config
         self.config['enc_config'] = self.enc_config
 
@@ -271,6 +269,7 @@ class DualAttentionModel(FModel):
     def fetch_data(self, source, **kwargs):
         self.dh.teacher_forcing = True
         x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
+        self.dh.teacher_forcing = False
 
         n_s_feature_dim = self.config['enc_config']['n_s']
         n_h_feature_dim = self.config['enc_config']['n_h']
@@ -311,7 +310,6 @@ class InputAttentionModel(DualAttentionModel):
     def build(self, input_shape=None):
 
         self.config['enc_config'] = self.enc_config
-        self.num_ins = self.dh.num_ins
 
         setattr(self, 'method', 'input_attention')
         print('building input attention model')
@@ -336,6 +334,7 @@ class InputAttentionModel(DualAttentionModel):
         self.dh.teacher_forcing = True
 
         x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
+        self.dh.teacher_forcing = False
         #if self.config['drop_remainder']:
 
         #x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
