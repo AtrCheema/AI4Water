@@ -1,20 +1,36 @@
-
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
 class TorchDataset(Dataset):
 
     def __init__(self, x, y=None):
+        self.x_is_list = False
+
+        if isinstance(x, list):
+            self.x_is_list = True
+
         self.x = x
         self.y = y
 
+        if y is None:
+            self.y = torch.tensor(data=np.full(shape=(self.__len__(), 0), fill_value=np.nan))
+
     def __len__(self):
+
+        if self.x_is_list:
+            return len(self.x[0])
+
         return len(self.x)
 
     def __getitem__(self, item):
-        if self.y is None:
-            return self.x[item]
-        return self.x[item], self.y[item]
+
+        if self.x_is_list:
+            x = [self.x[i][item] for i in range(len(self.x))]
+        else:
+            x = self.x[item]
+
+        return x, self.y[item]
 
 
 def to_torch_dataset(x, y=None):

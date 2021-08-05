@@ -6,7 +6,7 @@ from ai4water.main import Model
 from ai4water._data import DataHandler, SiteDistributedDataHandler
 
 try:
-    from ai4water.pytorch_models import IMVLSTMModel
+    from ai4water.pytorch_models import IMVModel
     from ai4water.pytorch_models import HARHNModel
 except AttributeError:
     print("\n{}Pytorch models could not be imported {}\n".format(10*'*', 10*'*'))

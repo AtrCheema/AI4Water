@@ -218,9 +218,8 @@ class BaseModel(NN, Plots):
         # instead of doing model.dh.training
         if item in [
             'data',
-            'deindexify',
             'test_indices', 'train_indices',
-            'num_outs', 'forecast_len', 'forecast_step', 'num_ins',
+            'num_outs', 'forecast_step', 'num_ins',
                     ]:
             return getattr(self.dh, item)
         else:
@@ -228,6 +227,9 @@ class BaseModel(NN, Plots):
 
     # because __getattr__ does not work with pytorch, we explicitly get attributes from
     # DataHandler and assign them to Model
+    @property
+    def forecast_len(self):
+        return self.dh.forecast_len
 
     @property
     def num_outs(self):
@@ -600,7 +602,10 @@ class BaseModel(NN, Plots):
 
     def post_kfit(self):
         """Does some stuff after Keras model.fit has been called"""
-        if hasattr(self, 'history'):
+        if BACKEND == 'pytorch':
+            history = self.torch_learner.history
+
+        elif hasattr(self, 'history'):
             history = self.history
         else:
             history = self._model.history
@@ -806,7 +811,7 @@ class BaseModel(NN, Plots):
 
         if 'x' not in kwargs:
             train_data = getattr(self, f'{data}_data')()
-            inputs, outputs = maybe_three_outputs(train_data)
+            inputs, outputs = maybe_three_outputs(train_data, self.dh.teacher_forcing)
         else:
             outputs = None
             if 'y' in kwargs:
@@ -836,7 +841,10 @@ class BaseModel(NN, Plots):
         self.info['training_start'] = dateandtime_now()
 
         if self.category.upper() == "DL":
-            history = self._FIT(inputs, outputs, self.validation_data(), callbacks=callbacks, **kwargs)
+            val_data = self.validation_data()
+            val_x, val_y = maybe_three_outputs(val_data, self.dh.teacher_forcing)
+            val_data = (val_x, val_y)
+            history = self._FIT(inputs, outputs, val_data, callbacks=callbacks, **kwargs)
 
             visualizer.plot_loss(history.history)
 
@@ -932,17 +940,10 @@ class BaseModel(NN, Plots):
 
             # get the relevant data
             data = getattr(self, f'{data}_data')()
+            data = maybe_three_outputs(data, self.dh.teacher_forcing)
 
-        # this will mostly be the validation data.
-        if data is not None and isinstance(data, tf.data.Dataset):
-            if 'x' not in kwargs:
-                #if self.api == 'functional':
-                eval_output = self.evaluate_fn(self.val_dataset, **kwargs)
-
-            else:  # give priority to xy
-                eval_output = self._evaluate_with_xy(**kwargs)
-
-        elif 'x' in kwargs:  # expecting it to be called by keras' fit loop
+        if 'x' in kwargs:  # expecting it to be called by keras' fit loop
+            assert data is None
 
             if self.category == 'ML':
                 if hasattr(self._model, 'evaluate'):
@@ -951,13 +952,30 @@ class BaseModel(NN, Plots):
                     return self._model.predict(kwargs['x'])
 
             return self.evaluate_fn(**kwargs)
-        else:
+
+        # this will mostly be the validation data.
+        elif data is not None:
+            # if data.__class__.__name__ in ["Dataset"]:
+            #     if 'x' not in kwargs:
+            #         #if self.api == 'functional':
+            #         eval_output = self.evaluate_fn(self.val_dataset, **kwargs)
+            #
+            #     else:  # give priority to xy
+            #         eval_output = self._evaluate_with_xy(**kwargs)
+
+            #else:
             eval_output = self._evaluate_with_xy(data, **kwargs)
+
+        else:
+            raise ValueError
 
         acc, loss = None, None
 
         if self.category == "DL":
-            loss, acc = eval_output
+            if BACKEND == 'tensorflow':
+                loss, acc = eval_output
+            else:
+                loss = eval_output
 
         eval_report = f"{'*' * 30}\n{dateandtime_now()}\n Accuracy: {acc}\n Loss: {loss}\n"
 
@@ -1022,7 +1040,7 @@ class BaseModel(NN, Plots):
         if 'x' not in kwargs:
             prefix = prefix or data
             data = getattr(self, f'{data}_data')(key=transformation_key)
-            inputs, true_outputs = maybe_three_outputs(data)
+            inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
         else:
             prefix = prefix or 'x'
             inputs, true_outputs = kwargs['x'], kwargs.get('y', None)
@@ -1038,7 +1056,7 @@ class BaseModel(NN, Plots):
 
         true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
 
-        true_outputs, dt_index = self.deindexify(true_outputs, key=transformation_key)
+        true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
 
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
@@ -1176,7 +1194,7 @@ class BaseModel(NN, Plots):
         # if layer names are not specified, this will get get activations of allparameters
         if x is None:
             data = getattr(self, f'{data}_data')()
-            x, y = maybe_three_outputs(data)
+            x, y = maybe_three_outputs(data, self.dh.teacher_forcing)
 
         activations = keract.get_activations(self.dl_model, x, layer_names=layer_names, auto_compile=True)
 
@@ -1797,15 +1815,20 @@ def print_something(something, prefix=''):
         pprint.pprint({k: v.shape for k, v in something.items()}, width=40)
 
 
-def maybe_three_outputs(data, num_outputs=2):
+def maybe_three_outputs(data, teacher_forcing=False):
     """num_outputs: how many outputs from data we want"""
+    if teacher_forcing:
+        num_outputs = 3
+    else:
+        num_outputs = 2
+
     if num_outputs == 2:
         if len(data) == 2:
             return data[0], data[1]
         elif len(data) == 3:
             return data[0], data[2]
-    elif num_outputs == 3:
-        return data[0], data[1], data[2]
+    else:
+        return [data[0], data[1]], data[2]
 
 
 def get_values(outputs):

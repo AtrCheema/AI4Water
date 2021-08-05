@@ -30,7 +30,7 @@ F = {
 
 class AttributeContainer(object):
 
-    def __init__(self, num_epochs, to_monitor=None):
+    def __init__(self, num_epochs, to_monitor=None, use_cuda=None):
         self.to_monitor = get_metrics_to_monitor(to_monitor)
         self.num_epochs = num_epochs
 
@@ -44,7 +44,7 @@ class AttributeContainer(object):
         self.train_metrics = {metric: np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.val_metrics = {f'val_{metric}': np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.best_epoch = 0   # todo,
-        self.use_cuda = torch.cuda.is_available()
+        self.use_cuda = use_cuda if use_cuda is not None else torch.cuda.is_available()
 
         def_path = os.path.join(os.getcwd(), 'results', dateandtime_now())
         if not os.path.exists(def_path):
@@ -98,6 +98,7 @@ class Learner(AttributeContainer):
                  shuffle: bool = True,
                  to_monitor:list=None,
                  verbosity=1,
+                 **kwargs
                  ):
         """
         Arguments:
@@ -150,7 +151,7 @@ class Learner(AttributeContainer):
         >>>t,p = learner.predict(X, y=Y, name='training')
         ```
         """
-        super().__init__(num_epochs, to_monitor)
+        super().__init__(num_epochs, to_monitor, **kwargs)
 
         self.model = model
         self.batch_size = batch_size
@@ -204,28 +205,36 @@ class Learner(AttributeContainer):
 
         return self.on_train_end()
 
-    def predict(self, x, y=None, batch_size:int=None, reg_plot:bool = True, name:str = None)->tuple:
+    def predict(self,
+                x,
+                y=None,
+                batch_size:int=None,
+                reg_plot:bool = True,
+                name:str = None,
+                **kwargs)->np.ndarray:
         """Makes prediction on the given data
         Arguments:
             x : data on which to evalute. It can be
                 - a torch.utils.data.Dataset
                 - a torch.utils.data.DataLoader
                 - a torch.Tensor
+                - a numpy array
+                - a list of numpy arrays
             y : only relevent if `x` is torch.Tensor. It comprises labels for
                 correspoing x.
             batch_size : None means make prediction on whole data in one go
             reg_plot : whether to plot regression line or not
             name : string to be used for title and name of saved plot
         Returns:
-            a tuple of true and predicted arrays
+            predicted arrays
         """
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
-        if reg_plot:
+        if reg_plot and true.size>0.0:
             regplot(true, pred, name=name)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
-        return true, pred
+        return pred
 
     def _eval(self, x, y=None, batch_size=None):
         loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size)
@@ -234,20 +243,30 @@ class Learner(AttributeContainer):
 
         for i, (batch_x, batch_y) in enumerate(loader):
 
-            pred_y = self.model(batch_x.float())
-            true.append(batch_y)
-            pred.append(pred_y)
+            batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
 
-        true = torch.stack(true, 1).view(-1, 1)
-        pred = torch.stack(pred, 1).view(-1, 1)
+            batch_x =[tensor.float() for tensor in batch_x]
 
-        return true.detach().numpy(), pred.detach().numpy()
+            if self.use_cuda:
+                batch_x = [tensor.cuda() for tensor in batch_x]
+                batch_y = batch_y.cuda()
+
+            pred_y = self.model(*batch_x)
+
+            true.append(batch_y.detach().cpu().numpy())
+            pred.append(pred_y.detach().cpu().numpy())
+
+        true = np.concatenate(true)
+        pred = np.concatenate(pred)
+
+        return true, pred
 
     def evaluate(self,
                  x,
                  y=None,
                  batch_size:int=None,
-                 metrics:Union[str, list]='r2'
+                 metrics:Union[str, list]='r2',
+                 **kwargs
                  ):
         """Evaluates the `model` on the given data.
         Arguments:
@@ -290,7 +309,16 @@ class Learner(AttributeContainer):
             num_outs = self.num_outs
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
-            pred_y = self.model(batch_x.float())
+
+            batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
+
+            batch_x =[tensor.float() for tensor in batch_x]
+
+            if self.use_cuda:
+                batch_x = [tensor.cuda() for tensor in batch_x]
+                batch_y = batch_y.cuda()
+
+            pred_y = self.model(*batch_x)
 
             loss = self.criterion(batch_y.float().view(len(batch_y), num_outs), pred_y.view(len(pred_y), num_outs))
             loss = loss.float()
@@ -322,7 +350,14 @@ class Learner(AttributeContainer):
 
             for i, (batch_x, batch_y) in enumerate(self.val_loader):
 
-                pred_y = self.model(batch_x.float())
+                batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
+                batch_x = [tensor.float() for tensor in batch_x]
+
+                if self.use_cuda:
+                    batch_x = [tensor.cuda() for tensor in batch_x]
+                    batch_y = batch_y.cuda()
+
+                pred_y = self.model(*batch_x)
 
                 # calculate metrics for each mini-batch
                 er = TorchMetrics(batch_y, pred_y)
@@ -395,6 +430,7 @@ class Learner(AttributeContainer):
             history.update(self.train_metrics)
             history.update(self.val_metrics)
 
+        setattr(self, 'history', History())
         return History()
 
     def update_weights(self, weight_file_path:str = None):
@@ -473,15 +509,19 @@ class Learner(AttributeContainer):
         if x is None:
             return None, None
 
-        if isinstance(x, list) and len(x) == 1:
-            x = x[0]
-            if isinstance(x, torch.utils.data.Dataset):
-                dataset = x
+        if isinstance(x, list):
+            if len(x) == 1:
+                x = x[0]
+                if isinstance(x, torch.utils.data.Dataset):
+                    dataset = x
+                else:
+                    dataset = to_torch_dataset(x, y)
             else:
                 dataset = to_torch_dataset(x, y)
 
         elif isinstance(x, np.ndarray):
-            assert isinstance(y, np.ndarray)
+            if y is not None:
+                assert isinstance(y, np.ndarray)
             dataset = to_torch_dataset(x, y)
 
         elif isinstance(x, torch.utils.data.Dataset):

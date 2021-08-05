@@ -52,6 +52,7 @@ learner = Learner(model=model,
                   patience=50,
                   batch_size=1,
                   shuffle=False)
+learner.use_cuda = False
 learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
 learner.loss = criterion_cross
 
@@ -66,6 +67,5 @@ h = learner.fit(x=X,
                 )
 m = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
 assert len(m) == 3
-t,p = learner.predict(X, y=Y, name='training')
-assert isinstance(t, np.ndarray)
+p = learner.predict(X, y=Y, name='training')
 assert isinstance(p, np.ndarray)

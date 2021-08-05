@@ -80,7 +80,15 @@ class Model(MODEL, BaseModel):
 
         if torch is not None:
             from .pytorch_training import Learner
-            self.torch_learner = Learner
+            self.torch_learner = Learner(
+                model=self,
+                batch_size=self.config['batch_size'],
+                num_epochs=self.config['epochs'],
+                shuffle=self.config['shuffle'],
+                to_monitor=self.config['metrics'],
+                patience=self.config['patience'],
+                use_cuda=False
+            )
 
         if self.category == "DL":
             self.initialize_layers(self.config['model']['layers'])
@@ -194,14 +202,20 @@ class Model(MODEL, BaseModel):
             if BACKEND == 'tensorflow':
                 return super().fit
             elif BACKEND == 'pytorch':
-                return self.fit_pytorch
+                return self.torch_learner.fit
 
         return self._model.fit  # e.g. for ML models
 
     @property
     def evaluate_fn(self):
-        if self.category == "DL" and BACKEND == 'tensorflow':
-            return super().evaluate
+        if self.category == "DL":
+            if BACKEND == 'tensorflow':
+                return super().evaluate
+            elif BACKEND == 'pytorch':
+                return self.torch_learner.evaluate
+            else:
+                raise ValueError
+
         return self._model.evaluate
 
     @property
@@ -210,7 +224,7 @@ class Model(MODEL, BaseModel):
             if BACKEND == 'tensorflow':
                 return super().predict
             elif BACKEND == 'pytorch':
-                return self.predict_pytorch
+                return self.torch_learner.predict
         return self._model.predict
 
     def initialize_layers(self, layers_config:dict, inputs=None):
@@ -843,16 +857,7 @@ class Model(MODEL, BaseModel):
     def fit_pytorch(self,  x, **kwargs):
         """Trains the pytorch model."""
 
-
-        learner = self.torch_learner(model=self,
-                          batch_size=self.config['batch_size'],
-                          num_epochs=self.config['epochs'],
-                          shuffle=self.config['shuffle'],
-                          to_monitor=self.config['metrics'],
-                          patience=self.config['patience']
-                          )
-
-        history = learner.fit(x, **kwargs)
+        history = self.torch_learner.fit(x, **kwargs)
 
         setattr(self, 'history', history)
         return history
