@@ -43,6 +43,8 @@ SEP = os.sep
 
 # todo plots comparing different models in following youtube videos at 6:30 and 8:00 minutes.
 # https://www.youtube.com/watch?v=QrJlj0VCHys
+# compare models using statistical tests wuch as Giacomini-White test or Diebold-Mariano test
+# paired ttest 5x2cv
 
 class Experiments(object):
     """
@@ -200,14 +202,16 @@ Available cases are {self.models} and you wanted to exclude
 
             if model_type not in exclude:
 
-                def objective_fn(**kwargs):
-
+                def objective_fn(**suggested_paras):
+                    # the config must contain the suggested parameters by the hpo algorithm
                     if model_type in self.cases:
                         config = self.cases[model_type]
+                        config.update(suggested_paras)
                     elif model_name in self.cases:
                         config = self.cases[model_name]
+                        config.update(suggested_paras)
                     elif hasattr(self, model_type):
-                        config = getattr(self, model_type)(**kwargs)
+                        config = getattr(self, model_type)(**suggested_paras)
                     else:
                         raise TypeError
 
@@ -1700,26 +1704,36 @@ class TransformationExperiments(Experiments):
     --------
     >>>from ai4water.utils.datasets import load_u1
     >>>from ai4water.experiments import TransformationExperiments
+    ...# Define your experiment
     >>>class MyTransformationExperiments(TransformationExperiments):
     ...
     ...    def update_paras(self, **kwargs):
     ...        _layers = {
-    ...            "LSTM": {"config": {"units": int(kwargs.get('lstm_units', 64))}},
-    ...            "Dense": {"config": {"units": 1, "activation": kwargs.get('dense_actfn', 'relu')}},
+    ...            "LSTM": {"config": {"units": int(kwargs['lstm_units']}},
+    ...            "Dense": {"config": {"units": 1, "activation": kwargs['dense_actfn']}},
     ...            "reshape": {"config": {"target_shape": (1, 1)}}
     ...        }
     ...        return {'model': {'layers': _layers},
-    ...                'lookback': int(kwargs.get('lookback', 10)),
-    ...                'batch_size': int(kwargs.get('batch_size', 16)),
-    ...                'lr': kwargs.get('lr', 0.001),
+    ...                'lookback': int(kwargs['lookback']),
+    ...                'batch_size': int(kwargs['batch_size']),
+    ...                'lr': float(kwargs['lr']),
     ...                'transformation': kwargs['transformation']}
     >>>data = load_u1()
     >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>outputs = ['target']
     >>>cases = {'model_minmax': {'transformation': 'minmax'},
     ...         'model_zscore': {'transformation': 'zscore'}}
-    >>>experiment = MyTransformationExperiments(cases=cases,
-    ...                                         input_features=inputs, output_features=outputs, data=data, exp_name="testing")
+    >>>search_space = [
+    ...            Integer(low=16, high=64, name='lstm_units', num_samples=2),
+    ...            Integer(low=3, high=15, name="lookback", num_samples=2),
+    ...            Categorical(categories=[4, 8, 12, 16, 24, 32], name='batch_size'),
+    ...            Real(low=1e-6, high=1.0e-3, name='lr', prior='log', num_samples=2),
+    ...            Categorical(categories=['relu', 'elu'], name='dense_actfn'),
+    ...        ]
+    >>>x0 = [20, 14, 12, 0.00029613, 'relu']
+    >>>experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
+    ...                output_features=outputs, data=data, exp_name="testing"
+    ...                 param_space=search_space, x0=x0)
     """
 
     def __init__(self,
@@ -1747,7 +1761,7 @@ class TransformationExperiments(Experiments):
         raise NotImplementedError(f"""
 You must write the method `update_paras` which should build the Model with suggested parameters
 and return the keyword arguments including `model`. These keyword arguments will then
-will used to build ai4water's Model class.
+be used to build ai4water's Model class.
 """)
 
     def build_and_run(self,
@@ -1802,12 +1816,9 @@ Validation loss during all the epochs is NaN. Suggested parameters were
 
         model = self.process_model_before_fit(model)
 
-        indices = model.train_indices if 'indices' in fit_kws else None
-        en = fit_kws.get('en', None)
-        train_true, train_pred = model.predict(en=en, indices=indices, prefix='train')
+        train_true, train_pred = model.predict('training', prefix='train')
 
-        indices = model.test_indices if 'indices' in fit_kws else None
-        test_true, test_pred = model.predict(st=en if en is not None else 0, indices=indices, prefix='test')
+        test_true, test_pred = model.predict('test', prefix='test')
 
         model.data['allow_nan_labels'] = 1
         model.predict(prefix='all')
