@@ -148,7 +148,7 @@ class Learner(AttributeContainer):
         ...
         >>>learner.fit(X, Y)
         >>>metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
-        >>>t,p = learner.predict(X, y=Y, name='training')
+        >>>t = learner.predict(X, y=Y, name='training')
         ```
         """
         super().__init__(num_epochs, to_monitor, **kwargs)
@@ -167,6 +167,8 @@ class Learner(AttributeContainer):
                 - an instance of torch.Dataset, y will be ignored
                 - an instance of torch.DataLoader, y will be ignored
                 - a torch tensor containing input data for each example
+                - a numpy array
+                - a list of numpy arrays
             y : if `x` is torch tensor, then `y` is the label/target for
                 each corresponding example.
             validation_data : can be one of following:
@@ -226,7 +228,7 @@ class Learner(AttributeContainer):
             reg_plot : whether to plot regression line or not
             name : string to be used for title and name of saved plot
         Returns:
-            predicted arrays
+            predicted output as numpy array
         """
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
