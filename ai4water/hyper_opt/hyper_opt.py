@@ -106,7 +106,7 @@ ALGORITHMS = {
 class HyperOpt(object):
     """
     The purpose of this class is to provide a uniform and simplifed interface to
-    use hyperopt, optuna, scikit-optimize and scikit-learn based hyperparameter
+    use `hyperopt`, `optuna`, `scikit-optimize` and `scikit-learn` based hyperparameter
     optimization methods. Ideally this class should provide all the functionalities of
     beforementioned libaries with a uniform interface. It however also complements
     these libraries by combining their functionalities and adding some additional
@@ -115,18 +115,19 @@ class HyperOpt(object):
     of underlying libraries are available in this class as well. Moreover, you can
     use this class just as you use one of its underlying library.
 
-    We wish to make a class which allows application of any of the optimization
-    methods on any type of model/classifier/regressor. If the classifier/regressor
-    is of sklearn-based, then for random search, we use RanddomSearchCV, for grid
-    search, we use GridSearchCV and for Bayesian, we use BayesSearchCV. On the
-    other hand, if the model is not sklearn-based, you will still be able to implement
-    any of the three methods. In such case, the bayesian will be implemented using
-    gp_minimize. Random search and grid search will be done by simple iterating
-    over the sample space generated as in sklearn based samplers. However, the
-    post-processing of the results is (supposed to be) done same as done in
-    RandomSearchCV and GridSearchCV.
+    The purpose here is to make a class which allows application of any of the
+    available optimization methods on any type of model/classifier/regressor. If the
+    classifier/regressor is of sklearn-based, then for random search, we use
+    RanddomSearchCV, for grid search, we use GridSearchCV and for Bayesian, we
+    use BayesSearchCV. On the other hand, if the model is not sklearn-based, you
+    will still be able to implement any of the three methods. In such case, the
+    bayesian will be implemented using `gp_minimize`. Random search and grid search
+    will be done by simple iterating over the sample space generated as in sklearn
+    based samplers. However, the post-processing of the results is (supposed to be)
+    done same as is done in RandomSearchCV and GridSearchCV.
 
-    The class should pass all the tests written in sklearn or skopt for corresponding classes.
+    The class is expected to pass all the tests written in sklearn or skopt for
+    corresponding classes.
 
     For detailed use of this class see [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
 
@@ -158,10 +159,11 @@ class HyperOpt(object):
     >>>from ai4water.hyper_opt import HyperOpt, Categorical, Integer, Real
     >>>from ai4water.utils.datasets import load_u1
     >>>from ai4water.utils.SeqMetrics import RegressionMetrics
-    # We have to define an objective function which will take keyword arguments.
     >>>data = load_u1()
     >>>input_features = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>output_features = ['target']
+    ...# We have to define an objective function which will take keyword arguments
+    ...# and return a scaler value as output. This scaler value will be minized during optimzation
     >>>def objective_fn(**suggestion)->float:
     ...   # the objective function must receive new parameters as keyword arguments
     ...    model = Model(
@@ -486,7 +488,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return kwargs
 
     def __getattr__(self, item):
-        # TODO, not sure if this is the best way but venturing since it is done by the legend here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
+        # TODO, not sure if this is the best way but venturing since it is done by the legend
+        #  here https://github.com/philipperemy/n-beats/blob/master/nbeats_keras/model.py#L166
         # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
         # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
         # available with class.
@@ -829,7 +832,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         else:
             raise NotImplementedError(f"""No fit function found for algorithm {self.algorithm}
                                           with backend {self.backend}""")
-        a = fit_fn(*args, **kwargs)
+        res = fit_fn(*args, **kwargs)
 
         serialized = self.serialize()
         fname  = os.path.join(self.opt_path, 'serialized.json')
@@ -840,7 +843,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
                 dill.dump(self.objective_fn, fp)
 
-        return a
+        return res
 
     def ai4water_model(self,
                        pp=False,
