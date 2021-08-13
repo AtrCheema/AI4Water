@@ -48,7 +48,7 @@ class test_errors(unittest.TestCase):
         for er_name, er_val in all_errors.items():
             if er_val is not None:
                 er_val = getattr(er, er_name)()
-                self.assertEqual(er_val.__class__.__name__, 'float')
+                self.assertEqual(er_val.__class__.__name__, 'float', f'{er_name} is {er_val}')
         return
 
     def test_stats(self):

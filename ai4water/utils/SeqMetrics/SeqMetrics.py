@@ -634,6 +634,15 @@ class RegressionMetrics(Metrics):
 
         return float(crmsd)
 
+    def cosine_similarity(self)->float:
+        """[cosine similary](https://en.wikipedia.org/wiki/Cosine_similarity)
+        It is a judgment of orientation and not magnitude: two vectors with
+        the same orientation have a cosine similarity of 1, two vectors oriented
+        at 90° relative to each other have a similarity of 0, and two vectors diametrically
+        opposed have a similarity of -1, independent of their magnitude.
+        """
+        return float(np.dot(self.true.reshape(-1,), self.predicted.reshape(-1,))/(np.linalg.norm(self.true)*np.linalg.norm(self.predicted)))
+
     def decomposed_mse(self) -> float:
         """
         Decomposed MSE developed by Kobayashi and Salam (2000)
