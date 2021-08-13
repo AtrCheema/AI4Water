@@ -1231,7 +1231,7 @@ class CAMELS_AUS(Camels):
         'vp_SILO': f'05_hydrometeorology{SEP}05_hydrometeorology{SEP}03_Other{SEP}SILO{SEP}vp_SILO',
     }
 
-    def __init__(self, path=None):
+    def __init__(self, path:str=None):
         """
         Arguments:
             path: path where the CAMELS-AUS dataset has been downloaded. This path
@@ -1239,6 +1239,7 @@ class CAMELS_AUS(Camels):
                 data will downloaded.
         """
         if path is not None:
+            assert isinstance(path, str), f'path must be string like but it is "{path}" of type {path.__class__.__name__}'
             if not os.path.exists(path) or len(os.listdir(path)) < 2:
                 raise FileNotFoundError(f"The path {path} does not exist")
         self.ds_dir = path
