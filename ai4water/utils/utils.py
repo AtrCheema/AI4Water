@@ -205,10 +205,12 @@ def process_io(data, **kwargs):
 
 def _make_model(data, **kwargs):
     """
-    This functions fills the default arguments needed to run all the models. All the input arguments can be overwritten
+    This functions fills the default arguments needed to run all the models.
+    All the input arguments can be overwritten
     by providing their name.
     :return
-      nn_config: `dict`, contais parameters to build and train the neural network such as `layers`
+      nn_config: `dict`, contais parameters to build and train the neural network
+        such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
     kwargs = process_io(data, **kwargs)

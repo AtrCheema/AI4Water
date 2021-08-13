@@ -1,6 +1,5 @@
-import json
 import os
-import math
+import json
 import time
 import pprint
 import random
@@ -20,18 +19,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from ai4water.nn_tools import NN
-from ai4water.backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
+from ai4water._data import DataHandler
 from ai4water.backend import tpot_models
 from ai4water.backend import sklearn_models
-from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
+from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
 from ai4water.utils.utils import find_best_weight, reset_seed
-from ai4water.utils.plotting_tools import Plots
 from ai4water.models.custom_training import train_step, test_step
-from ai4water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.utils.visualizations import Visualizations, Interpret
-from ai4water._data import DataHandler
-
+from ai4water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
+from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
+from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from .backend import BACKEND
 
 LOSSES = {}
@@ -193,6 +191,8 @@ class BaseModel(NN, Plots):
                                accept_additional_args = accept_additional_args,
                                seed = seed,
                                **kwargs)
+
+            self.opt_paras:dict = maker.opt_paras
 
             # data_config, model_config = config['data_config'], config['model_config']
             reset_seed(maker.config['seed'], os, random, np, tf, torch)
@@ -372,95 +372,6 @@ class BaseModel(NN, Plots):
 
     def first_layer_shape(self):
         return NotImplementedError
-
-    def check_batches(self, x, prev_y, y: np.ndarray):
-        """
-        Will have no effect if drop_remainder is False or batches_per_epoch are not specified.
-        :param x: a list consisting of one or more 1D arrays
-        :param prev_y:
-        :param y: nd array
-        :return:
-        """
-        steps_per_epoch = self.config['batches_per_epoch']
-        if steps_per_epoch is None:
-
-            if isinstance(x, list):
-                examples = x[0].shape[0]
-            elif isinstance(x, dict):
-                examples = list(x.values())[0].shape[0]
-            else:
-                examples = x.shape[0]
-
-            if self.config['drop_remainder']:
-                iterations = math.floor(examples / self.config['batch_size'])
-                return self._check_batches(x, prev_y, y, iterations)
-
-            return x, prev_y, y
-        else:
-
-            return self._check_batches(x, prev_y, y, steps_per_epoch)
-
-    def _check_batches(self, x, prev_y, y, iterations):
-        if isinstance(x, dict):
-            raise NotImplementedError
-
-        if self.verbosity > 0:
-            print(f"Number of total batches are {iterations}")
-
-        x_is_list = True
-        if not isinstance(x, list):
-            x = [x]
-            x_is_list = False
-
-        assert isinstance(y, np.ndarray)
-
-        if prev_y is None:
-            prev_y = y.copy()
-
-        batch_size = self.config['batch_size']
-        _x = [[None for _ in range(iterations)] for _ in range(len(x))]
-        _prev_y = [None for _ in range(iterations)]
-        _y = [None for _ in range(iterations)]
-
-        st, en = 0, batch_size
-        for batch in range(iterations):
-            for ex in range(len(x)):
-                _x[ex][batch] = x[ex][st:en, :]
-
-            _prev_y[batch] = prev_y[st:en, :]
-            _y[batch] = y[st:en, :]
-
-            st += batch_size
-            en += batch_size
-
-        x = [np.vstack(_x[i]) for i in range(len(_x))]
-        prev_y = np.vstack(_prev_y)
-        y = np.vstack(_y)
-
-        if not x_is_list:
-            x = x[0]
-
-        return x, prev_y, y
-
-    def conform_shape(self, x, datetime_index):
-        """
-    makes sure that the shape of x corresponds to first layer of NN. This comes handy if the first
-    layer is CNN in CNNLSTM case or first layer is Conv2DLSTM or LSTM or a dense layer. No change in shape
-    will be performed when more than one `Input` layers exist.
-        """
-        input_layers = self.num_input_layers
-
-        if input_layers > 1:
-            return x
-        elif input_layers == 1:
-
-            first_layer_shape = self.first_layer_shape()
-            if datetime_index:
-                first_layer_shape[-1] = first_layer_shape[-1] + 1
-            return x.reshape(tuple(first_layer_shape))
-
-        else:
-            raise ValueError(" {} Input layers found".format(input_layers))
 
     def get_callbacks(self, val_data, callbacks=None):
 
@@ -1678,6 +1589,9 @@ class BaseModel(NN, Plots):
         freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
         be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
         `monthly`."""
+        if self.data is None:
+            print("data is None so eda can not be performed.")
+            return
         # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
         visualizer = Visualizations(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols)
 
