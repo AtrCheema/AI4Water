@@ -109,7 +109,7 @@ class Interpret(Plot):
         if self.model.category.upper() == "DL":
 
             if any(['attn_weight' in l for l in model.layer_names]):
-                self.plot_act_along_inputs(f'attn_weight_{model.lookback - 1}_1', name='attention_weights')
+                self.plot_act_along_inputs(f'attn_weight_{model.lookback - 1}_1')
 
             if hasattr(model, 'TemporalFusionTransformer_attentions'):
                 atten_components = self.tft_attention_components()
@@ -195,20 +195,41 @@ class Interpret(Plot):
         self.save_or_show(save, fname="feature_importance.png")
         return
 
-    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=0, vmax=0.8, **kwargs):
+    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=None, vmax=None, data='training'):
 
         ins = self.model.num_ins
         outs=  self.model.num_outs
-        in_cols = self.model.input_features
-        out_cols = self.model.output_features
+        in_cols = self.model.in_cols
+        out_cols = self.model.out_cols
+        data_name = name or data
 
         assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
 
-        predictions, observations = self.model.predict(pp=False, **kwargs)
+        predictions, observations = self.model.predict(process_results=False, data=data)
 
-        activation, data = self.model.activations(layer_names=layer_name, return_input=True, **kwargs)
+        activation = self.model.activations(layer_names=layer_name, data=data)
 
-        activation = activation[layer_name]
+        data, _, _ = getattr(self.model, f'{data}_data')()
+        lookback = self.model.config['lookback']
+
+        activation = activation[layer_name]  # (num_examples, lookback, num_ins)
+
+        act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
+
+        plt.close('all')
+
+        fig, axis = plt.subplots()
+        im = plt.imshow(act_avg_over_examples, aspect='auto')
+        ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+        axis.set_ylabel('lookback steps')
+        axis.set_yticks(np.arange(len(ytick_labels)))
+        axis.set_yticklabels(ytick_labels)
+        axis.set_xticks(np.arange(len(in_cols)))
+        axis.set_xticklabels(in_cols, rotation=90)
+        fig.colorbar(im, orientation='horizontal', pad=0.3)
+        plt.savefig(os.path.join(self.model.act_path, f'acts_avg_over_examples_{data_name}') ,
+                    dpi=400, bbox_inches='tight')
+
         data = self.model.inputs_for_attention(data)
 
         assert data.shape[1] == ins
@@ -223,7 +244,7 @@ class Interpret(Plot):
             for idx in range(ins):
 
                 fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
-                fig.set_figheight(10)
+                fig.set_figheight(12)
 
                 ax1.plot(data[:, idx], label=in_cols[idx])
                 ax1.legend()
@@ -235,15 +256,15 @@ class Interpret(Plot):
                 ax2.legend()
 
                 im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
+                ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback-1, 0, lookback)]
                 ax3.set_ylabel('lookback steps')
+                ax3.set_yticks(np.arange(len(ytick_labels)))
+                ax3.set_yticklabels(ytick_labels)
                 ax3.set_xlabel('Examples')
                 fig.colorbar(im, orientation='horizontal', pad=0.2)
                 plt.subplots_adjust(wspace=0.005, hspace=0.005)
-                if name is not None:
-                    _name = out_name + '_' + name
-                    plt.savefig(os.path.join(self.model.act_path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
-                else:
-                    plt.show()
+                _name = f'attention_weights_{out_name}_{data_name}'
+                plt.savefig(os.path.join(self.model.act_path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
                 plt.close('all')
             return
 
@@ -266,7 +287,7 @@ class Interpret(Plot):
         if model is None:
             model = self.model
 
-        x, _, _ = getattr(model, f'{data_type}_data')
+        x, _, = getattr(model, f'{data_type}_data')()
         attention_components = {}
 
         for k, v in model.TemporalFusionTransformer_attentions.items():
@@ -1024,6 +1045,9 @@ class Visualizations(Plot):
         if num_pcs is None:
             num_pcs = int(data.shape[1]/2)
 
+        if num_pcs <1:
+            print(f'{num_pcs} pcs can not be plotted because data has shape {data.shape}')
+            return
         #df_pca = data[self.in_cols]
         #pca = PCA(n_components=num_pcs).fit(df_pca)
         #df_pca = pd.DataFrame(pca.transform(df_pca))
@@ -1237,7 +1261,7 @@ def regplot(true, pred, name, **kwargs):
     points = plt.scatter(true, pred, c=pred, s=s, cmap=cmap)  # set style options
 
     if kwargs.get('annotate', True):
-        plt.annotate(f'$R^{2}$: {round(RegressionMetrics(true, pred).r2(), 3)}', xy=(0.2, 0.95), xycoords='axes fraction',
+        plt.annotate(f'$R^{2}$: {round(RegressionMetrics(true, pred).r2(), 3)}', xy=(0.3, 0.95), xycoords='axes fraction',
                  horizontalalignment='right', verticalalignment='top', fontsize=16)
 
     if kwargs.get('colorbar', False):
