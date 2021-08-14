@@ -192,8 +192,6 @@ class BaseModel(NN, Plots):
                                seed = seed,
                                **kwargs)
 
-            self.opt_paras:dict = maker.opt_paras
-
             # data_config, model_config = config['data_config'], config['model_config']
             reset_seed(maker.config['seed'], os, random, np, tf, torch)
             if tf is not None:
