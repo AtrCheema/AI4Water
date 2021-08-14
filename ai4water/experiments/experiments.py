@@ -262,6 +262,8 @@ Available cases are {self.models} and you wanted to exclude
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
         # TODO for ML, best_models is empty
+        if len(best_models)<1:
+            return self.train_best(model_type, fit_kws)
         for mod, props in best_models.items():
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
