@@ -239,7 +239,7 @@ class Learner(AttributeContainer):
         return pred
 
     def _eval(self, x, y=None, batch_size=None):
-        loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size)
+        loader, _ = self._get_loader(x=x, y=y, batch_size=batch_size, shuffle=False)
 
         true, pred = [], []
 
@@ -389,8 +389,8 @@ class Learner(AttributeContainer):
 
     def _get_train_val_loaders(self, x, y=None, validation_data=None):
 
-        train_loader, self.num_outs = self._get_loader(x=x, y=y, batch_size=self.batch_size)
-        val_loader, _ = self._get_loader(x=validation_data, batch_size=self.batch_size)
+        train_loader, self.num_outs = self._get_loader(x=x, y=y, batch_size=self.batch_size, shuffle=self.shuffle)
+        val_loader, _ = self._get_loader(x=validation_data, batch_size=self.batch_size, shuffle=self.shuffle)
 
         return train_loader, val_loader
 
@@ -503,7 +503,7 @@ class Learner(AttributeContainer):
 
         return
 
-    def _get_loader(self, x, y=None, batch_size=None):
+    def _get_loader(self, x, y=None, batch_size=None, shuffle=True):
 
         data_loader = None
         num_outs = None
@@ -559,7 +559,7 @@ class Learner(AttributeContainer):
             data_loader = torch.utils.data.DataLoader(
                 dataset,
                 batch_size=batch_size,
-                shuffle=self.shuffle
+                shuffle=shuffle
             )
 
         return data_loader, num_outs
