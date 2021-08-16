@@ -577,18 +577,20 @@ def post_process_skopt_results(skopt_results, results, opt_path):
     return
 
 
-def skopt_plots(search_result, pref=os.getcwd()):
+def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
 
-    plt.close('all')
-    _ = plot_evaluations(search_result)
-    plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
-
-    if search_result.space.n_dims == 1:
-        pass
-    else:
+    if len(search_result.func_vals) < threshold:  # it takes forever if parameters are > 20
         plt.close('all')
-        _ = plot_objective(search_result)
-        plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
+        _ = plot_evaluations(search_result)
+        plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
+
+    if len(search_result.func_vals) < threshold:
+        if search_result.space.n_dims == 1:
+            pass
+        else:
+            plt.close('all')
+            _ = plot_objective(search_result)
+            plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
 
     plt.close('all')
     _ = plot_convergence(search_result)

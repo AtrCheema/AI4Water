@@ -1188,7 +1188,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
 
-        if self.backend != 'skopt':# and len(self.space())>1:
+        if self.backend != 'skopt' and len(self.space())<20:# and len(self.space())>1:
             plt.close('all')
             plot_evaluations(sr, dimensions=self.best_paras(as_list=True))
             plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
