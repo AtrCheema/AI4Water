@@ -828,23 +828,29 @@ class Model(MODEL, BaseModel):
         """This method primarily behaves like `from_config` of BaseModel. However,
         it can also be used like `from_config` of the underlying Model such as
         `from_config` of tf.keras.Model.
+        # todo test from_config with keras
         """
         _config = args
+        data = None
 
         if isinstance(args, tuple):  # multiple non-keyword arguments were provided
-            _config = args[0]
-            if len(args)>1:
-                data=args[1]
+            if len(args)>0:
+                _config = args[0]
+                if len(args)>1:
+                    data=args[1]
+                else:
+                    data = kwargs.get('data', None)
             else:
-                data = kwargs.get('data', None)
+                _config = kwargs['config_path']
+                kwargs.pop('config_path')
+                if 'data' in kwargs:
+                    data = kwargs.pop('data')
         else:
             data = kwargs['data']
 
         if 'make_new_path' in kwargs or os.path.isfile(_config):
             # we need to build ai4water's Model class
             config, path = BaseModel._get_config_and_path(cls, _config, kwargs.get('make_new_path', False))
-            if data is not None and 'data' in kwargs:
-                kwargs.pop('data')
 
             return cls(**config['config'],
                    data=data,
