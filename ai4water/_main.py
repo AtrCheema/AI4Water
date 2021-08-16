@@ -952,7 +952,11 @@ class BaseModel(NN, Plots):
             inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
         else:
             prefix = prefix or 'x'
-            inputs, true_outputs = kwargs['x'], kwargs.get('y', None)
+            inputs = kwargs.pop('x')
+            true_outputs = None
+            if 'y' in kwargs:
+                true_outputs = kwargs.pop('y')
+
 
         if self.category == 'DL':
             predicted = self.predict_fn(x= inputs,
