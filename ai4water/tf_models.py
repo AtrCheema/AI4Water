@@ -105,7 +105,10 @@ class DualAttentionModel(FModel):
 
         return
 
-    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, h0=None):
+    def _encoder(self, enc_inputs, config, lstm2_seq=True, suf: str = '1', s0=None, h0=None, num_ins=None):
+
+        if num_ins is None:
+            num_ins = self.num_ins
 
         #if not self.config['drop_remainder']:
         #    self.config['drop_remainder'] = True
@@ -130,10 +133,10 @@ class DualAttentionModel(FModel):
             else:
                 h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_' + suf)
 
-        enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, suf)
+        enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, num_ins, suf)
         if self.verbosity > 2:
             print('encoder attention output:', enc_attn_out)
-        enc_lstm_in = layers.Reshape((self.lookback, self.num_ins), name='enc_lstm_input_'+suf)(enc_attn_out)
+        enc_lstm_in = layers.Reshape((self.lookback, num_ins), name='enc_lstm_input_'+suf)(enc_attn_out)
         if self.verbosity > 2:
             print('input to encoder LSTM:', enc_lstm_in)
 
@@ -168,7 +171,7 @@ class DualAttentionModel(FModel):
 
         return alphas
 
-    def encoder_attention(self, _input, _s0, _h0, suf: str = '1'):
+    def encoder_attention(self, _input, _s0, _h0, num_ins, suf: str = '1'):
 
         s = _s0
         _h = _h0
@@ -183,7 +186,7 @@ class DualAttentionModel(FModel):
             if self.verbosity > 2:
                 print('context:', _context)
             x = layers.Lambda(lambda x: _input[:, t, :])(_input)
-            x = layers.Reshape((1, self.num_ins))(x)
+            x = layers.Reshape((1, num_ins))(x)
             if self.verbosity > 2:
                 print('x:', x)
             _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
@@ -286,7 +289,7 @@ class DualAttentionModel(FModel):
 
         h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
 
-        x, prev_y, labels = self.check_batches([x, prev_y, h_de0, s_de0], prev_y, labels)
+        x, prev_y, labels = self.dh.check_batches([x, prev_y, h_de0, s_de0], prev_y, labels)
         x, prev_y, h_de0, s_de0 = x
 
         if self.verbosity > 0:

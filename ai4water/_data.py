@@ -1503,7 +1503,14 @@ class DataHandler(AttributeContainer):
             remainder = len(x) % self.config['batch_size']
 
             if remainder:
-                x = x[0:-remainder]
+                if isinstance(x, list):
+                    _x = []
+                    for val in x:
+                        _x.append(val[0:-remainder])
+                    x = _x
+                else:
+                    x = x[0:-remainder]
+
                 prev_y = prev_y[0:-remainder]
                 y = y[0:-remainder]
 
