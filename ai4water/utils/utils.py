@@ -1344,3 +1344,58 @@ class JsonEncoder(json.JSONEncoder):
             return obj.__module__
         else:
             return super(JsonEncoder, self).default(obj)
+
+def plot_activations_along_inputs(
+        data:np.ndarray,
+        activations:np.ndarray,
+        observations:np.ndarray,
+        predictions:np.ndarray,
+        in_cols:list,
+        out_cols:list,
+        lookback:int,
+        name:str,
+        path:str,
+        vmin=None,
+        vmax=None,
+):
+    # activation must be of shape (num_examples, lookback, input_features)
+    assert activations.shape[1] == lookback
+    assert activations.shape[2] == len(in_cols), f'{activations.shape}, {len(in_cols)}'
+
+    # data is of shape (num_examples, input_features)
+    assert data.shape[1] == len(in_cols)
+
+    assert len(data) == len(activations)
+
+    for out in range(len(out_cols)):
+        pred = predictions[:, out]
+        obs = observations[:, out]
+        out_name = out_cols[out]
+
+        for idx in range(len(in_cols)):
+            plt.close('all')
+            fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
+            fig.set_figheight(12)
+
+            ax1.plot(data[:, idx], label=in_cols[idx])
+            ax1.legend()
+            ax1.set_title('activations w.r.t ' + in_cols[idx])
+            ax1.set_ylabel(in_cols[idx])
+
+            ax2.plot(pred, label='Prediction')
+            ax2.plot(obs, '.', label='Observed')
+            ax2.legend()
+
+            im = ax3.imshow(activations[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
+            ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+            ax3.set_ylabel('lookback steps')
+            ax3.set_yticks(np.arange(len(ytick_labels)))
+            ax3.set_yticklabels(ytick_labels)
+            ax3.set_xlabel('Examples')
+            fig.colorbar(im, orientation='horizontal', pad=0.2)
+            plt.subplots_adjust(wspace=0.005, hspace=0.005)
+            _name = f'attention_weights_{out_name}_{name}'
+            plt.savefig(os.path.join(path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
+            plt.close('all')
+
+    return

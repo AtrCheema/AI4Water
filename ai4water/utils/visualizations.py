@@ -28,6 +28,7 @@ from ai4water.backend import xgboost
 
 from ai4water.utils.SeqMetrics import RegressionMetrics
 from ai4water.utils.utils import _missing_vals
+from ai4water.utils.utils import plot_activations_along_inputs
 from ai4water.utils.utils import find_tot_plots, init_subplots, Jsonize
 from ai4water.utils.transformations import Transformations
 
@@ -232,41 +233,19 @@ class Interpret(Plot):
 
         data = self.model.inputs_for_attention(data)
 
-        assert data.shape[1] == ins
-
-        plt.close('all')
-
-        for out in range(outs):
-            pred = predictions[:, out]
-            obs = observations[:, out]
-            out_name = out_cols[out]
-
-            for idx in range(ins):
-
-                fig, (ax1, ax2, ax3) = plt.subplots(3, sharex='all')
-                fig.set_figheight(12)
-
-                ax1.plot(data[:, idx], label=in_cols[idx])
-                ax1.legend()
-                ax1.set_title('activations w.r.t ' + in_cols[idx])
-                ax1.set_ylabel(in_cols[idx])
-
-                ax2.plot(pred, label='Prediction')
-                ax2.plot(obs, '.', label='Observed')
-                ax2.legend()
-
-                im = ax3.imshow(activation[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
-                ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback-1, 0, lookback)]
-                ax3.set_ylabel('lookback steps')
-                ax3.set_yticks(np.arange(len(ytick_labels)))
-                ax3.set_yticklabels(ytick_labels)
-                ax3.set_xlabel('Examples')
-                fig.colorbar(im, orientation='horizontal', pad=0.2)
-                plt.subplots_adjust(wspace=0.005, hspace=0.005)
-                _name = f'attention_weights_{out_name}_{data_name}'
-                plt.savefig(os.path.join(self.model.act_path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
-                plt.close('all')
-            return
+        plot_activations_along_inputs(data,
+                                      activation,
+                                      observations,
+                                      predictions,
+                                      in_cols=in_cols,
+                                      out_cols=out_cols,
+                                      lookback=lookback,
+                                      name=name,
+                                      path=self.model.act_path,
+                                      vmin=vmin,
+                                      vmax=vmax
+                                      )
+        return
 
     def tft_attention_components(self, model=None, data_type='training')->dict:
         """

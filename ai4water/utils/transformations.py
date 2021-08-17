@@ -366,7 +366,7 @@ class Transformations(scaler_container):
                         replace_with = float(getattr(np, 'nan' + self.replace_zeros_with)(data[col]))
                     else:
                         replace_with = self.replace_zeros_with
-                    data[col][indices[col]] = get_val(data[col], replace_with)
+                    data[col][indices[col]] = get_val(data[col], replace_with)  # todo SettingWithCopyWarning
 
             if self.zero_indices is None: self.zero_indices = indices
 

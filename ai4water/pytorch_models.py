@@ -4,12 +4,14 @@ import os
 from typing import Any
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from ai4water.backend import torch
 from ai4water import Model
 from ai4water.HARHN import HARHN
+from ai4water.backend import torch
 from ai4water.imv_networks import IMVTensorLSTM
+from ai4water.utils.utils import dateandtime_now, plot_activations_along_inputs
 
 
 class HARHNModel(Model):
@@ -62,18 +64,45 @@ class IMVModel(HARHNModel):
         self.betas.append(betas)
         return y_pred
 
-    def interpret(self, data='training', save=True, **kwargs):
-        self.alphas, self.betas = [], []
-        self.predict(data=data)
+    def interpret(self, data='training',
+                  x=None,
+                  save=True,
+                  annotate=True,
+                  vmin=None,
+                  vmax=None,
+                  **bar_kws,
+                  ):
 
+        mpl.rcParams.update(mpl.rcParamsDefault)
+
+        self.alphas, self.betas = [], []
+        true, predicted = self.predict(data=data, process_results=False)
+
+        name = f'data_on_{dateandtime_now()}' if x is not None else data
 
         betas = [array.detach().cpu().numpy() for array in self.betas]
-        betas = np.concatenate(betas)  # (samples, ins, 1)
+        betas = np.concatenate(betas)  # (examples, ins, 1)
         betas = betas.mean(axis=0)  # (ins, 1)
         betas = betas[..., 0]  # (ins, )
 
         alphas = [array.detach().cpu().numpy() for array in self.alphas]
-        alphas = np.concatenate(alphas)  # (samples, lookback, ins, 1)
+        alphas = np.concatenate(alphas)  # (examples, lookback, ins, 1)
+
+        x, y = getattr(self, f'{data}_data')()
+
+        plot_activations_along_inputs(x[:, -1, :],  # todo, is -1 correct?
+                                      alphas.reshape(-1, self.lookback, self.num_ins),
+                                      true,
+                                      predicted,
+                                      in_cols=self.in_cols,
+                                      out_cols=self.out_cols,
+                                      lookback=self.lookback,
+                                      name=name,
+                                      path=self.act_path,
+                                      vmin=vmin,
+                                      vmax=vmax
+                                      )
+
         alphas = alphas.mean(axis=0)   # (lookback, ins, 1)
         alphas = alphas[..., 0]  # (lookback, ins)
         alphas = alphas.transpose(1, 0)  # (ins, lookback)
@@ -88,15 +117,16 @@ class IMVModel(HARHNModel):
         ax.set_yticks(np.arange(len(all_cols)))
         ax.set_xticklabels(["t-"+str(i) for i in np.arange(self.lookback, -1, -1)])
         ax.set_yticklabels(list(all_cols))
-        for i in range(len(all_cols)):
-            for j in range(self.lookback):
-                _ = ax.text(j, i, round(alphas[i, j], 3),
-                            ha="center", va="center", color="w")
+        if annotate:
+            for i in range(len(all_cols)):
+                for j in range(self.lookback):
+                    _ = ax.text(j, i, round(alphas[i, j], 3),
+                                ha="center", va="center", color="w")
         ax.set_title("Importance of features and timesteps")
-        plt.savefig(os.path.join(self.act_path, 'acts'), dpi=400, bbox_inches='tight')
+        plt.savefig(os.path.join(self.act_path, f'acts_{name}'), dpi=400, bbox_inches='tight')
 
         plt.close('all')
-        plt.bar(range(self.num_ins), betas, **kwargs)
+        plt.bar(range(self.num_ins), betas, **bar_kws)
         plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=12)
-        plt.savefig(os.path.join(self.act_path, 'feature_importance'), dpi=400, bbox_inches='tight')
+        plt.savefig(os.path.join(self.act_path, f'feature_importance_{name}'), dpi=400, bbox_inches='tight')
         return
