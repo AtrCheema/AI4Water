@@ -624,7 +624,7 @@ class BaseModel(NN, Plots):
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
                 fname = prefix + out + '_' + str(h) + ".csv"
-                df.to_csv(os.path.join(fpath, fname), index_label='time')
+                df.to_csv(os.path.join(fpath, fname), index_label='index')
 
                 visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out)
 

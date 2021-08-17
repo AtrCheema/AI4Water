@@ -524,7 +524,7 @@ class Visualizations(Plot):
 
         ms = 4 if style == '.' else 2
 
-        axis.plot(predicted, style, color='r',  marker='', label='Prediction')
+        axis.plot(predicted, style, color='r',  label='Prediction')
 
         axis.plot(true, style, color='b', marker='o', fillstyle='none',  markersize=ms, label='True')
 
