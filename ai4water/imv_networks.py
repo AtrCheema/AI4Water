@@ -5,7 +5,7 @@ nn = torch.nn
 class IMVTensorLSTM(torch.jit.ScriptModule):
     __constants__ = ["n_units", "input_dim"]
 
-    def __init__(self, input_dim, output_dim, n_units, init_std=0.02):
+    def __init__(self, input_dim, output_dim, n_units, device, init_std=0.02):
         super().__init__()
         self.U_j = nn.Parameter(torch.randn(input_dim, 1, n_units) * init_std)
         self.U_i = nn.Parameter(torch.randn(input_dim, 1, n_units) * init_std)
@@ -25,11 +25,12 @@ class IMVTensorLSTM(torch.jit.ScriptModule):
         self.Phi = nn.Linear(2 * n_units, output_dim)
         self.n_units = n_units
         self.input_dim = input_dim
+        self.device = device
 
     @torch.jit.script_method
     def forward(self, x):
-        h_tilda_t = torch.zeros(x.shape[0], self.input_dim, self.n_units).cuda()
-        c_tilda_t = torch.zeros(x.shape[0], self.input_dim, self.n_units).cuda()
+        h_tilda_t = torch.zeros(x.shape[0], self.input_dim, self.n_units).to(self.device)
+        c_tilda_t = torch.zeros(x.shape[0], self.input_dim, self.n_units).to(self.device)
         outputs = torch.jit.annotate(List[Tensor], [])
         for t in range(x.shape[1]):
             # eq 1
@@ -67,7 +68,7 @@ class IMVTensorLSTM(torch.jit.ScriptModule):
 class IMVFullLSTM(torch.jit.ScriptModule):
     __constants__ = ["n_units", "input_dim"]
 
-    def __init__(self, input_dim, output_dim, n_units, init_std=0.02):
+    def __init__(self, input_dim, output_dim, n_units, device, init_std=0.02):
         super().__init__()
         self.U_j = nn.Parameter(torch.randn(input_dim, 1, n_units) * init_std)
         self.W_j = nn.Parameter(torch.randn(input_dim, n_units, n_units) * init_std)
@@ -81,11 +82,12 @@ class IMVFullLSTM(torch.jit.ScriptModule):
         self.Phi = nn.Linear(2 * n_units, output_dim)
         self.n_units = n_units
         self.input_dim = input_dim
+        self.device = device
 
     @torch.jit.script_method
     def forward(self, x):
-        h_tilda_t = torch.zeros(x.shape[0], self.input_dim, self.n_units).cuda()
-        c_t = torch.zeros(x.shape[0], self.input_dim * self.n_units).cuda()
+        h_tilda_t = torch.zeros(x.shape[0], self.input_dim, self.n_units).to(self.device)
+        c_t = torch.zeros(x.shape[0], self.input_dim * self.n_units).to(self.device)
         outputs = torch.jit.annotate(List[Tensor], [])
         for t in range(x.shape[1]):
             # eq 1

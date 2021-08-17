@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ai4water.backend import torch
 from ai4water import Model
 from ai4water.HARHN import HARHN
 from ai4water.imv_networks import IMVTensorLSTM
@@ -13,9 +14,21 @@ from ai4water.imv_networks import IMVTensorLSTM
 
 class HARHNModel(Model):
 
+    def __init__(self, use_gpu=True, **kwargs):
+
+        dev = torch.device("cpu")
+        if use_gpu and torch.cuda.is_available():
+            dev = torch.device("cuda")
+
+        self.dev = dev
+
+        super(HARHNModel, self).__init__(**kwargs)
+
+        # should be set after initiating upper classes so that torch_learner attribute is set
+        self.torch_learner.use_cuda = use_gpu
 
     def initialize_layers(self, layers_config:dict, inputs=None):
-        self.torch_learner.use_cuda = True
+
         self.pt_model = HARHN(layers_config['n_conv_lyrs'],
                               self.lookback,
                               self.num_ins,
@@ -23,7 +36,7 @@ class HARHNModel(Model):
                               n_units_enc=layers_config['enc_units'],
                               n_units_dec=layers_config['dec_units'],
                               use_predicted_output=True, #self.config['use_predicted_output']
-                              ).cuda()
+                              ).to(self.dev)
 
         return
 
@@ -32,11 +45,13 @@ class HARHNModel(Model):
         return y_pred
 
 
-class IMVModel(Model):
+class IMVModel(HARHNModel):
 
     def initialize_layers(self, layers_config:dict, inputs=None):
-        self.torch_learner.use_cuda = True
-        self.pt_model = IMVTensorLSTM(self.num_ins, self.num_outs, layers_config['hidden_units']).cuda()
+
+        self.pt_model = IMVTensorLSTM(self.num_ins, self.num_outs,
+                                      layers_config['hidden_units'],
+                                      device=self.dev).to(self.dev)
         self.alphas, self.betas = [], []
 
         return
