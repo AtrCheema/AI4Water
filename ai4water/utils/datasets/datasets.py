@@ -211,7 +211,7 @@ except ModuleNotFoundError:
 try:
     from shapely.geometry import shape, mapping
     from shapely.ops import unary_union
-except ModuleNotFoundError:
+except (ModuleNotFoundError, OSError):
     shape, mapping, unary_union = None, None, None
 
 try:
