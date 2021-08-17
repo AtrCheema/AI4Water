@@ -289,7 +289,7 @@ class DualAttentionModel(FModel):
 
         h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
 
-        x, prev_y, labels = self.dh.check_batches([x, prev_y, h_de0, s_de0], prev_y, labels)
+        x, prev_y, labels = self.dh.check_for_batch_size([x, prev_y, h_de0, s_de0], prev_y, labels)
         x, prev_y, h_de0, s_de0 = x
 
         if self.verbosity > 0:
