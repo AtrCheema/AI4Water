@@ -16,5 +16,7 @@ This module is inspired from [fastai's Learner](https://docs.fast.ai/learner.htm
             - evaluate
             - predict
             - update_weights
+            - plot_model
+            - plot_model_using_tensorboard
     rendering:
         show_root_heading: true

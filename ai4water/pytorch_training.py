@@ -564,6 +564,53 @@ class Learner(AttributeContainer):
 
         return data_loader, num_outs
 
+    def plot_model_using_tensorboard(self,
+                                     x=None,
+                                     path='tensorboard/tensorboard'
+                                     ):
+        """Plots the neural network on tensorboard
+        Arguments:
+            x : torch.Tensor
+                input to the model
+            path : str
+                path to save tensorboard graph
+        """
+        from torch.utils.tensorboard import SummaryWriter
+
+        # default `log_dir` is "runs" - we'll be more specific here
+        writer = SummaryWriter(path)
+        if x is None:
+            x,y = iter(self.train_loader).next()
+        writer.add_graph(self.model, x)
+        writer.close()
+        return
+
+    def plot_model(self, y=None):
+        """Helper function to plot dot diagram of model using torchviz module.
+        Arguments:
+            y : torch.Tensor
+                output tensor
+            """
+        try:
+            from torchviz import make_dot
+        except ModuleNotFoundError:
+            print("You must install torchviz to plot model."
+                  "see https://github.com/szagoruyko/pytorchviz#installation for installation")
+            return
+
+        if y is None:
+            x, _ = iter(self.train_loader).next()
+            y = self.model(x)
+
+        fname = os.path.join(self.path, 'model.png')
+        dot = make_dot(y, dict(self.model.named_parameters()),
+                 show_attrs=True,
+                 show_saved=True)
+
+        dot.render(fname)
+
+        return dot
+
 
 def get_metrics_to_monitor(metrics):
 
