@@ -87,6 +87,7 @@ class Model(MODEL, BaseModel):
                 shuffle=self.config['shuffle'],
                 to_monitor=self.config['metrics'],
                 patience=self.config['patience'],
+                path=self.path,
                 use_cuda=False
             )
 

@@ -30,7 +30,7 @@ F = {
 
 class AttributeContainer(object):
 
-    def __init__(self, num_epochs, to_monitor=None, use_cuda=None):
+    def __init__(self, num_epochs, to_monitor=None, use_cuda=None, path=None):
         self.to_monitor = get_metrics_to_monitor(to_monitor)
         self.num_epochs = num_epochs
 
@@ -46,7 +46,7 @@ class AttributeContainer(object):
         self.best_epoch = 0   # todo,
         self.use_cuda = use_cuda if use_cuda is not None else torch.cuda.is_available()
 
-        def_path = os.path.join(os.getcwd(), 'results', dateandtime_now())
+        def_path = path if path is not None else os.path.join(os.getcwd(), 'results', dateandtime_now())
         if not os.path.exists(def_path):
             if not os.path.isdir(def_path):
                 os.makedirs(def_path)
@@ -97,6 +97,7 @@ class Learner(AttributeContainer):
                  patience: int = 100,
                  shuffle: bool = True,
                  to_monitor:list=None,
+                 path:str = None,
                  verbosity=1,
                  **kwargs
                  ):
@@ -113,6 +114,7 @@ class Learner(AttributeContainer):
                 case `to_monitor` does not improve.
             shuffle :
             to_monitor : list of metrics to monitor
+            path : path to save results/weights
 
         Example
         --------
@@ -151,7 +153,7 @@ class Learner(AttributeContainer):
         >>>t = learner.predict(X, y=Y, name='training')
         ```
         """
-        super().__init__(num_epochs, to_monitor, **kwargs)
+        super().__init__(num_epochs, to_monitor, path=path, **kwargs)
 
         self.model = model
         self.batch_size = batch_size
