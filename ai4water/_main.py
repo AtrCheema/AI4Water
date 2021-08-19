@@ -919,6 +919,8 @@ class BaseModel(NN, Plots):
 
     def predict(self,
                 data: str='test',
+                x=None,
+                y=None,
                 prefix: str = None,
                 process_results:bool = True,
                 **kwargs
@@ -928,35 +930,37 @@ class BaseModel(NN, Plots):
         Arguments:
             data : which data to use. Possible values are `training`, `test` or `validation`.
                 By default, `test` data is used for predictions.
+            x : if given, it will override `data`
+            y : Used for pos-processing etc. if given it will overrite `data`
             process_results : post processing of results
             prefix : prefix used with names of saved results
             kwargs : any keyword argument for `fit` method.
         Returns:
             a tuple of arrays. The first is true and the second is predicted.
+            If `x` is given but `y` is not given, then, first array which is
+            returned is None.
         """
         assert data in ['training', 'test', 'validation']
 
-        return self.call_predict(data=data, prefix=prefix, process_results=process_results, **kwargs)
+        return self.call_predict(data=data, x=x, y=y, process_results=process_results, **kwargs)
 
     def call_predict(self,
                      data='test',
-                     prefix: str = None,
+                     x = None,
+                     y = None,
                      process_results=True,
                      **kwargs):
 
         transformation_key = '5'
 
-        if 'x' not in kwargs:
-            prefix = prefix or data
+        if x is None:
+            prefix = data
             data = getattr(self, f'{data}_data')(key=transformation_key)
             inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
         else:
-            prefix = prefix or 'x'
-            inputs = kwargs.pop('x')
-            true_outputs = None
-            if 'y' in kwargs:
-                true_outputs = kwargs.pop('y')
-
+            prefix = 'x'
+            inputs = x
+            true_outputs = y
 
         if self.category == 'DL':
             predicted = self.predict_fn(x= inputs,
@@ -966,6 +970,8 @@ class BaseModel(NN, Plots):
         else:
             predicted = self.predict_fn(inputs, **kwargs)
 
+        if y is None:
+            return y, predicted
 
         true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
 

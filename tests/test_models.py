@@ -1,4 +1,5 @@
 import os
+import time
 import unittest
 import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
@@ -259,6 +260,29 @@ class test_MultiInputModels(unittest.TestCase):
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
         model.fit()
         test_evaluation(model)
+        return
+
+    def test_predict_without_y(self):
+        # make sure that .predict method can be called without `y`.
+
+        model = Model(model='RandomForestRegressor',
+                      data=arg_beach(),
+                      verbosity=0
+                      )
+        model.fit()
+        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        assert len(y) == 10
+
+        # check also for functional model
+        model = FModel(model='RandomForestRegressor',
+                      data=arg_beach(),
+                      verbosity=0
+                      )
+        model.fit()
+        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        assert len(y) == 10
+
+        time.sleep(1)
         return
 
 
