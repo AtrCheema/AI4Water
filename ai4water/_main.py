@@ -16,7 +16,6 @@ import joblib
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from ai4water.nn_tools import NN
 from ai4water._data import DataHandler
@@ -1366,7 +1365,7 @@ class BaseModel(NN, Plots):
 
         return
 
-    def interpret(self, save=True, **kwargs):
+    def interpret(self, **kwargs):
         """
         Interprets the underlying model. Call it after training.
 
@@ -1398,40 +1397,9 @@ class BaseModel(NN, Plots):
         interpreter = Interpret(self)
 
         if self.category == 'ML':
-            interpreter.plot_feature_importance(save=save)
+            interpreter.plot_feature_importance(**kwargs)
 
         return
-
-    def plot_act_along_lookback(self, activations, sample=0):
-
-        assert isinstance(activations, np.ndarray)
-
-        activation = activations[sample, :, :]
-        act_t = activation.transpose()
-
-        fig, axis = plt.subplots()
-
-        for idx, _name in enumerate(self.in_cols):
-            axis.plot(act_t[idx, :], label=_name)
-
-        axis.set_xlabel('Lookback')
-        axis.set_ylabel('Input attention weight')
-        axis.legend(loc="best")
-
-        plt.show()
-        return
-
-    def inputs_for_attention(self, inputs):
-        """ it is being provided separately so that it can be overwritten for cases when attention mechanism depends
-        on more than one inputs or the model applying attention has more than one inputs. """
-        if isinstance(inputs, list):
-            inputs = inputs[0]
-
-        inputs = inputs[:, -1, :]  # why 0, why not -1
-
-        assert inputs.shape[1] == self.num_ins
-
-        return inputs
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 

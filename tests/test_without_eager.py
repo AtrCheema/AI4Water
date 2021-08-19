@@ -7,17 +7,14 @@ import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from ai4water.utils.datasets import load_nasdaq
+from ai4water.utils.datasets import arg_beach, load_nasdaq
 from ai4water import InputAttentionModel, DualAttentionModel
 
 
-def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
-
-    df = load_nasdaq()
+def make_and_run(input_model, _layers=None, lookback=12, epochs=3, **kwargs):
 
     model = input_model(
-        data=df,
-        verbosity=1,
+        verbosity=0,
         batch_size=64,
         lookback=lookback,
         lr=0.001,
@@ -29,6 +26,7 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
     _ = model.fit()
 
     _, pred_y = model.predict()
+    model.interpret()
 
     return pred_y
 
@@ -38,7 +36,7 @@ class TestModels(unittest.TestCase):
 
     def test_InputAttentionModel(self):
 
-        prediction = make_and_run(InputAttentionModel)
+        prediction = make_and_run(InputAttentionModel, data=arg_beach())
         self.assertGreater(float(prediction[0].sum()), 0.0)
 
     # def test_InputAttentionModel_with_drop_remainder(self):
@@ -49,7 +47,10 @@ class TestModels(unittest.TestCase):
     def test_DualAttentionModel(self):
         # DualAttentionModel based model
 
-        prediction = make_and_run(DualAttentionModel)
+        prediction = make_and_run(
+            DualAttentionModel,
+            data=load_nasdaq(inputs=['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK'])
+        )
         self.assertGreater(float(prediction[0].sum()), 0.0)
 
 

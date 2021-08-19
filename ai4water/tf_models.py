@@ -1,7 +1,10 @@
 __all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel"]
 
+import os
+
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from ai4water.backend import tf
 from ai4water.main import Model
@@ -10,6 +13,7 @@ from ai4water.backend import keras
 from ai4water._main import print_something
 from ai4water.nn_tools import check_act_fn
 from ai4water.layer_definition import MyTranspose, MyDot
+from ai4water.utils.utils import plot_activations_along_inputs
 
 layers = keras.layers
 KModel = keras.models.Model
@@ -306,6 +310,94 @@ class DualAttentionModel(FModel):
 
     def test_data(self,  **kwargs):
         return self.fetch_data('test', **kwargs)
+
+    def interpret(self, data='training', **kwargs):
+
+        self.plot_act_along_inputs(f'attn_weight_{self.lookback - 1}_1',
+                                   data=data,
+                                   **kwargs)
+        return
+
+    def plot_act_along_inputs(self,
+                              layer_name: str, name: str = None,
+                              vmin=None,
+                              vmax=None,
+                              data='training'):
+
+        data_name = name or data
+
+        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
+
+        predictions, observations = self.predict(process_results=False, data=data)
+
+        activation = self.activations(layer_names=layer_name, data=data)
+
+        data, _, _ = getattr(self, f'{data}_data')()
+        lookback = self.config['lookback']
+
+        activation = activation[layer_name]  # (num_examples, lookback, num_ins)
+
+        act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
+
+        plt.close('all')
+
+        fig, axis = plt.subplots()
+        im = plt.imshow(act_avg_over_examples, aspect='auto')
+        ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+        axis.set_ylabel('lookback steps')
+        axis.set_yticks(np.arange(len(ytick_labels)))
+        axis.set_yticklabels(ytick_labels)
+        axis.set_xticks(np.arange(len(self.in_cols)))
+        axis.set_xticklabels(self.in_cols, rotation=90)
+        fig.colorbar(im, orientation='horizontal', pad=0.3)
+        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}') ,
+                    dpi=400, bbox_inches='tight')
+
+        data = self.inputs_for_attention(data)
+
+        plot_activations_along_inputs(data=data,
+                                      activations=activation,
+                                      observations=observations,
+                                      predictions=predictions,
+                                      in_cols=self.in_cols,
+                                      out_cols=self.out_cols,
+                                      lookback=lookback,
+                                      name=name,
+                                      path=self.act_path,
+                                      vmin=vmin,
+                                      vmax=vmax
+                                      )
+        return
+
+    def plot_act_along_lookback(self, activations, sample=0):
+
+        assert isinstance(activations, np.ndarray)
+
+        activation = activations[sample, :, :]
+        act_t = activation.transpose()
+
+        fig, axis = plt.subplots()
+
+        for idx, _name in enumerate(self.in_cols):
+            axis.plot(act_t[idx, :], label=_name)
+
+        axis.set_xlabel('Lookback')
+        axis.set_ylabel('Input attention weight')
+        axis.legend(loc="best")
+
+        plt.show()
+        return
+
+    def inputs_for_attention(self, inputs):
+        """ returns the inputs for attention mechanism """
+        if isinstance(inputs, list):
+            inputs = inputs[0]
+
+        inputs = inputs[:, -1, :]  # why 0, why not -1
+
+        assert inputs.shape[1] == self.num_ins
+
+        return inputs
 
 
 class InputAttentionModel(DualAttentionModel):

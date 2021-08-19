@@ -109,11 +109,12 @@ class Interpret(Plot):
 
         if self.model.category.upper() == "DL":
 
-            if any(['attn_weight' in l for l in model.layer_names]):
-                self.plot_act_along_inputs(f'attn_weight_{model.lookback - 1}_1')
+            if hasattr(model, 'interpret') and not model.__class__.__name__ == "Model":
+                model.interpret()
+            else:
 
-            if hasattr(model, 'TemporalFusionTransformer_attentions'):
-                atten_components = self.tft_attention_components()
+                if hasattr(model, 'TemporalFusionTransformer_attentions'):
+                    atten_components = self.tft_attention_components()
 
     @property
     def model(self):
@@ -194,57 +195,6 @@ class Interpret(Plot):
             plt.bar(range(self.model.ins if use_prev else self.model.ins + self.model.outs), importance, **kwargs)
             plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=12)
         self.save_or_show(save, fname="feature_importance.png")
-        return
-
-    def plot_act_along_inputs(self, layer_name: str, name: str = None, vmin=None, vmax=None, data='training'):
-
-        ins = self.model.num_ins
-        outs=  self.model.num_outs
-        in_cols = self.model.in_cols
-        out_cols = self.model.out_cols
-        data_name = name or data
-
-        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
-
-        predictions, observations = self.model.predict(process_results=False, data=data)
-
-        activation = self.model.activations(layer_names=layer_name, data=data)
-
-        data, _, _ = getattr(self.model, f'{data}_data')()
-        lookback = self.model.config['lookback']
-
-        activation = activation[layer_name]  # (num_examples, lookback, num_ins)
-
-        act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
-
-        plt.close('all')
-
-        fig, axis = plt.subplots()
-        im = plt.imshow(act_avg_over_examples, aspect='auto')
-        ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis.set_ylabel('lookback steps')
-        axis.set_yticks(np.arange(len(ytick_labels)))
-        axis.set_yticklabels(ytick_labels)
-        axis.set_xticks(np.arange(len(in_cols)))
-        axis.set_xticklabels(in_cols, rotation=90)
-        fig.colorbar(im, orientation='horizontal', pad=0.3)
-        plt.savefig(os.path.join(self.model.act_path, f'acts_avg_over_examples_{data_name}') ,
-                    dpi=400, bbox_inches='tight')
-
-        data = self.model.inputs_for_attention(data)
-
-        plot_activations_along_inputs(data,
-                                      activation,
-                                      observations,
-                                      predictions,
-                                      in_cols=in_cols,
-                                      out_cols=out_cols,
-                                      lookback=lookback,
-                                      name=name,
-                                      path=self.model.act_path,
-                                      vmin=vmin,
-                                      vmax=vmax
-                                      )
         return
 
     def tft_attention_components(self, model=None, data_type='training')->dict:
