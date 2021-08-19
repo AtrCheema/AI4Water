@@ -159,6 +159,11 @@ def check_kwargs(**kwargs):
     if kwargs.get('model', None) is not None:
         model = kwargs['model']
         if 'layers' not  in model:
+            # for case when model='randomforestregressor'
+            if isinstance(model, str):
+                model = {model: {}}
+                kwargs['model'] = model
+
             if list(model.keys())[0].startswith("XGB"):
                 if "learning_rate" not in model:
                         kwargs["model"]["learning_rate"] = lr
