@@ -970,8 +970,8 @@ class BaseModel(NN, Plots):
         else:
             predicted = self.predict_fn(inputs, **kwargs)
 
-        if y is None:
-            return y, predicted
+        if true_outputs is None:
+            return true_outputs, predicted
 
         true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
 
