@@ -64,9 +64,9 @@ class IMVModel(HARHNModel):
         self.betas.append(betas)
         return y_pred
 
-    def interpret(self, data='training',
+    def interpret(self,
+                  data='training',
                   x=None,
-                  save=True,
                   annotate=True,
                   vmin=None,
                   vmax=None,
@@ -90,10 +90,10 @@ class IMVModel(HARHNModel):
 
         x, y = getattr(self, f'{data}_data')()
 
-        plot_activations_along_inputs(x[:, -1, :],  # todo, is -1 correct?
-                                      alphas.reshape(-1, self.lookback, self.num_ins),
-                                      true,
-                                      predicted,
+        plot_activations_along_inputs(data=x[:, -1, :],  # todo, is -1 correct?
+                                      activations=alphas.reshape(-1, self.lookback, self.num_ins),
+                                      observations=true,
+                                      predictions=predicted,
                                       in_cols=self.in_cols,
                                       out_cols=self.out_cols,
                                       lookback=self.lookback,
