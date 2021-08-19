@@ -57,6 +57,10 @@ class Metrics(object):
     the method `treat_arrays` in order to have the changed values impact on true and
     predicted arrays.
 
+    Literature:
+        https://www-miklip.dkrz.de/about/murcss/
+
+
     """
 
     def __init__(self,
@@ -1372,10 +1376,10 @@ class RegressionMetrics(Metrics):
 
     def r2(self) -> float:
         """
-        Quantifies the percent of variation in the response that the 'model' explains. The 'model'
-        here is anything from which we obtained predicted array.
-        coefficient of determination. Square of pearson correlation coefficient. More heavily affected by outliers
-        than pearson correlatin r.
+        Quantifies the percent of variation in the response that the 'model'
+        explains. The 'model' here is anything from which we obtained predicted
+        array. It is also called coefficient of determination or square of pearson
+        correlation coefficient. More heavily affected by outliers than pearson correlatin r.
         https://data.library.virginia.edu/is-r-squared-useless/
         """
         zx = (self.true - np.mean(self.true)) / np.std(self.true, ddof=1)
@@ -1460,23 +1464,15 @@ class RegressionMetrics(Metrics):
         e = b * c
         return float(np.arccos(a / e))
 
-    def smdape(self) -> float:
+    def sga(self) -> float:
+        """Spectral gradient angle.
+        From -pi/2 to pi/2. Closer to 0 is better.
         """
-        Symmetric Median Absolute Percentage Error
-        Note: result is NOT multiplied by 100
-        """
-        return float(np.median(2.0 * self._ae() / ((np.abs(self.true) + np.abs(self.predicted)) + EPS)))
-
-    def sse(self) -> float:
-        """Sum of squared errors (model vs actual).
-        measure of how far off our model’s predictions are from the observed values. A value of 0 indicates that all
-         predications are spot on. A non-zero value indicates errors.
-        https://dziganto.github.io/data%20science/linear%20regression/machine%20learning/python/Linear-Regression-101-Metrics/
-        This is also called residual sum of squares (RSS) or sum of squared residuals as per
-        https://www.tutorialspoint.com/statistics/residual_sum_of_squares.htm
-        """
-        squared_errors = (self.true - self.predicted) ** 2
-        return float(np.sum(squared_errors))
+        sgx = self.true[1:] - self.true[:self.true.size - 1]
+        sgy = self.predicted[1:] - self.predicted[:self.predicted.size - 1]
+        a = np.dot(sgx, sgy)
+        b = np.linalg.norm(sgx) * np.linalg.norm(sgy)
+        return float(np.arccos(a / b))
 
     def smape(self) -> float:
         """
@@ -1487,28 +1483,12 @@ class RegressionMetrics(Metrics):
         _temp = np.sum(2 * np.abs(self.predicted - self.true) / (np.abs(self.true) + np.abs(self.predicted)))
         return float(100 / len(self.true) * _temp)
 
-    def spearmann_corr(self) -> float:
-        """Separmann correlation coefficient
-        https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf
+    def smdape(self) -> float:
         """
-        col = [list(a) for a in zip(self.true, self.predicted)]
-        xy = sorted(col, key=lambda _x: _x[0], reverse=False)
-        # rang of x-value
-        for i, row in enumerate(xy):
-            row.append(i + 1)
-
-        a = sorted(xy, key=lambda _x: _x[1], reverse=False)
-        # rang of y-value
-        for i, row in enumerate(a):
-            row.append(i + 1)
-
-        mw_rank_x = np.nanmean(np.array(a)[:, 2])
-        mw_rank_y = np.nanmean(np.array(a)[:, 3])
-
-        numerator = np.nansum([float((a[j][2] - mw_rank_x) * (a[j][3] - mw_rank_y)) for j in range(len(a))])
-        denominator1 = np.sqrt(np.nansum([(a[j][2] - mw_rank_x) ** 2. for j in range(len(a))]))
-        denominator2 = np.sqrt(np.nansum([(a[j][3] - mw_rank_x) ** 2. for j in range(len(a))]))
-        return float(numerator / (denominator1 * denominator2))
+        Symmetric Median Absolute Percentage Error
+        Note: result is NOT multiplied by 100
+        """
+        return float(np.median(2.0 * self._ae() / ((np.abs(self.true) + np.abs(self.predicted)) + EPS)))
 
     def sid(self) -> float:
         """Spectral Information Divergence.
@@ -1518,16 +1498,6 @@ class RegressionMetrics(Metrics):
         second1 = np.log10(self.true) - np.log10(np.mean(self.true))
         second2 = np.log10(self.predicted) - np.log10(np.mean(self.predicted))
         return float(np.dot(first, second1 - second2))
-
-    def sga(self) -> float:
-        """Spectral gradient angle.
-        From -pi/2 to pi/2. Closer to 0 is better.
-        """
-        sgx = self.true[1:] - self.true[:self.true.size - 1]
-        sgy = self.predicted[1:] - self.predicted[:self.predicted.size - 1]
-        a = np.dot(sgx, sgy)
-        b = np.linalg.norm(sgx) * np.linalg.norm(sgy)
-        return float(np.arccos(a / b))
 
     def skill_score_murphy(self) -> float:
         """
@@ -1565,6 +1535,47 @@ class RegressionMetrics(Metrics):
         ss = 1 - rmse2 / sdev2
 
         return float(ss)
+
+    def spearmann_corr(self) -> float:
+        """Separmann correlation coefficient
+        https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf
+        """
+        col = [list(a) for a in zip(self.true, self.predicted)]
+        xy = sorted(col, key=lambda _x: _x[0], reverse=False)
+        # rang of x-value
+        for i, row in enumerate(xy):
+            row.append(i + 1)
+
+        a = sorted(xy, key=lambda _x: _x[1], reverse=False)
+        # rang of y-value
+        for i, row in enumerate(a):
+            row.append(i + 1)
+
+        mw_rank_x = np.nanmean(np.array(a)[:, 2])
+        mw_rank_y = np.nanmean(np.array(a)[:, 3])
+
+        numerator = np.nansum([float((a[j][2] - mw_rank_x) * (a[j][3] - mw_rank_y)) for j in range(len(a))])
+        denominator1 = np.sqrt(np.nansum([(a[j][2] - mw_rank_x) ** 2. for j in range(len(a))]))
+        denominator2 = np.sqrt(np.nansum([(a[j][3] - mw_rank_x) ** 2. for j in range(len(a))]))
+        return float(numerator / (denominator1 * denominator2))
+
+    def sse(self) -> float:
+        """Sum of squared errors (model vs actual).
+        measure of how far off our model’s predictions are from the observed values. A value of 0 indicates that all
+         predications are spot on. A non-zero value indicates errors.
+        https://dziganto.github.io/data%20science/linear%20regression/machine%20learning/python/Linear-Regression-101-Metrics/
+        This is also called residual sum of squares (RSS) or sum of squared residuals as per
+        https://www.tutorialspoint.com/statistics/residual_sum_of_squares.htm
+        """
+        squared_errors = (self.true - self.predicted) ** 2
+        return float(np.sum(squared_errors))
+
+    def std_ratio(self, **kwargs)->float:
+        """ratio of standard deviations of predictions and trues.
+        Also known as standard ratio, it varies from 0.0 to infinity while
+        1.0 being the perfect value.
+        """
+        return np.std(self.predicted, **kwargs) / np.std(self.true, **kwargs)
 
     def umbrae(self, benchmark: np.ndarray = None):
         """ Unscaled Mean Bounded Relative Absolute Error """
