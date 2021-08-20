@@ -579,12 +579,12 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
 def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
 
-    if len(search_result.func_vals) < threshold:  # it takes forever if parameters are > 20
+    if len(search_result.x) < threshold:  # it takes forever if parameters are > 20
         plt.close('all')
         _ = plot_evaluations(search_result)
         plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
 
-    if len(search_result.func_vals) < threshold:
+    if len(search_result.x) < threshold:
         if search_result.space.n_dims == 1:
             pass
         else:
