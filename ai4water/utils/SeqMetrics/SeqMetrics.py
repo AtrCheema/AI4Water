@@ -1312,7 +1312,8 @@ class RegressionMetrics(Metrics):
     def pearson_r(self) -> float:
         """
         Pearson correlation coefficient.
-        Measures linear correlatin. Sensitive to outliers.
+        It measures linear correlatin between true and predicted arrays.
+        It is sensitive to outliers.
         Reference: Pearson, K 1895.
         """
         sim_mean = np.mean(self.predicted)
@@ -1537,7 +1538,10 @@ class RegressionMetrics(Metrics):
         return float(ss)
 
     def spearmann_corr(self) -> float:
-        """Separmann correlation coefficient
+        """Separmann correlation coefficient.
+        This is a nonparametric metric and assesses how well the relationship
+        between the true and predicted data can be described using a monotonic
+        function.
         https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf
         """
         col = [list(a) for a in zip(self.true, self.predicted)]
