@@ -12,19 +12,16 @@ except ModuleNotFoundError:
 from ._main import BaseModel
 from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, tf
 from .nn_tools import get_call_args
+from .backend import tf, torch
+import ai4water.backend as K
 
-from .backend import BACKEND, tf, torch
+from .pytorch_attributes import LAYERS as TORCH_LAYERS
+from .tf_attributes import LAYERS
 
-if BACKEND =='tensorflow' and tf is not None:
+if K.BACKEND =='tensorflow' and tf is not None:
     MODEL = tf.keras.Model
-    from .tf_attributes import LAYERS
-
-elif BACKEND == 'pytorch' and torch is not None:
+elif K.BACKEND == 'pytorch' and torch is not None:
     MODEL = torch.nn.Module
-    from .pytorch_attributes import LAYERS
-    from torch.utils.data import DataLoader
-    from .utils.torch_utils import to_torch_dataset
-
 else:
     class MODEL(object): pass
 
@@ -264,7 +261,7 @@ class Model(MODEL, BaseModel):
                 if callable(lyr_config):
                     lyr_initiated = lyr_config
                 else:
-                    lyr_initiated = LAYERS[lyr_name.upper()](**lyr_config)
+                    lyr_initiated = TORCH_LAYERS[lyr_name.upper()](**lyr_config)
                 setattr(self, lyr, lyr_initiated)
                 initiated_layers[lyr] = {"layer": lyr_initiated, "named_outs": named_outs, 'call_args': call_args,
                                          'inputs': lyr_inputs}
@@ -870,6 +867,8 @@ class Model(MODEL, BaseModel):
         return history
 
     def predict_pytorch(self, x, **kwargs):
+        from .utils.torch_utils import to_torch_dataset
+        from torch.utils.data import DataLoader
 
         if isinstance(x, torch.utils.data.Dataset):
             dataset = x

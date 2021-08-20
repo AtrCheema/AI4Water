@@ -29,16 +29,13 @@ from ai4water.utils.visualizations import Visualizations, Interpret
 from ai4water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
 from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
-from .backend import BACKEND
+import ai4water.backend as K
 
-LOSSES = {}
-
-if BACKEND == 'tensorflow' and tf is not None:
-
+if K.BACKEND == 'tensorflow' and tf is not None:
     import ai4water.keract_mod as keract
     from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
-elif BACKEND == 'pytorch' and torch is not None:
+elif K.BACKEND == 'pytorch' and torch is not None:
     from ai4water.pytorch_attributes import LOSSES, OPTIMIZERS
 
 
@@ -510,7 +507,7 @@ class BaseModel(NN, Plots):
 
     def post_kfit(self):
         """Does some stuff after Keras model.fit has been called"""
-        if BACKEND == 'pytorch':
+        if K.BACKEND == 'pytorch':
             history = self.torch_learner.history
 
         elif hasattr(self, 'history'):
@@ -880,7 +877,7 @@ class BaseModel(NN, Plots):
         acc, loss = None, None
 
         if self.category == "DL":
-            if BACKEND == 'tensorflow':
+            if K.BACKEND == 'tensorflow':
                 loss, acc = eval_output
             else:
                 loss = eval_output

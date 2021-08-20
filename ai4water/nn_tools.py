@@ -7,9 +7,9 @@ try:
 except ModuleNotFoundError:
     tf = None
 
-from .backend import BACKEND
+from . import backend as K
 
-if BACKEND == 'tensorflow':
+if K.BACKEND == 'tensorflow':
     from ai4water.tf_attributes import LAYERS, tf
 else:
     from .pytorch_attributes import LAYERS
@@ -158,7 +158,7 @@ class NN(AttributeStore):
                 args = [config]
             else:
                 args = {}
-            if 'name' not in config and BACKEND != 'pytorch':
+            if 'name' not in config and K.BACKEND != 'pytorch':
                 config['name'] = lyr_name.__name__
             config, activation = check_act_fn(config)
 
@@ -173,7 +173,7 @@ class NN(AttributeStore):
         else:
             args = []
 
-        if 'name' not in config and BACKEND != 'pytorch':
+        if 'name' not in config and K.BACKEND != 'pytorch':
             config['name'] = lyr_name
 
         activation = None

@@ -160,5 +160,9 @@ VERSION_INFO = {
     'eager_execution': tf.executing_eagerly() if tf is not None else None
 }
 
-
-BACKEND = 'tensorflow'
+if tf is not None:
+    BACKEND = 'tensorflow'
+elif torch is not None:
+    BACKEND = 'pytorch'
+else:
+    BACKEND = None
