@@ -818,7 +818,7 @@ class BaseModel(NN, Plots):
             scores.append(val_score)
 
             if self.verbosity>0:
-                print(f'fold: {fold} val_loss: {val_score}')
+                print(f'fold: {fold} val_score: {val_score}')
 
         return np.mean(scores)
 

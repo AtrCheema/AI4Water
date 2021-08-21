@@ -20,7 +20,7 @@ from ai4water.backend import VERSION_INFO, tf
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
         from ai4water.functional import Model
-        print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+        print(f"Switching to functional API due to tensorflow version {tf.__version__} for experiments")
     else:
         from ai4water import Model
 
