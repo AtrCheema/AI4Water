@@ -48,7 +48,7 @@ class Model(MODEL, BaseModel):
         other input arguments goes to `BaseModel`.
 
         """
-        if BACKEND == 'tensorflow' and tf is not None:
+        if K.BACKEND == 'tensorflow' and tf is not None:
             if tf.__version__ in  ["2.3.0", "2.4.0"]:
                 raise NotImplementedError(f"""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
@@ -73,7 +73,7 @@ class Model(MODEL, BaseModel):
                            #outputs=outputs, inputs=inputs,
                            **kwargs)
 
-        self.config['backend'] = BACKEND
+        self.config['backend'] = K.BACKEND
 
         if torch is not None:
             from .pytorch_training import Learner
@@ -91,7 +91,7 @@ class Model(MODEL, BaseModel):
         if self.category == "DL":
             self.initialize_layers(self.config['model']['layers'])
 
-            if BACKEND == 'tensorflow':
+            if K.BACKEND == 'tensorflow':
                 outs = self.call(self._input_lyrs(), run_call=False)
                 setattr(self, 'output_lyrs', outs)
                 self._go_up = False  # do not reinitiate BaseModel and other upper classes
@@ -162,7 +162,7 @@ class Model(MODEL, BaseModel):
     def num_input_layers(self) -> int:
         if self.category.upper() != "DL":
             return np.inf
-        if BACKEND == 'pytorch':
+        if K.BACKEND == 'pytorch':
             return 1
         else:
             return len(self.inputs)
@@ -184,7 +184,7 @@ class Model(MODEL, BaseModel):
 
     def _get_dummy_input_shape(self):
         shape = ()
-        if BACKEND == 'tensorflow' and self.category == "DL":
+        if K.BACKEND == 'tensorflow' and self.category == "DL":
             if isinstance(self.inputs, list):
                 shape = self.inputs[0].shape
 
@@ -197,9 +197,9 @@ class Model(MODEL, BaseModel):
     @property
     def fit_fn(self):
         if self.category == "DL":
-            if BACKEND == 'tensorflow':
+            if K.BACKEND == 'tensorflow':
                 return super().fit
-            elif BACKEND == 'pytorch':
+            elif K.BACKEND == 'pytorch':
                 return self.torch_learner.fit
 
         return self._model.fit  # e.g. for ML models
@@ -207,9 +207,9 @@ class Model(MODEL, BaseModel):
     @property
     def evaluate_fn(self):
         if self.category == "DL":
-            if BACKEND == 'tensorflow':
+            if K.BACKEND == 'tensorflow':
                 return super().evaluate
-            elif BACKEND == 'pytorch':
+            elif K.BACKEND == 'pytorch':
                 return self.torch_learner.evaluate
             else:
                 raise ValueError
@@ -219,9 +219,9 @@ class Model(MODEL, BaseModel):
     @property
     def predict_fn(self):
         if self.category == "DL":
-            if BACKEND == 'tensorflow':
+            if K.BACKEND == 'tensorflow':
                 return super().predict
-            elif BACKEND == 'pytorch':
+            elif K.BACKEND == 'pytorch':
                 return self.torch_learner.predict
         return self._model.predict
 
@@ -253,7 +253,7 @@ class Model(MODEL, BaseModel):
 
             lyr_name, args, lyr_config, activation = self.check_lyr_config(lyr, lyr_config)
 
-            if BACKEND == 'pytorch':
+            if K.BACKEND == 'pytorch':
 
                 if first_layer:
                     first_layer = False
@@ -748,7 +748,7 @@ class Model(MODEL, BaseModel):
 
         self.print_info()
 
-        if self.category == "DL" and BACKEND == 'tensorflow':
+        if self.category == "DL" and K.BACKEND == 'tensorflow':
             # Initialize the graph
             self._is_graph_network = True
             self._init_graph_network(
@@ -783,7 +783,7 @@ class Model(MODEL, BaseModel):
 
     def first_layer_shape(self):
         """ instead of tuple, returning a list so that it can be moified if needed"""
-        if BACKEND == 'pytorch':
+        if K.BACKEND == 'pytorch':
             if self.lookback == 1:
                 return [-1, self.ins]
             else:
