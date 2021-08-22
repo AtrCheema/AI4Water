@@ -134,31 +134,36 @@ class Experiments(object):
             num_iterations:int=12,
             include: Union[None, list] = None,
             exclude: Union[None, list, str] = '',
-            post_optimize='eval_best',
-            fit_kws=None,
-            hpo_kws: dict = None):
+            cross_validate:bool = False,
+            post_optimize:str='eval_best',
+            fit_kws: dict=None,
+            hpo_kws: dict = None
+            ):
         """
         Runs the fit loop for the specified models.
         todo, post_optimize not working for 'eval_best' with ML methods.
 
         Arguments:
-            run_type str: One of `dry_run` or `optimize`. If `dry_run`, the all
+            run_type : One of `dry_run` or `optimize`. If `dry_run`, the all
                 the `models` will be trained only once. if `optimize`, then
                 hyperparameters of all the models will be optimized.
-            opt_method str: which optimization method to use. options are `bayes`,
+            opt_method : which optimization method to use. options are `bayes`,
                 `random`, `grid`. ONly valid if `run_type` is `optimize`
-            num_iterations int: number of iterations for optimization. Only valid
+            num_iterations : number of iterations for optimization. Only valid
                 if `run_type` is `optimize`.
-            include list: name of models to included. If None, all the models found
+            include : name of models to included. If None, all the models found
                 will be trained and or optimized.
-            exclude list: name of `models` to be excluded
-            post_optimize str: one of `eval_best` or `train_best`. If eval_best,
+            exclude : name of `models` to be excluded
+            cross_validate : whether to cross validate the model or not. This also
+                depends upon `cross_validator` agrument to the `Model`.
+                depends upon `cross_validator` agrument to the `Model`.
+            post_optimize : one of `eval_best` or `train_best`. If eval_best,
                 the weights from the best models will be uploaded again and the model
                 will be evaluated on train, test and all the data. If `train_best`,
                 then a new model will be built and trained using the parameters of
                 the best model.
-            fit_kws dict:  key word arguments that will be passed to ai4water's model.fit
-            hpo_kws dict: keyword arguments for `HyperOpt` class.
+            fit_kws :  key word arguments that will be passed to ai4water's model.fit
+            hpo_kws : keyword arguments for `HyperOpt` class.
         """
 
         assert run_type in ['optimize', 'dry_run']
@@ -216,6 +221,7 @@ Available cases are {self.models} and you wanted to exclude
                         raise TypeError
 
                     return self.build_and_run(predict=predict,
+                                              cross_validate=cross_validate,
                                               title=f"{self.exp_name}{SEP}{model_name}",
                                               fit_kws=fit_kws,
                                               **config)
@@ -658,10 +664,10 @@ Available cases are {self.models} and you wanted to include
 
             fpath = os.path.join(model_path, output_features[0])
             fname = [f for f in os.listdir(fpath) if f.startswith('training') and f.endswith('.csv')][0]
-            train_df = pd.read_csv(os.path.join(fpath, fname), index_col='time')
+            train_df = pd.read_csv(os.path.join(fpath, fname), index_col='index')
 
             fname = [f for f in os.listdir(fpath) if f.startswith('test') and f.endswith('.csv')][0]
-            test_df = pd.read_csv(os.path.join(fpath, fname), index_col='time')
+            test_df = pd.read_csv(os.path.join(fpath, fname), index_col='index')
 
             trues['train'][model_name] = train_df[f'true_{output_features[0]}']
             trues['test'][model_name] = test_df[f'true_{output_features[0]}']
@@ -677,7 +683,7 @@ Available cases are {self.models} and you wanted to include
 
 class MLRegressionExperiments(Experiments):
     """
-    Compares peformance of around 42 machine learning models for regression problem.
+    Compares peformance of 40+ machine learning models for a regression problem.
     The experiment consists of `models` which are run using `fit()` method. A `model`
     is one experiment. This class consists of its own `build_and_run` method which
     is run everytime for each `model` and is executed after calling  `model`. The
@@ -760,7 +766,12 @@ class MLRegressionExperiments(Experiments):
                       view=False,
                       title=None,
                       fit_kws=None,
+                      cross_validate=False,
                       **kwargs):
+
+        """Builds and run one 'model' of the experiment.
+        Since and experiment consists of many models, this method
+        is also run many times. """
 
         if fit_kws is None:
             fit_kws = {}
@@ -776,17 +787,23 @@ class MLRegressionExperiments(Experiments):
 
         model.fit(**fit_kws)
 
-        tt, tp = model.predict(prefix='test')
+        if cross_validate:
+            to_return = model.cross_val_score(model.config['loss'])
+        else:
+            vt, vp = model.predict('validation')
+            to_return =  getattr(RegressionMetrics(vt, vp), model.config['loss'])()
+
+        tt, tp = model.predict('test')
 
         if view:
             model.view_model()
 
         if predict:
-            t, p = model.predict('training', prefix='training')
+            t, p = model.predict('training')
 
             return (t,p), (tt, tp)
 
-        return RegressionMetrics(tt, tp).mse()
+        return to_return
 
     def model_ADABoostRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
@@ -1293,51 +1310,52 @@ class MLRegressionExperiments(Experiments):
     def model_XGBoostRFRegressor(self, **kwargs):
         ## https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFRegressor
         self.param_space = [
-            Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
-            Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
+            Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
+            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
             #Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
             Real(low=0.1, high=0.9, name='min_child_weight ', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
             Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
             Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
-            # Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
+            Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [10, 3, 0.001, 0.1, 0.1, 0.1, 0.1,
-                   #0.1, 0.1, 0.1, 0.1, 0.1
+        self.x0 = [50, 3, 0.001, 0.1, 0.1, 0.1, 0.1,
+                   0.1, 0.1, 0.1, 0.1, 0.1
                    ]
         return {'model': {'XGBOOSTRFREGRESSOR': kwargs}}
 
     def model_XGBoostRegressor(self, **kwargs):
         # ##https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor
         self.param_space = [
-            Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
-            Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
+            Integer(low=5, high=200, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
+            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
             Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
             Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
             Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
             Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
-            # Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
-            # Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
-            # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
+            Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
+            Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
+            Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [10, 5, 0.5, 'gbtree', 0.2, 0.2, 0.2,
-                   #0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+        self.x0 = [50, 5, 0.5, 'gbtree', 0.2, 0.2, 0.2,
+                   0.2, 0.2, 0.2, 0.2, 0.2, 0.2
                    ]
         return {'model': {'XGBOOSTREGRESSOR': kwargs}}
 
 
 
 class MLClassificationExperiments(Experiments):
-    """Runs classification models for comparison, with or without optimization of hyperparameters."""
+    """Runs classification models for comparison, with or without
+    optimization of hyperparameters."""
 
     def __init__(self,
                  param_space=None,
@@ -1356,7 +1374,13 @@ class MLClassificationExperiments(Experiments):
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
-    def build_and_run(self, predict=False, view=False, title=None, fit_kws=None, **kwargs):
+    def build_and_run(self,
+                      predict=False,
+                      view=False,
+                      title=None,
+                      cross_validate=False,
+                      fit_kws=None,
+                      **kwargs):
 
         fit_kws = fit_kws or {}
 
@@ -1770,6 +1794,7 @@ be used to build ai4water's Model class.
                       predict=False,
                       title=None,
                       fit_kws=None,
+                      cross_validate=False,
                       **suggested_paras):
 
         if fit_kws is None:
