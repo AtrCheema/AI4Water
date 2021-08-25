@@ -37,13 +37,23 @@
     handler: python
     rendering:
         show_root_heading: true
-        
+
 ::: ai4water.utils.datasets.camels.CAMELS_US
     handler: python
     rendering:
         show_root_heading: true
         
 ::: ai4water.utils.datasets.camels.CAMELS_CL
+    handler: python
+    rendering:
+        show_root_heading: true
+
+::: ai4water.utils.datasets.camels.HYSETS
+    handler: python
+    rendering:
+        show_root_heading: true
+
+::: ai4water.utils.datasets.camels.HYPE
     handler: python
     rendering:
         show_root_heading: true
