@@ -859,7 +859,8 @@ class MtropicsLaos(Datasets):
                     features: Union[list, str] = 'Ecoli_mpn100'
                     )->pd.DataFrame:
         """Fetches E. coli and physio-chemical features at the outlet
-        [Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK).
+        ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
+        ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
          NaNs represent missing values. The data is randomly sampled between 2011
          to 2021 during rainfall events. Total 368 E. coli observation points are available now.
         Arguments:

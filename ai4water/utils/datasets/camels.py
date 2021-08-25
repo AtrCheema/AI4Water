@@ -32,15 +32,17 @@ SEP = os.sep
 
 def gb_message():
     link = "https://doi.org/10.5285/8344e4f3-d2ea-44f5-8afa-86d2987543a9"
-    raise ValueError(f"Dwonlaoad the data from {link} and provide the directory path as dataset=Camels(data=data)")
+    raise ValueError(f"Dwonlaoad the data from {link} and provide the directory "
+                     f"path as dataset=Camels(data=data)")
 
 
 class Camels(Datasets):
 
     """
     Get CAMELS dataset.
-    This class first downloads the CAMELS dataset if it is not already downloaded. Then the selected attribute
-    for a selected id are fetched and provided to the user using the method `fetch`.
+    This class first downloads the CAMELS dataset if it is not already downloaded.
+    Then the selected attribute for a selected id are fetched and provided to the
+    user using the method `fetch`.
 
     Attributes
     -----------
@@ -95,6 +97,10 @@ class Camels(Datasets):
     def end(self):  # end of data
         raise NotImplementedError
 
+    @property
+    def dynamic_features(self)->list:
+        raise NotImplementedError
+
     def _check_length(self, st, en):
         if st is None:
             st = self.start
@@ -108,14 +114,16 @@ class Camels(Datasets):
 
         if as_ts:
             idx = pd.date_range(st, en, freq=freq)
-            static = pd.DataFrame(np.repeat(static.values, len(idx), axis=0), index=idx, columns=static.columns)
+            static = pd.DataFrame(np.repeat(static.values, len(idx), axis=0), index=idx,
+                                  columns=static.columns)
             return static
         else:
             return static
 
     @property
     def camels_dir(self):
-        """Directory where all camels datasets will be saved. This will under datasets directory"""
+        """Directory where all camels datasets will be saved. This will under
+         datasets directory"""
         return os.path.join(self.base_ds_dir, "CAMELS")
 
     @property
@@ -141,7 +149,7 @@ class Camels(Datasets):
               en: Union[None, str] = None,
               as_dataframe:bool = False,
               **kwargs
-              ) -> dict:
+              ) -> Union[dict, pd.DataFrame]:
         """
         Fetches the attributes of one or more stations.
 
@@ -165,7 +173,10 @@ class Camels(Datasets):
             kwargs : keyword arguments to read the files
 
         returns:
-            dictionary whose keys are station/gauge_ids and values are the attributes and dataframes.
+            If both static  and dynamic features are obtained then it returns a
+            dictionary whose keys are station/gauge_ids and values are the
+            attributes and dataframes.
+            Otherwise either dynamic or static features are returned.
 
         """
         if isinstance(stations, int):
@@ -244,7 +255,8 @@ class Camels(Datasets):
             are by default returned as xr.Dataset unless `as_dataframe` is True, in
             such a case, it is a pandas dataframe with multiindex. If xr.Dataset,
             it consists of `data_vars` equal to number of stations and for each
-            station, the DataArray is of dimensions (time, dynamic_features).
+            station, the `DataArray` is of dimensions (time, dynamic_features).
+            where `time` is defined by `st` and `en` i.e length of `DataArray`.
             In case, when the returned object is pandas DataFrame, the first index
             is `time` and second index is `dyanamic_features`. Static attributes
             are always returned as pandas DataFrame and have following shape
@@ -334,7 +346,8 @@ class Camels(Datasets):
 
         station_df = pd.DataFrame()
         if dynamic_features:
-            dynamic = self.fetch_dynamic_features(station, dynamic_features, st=st, en=en, **kwargs)
+            dynamic = self.fetch_dynamic_features(station, dynamic_features, st=st,
+                                                  en=en, **kwargs)
             station_df = pd.concat([station_df, dynamic])
 
             if static_features is not None:
@@ -491,8 +504,11 @@ class LamaH(Camels):
 
     def read_ts_of_station(self, station) -> pd.DataFrame:
         # read a file containing timeseries data for one station
-        fname = os.path.join(self.data_type_dir, f'2_timeseries{SEP}{self.time_step}{SEP}ID_{station}.csv')
+        fname = os.path.join(self.data_type_dir,
+                             f'2_timeseries{SEP}{self.time_step}{SEP}ID_{station}.csv')
+
         df = pd.read_csv(fname, sep=';')
+
         if self.time_step == 'daily':
             periods = pd.PeriodIndex(year=df["YYYY"], month=df["MM"], day=df["DD"], freq="D")
             df.index = periods.to_timestamp()
@@ -520,6 +536,38 @@ class HYSETS(Camels):
     [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)
     The user must manually download the files, unpack them and provide
     the `path` where these files are saved.
+
+    This data comes with multiple sources. Each source having one or more dynamic_features
+    Following data_source are available.
+        |sources| dynamic_features |
+        |-------|------------------|
+        |SNODAS_SWE | dscharge, swe|
+        |SCDNA | discharge, pr, tasmin, tasmax|
+        |nonQC_stations | discharge, pr, tasmin, tasmax|
+        |Livneh | discharge, pr, tasmin, tasmax|
+        |ERA5 | discharge, pr, tasmax, tasmin|
+        |ERAS5Land_SWE | discharge, swe|
+        |ERA5Land | discharge, pr, tasmax, tasmin|
+
+    all sources contain one or more following dynamic_features
+    with following shapes
+        |dynamic_features| shape |
+        |-------|------------------|
+        |time            |               (25202,) |
+        |watershedID     |               (14425,) |
+        |drainage_area    |              (14425,) |
+        |drainage_area_GSIM          |   (14425,) |
+        |flag_GSIM_boundaries        |   (14425,) |
+        |flag_artificial_boundaries  |   (14425,) |
+        |centroid_lat                |   (14425,) |
+        |centroid_lon                |   (14425,) |
+        |elevation                   |   (14425,) |
+        |slope                       |   (14425,) |
+        |discharge                   |   (14425, 25202) |
+        |pr                          |   (14425, 25202) |
+        |tasmax                      |   (14425, 25202) |
+        |tasmin                      |   (14425, 25202) |
+
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"
     url = "https://osf.io/rpc3w/"
@@ -545,33 +593,8 @@ class HYSETS(Camels):
             tasmin_source : source of tasmin data
             tasmax_source : source of tasmax data
             pr_source : source of pr data
-            kwargs : arguments of `Camels` base class
+            kwargs : arguments for `Camels` base class
 
-        Following data_source are available.
-            SNODAS_SWE : dscharge, swe
-            SCDNA : discharge, pr, tasmin, tasmax
-            nonQC_stations : discharge, pr, tasmin, tasmax
-            Livneh : discharge, pr, tasmin, tasmax
-            ERA5 : discharge, pr, tasmax, tasmin
-            ERAS5Land_SWE: discharge, swe
-            ERA5Land : discharge, pr, tasmax, tasmin
-
-        all sources contain one or more following dynamic_features
-        with following shapes
-            time                           (25202,)
-            watershedID                    (14425,)
-            drainage_area                  (14425,)
-            drainage_area_GSIM             (14425,)
-            flag_GSIM_boundaries           (14425,)
-            flag_artificial_boundaries     (14425,)
-            centroid_lat                   (14425,)
-            centroid_lon                   (14425,)
-            elevation                      (14425,)
-            slope                          (14425,)
-            discharge                      (14425, 25202)
-            pr                             (14425, 25202)
-            tasmax                         (14425, 25202)
-            tasmin                         (14425, 25202)
         """
 
         assert swe_source in self.SWE_SRC, f'source must be one of {self.SWE_SRC}'
@@ -615,7 +638,6 @@ class HYSETS(Camels):
                     xar = xds[var]
                     xar.name = f"{xar.name}_{src}"
                     oneD_vars.append(xar)
-
 
         oneD_xds = xr.merge(oneD_vars)
         twoD_xds = xr.merge(twoD_vars)
@@ -705,11 +727,13 @@ class HYSETS(Camels):
                                               as_dataframe=as_dataframe)
 
     def _fetch_dynamic_features(self,
-                                 stations:list,
-                                 dynamic_features='all',
-                                 st=None,
-                                 en=None,
-                                 as_dataframe=False):
+                                stations:list,
+                                dynamic_features='all',
+                                st=None,
+                                en=None,
+                                as_dataframe=False,
+                                as_ts=False
+                                ):
         """Fetches dynamic attributes of station."""
 
         st, en = self._check_length(st, en)
@@ -719,19 +743,27 @@ class HYSETS(Camels):
         # maybe we don't need to read all variables
         sources = {k:v for k,v in self.sources.items() if k in attrs}
 
-        datasets = []
-        for var, src in sources.items():
-            xds = xr.open_dataset(os.path.join(self.ds_dir, f'HYSETS_2020_{src}.nc'))
-            vars_to_read = [k for k,v in sources.items() if v==src]
-
-            xds = xds[vars_to_read].sel(watershed=stations, time=slice(st, en))
-            datasets.append(xds)
-
-        if len(datasets)>1:
-            xds = xr.merge(datasets)
+        # original .nc file contains datasets with dynamic and static features as data_vars
+        # however, for uniformity of this API and easy usage, we want a Dataset to have
+        # station names/gauge_ids as data_vars and each data_var has
+        # dimension (time, dynamic_variables)
+        # Therefore, first read all data for each station from .nc file
+        # then rearrange it.
+        # todo, this operation is slower because of `to_dataframe`
+        # also doing this removes all the metadata
+        x = {}
+        f = os.path.join(self.ds_dir, "hysets_dyn.nc")
+        xds = xr.open_dataset(f)
+        for stn in stations:
+            xds1 = xds[[f'{k}_{v}' for k, v in sources.items()]].sel(watershed=stn, time=slice(st, en))
+            xds1 = xds1.rename_vars({f'{k}_{v}': k for k, v in sources.items()})
+            x[stn] = xds1.to_dataframe(['time'])
+        xds = xr.Dataset(x)
+        xds = xds.rename_dims({'dim_1': 'dynamic_features'})
+        xds = xds.rename_vars({'dim_1': 'dynamic_features'})
 
         if as_dataframe:
-            return xds.to_dataframe()
+            return xds.to_dataframe(['time', 'dynamic_features'])
 
         return xds
 
@@ -873,7 +905,8 @@ class CAMELS_US(Camels):
                 cat_dirs = os.listdir(os.path.join(self.dataset_dir, f'{dir_name}{SEP}{cat}'))
                 stn_file = f'{station}_lump_cida_forcing_leap.txt'
                 if stn_file in cat_dirs:
-                    df = pd.read_csv(os.path.join(self.dataset_dir, f'{dir_name}{SEP}{cat}{SEP}{stn_file}'),
+                    df = pd.read_csv(os.path.join(self.dataset_dir,
+                                                  f'{dir_name}{SEP}{cat}{SEP}{stn_file}'),
                                      sep="\s+|;|:",
                                      skiprows=4,
                                      engine='python',
@@ -888,7 +921,8 @@ class CAMELS_US(Camels):
                 stn_file = f'{station}_streamflow_qc.txt'
                 if stn_file in cat_dirs:
                     fpath = os.path.join(flow_dir, f'{cat}{SEP}{stn_file}')
-                    df1 = pd.read_csv(fpath,  sep="\s+|;|:'", names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'],
+                    df1 = pd.read_csv(fpath,  sep="\s+|;|:'",
+                                      names=['station', 'Year', 'Month', 'Day', 'Flow', 'Flag'],
                                       engine='python')
                     df1.index = pd.to_datetime(
                         df1['Year'].map(str) + '-' + df1['Month'].map(str) + '-' + df1['Day'].map(str))
@@ -909,7 +943,8 @@ class CAMELS_US(Camels):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'catchment_attrs', 'camels_attributes_v2.0')}/*.txt")
             static_df = pd.DataFrame()
             for f in files:
-                idx = pd.read_csv(f, sep=';', usecols=['gauge_id'], dtype=str)  # index should be read as string
+                # index should be read as string
+                idx = pd.read_csv(f, sep=';', usecols=['gauge_id'], dtype=str)
                 _df = pd.read_csv(f, sep=';', index_col='gauge_id')
                 _df.index = idx['gauge_id']
                 static_df = pd.concat([static_df, _df], axis=1)
@@ -969,7 +1004,8 @@ class CAMELS_BR(Camels):
     def static_dir(self):
         path = None
         for _dir in self._all_dirs:
-            if "attributes" in _dir:  # supposing that 'attributes' axist in only one file/folder in self.ds_dir
+            if "attributes" in _dir:
+                # supposing that 'attributes' axist in only one file/folder in self.ds_dir
                 path = os.path.join(self.ds_dir, f'{_dir}{SEP}{_dir}')
         return path
 
@@ -1148,7 +1184,8 @@ class CAMELS_GB(Camels):
     This dataset must be manually downloaded by the user.
     The path of the downloaded folder must be provided while initiating this class.
     """
-    dynamic_features = ["precipitation", "pet", "temperature", "discharge_spec", "discharge_vol", "peti",
+    dynamic_features = ["precipitation", "pet", "temperature", "discharge_spec",
+                        "discharge_vol", "peti",
                           "humidity", "shortwave_rad", "longwave_rad", "windspeed"]
 
     def __init__(self, path=None):

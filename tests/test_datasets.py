@@ -42,14 +42,17 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_datafram
 
 def test_all_data(dataset, stations, stn_data_len, as_dataframe=False):
 
-    df = dataset.fetch(stations, static_features='all', as_ts=False, as_dataframe=as_dataframe)
+    if len(dataset.static_features) > 0:
+        df = dataset.fetch(stations, static_features='all', as_ts=False, as_dataframe=as_dataframe)
+        assert df['static'].shape == (stations, len(dataset.static_features)), f"shape is {df['static'].shape}"
+    else:
+        df = dataset.fetch(stations, static_features=None, as_ts=False, as_dataframe=as_dataframe)
+        df = {'dynamic': df}
 
     if as_dataframe:
         check_dataframe(dataset, df['dynamic'], stations, stn_data_len)
     else:
         check_dataset(dataset, df['dynamic'], stations, stn_data_len)
-
-    assert df['static'].shape == (stations, len(dataset.static_features)), f"shape is {df['static'].shape}"
 
     return
 
@@ -133,7 +136,7 @@ def test_fetch_dynamic_features(dataset, stn_id, as_dataframe=False):
 
 
 def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataframe=False):
-    print(f"test_fetch_dynamic_multiple_stations for {dataset.name}")
+    print(f"testing fetch_dynamic_multiple_stations for {dataset.name}")
     stations = dataset.stations()
     data = dataset.fetch(stations[0:n_stns], as_dataframe=as_dataframe)
 
@@ -146,7 +149,7 @@ def test_fetch_dynamic_multiple_stations(dataset, n_stns, stn_data_len, as_dataf
 
 
 def test_fetch_static_feature(dataset, stn_id):
-    print(f"test_fetch_static_attribue for {dataset.name}")
+    print(f"testing `fetch_static_features` method for {dataset.name}")
     if len(dataset.static_features)>0:
         df = dataset.fetch(stn_id, dynamic_features=None, static_features='all')
         assert isinstance(df, pd.DataFrame)
@@ -189,17 +192,33 @@ def test_selected_dynamic_features(dataset):
 
 def test_hysets():
     hy = HYSETS(path=r'D:\mytools\AI4Water\AI4Water\utils\datasets\data\HYSETS')
+
+    # because it takes very long time, we dont test with all the data
+    test_dynamic_data(hy, 0.003, int(14425 * 0.003), 25202)
+
     test_static_data(hy, None, 14425)
     test_static_data(hy, 0.1, int(14425*0.1))
+
+    test_all_data(hy, 3, 25202)
+    test_all_data(hy, 3, 25202, True)
+
     test_attributes(hy, 28, 5, 14425)
+
     test_fetch_dynamic_features(hy, random.choice(hy.stations()))
+    test_fetch_dynamic_features(hy, random.choice(hy.stations()), True)
+
     test_fetch_dynamic_multiple_stations(hy, 3,  25202)
+    test_fetch_dynamic_multiple_stations(hy, 3, 25202, True)
+
     test_fetch_static_feature(hy, random.choice(hy.stations()))
+
+    test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), yearly_steps=366)
+    test_st_en_with_static_and_dynamic(hy, random.choice(hy.stations()), True, yearly_steps=366)
+
     test_selected_dynamic_features(hy)
-    xds1 = hy.fetch(100, static_features=None, st="2000")
-    #xds2 = hy.fetch(20, static_features='all', st="2000")
-    #xds3 = hy.fetch(s)
-    #xds4 = hy.fetch_dynamic_features(2, st="1980")
+
+    return
+
 
 
 def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_attrs,
@@ -298,6 +317,10 @@ class TestCamels(unittest.TestCase):
     def test_us(self):
         ds_us = CAMELS_US()
         test_dataset(ds_us, 671, 12784, 59, 8)
+        return
+
+    def test_hysets(self):
+        #test_hysets()
         return
 
 
