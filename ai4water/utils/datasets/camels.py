@@ -539,6 +539,7 @@ class HYSETS(Camels):
 
     This data comes with multiple sources. Each source having one or more dynamic_features
     Following data_source are available.
+
         |sources| dynamic_features |
         |-------|------------------|
         |SNODAS_SWE | dscharge, swe|
@@ -551,6 +552,7 @@ class HYSETS(Camels):
 
     all sources contain one or more following dynamic_features
     with following shapes
+    
         |dynamic_features| shape |
         |-------|------------------|
         |time            |               (25202,) |
