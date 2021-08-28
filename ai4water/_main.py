@@ -46,7 +46,7 @@ class BaseModel(NN, Plots):
     """
 
     def __init__(self,
-                 model: dict = None,
+                 model: Union[dict, str] = None,
                  data = None,
                  lr: float = 0.001,
                  optimizer = 'adam',
@@ -422,6 +422,11 @@ class BaseModel(NN, Plots):
 
     def get_val_data(self, val_data):
         """Finds out if there is val_data or not"""
+
+        if isinstance(val_data, tuple):
+            # val_data was probably available in kwargs, so use them as it is
+            return val_data
+
         validation_data = None
 
         if val_data is not None:
@@ -486,6 +491,9 @@ class BaseModel(NN, Plots):
             val_outs = get_values(val_outs)
             validation_data = (validation_data[0], val_outs)
 
+        # .fit was called with epochs, so we must put that in config as well!
+        if 'epochs' in kwargs:
+            self.config['epochs'] = kwargs.pop('epochs')
 
         self.DO_fit(x=inputs,
                     y=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
@@ -523,15 +531,15 @@ class BaseModel(NN, Plots):
 
         return history
 
-    def maybe_not_3d_data(self, true, predicted):
+    def maybe_not_3d_data(self, true, predicted, forecast_len):
 
         if true.ndim < 3:
-            assert self.forecast_len == 1, f'{self.forecast_len}'
+            assert forecast_len == 1, f'{forecast_len}'
             axis = 2 if true.ndim == 2 else (1, 2)
             true = np.expand_dims(true, axis=axis)
 
         if predicted.ndim < 3:
-            assert self.forecast_len == 1
+            assert forecast_len == 1
             axis = 2 if predicted.ndim == 2 else (1, 2)
             predicted = np.expand_dims(predicted, axis=axis)
 
@@ -541,7 +549,8 @@ class BaseModel(NN, Plots):
                               true: np.ndarray,
                               predicted: np.ndarray,
                               prefix=None,
-                              index=None
+                              index=None,
+                              user_defined_data:bool = False
                               ):
         """post-processes classification results."""
 
@@ -588,22 +597,29 @@ class BaseModel(NN, Plots):
             predicted: np.ndarray,
             prefix=None,
             index=None,
-            remove_nans=True
+            remove_nans=True,
+            user_defined_data:bool = False
     ):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len)
         """
         visualizer = Visualizations(path=self.path)
 
-        # for cases if they are 2D/1D, add the third dimension.
-        true, predicted = self.maybe_not_3d_data(true, predicted)
+        if user_defined_data:
+            # when data is user_defined, we don't know what out_cols, and forecast_len are
+            out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
+            forecast_len = 1
+            true, predicted = self.maybe_not_3d_data(true, predicted, forecast_len)
+        else:
+            # for cases if they are 2D/1D, add the third dimension.
+            true, predicted = self.maybe_not_3d_data(true, predicted, self.forecast_len)
 
-        forecast_len = self.forecast_len
-        if isinstance(forecast_len, dict):
-            forecast_len = np.unique(list(forecast_len.values())).item()
+            forecast_len = self.forecast_len
+            if isinstance(forecast_len, dict):
+                forecast_len = np.unique(list(forecast_len.values())).item()
 
+            out_cols = list(self.out_cols.values())[0] if isinstance(self.out_cols, dict) else self.out_cols
 
-        out_cols = list(self.out_cols.values())[0] if isinstance(self.out_cols, dict) else self.out_cols
         for idx, out in enumerate(out_cols):
 
             horizon_errors = {metric_name:[] for metric_name in ['nse', 'rmse']}
@@ -746,10 +762,12 @@ class BaseModel(NN, Plots):
         self.info['training_start'] = dateandtime_now()
 
         if self.category.upper() == "DL":
-            val_data = self.validation_data()
-            val_x, val_y = maybe_three_outputs(val_data, self.dh.teacher_forcing)
-            val_data = (val_x, val_y)
-            history = self._FIT(inputs, outputs, val_data, callbacks=callbacks, **kwargs)
+            if 'validation_data' not in kwargs:
+                val_data = self.validation_data()
+                val_x, val_y = maybe_three_outputs(val_data, self.dh.teacher_forcing)
+                val_data = (val_x, val_y)
+                kwargs['validation_data'] = val_data
+            history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
 
             visualizer.plot_loss(history.history)
 
@@ -797,6 +815,9 @@ class BaseModel(NN, Plots):
     def cross_val_score(self, scoring='mse'):
 
         scores = []
+
+        if self.config['cross_validator'] is None:
+            raise ValueError("Provide the `cross_validator` argument to the `Model` class upon initiation")
 
         cross_validator = list(self.config['cross_validator'].keys())[0]
         cross_validator_args = self.config['cross_validator'][cross_validator]
@@ -950,10 +971,12 @@ class BaseModel(NN, Plots):
         transformation_key = '5'
 
         if x is None:
+            user_defined_data = False
             prefix = data
             data = getattr(self, f'{data}_data')(key=transformation_key)
             inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
         else:
+            user_defined_data = True
             prefix = 'x'
             inputs = x
             true_outputs = y
@@ -969,9 +992,11 @@ class BaseModel(NN, Plots):
         if true_outputs is None:
             return true_outputs, predicted
 
-        true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
+        dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
+        if not user_defined_data:
+            true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
 
-        true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
+            true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
 
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
@@ -984,9 +1009,11 @@ class BaseModel(NN, Plots):
 
             if process_results:
                 if self.problem == 'regression':
-                    self.process_regres_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index)
+                    self.process_regres_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index,
+                                                user_defined_data=user_defined_data)
                 else:
-                    self.process_class_results(true_outputs, predicted, prefix=prefix, index=dt_index)
+                    self.process_class_results(true_outputs, predicted, prefix=prefix, index=dt_index,
+                                                user_defined_data=user_defined_data)
 
         else:
             assert self.num_outs == 1
