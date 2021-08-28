@@ -149,8 +149,10 @@ class BaseModel(NN, Plots):
             wandb_config :
                 Only valid if wandb package is installed. A dictionary of all the
                 arugments for wandb.init, wandb.log and WandbCallback. For
-                `train_data` and and `validation_data` in `WandbCallback`, pass
-                `True` instead of providing a tuple.
+                `training_data` and and `validation_data` in `WandbCallback`, pass
+                `True` instead of providing a tuple. Default value is None, which
+                means, wandb will not be utilized. For simplest case, just pass
+                an empty dictionary.
             seed int:
                 random seed for reproducibility
             prefix str:
@@ -502,7 +504,7 @@ class BaseModel(NN, Plots):
             val_outs = get_values(val_outs)
             validation_data = (validation_data[0], val_outs)
 
-        if wandb is not None and K.BACKEND == 'tensorflow':
+        if K.BACKEND == 'tensorflow':
             callbacks = self.get_wandb_cb(callbacks, train_data=(inputs, outputs),
                                           validation_data=validation_data,
                                           )
@@ -531,7 +533,7 @@ class BaseModel(NN, Plots):
 
         self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 
-        if K.BACKEND == 'tensorflow':
+        if K.BACKEND == 'tensorflow' and self.use_wandb:
             wandb.finish()
 
         return self.post_fit()
@@ -540,37 +542,37 @@ class BaseModel(NN, Plots):
     def get_wandb_cb(self, callback, train_data, validation_data)->dict:
         """Makes WandbCallback and add it in callback"""
 
-        if wandb is not None:
-            wandb_config:dict = self.config['wnadb_config']
-            wandb.init(name=os.path.basename(self.path),
-                       project=wandb_config.get('project', 'keras_with_ai4water'),
-                       notes=wandb_config.get('notes', f"{self.problem} with {self.config['backend']}"),
-                       tags=['ai4water', 'keras'],
-                       entity=wandb_config.get('entity', 'ai4water_keras'))
-
         if callback is None:
             callback = {}
 
-        wandb_config:dict = self.config['wandb_config']
-
-        monitor = self.config.get('monitor', 'val_loss')
-        if 'monitor' in wandb_config:
-            monitor = wandb_config.pop('monitor')
-
-        add_train_data = False
-        if 'train_data' in wandb_config:
-            add_train_data = wandb_config.pop('train_data')
-
-        add_val_data = False
-        if 'validation_data' in wandb_config:
-            add_val_data = wandb_config.pop('validation_data')
-
+        self.use_wandb = False
         if wandb is not None:
-            callback['wandb_callback'] = WandbCallback(monitor=monitor,
-                          training_data=train_data if add_train_data else None,
-                          validation_data=validation_data if add_val_data else None,
-                          **wandb_config
-                          )
+            wandb_config:dict = self.config['wandb_config']
+            if wandb_config is not None:
+                self.use_wandb = True
+                wandb.init(name=os.path.basename(self.path),
+                           project=wandb_config.get('project', 'keras_with_ai4water'),
+                           notes=wandb_config.get('notes', f"{self.problem} with {self.config['backend']}"),
+                           tags=['ai4water', 'keras'],
+                           entity=wandb_config.get('entity', 'atherabbas'))
+
+                monitor = self.config.get('monitor', 'val_loss')
+                if 'monitor' in wandb_config:
+                    monitor = wandb_config.pop('monitor')
+
+                add_train_data = False
+                if 'training_data' in wandb_config:
+                    add_train_data = wandb_config.pop('training_data')
+
+                add_val_data = False
+                if 'validation_data' in wandb_config:
+                    add_val_data = wandb_config.pop('validation_data')
+
+                    callback['wandb_callback'] = WandbCallback(monitor=monitor,
+                                  training_data=train_data if add_train_data else None,
+                                  validation_data=validation_data if add_val_data else None,
+                                  **wandb_config
+                                  )
 
         return callback
 

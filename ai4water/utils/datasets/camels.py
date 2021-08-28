@@ -540,35 +540,35 @@ class HYSETS(Camels):
     This data comes with multiple sources. Each source having one or more dynamic_features
     Following data_source are available.
 
-        |sources| dynamic_features |
-        |-------|------------------|
-        |SNODAS_SWE | dscharge, swe|
-        |SCDNA | discharge, pr, tasmin, tasmax|
-        |nonQC_stations | discharge, pr, tasmin, tasmax|
-        |Livneh | discharge, pr, tasmin, tasmax|
-        |ERA5 | discharge, pr, tasmax, tasmin|
-        |ERAS5Land_SWE | discharge, swe|
-        |ERA5Land | discharge, pr, tasmax, tasmin|
+    |sources        | dynamic_features |
+    |---------------|------------------|
+    |SNODAS_SWE     | dscharge, swe|
+    |SCDNA          | discharge, pr, tasmin, tasmax|
+    |nonQC_stations | discharge, pr, tasmin, tasmax|
+    |Livneh         | discharge, pr, tasmin, tasmax|
+    |ERA5           | discharge, pr, tasmax, tasmin|
+    |ERAS5Land_SWE  | discharge, swe|
+    |ERA5Land       | discharge, pr, tasmax, tasmin|
 
     all sources contain one or more following dynamic_features
     with following shapes
     
-        |dynamic_features| shape |
-        |-------|------------------|
-        |time            |               (25202,) |
-        |watershedID     |               (14425,) |
-        |drainage_area    |              (14425,) |
-        |drainage_area_GSIM          |   (14425,) |
-        |flag_GSIM_boundaries        |   (14425,) |
-        |flag_artificial_boundaries  |   (14425,) |
-        |centroid_lat                |   (14425,) |
-        |centroid_lon                |   (14425,) |
-        |elevation                   |   (14425,) |
-        |slope                       |   (14425,) |
-        |discharge                   |   (14425, 25202) |
-        |pr                          |   (14425, 25202) |
-        |tasmax                      |   (14425, 25202) |
-        |tasmin                      |   (14425, 25202) |
+    |dynamic_features            |      shape |
+    |----------------------------|------------|
+    |time                        |   (25202,) |
+    |watershedID                 |   (14425,) |
+    |drainage_area               |   (14425,) |
+    |drainage_area_GSIM          |   (14425,) |
+    |flag_GSIM_boundaries        |   (14425,) |
+    |flag_artificial_boundaries  |   (14425,) |
+    |centroid_lat                |   (14425,) |
+    |centroid_lon                |   (14425,) |
+    |elevation                   |   (14425,) |
+    |slope                       |   (14425,) |
+    |discharge                   |   (14425, 25202) |
+    |pr                          |   (14425, 25202) |
+    |tasmax                      |   (14425, 25202) |
+    |tasmin                      |   (14425, 25202) |
 
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"

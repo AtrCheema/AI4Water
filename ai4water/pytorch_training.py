@@ -166,7 +166,7 @@ class Learner(AttributeContainer):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.patience = patience
-        self.wandb_config = wandb_config or {}
+        self.wandb_config = wandb_config
         self.verbosity = verbosity
 
     def fit(self, x, y=None, validation_data=None, **kwargs):
@@ -348,7 +348,7 @@ class Learner(AttributeContainer):
         # take the mean for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
 
-        if wandb is not None:
+        if self.wandb_config is not None:
             wandb.log(self.train_epoch_losses, step=self.epoch)
 
         if self.use_cuda:
@@ -383,7 +383,7 @@ class Learner(AttributeContainer):
             # take the mean for all mini-batches
             self.val_epoch_losses = {f'val_{k}': round(float(np.mean(v)), 4) for k, v in epoch_losses.items()}
 
-            if wandb is not None:
+            if self.wandb_config is not None:
                 wandb.log(self.val_epoch_losses, step=self.epoch)
 
             for k, v in self.val_epoch_losses.items():
@@ -433,7 +433,10 @@ class Learner(AttributeContainer):
 
         self.train_loader, self.val_loader = self._get_train_val_loaders(x, y=y, validation_data=validation_data)
 
-        if wandb is not None:
+        if self.wandb_config is not None:
+            assert wandb is not None
+            assert isinstance(self.wandb_config, dict)
+
             wandb.init(name=os.path.basename(self.path),
                        project=self.wandb_config.get('probject', 'test_project'),
                        notes='This is Learner from AI4Water test run',
@@ -456,7 +459,8 @@ class Learner(AttributeContainer):
 
         setattr(self, 'history', History())
 
-        wandb.finish()
+        if self.wandb_config is not None:
+            wandb.finish()
 
         return History()
 

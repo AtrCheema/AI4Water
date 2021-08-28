@@ -298,7 +298,7 @@ def _make_model(data, **kwargs):
         'path': {"type": str, "default": None, 'lower': None, 'upper': None, 'between': None},
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
-        'wandb_config': {'default': {}, 'between': None},
+        'wandb_config': {'type': dict, 'default': None, 'between': None},
     }
 
     data_args = {
