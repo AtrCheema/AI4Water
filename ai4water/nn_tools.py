@@ -102,7 +102,8 @@ class NN(AttributeStore):
                 new_outputs = reshape(current_outputs)
                 self.update_cache(lyr_cache, reshape.name, reshape)
         elif len(shape) > 3:
-            raise NotImplementedError  # let's raise the error now and see where it should not
+            # let's raise the error now and see where it should not
+            raise NotImplementedError(f"Model output with shape {shape} not implemented")
         else:
             pass # currently not checking 3d output and supposing it is of currect shape
 
