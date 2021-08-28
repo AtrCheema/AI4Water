@@ -85,7 +85,8 @@ class Model(MODEL, BaseModel):
                 to_monitor=self.config['metrics'],
                 patience=self.config['patience'],
                 path=self.path,
-                use_cuda=False
+                use_cuda=False,
+                wandb_config=self.config['wandb_config']
             )
 
         if self.category == "DL":

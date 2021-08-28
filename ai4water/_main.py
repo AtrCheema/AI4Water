@@ -38,6 +38,13 @@ if K.BACKEND == 'tensorflow' and tf is not None:
 elif K.BACKEND == 'pytorch' and torch is not None:
     from ai4water.pytorch_attributes import LOSSES, OPTIMIZERS
 
+try:
+    from wandb.keras import WandbCallback
+    import wandb
+except ModuleNotFoundError:
+    WandbCallback = None
+    wandb = None
+
 
 
 class BaseModel(NN, Plots):
@@ -58,6 +65,7 @@ class BaseModel(NN, Plots):
                  save_model:bool = True,
                  metrics:Union[str, list] = None,
                  cross_validator:dict=None,
+                 wandb_config:dict = None,
                  seed:int = 313,
                  prefix: str = None,
                  path: str = None,
@@ -138,6 +146,11 @@ class BaseModel(NN, Plots):
                 ```
             batches str:
                 either `2d` or 3d`.
+            wandb_config :
+                Only valid if wandb package is installed. A dictionary of all the
+                arugments for wandb.init, wandb.log and WandbCallback. For
+                `train_data` and and `validation_data` in `WandbCallback`, pass
+                `True` instead of providing a tuple.
             seed int:
                 random seed for reproducibility
             prefix str:
@@ -186,6 +199,7 @@ class BaseModel(NN, Plots):
                                cross_validator = cross_validator,
                                accept_additional_args = accept_additional_args,
                                seed = seed,
+                               wandb_config = wandb_config,
                                **kwargs)
 
             # data_config, model_config = config['data_config'], config['model_config']
@@ -480,9 +494,6 @@ class BaseModel(NN, Plots):
                     nans_in_y_exist = True
 
         validation_data = self.get_val_data(validation_data)
-        callbacks = self.get_callbacks(validation_data, callbacks=callbacks)
-
-        st = time.time()
 
         outputs = get_values(outputs)
 
@@ -490,6 +501,15 @@ class BaseModel(NN, Plots):
             val_outs = validation_data[-1]
             val_outs = get_values(val_outs)
             validation_data = (validation_data[0], val_outs)
+
+        if wandb is not None and K.BACKEND == 'tensorflow':
+            callbacks = self.get_wandb_cb(callbacks, train_data=(inputs, outputs),
+                                          validation_data=validation_data,
+                                          )
+
+        callbacks = self.get_callbacks(validation_data, callbacks=callbacks)
+
+        st = time.time()
 
         # .fit was called with epochs, so we must put that in config as well!
         if 'epochs' in kwargs:
@@ -511,9 +531,50 @@ class BaseModel(NN, Plots):
 
         self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 
-        return self.post_kfit()
+        if K.BACKEND == 'tensorflow':
+            wandb.finish()
 
-    def post_kfit(self):
+        return self.post_fit()
+
+
+    def get_wandb_cb(self, callback, train_data, validation_data)->dict:
+        """Makes WandbCallback and add it in callback"""
+
+        if wandb is not None:
+            wandb_config:dict = self.config['wnadb_config']
+            wandb.init(name=os.path.basename(self.path),
+                       project=wandb_config.get('project', 'keras_with_ai4water'),
+                       notes=wandb_config.get('notes', f"{self.problem} with {self.config['backend']}"),
+                       tags=['ai4water', 'keras'],
+                       entity=wandb_config.get('entity', 'ai4water_keras'))
+
+        if callback is None:
+            callback = {}
+
+        wandb_config:dict = self.config['wandb_config']
+
+        monitor = self.config.get('monitor', 'val_loss')
+        if 'monitor' in wandb_config:
+            monitor = wandb_config.pop('monitor')
+
+        add_train_data = False
+        if 'train_data' in wandb_config:
+            add_train_data = wandb_config.pop('train_data')
+
+        add_val_data = False
+        if 'validation_data' in wandb_config:
+            add_val_data = wandb_config.pop('validation_data')
+
+        if wandb is not None:
+            callback['wandb_callback'] = WandbCallback(monitor=monitor,
+                          training_data=train_data if add_train_data else None,
+                          validation_data=validation_data if add_val_data else None,
+                          **wandb_config
+                          )
+
+        return callback
+
+    def post_fit(self):
         """Does some stuff after Keras model.fit has been called"""
         if K.BACKEND == 'pytorch':
             history = self.torch_learner.history

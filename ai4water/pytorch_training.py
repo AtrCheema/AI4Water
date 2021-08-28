@@ -4,18 +4,22 @@ from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
 
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
+
 from .backend import torch
 
 # only so that docs can be built without having torch to be installed
 try:
     from .utils.torch_utils import to_torch_dataset, TorchMetrics
 except ModuleNotFoundError:
-    to_torch_dataset, TorchMetrics = None,None
+    to_torch_dataset, TorchMetrics = None, None
 
 from .utils.utils import dateandtime_now, find_best_weight
 from .utils.SeqMetrics.SeqMetrics import RegressionMetrics
 from .utils.visualizations import regplot
-
 
 F = {
     'mse': [np.nanmin, np.less],
@@ -27,6 +31,7 @@ F = {
     'nrmse': [np.nanmin, np.less],
     'kge': [np.nanmax, np.greater],
 }
+
 
 class AttributeContainer(object):
 
@@ -43,7 +48,7 @@ class AttributeContainer(object):
         self.train_epoch_losses = None
         self.train_metrics = {metric: np.full(num_epochs, np.nan) for metric in self.to_monitor}
         self.val_metrics = {f'val_{metric}': np.full(num_epochs, np.nan) for metric in self.to_monitor}
-        self.best_epoch = 0   # todo,
+        self.best_epoch = 0  # todo,
         self.use_cuda = use_cuda if use_cuda is not None else torch.cuda.is_available()
 
         def_path = path if path is not None else os.path.join(os.getcwd(), 'results', dateandtime_now())
@@ -91,13 +96,14 @@ class Learner(AttributeContainer):
     """Trains the pytorch model. Motivated from fastai"""
 
     def __init__(self,
-                 model , #torch.nn.Module,
-                 batch_size:int = 32,
+                 model,  # torch.nn.Module,
+                 batch_size: int = 32,
                  num_epochs: int = 14,
                  patience: int = 100,
                  shuffle: bool = True,
-                 to_monitor:list=None,
-                 path:str = None,
+                 to_monitor: list = None,
+                 path: str = None,
+                 wandb_config:dict = None,
                  verbosity=1,
                  **kwargs
                  ):
@@ -115,6 +121,7 @@ class Learner(AttributeContainer):
             shuffle :
             to_monitor : list of metrics to monitor
             path : path to save results/weights
+            wandb_config : config for wandb
 
         Example
         --------
@@ -159,6 +166,7 @@ class Learner(AttributeContainer):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.patience = patience
+        self.wandb_config = wandb_config or {}
         self.verbosity = verbosity
 
     def fit(self, x, y=None, validation_data=None, **kwargs):
@@ -203,7 +211,7 @@ class Learner(AttributeContainer):
             self.on_epoch_end()
 
             if epoch - self.best_epoch > self.patience:
-                if self.verbosity>0:
+                if self.verbosity > 0:
                     print(f"Stopping early because improvment in loss did not happen since {self.best_epoch}th epoch")
                 break
 
@@ -212,10 +220,10 @@ class Learner(AttributeContainer):
     def predict(self,
                 x,
                 y=None,
-                batch_size:int=None,
-                reg_plot:bool = True,
-                name:str = None,
-                **kwargs)->np.ndarray:
+                batch_size: int = None,
+                reg_plot: bool = True,
+                name: str = None,
+                **kwargs) -> np.ndarray:
         """Makes prediction on the given data
         Arguments:
             x : data on which to evalute. It can be
@@ -234,7 +242,7 @@ class Learner(AttributeContainer):
         """
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
-        if reg_plot and true.size>0.0:
+        if reg_plot and true.size > 0.0:
             regplot(true, pred, name=name)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
@@ -249,7 +257,7 @@ class Learner(AttributeContainer):
 
             batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
 
-            batch_x =[tensor.float() for tensor in batch_x]
+            batch_x = [tensor.float() for tensor in batch_x]
 
             if self.use_cuda:
                 batch_x = [tensor.cuda() for tensor in batch_x]
@@ -268,8 +276,8 @@ class Learner(AttributeContainer):
     def evaluate(self,
                  x,
                  y=None,
-                 batch_size:int=None,
-                 metrics:Union[str, list]='r2',
+                 batch_size: int = None,
+                 metrics: Union[str, list] = 'r2',
                  **kwargs
                  ):
         """Evaluates the `model` on the given data.
@@ -316,7 +324,7 @@ class Learner(AttributeContainer):
 
             batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
 
-            batch_x =[tensor.float() for tensor in batch_x]
+            batch_x = [tensor.float() for tensor in batch_x]
 
             if self.use_cuda:
                 batch_x = [tensor.cuda() for tensor in batch_x]
@@ -339,6 +347,9 @@ class Learner(AttributeContainer):
 
         # take the mean for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
+
+        if wandb is not None:
+            wandb.log(self.train_epoch_losses, step=self.epoch)
 
         if self.use_cuda:
             torch.cuda.empty_cache()
@@ -366,19 +377,21 @@ class Learner(AttributeContainer):
                 # calculate metrics for each mini-batch
                 er = TorchMetrics(batch_y, pred_y)
 
-                for k,v in epoch_losses.items():
+                for k, v in epoch_losses.items():
                     v[i] = getattr(er, k)().detach().item()
 
             # take the mean for all mini-batches
             self.val_epoch_losses = {f'val_{k}': round(float(np.mean(v)), 4) for k, v in epoch_losses.items()}
+
+            if wandb is not None:
+                wandb.log(self.val_epoch_losses, step=self.epoch)
 
             for k, v in self.val_epoch_losses.items():
                 metric = k.split('_')[1]
                 f1 = F[metric][0]
                 f2 = F[metric][1]
 
-                if f2(v , f1(self.val_metrics[k])):
-
+                if f2(v, f1(self.val_metrics[k])):
                     torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
                     self.best_epoch = self.epoch
                     break  # weights are saved for this epoch so no need to check other metrics
@@ -400,8 +413,8 @@ class Learner(AttributeContainer):
 
         self.cbs = kwargs.get('callbacks', [])  # no callback by default
 
-        if self.verbosity>0:
-            print("{}{}{}".format('*'*25, 'Training Started', '*'*25))
+        if self.verbosity > 0:
+            print("{}{}{}".format('*' * 25, 'Training Started', '*' * 25))
             formatter = "{:<7}" + " {:<15}" * (len(self.train_metrics) + len(self.val_metrics))
             print(formatter.format('Epoch: ',
                                    *self.train_metrics.keys(),
@@ -420,6 +433,13 @@ class Learner(AttributeContainer):
 
         self.train_loader, self.val_loader = self._get_train_val_loaders(x, y=y, validation_data=validation_data)
 
+        if wandb is not None:
+            wandb.init(name=os.path.basename(self.path),
+                       project=self.wandb_config.get('probject', 'test_project'),
+                       notes='This is Learner from AI4Water test run',
+                       tags=['ai4water', 'pytorch'],
+                       entity=self.wandb_config.get('entity', ''))
+
         return
 
     def on_train_end(self):
@@ -428,16 +448,19 @@ class Learner(AttributeContainer):
 
         self.train_metrics['loss'] = self.train_metrics.pop('mse')
         self.val_metrics['val_loss'] = self.val_metrics.pop('val_mse')
-        
+
         class History(object):
             history = {}
             history.update(self.train_metrics)
             history.update(self.val_metrics)
 
         setattr(self, 'history', History())
+
+        wandb.finish()
+
         return History()
 
-    def update_weights(self, weight_file_path:str = None):
+    def update_weights(self, weight_file_path: str = None):
         """If `weight_file_path` is not given then it finds the best weights
         and updates the model with best wieghts.
 
@@ -484,21 +507,20 @@ class Learner(AttributeContainer):
                 f1 = F[k][0]
                 f2 = F[k][1]
 
-                if f2(v , f1(self.train_metrics[k])):
-
+                if f2(v, f1(self.train_metrics[k])):
                     torch.save(self.model.state_dict(), self._weight_fname(self.epoch, v))
                     self.best_epoch = self.epoch
                     break
 
-        if self.verbosity>0:
+        if self.verbosity > 0:
             print(formatter.format(self.epoch, *self.train_epoch_losses.values(), *self.val_epoch_losses.values()))
 
         for cb in self.cbs:
             if self.epoch % cb['after_epochs'] == 0:
                 cb['func'](epoch=self.epoch,
                            model=self.model,
-                           train_data = self.train_loader,
-                           val_data = self.val_loader
+                           train_data=self.train_loader,
+                           val_data=self.val_loader
                            )
 
         self.update_metrics()
@@ -547,7 +569,7 @@ class Learner(AttributeContainer):
 
             dataset = to_torch_dataset(x=x, y=y)
 
-        elif isinstance(x, tuple): # x is tuple of x,y pairs
+        elif isinstance(x, tuple):  # x is tuple of x,y pairs
             assert len(x) == 2
             dataset = to_torch_dataset(x=x[0], y=x[1])
 
@@ -582,7 +604,7 @@ class Learner(AttributeContainer):
         # default `log_dir` is "runs" - we'll be more specific here
         writer = SummaryWriter(path)
         if x is None:
-            x,y = iter(self.train_loader).next()
+            x, y = iter(self.train_loader).next()
         writer.add_graph(self.model, x)
         writer.close()
         return
@@ -606,8 +628,8 @@ class Learner(AttributeContainer):
 
         fname = os.path.join(self.path, 'model.png')
         dot = make_dot(y, dict(self.model.named_parameters()),
-                 show_attrs=True,
-                 show_saved=True)
+                       show_attrs=True,
+                       show_saved=True)
 
         dot.render(fname)
 
@@ -615,7 +637,6 @@ class Learner(AttributeContainer):
 
 
 def get_metrics_to_monitor(metrics):
-
     if metrics is None:
         _metrics = ['mse']
     elif isinstance(metrics, list):
