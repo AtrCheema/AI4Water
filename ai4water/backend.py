@@ -142,7 +142,9 @@ keras = keras
 torch = torch
 tf = tf
 
-VERSION_INFO = {
+def get_version_info():
+    # todo, chekc which attributes are not available in different versions
+    return {
     'python': sys.version,
     'os': os.name,
     'tensorflow': str(tf.__version__) if tf is not None else None,
@@ -159,6 +161,8 @@ VERSION_INFO = {
     'tpot': str(tpot.__version__) if tpot else None,
     'eager_execution': tf.executing_eagerly() if tf is not None else None
 }
+
+VERSION_INFO = get_version_info()
 
 if tf is not None:
     BACKEND = 'tensorflow'
