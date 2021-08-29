@@ -730,13 +730,13 @@ class BaseModel(NN, Plots):
                 visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
         return
 
-    def _wandb_scatter(self, true, predicted, name):
-
+    def _wandb_scatter(self, true:np.ndarray, predicted:np.ndarray, name:str)->None:
+        """Adds a scatter plot on wandb"""
         data = [[x, y] for (x, y) in zip(true.reshape(-1,), predicted.reshape(-1,))]
-        table = wandb.Table(data=data, columns=[f"true_{name}", f"predicted_{name}"])
+        table = wandb.Table(data=data, columns=["true", "predicted"])
         wandb.log({
-            "my_custom_plot_id": wandb.plot.scatter(table, "x", "y",
-                                                    title="Custom Y vs X Scatter Plot")
+            "scatter_plot": wandb.plot.scatter(table, "true", "predicted",
+                                                    title=name)
                    })
         return
 
