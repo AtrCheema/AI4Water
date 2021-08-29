@@ -533,9 +533,6 @@ class BaseModel(NN, Plots):
 
         self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 
-        if K.BACKEND == 'tensorflow' and self.use_wandb:
-            wandb.finish()
-
         return self.post_fit()
 
 
@@ -576,8 +573,17 @@ class BaseModel(NN, Plots):
 
         return callback
 
+    def post_fit_wandb(self):
+        """does some stuff related to wandb at the end of training."""
+
+        if K.BACKEND == 'tensorflow' and self.use_wandb:
+            wandb.finish()
+
+        return
+
     def post_fit(self):
         """Does some stuff after Keras model.fit has been called"""
+
         if K.BACKEND == 'pytorch':
             history = self.torch_learner.history
 
@@ -696,6 +702,9 @@ class BaseModel(NN, Plots):
 
                 t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
                 p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
+
+                self._wandb_scatter(t.values, p.values, out)
+
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
                 fname = prefix + out + '_' + str(h) + ".csv"
@@ -719,6 +728,16 @@ class BaseModel(NN, Plots):
 
             if forecast_len>1:
                 visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
+        return
+
+    def _wandb_scatter(self, true, predicted, name):
+
+        data = [[x, y] for (x, y) in zip(true.reshape(-1,), predicted.reshape(-1,))]
+        table = wandb.Table(data=data, columns=[f"true_{name}", f"predicted_{name}"])
+        wandb.log({
+            "my_custom_plot_id": wandb.plot.scatter(table, "x", "y",
+                                                    title="Custom Y vs X Scatter Plot")
+                   })
         return
 
     def build_ml_model(self):
