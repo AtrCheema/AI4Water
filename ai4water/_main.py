@@ -1156,6 +1156,10 @@ class BaseModel(NN, Plots):
         """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
         in sub-classes"""
         kwargs = {'lr': self.config['lr']}
+
+        if self.config['backend'] == 'tensorflow' and int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
+            kwargs['learning_rate'] = kwargs.pop('lr')
+
         if self.config['backend'] == 'pytorch':
             kwargs.update({'params': self.parameters()})  # parameters from pytorch model
         return kwargs
