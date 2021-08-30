@@ -105,7 +105,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
 
         model.fit()
 
-        t, p = model.predict(prefix='test')
+        t, p = model.predict()
         mse = RegressionMetrics(t, p).mse()
 
         return mse
@@ -298,7 +298,7 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit()
 
-            t, p = model.predict(prefix='test')
+            t, p = model.predict()
             mse = RegressionMetrics(t, p).mse()
             print(f"Validation mse {mse}")
 
@@ -440,7 +440,7 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit()
 
-            t, p = model.predict(prefix='test')
+            t, p = model.predict()
             mse = RegressionMetrics(t, p).mse()
             print(f"Validation mse {mse}")
 

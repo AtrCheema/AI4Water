@@ -1316,7 +1316,7 @@ class MLRegressionExperiments(Experiments):
             #Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
             Real(low=0.1, high=0.9, name='min_child_weight ', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
-            Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
+            Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
             Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
             Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
@@ -1401,7 +1401,7 @@ class MLClassificationExperiments(Experiments):
             model.view_model()
 
         if predict:
-            tt, tp = model.predict('training', prefix='training')
+            tt, tp = model.predict('training')
 
         return RegressionMetrics(t, t).mse()
 
@@ -1814,12 +1814,12 @@ be used to build ai4water's Model class.
         history = model.fit(**fit_kws)
 
         if predict:
-            trt, trp = model.predict('training', prefix='train')
+            trt, trp = model.predict('training')
 
-            testt, testp = model.predict(prefix='test')
+            testt, testp = model.predict()
 
             model.config['allow_nan_labels'] = 2
-            model.predict(prefix='all')
+            model.predict()
             # model.plot_train_data()
             return (trt, trp), (testt, testp)
 
@@ -1843,12 +1843,12 @@ Validation loss during all the epochs is NaN. Suggested parameters were
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict('training', prefix='train')
+        train_true, train_pred = model.predict('training')
 
-        test_true, test_pred = model.predict('test', prefix='test')
+        test_true, test_pred = model.predict('test')
 
         model.data['allow_nan_labels'] = 1
-        model.predict(prefix='all')
+        model.predict()
 
         #model.plot_layer_outputs()
         #model.plot_weights()
