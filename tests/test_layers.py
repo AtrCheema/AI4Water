@@ -102,6 +102,7 @@ class TestModels(unittest.TestCase):
             '115_posix': 1265.676495072539,
             '23_nt': 286.2128473956241,
             '25_nt': 286.21284595900113,
+            '26_nt': 286.21284595900113,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1405.3555436921633), 3)
         return
@@ -120,6 +121,7 @@ class TestModels(unittest.TestCase):
             '115_posix': 1327.6904604995418,
             '23_nt': 195.22941200342964,
             '25_nt': 195.22941257807892,
+            '26_nt': 195.22941257807892,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1434.2028425805552), 3)
         return
@@ -157,7 +159,8 @@ class TestModels(unittest.TestCase):
         }
         trues = {
             '23_nt': 204.1259977159385,
-            '25_nt': 204.12599872157463
+            '25_nt': 204.12599872157463,
+            '26_nt': 204.12599872157463
         }
         prediction, _model = make_and_run(Model, layers=lyrs, return_model=True)
 
@@ -178,6 +181,7 @@ class TestModels(unittest.TestCase):
             '115_posix':  1443.1860088206834,
             '23_nt': 205.64932981643847,
             '25_nt': 205.64933154038607,
+            '26_nt': 205.64933154038607,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1353.11274522034), 4)
@@ -199,7 +203,8 @@ class TestModels(unittest.TestCase):
             '21_posix': 1327.5073743917194,
             '115_posix': 1430.7282310875908,
             '23_nt': 197.95141420462951,
-            '25_nt': 197.95141865816086
+            '25_nt': 197.95141865816086,
+            '26_nt': 197.95141865816086
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1356.0140036362777), 2)  # TODO failing with higher precision
 
@@ -220,6 +225,7 @@ class TestModels(unittest.TestCase):
             '25_nt': 131,
             '23_nt_functional': 182.70824960252654,
             '25_nt_functional': 182.7082507518249,
+            '26_nt_functional': 182.7082507518249,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(f'{PLATFORM}_{model.api}', 1409.7687666416527), 4)
 
@@ -237,6 +243,7 @@ class TestModels(unittest.TestCase):
             '115_posix': 1376.5340244296872,
             '23_nt': 197.72353275519052,
             '25_nt': 197.72353304251516,
+            '26_nt': 197.72353304251516,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()),  trues.get(PLATFORM, 1376.5340244296872), 3)
@@ -259,6 +266,7 @@ class TestModels(unittest.TestCase):
             '115_posix': 1272.8471532368762,
             '23_nt': 188.44924334159703,
             '25_nt': 188.44923658946897,
+            '26_nt': 188.449236,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1347.498777542553), 4)
 
@@ -277,6 +285,7 @@ class TestModels(unittest.TestCase):
             '115_posix': 673.8151633572088,
             '23_nt': 192.28048198313545,
             '25_nt': 192.28047997186326,
+            '26_nt': 192.28047997186326,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1475.2777905818857), 4)
         return

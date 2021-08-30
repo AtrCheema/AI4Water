@@ -98,7 +98,7 @@ class Model(MODEL, BaseModel):
                 self._go_up = False  # do not reinitiate BaseModel and other upper classes
 
                 # in tf versions >= 2.5, we don't need to specify inputs and outputs as keyword arguments
-                if tf.__version__ in ["2.5.0"]:
+                if tf.__version__ in ["2.5.0", "2.6.0"]:
                     MODEL.__init__(self, self._input_lyrs(), self.output_lyrs)
                 else:
                     MODEL.__init__(self, inputs=self._input_lyrs(), outputs=self.output_lyrs)
@@ -433,6 +433,9 @@ class Model(MODEL, BaseModel):
 
         version = ''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')
         return getattr(self, f'call_{version}')(inputs, training, mask, run_call=run_call)
+
+    def call_260(self, *args, **kwargs):
+        return self.call_250(*args, **kwargs)
 
     def call_250(self, inputs, training=None, mask=None, run_call=True):
 
