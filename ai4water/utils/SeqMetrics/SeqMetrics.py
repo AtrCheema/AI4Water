@@ -831,7 +831,7 @@ class RegressionMetrics(Metrics):
         d = 0.5 * sum(d1 + d2)
         return float(d)
 
-    def kendaull_tau(self, return_p=False):
+    def kendaull_tau(self, return_p=False)->Union[float, tuple]:
         """Kendall's tau
         https://machinelearningmastery.com/how-to-calculate-nonparametric-rank-correlation-in-python/
         used in https://www.jmlr.org/papers/volume20/18-444/18-444.pdf
@@ -839,7 +839,7 @@ class RegressionMetrics(Metrics):
         coef, p = kendalltau(self.true, self.predicted)
         if return_p:
             return coef, p
-        return p
+        return float(p)
 
     def kge(self, return_all=False):
         """
@@ -1579,7 +1579,7 @@ class RegressionMetrics(Metrics):
         Also known as standard ratio, it varies from 0.0 to infinity while
         1.0 being the perfect value.
         """
-        return np.std(self.predicted, **kwargs) / np.std(self.true, **kwargs)
+        return float(np.std(self.predicted, **kwargs) / np.std(self.true, **kwargs))
 
     def umbrae(self, benchmark: np.ndarray = None):
         """ Unscaled Mean Bounded Relative Absolute Error """
