@@ -1227,19 +1227,6 @@ class BaseModel(NN, Plots):
 
         return activations
 
-    def display_activations(self, layer_name: str = None, x=None, data:str='training', **kwargs):
-        # not working currently because it requres the shape of activations to be (1, output_h, output_w, num_filters)
-        activations = self.activations(x=x, data=data, layer_names=layer_name)
-
-        assert isinstance(activations, dict)
-
-        if layer_name is None:
-            activations = activations
-        else:
-            activations = activations[layer_name]
-
-        keract.display_activations(activations=activations, **kwargs)
-
     def gradients_of_weights(self, x=None, y=None, data:str='training') -> dict:
 
         if x is None:
