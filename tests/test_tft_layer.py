@@ -10,7 +10,10 @@ import numpy as np
 from ai4water.models.tft_layer import TemporalFusionTransformer
 from ai4water.utils.utils import reset_seed
 
-if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))==250:
+    tf.compat.v1.experimental.output_all_intermediates(True) # todo
+
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 260:
     from ai4water.functional import Model
 
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
@@ -20,8 +23,6 @@ else:
 tf.compat.v1.disable_eager_execution()
 reset_seed(313, np=np, tf=tf)
 
-# todo
-#  not working in tf 2.5
 
 num_encoder_steps = 168
 params = {
@@ -128,7 +129,7 @@ class Test_TFT(unittest.TestCase):
         model = Model(model={'layers':layers},
                       input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
                       output_features=['out1', 'out2', 'out3'],
-                      verbosity=1)
+                      verbosity=0)
         x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
         y = np.random.random((n, len(quantiles), 1))
         if model.api == 'functional':
