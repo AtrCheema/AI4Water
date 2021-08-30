@@ -440,6 +440,8 @@ class BaseModel(NN, Plots):
         """Finds out if there is val_data or not"""
 
         if isinstance(val_data, tuple):
+            if val_data[0] is None and val_data[1] is None:
+                return None
             # val_data was probably available in kwargs, so use them as it is
             return val_data
 
@@ -703,7 +705,8 @@ class BaseModel(NN, Plots):
                 t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
                 p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
 
-                self._wandb_scatter(t.values, p.values, out)
+                if wandb is not None and self.config['wandb_config'] is not None:
+                    self._wandb_scatter(t.values, p.values, out)
 
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()

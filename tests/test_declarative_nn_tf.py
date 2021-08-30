@@ -258,8 +258,8 @@ class TestBuiltTFConfig(unittest.TestCase):
         num_hrus = 7
         lookback = 5
 
-        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))==210:
-            # todo, write __call__ for custom layer for tf 2.1
+        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) in [210, 250]:
+            # todo, write __call__ for custom layer for tf 2.1 and 2.5
             return
 
         class SharedRNN(tf.keras.layers.Layer):

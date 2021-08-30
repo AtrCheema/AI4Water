@@ -31,7 +31,7 @@ def build_and_run(transformation, data, inputs, outputs):
 
     pred, pred = model.inverse_transform(y, y, key='junk')
 
-    pred, index = model.deindexify(pred, key='junk')
+    pred, index = model.dh.deindexify(pred, key='junk')
     pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs), columns=outputs, index=index).sort_index()
     return pred
 
