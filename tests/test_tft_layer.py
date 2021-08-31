@@ -10,7 +10,7 @@ import numpy as np
 from ai4water.models.tft_layer import TemporalFusionTransformer
 from ai4water.utils.utils import reset_seed
 
-if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))==250:
+if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))>=250:
     tf.compat.v1.experimental.output_all_intermediates(True) # todo
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 260:
