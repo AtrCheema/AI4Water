@@ -20,7 +20,7 @@ import pandas as pd
 try:
     from scipy.stats import median_abs_deviation as mad
 except ImportError:
-    from scipy.stats import median_absolute_dviation as mad
+    from scipy.stats import median_absolute_deviation as mad
 
 from ai4water.nn_tools import NN
 from ai4water._data import DataHandler
