@@ -115,7 +115,7 @@ class IMVModel(HARHNModel):
         _ = ax.imshow(alphas)
         ax.set_xticks(np.arange(self.lookback))
         ax.set_yticks(np.arange(len(all_cols)))
-        ax.set_xticklabels(["t-"+str(i) for i in np.arange(self.lookback, -1, -1)])
+        ax.set_xticklabels(["t-"+str(i) for i in np.arange(self.lookback, 0, -1)])
         ax.set_yticklabels(list(all_cols))
         if annotate:
             for i in range(len(all_cols)):
