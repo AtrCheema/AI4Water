@@ -16,7 +16,11 @@ import joblib
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
-from scipy.stats import median_abs_deviation as mabsd
+
+try:
+    from scipy.stats import median_abs_deviation as mad
+except ImportError:
+    from scipy.stats import median_absolute_dviation as mad
 
 from ai4water.nn_tools import NN
 from ai4water._data import DataHandler
@@ -953,7 +957,7 @@ class BaseModel(NN, Plots):
     def _maybe_change_residual_threshold(self, outputs)->None:
         # https://stackoverflow.com/a/64396757/5982232
         if self.residual_threshold_not_set:
-            old_value = self._model.residual_threshold or mabsd(outputs.reshape(-1, ).tolist())
+            old_value = self._model.residual_threshold or mad(outputs.reshape(-1, ).tolist())
             if np.isnan(old_value) or old_value < 0.001:
                 self._model.set_params(residual_threshold=0.001)
                 if self.verbosity>0:
