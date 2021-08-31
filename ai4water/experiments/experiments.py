@@ -154,8 +154,7 @@ class Experiments(object):
             include : name of models to included. If None, all the models found
                 will be trained and or optimized.
             exclude : name of `models` to be excluded
-            cross_validate : whether to cross validate the model or not. This also
-                depends upon `cross_validator` agrument to the `Model`.
+            cross_validate : whether to cross validate the model or not. This
                 depends upon `cross_validator` agrument to the `Model`.
             post_optimize : one of `eval_best` or `train_best`. If eval_best,
                 the weights from the best models will be uploaded again and the model
@@ -712,11 +711,14 @@ class MLRegressionExperiments(Experiments):
         """
 
         Arguments:
-            param_space: dimenstions of parameters which are to be optimized. These can be overwritten in `models`.
-            x0 list: initial values of the parameters which are to be optimized. These can be overwritten in `models`
+            param_space: dimensions of parameters which are to be optimized. These
+                can be overwritten in `models`.
+            x0 list: initial values of the parameters which are to be optimized.
+                These can be overwritten in `models`
             data: this will be passed to `Model`.
             exp_name str: name of experiment, all results will be saved within this folder
-            model_kwargs dict: keyword arguments which are to be passed to `Model` and are not optimized.
+            model_kwargs dict: keyword arguments which are to be passed to `Model`
+                and are not optimized.
 
         Examples:
         --------
@@ -776,9 +778,14 @@ class MLRegressionExperiments(Experiments):
         if fit_kws is None:
             fit_kws = {}
 
+        verbosity = 0
+        if 'verbosity' in self.model_kws:
+            verbosity = self.model_kws.pop('verbosity')
+
         model = self.ai4water_model(
             data=self.data,
             prefix=title,
+            verbosity=verbosity,
             **self.model_kws,
             **kwargs
         )
@@ -788,10 +795,10 @@ class MLRegressionExperiments(Experiments):
         model.fit(**fit_kws)
 
         if cross_validate:
-            to_return = model.cross_val_score(model.config['loss'])
+            to_return = model.cross_val_score(model.config['val_metric'])
         else:
             vt, vp = model.predict('validation')
-            to_return =  getattr(RegressionMetrics(vt, vp), model.config['loss'])()
+            to_return =  getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
 
         tt, tp = model.predict('test')
 
@@ -1214,6 +1221,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'RADIUSNEIGHBORSREGRESSOR': kwargs}}
 
     def model_RANSACRegressor(self, **kwargs):
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
         self.param_space = [
             Integer(low=10, high=1000, name='max_trials'),
             Real(low=0.01, high=0.99, name='min_samples', num_samples=self.num_samples)
@@ -1333,22 +1341,22 @@ class MLRegressionExperiments(Experiments):
         # ##https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor
         self.param_space = [
             Integer(low=5, high=200, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
-            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
-            Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
+            #Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
+            Real(low=0.0001, high=0.5, name='learning_rate', prior='log', num_samples=self.num_samples),     #
             Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
-            Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
-            Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
-            Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
-            Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
-            Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
-            Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
-            Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
-            Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
-            Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
+            #Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
+            #Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
+            #Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
+            #Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
+            #Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
+            #Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
+            #Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
+            #Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
+            #Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = [50, 5, 0.5, 'gbtree', 0.2, 0.2, 0.2,
-                   0.2, 0.2, 0.2, 0.2, 0.2, 0.2
-                   ]
+        self.x0 = None #[50, 5, 0.5, 'gbtree', 0.2, 0.2, 0.2,
+                   #0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+                   #]
         return {'model': {'XGBOOSTREGRESSOR': kwargs}}
 
 
@@ -1384,9 +1392,14 @@ class MLClassificationExperiments(Experiments):
 
         fit_kws = fit_kws or {}
 
+        verbosity = 0
+        if 'verbosity' in self.model_kws:
+            verbosity = self.model_kws.pop('verbosity')
+
         model = self.dl4seq_model(
             data=self.data,
             prefix=title,
+            verbosity=verbosity,
             **self.model_kws,
             **kwargs
         )
@@ -1800,9 +1813,14 @@ be used to build ai4water's Model class.
         if fit_kws is None:
             fit_kws = {}
 
+        verbosity = 0
+        if 'verbosity' in self.model_kws:
+            verbosity = self.model_kws.pop('verbosity')
+
         model = self.ai4water_model(
             data=self.data,
             prefix=title,
+            verbosity=verbosity,
             **self.update_paras(**suggested_paras),
             **self.model_kws
         )

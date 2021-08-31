@@ -299,6 +299,7 @@ def _make_model(data, **kwargs):
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
         'wandb_config': {'type': dict, 'default': None, 'between': None},
+        'val_metric': {'type': str, 'default': 'r2'}
     }
 
     data_args = {

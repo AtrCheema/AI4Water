@@ -16,6 +16,7 @@ import joblib
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
+from scipy.stats import median_abs_deviation as mabsd
 
 from ai4water.nn_tools import NN
 from ai4water._data import DataHandler
@@ -64,6 +65,7 @@ class BaseModel(NN, Plots):
                  patience:int = 100,
                  save_model:bool = True,
                  metrics:Union[str, list] = None,
+                 val_metric:str = 'r2',
                  cross_validator:dict=None,
                  wandb_config:dict = None,
                  seed:int = 313,
@@ -136,6 +138,10 @@ class BaseModel(NN, Plots):
                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
             metrics str/list:
                 metrics to be monitored. e.g. ['nse', 'pbias']
+            val_metric :
+                performance metric to be used for validation/cross_validation.
+                This metric will be used for hyper-parameter optimizationa and
+                experiment comparison
             cross_validator :
                 selects the type of cross validation to be applied. It can be any
                 cross validator from sklear.model_selection. Default is None, which
@@ -198,6 +204,7 @@ class BaseModel(NN, Plots):
                                patience = patience,
                                save_model = save_model,
                                metrics = metrics or ['nse'],
+                               val_metric = val_metric,
                                cross_validator = cross_validator,
                                accept_additional_args = accept_additional_args,
                                seed = seed,
@@ -766,6 +773,10 @@ class BaseModel(NN, Plots):
             if 'verbosity' not in kwargs:
                 kwargs.update({'verbosity': self.verbosity})
 
+        self.residual_threshold_not_set = False
+        if regr_name == "RANSACREGRESSOR" and 'residual_threshold' not in kwargs:
+            self.residual_threshold_not_set = True
+
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
         else:
@@ -885,6 +896,8 @@ class BaseModel(NN, Plots):
         else:
             outputs = outputs.reshape(-1, )
 
+        self._maybe_change_residual_threshold(outputs)
+
         history = self._model.fit(inputs, outputs)
 
         model_name = list(self.config['model'].keys())[0]
@@ -897,7 +910,10 @@ class BaseModel(NN, Plots):
             self._model.save_model(fname + ".json")
         return history
 
-    def cross_val_score(self, scoring='mse'):
+    def cross_val_score(self, scoring=None):
+
+        if scoring is None:
+            scoring = self.config['val_metric']
 
         scores = []
 
@@ -914,6 +930,8 @@ class BaseModel(NN, Plots):
 
         for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
 
+            self._maybe_change_residual_threshold(train_y)
+
             self._model.fit(train_x, y=train_y.reshape(-1, self.num_outs))
 
             pred = self._model.predict(test_x)
@@ -927,6 +945,16 @@ class BaseModel(NN, Plots):
                 print(f'fold: {fold} val_score: {val_score}')
 
         return np.mean(scores)
+
+    def _maybe_change_residual_threshold(self, outputs)->None:
+        # https://stackoverflow.com/a/64396757/5982232
+        if self.residual_threshold_not_set:
+            old_value = self._model.residual_threshold or mabsd(outputs.reshape(-1, ).tolist())
+            if np.isnan(old_value) or old_value < 0.001:
+                self._model.set_params(residual_threshold=0.001)
+                if self.verbosity>0:
+                    print(f"changing residual_threshold from {old_value} to {self._model.residual_threshold}")
+        return
 
     def evaluate(self, data='training', **kwargs):
         """
@@ -1775,7 +1803,7 @@ class BaseModel(NN, Plots):
         return
 
     def print_info(self):
-        class_type = None
+        class_type = ''
         if self.is_binary:
             class_type = "binary"
         elif self.is_multiclass:
@@ -1783,8 +1811,22 @@ class BaseModel(NN, Plots):
         elif self.is_multilabel:
             class_type = "multi-label"
 
+        if isinstance(self.config['model'], dict):
+            if 'layers' in self.config['model']:
+                model_name = self.__class__.__name__
+            else:
+                model_name = list(self.config['model'].keys())[0]
+        else:
+            if isinstance(self.config['model'], str):
+                model_name = self.config['model']
+            else:
+                model_name = self.config['model'].__class__.__name__
+
         if self.verbosity > 0:
-            print('building {} model for {} {} problem'.format(self.category, class_type, self.problem))
+            print('building {} model for {} {} problem using {}'.format(self.category,
+                                                                        class_type,
+                                                                        self.problem,
+                                                                        model_name))
         return
 
     def get_optimizer(self):
