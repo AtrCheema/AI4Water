@@ -911,6 +911,10 @@ class BaseModel(NN, Plots):
         return history
 
     def cross_val_score(self, scoring=None):
+        """computes cross validation score
+        Currently not working for deep learning models"""
+        if self.num_outs > 1:
+            raise ValueError
 
         if scoring is None:
             scoring = self.config['val_metric']
@@ -932,7 +936,7 @@ class BaseModel(NN, Plots):
 
             self._maybe_change_residual_threshold(train_y)
 
-            self._model.fit(train_x, y=train_y.reshape(-1, self.num_outs))
+            self._model.fit(train_x, y=train_y.reshape(-1, ))
 
             pred = self._model.predict(test_x)
 
