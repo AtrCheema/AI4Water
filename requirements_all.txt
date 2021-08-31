@@ -29,3 +29,5 @@ hyperopt
 dill
 
 xarray
+openpyxl
+wrapt

@@ -196,7 +196,7 @@ import random
 import zipfile
 import warnings
 import shutil, os
-from typing import Union
+from typing import Union, Tuple
 
 try:
     import netCDF4
@@ -218,6 +218,11 @@ try:
     import fiona
 except ModuleNotFoundError:
     fiona = None
+
+try:
+    import xarray as xr
+except ModuleNotFoundError:
+    xr = None
 
 import numpy as np
 import pandas as pd
@@ -786,6 +791,17 @@ class MtropicsLaos(Datasets):
     [Mtropics](https://mtropics.obs-mip.fr/catalogue-m-tropics/) website and
     [ird](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
     data servers.
+
+    Methods
+    -------
+    - fetch_lu
+    - fetch_ecoli
+    - fetch_rain_gauges
+    - fetch_weather_station_data
+    - fetch_pcp
+    - fetch_hydro
+
+    # todo `fetch_ecoli` should only return ecoli data
     """
     target = ['Ecoli_mpn100']
 
@@ -853,11 +869,12 @@ class MtropicsLaos(Datasets):
         files = glob.glob(f'{lu_dir}/*.shp')
         return files
 
-    def fetch_ecoli(self,
-                    st: Union[str, pd.Timestamp] = '20110525 10:00:00',
-                    en: Union[str, pd.Timestamp] = '20210406 15:05:00',
-                    features: Union[list, str] = 'Ecoli_mpn100'
-                    )->pd.DataFrame:
+    def fetch_ecoli(
+            self,
+            st: Union[str, pd.Timestamp] = '20110525 10:00:00',
+            en: Union[str, pd.Timestamp] = '20210406 15:05:00',
+            features: Union[list, str] = 'Ecoli_mpn100'
+    )->pd.DataFrame:
         """Fetches E. coli and physio-chemical features at the outlet
         ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
         ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
@@ -893,10 +910,11 @@ class MtropicsLaos(Datasets):
 
         return df[st:en][features]
 
-    def fetch_rain_gauges(self,
-                          st: Union[str, pd.Timestamp] = "20010101",
-                          en: Union[str, pd.Timestamp] = "20191231",
-                          ):
+    def fetch_rain_gauges(
+            self,
+            st: Union[str, pd.Timestamp] = "20010101",
+            en: Union[str, pd.Timestamp] = "20191231",
+    )->pd.DataFrame:
         """
         fetches data from 7 rain gauges which is collected at daily time step
         from 2001 to 2019. [doi](https://doi.org/10.1038/s41598-017-04385-2)
@@ -911,7 +929,7 @@ class MtropicsLaos(Datasets):
             `st` and `en` arguments.
         """
         # todo, does nan means 0 rainfall?
-        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.f')
+        fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
         if not os.path.exists(fname):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
             df = pd.DataFrame()
@@ -920,20 +938,21 @@ class MtropicsLaos(Datasets):
                 df = pd.concat([df, _df])
 
             df = df.reset_index(drop=True)  # index is of type Int64Index
-            df.to_feather(fname)
+            df.to_xarray().to_netcdf(fname)
 
         else:  # feather file already exists so load from it
-            df = pd.read_feather(fname)
+            df = xr.load_dataset(fname).to_dataframe()
 
         df.index = pd.date_range('20010101', periods=len(df), freq='D')
 
         return df[st:en]
 
-    def fetch_weather_station_data(self,
-                                   st: Union[str, pd.Timestamp] = "20010101 01:00:00",
-                                   en: Union[str, pd.Timestamp] = "20200101 00:00:00",
-                                   freq:str = 'H'
-                                   ) -> pd.DataFrame:
+    def fetch_weather_station_data(
+            self,
+            st: Union[str, pd.Timestamp] = "20010101 01:00:00",
+            en: Union[str, pd.Timestamp] = "20200101 00:00:00",
+            freq:str = 'H'
+    ) -> pd.DataFrame:
         """
         fetches hourly weather station data which consits of air temperature,
         humidity, wind speed and solar radiation. [doi](https://doi.org/10.1038/s41598-017-04385-2)
@@ -954,9 +973,9 @@ class MtropicsLaos(Datasets):
                 df = pd.concat([df, _df])
 
             df = df.reset_index(drop=True)  # index is of type Int64Index
-            df.to_feather(fname)
+            df.to_xarray().to_netcdf(fname)
         else:  # feather file already exists so load from it
-            df = pd.read_feather(fname)
+            df = xr.load_dataset(fname).to_dataframe()
 
         df.columns = self.weather_station_data
 
@@ -981,7 +1000,7 @@ class MtropicsLaos(Datasets):
         """
         # todo allow change in frequency
 
-        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.f')
+        fname = os.path.join(self.ds_dir, 'pcp', 'pcp.nc')
         # feather file does not exist
         if not os.path.exists(fname):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'pcp')}/*.xlsx")
@@ -991,9 +1010,9 @@ class MtropicsLaos(Datasets):
                 df = pd.concat([df, _df])
 
             df = df.reset_index(drop=True)
-            df.to_feather(fname)
+            df.to_xarray().to_netcdf(fname)
         else:  # feather file already exists so load from it
-            df = pd.read_feather(fname)
+            df = xr.load_dataset(fname).to_dataframe()
 
         df.index = pd.date_range('20010101 00:06:00', periods=len(df), freq='6min')
         df.columns = ['pcp']
@@ -1003,7 +1022,7 @@ class MtropicsLaos(Datasets):
     def fetch_hydro(self,
                     st: Union[str, pd.Timestamp] = '20010101 00:06:00',
                     en: Union[str, pd.Timestamp] = '20200101 00:06:00',
-                    ):
+                    )->Tuple[pd.DataFrame, pd.DataFrame]:
         """
         fetches water level and suspended particulate matter. Both data are from
         2001 to 2019 but are randomly sampled.
@@ -1014,9 +1033,11 @@ class MtropicsLaos(Datasets):
             a tuple of pandas dataframes of water level and suspended particulate
             matter.
         """
-        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.f')
-        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.f')
+        wl_fname = os.path.join(self.ds_dir, 'hydro', 'wl.nc')
+        spm_fname = os.path.join(self.ds_dir, 'hydro', 'spm.nc')
         if not os.path.exists(wl_fname):
+            print("reading data from xlsx files and saving them in netcdf format.")
+            print("This will happen only once but will save io time.")
             files = glob.glob(f"{os.path.join(self.ds_dir, 'hydro')}/*.xlsx")
             wl = pd.DataFrame()
             spm = pd.DataFrame()
@@ -1040,18 +1061,18 @@ class MtropicsLaos(Datasets):
 
             wl.columns = ['water_level']
             wl = wl.reset_index()
-            wl.to_feather(wl_fname)
+            wl.to_xarray().to_netcdf(wl_fname)
             spm.columns = ['susp_pm']
             spm = spm.reset_index()
-            spm.to_feather(spm_fname)
+            spm.to_xarray().to_netcdf(spm_fname)
         else:
-            wl = pd.read_feather(wl_fname)
-            spm = pd.read_feather(spm_fname)
+            wl = xr.load_dataset(wl_fname).to_dataframe(['index'])
+            spm = xr.load_dataset(spm_fname).to_dataframe(['index'])
 
-        wl.index = pd.to_datetime(wl.pop('index'))
-        spm.index = pd.to_datetime(spm.pop('index'))
+        #wl.index = pd.to_datetime(wl.pop('index'))
+        #spm.index = pd.to_datetime(spm.pop('index'))
 
-        return wl[st:en], spm[st:en]
+        return wl[st:en], spm[st:en]  # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
 
     def fetch(self,
               inputs: Union[None, list],
