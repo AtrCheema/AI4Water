@@ -312,7 +312,7 @@ def _make_model(data, **kwargs):
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
         # can be None or any of the method defined in ai4water.utils.transformatinos.py
-        'transformation':         {"type": [str, type(None), dict, list],   "default": 'minmax', 'lower': None, 'upper': None, 'between': None},
+        'transformation':         {"type": [str, type(None), dict, list],   "default": None, 'lower': None, 'upper': None, 'between': None},
         # The term lookback has been adopted from Francois Chollet's "deep learning with keras" book. This means how many
         # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
         # for any non timeseries forecasting related problems.
