@@ -850,6 +850,9 @@ class Model(MODEL, BaseModel):
         else:
             data = kwargs['data']
 
+        if 'data' in kwargs:
+            kwargs.pop('data')
+
         if 'make_new_path' in kwargs or os.path.isfile(_config):
             # we need to build ai4water's Model class
             config, path = BaseModel._get_config_and_path(cls, _config, kwargs.get('make_new_path', False))
