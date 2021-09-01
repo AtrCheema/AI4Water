@@ -69,7 +69,7 @@ class BaseModel(NN, Plots):
                  patience:int = 100,
                  save_model:bool = True,
                  metrics:Union[str, list] = None,
-                 val_metric:str = 'r2',
+                 val_metric:str = 'mse',
                  cross_validator:dict=None,
                  wandb_config:dict = None,
                  seed:int = 313,
