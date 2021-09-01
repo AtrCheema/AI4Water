@@ -164,7 +164,8 @@ class BaseModel(NN, Plots):
                 means, wandb will not be utilized. For simplest case, just pass
                 an empty dictionary.
             seed int:
-                random seed for reproducibility
+                random seed for reproducibility. This can be set to None. The seed
+                is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
             prefix str:
                 prefix to be used for the folder in which the results are saved.
                 default is None, which means within
@@ -776,6 +777,15 @@ class BaseModel(NN, Plots):
         if regr_name in ['TPOTREGRESSOR', 'TPOTCLASSIFIER']:
             if 'verbosity' not in kwargs:
                 kwargs.update({'verbosity': self.verbosity})
+
+        if regr_name == "CATBOOSTREGRESSOR":  # https://stackoverflow.com/a/52921608/5982232
+            if not any([arg in kwargs for arg in ['verbose', 'silent', 'logging_level']]):
+                if self.verbosity == 0:
+                    kwargs['logging_level'] = 'Silent'
+                elif self.verbosity == 1:
+                    kwargs['logging_level'] = 'Verbose'
+                else:
+                    kwargs['logging_level'] = 'Info'
 
         self.residual_threshold_not_set = False
         if regr_name == "RANSACREGRESSOR" and 'residual_threshold' not in kwargs:
