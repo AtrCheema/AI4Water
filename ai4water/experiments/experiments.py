@@ -13,7 +13,7 @@ from ai4water.hyper_opt import HyperOpt
 from ai4water.utils.SeqMetrics import RegressionMetrics
 from ai4water.utils.taylor_diagram import taylor_plot
 from ai4water.hyper_opt import Real, Categorical, Integer
-from ai4water.utils.utils import init_subplots, process_axis
+from ai4water.utils.utils import init_subplots, process_axis, jsonize
 from ai4water.utils.utils import clear_weights, dateandtime_now, save_config_file
 from ai4water.backend import VERSION_INFO, tf
 
@@ -792,13 +792,12 @@ class MLRegressionExperiments(Experiments):
 
         setattr(self, '_model', model)
 
-        model.fit(**fit_kws)
-
         if cross_validate:
-            to_return = model.cross_val_score(model.config['val_metric'])
+            val_score = model.cross_val_score(model.config['val_metric'])
         else:
+            model.fit(**fit_kws)
             vt, vp = model.predict('validation')
-            to_return =  getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
+            val_score =  getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
 
         tt, tp = model.predict('test')
 
@@ -810,13 +809,13 @@ class MLRegressionExperiments(Experiments):
 
             return (t,p), (tt, tp)
 
-        return to_return
+        return val_score
 
     def model_ADABoostRegressor(self, **kwargs):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
         self.param_space = [
             Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),
-            Real(low=0.001, high=1.0, name='learning_rate', num_samples=self.num_samples)
+            Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=self.num_samples)
         ]
         self.x0 = [50, 1.0]
         return {'model': {'ADABOOSTREGRESSOR': kwargs}}
@@ -865,7 +864,7 @@ class MLRegressionExperiments(Experiments):
         # https://catboost.ai/docs/concepts/python-reference_parameters-list.html
         self.param_space = [
             Integer(low=500, high=5000, name='iterations', num_samples=self.num_samples),  # maximum number of trees that can be built
-            Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples), # Used for reducing the gradient step.
+            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples), # Used for reducing the gradient step.
             Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=self.num_samples),   # Coefficient at the L2 regularization term of the cost function.
             Real(low=0.1, high=10, name='model_size_reg', num_samples=self.num_samples),  # arger the value, the smaller the model size.
             Real(low=0.1, high=0.95, name='rsm', num_samples=self.num_samples),  # percentage of features to use at each split selection, when features are selected over again at random.
@@ -936,16 +935,17 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'ExtraTreeRegressor': kwargs}}
 
     def model_ExtraTreesRegressor(self, **kwargs):
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html
         self.param_space = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
-            Real(low=0.1, high=0.5, name='min_samples_split', num_samples=self.num_samples),
-            #Real(low=0.1, high=1.0, name='min_samples_leaf'),
+            Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
+            Integer(low=1, high=10, num_samples=self.num_samples, name='min_samples_leaf'),
             Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=self.num_samples),
             Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')
         ]
-        self.x0 = [10, 5,  0.4, #0.2,
-                   0.1, 'auto']
+        self.x0 = [100, 5,  2, 1,
+                   0.0, 'auto']
         return {'model': {'ExtraTreesRegressor': kwargs}}
 
 
@@ -975,7 +975,7 @@ class MLRegressionExperiments(Experiments):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
         self.param_space = [
             Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),  # number of boosting stages to perform
-            Real(low=0.001, high=1.0, name='learning_rate', num_samples=self.num_samples),   #  shrinks the contribution of each tree
+            Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=self.num_samples),   #  shrinks the contribution of each tree
             Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples),  # fraction of samples to be used for fitting the individual base learners
             Real(low=0.1, high=0.9, name='min_samples_split', num_samples=self.num_samples),
             Integer(low=2, high=30, name='max_depth', num_samples=self.num_samples),
@@ -987,7 +987,7 @@ class MLRegressionExperiments(Experiments):
         ### https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html
         # TODO not hpo not converging
         self.param_space = [
-            Real(low=0.0001, high=0.9, name='learning_rate', num_samples=self.num_samples),  # Used for reducing the gradient step.
+            Real(low=0.0001, high=0.9, prior='log', name='learning_rate', num_samples=self.num_samples),  # Used for reducing the gradient step.
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),  # maximum number of trees.
             Integer(low=2, high=100, name='max_depth', num_samples=self.num_samples),  # maximum number of trees.
             Integer(low=10, high=100, name='max_leaf_nodes', num_samples=self.num_samples),  # maximum number of leaves for each tree
@@ -1116,10 +1116,10 @@ class MLRegressionExperiments(Experiments):
         self.param_space = [
             Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),  # todo, during optimization not working with 'rf'
             Integer(low=10, high=200, name='num_leaves', num_samples=self.num_samples),
-            Real(low=0.0001, high=0.1, name='learning_rate', num_samples=self.num_samples),
+            Real(low=0.0001, high=0.1,  name='learning_rate', prior='log', num_samples=self.num_samples),
             Integer(low=20, high=500, name='n_estimators', num_samples=self.num_samples)
         ]
-        self.x0 = ['gbdt', 50, 0.001, 20]
+        self.x0 = ['gbdt', 31, 0.1, 100]
         return {'model': {'LGBMREGRESSOR': kwargs}}
 
     def model_LinearRegression(self, **kwargs):
@@ -1320,10 +1320,10 @@ class MLRegressionExperiments(Experiments):
         self.param_space = [
             Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
             Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
-            Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),     #
+            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples),     #
             #Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
-            Real(low=0.1, high=0.9, name='min_child_weight ', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
+            Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
             Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
             Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
             Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
@@ -1549,7 +1549,7 @@ class MLClassificationExperiments(Experiments):
         self.param_space = [
             Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
             Integer(low=10, high=200, name='num_leaves', num_samples=self.num_samples),
-            Real(low=0.0001, high=0.1, name='learning_rate', num_samples=self.num_samples),
+            Real(low=0.0001, high=0.1, prior='log', name='learning_rate', num_samples=self.num_samples),
             Real(low=10, high=100, name='min_child_samples', num_samples=self.num_samples),
             Integer(low=20, high=500, name='n_estimators', num_samples=self.num_samples)
         ]
@@ -1705,7 +1705,7 @@ class MLClassificationExperiments(Experiments):
         self.param_space = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  # Number of gradient boosted trees
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),  # Maximum tree depth for base learners
-            Real(low=0.0001, high=0.5, name='learning_rate', num_samples=self.num_samples),  #
+            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples),  #
             Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),
             # Minimum loss reduction required to make a further partition on a leaf node of the tree.
@@ -1813,6 +1813,8 @@ be used to build ai4water's Model class.
         if fit_kws is None:
             fit_kws = {}
 
+        suggested_paras = jsonize(suggested_paras)
+
         verbosity = 0
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
@@ -1829,7 +1831,12 @@ be used to build ai4water's Model class.
 
         model = self.process_model_before_fit(model)
 
-        history = model.fit(**fit_kws)
+        if cross_validate:
+            val_score = model.cross_val_score()
+        else:
+            model.fit()
+            val_true, val_pred = model.predict('validation')
+            val_score = getattr(RegressionMetrics(val_true, val_pred), model.config['val_metric'])()
 
         if predict:
             trt, trp = model.predict('training')
@@ -1841,14 +1848,7 @@ be used to build ai4water's Model class.
             # model.plot_train_data()
             return (trt, trp), (testt, testp)
 
-        target_matric_array = history.history['val_loss']
-
-        if all(np.isnan(target_matric_array)):
-            raise ValueError(f"""
-Validation loss during all the epochs is NaN. Suggested parameters were
-{suggested_paras}
-""")
-        return np.nanmin(target_matric_array)
+        return val_score
 
     def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
 
