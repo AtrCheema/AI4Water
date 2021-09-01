@@ -665,7 +665,7 @@ class DataHandler(AttributeContainer):
                 test_indices = np.delete(tot_indices, train_indices)
 
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f'Indices can not be found for source of type {self.data.__class__.__name__}')
 
         setattr(self, 'train_indices', train_indices)
         setattr(self, 'test_indices', test_indices)
