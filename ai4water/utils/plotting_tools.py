@@ -1,5 +1,6 @@
 import os
 import warnings
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -216,7 +217,7 @@ class Plots(object):
 
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
-        x, _, y = self.training_data(**kwargs)
+        x,  y = self.training_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='training')
 
         return
@@ -230,12 +231,26 @@ class Plots(object):
 
     def plot_test_data(self, how='3d', save=True,  **kwargs):
 
-        x, _, y = self.test_data(**kwargs)
+        x, y = self.test_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='test')
 
         return
 
-    def plot_model_input_data(self, in_data, how, save, which='training'):
+    def plot_model_input_data(self,
+                              in_data:Union[list, np.ndarray],
+                              how:str,
+                              save:bool,
+                              which:str='training'
+                              )->None:
+
+        assert how in ['3d', 'hist']
+
+        if not isinstance(in_data, list):
+            if isinstance(in_data, dict):
+                in_data = list(in_data.values())
+            else:
+                assert isinstance(in_data, np.ndarray)
+                in_data = [in_data]
 
         for idx, inputs in enumerate(in_data):
             if np.ndim(inputs) == 3:
@@ -244,6 +259,14 @@ class Plots(object):
             elif np.ndim(inputs) == 2:
                 if how.upper() == "3D":
                     self._imshow(inputs, save=save, fname= which + '_data_' + str(idx), where='data')
+                else:
+                    self.plot_histogram(inputs,
+                                        save=save,
+                                        fname=which+'_data_' + str(idx),
+                                        features=self.in_cols,
+                                        where='data')
+            else:
+                print(f'skipping shape is {inputs.shape}')
         return
 
     def features_2d(self, data, name, save=True, slices=32, slice_dim=0, where='activations', **kwargs):
@@ -642,6 +665,22 @@ class Plots(object):
         return
 
 
+    def plot_histogram(self,
+                       data: np.ndarray,
+                       save:bool=True,
+                       fname='hist',
+                       features=None,
+                       where='data'
+                       ):
+
+        assert data.ndim == 2
+
+        data = pd.DataFrame(data, columns=features)
+        data.hist(figsize=(12, 12))
+
+        self.save_or_show(save=save, fname=fname+'hist', where=where)
+        return
+
 
 def validate_freq(df, freq):
     assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
@@ -661,3 +700,4 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
+
