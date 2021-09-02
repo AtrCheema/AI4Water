@@ -434,7 +434,7 @@ class Plots(object):
                 warnings.warn("install xgboost to use plot_tree method")
             else:
                 xgboost.plot_tree(self._model, **kwargs)
-        self.save_or_show(save, fname="decision_tree", where="results")
+        self.save_or_show(save, fname="decision_tree", where="results", dpi=1000)
         return
 
     def plot_treeviz_leaves(self, save=True, **kwargs):
@@ -442,10 +442,10 @@ class Plots(object):
 
         model = list(self.config['model'].keys())[0].upper()
         if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"] or model.startswith("XGBOOST"):
-            if trees is None:
-                print("dtreeviz related plots can not be plotted")
-            elif model in ['XGBOOSTRFREGRESSOR', 'XGBOOSTREGRESSOR']:  # dtreeviz doesn't plot this
+            if  model in ['XGBOOSTRFREGRESSOR', 'XGBOOSTREGRESSOR']:  # dtreeviz doesn't plot this
                 pass
+            elif trees is None:
+                print("dtreeviz related plots can not be plotted")
             else:
                 x, _, y = self.test_data()
 
@@ -455,7 +455,7 @@ class Plots(object):
                 trees.viz_leaf_samples(self._model, x, self.in_cols)
                 self.save_or_show(save, fname="viz_leaf_samples", where="plots")
 
-                trees.ctreeviz_leaf_samples(self._model, *x, y, self.in_cols)
+                trees.ctreeviz_leaf_samples(self._model, x, y, self.in_cols)
                 self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
 
     def box_plot(self,
