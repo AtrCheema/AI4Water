@@ -1354,7 +1354,7 @@ class MLRegressionExperiments(Experiments):
             #Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
             #Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = None #[50, 5, 0.5, 'gbtree', 0.2, 0.2, 0.2,
+        self.x0 = None #[100, 6, 0.3, 'gbtree', 0.2, 0.2, 0.2,
                    #0.2, 0.2, 0.2, 0.2, 0.2, 0.2
                    #]
         return {'model': {'XGBOOSTREGRESSOR': kwargs}}

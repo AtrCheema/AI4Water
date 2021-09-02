@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Union, List
 from collections import OrderedDict
 
 import numpy as np
@@ -131,12 +131,18 @@ class Model(MODEL, BaseModel):
         self._torch_learner = x
 
     @property
-    def layer_names(self):
+    def layer_names(self)->List[str]:
+        """Returns a list of names of layers/nn.modules
+        for deep learning model. For ML models, returns empty list"""
+        
         _all_layers = []
         if self.category == "ML":
-            return None
-        for layer in self.layers:
-            _all_layers.append(layer.name)
+            pass
+        elif self.config['backend'] == 'tensorflow':
+            for layer in self.layers:
+                _all_layers.append(layer.name)
+        elif self.config['backend'] == 'pytorch':
+            _all_layers = list(self._modules.keys())
         return _all_layers
 
     @property
