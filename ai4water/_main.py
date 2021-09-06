@@ -1542,9 +1542,6 @@ class BaseModel(NN, Plots):
 
         interpreter = Interpret(self)
 
-        if self.category == 'ML':
-            interpreter.plot_feature_importance(**kwargs)
-
         return
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
