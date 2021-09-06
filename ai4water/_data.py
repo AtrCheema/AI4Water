@@ -418,7 +418,7 @@ class DataHandler(AttributeContainer):
             assert isinstance(_inputs, dict), f'input_features are of type {_inputs.__class__.__name__}'
         elif _inputs is None:
             assert isinstance(self.data, pd.DataFrame)
-            _inputs = self.data.columns[0:-1]
+            _inputs = self.data.columns[0:-1].to_list()
 
         return _inputs
 
@@ -535,6 +535,7 @@ class DataHandler(AttributeContainer):
             return data
 
         else:
+            assert data is not None
             raise ValueError(f"unregnizable source of data of type {data.__class__.__name__} given")
 
         _source = self.impute(_source)
@@ -980,15 +981,10 @@ class DataHandler(AttributeContainer):
         if self.problem == 'classification':
             y = check_for_classification(y, self._to_categorical)
 
-        if self.verbosity > 0:
-            print(f"{'*' * 5} Training data {'*' * 5}")
-            print_something(x, "input_x")
-            print_something(prev_y, "prev_y")
-            print_something(y, "target")
-
         if self.teacher_forcing:
-            return x, prev_y, y
-        return x, y
+            return return_x_yy(x, prev_y, y, "Training", self.verbosity)
+
+        return return_xy(x, y, "Training", self.verbosity)
 
     def _make_val_data_from_src(self,
                                 indices,
@@ -1070,7 +1066,8 @@ class DataHandler(AttributeContainer):
 
         return x, prev_y, y
 
-    def validation_data(self, key='val', **kwargs)->Tuple[np.ndarray, np.ndarray]:
+    def validation_data(self, key='val', **kwargs
+                        )->Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
         """Returns the validation data"""
         if self._from_h5:
 
@@ -1139,17 +1136,13 @@ class DataHandler(AttributeContainer):
         if self.problem == 'classification':
             y = check_for_classification(y, self._to_categorical)
 
-        if self.verbosity > 0:
-            print(f"{'*'*5} Validation data {'*'*5}")
-            print_something(x, "input_x")
-            print_something(prev_y, "prev_y")
-            print_something(y, "target")
-
         if self.teacher_forcing:
-            return x, prev_y, y
-        return x, y
+            return return_x_yy(x, prev_y, y, "Validation", self.verbosity)
 
-    def test_data(self, key='test', data_keys=None, **kwargs)->Tuple[np.ndarray, np.ndarray]:
+        return return_xy(x, y, "Validation", self.verbosity)
+
+    def test_data(self, key='test', data_keys=None, **kwargs
+                  )->Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
         """Returns the test_data"""
         # user may have defined its own data by overwriting training_data/validation_data
         # and `val_data` is same as test data, thus avoid the situation if the user
@@ -1222,15 +1215,10 @@ class DataHandler(AttributeContainer):
         if self.problem == 'classification':
             y = check_for_classification(y, self._to_categorical)
 
-        if self.verbosity > 0:
-            print(f"{'*' * 5} Test data {'*' * 5}")
-            print_something(x, "input_x")
-            print_something(prev_y, "prev_y")
-            print_something(y, "target")
-
         if self.teacher_forcing:
-            return x, prev_y, y
-        return x, y
+            return return_x_yy(x, prev_y, y, "Test", self.verbosity)
+
+        return return_xy(x, y, "Test", self.verbosity)
 
     def test_data_from_one_src(self,
                                key,
@@ -1797,7 +1785,7 @@ class SiteDistributedDataHandler(object):
         provide the names of sites as `training_sites`, `validation_sites` and
         `test_sites`.
 
-    1) We may wish to use a fraction of data from each site for training
+    2) We may wish to use a fraction of data from each site for training
         validation and test. In such a case, do not provide any argument
         for `training_sites`, `validation_sites` and `test_sites`, rather
         define the validation and test fraction for each site using the
@@ -1805,9 +1793,9 @@ class SiteDistributedDataHandler(object):
 
     Note: The first two axis of the output data are swapped.
     That means for 3d batches the x will have the shape:
-        (num_examples, num_sites, lookback, input_features)
+        `(num_examples, num_sites, lookback, input_features)`
     And the `y` will have shape:
-        (num_examples, num_sites, num_outs, forecast_len)
+        `(num_examples, num_sites, num_outs, forecast_len)`
     See Example for more illustration
 
     Methods
@@ -2359,3 +2347,22 @@ def check_for_classification(label:np.ndarray, to_categorical):
     #     # todo, is only binary_crossentropy is binary/multi_label problem?
     #     pass #assert self.loss_name() in ['binary_crossentropy']
     return label
+
+
+def return_x_yy(x, prev_y, y, initial, verbosity):
+    if verbosity>0:
+        print(f"{'*' * 5} {initial} data {'*' * 5}")
+        print_something(x, "input_x")
+        print_something(prev_y, "prev_y")
+        print_something(y, "target")
+    return x, prev_y, y
+
+
+def return_xy(x,y, initial, verbosity):
+
+    if verbosity>0:
+        print(f"{'*' * 5} {initial} {'*' * 5}")
+        print_something(x, "input_x")
+        print_something(y, "target")
+
+    return x, y
