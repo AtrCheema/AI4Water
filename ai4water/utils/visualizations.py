@@ -24,11 +24,15 @@ try:
 except ModuleNotFoundError:
     plotly = None
 
+try:
+    import shap
+except ModuleNotFoundError:
+    shap = None
+
 from ai4water.backend import xgboost
 
 from ai4water.utils.SeqMetrics import RegressionMetrics
 from ai4water.utils.utils import _missing_vals
-from ai4water.utils.utils import plot_activations_along_inputs
 from ai4water.utils.utils import find_tot_plots, init_subplots, Jsonize
 from ai4water.utils.transformations import Transformations
 
@@ -116,6 +120,12 @@ class Interpret(Plot):
                 if hasattr(model, 'TemporalFusionTransformer_attentions'):
                     atten_components = self.tft_attention_components()
 
+        elif self.model.category == 'ML':
+            use_xgb = False
+            if self.model._model.__class__.__name__ == "XGBRegressor":
+                use_xgb = True
+            self.plot_feature_importance(use_xgb = use_xgb)
+
     @property
     def model(self):
         return self._model
@@ -183,18 +193,33 @@ class Interpret(Plot):
         use_prev = self.model.config['use_predicted_output']
         all_cols = self.model.config['input_features'] if use_prev else self.model.config['input_features'] + \
                                                                                 self.model.config['output_features']
-        plt.close('all')
-        plt.figure()
-        plt.title("Feature importance")
         if use_xgb:
-            if xgboost is None:
-                warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
-            else:
-                xgboost.plot_importance(self._model, **kwargs)
+            self._feature_importance_xgb(save=save)
         else:
+            plt.close('all')
+            plt.figure()
+            plt.title("Feature importance")
             plt.bar(range(self.model.ins if use_prev else self.model.ins + self.model.outs), importance, **kwargs)
             plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=12)
-        self.save_or_show(save, fname="feature_importance.png")
+            self.save_or_show(save, fname="feature_importance.png")
+        return
+
+    def _feature_importance_xgb(self, save=True, **kwargs):
+
+        if xgboost is None:
+            warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
+        else:
+            plt.close('all')
+            # global feature importance with xgboost comes with different types
+            xgboost.plot_importance(self.model._model.get_booster())
+            self.save_or_show(save, fname="feature_importance_weight.png")
+            plt.close('all')
+            xgboost.plot_importance(self.model._model.get_booster(), importance_type="cover", **kwargs)
+            self.save_or_show(save, fname="feature_importance_type_cover.png")
+            plt.close('all')
+            xgboost.plot_importance(self.model._model.get_booster(), importance_type="gain", **kwargs)
+            self.save_or_show(save, fname="feature_importance_type_gain.png")
+
         return
 
     def tft_attention_components(self, model=None, data_type='training')->dict:
