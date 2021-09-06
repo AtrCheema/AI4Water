@@ -178,10 +178,10 @@ class Interpret(Plot):
         if self.model.category == "ML":
             model_name = list(self.model.config['model'].keys())[0]
             if model_name.upper() in ["SVC", "SVR"]:
-                if self._model.kernel == "linear":
+                if self.model._model.kernel == "linear":
                     return self.f_importances_svm(importance, self.model.in_cols, save=save)
                 else:
-                    warnings.warn(f"for {self._model.kernel} kernels of {model_name}, feature importance can not be plotted.")
+                    warnings.warn(f"for {self.model._model.kernel} kernels of {model_name}, feature importance can not be plotted.")
                 return
 
         if isinstance(importance, np.ndarray):
