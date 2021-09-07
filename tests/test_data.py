@@ -1595,6 +1595,37 @@ def site_distributed_basic():
     assert test_x.shape == (len(df)-config['lookback']+1, 1, config['lookback'], len(config['input_features']))
 
 
+def site_distributed_diff_lens():
+    examples = 50
+    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
+    df = pd.DataFrame(data, columns=['a', 'b', 'c'],
+                        index=pd.date_range('20110101', periods=examples, freq='D'))
+    config = {'input_features': ['a', 'b'],
+              'output_features': ['c'],
+              'lookback': 4}
+    data = {'0': df,
+            '1': pd.concat([df, df], axis=0)+1000,
+            '2': pd.concat([df, df, df], axis=0)+2000,
+            '3': df +3000
+            }
+    configs = {'0': config, '1': config, '2': config, '3': config}
+
+    #dh = SiteDistributedDataHandler(data, configs) # This should raise NotImplementedError
+    dh = SiteDistributedDataHandler(data, configs, allow_variable_len=True)
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+    assert isinstance(train_x, dict)
+
+
+    dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'],
+                                    test_sites=['3'], allow_variable_len=True)
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+    assert isinstance(train_x, dict)
+
+
 def site_distributed_multiple_srcs():
     examples = 40
     data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
@@ -1660,6 +1691,7 @@ def test_with_indices_and_nans():
 test_with_indices_and_nans()
 test_with_string_index()
 site_distributed_basic()
+site_distributed_diff_lens()
 site_distributed_multiple_srcs()
 test_multisource_multi_loc()
 test_with_random_with_transformation_of_features()

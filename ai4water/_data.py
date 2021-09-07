@@ -1791,7 +1791,8 @@ class SiteDistributedDataHandler(object):
         define the validation and test fraction for each site using the
         keyword arguments.
 
-    Note: The first two axis of the output data are swapped.
+    Note: The first two axis of the output data are swapped unless `swap_axes`
+        is set to `False`.
     That means for 3d batches the x will have the shape:
         `(num_examples, num_sites, lookback, input_features)`
     And the `y` will have shape:
@@ -1810,7 +1811,9 @@ class SiteDistributedDataHandler(object):
                  config:dict,
                  training_sites:list=None,
                  validation_sites:list=None,
-                 test_sites:list=None
+                 test_sites:list=None,
+                 swap_axes:bool=True,
+                 allow_variable_len:bool=False
                  ):
         """
         Initiates data
@@ -1824,6 +1827,20 @@ class SiteDistributedDataHandler(object):
                 data based upon keyword arguments of corresponding site.
             validation_sites : List of names of sites to be used as validation.
             test_sites : List of names of sites to be used as test.
+            swap_axes : If True, the returned x data will have shape
+                `(num_examples, num_sites, lookback, input_features)` otherwise
+                the returned x values will have shape
+                `(num_sites, num_examples, lookback, input_features)`.
+            allow_variable_len : If the number of examples for different sites differ
+                from each other, then this argument can be set to `True` to avoid
+                `ValueError` from numpy. If the data of different sites results
+                in different number of examples and this argument is False, then
+                numpy will raise `ValueError` because arrays of different lengths
+                can not be stacked together. If this argument is set to `True`,
+                then the returned `x` will not be a numpy array but it will be
+                a dictionary of numpy arrays where each key correspond to one
+                `site`. Note that setting this argument to `True` will render
+                `swap_axes` redundent.
 
         Example
         -------
@@ -1897,6 +1914,8 @@ class SiteDistributedDataHandler(object):
         self.training_sites = training_sites
         self.validation_sites = validation_sites
         self.test_sites = test_sites
+        self.swap_axes = swap_axes
+        self.allow_variable_len = allow_variable_len
         self.dhs = {}
 
     def process_config(self, config):
@@ -1935,8 +1954,8 @@ class SiteDistributedDataHandler(object):
             x.append(_x)
             y.append(_y)
 
-        x = self.stack(x)
-        y = self.stack(y)
+        x = self.stack(x, training_sites)
+        y = self.stack(y, training_sites)
 
         print(f"{'*' * 5} Training data {'*' * 5}")
         print_something(x, 'x')
@@ -1972,8 +1991,8 @@ class SiteDistributedDataHandler(object):
             x.append(_x)
             y.append(_y)
 
-        x = self.stack(x)
-        y = self.stack(y)
+        x = self.stack(x, validation_sites)
+        y = self.stack(y, validation_sites)
 
         print(f"{'*' * 5} Validation data {'*' * 5}")
         print_something(x, 'x')
@@ -2010,8 +2029,8 @@ class SiteDistributedDataHandler(object):
             x.append(_x)
             y.append(_y)
 
-        x = self.stack(x)
-        y = self.stack(y)
+        x = self.stack(x, test_sites)
+        y = self.stack(y, test_sites)
 
         print(f"{'*' * 5} Test data {'*' * 5}")
         print_something(x, 'x')
@@ -2019,13 +2038,26 @@ class SiteDistributedDataHandler(object):
 
         return x, y
 
-    @staticmethod
-    def stack(data:list):
+    def stack(self, data:list, site_names):
         if isinstance(data[0], np.ndarray):
-            data = np.stack(data)
-            data = data.swapaxes(0,1)
+
+            if len(set([len(i) for i in data]))==1:  # all arrays in data are of equal length
+                data = np.stack(data)  # (num_sites, num_examples, lookback, num_features)
+                if self.swap_axes:
+                    data = data.swapaxes(0,1)  # (num_examples, num_sites, lookback, num_features)
+
+            elif self.allow_variable_len:
+                data = {k: v for k, v in zip(site_names, data)}
+
+            else:
+                raise NotImplementedError(f"number of examples are {[len(i) for i in data]}. "
+                                          f"set `allow_variable_len` to `True`")
 
         elif isinstance(data[0], dict):
+
+            if self.allow_variable_len:
+                raise NotImplementedError # todo
+
             new_data = {k:None for k in data[0].keys()}
             for src_name in new_data.keys():
                 temp = []
@@ -2033,7 +2065,10 @@ class SiteDistributedDataHandler(object):
 
                     temp.append(src[src_name])
 
-                new_data[src_name] = np.stack(temp).swapaxes(0,1)
+                if self.swap_axes:
+                    new_data[src_name] = np.stack(temp).swapaxes(0,1)
+                else:
+                    new_data[src_name] = np.stack(temp)
 
             data = new_data
 
