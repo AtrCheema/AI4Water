@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
 
 from ai4water.utils.utils import ts_features
-from ai4water.utils.SeqMetrics.utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
+from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute

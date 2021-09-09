@@ -3,8 +3,8 @@ import unittest
 import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from ai4water.utils.SeqMetrics import RegressionMetrics, ClassificationMetrics
-from ai4water.utils.SeqMetrics.utils import plot_metrics
+from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
+from ai4water.post_processing.SeqMetrics.utils import plot_metrics
 
 import numpy as np
 

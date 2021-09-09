@@ -227,10 +227,11 @@ except ModuleNotFoundError:
 import numpy as np
 import pandas as pd
 
-from ai4water.utils.spatial_utils import find_records
-from ai4water.utils.datasets.download_pangaea import PanDataSet
-from ai4water.utils.datasets.download_zenodo import download_from_zenodo
-from ai4water.utils.datasets.utils import download, download_all_http_directory
+from ai4water.pre_processing.spatial_utils import find_records
+
+from .download_pangaea import PanDataSet
+from.download_zenodo import download_from_zenodo
+from .utils import download, download_all_http_directory
 from .utils import check_attributes, sanity_check
 
 

@@ -89,7 +89,7 @@ class ConditionalRNN(tf.keras.layers.Layer):
         In the case of a list, the tensors can have a different cond_dim.
         :return: outputs, states or outputs (if return_state=False)
         """
-        assert (isinstance(inputs, list) or isinstance(inputs, tuple)) and len(inputs) >= 2
+        assert (isinstance(inputs, list) or isinstance(inputs, tuple)) and len(inputs) >= 2, f"{type(inputs)}"
         x = inputs[0]
         cond = inputs[1:]
         if len(cond) > 1:  # multiple conditions.

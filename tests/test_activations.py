@@ -12,7 +12,7 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.utils.datasets import load_nasdaq
+from ai4water.datasets import load_nasdaq
 
 
 df = load_nasdaq()

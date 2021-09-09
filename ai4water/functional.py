@@ -22,7 +22,7 @@ class Model(BaseModel):
     Example
     --------
     ```python
-    from ai4water.functional import Model
+    >>>from ai4water.functional import Model
     ```
     """
 

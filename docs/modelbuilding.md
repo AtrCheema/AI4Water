@@ -14,13 +14,6 @@ To build pytorch based NN models using python dicitonary see following guide
 
 [Declarative Model definition using pytorch](declarative_torch.md)
 
-# `DataHandler`
-The pre-processing and preparation of input data is handled by `DataHandler` class.
-It can take a data in a variety of commonly found formats such as csv, xlsx and 
-prepares the data so that it can be fed to `Model` for training. This class
-works with modules such as `Imputation`, `Transformation` etc.
-The detailed documentation of `DataHandler` class can be found [here](datahandler.md)
-
 # `Learner` module for pytorch based models
 For pytorch based models, the `Learner` module comes handy.
 [Learner](pt_learner.md)

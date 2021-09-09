@@ -62,7 +62,7 @@ except ImportError:
 from ai4water.backend import tf
 from ai4water.utils.utils import JsonEncoder
 from ai4water.hyper_opt.utils import plot_convergences
-from ai4water.utils.SeqMetrics import RegressionMetrics
+from ai4water.post_processing.SeqMetrics import RegressionMetrics
 from ai4water.hyper_opt.utils import get_one_tpe_x_iter
 from ai4water.utils.utils import Jsonize, dateandtime_now
 from ai4water.hyper_opt.utils import skopt_space_from_hp_space
@@ -157,8 +157,8 @@ class HyperOpt(object):
     ```python
     >>>from ai4water import Model
     >>>from ai4water.hyper_opt import HyperOpt, Categorical, Integer, Real
-    >>>from ai4water.utils.datasets import load_u1
-    >>>from ai4water.utils.SeqMetrics import RegressionMetrics
+    >>>from ai4water.datasets import load_u1
+    >>>from ai4water.post_processing.SeqMetrics import RegressionMetrics
     >>>data = load_u1()
     >>>input_features = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
     >>>output_features = ['target']

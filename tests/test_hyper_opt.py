@@ -21,8 +21,8 @@ np.random.seed(313)
 
 from ai4water.tf_attributes import tf
 from ai4water.utils.utils import Jsonize
-from ai4water.utils.datasets import load_u1
-from ai4water.utils.SeqMetrics import RegressionMetrics
+from ai4water.datasets import load_u1
+from ai4water.post_processing.SeqMetrics import RegressionMetrics
 from ai4water.hyper_opt import HyperOpt, Real, Categorical, Integer
 
 if tf is not None:

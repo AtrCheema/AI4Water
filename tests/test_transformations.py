@@ -6,7 +6,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 import numpy as np
 import pandas as pd
 
-from ai4water.utils.transformations import Transformations
+from ai4water.pre_processing.transformations import Transformations
 
 from ai4water.tf_attributes import tf
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -15,7 +15,7 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.utils.datasets import load_u1
+from ai4water.datasets import load_u1
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])

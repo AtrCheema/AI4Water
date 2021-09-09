@@ -18,7 +18,7 @@ else:
     from ai4water import Model
 
 from ai4water.functional import Model as FModel
-from ai4water.utils.datasets import load_nasdaq, arg_beach
+from ai4water.datasets import load_nasdaq, arg_beach
 
 
 examples = 200

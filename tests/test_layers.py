@@ -15,7 +15,7 @@ else:
 
 from ai4water.functional import Model as FModel
 from ai4water import NBeatsModel
-from ai4water.utils.datasets import arg_beach, load_nasdaq
+from ai4water.datasets import arg_beach, load_nasdaq
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
@@ -65,6 +65,7 @@ def make_and_run(
         epochs=epochs,
         model={'layers': kwargs.pop('layers')},
         train_data='random',
+        transformation='minmax',
         **kwargs
     )
 

@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     to_torch_dataset, TorchMetrics = None, None
 
 from .utils.utils import dateandtime_now, find_best_weight
-from .utils.SeqMetrics.SeqMetrics import RegressionMetrics
+from ai4water.post_processing.SeqMetrics import RegressionMetrics
 from .utils.visualizations import regplot
 
 F = {

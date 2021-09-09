@@ -4,7 +4,7 @@
 import tensorflow as tf
 
 from ai4water import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 
 # TODO put code in @tf.function
 # TODO write validation code

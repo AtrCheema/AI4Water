@@ -5,7 +5,7 @@ import pandas as pd
 
 np.random.seed(313)
 
-from ai4water.utils.imputation import Imputation
+from ai4water.pre_processing.imputation import Imputation
 
 df = pd.DataFrame(np.random.random((10, 2)), columns=['a', 'b'])
 df.iloc[2, 0] = np.nan

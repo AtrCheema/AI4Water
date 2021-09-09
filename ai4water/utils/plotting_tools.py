@@ -17,7 +17,7 @@ except ModuleNotFoundError:
 
 from ai4water.backend import xgboost
 from ai4water.utils.utils import find_tot_plots, init_subplots
-from ai4water.utils.transformations import Transformations
+from ai4water.pre_processing.transformations import Transformations
 
 try:
     from ai4water.utils.utils_from_see_rnn import rnn_histogram

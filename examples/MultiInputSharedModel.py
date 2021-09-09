@@ -9,7 +9,7 @@ import numpy as np
 import os
 
 from ai4water import Model
-from ai4water.utils.visualizations import Visualizations
+from ai4water.utils.visualizations import PlotResults
 
 
 class MultiInputSharedModel(Model):
@@ -49,7 +49,7 @@ class MultiInputSharedModel(Model):
 
     def fit(self, st=0, en=None, indices=None, **callbacks):
 
-        visualizer = Visualizations(path=self.path)
+        visualizer = PlotResults(path=self.path)
 
         train_data = self.training_data(st=st, en=en, indices=indices)
 

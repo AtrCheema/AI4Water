@@ -1,6 +1,7 @@
 mkdocs
 mkdocstrings
 mkdocs-material
+mkdocs-autorefs
 h5py
 matplotlib
 numpy

@@ -7,7 +7,7 @@ import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from ai4water.utils.datasets import arg_beach, load_nasdaq
+from ai4water.datasets import arg_beach, load_nasdaq
 from ai4water import InputAttentionModel, DualAttentionModel
 
 

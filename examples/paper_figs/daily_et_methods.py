@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from ai4water.ETUtil import HargreavesSamani, ETBase, Penman, PriestleyTaylor
-from ai4water.utils.datasets import CAMELS_AUS
+from ai4water.datasets import CAMELS_AUS
 from ai4water.utils.utils import process_axis
 
 

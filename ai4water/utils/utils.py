@@ -1,6 +1,7 @@
 import os
 import json
 import wrapt
+import pprint
 import datetime
 import warnings
 from typing import Union
@@ -1404,3 +1405,35 @@ def plot_activations_along_inputs(
             plt.close('all')
 
     return
+
+
+def print_something(something, prefix=''):
+    """prints shape of some python object"""
+    if isinstance(something, np.ndarray):
+        print(f"{prefix} shape: ", something.shape)
+    elif isinstance(something, list):
+        print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
+    elif isinstance(something, dict):
+        print(f"{prefix} shape: ")
+        pprint.pprint({k: v.shape for k, v in something.items()}, width=40)
+    elif something is not None:
+        print(f"{prefix} shape: ", something.shape)
+        print(something)
+    else:
+        print(something)
+
+
+def maybe_three_outputs(data, teacher_forcing=False):
+    """num_outputs: how many outputs from data we want"""
+    if teacher_forcing:
+        num_outputs = 3
+    else:
+        num_outputs = 2
+
+    if num_outputs == 2:
+        if len(data) == 2:
+            return data[0], data[1]
+        elif len(data) == 3:
+            return data[0], data[2]
+    else:
+        return [data[0], data[1]], data[2]

@@ -8,8 +8,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from ai4water.utils.datasets import CAMELS_AUS
+
 from ai4water import Model
+from ai4water.datasets import CAMELS_AUS
 from ai4water.hyper_opt import HyperOpt, Categorical, Real, Integer
 from ai4water.utils.utils import dateandtime_now
 

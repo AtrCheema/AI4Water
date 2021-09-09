@@ -3,7 +3,7 @@
 # to two LSTM layers.
 
 from ai4water import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 
 df = arg_beach()
 input_features = list(df.columns)[0:-1]

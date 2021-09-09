@@ -11,8 +11,7 @@ import tensorflow as tf
 
 from ai4water import Model
 from ai4water.functional import Model as FModel
-from ai4water.utils.datasets import load_nasdaq, arg_beach
-from ai4water.utils.visualizations import Interpret
+from ai4water.datasets import load_nasdaq, arg_beach
 from ai4water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
 
 
@@ -377,13 +376,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(int(x[-1].sum()), 51261)
         self.assertEqual(int(y[-1].sum()), 254565)
         return
-
-    def test_plot_feature_importance(self):
-
-        model = build_model(input_features=in_cols,
-                            output_features=out_cols,
-                            model=default_model)
-        Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
     def test_same_test_val_data_with_chunk(self):
         #TODO not a good test, must check that individual elements in returned arrayare correct

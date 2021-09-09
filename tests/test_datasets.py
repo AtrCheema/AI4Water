@@ -8,13 +8,13 @@ from typing import Union
 import pandas as pd
 import xarray as xr
 
-from ai4water.utils.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
-from ai4water.utils.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
-from ai4water.utils.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
-from ai4water.utils.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
-from ai4water.utils.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
-from ai4water.utils.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
-from ai4water.utils.datasets import GeoChemMatane
+from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
+from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
+from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
+from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
+from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
+from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
+from ai4water.datasets import GeoChemMatane
 
 
 
@@ -264,7 +264,7 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
-        ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\utils\datasets\data\CAMELS\CAMELS-GB")
+        ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\datasets\data\CAMELS\CAMELS-GB")
         test_dataset(ds_gb, 671, 16436, 290, 10)
         return
 

@@ -443,6 +443,9 @@ class Model(MODEL, BaseModel):
     def call_260(self, *args, **kwargs):
         return self.call_250(*args, **kwargs)
 
+    def call_200(self, *args, **kwargs):
+        return self.call_210(*args, **kwargs)
+
     def call_250(self, inputs, training=None, mask=None, run_call=True):
 
         self.treat_casted_inputs(inputs)

@@ -4,7 +4,7 @@ import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
-from ai4water.utils.datasets import arg_beach, load_u1
+from ai4water.datasets import arg_beach, load_u1
 from ai4water.hyper_opt import Categorical, Integer, Real
 
 

@@ -1,4 +1,4 @@
-# BaseModel
+**`BaseModel`**
 ::: ai4water._main.BaseModel
     handler: python
     selection:
@@ -16,7 +16,7 @@
     rendering:
         show_root_heading: true
 
-# Model subclassing
+**`Model subclassing`**
 ::: ai4water.main.Model
     handler: python
     selection:
@@ -29,7 +29,7 @@
     rendering:
         show_root_heading: true
 
-# Model for functional API
+**`Model for functional API`**
 ::: ai4water.functional.Model
     handler: python
     selection:

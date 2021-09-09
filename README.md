@@ -92,10 +92,11 @@ Build a `Model` by providing all the arguments to initiate it.
 
 ```python
 from ai4water import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 data = arg_beach()
 model = Model(
-        model = {'layers': {"LSTM": 64}},
+        model = {'layers': {"LSTM": 64,
+                            'Dense': 1}},
         data = data,
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],     # columns in csv file to be used as output
@@ -116,6 +117,7 @@ true, predicted = model.predict()
 The model object returned from initiating AI4Wwater's `Model` is same as that of Keras' `Model`
 We can verify it by checking its type
 ```python
+import tensorflow as tf
 isinstance(model, tf.keras.Model)  # True
 ``` 
 
@@ -154,7 +156,7 @@ classification and regression problems by making use of `model` keyword argument
 However, integration of ML based models is not complete yet.
 ```python
 from ai4water import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 
 data = arg_beach()  # path for data file
 

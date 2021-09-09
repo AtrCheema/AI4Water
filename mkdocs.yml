@@ -16,9 +16,11 @@ plugins:
 
 pages:
 - Model: 'modelbuilding.md'
-- Performance metrics: 'metrics.md'
-- hyperparameter optimization: 'hpo.md'
+- Experiments: 'experiments.md'
+- Hyperparameter optimization: 'hpo.md'
+- preprocessing: 'preprocessing.md'
+- postprocessing: 'postprocessing.md'
+- Exploratory data analysis: 'eda.md'
 - Evapotranspiration: 'evapotranspiration.md'
-- datasets: 'datasets.md'
-- experiments: 'experiments.md'
+- Datasets: 'datasets.md'
 - utils: 'utils.md'

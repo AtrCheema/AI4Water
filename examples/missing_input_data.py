@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from ai4water import DualAttentionModel
-from ai4water.utils.datasets import load_nasdaq
+from ai4water.datasets import load_nasdaq
 
 tf.compat.v1.disable_eager_execution()
 

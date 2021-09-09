@@ -5,7 +5,7 @@ site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import pandas as pd
 
-from ai4water.utils.datasets import WeatherJena, SWECanada, MtropicsLaos
+from ai4water.datasets import WeatherJena, SWECanada, MtropicsLaos
 
 # wj = WeatherJena()
 # df = wj.fetch()

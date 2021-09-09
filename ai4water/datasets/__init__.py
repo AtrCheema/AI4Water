@@ -3,44 +3,44 @@ from typing import Union
 import os
 import pandas as pd
 
-from ai4water.utils.datasets.camels import Camels
-from ai4water.utils.datasets.camels import CAMELS_AUS
-from ai4water.utils.datasets.camels import CAMELS_CL
-from ai4water.utils.datasets.camels import CAMELS_BR
-from ai4water.utils.datasets.camels import CAMELS_GB
-from ai4water.utils.datasets.camels import CAMELS_US
-from ai4water.utils.datasets.camels import LamaH
-from ai4water.utils.datasets.camels import HYSETS
-from ai4water.utils.datasets.camels import HYPE
+from .camels import Camels
+from .camels import CAMELS_AUS
+from .camels import CAMELS_CL
+from .camels import CAMELS_BR
+from .camels import CAMELS_GB
+from .camels import CAMELS_US
+from .camels import LamaH
+from .camels import HYSETS
+from .camels import HYPE
 
-from ai4water.utils.datasets.datasets import Weisssee
-from ai4water.utils.datasets.datasets import WaterChemEcuador
-from ai4water.utils.datasets.datasets import WaterChemVictoriaLakes
-from ai4water.utils.datasets.datasets import WeatherJena
-from ai4water.utils.datasets.datasets import WQCantareira
-from ai4water.utils.datasets.datasets import WQJordan
-from ai4water.utils.datasets.datasets import FlowSamoylov
-from ai4water.utils.datasets.datasets import FlowSedDenmark
-from ai4water.utils.datasets.datasets import StreamTempSpain
-from ai4water.utils.datasets.datasets import RiverTempEroo
-from ai4water.utils.datasets.datasets import HoloceneTemp
-from ai4water.utils.datasets.datasets import FlowTetRiver
-from ai4water.utils.datasets.datasets import SedimentAmersee
-from ai4water.utils.datasets.datasets import HydrocarbonsGabes
-from ai4water.utils.datasets.datasets import HydroChemJava
-from ai4water.utils.datasets.datasets import PrecipBerlin
-from ai4water.utils.datasets.datasets import GeoChemMatane
-from ai4water.utils.datasets.datasets import WQJordan2
-from ai4water.utils.datasets.datasets import YamaguchiClimateJp
-from ai4water.utils.datasets.datasets import FlowBenin
-from ai4water.utils.datasets.datasets import HydrometricParana
-from ai4water.utils.datasets.datasets import RiverTempSpain
-from ai4water.utils.datasets.datasets import RiverIsotope
-from ai4water.utils.datasets.datasets import EtpPcpSamoylov
-from ai4water.utils.datasets.datasets import SWECanada
-from ai4water.utils.datasets.datasets import MtropicsLaos
-from ai4water.utils.datasets.datasets import MtropcsThailand
-from ai4water.utils.datasets.datasets import MtropicsVietnam
+from .datasets import Weisssee
+from .datasets import WaterChemEcuador
+from .datasets import WaterChemVictoriaLakes
+from .datasets import WeatherJena
+from .datasets import WQCantareira
+from .datasets import WQJordan
+from .datasets import FlowSamoylov
+from .datasets import FlowSedDenmark
+from .datasets import StreamTempSpain
+from .datasets import RiverTempEroo
+from .datasets import HoloceneTemp
+from .datasets import FlowTetRiver
+from .datasets import SedimentAmersee
+from .datasets import HydrocarbonsGabes
+from .datasets import HydroChemJava
+from .datasets import PrecipBerlin
+from .datasets import GeoChemMatane
+from .datasets import WQJordan2
+from .datasets import YamaguchiClimateJp
+from .datasets import FlowBenin
+from .datasets import HydrometricParana
+from .datasets import RiverTempSpain
+from .datasets import RiverIsotope
+from .datasets import EtpPcpSamoylov
+from .datasets import SWECanada
+from .datasets import MtropicsLaos
+from .datasets import MtropcsThailand
+from .datasets import MtropicsVietnam
 
 
 def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
@@ -90,7 +90,7 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     Examples
     --------
     ```python
-    >>>from ai4water.utils.datasets import arg_beach
+    >>>from ai4water.datasets import arg_beach
     >>>df = arg_beach()
     ```
     """

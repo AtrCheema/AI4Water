@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from ai4water import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 
 beach_data:pd.DataFrame = arg_beach()
 

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from ai4water.utils.visualizations import Visualizations
+from ai4water.utils.visualizations import PlotResults
 
 
 def get_history(keys, add_val=False):
@@ -17,37 +17,37 @@ def get_history(keys, add_val=False):
 class TestLossCurve(unittest.TestCase):
 
     def test_plot_loss_1(self):
-        visualizer = Visualizations()
+        visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss']))
         visualizer.plot_loss(get_history(['loss'], True))
         return
 
     def test_plot_loss_2(self):
-        visualizer = Visualizations()
+        visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss', 'nse']))
         visualizer.plot_loss(get_history(['loss', 'nse'], True))
         return
 
     def test_plot_loss_3(self):
-        visualizer = Visualizations()
+        visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2']))
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2'], True))
         return
 
     def test_plot_loss_4(self):
-        visualizer = Visualizations()
+        visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge']))
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge'], True))
         return
 
     def test_plot_loss_5(self):
-        visualizer = Visualizations()
+        visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias']))
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias'], True))
         return
 
     def test_plot_loss_6(self):
-        visualizer = Visualizations()
+        visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias']))
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias'], True))
         return

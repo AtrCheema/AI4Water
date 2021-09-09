@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from ai4water import DataHandler
-from ai4water._data import MultiLocDataHandler, SiteDistributedDataHandler
-from ai4water.utils.datasets import load_u1, arg_beach
+from ai4water.pre_processing import DataHandler, SiteDistributedDataHandler
+from ai4water.pre_processing._datahandler import MultiLocDataHandler
+from ai4water.datasets import load_u1, arg_beach
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)

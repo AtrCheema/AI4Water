@@ -66,7 +66,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'AI4Water/utils/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
+    package_data={'AI4Water/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
     include_package_data=True,
 
     classifiers=[
@@ -91,10 +91,16 @@ setup(
               'ai4water/models',
               'ai4water/hyper_opt',
               'ai4water/utils',
-              'ai4water/utils/SeqMetrics',
-              'ai4water/utils/datasets',
+              'ai4water/pre_processing',
+              'ai4water/post_processing/'
+              'ai4water/post_processing/SeqMetrics',
+              'ai4water/post_processing/explain',
+              'ai4water/post_processing/interpret',
+              'ai4water/post_processing/visualize',
+              'ai4water/datasets',
               'ai4water/ETUtil',
-              'ai4water/experiments'
+              'ai4water/experiments',
+              'ai4water/eda'
               ],
 
     install_requires=min_requirements,

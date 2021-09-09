@@ -6,7 +6,7 @@ assert int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 230, f"""Th
         tensorflow versions above 2.3.0. Your version is {tf.__version__}"""
 
 from ai4water.functional import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 
 
 class CustomModel(tf.keras.models.Model):

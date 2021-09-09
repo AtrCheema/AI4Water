@@ -27,9 +27,14 @@ SOFTWARE.
 
 from collections import OrderedDict
 
-import tensorflow.keras.backend as K
-from tensorflow.keras import Sequential
-from tensorflow.keras.models import Model
+from .backend import tf, keras
+
+if keras is not None:
+    K = keras.backend
+    Sequential = tf.keras.Sequential
+    Model = tf.keras.models.Model
+else:
+    K, Sequential, Model = None, None, None
 
 
 def is_placeholder(n):

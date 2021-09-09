@@ -3,7 +3,7 @@
 import tensorflow as tf
 
 from ai4water import Model
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()  # because we want to view model
 

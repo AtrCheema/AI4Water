@@ -1,4 +1,3 @@
-import pprint
 import os
 import copy
 import json
@@ -11,11 +10,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold, LeaveOneOut
 from sklearn.preprocessing import OneHotEncoder
 
-from .utils.utils import prepare_data, jsonize, to_datetime_index
-from .utils.datasets import all_datasets
-from .utils.transformations import Transformations
-from .utils.imputation import Imputation
-import ai4water.utils.datasets as datasets
+from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index
+from ai4water.datasets import all_datasets
+from ai4water.pre_processing.transformations import Transformations
+from ai4water.pre_processing.imputation import Imputation
+import ai4water.datasets as datasets
+from ai4water.utils.utils import print_something
 
 try:
     import h5py
@@ -2178,20 +2178,6 @@ def copy_features(features):
     else:
         raise NotImplementedError
     return _features
-
-
-def print_something(something, prefix=''):
-    """prints shape of some python object"""
-    if isinstance(something, np.ndarray):
-        print(f"{prefix} shape: ", something.shape)
-    elif isinstance(something, list):
-        print(f"{prefix} shape: ", [thing.shape for thing in something if isinstance(thing, np.ndarray)])
-    elif isinstance(something, dict):
-        print(f"{prefix} shape: ")
-        pprint.pprint({k: v.shape for k, v in something.items()}, width=40)
-    elif something is not None:
-        print(f"{prefix} shape: ", something.shape)
-        print(something)
 
 
 def conform_shape(data, shape, features=None):

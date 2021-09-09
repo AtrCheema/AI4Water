@@ -12,7 +12,7 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 from ai4water.private_layers import ConditionalRNN
 
 inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
@@ -258,7 +258,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         num_hrus = 7
         lookback = 5
 
-        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) in [210, 250]:
+        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) in [210, 250, 115]:
             # todo, write __call__ for custom layer for tf 2.1 and 2.5
             return
 

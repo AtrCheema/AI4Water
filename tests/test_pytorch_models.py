@@ -2,8 +2,8 @@ import os
 import site   # so that AI4Water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
+from ai4water.datasets import arg_beach, load_u1
 from ai4water.pytorch_models import HARHNModel, IMVModel
-from ai4water.utils.datasets import arg_beach, load_u1
 
 lookback = 10
 epochs = 50
