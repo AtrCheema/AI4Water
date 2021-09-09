@@ -730,7 +730,7 @@ class MLRegressionExperiments(Experiments):
         >>>inputs = list(data.columns)[0:-1]  # define input and output columns in data
         >>>outputs = list(data.columns)[-1]
         >>>comparisons = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs,
-        ...                                      input_nans={'SimpleImputer': {'strategy':'mean'}} )
+        ...                                      nan_filler= {'method': 'KNNImputer', 'features': inputs} )
         >>>comparisons.fit(run_type="dry_run")
         >>>comparisons.compare_errors('r2')
         >>> # find out the models which resulted in r2> 0.5
@@ -738,7 +738,7 @@ class MLRegressionExperiments(Experiments):
         >>>best_models = [m[1] for m in best_models.values()]
         >>> # now build a new experiment for best models and otpimize them
         >>>comparisons = MLRegressionExperiments(data=data, inputs_features=inputs, output_features=outputs,
-        ...                                   input_nans={'SimpleImputer': {'strategy': 'mean'}}, exp_name="BestMLModels")
+        ...                                   nan_filler= {'method': 'KNNImputer', 'features': inputs}, exp_name="BestMLModels")
         >>>comparisons.fit(run_type="optimize", include=best_models)
         >>>comparisons.compare_errors('r2')
         >>>comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
