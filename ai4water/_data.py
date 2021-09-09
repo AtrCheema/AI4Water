@@ -288,7 +288,8 @@ class DataHandler(AttributeContainer):
                 attr = self.config[item]
                 if not isinstance(attr, dict):
                     attr = {key:attr for key in self.data.keys()}
-                assert len(attr) == len(self.data)
+                assert len(attr) == len(self.data), f"There are {len(attr)} values for {item} while" \
+                                                    f" {len(self.data)} values for data"
                 return attr
 
             else:
