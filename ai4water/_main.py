@@ -22,7 +22,7 @@ except ImportError:
     from scipy.stats import median_absolute_deviation as mad
 
 from ai4water.nn_tools import NN
-from ai4water.pre_processing._datahandler import DataHandler
+from ai4water.pre_processing.datahandler import DataHandler
 from ai4water.backend import tpot_models
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
@@ -1121,7 +1121,7 @@ class BaseModel(NN, Plots):
                                         verbose= self.verbosity,
                                         **kwargs)
         else:
-            predicted = self.predict_fn(inputs, **kwargs)
+            predicted = self.predict_ml_models(inputs, **kwargs)
 
         if true_outputs is None:
             return true_outputs, predicted
@@ -1156,6 +1156,10 @@ class BaseModel(NN, Plots):
             self.plot_all_qs(true_outputs, predicted)
 
         return true_outputs, predicted
+
+    def predict_ml_models(self, inputs, **kwargs):
+        """so that it can be overwritten easily for ML models"""
+        return self.predict_fn(inputs, **kwargs)
 
     def inverse_transform(self,
                           true:Union[np.ndarray, dict],
