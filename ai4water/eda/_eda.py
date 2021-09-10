@@ -1,6 +1,5 @@
 import os
 
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,7 +26,7 @@ class EDA(Plot):
             path=None
     ):
         self.data = data
-        self.in_cols = in_cols,
+        self.in_cols = in_cols
         self.out_cols = out_cols
 
         super().__init__(path)
@@ -412,7 +411,7 @@ class EDA(Plot):
         plt.close('all')
 
         if cols is None:
-            cols = data.columns
+            cols = data.columns.to_list()
 
         corr = data[cols].corr(method=method)
 
@@ -511,6 +510,7 @@ class EDA(Plot):
                 cols += self.in_cols
                 fname += "inputs_"
             if outputs:
+                cols += self.out_cols
                 fname += "outptuts_"
         else:
             assert isinstance(cols, list)
