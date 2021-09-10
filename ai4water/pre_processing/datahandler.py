@@ -22,6 +22,8 @@ try:
 except ModuleNotFoundError:
     h5py = None
 
+# todo
+# detrend
 
 class AttributeContainer(object):
 
@@ -226,7 +228,7 @@ class DataHandler(AttributeContainer):
         ```python
         import pandas as pd
         import numpy as np
-        from ai4water import DataHandler
+        from ai4water.pre_processing import DataHandler
         data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
         data_handler = DataHandler(data=data, lookback=5)
         x,y = data_handler.training_data()
