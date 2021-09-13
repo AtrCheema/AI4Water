@@ -11,9 +11,10 @@ except ModuleNotFoundError:
     sns = None
 
 from ai4water.utils.utils import _missing_vals
+from ai4water.utils.visualizations import Plot
 from ai4water.utils.utils import find_tot_plots
 from ai4water.pre_processing import Transformations
-from ai4water.utils.visualizations import Plot
+from ai4water.utils.utils import  save_config_file, dateandtime_now, ts_features
 
 
 class EDA(Plot):
@@ -305,11 +306,18 @@ class EDA(Plot):
                 if freq is None:
                     kwargs = plot_style(sub_df, **kwargs)
                     axis = sub_df.plot(**kwargs)
-                    for ax in axis:
-                        ax.legend(**leg_kws)
-                        ax.set_ylabel(ax.get_ylabel(), **label_kws)
-                        ax.set_xlabel(ax.get_xlabel(), **label_kws)
-                        ax.tick_params(**tick_kws)
+                    if kwargs.get('subplots', False):
+                        for ax in axis:
+                            ax.legend(**leg_kws)
+                            ax.set_ylabel(ax.get_ylabel(), **label_kws)
+                            ax.set_xlabel(ax.get_xlabel(), **label_kws)
+                            ax.tick_params(**tick_kws)
+                    else:
+                        axis.legend(**leg_kws)
+                        axis.set_ylabel(axis.get_ylabel(), **label_kws)
+                        axis.set_xlabel(axis.get_xlabel(), **label_kws)
+                        axis.tick_params(**tick_kws)
+
                     self.save_or_show(save=save, fname=f'input_{prefix}_{st}_{en}', where='data')
                 else:
                     self.plot_df_with_freq(sub_df, freq, save, prefix=f'{prefix}_{st}_{en}', **kwargs)
@@ -322,6 +330,8 @@ class EDA(Plot):
 
         st_year = df.index[0].year
         en_year = df.index[-1].year
+
+        assert isinstance(df.index, pd.DatetimeIndex)
 
         for yr in range(st_year, en_year + 1):
 
@@ -355,7 +365,7 @@ class EDA(Plot):
         return
 
 
-    def feature_feature_corr(self, cols=None, remove_targets=True, save=True, **kwargs):
+    def feature_feature_corr(self, cols=None, remove_targets=False, save=True, **kwargs):
         """
         >>>from ai4water.eda import EDA
         >>>vis = EDA(data)
@@ -623,6 +633,69 @@ class EDA(Plot):
         self.save_or_show(save=save, fname=fname, where='data', dpi=dpi)
         return
 
+    def stats(self, precision=3, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
+        """Finds the stats of inputs and outputs and puts them in a json file.
+        inputs: bool
+        fpath: str, path like
+        out_fmt: str, in which format to save. csv or json"""
+        cols = []
+        fname = "data_description_"
+        if inputs:
+            cols += self.in_cols
+            fname += "inputs_"
+        if outputs:
+            cols += self.out_cols
+            fname += "outputs_"
+
+        fname += str(dateandtime_now())
+
+        def save_stats(_description, _fpath):
+
+            if out_fmt == "csv":
+                pd.DataFrame.from_dict(_description).to_csv(_fpath + ".csv")
+            else:
+                save_config_file(others=_description, path=_fpath + ".json")
+
+        description = {}
+        if isinstance(self.data, pd.DataFrame):
+            description = {}
+            for col in cols:
+                if col in self.data:
+                    description[col] = ts_features(self.data[col], precision=precision, name=col)
+
+            fpath = os.path.join(self.path, fname) if fpath is None else fpath
+            save_stats(description, fpath)
+
+        elif isinstance(self.data, list):
+            description = {}
+
+            for idx, data in enumerate(self.data):
+                _description = {}
+
+                if isinstance(data, pd.DataFrame):
+
+                    for col in cols:
+                        if col in data:
+                            _description[col] = ts_features(data[col], precision=precision, name=col)
+
+                description['data' + str(idx)] = _description
+                _fpath = os.path.join(self.path, fname + f'_{idx}') if fpath is None else fpath
+                save_stats(_description, _fpath)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                _description = {}
+                if isinstance(data, pd.DataFrame):
+                    for col in data.columns:
+                        _description[col] = ts_features(data[col], precision=precision, name=col)
+
+                description[f'data_{data_name}'] = _description
+                _fpath = os.path.join(self.path, fname + f'_{data_name}') if fpath is None else fpath
+                save_stats(_description, _fpath)
+        else:
+            print(f"description can not be found for data type of {self.data.__class__.__name__}")
+
+        return description
 
 
 def set_axis_paras(axis, leg_kws, label_kws, tick_kws):

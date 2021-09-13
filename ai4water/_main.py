@@ -1514,100 +1514,36 @@ class BaseModel(NN, Plots):
             print("data is None so eda can not be performed.")
             return
         # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
-        visualizer = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols)
+        eda = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols)
 
         # plot number if missing vals
-        visualizer.plot_missing(cols=cols)
+        eda.plot_missing(cols=cols)
 
         # show data as heatmapt
-        visualizer.heatmap(cols=cols)
+        eda.heatmap(cols=cols)
 
         # line plots of input/output data
-        visualizer.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
+        eda.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
-        visualizer.feature_feature_corr(cols=cols)
+        eda.feature_feature_corr(cols=cols)
 
         # print stats about input/output data
-        self.stats()
+        eda.stats()
 
         # box-whisker plot
         self.box_plot(freq=freq)
 
         # principle components
-        visualizer.plot_pcs()
+        eda.plot_pcs()
 
         # scatter plots of input/output data
-        visualizer.grouped_scatter(cols=cols)
+        eda.grouped_scatter(cols=cols)
 
         # distributions as histograms
-        visualizer.plot_histograms(cols=cols)
+        eda.plot_histograms(cols=cols)
 
         return
-
-    def stats(self, precision=3, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
-        """Finds the stats of inputs and outputs and puts them in a json file.
-        inputs: bool
-        fpath: str, path like
-        out_fmt: str, in which format to save. csv or json"""
-        cols = []
-        fname = "data_description_"
-        if inputs:
-            cols += self.in_cols
-            fname += "inputs_"
-        if outputs:
-            cols += self.out_cols
-            fname += "outputs_"
-
-        fname += str(dateandtime_now())
-
-        def save_stats(_description, _fpath):
-
-            if out_fmt == "csv":
-                pd.DataFrame.from_dict(_description).to_csv(_fpath + ".csv")
-            else:
-                save_config_file(others=_description, path=_fpath + ".json")
-
-        description = {}
-        if isinstance(self.data, pd.DataFrame):
-            description = {}
-            for col in cols:
-                if col in self.data:
-                    description[col] = ts_features(self.data[col], precision=precision, name=col)
-
-            fpath = os.path.join(self.data_path, fname) if fpath is None else fpath
-            save_stats(description, fpath)
-
-        elif isinstance(self.data, list):
-            description = {}
-
-            for idx, data in enumerate(self.data):
-                _description = {}
-
-                if isinstance(data, pd.DataFrame):
-
-                    for col in cols:
-                        if col in data:
-                            _description[col] = ts_features(data[col], precision=precision, name=col)
-
-                description['data' + str(idx)] = _description
-                _fpath = os.path.join(self.data_path, fname + f'_{idx}') if fpath is None else fpath
-                save_stats(_description, _fpath)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                _description = {}
-                if isinstance(data, pd.DataFrame):
-                    for col in data.columns:
-                        _description[col] = ts_features(data[col], precision=precision, name=col)
-
-                description[f'data_{data_name}'] = _description
-                _fpath = os.path.join(self.data_path, fname + f'_{data_name}') if fpath is None else fpath
-                save_stats(_description, _fpath)
-        else:
-            print(f"description can not be found for data type of {self.data.__class__.__name__}")
-
-        return description
 
     def update_info(self):
 
