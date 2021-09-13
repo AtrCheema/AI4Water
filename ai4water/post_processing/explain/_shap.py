@@ -69,7 +69,7 @@ class ShapMLExplainer(ShapExplainerMixin):
     Example
     --------
     ```python
-    from ai4water.utils.visualization import ShapMLInterpreter
+    from ai4water.utils.visualization import ShapMLExplainer
     from sklearn.model_selection import train_test_split
     from sklearn import linear_model
     import shap
@@ -79,8 +79,8 @@ class ShapMLExplainer(ShapExplainerMixin):
     lin_regr = linear_model.LinearRegression()
     lin_regr.fit(X_train, y_train)
 
-    interpreter = ShapSklearnInterpreter(lin_regr, X_test, X_train, 10)
-    interpreter()
+    explainer = ShapMLExplainer(lin_regr, X_test, X_train, num_means=10)
+    explainer()
     ```
     """
 
@@ -248,7 +248,7 @@ class ShapMLExplainer(ShapExplainerMixin):
         return
 
     def summary_plot(self, name="summary_plot"):
-
+        """Plots the summary plot of SHAP package."""
         plt.close('all')
 
         shap.summary_plot(self.shap_values, self.data, show=False)
@@ -293,7 +293,8 @@ class ShapMLExplainer(ShapExplainerMixin):
         return
 
     def waterfall_plot_all_examples(self, name:str="waterfall"):
-
+        """Plots the waterfall plot of SHAP package for all the examples/instances
+        from test_data."""
         for i in range(len(self.data)):
             self.waterfall_plot_single_example(i, name=name)
 
@@ -484,6 +485,7 @@ class ShapDLExplainer(ShapExplainerMixin):
             return K.get_session().run(self.model.get_layer(layer).input, feed_dict)
 
     def shap_values(self, ranked_outputs=None, **kwargs):
+        """Gets the SHAP values"""
         data = self.data.values if isinstance(self.data, pd.DataFrame) else self.data
         if self.explainer.__class__.__name__ == "Deep":
             return self.explainer.shap_values(data)
@@ -497,7 +499,7 @@ class ShapDLExplainer(ShapExplainerMixin):
             return shap_values
 
     def plot_shap_values(self, name:str="shap_values", show:bool=False, interpolation=None):
-
+        """Plots the SHAP values."""
         shap_values = self.shap_values()
         if isinstance(shap_values, list):
             shap_values:np.ndarray = shap_values[0]
