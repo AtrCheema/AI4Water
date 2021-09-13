@@ -6,6 +6,8 @@ from typing import Union, Tuple
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold, LeaveOneOut, TimeSeriesSplit
 from sklearn.preprocessing import OneHotEncoder
@@ -16,6 +18,8 @@ from ai4water.pre_processing.transformations import Transformations
 from ai4water.pre_processing.imputation import Imputation
 import ai4water.datasets as datasets
 from ai4water.utils.utils import print_something
+
+cmap_cv = plt.cm.coolwarm
 
 try:
     import h5py
@@ -49,7 +53,7 @@ class DataHandler(AttributeContainer):
     - validation_data: returns validation data
     - test_data: returns test data
     - from_disk:
-    - kfold_splits: creates splits using `kfold` of sklearn
+    - KFold_splits: creates splits using `KFold` of sklearn
     - LeaveOneOut_splits: creates splits using `LeaveOneOut` of sklearn
     - TimeSeriesSplit_splits: creates splits using `TimeSeriesSplit` of sklearn
 
@@ -717,7 +721,7 @@ class DataHandler(AttributeContainer):
         else:
             raise NotImplementedError(f"Can not determine output features for data of type {self.data.__class__.__name__}")
 
-    def kfold_splits(self, n_splits=5):
+    def KFold_splits(self, n_splits=5):
         """returns an iterator for kfold cross validation.
         The iterator yields two tuples of training and test x,y pairs.
         The iterator on every iteration returns following
@@ -729,17 +733,15 @@ class DataHandler(AttributeContainer):
         ```python
         >>>data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
         >>>data_handler = DataHandler(data=data, config={'lookback': 1})
-        >>>kfold_splits = data_handler.kfold_splits()
+        >>>kfold_splits = data_handler.KFold_splits()
         >>>for (train_x, train_y), (test_x, test_y) in kfold_splits:
         ...    print(train_x, train_y, test_x, test_y)
         ```
         """
 
-        x,y = self._get_xy()
+        x, y = self._get_xy()
 
-        kf = KFold(n_splits=n_splits, random_state=self.config['seed'] if self.config['shuffle'] else None,
-                   shuffle=self.config['shuffle'])
-        spliter = kf.split(x)
+        spliter = self._get_kfold_splitter(x=x, n_splits=n_splits)
 
         for tr_idx, test_idx in spliter:
 
@@ -770,6 +772,82 @@ class DataHandler(AttributeContainer):
         for tr_idx, test_idx in tscv.split(x):
 
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
+
+    def _get_kfold_splitter(self, x, n_splits=5):
+
+        kf = KFold(n_splits=n_splits, random_state=self.config['seed'] if self.config['shuffle'] else None,
+                   shuffle=self.config['shuffle'])
+        spliter = kf.split(x)
+
+        return spliter
+
+    def plot_KFold_splits(self, n_splits=5, show=True, **kwargs):
+        """Plots the indices of kfold splits"""
+
+        x, y = self._get_xy()
+
+        spliter = self._get_kfold_splitter(x=x, n_splits=n_splits)
+
+        self._plot_splits(spliter, x, title="KFoldCV", show=show, **kwargs)
+
+        return
+
+    def plot_LeaveOneOut_splits(self, show=True, **kwargs):
+        """Plots the indices obtained from LeaveOneOut strategy"""
+
+        x, y = self._get_xy()
+
+        spliter = LeaveOneOut().split(x)
+
+        self._plot_splits(spliter=spliter, x=x, title="LeaveOneOutCV", show=show, **kwargs)
+
+        return
+
+    def plot_TimeSeriesSplit_splits(self, n_splits=5, show=True, **kwargs):
+        """Plots the indices obtained from TimeSeriesSplit strategy"""
+
+        x,y = self._get_xy()
+
+        spliter = TimeSeriesSplit(n_splits=n_splits, **kwargs).split(x)
+
+        self._plot_splits(spliter=spliter, x=x, title="TimeSeriesCV", show=show, **kwargs)
+
+        return
+
+    def _plot_splits(self, spliter, x, show=True,  **kwargs):
+
+        splits = list(spliter)
+
+        figsize = kwargs.get('figsize', (10, 8))
+        legend_fs = kwargs.get('legend_fs', 20)
+        legend_pos = kwargs.get('legend_pos', (1.02, 0.8))
+        title = kwargs.get("title", "CV")
+
+        plt.close('all')
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+        for ii, split in enumerate(splits):
+            indices = np.array([np.nan] * len(x))
+            indices[split[0]] = 1
+            indices[split[1]] = 0
+
+            ax.scatter(range(len(indices)), [ii + .5] * len(indices),
+                       c=indices, marker='_', lw=10, cmap=cmap_cv,
+                       vmin=-.2, vmax=1.2)
+
+        yticklabels = list(range(len(splits)))
+
+        ax.set(yticks=np.arange(len(splits)) + .5, yticklabels=yticklabels, xlabel='Sample index',
+               ylabel="CV iteration")
+        ax.set_title(title, fontsize=20)
+
+        ax.legend([Patch(color=cmap_cv(.8)), Patch(color=cmap_cv(.02))], ['Training set', 'Test set'],
+                  loc=legend_pos, fontsize=legend_fs)
+
+        if show:
+            plt.show()
+        return
 
     def _get_xy(self):
         if self.teacher_forcing:

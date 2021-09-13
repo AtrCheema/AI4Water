@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+from ai4water import Model
 from ai4water.pre_processing import DataHandler, SiteDistributedDataHandler
-from ai4water.pre_processing._datahandler import MultiLocDataHandler
+from ai4water.pre_processing.datahandler import MultiLocDataHandler
 from ai4water.datasets import load_u1, arg_beach
 
 os.environ['PYTHONHASHSEED'] = '313'
@@ -169,7 +170,7 @@ def check_kfold_splits(data_handler):
 
     if data_handler.source_is_df:
 
-        splits = data_handler.kfold_splits()
+        splits = data_handler.KFold_splits()
 
         for (train_x, train_y), (test_x, test_y) in splits:
 
@@ -1351,6 +1352,38 @@ def test_random_with_intervals():
     return
 
 
+def make_cross_validator(cv, **kwargs):
+
+    model = Model(
+        model={'randomforestregressor': {}},
+        data=arg_beach(),
+        cross_validator=cv,
+        val_metric="mse",
+        **kwargs
+    )
+
+    return model
+
+
+class TestCVs(object):
+
+    def test_kfold(self):
+        model = make_cross_validator(cv={'TimeSeriesSplit': {'n_splits': 5}})
+        model.cross_val_score()
+        model.dh.plot_TimeSeriesSplit_splits(show=False)
+        return
+
+    def test_loocv(self):
+        model = make_cross_validator(cv={'KFold': {'n_splits': 5}})
+        model.cross_val_score()
+        model.dh.plot_KFold_splits(show=False)
+        return
+
+    def test_tscv(self):
+        model = make_cross_validator(cv={'LeaveOneOut': {}}, test_fraction=0.6)
+        model.cross_val_score()
+        model.dh.plot_LeaveOneOut_splits(show=False)
+        return
 
 #
 # class TestDataLoader(unittest.TestCase):
@@ -1701,6 +1734,11 @@ test_multisource_basic()
 test_multisource_basic2()
 test_multisource_basic3()
 # #test_multisource_basic4() todo
+
+cv_tester = TestCVs()
+cv_tester.test_loocv()
+cv_tester.test_tscv()
+cv_tester.test_kfold()
 
 
 # TestAllCases(input_features = ['a', 'b'],

@@ -8,9 +8,12 @@
             - validation_data
             - test_data
             - inverse_transform
-            - kfold_splits
+            - KFold_splits
             - LeaveOneOut_splits
             - TimeSeriesSplit_splits
+            - plot_KFold_splits
+            - plot_LeaveOneOut_splits
+            - plot_TimeSeriesSplit_splits
     rendering:
         show_root_heading: true
 
