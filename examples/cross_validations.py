@@ -6,11 +6,20 @@ from ai4water.datasets import arg_beach
 model = Model(
     model = {'randomforestregressor': {}},
     data = arg_beach(),
-    cross_validator = {'kfold': {'n_splits': 5}},
-    val_metric="mse"
+    cross_validator = {'TimeSeriesSplit': {'n_splits': 5}},
+    val_metric="r2"
 )
 
-val_score = model.cross_val_score()
+tssplit_score = model.cross_val_score()
+
+model = Model(
+    model = {'randomforestregressor': {}},
+    data = arg_beach(),
+    cross_validator = {'kfold': {'n_splits': 5}},
+    val_metric="r2"
+)
+
+kfold_score = model.cross_val_score()
 
 model = Model(
     model = {'randomforestregressor': {}},

@@ -28,11 +28,14 @@ else:
 
 class Model(MODEL, BaseModel):
     """
-    Inherits from `BaseModel`
-    Model class which is a subclass of keras.Model/torch.nn.Module. This class
-    directly exposes all the functionalities of underlying Model. Such as `self`
-    is now a keras Model or torch.nn.Module. The custom NN can be constructed
-    by overwrting `initialize_layers` and `call`/`forward` methods.
+    This class Inherits from `BaseModel`.
+    This class is a subclass of keras.Model/torch.nn.Module depending upon the
+    backend used. For scikit-learn/xgboost/catboost type models, this class only
+    inherits from `BaseModel. For deep learning/neural network based models, this
+    class directly exposes all the functionalities of underlying Model. Thus `self`
+    is now a keras Model or torch.nn.Module. If the user wishes to create his/her
+    own NN architecture, he/she should overwrite `initialize_layers` and `call`/`forward`
+    methods.
     """
 
     def __init__(self,

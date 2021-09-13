@@ -9,6 +9,8 @@
             - test_data
             - inverse_transform
             - kfold_splits
+            - LeaveOneOut_splits
+            - TimeSeriesSplit_splits
     rendering:
         show_root_heading: true
 

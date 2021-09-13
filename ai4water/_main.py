@@ -927,9 +927,14 @@ class BaseModel(NN, Plots):
             self._model.save_model(fname + ".json")
         return history
 
-    def cross_val_score(self, scoring=None):
+    def cross_val_score(self, scoring:str=None)->float:
         """computes cross validation score
-        Currently not working for deep learning models"""
+        Arguments:
+            scoring : performance metric to use for cross validation.
+                If None, it will be taken from config['val_metric']
+        Note: Currently not working for deep learning models.
+
+        """
         if self.num_outs > 1:
             raise ValueError
 
@@ -951,6 +956,13 @@ class BaseModel(NN, Plots):
 
         for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
 
+            verbosity = self.verbosity
+            self.verbosity = 0
+            # make a new classifier/regressor at every fold
+            self.build(self._get_dummy_input_shape())
+
+            self.verbosity = verbosity
+
             self._maybe_change_residual_threshold(train_y)
 
             self._model.fit(train_x, y=train_y.reshape(-1, ))
@@ -965,7 +977,7 @@ class BaseModel(NN, Plots):
             if self.verbosity>0:
                 print(f'fold: {fold} val_score: {val_score}')
 
-        return np.mean(scores)
+        return np.mean(scores).item()
 
     def _maybe_change_residual_threshold(self, outputs)->None:
         # https://stackoverflow.com/a/64396757/5982232

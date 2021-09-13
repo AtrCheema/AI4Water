@@ -13,6 +13,7 @@
             - from_config
             - update_weights
             - activations
+            - cross_val_score
     rendering:
         show_root_heading: true
 

@@ -7,7 +7,7 @@ from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import KFold, LeaveOneOut
+from sklearn.model_selection import KFold, LeaveOneOut, TimeSeriesSplit
 from sklearn.preprocessing import OneHotEncoder
 
 from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index
@@ -45,11 +45,13 @@ class DataHandler(AttributeContainer):
 
     Methods
     ------------
-    - training_data:
-    - validation_data:
-    - test_data:
-    - kfold_splits:
+    - training_data: returns training data
+    - validation_data: returns validation data
+    - test_data: returns test data
     - from_disk:
+    - kfold_splits: creates splits using `kfold` of sklearn
+    - LeaveOneOut_splits: creates splits using `LeaveOneOut` of sklearn
+    - TimeSeriesSplit_splits: creates splits using `TimeSeriesSplit` of sklearn
 
     """
     def __init__(self,
@@ -718,7 +720,8 @@ class DataHandler(AttributeContainer):
     def kfold_splits(self, n_splits=5):
         """returns an iterator for kfold cross validation.
         The iterator yields two tuples of training and test x,y pairs.
-
+        The iterator on every iteration returns following
+        `(train_x, train_y), (test_x, test_y)`
         Note: only `training_data` and `validation_data` are used to make kfolds.
 
         Example
@@ -743,12 +746,28 @@ class DataHandler(AttributeContainer):
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 
     def LeaveOneOut_splits(self):
-        """Yields leave one out splits"""
+        """Yields leave one out splits
+        The iterator on every iteration returns following
+        `(train_x, train_y), (test_x, test_y)`"""
         x,y = self._get_xy()
 
         kf = LeaveOneOut()
 
         for tr_idx, test_idx in kf.split(x):
+
+            yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
+
+    def TimeSeriesSplit_splits(self, n_splits=5, **kwargs):
+        """returns an iterator for TimeSeriesSplit.
+        The iterator on every iteration returns following
+        `(train_x, train_y), (test_x, test_y)`
+        """
+
+        x,y = self._get_xy()
+
+        tscv = TimeSeriesSplit(n_splits=n_splits, **kwargs)
+
+        for tr_idx, test_idx in tscv.split(x):
 
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 
@@ -1268,7 +1287,7 @@ class DataHandler(AttributeContainer):
             index = self.indexes[key]
 
         elif self.source_is_list:
-
+            index = None
             for idx, src in enumerate(data):
                 _key = f'{key}_{idx}'
 
@@ -1278,7 +1297,7 @@ class DataHandler(AttributeContainer):
                 index = self.indexes[_key]
 
         elif self.source_is_dict:
-
+            index = None
             for src_name, src in data.items():
                 _key = f'{key}_{src_name}'
 
