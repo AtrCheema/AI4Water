@@ -697,6 +697,211 @@ class EDA(Plot):
 
         return description
 
+    def box_plot(self,
+                 inputs=True,
+                 outputs=True,
+                 save=True,
+                 violen=False,
+                 normalize=True,
+                 cols=None,
+                 figsize=(12,8),
+                 max_features=8,
+                 show_datapoints=False,
+                 freq=None,
+                 **kwargs):
+        """
+        Plots box whister or violen plot of data.
+        freq: str, one of 'weekly', 'monthly', 'yearly'. If given, box plot will be plotted for these intervals.
+        max_features: int, maximum number of features to appear in one plot.
+        violen: bool, if True, then violen plot will be plotted else box_whisker plot
+        cols: list, the name of columns from data to be plotted.
+        kwargs: any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
+        show_datapoints: if True, sns.swarmplot() will be plotted. Will be time consuming for bigger data."""
+
+        data = self.data
+        fname = "violen_plot_" if violen else "box_plot_"
+
+        if cols is None:
+            cols = []
+
+            if inputs:
+                cols += self.in_cols
+                fname += "inputs_"
+            if outputs:
+                fname += "outptuts_"
+        else:
+            assert isinstance(cols, list)
+
+        if isinstance(data, list):
+            for idx, d in enumerate(data):
+                if isinstance(self.in_cols, dict):
+                    cols_ = [item for sublist in list(self.in_cols.values()) for item in sublist]
+                    _cols = []
+                    for c in cols_:
+                        if c in d:
+                            cols_.append(c)
+                else:
+                    _cols  = cols +  [self.out_cols[idx]] if outputs else cols
+
+                self._box_plot(d, _cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                               violen=violen,
+                               prefix=str(idx),
+                               **kwargs)
+
+        elif isinstance(data, dict):
+            for data_name, _data in data.items():
+                self._box_plot(_data, list(_data.columns), save, normalize, figsize, max_features, show_datapoints,
+                               freq,
+                               violen=violen,
+                               prefix=data_name,
+                               **kwargs)
+        else:
+            cols = cols + self.out_cols if outputs else cols
+            self._box_plot(data, cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                           violen=violen,
+                           **kwargs)
+
+    def _box_plot(self, data,
+                  cols, save, normalize, figsize, max_features, show_datapoints, freq,
+                  violen=False,
+                  prefix='',
+                  **kwargs):
+        data = data[cols]
+
+        if data.shape[1] <= max_features:
+            self.box_plot_df(data, normalize=normalize, show_datapoints=show_datapoints, save=save,
+                             violen=violen,
+                             freq=freq,
+                             prefix=f"{'violen' if violen else 'box'}_{prefix}",
+                              figsize=figsize, **kwargs)
+        else:
+            tot_plots = find_tot_plots(data.shape[1], max_features)
+            for i in range(len(tot_plots) - 1):
+                st, en = tot_plots[i], tot_plots[i + 1]
+                sub_df = data.iloc[:, st:en]
+                self.box_plot_df(sub_df, normalize=normalize, show_datapoints=show_datapoints, save=save,
+                                 violen=violen,
+                                  figsize=figsize,
+                                  freq=freq,
+                                  prefix=f"{'violen' if violen else 'box'}_{prefix}_{st}_{en}",
+                                  **kwargs)
+        return
+
+    def box_plot_df(self, data,
+                    normalize=True,
+                    show_datapoints=False,
+                    violen=False,
+                    save=True,
+                    figsize=(12,8),
+                     prefix="box_plot",
+                     freq=None,
+                     **kwargs):
+
+        data = data.copy()
+        # if data contains duplicated columns, transformation will not work
+        data = data.loc[:, ~data.columns.duplicated()]
+        if normalize:
+            transformer = Transformations(data=data)
+            data = transformer.transform()
+
+        if freq is not None:
+            return self.box_plot_with_freq(data, freq, show_datapoints, save, figsize,
+                                           violen=violen,
+                                           prefix=prefix, **kwargs)
+
+        return self._box_plot_df(data=data,
+                                 name=prefix,
+                                 violen=violen,
+                                 save=save,
+                                 figsize=figsize,
+                                 show_datapoints=show_datapoints,
+                                 **kwargs)
+
+    def _box_plot_df(self,
+                     data,
+                     name,
+                     violen=False,
+                     save=True,
+                     figsize=(12,8),
+                     show_datapoints=False,
+                     where='data',
+                     **kwargs):
+
+        plt.close('all')
+        plt.figure(figsize=figsize)
+
+        if violen:
+            sns.violinplot(data=data, **kwargs)
+        else:
+            axis = sns.boxplot(data=data, **kwargs)
+            axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
+
+        if show_datapoints:
+            sns.swarmplot(data=data)
+
+        self.save_or_show(fname=name, save=save, where=where)
+        return
+
+    def box_plot_with_freq(self, data, freq,
+                           violen=False,
+                           show_datapoints=False,
+                           save=True,
+                           figsize=(12,8),
+                           name='bw',
+                           prefix='',
+                           **kwargs):
+
+        validate_freq(data, freq)
+
+        st_year = data.index[0].year
+        en_year = data.index[-1].year
+
+        for yr in range(st_year, en_year + 1):
+
+            _df = data[data.index.year == yr]
+
+            if freq == 'yearly':
+                self._box_plot_df(_df,
+                                  name=f'{name}_input_{prefix}_{str(yr)}',
+                                  figsize=figsize,
+                                  violen=violen,
+                                  save=save,
+                                  show_datapoints=show_datapoints,
+                                  **kwargs)
+
+            elif freq == 'monthly':
+                st_mon = _df.index[0].month
+                en_mon = _df.index[-1].month
+
+                for mon in range(st_mon, en_mon+1):
+
+                    __df = _df[_df.index.month == mon]
+
+                    self._box_plot_df(__df,
+                                      name=f'{prefix}_{str(yr)} _{str(mon)}',
+                                      where='data/monthly',
+                                      figsize=figsize,
+                                      violen=violen,
+                                      save=save,
+                                      show_datapoints=show_datapoints,
+                                      **kwargs)
+
+            elif freq == 'weekly':
+                st_week = _df.index[0].isocalendar()[1]
+                en_week = _df.index[-1].isocalendar()[1]
+
+                for week in range(st_week, en_week+1):
+                    __df = _df[_df.index.week == week]
+
+                    self._box_plot_df(__df,
+                                      name=f'{prefix}_{str(yr)} _{str(week)}',
+                                      where='data/weely',
+                                      violen=violen,
+                                      figsize=figsize,
+                                      save=save,
+                                      show_datapoints=show_datapoints,
+                                      **kwargs)
+        return
 
 def set_axis_paras(axis, leg_kws, label_kws, tick_kws):
     axis.legend(**leg_kws)
