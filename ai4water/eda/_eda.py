@@ -1,4 +1,5 @@
 import os
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,20 @@ from ai4water.utils.utils import  save_config_file, dateandtime_now, ts_features
 
 
 class EDA(Plot):
-    """Performns a comprehensive exploratory data analysis on a tabular data"""
+    """Performns a comprehensive exploratory data analysis on a tabular data
+
+    Methods:
+        - heatmap
+        - plot_missing
+        - plot_histograms
+        - plot_index
+        - plot_data
+        - plot_pcs
+        - grouped_scatter
+        - feature_feature_corr
+        - stats
+    """
+
     def __init__(
             self,
             data,
@@ -31,6 +45,49 @@ class EDA(Plot):
         self.out_cols = out_cols
 
         super().__init__(path)
+
+    @property
+    def in_cols(self):
+        return self._in_cols
+
+    @in_cols.setter
+    def in_cols(self, x):
+        if x is None:
+            if isinstance(self.data, pd.DataFrame):
+                x = self.data.columns.to_list()
+            else:
+                raise ValueError
+        self._in_cols = x
+
+    def __call__(self,
+                 methods:Union[str, list]='all',
+                 cols=None, save=True):
+        """shortcut to draw all plots.
+        """
+        all_methods = ['heatmap', 'plot_missing', 'plot_histograms', 'plot_data', 'plot_index', 'stats']
+
+        if isinstance(self.data, pd.DataFrame) and self.data.shape[-1]>1:
+            all_methods = all_methods + ['plot_pcs',
+                                         'grouped_scatter',
+                                         'feature_feature_corr']
+
+        if isinstance(methods, str):
+            if methods == 'all':
+                methods = all_methods
+            else:
+                methods = [methods]
+        else:
+            assert isinstance(methods, list)
+
+        assert all([m in all_methods for m in methods])
+
+        for m in methods:
+            if m in ["plot_index", "stats", "plot_pcs"]:
+                getattr(self, m)(save=save)
+            else:
+                getattr(self, m)(cols=cols, save=save)
+
+        return
 
     def heatmap(self, cols=None, **kwargs):
         """
@@ -372,7 +429,10 @@ class EDA(Plot):
         >>>vis.feature_feature_corr(save=False)
         """
         if cols is None:
-            cols = self.in_cols if remove_targets else self.in_cols + self.out_cols
+            if remove_targets:
+                cols = self.in_cols
+            else:
+                cols = self.in_cols + self.out_cols if self.out_cols is not None else self.in_cols
             if isinstance(cols, dict):
                 cols = None
 
@@ -520,7 +580,7 @@ class EDA(Plot):
                 cols += self.in_cols
                 fname += "inputs_"
             if outputs:
-                cols += self.out_cols
+                cols += self.out_cols or []
                 fname += "outptuts_"
         else:
             assert isinstance(cols, list)
@@ -633,7 +693,13 @@ class EDA(Plot):
         self.save_or_show(save=save, fname=fname, where='data', dpi=dpi)
         return
 
-    def stats(self, precision=3, inputs=True, outputs=True, fpath=None, out_fmt="csv"):
+    def stats(self,
+              precision=3,
+              inputs=True,
+              outputs=True,
+              save=True,
+              out_fmt="csv",
+              ):
         """Finds the stats of inputs and outputs and puts them in a json file.
         inputs: bool
         fpath: str, path like
@@ -641,20 +707,20 @@ class EDA(Plot):
         cols = []
         fname = "data_description_"
         if inputs:
-            cols += self.in_cols
+            cols += self.in_cols or []
             fname += "inputs_"
         if outputs:
-            cols += self.out_cols
+            cols += self.out_cols or []
             fname += "outputs_"
 
         fname += str(dateandtime_now())
 
         def save_stats(_description, _fpath):
-
-            if out_fmt == "csv":
-                pd.DataFrame.from_dict(_description).to_csv(_fpath + ".csv")
-            else:
-                save_config_file(others=_description, path=_fpath + ".json")
+            if save:
+                if out_fmt == "csv":
+                    pd.DataFrame.from_dict(_description).to_csv(_fpath + ".csv")
+                else:
+                    save_config_file(others=_description, path=_fpath + ".json")
 
         description = {}
         if isinstance(self.data, pd.DataFrame):
@@ -663,8 +729,7 @@ class EDA(Plot):
                 if col in self.data:
                     description[col] = ts_features(self.data[col], precision=precision, name=col)
 
-            fpath = os.path.join(self.path, fname) if fpath is None else fpath
-            save_stats(description, fpath)
+            save_stats(description, self.path)
 
         elif isinstance(self.data, list):
             description = {}
@@ -679,7 +744,7 @@ class EDA(Plot):
                             _description[col] = ts_features(data[col], precision=precision, name=col)
 
                 description['data' + str(idx)] = _description
-                _fpath = os.path.join(self.path, fname + f'_{idx}') if fpath is None else fpath
+                _fpath = os.path.join(self.path, fname + f'_{idx}')
                 save_stats(_description, _fpath)
 
         elif isinstance(self.data, dict):
@@ -690,7 +755,7 @@ class EDA(Plot):
                         _description[col] = ts_features(data[col], precision=precision, name=col)
 
                 description[f'data_{data_name}'] = _description
-                _fpath = os.path.join(self.path, fname + f'_{data_name}') if fpath is None else fpath
+                _fpath = os.path.join(self.path, fname + f'_{data_name}')
                 save_stats(_description, _fpath)
         else:
             print(f"description can not be found for data type of {self.data.__class__.__name__}")
@@ -727,7 +792,8 @@ class EDA(Plot):
             if inputs:
                 cols += self.in_cols
                 fname += "inputs_"
-            if outputs:
+            if outputs and self.out_cols is not None:
+                cols += self.out_cols
                 fname += "outptuts_"
         else:
             assert isinstance(cols, list)
