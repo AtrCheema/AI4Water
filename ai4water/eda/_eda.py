@@ -59,12 +59,25 @@ class EDA(Plot):
                 raise ValueError
         self._in_cols = x
 
+    @property
+    def out_cols(self):
+        return self._out_cols
+
+    @out_cols.setter
+    def out_cols(self, x):
+        if x is None:
+            if isinstance(self.data, pd.DataFrame):
+                x = []
+            else:
+                raise ValueError
+        self._out_cols = x
+
     def __call__(self,
                  methods:Union[str, list]='all',
                  cols=None, save=True):
         """shortcut to draw all plots.
         """
-        all_methods = ['heatmap', 'plot_missing', 'plot_histograms', 'plot_data', 'plot_index', 'stats']
+        all_methods = ['heatmap', 'plot_missing', 'plot_histograms', 'plot_data', 'plot_index', 'stats', 'box_plot']
 
         if isinstance(self.data, pd.DataFrame) and self.data.shape[-1]>1:
             all_methods = all_methods + ['plot_pcs',
@@ -432,7 +445,7 @@ class EDA(Plot):
             if remove_targets:
                 cols = self.in_cols
             else:
-                cols = self.in_cols + self.out_cols if self.out_cols is not None else self.in_cols
+                cols = self.in_cols + self.out_cols
             if isinstance(cols, dict):
                 cols = None
 
@@ -580,7 +593,7 @@ class EDA(Plot):
                 cols += self.in_cols
                 fname += "inputs_"
             if outputs:
-                cols += self.out_cols or []
+                cols += self.out_cols
                 fname += "outptuts_"
         else:
             assert isinstance(cols, list)
@@ -707,10 +720,10 @@ class EDA(Plot):
         cols = []
         fname = "data_description_"
         if inputs:
-            cols += self.in_cols or []
+            cols += self.in_cols
             fname += "inputs_"
         if outputs:
-            cols += self.out_cols or []
+            cols += self.out_cols
             fname += "outputs_"
 
         fname += str(dateandtime_now())
@@ -792,7 +805,7 @@ class EDA(Plot):
             if inputs:
                 cols += self.in_cols
                 fname += "inputs_"
-            if outputs and self.out_cols is not None:
+            if outputs:
                 cols += self.out_cols
                 fname += "outptuts_"
         else:
