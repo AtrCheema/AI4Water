@@ -198,8 +198,8 @@ class Transformations(scaler_container):
         Example
         ---------
         ```python
-        >>>from ai4water.utils.transformations import Transformations
-        >>>from ai4water.utils.datasets import load_u1
+        >>>from ai4water.pre_processing.transformations import Transformations
+        >>>from ai4water.datasets import load_u1
         >>>data = load_u1()
         >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
         >>>transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
@@ -211,7 +211,7 @@ class Transformations(scaler_container):
         will be replaced internally but will be inserted back afterwards.
 
         ```python
-        >>>from ai4water.utils.transformations import Transformations
+        >>>from ai4water.pre_processing.transformations import Transformations
         >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
         >>>transformed_data = transformer.transform()
         ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
@@ -656,8 +656,15 @@ class InvalidValueError(Exception):
         self.method = method
         self.reason = reason
 
+    def remedy(self):
+        if self.reason == "NaN":
+            return "Try setting 'replace_nans' to True"
+        elif self.reason == "zero":
+            return "Try setting 'replace_zeros' to True"
+
     def __str__(self):
         return (f"""
 Input data contains {self.reason} values so {self.method} transformation
 can not be applied.
+{self.remedy()}
 """)
