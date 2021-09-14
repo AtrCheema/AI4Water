@@ -801,8 +801,7 @@ class MtropicsLaos(Datasets):
     - fetch_weather_station_data
     - fetch_pcp
     - fetch_hydro
-
-    # todo `fetch_ecoli` should only return ecoli data
+    - make_regression
     """
     target = ['Ecoli_mpn100']
 
@@ -1242,7 +1241,7 @@ def unzip_all_in_dir(dir_name, ext=".gz"):
 def _process_laos_shpfiles(shape_file, out_path):
 
     if fiona is None:
-        warnings.warn("preprocessing can not be done because no fiona installation is found.")
+        warnings.warn("preprocessing of shapefiles can not be done because no fiona installation is found.")
         return
 
     shp_reader = shapefile.Reader(shape_file)
