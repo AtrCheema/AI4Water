@@ -46,6 +46,17 @@ SEP = os.sep
 # compare models using statistical tests wuch as Giacomini-White test or Diebold-Mariano test
 # paired ttest 5x2cv
 
+
+LABELS = {
+    'r2': "$R^{2}$",
+    'nse': 'NSE',
+    'rmse': 'RMSE',
+    'mse': 'MSE',
+    'msle': 'MSLE',
+    'nrmse': 'Normalized RMSE',
+    'mape': 'MAPE'
+}
+
 class Experiments(object):
     """
     Base class for all the experiments.
@@ -402,6 +413,112 @@ Available cases are {self.models} and you wanted to include
 """
         return include
 
+    def _get_inital_best_results(self, model_name, run_type, matric_name):
+
+        initial_run = os.listdir(os.path.join(self.exp_path, model_name.split('model_')[1]))[0]
+        initial_run = os.path.join(self.exp_path, model_name.split('model_')[1],  initial_run)
+
+        if "best" in os.listdir(os.path.join(self.exp_path, model_name.split('model_')[1])):
+            best_folder = os.path.join(self.exp_path, model_name.split('model_')[1], "best")
+            best_run = os.path.join(best_folder, os.listdir(best_folder)[0])
+        else:
+            return None, None
+
+        cpath = os.path.join(best_run, 'config.json')
+        with open(cpath, 'r') as fp:
+            conf = json.load(fp)
+        output_features = conf['config']['output_features']
+        assert len(output_features) == 1
+        output = output_features[0]
+
+        fpath_initial = os.path.join(initial_run, output, f"{run_type}_{output}_0.csv")
+        initial = pd.read_csv(fpath_initial, index_col=['index'])
+
+        fpath_best:str = os.path.join(best_run, output, f"{run_type}_{output}_0.csv")
+        best = pd.read_csv(fpath_best, index_col=['index'])
+
+        initial_metric:float = getattr(RegressionMetrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
+        best_metric:float = getattr(RegressionMetrics(best.values[:, 0], best.values[:, 1]), matric_name)()
+
+        # -ve values become difficult to plot, moreover they do not reveal anything significant
+        # as compared to when a metric is 0, therefore consider -ve values as zero.
+        return np.max([initial_metric, 0.0]), np.max([best_metric, 0.0])
+
+    def plot_improvement(
+            self,
+            matric_name: str,
+            save:bool = True,
+            run_type:str = 'test',
+            orient:str='horizontal',
+            **kwargs
+    )->dict:
+        """Shows how much improvement was observed after hyperparameter optimization.
+        This plot is only available if `run_type` was set to `optimize` in `fit`.
+        Arguments:
+            matric_name : the peformance metric to compare
+            save : whether to save the plot or not
+            run_type : which run to use, valid values are `training`, `test` and `validation`.
+            orient : valid values are `horizontal` or `vertical`
+            kwargs :
+                rotation :
+                name :
+                dpi :
+        """
+
+        rotation = kwargs.get('rotation', 0)
+        name = kwargs.get('name', '')
+        dpi = kwargs.get('dpi', 200)
+
+        assert run_type in ['training', 'test', 'validation']
+
+        colors = {
+            'Initial': np.array([0, 56, 104]) / 256,
+            'Improvement': np.array([126, 154, 178]) / 256
+        }
+
+        exec_models = list(self.trues['train'].keys())
+
+        data = {k:[] for k in colors.keys()}
+
+        for model in exec_models:
+            initial, best = self._get_inital_best_results(model, run_type=run_type, matric_name=matric_name)
+
+            data['Initial'].append(initial)
+            data['Improvement'].append(best)
+
+        if np.isnan(np.array(data['Improvement'], dtype=np.float32)).sum() == len(data['Improvement']):
+            print("No best results not found")
+            return data
+
+        plt.close('all')
+        fig, axis = plt.subplots()
+
+        if matric_name in ['r2', 'nse', 'kge', 'corr_coeff', 'r2_mod']:
+            order = ['Improvement', 'Initial']
+        else:
+            order = list(colors.keys())
+
+        names = [m.split('model_')[1] for m in exec_models]
+        for key in order:
+            if orient == "horizontal":
+                axis.barh(range(len(exec_models)), data[key], color=colors[key], label=key)
+                plt.xlabel("{}".format(LABELS.get(matric_name, matric_name)))
+                plt.yticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
+            else:
+                axis.bar(range(len(exec_models)), data[key], color=colors[key], label=key)
+                plt.ylabel("{}".format(LABELS.get(matric_name, matric_name)))
+                plt.xticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
+
+        axis.legend()
+        plt.title('Improvement after tuning')
+
+        if save:
+            fname = os.path.join(os.getcwd(),f'results{SEP}{self.exp_name}{SEP}{name}_improvement_{matric_name}.png')
+            plt.savefig(fname, dpi=dpi, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+        plt.show()
+
+        return data
+
     def compare_errors(
             self,
             matric_name: str,
@@ -493,16 +610,6 @@ Available cases are {self.models} and you wanted to include
                     train_matrics.append(train_matric)
                     models[mod.split('model_')[1]] = {'train': train_matric, 'test': test_matric}
 
-        labels = {
-            'r2': "$R^{2}$",
-            'nse': 'NSE',
-            'rmse': 'RMSE',
-            'mse': 'MSE',
-            'msle': 'MSLE',
-            'nrmse': 'Normalized RMSE',
-            'mape': 'MAPE'
-        }
-
         if len(models) <=1:
             warnings.warn(f"Comparison can not be plotted because the obtained models are <=1 {models}", UserWarning)
             return models
@@ -534,11 +641,11 @@ Available cases are {self.models} and you wanted to include
 
         ax = sns.barplot(y=names, x=train_matrics, orient='h', ax=axis[0])
         ax.set_title("Train", fontdict={'fontsize': kwargs.get('title_fs', 20)})
-        ax.set_xlabel(labels.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
+        ax.set_xlabel(LABELS.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
 
         ax = sns.barplot(y=names, x=test_matrics, orient='h', ax=axis[1])
         ax.get_yaxis().set_visible(False)
-        ax.set_xlabel(labels.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
+        ax.set_xlabel(LABELS.get(matric_name, matric_name), fontdict={'fontsize': kwargs.get('xlabel_fs', 16)})
         ax.set_title("Test", fontdict={'fontsize': kwargs.get('title_fs', 20)})
 
         if save:
@@ -706,7 +813,7 @@ class MLRegressionExperiments(Experiments):
                  cases=None,
                  ai4water_model=None,
                  exp_name='MLExperiments',
-                 num_samples=10,
+                 num_samples=5,
                  **model_kwargs):
         """
 
@@ -808,6 +915,9 @@ class MLRegressionExperiments(Experiments):
             t, p = model.predict('training')
 
             return (t,p), (tt, tp)
+
+        if model.config['val_metric'] in ['r2', 'nse', 'kge', 'r2_mod']:
+            val_score = 1.0 - val_score
 
         return val_score
 
