@@ -85,6 +85,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.8',
     ],
 
     packages=['ai4water',
@@ -92,7 +93,7 @@ setup(
               'ai4water/hyper_opt',
               'ai4water/utils',
               'ai4water/pre_processing',
-              'ai4water/post_processing/'
+              'ai4water/post_processing/',
               'ai4water/post_processing/SeqMetrics',
               'ai4water/post_processing/explain',
               'ai4water/post_processing/interpret',
