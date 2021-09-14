@@ -693,7 +693,7 @@ class SWECanada(Datasets):
         """
 
         if station_id is None:
-            station_id - self.stations()
+            station_id = self.stations()
         elif isinstance(station_id, str):
             station_id = [station_id]
         elif isinstance(station_id, list):
@@ -836,9 +836,7 @@ class MtropicsLaos(Datasets):
         "ORP_mV": "ORP", # stream water oxidation-reduction potential
         "Turbidity_NTU": "Turbidity",
         "TSS_gL": "TSS",
-        "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",  # Lower limit of the confidence interval
-        "Ecoli_mpn100": "E-coli_4dilutions",  # Stream water Escherichia coli concentration
-        "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"  # Upper limit of the confidence interval
+
                             }
 
     weather_station_data = ['air_temp', 'humidity', 'wind_run', 'global_rad']
@@ -870,31 +868,24 @@ class MtropicsLaos(Datasets):
         files = glob.glob(f'{lu_dir}/*.shp')
         return files
 
-    def fetch_ecoli(
+    def fetch_physiochem(
             self,
+            features: Union[list, str] = 'all',
             st: Union[str, pd.Timestamp] = '20110525 10:00:00',
             en: Union[str, pd.Timestamp] = '20210406 15:05:00',
-            features: Union[list, str] = 'Ecoli_mpn100'
     )->pd.DataFrame:
-        """Fetches E. coli and physio-chemical features at the outlet
-        ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
-        ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
-         NaNs represent missing values. The data is randomly sampled between 2011
-         to 2021 during rainfall events. Total 368 E. coli observation points are available now.
+        """Fetches physio-chemical features of Huoy Pano catchment Laos.
+
         Arguments:
-            st : start of data. By default the data is fetched from the point it
-                is available.
-            en : end of data. By default the data is fetched til the point it is
-                available.
-            features : physi-chemical features to fetch. By default only E. coli
-                concentration is returned. To check the names of available physio-
-                chemical features see `MtropicsLaos.physio_chem_features`
+            st : start of data.
+            en :end of data.
+            features : The physio-chemical features to fetch. Following features
+                are available 'T', 'EC', 'DOpercent', 'DO', 'pH', 'ORP', 'Turbidity',
+                'TSS'
+
         Returns:
-            a pandas dataframe consisting of features as columns.
-        """
-        fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
-        df = pd.read_csv(fname, sep='\t')
-        df.index = pd.to_datetime(df['Date_Time'])
+            a pandas dataframe
+            """
 
         if isinstance(features, list):
             _features = []
@@ -909,7 +900,78 @@ class MtropicsLaos(Datasets):
 
         features = check_attributes(_features, list(self.physio_chem_features.values()))
 
-        return df[st:en][features]
+        fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
+        df = pd.read_csv(fname, sep='\t')
+        df.index = pd.to_datetime(df['Date_Time'])
+
+        df = df[features]
+
+        col_names = {v: k for k, v in self.physio_chem_features.items() if v in features}
+
+        df = df.rename(columns=col_names)
+
+        return df.loc[st:en]
+
+    def fetch_ecoli(
+            self,
+            features: Union[list, str] = 'Ecoli_mpn100',
+            st: Union[str, pd.Timestamp] = '20110525 10:00:00',
+            en: Union[str, pd.Timestamp] = '20210406 15:05:00',
+            remove_duplicates:bool = True,
+    )->pd.DataFrame:
+        """Fetches E. coli data collected at the outlet.
+        ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
+        ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
+         NaNs represent missing values. The data is randomly sampled between 2011
+         to 2021 during rainfall events. Total 368 E. coli observation points are available now.
+        Arguments:
+            st : start of data. By default the data is fetched from the point it
+                is available.
+            en : end of data. By default the data is fetched til the point it is
+                available.
+            features : E. coli concentration data. Following data are available
+                Ecoli_LL_mpn100: Lower limit of the confidence interval
+                Ecoli_mpn100: Stream water Escherichia coli concentration
+                Ecoli_UL_mpn100: Upper limit of the confidence interval
+            remove_duplicates : whether to remove duplicates or not. This is because
+                some values were recorded within a minute,
+        Returns:
+            a pandas dataframe consisting of features as columns.
+        """
+        fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
+        df = pd.read_csv(fname, sep='\t')
+        df.index = pd.to_datetime(df['Date_Time'])
+
+        available_features = {
+        "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",  # Lower limit of the confidence interval
+        "Ecoli_mpn100": "E-coli_4dilutions",  # Stream water Escherichia coli concentration
+        "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"  # Upper limit of the confidence interval
+        }
+        if isinstance(features, list):
+            _features = []
+            for f in features:
+                _features.append(available_features[f])
+        else:
+            assert isinstance(features, str)
+            if features == 'all':
+                _features = features
+            else:
+                _features = available_features[features]
+
+        features = check_attributes(_features, list(available_features.values()))
+
+        if  remove_duplicates:
+            df = df[~df.index.duplicated(keep='first')]
+
+        df = df.sort_index()
+
+        df = df[features]
+
+        col_names = {v: k for k, v in available_features.items() if v in features}
+
+        df = df.rename(columns=col_names)
+
+        return df.loc[st:en]
 
     def fetch_rain_gauges(
             self,
@@ -1072,27 +1134,30 @@ class MtropicsLaos(Datasets):
 
         #wl.index = pd.to_datetime(wl.pop('index'))
         #spm.index = pd.to_datetime(spm.pop('index'))
+        wl = wl[~wl.index.duplicated(keep='first')]
+        spm = spm[~spm.index.duplicated(keep='first')]
 
-        return wl[st:en], spm[st:en]  # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
+        return wl.loc[st:en], spm.loc[st:en]  # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
 
-    def fetch(self,
-              inputs: Union[None, list],
-              target: Union[str, list],
-              hru_definition: Union[None, str],
-              st: Union[None, str],
-              en: Union[None, str],
-              **kwargs):
+    def make_regression(self,
+              input_features: Union[None, list]=None,
+              output_features: Union[str, list] = "Ecoli_mpn100",
+              st: Union[None, str] = "20110525 10:00:00",
+              en: Union[None, str] = "20190910",
+              freq:str="6min",
+              **kwargs
+              )->pd.DataFrame:
         """
-        Fetches dataset of Laos for rainfall runoff modeling [1].
-        The user can specify `hru_defintion` wose details can be seen in [2].
+        Makes a regression problem using hydrological, environmental,
+        and water quality data of Huoay pano.
 
         Arguments:
-            inputs list: names of inputs to use.
-            target str/list:
-            hru_definition str:
-            st str:
-            en str:
-            **kwargs dict:
+            input_features : names of inputs to use.
+            output_features :
+            st :
+            en :
+            freq :
+            **kwargs :
 
         returns:
             a dataframe of shape `(inputs+target, st:en)`
@@ -1100,18 +1165,37 @@ class MtropicsLaos(Datasets):
         Example:
         --------
         ```python
-        >>>from ai4water.utils.datasets import MtropicsLaos
+        >>>from ai4water.datasets import MtropicsLaos
         >>>laos = MtropicsLaos()
-        >>>inputs = ['pcp', 'air_temp']
-        >>>target = ['Ecoli_mpn100']
-        >>>data = laos.fetch(inputs, target, None, '20110101', '20181231')
+        >>>ins = ['pcp', 'air_temp']
+        >>>out = ['Ecoli_mpn100']
+        >>>data = laos.make_regression(ins, out, '20110101', '20181231')
         ```
-        """
-        inputs = check_attributes(inputs, self.inputs)
-        target = check_attributes(target, self.target)
-        features_to_fecth = inputs + target
 
-        return
+        # todo add HRU definition
+        """
+        inputs = check_attributes(input_features, self.inputs)
+        target = check_attributes(output_features, self.target)
+        features_to_fetch = inputs + target
+
+        pcp = self.fetch_pcp(st=st, en=en)
+
+        w = self.fetch_weather_station_data(st=st, en=en)
+
+        wl, spm = self.fetch_hydro(st=st, en=en)
+
+        ecoli = self.fetch_ecoli(st=st, en=en)
+
+        phy_chem = self.fetch_physiochem(st=st, en=en)
+
+        ecoli = ecoli.resample(freq).first()
+        phy_chem = phy_chem.resample(freq).first()
+        wl = wl.resample(freq).first()
+        spm = spm.resample(freq).first()
+
+        df = pd.concat([pcp, w, wl, spm, phy_chem, ecoli], axis=1)
+
+        return df.loc[st:en, features_to_fetch]
 
 
 class MtropcsThailand(Datasets):
