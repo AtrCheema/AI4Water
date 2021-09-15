@@ -4,11 +4,6 @@ from collections import OrderedDict
 
 import numpy as np
 
-try:
-    import torch
-except ModuleNotFoundError:
-    torch = None
-
 from ._main import BaseModel
 from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, tf
 from .nn_tools import get_call_args

@@ -26,9 +26,11 @@ from ai4water.utils.utils import init_subplots
 
 class Plot(object):
 
-    def __init__(self, path = None, backend='plotly'):
+    def __init__(self, path = None, backend='plotly', save=True, dpi=300):
         self.path = path
         self.backend = backend
+        self.save=save
+        self.dpi = dpi
 
     @property
     def backend(self):
@@ -56,7 +58,13 @@ class Plot(object):
             x = os.getcwd()
         self._path = x
 
-    def save_or_show(self, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
+    def save_or_show(self, save: bool = None, fname=None, where='', dpi=None, bbox_inches='tight', close=True):
+
+        if save is None:
+            save = self.save
+
+        if dpi is None:
+            dpi = self.dpi
 
         if save:
             assert isinstance(fname, str)
