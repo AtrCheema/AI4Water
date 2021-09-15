@@ -654,14 +654,25 @@ class EDA(Plot):
                            figsize=figsize, **kwargs)
         return
 
-    def _plot_pcs(self, data, num_pcs,
-                  st=None, en=None,
-                  save=None, prefix='', save_as_csv=False, hue=None, figsize=(12,8), **kwargs):
+    def _plot_pcs(self,
+                  data,
+                  num_pcs,
+                  st=None,
+                  en=None,
+                  save=None,
+                  prefix='',
+                  save_as_csv=False,
+                  hue=None,
+                  figsize=(12,8), **kwargs):
 
         data = consider_st_en(data, st, en)
 
         if num_pcs is None:
-            num_pcs = int(data.shape[1]/2)
+            _num_pcs = int(data.shape[1]/2)
+            if _num_pcs>5 and num_pcs is None:
+                num_pcs = 5
+            else:
+                num_pcs = _num_pcs
 
         if num_pcs <1:
             print(f'{num_pcs} pcs can not be plotted because data has shape {data.shape}')
@@ -677,16 +688,20 @@ class EDA(Plot):
         pcs = ['pc' + str(i + 1) for i in range(num_pcs)]
         df_pca.columns = pcs
 
-        if hue is not None:
+        if hue is not None and len(self.out_cols)>0:
             if isinstance(hue, list):
-                hue = hue[0]
+                if len(hue)==1:
+                    hue = hue[0]
+                else:
+                    hue = None
             if hue in data:
                 df_pca[hue] = data[hue]
 
                 if df_pca[hue].isna().sum() > 0: # output columns contains nans, so don't use it as hue.
                     hue = None
-            else: # ignore it
-                hue = None
+
+        if isinstance(hue, list) and len(hue) == 0:
+            hue = None
 
         if save_as_csv:
             df_pca.to_csv(os.path.join(self.path, f"data\\first_{num_pcs}_pcs_{prefix}"))
