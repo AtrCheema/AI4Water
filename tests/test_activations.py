@@ -41,17 +41,18 @@ class TestActivations(unittest.TestCase):
                       )
 
         val_losses = {
-            '21_nt_subclassing': [0.038706957432889856, 0.043269214379164936],
-            '23_nt_functional': [0.049483511596918106, 0.043167594820261],
+            '20_posix_functional': [0.09297575600513237, 0.095427157656984],
+            '21_posix_functional': [0.09297575600513237, 0.095427157656984],
+            '23_posix_functional': [0.0870760977268219, 0.1053781732916832],
+            '24_posix_functional': [0.0870760977268219, 0.1053781732916832],
+            '25_posix_subclassing': [0.0870760977268219, 0.1053781732916832],
+            '25_posix_functional': [0.0870760977268219, 0.1053781732916832],
             '26_posix_functional': [0.0870760977268219, 0.1053781732916832],
             '26_posix_subclassing': [0.0870760977268219, 0.1053781732916832],
-            '25_posix_functional': [0.0870760977268219, 0.1053781732916832],
-            '25_posix_subclassing': [0.0870760977268219, 0.1053781732916832],
-            '24_posix_functional': [0.0870760977268219, 0.1053781732916832],
-            '21_posix_functional': [0.09297575600513237, 0.095427157656984],
-            '20_posix_functional': [0.09297575600513237, 0.095427157656984],
             '23_nt': [0.0870760977268219, 0.1053781732916832],
             '24_nt': [0.0870760977268219, 0.1053781732916832],
+            '21_nt_subclassing': [0.038706957432889856, 0.043269214379164936],
+            '23_nt_functional': [0.049483511596918106, 0.043167594820261],
             '25_nt_subclassing': [0.049483511596918106, 0.04080097749829292],
             '26_nt_subclassing': [0.049483511596918106, 0.04080097749829292],
             '25_nt_functional': [0.049483511596918106, 0.04080097749829292],
@@ -60,6 +61,7 @@ class TestActivations(unittest.TestCase):
 
         history = model.fit()
         if int(tf.__version__.split('.')[0]) > 1:
+            print(f"{version}_{os.name}_{model.api}")
             for t,p in zip(history.history['val_loss'], val_losses[f"{version}_{os.name}_{model.api}"]):
                 self.assertAlmostEqual(t, p, 2)
         return
@@ -83,15 +85,16 @@ class TestActivations(unittest.TestCase):
 
         history = model.fit()
         val_losses = {
+            '20_posix_functional': [0.8971164431680119, 0.10688107734841351],
+            '21_posix_functional': [0.10688107734841351, 0.0938945620801094],
+            '23_posix_functional': [0.025749117136001587, 0.037755679339170456],
+            '24_posix_functional': [0.10781528055667877, 0.09552989155054092],
+            '25_posix_functional': [0.10781528055667877, 0.09552989155054092],
+            '26_posix_functional': [0.025749117136001587, 0.037755679339170456],
+
             '21_nt_subclassing': [0.02578388827527157, 0.03749684586972845],
             '23_nt_functional': [0.025749117136001587, 0.037755679339170456],
             '24_nt': [0.10781528055667877, 0.09552989155054092],
-            '20_posix_functional': [0.8971164431680119, 0.10688107734841351],
-            '21_posix_functional': [0.10688107734841351, 0.0938945620801094],
-            '23_posix_functional': [0.10781528055667877, 0.09552989155054092],
-            '24_posix_functional': [0.10781528055667877, 0.09552989155054092],
-            '25_posix_functional': [0.10781528055667877, 0.09552989155054092],
-            '26_posix_functional': [0.10781528055667877, 0.09552989155054092],
             '25_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
             '26_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
             '25_nt_functional': [0.025749117136001587, 0.040039800107479095],
@@ -99,6 +102,7 @@ class TestActivations(unittest.TestCase):
         }
 
         if int(tf.__version__.split('.')[0]) > 1:
+            print(f"{version}_{os.name}_{model.api}")
             for t,p in zip(history.history['val_loss'], val_losses[f"{version}_{os.name}_{model.api}"]):
                 self.assertAlmostEqual(t,p, 2)
         return
