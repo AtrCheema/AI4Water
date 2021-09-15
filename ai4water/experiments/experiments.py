@@ -1047,7 +1047,7 @@ class MLRegressionExperiments(Experiments):
     def model_ExtraTreesRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html
         self.param_space = [
-            Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
+            Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
             Integer(low=1, high=10, num_samples=self.num_samples, name='min_samples_leaf'),
