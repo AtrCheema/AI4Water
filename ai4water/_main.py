@@ -1514,7 +1514,7 @@ class BaseModel(NN, Plots):
             print("data is None so eda can not be performed.")
             return
         # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
-        eda = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols)
+        eda = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols, save=True)
 
         # plot number if missing vals
         eda.plot_missing(cols=cols)
@@ -1532,7 +1532,7 @@ class BaseModel(NN, Plots):
         eda.stats()
 
         # box-whisker plot
-        self.box_plot(freq=freq)
+        eda.box_plot(freq=freq)
 
         # principle components
         eda.plot_pcs()
