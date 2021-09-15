@@ -622,7 +622,8 @@ def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
 
     idx = 0
     best_results = {}
-    for k,v in od.items():
+
+    for v in od.values():
         if 'folder' in v:
             folder = v['folder']
             _path = os.path.join(opt_dir, folder)
@@ -1023,9 +1024,9 @@ def prepare_data(
     ```python
     >>>import numpy as np
     >>>from ai4water.utils.utils import prepare_data
-    >>>examples = 50
-    >>>data = np.arange(int(examples*5)).reshape(-1,examples).transpose()
-    >>>data[0:10]
+    >>>num_examples = 50
+    >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
+    >>>dataframe[0:10]
         array([[  0,  50, 100, 150, 200],
                [  1,  51, 101, 151, 201],
                [  2,  52, 102, 152, 202],
@@ -1321,12 +1322,12 @@ def process_axis(axis,
 
 def plot(*args, show=True, **kwargs):
     """
-    One liner plot function. It should not be more complex than axis.plot() or plt.plot()
-    yet it must accomplish all in one line what requires multiple lines in matplotlib.
-    args and kwargs can be anything which goes into plt.plot() or axis.plot().
-    They can also be anything which goes into `process_axis`.
+    One liner plot function. It should not be more complex than axis.plot() or
+    plt.plot() yet it must accomplish all in one line what requires multiple
+    lines in matplotlib. args and kwargs can be anything which goes into plt.plot()
+    or axis.plot(). They can also be anything which goes into `process_axis`.
     """
-    fig, axis = init_subplots()
+    _, axis = init_subplots()
     axis = process_axis(axis, *args, **kwargs)
     if kwargs.get('save', False):
         plt.savefig(f"{kwargs.get('name', 'fig.png')}")

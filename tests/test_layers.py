@@ -101,6 +101,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1312.3688450753175,
             '115_posix': 1265.676495072539,
+            '26_posix': 1312.3688450753175,
             '23_nt': 286.2128473956241,
             '25_nt': 286.21284595900113,
             '26_nt': 286.21284595900113,
@@ -120,6 +121,7 @@ class TestModels(unittest.TestCase):
         trues = {
             '21_posix': 1408.9016057021054,
             '115_posix': 1327.6904604995418,
+            '26_posix': 1408.9016057021054,
             '23_nt': 195.22941200342964,
             '25_nt': 195.22941257807892,
             '26_nt': 195.22941257807892,
@@ -179,6 +181,7 @@ class TestModels(unittest.TestCase):
         }
         trues = {
             '21_posix': 1361.6870130712944,
+            '26_posix': 1361.6870130712944,
             '115_posix':  1443.1860088206834,
             '23_nt': 205.64932981643847,
             '25_nt': 205.64933154038607,
@@ -202,6 +205,7 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(Model, layers=lyrs, save_model=False)
         trues = {
             '21_posix': 1327.5073743917194,
+            '26_posix': 1327.5073743917194,
             '115_posix': 1430.7282310875908,
             '23_nt': 197.95141420462951,
             '25_nt': 197.95141865816086,
@@ -220,8 +224,9 @@ class TestModels(unittest.TestCase):
         }
         prediction, model = make_and_run(FModel, layers=lyrs, return_model=True)
         trues = {
-            '21_posix': 1522.6872986943176,
+            '21_posix_functional': 1522.6872986943176,
             '115_posix': 1549.689167207415,
+            '26_posix_functional': 1549.689167207415,
             '21_nt_functional': 165.6065673828125,
             '25_nt': 131,
             '23_nt_functional': 182.70824960252654,
@@ -241,6 +246,7 @@ class TestModels(unittest.TestCase):
         }
         trues = {
             '21_posix': 1376.5340244296872,
+            '26_posix': 1376.5340244296872,
             '115_posix': 1376.5340244296872,
             '23_nt': 197.72353275519052,
             '25_nt': 197.72353304251516,
@@ -264,6 +270,7 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(Model, layers=lyrs)
         trues = {
             '21_posix': 1347.4325338505837,
+            '26_posix': 1347.4325338505837,
             '115_posix': 1272.8471532368762,
             '23_nt': 188.44924334159703,
             '25_nt': 188.44923658946897,
@@ -283,6 +290,7 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(Model, layers=lyrs)
         trues = {
             '21_posix': 1548.395502996973,
+            '26_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
             '23_nt': 192.28048198313545,
             '25_nt': 192.28047997186326,

@@ -27,10 +27,10 @@ except ImportError:
 
 try:
     from optuna.distributions import CategoricalDistribution, UniformDistribution, IntLogUniformDistribution
-    from optuna.distributions import IntUniformDistribution, DiscreteUniformDistribution, LogUniformDistribution
+    from optuna.distributions import IntUniformDistribution, LogUniformDistribution
 except ImportError:
     CategoricalDistribution, UniformDistribution, IntLogUniformDistribution = None, None, None
-    IntUniformDistribution, DiscreteUniformDistribution, LogUniformDistribution = None, None, None
+    IntUniformDistribution, LogUniformDistribution = None, None
 
 from ai4water.utils.utils import Jsonize, clear_weights
 
@@ -520,7 +520,7 @@ def plot_hyperparameters(
         plt.subplot(R, C, plotnum + 1)
 
         # hide x ticks
-        ticks_num, ticks_txt = plt.xticks()
+        ticks_num, _ = plt.xticks()
         plt.xticks(ticks_num, [""] * len(ticks_num))
 
         dist_name = label
@@ -538,7 +538,7 @@ def plot_hyperparameters(
         if len(y):
             plt.scatter(x, y, c=c)
         if "log" in dist_name:
-            nums, texts = plt.yticks()
+            nums, _ = plt.yticks()
             plt.yticks(nums, ["%.2e" % np.exp(t) for t in nums])
 
     if save:
@@ -902,7 +902,7 @@ def scatterplot_matrix_colored(params_names:list,
 
     fig.subplots_adjust(right=0.82, top=0.95)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    cb = fig.colorbar(s, cax=cbar_ax)
+    # cb = fig.colorbar(s, cax=cbar_ax)
 
     plt.suptitle(
         'Scatterplot matrix of tried values in the search space over different params, colored in function of best test accuracy')
@@ -929,7 +929,7 @@ def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False,
     font_size = kwargs.get('font_size', 16)
     ylabel = kwargs.get('ylabel', 'Validation MSE')
     leg_pos = kwargs.get('leg_pos', 'upper right')
-    style = kwargs.get('style', 'ggplot')
+    # style = kwargs.get('style', 'ggplot')
 
     models = []
     for f in os.listdir(opt_dir):
@@ -967,9 +967,9 @@ def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False,
     default = np.full(max_len, np.nan)
 
     plt.close('all')
-    fig, axis = plt.subplots()
+    _, axis = plt.subplots()
 
-    for k,v in min_vl_sorted.items():
+    for k in min_vl_sorted.keys():
 
         val = val_loss[k]
 

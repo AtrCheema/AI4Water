@@ -261,7 +261,6 @@ class ShapMLExplainer(ShapExplainerMixin):
 
     def force_plot_single_example(self, data, shap_vals, name="force_single.png"):
         """force plot for a single example"""
-
         plt.close('all')
 
         shap.force_plot(
@@ -273,7 +272,7 @@ class ShapMLExplainer(ShapExplainerMixin):
         return
 
     def dependence_plot_single_feature(self, feature, name="dependence_plot"):
-        """dependence plot for a single feature"""
+        """dependence plot for a single feature."""
         plt.close('all')
         shap.dependence_plot(feature, self.shap_values, self.data, show=False)
         plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
@@ -293,8 +292,10 @@ class ShapMLExplainer(ShapExplainerMixin):
         return
 
     def waterfall_plot_all_examples(self, name:str="waterfall"):
-        """Plots the waterfall plot of SHAP package for all the examples/instances
-        from test_data."""
+        """Plots the waterfall plot of SHAP package
+
+        It plots for all the examples/instances from test_data.
+        """
         for i in range(len(self.data)):
             self.waterfall_plot_single_example(i, name=name)
 
@@ -302,6 +303,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
     def waterfall_plot_single_example(self, example_index:int, name:str="waterfall", show:bool=False):
         """draws and saves waterfall plot for one prediction.
+
         Currently only possible with xgboost, catboost, lgbm models
         show : if False, the plot will be saved otherwise drawn.
         """
@@ -343,13 +345,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         # if heat map is drawn with np.ndarray, it throws errors therefore convert
         # it into pandas DataFrame. It is more interpretable and does not hurt.
-        data = self.data
-        if not isinstance(self.data, pd.DataFrame):
-            data = pd.DataFrame(self.data, columns=self.features)
-
-        # not using global explainer because, this explainer should data as well
-        explainer = shap.Explainer(self.model, data)
-        shap_values = explainer(data)
+        shap_values = self._get_shap_values_locally()
 
         self._heatmap(shap_values, f"{name}_basic", show=show, max_display=max_display)
 
@@ -371,10 +367,7 @@ class ShapMLExplainer(ShapExplainerMixin):
             plt.savefig(os.path.join(self.path, f"{name}_sortby_SumOfShap"), dpi=300, bbox_inches="tight")
         return
 
-    def beeswarm_plot(self, name:str="beeswarm", show=False, max_display:int=10):
-        """
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
-        """
+    def _get_shap_values_locally(self):
         data = self.data
         if not isinstance(self.data, pd.DataFrame):
             data = pd.DataFrame(self.data, columns=self.features)
@@ -382,6 +375,15 @@ class ShapMLExplainer(ShapExplainerMixin):
         # not using global explainer because, this explainer should data as well
         explainer = shap.Explainer(self.model, data)
         shap_values = explainer(data)
+
+        return shap_values
+
+    def beeswarm_plot(self, name:str="beeswarm", show=False, max_display:int=10):
+        """
+        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
+        """
+
+        shap_values = self._get_shap_values_locally()
 
         self._beeswarm_plot(shap_values, name=f"{name}_basic", show=show, max_display=max_display)
 

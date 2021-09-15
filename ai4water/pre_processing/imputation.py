@@ -138,7 +138,7 @@ class Imputation(object):
         if en is None:
             en = len(self.data)
         plt.close('all')
-        fig, axis = plt.subplots(len(cols), sharex='all')
+        _, axis = plt.subplots(len(cols), sharex='all')
 
         if not isinstance(axis, np.ndarray):
             axis = [axis]

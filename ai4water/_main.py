@@ -55,9 +55,7 @@ except ModuleNotFoundError:
 
 
 class BaseModel(NN, Plots):
-    """
-    Model class that implements logic of AI4Water.
-    """
+    """ Model class that implements logic of AI4Water. """
 
     def __init__(self,
                  model: Union[dict, str] = None,
@@ -335,6 +333,7 @@ class BaseModel(NN, Plots):
 
     def trainable_parameters(self)->int:
         """Calculates trainable parameters in the model
+
         https://discuss.pytorch.org/t/how-do-i-check-the-number-of-parameters-of-a-model/4325/9
         """
         if self.config['backend'] == 'pytorch':
@@ -452,7 +451,6 @@ class BaseModel(NN, Plots):
 
     def get_val_data(self, val_data):
         """Finds out if there is val_data or not"""
-
         if isinstance(val_data, tuple):
             if val_data[0] is None and val_data[1] is None:
                 return None
@@ -1218,7 +1216,9 @@ class BaseModel(NN, Plots):
         return
 
     def get_opt_args(self)->dict:
-        """ get input arguments for an optimizer. It is being explicitly defined here so that it can be overwritten
+        """ get input arguments for an optimizer.
+
+        It is being explicitly defined here so that it can be overwritten
         in sub-classes"""
         kwargs = {'lr': self.config['lr']}
 
@@ -1286,7 +1286,6 @@ class BaseModel(NN, Plots):
             a dictionary whose keys are names of layers and values are weights
             of those layers as numpy arrays
         """
-
         # if layer names are not specified, this will get get activations of allparameters
         if x is None:
             data = getattr(self, f'{data}_data')()

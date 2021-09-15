@@ -208,7 +208,7 @@ def assert_uniquenes(train_y, val_y, test_y, out_cols, data_loader):
 
         a = test_y.reshape(-1,)
         b = val_y.reshape(-1,)
-        assert len(np.intersect1d(a, b)) == 0, f'test and val have overlapping values'
+        assert len(np.intersect1d(a, b)) == 0, 'test and val have overlapping values'
 
     return
 

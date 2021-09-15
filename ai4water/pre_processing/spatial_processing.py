@@ -176,7 +176,7 @@ class MakeHRUs(object):
                 feature = idx_shp['feature']
 
             shp_reader = shapefile.Reader(shp_file)
-            shp_area_list_acre, shp_geom_list = get_areas_geoms(shp_reader)
+            _, shp_geom_list = get_areas_geoms(shp_reader)
             if 'sub' not in self.hru_definition:
                 shp_geom_list = check_shp_validity(shp_geom_list, len(shp_reader.shapes()), name=shp_name)
 
@@ -206,8 +206,8 @@ class MakeHRUs(object):
             first_shp_reader = shapefile.Reader(first_shp_file)
             second_shp_reader = shapefile.Reader(second_shp_file)
 
-            first_shp_area_list_acre, first_shp_geom_list = get_areas_geoms(first_shp_reader)
-            second_shp_area_list_acre, second_shp_geom_list = get_areas_geoms(second_shp_reader)
+            _, first_shp_geom_list = get_areas_geoms(first_shp_reader)
+            _, second_shp_geom_list = get_areas_geoms(second_shp_reader)
 
             if 'sub' not in self.hru_definition:
                 second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()), name=second_shp_name)
@@ -254,7 +254,7 @@ class MakeHRUs(object):
 
             first_shp_area_list_acre, first_shp_geom_list = get_areas_geoms(first_shp_reader)
             second_shp_area_list_acre, second_shp_geom_list = get_areas_geoms(second_shp_reader)
-            third_shp_area_list_acre, third_shp_geom_list = get_areas_geoms(third_shp_reader)
+            _, third_shp_geom_list = get_areas_geoms(third_shp_reader)
 
             if 'sub' not in self.hru_definition:  # todo
                 second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()), name=second_shp_name)
@@ -407,7 +407,7 @@ class MakeHRUs(object):
         max_xticks = kwargs.get('max_xticks', None)
 
         plt.close('all')
-        fig, axis = plt.subplots(figsize=figsize)
+        _, axis = plt.subplots(figsize=figsize)
         for area in self.area:
             axis.plot(self.area[area], style, label=area)
         axis.legend(fontsize=leg_fs, markerscale=markerscale, bbox_to_anchor=bbox_to_anchor)

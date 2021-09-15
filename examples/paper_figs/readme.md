@@ -1,4 +1,3 @@
-
 [compare machine learning algos](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/compare_ml.ipynb)
 
 [transformations](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/transformations.ipynb)
@@ -10,4 +9,3 @@
 [hru discretization](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/hru_discretization.ipynb)
 
 [ecoli modeling with transformations](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/ecoli_modeling_with_transformations.ipynb)
-

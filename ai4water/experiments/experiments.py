@@ -452,8 +452,9 @@ Available cases are {self.models} and you wanted to include
             orient:str='horizontal',
             **kwargs
     )->dict:
-        """Shows how much improvement was observed after hyperparameter optimization.
-        This plot is only available if `run_type` was set to `optimize` in `fit`.
+        """Shows how much improvement was observed after hyperparameter
+        optimization. This plot is only available if `run_type` was set to
+        `optimize` in `fit`.
         Arguments:
             matric_name : the peformance metric to compare
             save : whether to save the plot or not
@@ -464,7 +465,6 @@ Available cases are {self.models} and you wanted to include
                 name :
                 dpi :
         """
-
         rotation = kwargs.get('rotation', 0)
         name = kwargs.get('name', '')
         dpi = kwargs.get('dpi', 200)

@@ -683,8 +683,7 @@ class DataHandler(AttributeContainer):
         return train_indices, test_indices
 
     def get_train_args(self):
-        """train_data key in config can consist of following keys
-        st, en, indices"""
+        """train_data key in config can consist of following keys st, en, indices"""
         indices = self.config['train_data']
 
         if indices is not None:
@@ -738,7 +737,6 @@ class DataHandler(AttributeContainer):
         ...    print(train_x, train_y, test_x, test_y)
         ```
         """
-
         x, y = self._get_xy()
 
         spliter = self._get_kfold_splitter(x=x, n_splits=n_splits)
@@ -764,7 +762,6 @@ class DataHandler(AttributeContainer):
         The iterator on every iteration returns following
         `(train_x, train_y), (test_x, test_y)`
         """
-
         x,y = self._get_xy()
 
         tscv = TimeSeriesSplit(n_splits=n_splits, **kwargs)
@@ -783,7 +780,6 @@ class DataHandler(AttributeContainer):
 
     def plot_KFold_splits(self, n_splits=5, show=True, **kwargs):
         """Plots the indices of kfold splits"""
-
         x, y = self._get_xy()
 
         spliter = self._get_kfold_splitter(x=x, n_splits=n_splits)
@@ -794,7 +790,6 @@ class DataHandler(AttributeContainer):
 
     def plot_LeaveOneOut_splits(self, show=True, **kwargs):
         """Plots the indices obtained from LeaveOneOut strategy"""
-
         x, y = self._get_xy()
 
         spliter = LeaveOneOut().split(x)
@@ -1639,8 +1634,7 @@ class MakeData(object):
         self.index_types = {}  # saves the information whether an index was datetime index or not?
 
     def check_nans(self, data, input_x, input_y, label_y, outs, lookback):
-        """Checks whether anns are present or not and checks shapes of arrays being prepared.
-        """
+        """Checks whether anns are present or not and checks shapes of arrays being prepared."""
         if isinstance(data, pd.DataFrame):
             nans = data[self.output_features].isna()
             nans = nans.sum().sum()

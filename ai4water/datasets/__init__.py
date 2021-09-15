@@ -46,11 +46,14 @@ from .datasets import MtropicsVietnam
 def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
     """
     Loads the Antibiotic resitance genes (ARG) data from a recreational beach
-    in Korea along with environment variables. The data is in the form of
+    in Korea along with environment variables.
+
+    The data is in the form of
     mutlivariate time series and was collected over the period of 2 years during
     several precipitation events. The frequency of environmental data is 30 mins
     while the ARG is discontinuous. The data and its pre-processing is described
     in detail in [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)
+
     Arguments:
         inputs list: features to use as input. By default all environmental data
             is used which consists of following parameters
@@ -91,7 +94,7 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     --------
     ```python
     >>>from ai4water.datasets import arg_beach
-    >>>df = arg_beach()
+    >>>dataframe = arg_beach()
     ```
     """
     fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")

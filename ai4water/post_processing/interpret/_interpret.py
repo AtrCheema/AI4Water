@@ -17,7 +17,6 @@ class Interpret(Plot):
 
     def __init__(self, model):
         """Interprets the ai4water Model."""
-
         self.model = model
 
         super().__init__(model.path)
@@ -47,6 +46,8 @@ class Interpret(Plot):
 
     def plot(self):
         """
+        Currently does nothing.
+
         For NBeats, plot seasonality and trend https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/ar.html#Interpret-model
         For TFT, attention, variable importance of static, encoder and decoder, partial dependency
         # https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/stallion.html#Variable-importances

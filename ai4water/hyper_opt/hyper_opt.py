@@ -19,11 +19,6 @@ except ImportError:
     plotly = None
 
 try:
-    import dill
-except ImportError:
-    dill = None
-
-try:
     import skopt
     from skopt import gp_minimize
     from skopt import BayesSearchCV
@@ -39,9 +34,9 @@ try:
     import hyperopt
     from hyperopt.pyll.base import Apply
     from hyperopt import fmin as fmin_hyperopt
-    from hyperopt import fmin, tpe, STATUS_OK, Trials, rand
+    from hyperopt import tpe, STATUS_OK, Trials, rand
 except ImportError:
-    hyperopt, fmin, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
+    hyperopt, fmin_hyperopt, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
     space_eval, miscs_to_idxs_vals = None, None
 
 try:  # atpe is only available in later versions of hyperopt
@@ -54,7 +49,7 @@ try:
     from optuna.study import Study
     from optuna.trial._trial import TrialState
     from optuna.visualization import plot_edf
-    from optuna.visualization import plot_parallel_coordinate, plot_contour, plot_slice
+    from optuna.visualization import plot_parallel_coordinate, plot_contour
 except ImportError:
     optuna, plot_parallel_coordinate, plot_contour, plot_edf, = None, None, None, None
     Study = None
@@ -538,12 +533,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 # space is provided as list. Either all of them must be hp.space or Dimension.
                 if isinstance(x[0], Dimension):
                     _param_space = {}
-                    for idx, space in enumerate(x):
+                    for space in x:
                         assert isinstance(space, Dimension)
                         _param_space[space.name] = space.as_hp()
                 elif isinstance(x[0], Apply):
                     _param_space = []
-                    for idx, space in enumerate(x):
+                    for space in x:
                         assert isinstance(space, Apply), f"""invalid space type {space.__class__.__name__}"""
                         _param_space.append(space)
                 else:
@@ -835,10 +830,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         fname  = os.path.join(self.opt_path, 'serialized.json')
         with open(fname, 'w') as fp:
             json.dump(serialized, fp, sort_keys=True, indent=4, cls=JsonEncoder)
-
-        # if dill is not None and self.backend != "sklearn":  # todo, why not sklearn
-        #     with open(os.path.join(self.opt_path, 'objective_fn.pkl'), 'wb') as fp:
-        #         dill.dump(self.objective_fn, fp)
 
         return res
 

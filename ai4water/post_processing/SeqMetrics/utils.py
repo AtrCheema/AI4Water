@@ -53,8 +53,8 @@ def plot_metrics(metrics:dict,
     ---------
     ```python
     >>>import numpy as np
-    >>>from AI4Water.utils.SeqMetrics import RegressionMetrics
-    >>>from AI4Water.utils.SeqMetrics.utils import plot_metrics
+    >>>from ai4water.post_processing.SeqMetrics import RegressionMetrics
+    >>>from ai4water.post_processing.SeqMetrics.utils import plot_metrics
     >>>t = np.random.random((20, 1))
     >>>p = np.random.random((20, 1))
     >>>er = RegressionMetrics(t, p)
@@ -72,7 +72,7 @@ def plot_metrics(metrics:dict,
         exclude = []
 
     _metrics = metrics.copy()
-    for k,v in metrics.items():
+    for k in metrics.keys():
         if k in exclude:
             _metrics.pop(k)
 
@@ -185,7 +185,7 @@ def plot_circular_bar(metrics:dict, save:bool, save_path:str, **kwargs):
     plt.axis('off')
 
     # Set the coordinates limits
-    upperLimit = 100
+    # upperLimit = 100
     lowerLimit = 30
     Value = np.array(list(metrics.values()))
 
@@ -223,7 +223,7 @@ def plot_circular_bar(metrics:dict, save:bool, save_path:str, **kwargs):
     labelPadding = 4
 
     # Add labels
-    for bar, angle, height, label1, label2 in zip(bars, angles, heights, metrics.keys(), metrics.values()):
+    for bar, angle, label1, label2 in zip(bars, angles, metrics.keys(), metrics.values()):
 
         label = f'{label1} {round(label2, 4)}'
 
@@ -259,7 +259,7 @@ def plot_circular_bar(metrics:dict, save:bool, save_path:str, **kwargs):
 
 
 def plot1d(true, predicted, save=True, name="plot", show=False):
-    fig, axis = plt.subplots()
+    _, axis = plt.subplots()
 
     axis.plot(np.arange(len(true)), true, label="True")
     axis.plot(np.arange(len(predicted)), predicted, label="Predicted")

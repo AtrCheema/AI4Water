@@ -201,7 +201,7 @@ class Plots(object):
         return
 
     def plot1d_act_for_a_sample(self, activations, sample=0, save=False, name=None):
-        fig, axis = plt.subplots()
+        _, axis = plt.subplots()
 
         for idx in range(self.lookback-1):
             axis.plot(activations[sample, idx, :].transpose(), label='lookback '+str(idx))
@@ -375,7 +375,7 @@ class Plots(object):
         plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
 
         for idx, q in enumerate(self.quantiles):
-            q_name = "{:.1f}".format(self.quantiles[idx] * 100)
+            q_name = "{:.1f}".format(q * 100)
             plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
 
         plt.legend(loc="best")

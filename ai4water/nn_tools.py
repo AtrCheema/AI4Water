@@ -28,8 +28,10 @@ class AttributeNotSetYet:
 
 
 class AttributeStore(object):
-    """ a class which will just make sure that attributes are set at its childs class level and not here.
-    It's purpose is just to avoid cluttering of __init__ method of its child classes. """
+
+    """A class which will just make sure that attributes are set at its childs
+    class level and not here. It's purpose is just to avoid cluttering of __init__
+    method of its child classes. """
     def __init__(self):
         self._model = AttributeNotSetYet("`build` to build neural network")
         self.method = None

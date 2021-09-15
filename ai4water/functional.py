@@ -6,6 +6,7 @@ from .nn_tools import get_add_call_args, get_call_args
 
 
 class Model(BaseModel):
+
     """
     Model class with Functional API and inherits from `BaseModel`.
 
@@ -46,8 +47,12 @@ class Model(BaseModel):
 
     @property
     def KModel(self):
-        """In case when we want to customize the model such as for
-        implementing custom `train_step`, we can provide the customized model as input the this Model class"""
+        """sets k_model.
+
+        In case when we want to customize the model such as for implementing custom
+        `train_step`, we can provide the customized model as input the this Model
+        class
+        """
         return self._k_model
 
     @KModel.setter

@@ -1,7 +1,9 @@
-# This code is almost exact copy and past of keract library except few changes in _get_nodes function where I added one
-# if else statement
-# The original code at https://github.com/philipperemy/keract has following MIT licence as of 24 Nov 2020.
 """
+
+This code is almost exact copy and past of keract library except few changes
+in _get_nodes function where I added one if else statement The original code at
+https://github.com/philipperemy/keract has following MIT licence as of 24 Nov 2020.
+
 MIT License
 
 Copyright (c) 2019 Philippe Rémy

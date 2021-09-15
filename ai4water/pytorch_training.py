@@ -255,15 +255,7 @@ class Learner(AttributeContainer):
 
         for i, (batch_x, batch_y) in enumerate(loader):
 
-            batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
-
-            batch_x = [tensor.float() for tensor in batch_x]
-
-            if self.use_cuda:
-                batch_x = [tensor.cuda() for tensor in batch_x]
-                batch_y = batch_y.cuda()
-
-            pred_y = self.model(*batch_x)
+            batch_y, pred_y = self.__eval(batch_x, batch_y)
 
             true.append(batch_y.detach().cpu().numpy())
             pred.append(pred_y.detach().cpu().numpy())
@@ -272,6 +264,20 @@ class Learner(AttributeContainer):
         pred = np.concatenate(pred)
 
         return true, pred
+
+    def __eval(self, batch_x, batch_y):
+
+        batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
+
+        batch_x = [tensor.float() for tensor in batch_x]
+
+        if self.use_cuda:
+            batch_x = [tensor.cuda() for tensor in batch_x]
+            batch_y = batch_y.cuda()
+
+        pred_y = self.model(*batch_x)
+
+        return batch_y, pred_y
 
     def evaluate(self,
                  x,
@@ -322,15 +328,7 @@ class Learner(AttributeContainer):
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
 
-            batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
-
-            batch_x = [tensor.float() for tensor in batch_x]
-
-            if self.use_cuda:
-                batch_x = [tensor.cuda() for tensor in batch_x]
-                batch_y = batch_y.cuda()
-
-            pred_y = self.model(*batch_x)
+            batch_y, pred_y = self.__eval(batch_x, batch_y)
 
             loss = self.criterion(batch_y.float().view(len(batch_y), num_outs), pred_y.view(len(pred_y), num_outs))
             loss = loss.float()
@@ -365,14 +363,7 @@ class Learner(AttributeContainer):
 
             for i, (batch_x, batch_y) in enumerate(self.val_loader):
 
-                batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
-                batch_x = [tensor.float() for tensor in batch_x]
-
-                if self.use_cuda:
-                    batch_x = [tensor.cuda() for tensor in batch_x]
-                    batch_y = batch_y.cuda()
-
-                pred_y = self.model(*batch_x)
+                batch_y, pred_y = self.__eval(batch_x, batch_y)
 
                 # calculate metrics for each mini-batch
                 er = TorchMetrics(batch_y, pred_y)
@@ -442,7 +433,6 @@ class Learner(AttributeContainer):
                        notes='This is Learner from AI4Water test run',
                        tags=['ai4water', 'pytorch'],
                        entity=self.wandb_config.get('entity', ''))
-
         return
 
     def on_train_end(self):

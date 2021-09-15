@@ -7,27 +7,39 @@ import pandas as pd
 
 from ai4water.datasets import WeatherJena, SWECanada, MtropicsLaos
 
-# wj = WeatherJena()
-# df = wj.fetch()
-#
-# assert df.shape[0] >= 919551
-# assert df.shape[1] >= 21
+def test_jena_weather():
+    wj = WeatherJena()
+    df = wj.fetch()
 
-# swe = SWECanada()
-#
-# stns = swe.stations()
-#
-# d = swe.fetch(1)
-#
-# d = swe.fetch(10, st='20110101')
-#
-# d = swe.fetch(0.001, st='20110101')
-#
-# d = swe.fetch('ALE-05AE810', st='20110101')
-#
-# d = swe.fetch(stns[0:10], st='20110101')
+    assert df.shape[0] >= 919551
+    assert df.shape[1] >= 21
+
+    return
+
+def test_swe_canada():
+    swe = SWECanada()
+
+    stns = swe.stations()
+
+    df1 = swe.fetch(1)
+    assert len(df1) == 1
+
+    df10 = swe.fetch(10, st='20110101')
+    assert len(df10) == 10
+
+    df2 = swe.fetch(0.001, st='20110101')
+    assert len(df2) == 2
+
+    df3 = swe.fetch('ALE-05AE810', st='20110101')
+    assert df3['ALE-05AE810'].shape == (3500, 3)
+
+    df4 = swe.fetch(stns[0:10], st='20110101')
+    assert len(df4) == 10
+
+    return
 
 laos = MtropicsLaos()
+
 
 class TestMtropicsLaos(unittest.TestCase):
 
@@ -84,6 +96,13 @@ class TestMtropicsLaos(unittest.TestCase):
         assert int(df.isna().sum().sum()) == 10553086
         assert df.shape[-1] == 16
         return
+
+    def test_swe_canada(self):
+        test_swe_canada()
+
+    def test_jena_weather(self):
+        test_jena_weather()
+
 
 if __name__=="__main__":
     unittest.main()

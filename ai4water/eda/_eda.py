@@ -408,8 +408,8 @@ class EDA(Plot):
             one plot. If dataframe contains columns
          greater than max_subplots, a separate plot will be generated for remaining columns.
          """
-
         assert isinstance(df, pd.DataFrame)
+
         if leg_kws is None:
             leg_kws = {'fontsize': 14}
         if label_kws is None:
@@ -821,12 +821,17 @@ class EDA(Plot):
         return
 
     def _plot_his_df(self,
-                    data:pd.DataFrame,
-                    cols=None,
-                    st=None, en=None,
-                    prefix='', save=None, bins=100, figsize=(20, 14), **kwargs):
+                     data:pd.DataFrame,
+                     cols=None,
+                     st=None,
+                     en=None,
+                     prefix='',
+                     save=None,
+                     bins=100,
+                     figsize=(20, 14),
+                     **kwargs
+                     ):
         """Plots histogram of one dataframe"""
-
         if cols is None:
             cols = data.columns
 

@@ -737,7 +737,6 @@ class HYSETS(Camels):
                                 as_ts=False
                                 ):
         """Fetches dynamic attributes of station."""
-
         st, en = self._check_length(st, en)
         attrs = check_attributes(dynamic_features, self.dynamic_features)
 

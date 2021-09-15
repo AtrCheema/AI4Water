@@ -143,7 +143,7 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
 
     df3 = pd.DataFrame(a, columns=cols, index=index)
 
-    _, dfo1 = run_method1(method=method, replace_nans=True, data=df3, **kwargs)
+    _, _ = run_method1(method=method, replace_nans=True, data=df3, **kwargs)
 
     _, _, dfo2 = run_method2(method=method, replace_nans=True, data=df3, **kwargs)
 
@@ -203,7 +203,7 @@ class test_Scalers(unittest.TestCase):
     #     self.assertRaises(ValueError, Transformations(data=df), 'transform')
 
     def test_get_scaler_from_dict_error(self):
-        normalized_df1, scaler = Transformations(data=df)('transform', return_key=True)
+        normalized_df1, _ = Transformations(data=df)('transform', return_key=True)
         self.assertRaises(ValueError, Transformations(data=normalized_df1), 'inverse')
 
     def test_log_scaler_with_feat(self):

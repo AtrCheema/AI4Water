@@ -81,7 +81,6 @@ class Visualize(Plots):
         y = corresponding label of x. Will overwrite `data`.
         data : one of `training`, `test` or `validation`
         """
-
         if x is None:
             data = getattr(self, f'{data}_data')()
             x, y = maybe_three_outputs(data)
@@ -112,8 +111,9 @@ class Visualize(Plots):
         return lstm_names
 
     def get_rnn_weights(self, weights: dict) -> dict:
-        """Finds RNN related weights and combine kernel, recurrent curnel and bias
-        of each layer into a list."""
+        """Finds RNN related weights.
+
+         It combines kernel recurrent curnel and bias of each layer into a list."""
         lstm_weights = {}
         if self.config['model'] is not None and 'layers' in self.config['model']:
             if "LSTM" in self.config['model']['layers']:

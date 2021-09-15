@@ -5,7 +5,7 @@ from math import sqrt
 from typing import Union
 
 from sklearn import preprocessing
-from sklearn.metrics import hinge_loss
+# from sklearn.metrics import hinge_loss
 from scipy.stats import gmean, kendalltau
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
@@ -405,11 +405,11 @@ class RegressionMetrics(Metrics):
     ---------
     ```python
     import numpy as np
-    from ai4water.utils.SeqMetrics import RegressionMetrics
-    t = np.random.random(10)
-    p = np.random.random(10)
-    errors = RegressionMetrics(t,p)
-    all_errors = errors.calculate_all()
+    >>>from ai4water.post_processing.SeqMetrics import RegressionMetrics
+    >>>t = np.random.random(10)
+    >>>p = np.random.random(10)
+    >>>errors = RegressionMetrics(t,p)
+    >>>all_errors = errors.calculate_all()
     ```
     """
 
@@ -432,7 +432,10 @@ class RegressionMetrics(Metrics):
                                                                              'mean_poisson_deviance')]
         """
         Initializes `Metrics`.
+        
+        args and kwargs go to parent class 'Metrics'.
         """
+
     def abs_pbias(self) -> float:
         """ Absolute Percent bias"""
         _apb = 100.0 * sum(abs(self.predicted - self.true)) / sum(self.true)  # Absolute percent bias
@@ -640,6 +643,7 @@ class RegressionMetrics(Metrics):
 
     def cosine_similarity(self)->float:
         """[cosine similary](https://en.wikipedia.org/wiki/Cosine_similarity)
+
         It is a judgment of orientation and not magnitude: two vectors with
         the same orientation have a cosine similarity of 1, two vectors oriented
         at 90° relative to each other have a similarity of 0, and two vectors diametrically
@@ -1282,7 +1286,7 @@ class RegressionMetrics(Metrics):
             .. math::
             NSE = 1-\\frac{\\sum_{i=1}^{N}(log(e_{i})-log(s_{i}))^2}{\\sum_{i=1}^{N}(log(e_{i})-log(\\bar{e})^2}-1)*-1
         """
-        s, o = self.predicted + epsilon, self.true + epsilon
+        s, o = self.predicted + epsilon, self.true + epsilon  # todo, check why s is here
         return float(1 - sum((np.log(o) - np.log(o)) ** 2) / sum((np.log(o) - np.mean(np.log(o))) ** 2))
 
     def log_prob(self) -> float:

@@ -58,8 +58,10 @@ class ConditionalRNN(tf.keras.layers.Layer):
         # multi cond
         max_num_conditions = 10
         self.multi_cond_to_init_state_dense = []
-        for i in range(max_num_conditions):
+
+        for _ in range(max_num_conditions):
             self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(units=self.units))
+
         self.multi_cond_p = tf.keras.layers.Dense(1, activation=None, use_bias=True)
 
     def _standardize_condition(self, initial_cond):

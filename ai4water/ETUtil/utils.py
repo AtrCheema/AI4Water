@@ -1,14 +1,12 @@
 import re
 import math
-from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 from ai4water.ETUtil.converter import Temp, Speed, Pressure
-from ai4water.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA, Colors
+from ai4water.ETUtil.global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA
 from ai4water.ETUtil.global_variables import default_constants, SB_CONS
 from ai4water.utils.utils import process_axis
 

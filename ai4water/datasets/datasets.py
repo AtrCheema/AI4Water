@@ -732,7 +732,7 @@ class SWECanada(Datasets):
                                  ) -> pd.DataFrame:
         """fetches attributes of one station"""
 
-        st, en = self._check_length(st, en)
+        #st, en = self._check_length(st, en)
 
         nc = netCDF4.Dataset(os.path.join(self.ds_dir, 'CanSWE-CanEEN_1928-2020_v1.nc'))
 

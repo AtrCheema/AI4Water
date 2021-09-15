@@ -1,5 +1,5 @@
 import os
-from typing import Any, Union, List
+from typing import Any, List
 from collections import OrderedDict
 
 import numpy as np
@@ -104,8 +104,11 @@ class Model(MODEL, BaseModel):
         self.build(self._get_dummy_input_shape())  # will initialize ML models or build NNs
 
     def _input_lyrs(self):
-        """ `input_lyrs` can be a ListWrapper so just extract the tensor from the list
-        if the length of the list ==1
+        """
+        Input  layers of deep learning model.
+
+        `input_lyrs` can be a ListWrapper so just extract the tensor from the
+        list. if the length of the list ==1
         """
         input_lyrs = None
         if hasattr(self, 'input_lyrs'):
@@ -132,7 +135,6 @@ class Model(MODEL, BaseModel):
     def layer_names(self)->List[str]:
         """Returns a list of names of layers/nn.modules
         for deep learning model. For ML models, returns empty list"""
-        
         _all_layers = []
         if self.category == "ML":
             pass
@@ -145,7 +147,7 @@ class Model(MODEL, BaseModel):
 
     @property
     def layers_in_shapes(self) -> dict:
-        """ returns the shapes of inputs to all layers"""
+        """Returns the shapes of inputs to all layers"""
         shapes = {}
 
         for lyr in self.layers:
