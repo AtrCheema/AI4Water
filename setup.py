@@ -66,7 +66,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'AI4Water/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
+    package_data={'ai4water/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
     include_package_data=True,
 
     classifiers=[

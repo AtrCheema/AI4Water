@@ -130,7 +130,7 @@ class PlotResults(Plot):
 
     def horizon_plots(self, errors:dict, fname='', save=True):
         plt.close('')
-        fig, axis = plt.subplots(len(errors), sharex='all')
+        _, axis = plt.subplots(len(errors), sharex='all')
 
         legends = {'r2': "$R^2$", 'rmse': "RMSE", 'nse': "NSE"}
         idx = 0
@@ -160,7 +160,7 @@ class PlotResults(Plot):
 
         mpl.rcParams.update(mpl.rcParamsDefault)
 
-        fig, axis = init_subplots(width=12, height=8)
+        _, axis = init_subplots(width=12, height=8)
 
         # it is quite possible that when data is datetime indexed, then it is not equalidistant and large amount of graph
         # will have not data in that case lines plot will create a lot of useless interpolating lines where no data is present.

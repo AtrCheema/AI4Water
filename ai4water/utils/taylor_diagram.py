@@ -478,7 +478,7 @@ def taylor_plot(trues:dict,
                 third_val = None
 
                 if len(model)>2:
-                    third_name = list(model.keys())[2]
+                    _ = list(model.keys())[2]
                     third_val = list(model.values())[2]
             else:
                 er = RegressionMetrics(trues[season], model)

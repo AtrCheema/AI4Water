@@ -2,7 +2,7 @@
 
 import numpy as np
 import scipy
-from scipy.stats import mannwhitneyu, norm, rankdata
+from scipy.stats import norm, rankdata
 
 class Features(object):
 
@@ -125,7 +125,7 @@ class Trends(Features):
         Modified from code by Michael Schramn available at
         https://github.com/mps9506/Mann-Kendall-Trend/blob/master/mk_test.py
         """
-        n = len(self.x)
+        # n = len(self.x)
 
         s = mk_score(self.x)
         var_s = mk_score_variance(self.x)

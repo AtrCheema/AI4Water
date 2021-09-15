@@ -43,7 +43,7 @@ class HARHNModel(Model):
         return
 
     def forward(self, *inputs: Any, **kwargs: Any):
-        y_pred, batch_y_h = self.pt_model(inputs[0], inputs[1][:, -1], **kwargs)
+        y_pred, _ = self.pt_model(inputs[0], inputs[1][:, -1], **kwargs)
         return y_pred
 
 
@@ -88,7 +88,7 @@ class IMVModel(HARHNModel):
         alphas = [array.detach().cpu().numpy() for array in self.alphas]
         alphas = np.concatenate(alphas)  # (examples, lookback, ins, 1)
 
-        x, y = getattr(self, f'{data}_data')()
+        x, _ = getattr(self, f'{data}_data')()
 
         plot_activations_along_inputs(data=x[:, -1, :],  # todo, is -1 correct?
                                       activations=alphas.reshape(-1, self.lookback, self.num_ins),
