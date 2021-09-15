@@ -264,8 +264,10 @@ def test_dataset(dataset, num_stations, dyn_data_len, num_static_attrs, num_dyn_
 class TestCamels(unittest.TestCase):
 
     def test_gb(self):
-        ds_gb = CAMELS_GB(path=r"D:\mytools\AI4Water\AI4Water\datasets\data\CAMELS\CAMELS-GB")
-        test_dataset(ds_gb, 671, 16436, 290, 10)
+        path = r"D:\mytools\AI4Water\AI4Water\datasets\data\CAMELS\CAMELS-GB"
+        if os.path.exists(path):
+            ds_gb = CAMELS_GB(path=path)
+            test_dataset(ds_gb, 671, 16436, 290, 10)
         return
 
     def test_aus(self):
