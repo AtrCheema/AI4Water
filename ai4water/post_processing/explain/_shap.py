@@ -526,7 +526,7 @@ def infer_framework(model):
         framework = model.config['backend']
 
     elif type(model) is tuple:
-        a, b = model
+        a, _ = model
         try:
             a.named_parameters()
             framework = 'pytorch'

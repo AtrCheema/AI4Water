@@ -606,7 +606,7 @@ class DataHandler(AttributeContainer):
                                          )
         elif self.source_is_list:
             tot_obs = []
-            for idx, src in enumerate(self.data):
+            for idx in range(len(self.data)):
                 _tot_obs = tot_obs_for_one_df(self.data[idx],
                                               self.allow_nan_labels[idx],
                                               self.output_features[idx], self.lookback[idx],
@@ -620,7 +620,7 @@ class DataHandler(AttributeContainer):
 
         elif self.source_is_dict:
             tot_obs = {}
-            for src_name, src in self.data.items():
+            for src_name in self.data.keys():
                 _tot_obs = tot_obs_for_one_df(self.data[src_name],
                                               self.allow_nan_labels[src_name],
                                               self.output_features[src_name],
@@ -846,8 +846,8 @@ class DataHandler(AttributeContainer):
 
     def _get_xy(self):
         if self.teacher_forcing:
-            tr_x, prev_y, tr_y = self.training_data()
-            val_x, prev_y, val_y = self.validation_data()
+            tr_x, _, tr_y = self.training_data()
+            val_x, _, val_y = self.validation_data()
         else:
             tr_x, tr_y = self.training_data()
             val_x, val_y = self.validation_data()
@@ -1253,7 +1253,7 @@ class DataHandler(AttributeContainer):
         if self.data.__class__.__name__ == "NoneType":
             return None, None
 
-        train_indices, test_indices = self.get_indices()
+        _, test_indices = self.get_indices()
 
         if self.val_data == "same":
             return self.validation_data(key=key)

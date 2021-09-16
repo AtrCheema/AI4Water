@@ -71,11 +71,11 @@ class Interpret(Plot):
         mpl.rcParams.update(mpl.rcParamsDefault)
         classes = coef.shape[0]
         features = coef.shape[1]
-        fig, axis = plt.subplots(classes, sharex='all')
+        _, axis = plt.subplots(classes, sharex='all')
         axis = axis if hasattr(axis, "__len__") else [axis]
 
         for idx, ax in enumerate(axis):
-            colors = ['red' if c < 0 else 'blue' for c in self._model.coef_[idx]]
+            # colors = ['red' if c < 0 else 'blue' for c in self._model.coef_[idx]]
             ax.bar(range(features), self._model.coef_[idx], 0.4)
 
         plt.xticks(ticks=range(features), labels=self.model.in_cols, rotation=90, fontsize=12)

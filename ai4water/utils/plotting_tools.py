@@ -214,7 +214,7 @@ class Plots(object):
 
     def plot_train_data(self, how='3d', save=True,  **kwargs):
 
-        x,  y = self.training_data(**kwargs)
+        x,  _ = self.training_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='training')
 
         return
@@ -228,7 +228,7 @@ class Plots(object):
 
     def plot_test_data(self, how='3d', save=True,  **kwargs):
 
-        x, y = self.test_data(**kwargs)
+        x, _ = self.test_data(**kwargs)
         self.plot_model_input_data(x, how=how, save=save, which='test')
 
         return

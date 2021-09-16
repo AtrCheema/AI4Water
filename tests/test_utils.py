@@ -9,7 +9,11 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from ai4water import Model
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+else:
+    from ai4water import Model
+
 from ai4water.functional import Model as FModel
 from ai4water.datasets import load_nasdaq, arg_beach
 from ai4water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
