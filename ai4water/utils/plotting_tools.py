@@ -35,26 +35,27 @@ rnn_info = {"LSTM": {'rnn_type': 'LSTM',
                      'uses_bias': True,
                      'direction_names': [[]]}}
 
+
 class Plots(object):
     # TODO initialte this class with at least path
 
     def __init__(self, path, problem, category, config, model=None):
         self.path = path
         self.problem = problem
-        self.category=category
+        self.category = category
         self.ml_model = model
         self.config = config
 
     @property
-    def training_data(self):
+    def training_data(self, *args, **kwargs):
         raise AttributeError
 
     @property
-    def validation_data(self):
+    def validation_data(self, *args, **kwargs):
         raise AttributeError
 
     @property
-    def test_data(self):
+    def test_data(self, *args, **kwargs):
         raise AttributeError
 
     @property
@@ -102,7 +103,7 @@ class Plots(object):
                 label: str = '',
                 save=True,
                 fname=None,
-                interpolation:str='none',
+                interpolation: str = 'none',
                 where='activations',
                 rnn_args=None,
                 **kwargs):
@@ -128,7 +129,7 @@ class Plots(object):
             plt.ylabel('Examples' if 'weight' not in label.lower() else '')
             xlabels = kwargs.get('xlabel', None)
             if xlabels is not None:
-                if len(xlabels)<30:
+                if len(xlabels) < 30:
                     plt.xlabel(xlabels, rotation=90)
             else:
                 plt.xlabel("Inputs")
@@ -171,7 +172,10 @@ class Plots(object):
             save_dir = os.path.join(self.path, where)
 
             if not os.path.exists(save_dir):
-                assert os.path.dirname(where) in ['', 'activations', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
+                assert os.path.dirname(where) in ['',
+                                                  'activations',
+                                                  'weights',
+                                                  'plots', 'data', 'results'], f"unknown directory: {where}"
                 save_dir = os.path.join(self.path, where)
 
                 if not os.path.exists(save_dir):
@@ -234,11 +238,11 @@ class Plots(object):
         return
 
     def plot_model_input_data(self,
-                              in_data:Union[list, np.ndarray],
-                              how:str,
-                              save:bool,
-                              which:str='training'
-                              )->None:
+                              in_data: Union[list, np.ndarray],
+                              how: str,
+                              save: bool,
+                              which: str = 'training'
+                              ) -> None:
 
         assert how in ['3d', 'hist']
 
@@ -255,7 +259,7 @@ class Plots(object):
                     self._imshow_3d(inputs, which + '_data_' + str(idx), save=save, where='data')
             elif np.ndim(inputs) == 2:
                 if how.upper() == "3D":
-                    self._imshow(inputs, save=save, fname= which + '_data_' + str(idx), where='data')
+                    self._imshow(inputs, save=save, fname=which + '_data_' + str(idx), where='data')
                 else:
                     self.plot_histogram(inputs,
                                         save=save,
@@ -285,7 +289,7 @@ class Plots(object):
                 else:
                     # assuming it will always be the last dim if not first
                     features_2D(data[..., st:en], savepath=save, **kwargs)
-                st=en
+                st = en
         return
 
     def features_1d(self, data, save=True, name='', **kwargs):
@@ -306,7 +310,7 @@ class Plots(object):
         if save:
             save = os.path.join(self.act_path, name + "0D.png")
         else:
-            save=None
+            save = None
 
         if features_0D is None:
             warnings.warn("install see-rnn to plot 0D-features plot")
@@ -318,7 +322,7 @@ class Plots(object):
         if save:
             save = os.path.join(self.act_path, name + "0D.png")
         else:
-            save=None
+            save = None
 
         if rnn_histogram is None:
             warnings.warn("install see-rnn to plot rnn_histogram plot", UserWarning)
@@ -363,7 +367,7 @@ class Plots(object):
                          alpha=0.2,
                          color='g', edgecolor=None, label=q_name + ' %')
         plt.legend(loc="best")
-        self.save_or_show(save, fname= "q_" + q_name + ".png", where='results')
+        self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
         return
 
     def plot_all_qs(self, true_outputs, predicted, save=False):
@@ -386,7 +390,7 @@ class Plots(object):
     def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
         plt.close('all')
         plt.style.use('ggplot')
-        assert true_outputs.shape[-2:] == (1,1)
+        assert true_outputs.shape[-2:] == (1, 1)
         if en is None:
             en = true_outputs.shape[0]
         for q in range(len(self.quantiles) - 1):
@@ -400,7 +404,6 @@ class Plots(object):
             plt.legend(loc="best")
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
-
 
     def roc_curve(self, x, y, save=True):
         assert self.problem.upper().startswith("CLASS")
@@ -434,7 +437,7 @@ class Plots(object):
         self.save_or_show(save, fname="decision_tree", where="results", dpi=1000)
         return
 
-    def plot_treeviz_leaves(self, save=True, **kwargs):
+    def plot_treeviz_leaves(self, save=True):
         """Plots dtreeviz related plots if dtreeviz is installed"""
 
         model = list(self.config['model'].keys())[0].upper()
@@ -457,7 +460,7 @@ class Plots(object):
 
     def plot_histogram(self,
                        data: np.ndarray,
-                       save:bool=True,
+                       save: bool = True,
                        fname='hist',
                        features=None,
                        where='data'

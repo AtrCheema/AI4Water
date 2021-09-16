@@ -133,9 +133,13 @@ class EDA(Plot):
 
         Return:
             None
-        Examples:
+
+        Example
+        ---------
+        ```python
         >>>vis = EDA(data)
         >>>vis.heatmap(save=False)
+        ```
         """
         if isinstance(self.data, pd.DataFrame):
             self._heatmap_df(self.data, cols=cols, st=st, en=en, **kwargs)
@@ -186,7 +190,8 @@ class EDA(Plot):
             figsize: tuple
             any additional keyword argument will be passed to sns.heatmap
 
-        :return:
+        Return:
+
         """
         if cols is None:
             cols = data.columns
@@ -245,9 +250,12 @@ class EDA(Plot):
             en :
             save : if False, plot will be shown and not plotted.
 
-        Examples:
+        Example
+        --------
+        ```python
         >>>vis = EDA(data)
         >>>vis.plot_missing(save=False)
+        ```
         """
         if isinstance(self.data, pd.DataFrame):
             self._plot_missing_df(self.data, st=st, en=en, cols=cols, save=save, **kwargs)
@@ -521,9 +529,11 @@ class EDA(Plot):
 
         Example
         --------
+        ```python
         >>>from ai4water.eda import EDA
         >>>vis = EDA(data)
         >>>vis.feature_feature_corr(save=False)
+        ```
         """
         if cols is None:
             if remove_targets:
@@ -601,7 +611,7 @@ class EDA(Plot):
         vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
         vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
         # width x height
-        fig, ax = plt.subplots(figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 9 + len(cols)*0.1)))
+        _, ax = plt.subplots(figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 9 + len(cols)*0.1)))
 
         _kwargs = dict()
         _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
@@ -1096,17 +1106,18 @@ class EDA(Plot):
         return
 
     def _box_plot_df(self,
-                    data,
-                    st=None,
-                    en=None,
-                    normalize=True,
-                    show_datapoints=False,
-                    violen=False,
-                    save=None,
-                    figsize=(12,8),
+                     data,
+                     st=None,
+                     en=None,
+                     normalize=True,
+                     show_datapoints=False,
+                     violen=False,
+                     save=None,
+                     figsize=(12,8),
                      prefix="box_plot",
                      freq=None,
-                     **kwargs):
+                     **kwargs
+                     ):
 
         data = data.copy()
 
@@ -1119,9 +1130,15 @@ class EDA(Plot):
             data = transformer.transform()
 
         if freq is not None:
-            return self._box_plot_with_freq(data, freq, show_datapoints, save, figsize,
-                                           violen=violen,
-                                           prefix=prefix, **kwargs)
+            return self._box_plot_with_freq(data,
+                                            freq=freq,
+                                            show_datapoints=show_datapoints,
+                                            save=save,
+                                            figsize=figsize,
+                                            violen=violen,
+                                            prefix=prefix,
+                                            **kwargs
+                                            )
 
         return self.__box_plot_df(data=data,
                                  name=prefix,
@@ -1156,14 +1173,17 @@ class EDA(Plot):
         self.save_or_show(fname=name, save=save, where=where)
         return
 
-    def _box_plot_with_freq(self, data, freq,
-                           violen=False,
-                           show_datapoints=False,
-                           save=None,
-                           figsize=(12,8),
-                           name='bw',
-                           prefix='',
-                           **kwargs):
+    def _box_plot_with_freq(self,
+                            data,
+                            freq,
+                            violen=False,
+                            show_datapoints=False,
+                            save=None,
+                            figsize=(12,8),
+                            name='bw',
+                            prefix='',
+                            **kwargs
+                            ):
 
         validate_freq(data, freq)
 

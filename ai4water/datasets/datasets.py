@@ -277,6 +277,11 @@ class Datasets(object):
         server and saved into local disk.
     """
     def __init__(self, name=None, units=None):
+        """
+        Arguments:
+            name :
+            units :
+        """
         if name is None:
             name = self.__class__.__name__
 
@@ -285,11 +290,6 @@ class Datasets(object):
 
         self.units = units
         self.name = name
-    """
-    Arguments:
-        name :
-        units :
-    """
 
     @property
     def url(self):

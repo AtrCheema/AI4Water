@@ -11,7 +11,7 @@ seed = 313
 class Imputation(object):
     """Implements imputation of missing values using a range of methods.
     Imputation Methods:
-        pandas:
+        - pandas:
             Pandas library provides two methods for filling input data.
             `interpolate`: filling by interpolation
               Example of imputer_args can be
@@ -23,7 +23,7 @@ class Imputation(object):
                  {'method': 'ffill'}
               For detailed args to be passed see
               https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
-        sklearn:
+        - sklearn:
             scikit-learn library provides 3 different imputation methods.
             `SimplteImputer`:
               For details see https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer
@@ -35,16 +35,17 @@ class Imputation(object):
               imputer_args example: {'n_neighbors': 3}.
               For details see https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html
 
-        fancyimpute:
+        - fancyimpute:
             knn:
             NuclearnNormMinimization
             SoftImpute
             Biscaler
         transdim:
 
-    Methods:
-        plot: plots the imputed values.
-        missing_intervals: intervals of missing data.
+    Methods
+    --------
+        - plot: plots the imputed values.
+        - missing_intervals: intervals of missing data.
 
     --------
     Examples:

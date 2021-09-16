@@ -422,7 +422,7 @@ class Model(MODEL, BaseModel):
         #     if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
         #         print("Warning: the output is of Input tensor class type")
 
-        outs = None
+        # outs = None
         #if BACKEND == 'tensorflow':
             # outs = self.call(input_lyrs)
             # setattr(self, 'output_lyrs', outs)

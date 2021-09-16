@@ -685,7 +685,7 @@ Available cases are {self.models} and you wanted to include
         if len(loss_curves)>5:
             _kwargs['bbox_to_anchor'] = (1.1, 0.99)
 
-        fig, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
+        _, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
 
         for _model, _loss in loss_curves.items():
             if _model.startswith('model_'):
