@@ -191,11 +191,12 @@
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1761
 
 
+import os
 import glob
 import random
 import zipfile
 import warnings
-import shutil, os
+import shutil
 from typing import Union, Tuple
 
 try:
@@ -566,8 +567,8 @@ class GeoChemMatane(Weisssee):
 
 class HydroMeteorAndes(Datasets):
     """Hydrometeriological dataset of tropical Andes region"""
-    urll = ["https://springernature.figshare.com/ndownloader/files/10514506",
-            "https://springernature.figshare.com/ndownloader/files/10514509"]
+    url = ["https://springernature.figshare.com/ndownloader/files/10514506",
+           "https://springernature.figshare.com/ndownloader/files/10514509"]
 
 
 class WeatherJena(Datasets):
@@ -619,7 +620,7 @@ class WeatherJena(Datasets):
         df = pd.DataFrame()
         for fpath in all_files:
             f_df = pd.read_csv(fpath, index_col='Date Time',
-                               encoding = 'unicode_escape', na_values=-9999)
+                               encoding='unicode_escape', na_values=-9999)
             f_df.index = pd.DatetimeIndex(f_df.index)
             df = pd.concat([df, f_df])  # todo, such concatenation is slow.
 
@@ -731,7 +732,7 @@ class SWECanada(Datasets):
                                  ) -> pd.DataFrame:
         """fetches attributes of one station"""
 
-        #st, en = self._check_length(st, en)
+        # st, en = self._check_length(st, en)
 
         nc = netCDF4.Dataset(os.path.join(self.ds_dir, 'CanSWE-CanEEN_1928-2020_v1.nc'))
 
@@ -916,7 +917,7 @@ class MtropicsLaos(Datasets):
             features: Union[list, str] = 'Ecoli_mpn100',
             st: Union[str, pd.Timestamp] = '20110525 10:00:00',
             en: Union[str, pd.Timestamp] = '20210406 15:05:00',
-            remove_duplicates:bool = True,
+            remove_duplicates: bool = True,
     ) -> pd.DataFrame:
         """Fetches E. coli data collected at the outlet.
         ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
@@ -959,7 +960,7 @@ class MtropicsLaos(Datasets):
 
         features = check_attributes(_features, list(available_features.values()))
 
-        if  remove_duplicates:
+        if remove_duplicates:
             df = df[~df.index.duplicated(keep='first')]
 
         df = df.sort_index()
@@ -1139,6 +1140,58 @@ class MtropicsLaos(Datasets):
         # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
         return wl.loc[st:en], spm.loc[st:en]
 
+    def make_classification(self,
+                            input_features: Union[None, list] = None,
+                            output_features: Union[str, list] = None,
+                            st: Union[None, str] = "20110525 14:00:00",
+                            en: Union[None, str] = "20181027 00:00:00",
+                            freq: str = "6min",
+                            threshold: Union[int, dict] = 400
+                            ) -> pd.DataFrame:
+        """
+        Makes a classification problem.
+
+        Arguments:
+            input_features : names of inputs to use.
+            output_features : feature/features to consdier as target/output/label
+            st : starting date of data
+            en : end date of data
+            freq : frequency of data
+            threshold : threshold to use to determine classes. Values greater than
+                equal to threshold are set to 1 while values smaller than threshold
+                are set to 0. The value of 400 is chosen for E. coli to make the
+                the number 0s and 1s balanced. It should be noted that US-EPA recommends
+                threshold value of 400 cfu/ml.
+
+        returns:
+            a dataframe of shape `(inputs+target, st:en)`
+
+        # Example
+        >>>from ai4water.datasets import MtropicsLaos
+        >>>laos = MtropicsLaos()
+        >>>df = laos.make_classification()
+        """
+        thresholds = {
+            'Ecoli_mpn100': 400
+        }
+
+        target: list = check_attributes(output_features, self.target)
+
+        data = self._make_ml_problem(input_features, target, st, en, freq)
+
+        if len(target) == 1:
+            threshold = threshold or thresholds[target[0]]
+        else:
+            raise ValueError
+
+        s = data[target[0]]
+        s[s < threshold] = 0
+        s[s >= threshold] = 1
+
+        data[target[0]] = s
+
+        return data
+
     def make_regression(self,
                         input_features: Union[None, list] = None,
                         output_features: Union[str, list] = "Ecoli_mpn100",
@@ -1152,10 +1205,10 @@ class MtropicsLaos(Datasets):
 
         Arguments:
             input_features : names of inputs to use.
-            output_features :
-            st :
-            en :
-            freq :
+            output_features : feature/features to consdier as target/output/label
+            st : starting date of data
+            en : end date of data
+            freq : frequency of data
 
         returns:
             a dataframe of shape `(inputs+target, st:en)`
@@ -1170,8 +1223,13 @@ class MtropicsLaos(Datasets):
         >>>reg_data = laos.make_regression(ins, out, '20110101', '20181231')
         ```
 
-        # todo add HRU definition
+        todo add HRU definition
         """
+        data = self._make_ml_problem(input_features, output_features, st, en, freq)
+
+        return data
+
+    def _make_ml_problem(self, input_features, output_features, st, en, freq):
         inputs = check_attributes(input_features, self.inputs)
         target = check_attributes(output_features, self.target)
         features_to_fetch = inputs + target

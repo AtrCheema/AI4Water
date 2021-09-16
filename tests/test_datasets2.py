@@ -93,11 +93,22 @@ class TestMtropicsLaos(unittest.TestCase):
         assert rg.shape == (6939, 7)
         assert int(rg.isna().sum().sum()) == 34510
 
-    def test_fetch(self):
+    def test_regression(self):
         df = laos.make_regression()
         assert isinstance(df.index, pd.DatetimeIndex)
         assert int(df.isna().sum().sum()) == 650483
         assert df.shape[-1] == 8
+        return
+
+    def test_classification(self):
+
+        df = laos.make_classification()
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert int(df.isna().sum().sum()) == 650483
+        s = df['Ecoli_mpn100']
+        assert (s == 0).sum() == 102
+        assert (s == 1).sum() == 156
+
         return
 
     def test_swe_canada(self):

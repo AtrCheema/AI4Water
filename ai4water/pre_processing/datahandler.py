@@ -29,6 +29,7 @@ except ModuleNotFoundError:
 # todo
 # detrend
 
+
 class AttributeContainer(object):
 
     def __init__(self):
@@ -62,28 +63,28 @@ class DataHandler(AttributeContainer):
                  data,
                  input_features: Union[list, dict, str, None] = None,
                  output_features: Union[list, dict, str, None] = None,
-                 dataset_args:dict = None,
+                 dataset_args: dict = None,
 
                  val_fraction: float = 0.3,
                  test_fraction: float = 0.3,
 
-                 input_step:int = 1,
-                 lookback:int = 1,
-                 forecast_len:int = 1,
-                 forecast_step:int = 0,
-                 known_future_inputs:bool = False,
-                 allow_input_nans:bool = False,
+                 input_step: int = 1,
+                 lookback: int = 1,
+                 forecast_len: int = 1,
+                 forecast_step: int = 0,
+                 known_future_inputs: bool = False,
+                 allow_input_nans: bool = False,
 
                  train_data: Union[str, list] = None,
                  val_data: Union[str, list, np.ndarray, None] = None,
-                 intervals = None,
-                 transformation:Union[str, list, dict] = None,
-                 shuffle:bool = True,
+                 intervals=None,
+                 transformation: Union[str, list, dict] = None,
+                 shuffle: bool = True,
                  allow_nan_labels: int = 0,
-                 nan_filler:dict = None,
+                 nan_filler: dict = None,
                  batch_size: int = 32,
                  drop_remainder: bool = False,
-                 teacher_forcing:bool = False,
+                 teacher_forcing: bool = False,
                  seed: int = 313,
                  save: bool = False,
                  verbosity: int = 1,
@@ -295,7 +296,7 @@ class DataHandler(AttributeContainer):
             elif self.source_is_dict:
                 attr = self.config[item]
                 if not isinstance(attr, dict):
-                    attr = {key:attr for key in self.data.keys()}
+                    attr = {key: attr for key in self.data.keys()}
                 assert len(attr) == len(self.data), f"There are {len(attr)} values for {item} while" \
                                                     f" {len(self.data)} values for data"
                 return attr
@@ -310,7 +311,7 @@ class DataHandler(AttributeContainer):
     def classes(self):
         _classes = []
         if self.problem == 'classification':
-            if self.num_outs==1:  # for binary/multiclass
+            if self.num_outs == 1:  # for binary/multiclass
                 array = self.data[self.output_features].values
                 _classes = np.unique(array[~np.isnan(array)])
             else:  # for one-hot encoded
@@ -323,7 +324,7 @@ class DataHandler(AttributeContainer):
         return len(self.classes)
 
     @property
-    def is_binary(self)->bool:
+    def is_binary(self) -> bool:
         """Returns True if the porblem is binary classification"""
         _default = False
         if self.problem == 'classification':
@@ -333,12 +334,12 @@ class DataHandler(AttributeContainer):
                 if len(unique_vals) == 2:
                     _default = True
             else:
-                pass # todo, check when output columns are one-hot encoded
+                pass  # todo, check when output columns are one-hot encoded
 
         return _default
 
     @property
-    def is_multiclass(self)->bool:
+    def is_multiclass(self) -> bool:
         """Returns True if the porblem is multiclass classification"""
         _default = False
         if self.problem == 'classification':
@@ -348,12 +349,12 @@ class DataHandler(AttributeContainer):
                 if len(unique_vals) > 2:
                     _default = True
             else:
-                pass # todo, check when output columns are one-hot encoded
+                pass  # todo, check when output columns are one-hot encoded
 
         return _default
 
     @property
-    def is_multilabel(self)->bool:
+    def is_multilabel(self) -> bool:
         """Returns True if the porblem is multilabel classification"""
         _default = False
         if self.problem == 'classification':
@@ -401,11 +402,12 @@ class DataHandler(AttributeContainer):
                 raise NotImplementedError
         elif self.source_is_dict:
             if isinstance(self.lookback, int):
-                batch_dim = {k:batch_dim_from_lookback(self.lookback) for k,v in zip(self.data.keys(), range(len(self.data)))}
+                batch_dim = {k: batch_dim_from_lookback(self.lookback) for k, v in zip(self.data.keys(), range(len(self.data)))}
             elif isinstance(self.lookback, dict):
-                batch_dim = {k:batch_dim_from_lookback(lb) for k, lb in self.lookback.items()}
+                batch_dim = {k: batch_dim_from_lookback(lb) for k, lb in self.lookback.items()}
             else:
-                raise NotImplementedError(f"incompatible lookback {self.lookback} with data definition {self.data.__class__.__name__}.")
+                raise NotImplementedError(f"incompatible lookback {self.lookback} with data "
+                                          f"definition {self.data.__class__.__name__}.")
         else:
             raise NotImplementedError
 
@@ -439,7 +441,8 @@ class DataHandler(AttributeContainer):
             assert isinstance(_outputs, list)
 
         elif isinstance(self.data, dict):
-            assert isinstance(_outputs, dict), f'data is of type dict while output_features are of type {_outputs.__class__.__name__}'
+            assert isinstance(_outputs, dict), f'data is of type dict while output_features are ' \
+                                               f'of type {_outputs.__class__.__name__}'
             for k in self.data.keys():
                 if k not in _outputs:
                     _outputs[k] = []
@@ -501,7 +504,7 @@ class DataHandler(AttributeContainer):
                 _len += len(s)
         elif isinstance(self.data, dict):
             _len = 0
-            for k,v in self.data.items():
+            for k, v in self.data.items():
                 _len += len(v)
         else:
             raise NotImplementedError
@@ -646,7 +649,7 @@ class DataHandler(AttributeContainer):
             indices = self.config['train_data']
             if isinstance(indices, str):
 
-                #if isinstance(indices, str):
+                # if isinstance(indices, str):
                 assert indices == 'random'
 
                 tot_obs = self.tot_obs_for_one_df()
@@ -657,9 +660,10 @@ class DataHandler(AttributeContainer):
                     tot_obs = np.unique(list(tot_obs.values())).item()
 
                 total_indices = np.arange(tot_obs)
-                if self.config['test_fraction']>0.0:
-                    train_indices, test_indices = train_test_split(total_indices, test_size=self.config['test_fraction'],
-                                                           random_state=self.config['seed'])
+                if self.config['test_fraction'] > 0.0:
+                    train_indices, test_indices = train_test_split(total_indices,
+                                                                   test_size=self.config['test_fraction'],
+                                                                   random_state=self.config['seed'])
                 else:  # all the indices belong to training
                     train_indices, test_indices = total_indices, None
 
@@ -703,7 +707,7 @@ class DataHandler(AttributeContainer):
         elif self.source_is_list or self.data is None:
             return [len(in_feat) for in_feat in self.input_features]
         elif self.source_is_dict or self.data is None:
-            return {k:len(in_feat) for k, in_feat in self.input_features.items()}
+            return {k: len(in_feat) for k, in_feat in self.input_features.items()}
         else:
             raise NotImplementedError
 
@@ -718,7 +722,8 @@ class DataHandler(AttributeContainer):
         elif self.data.__class__.__name__ == "NoneType":
             return None
         else:
-            raise NotImplementedError(f"Can not determine output features for data of type {self.data.__class__.__name__}")
+            raise NotImplementedError(f"Can not determine output features for data "
+                                      f"of type {self.data.__class__.__name__}")
 
     def KFold_splits(self, n_splits=5):
         """returns an iterator for kfold cross validation.
@@ -762,7 +767,7 @@ class DataHandler(AttributeContainer):
         The iterator on every iteration returns following
         `(train_x, train_y), (test_x, test_y)`
         """
-        x,y = self._get_xy()
+        x, y = self._get_xy()
 
         tscv = TimeSeriesSplit(n_splits=n_splits, **kwargs)
 
@@ -884,7 +889,7 @@ class DataHandler(AttributeContainer):
             self.config['val_fraction'] = 0.0
         return
 
-    def _indexify_y(self, src:pd.DataFrame, out_features:list):
+    def _indexify_y(self, src: pd.DataFrame, out_features: list):
 
         # this function is only called when data is a list/dictionary
 
@@ -904,7 +909,7 @@ class DataHandler(AttributeContainer):
                                key,
                                indices,
                                shuffle,
-                               identifier = None,
+                               identifier=None,
                                deindexify=False
                                ):
         """Makes the data for each source."""
@@ -947,11 +952,11 @@ class DataHandler(AttributeContainer):
         )
 
         if x is not None and deindexify and not isinstance(data, np.ndarray):
-        #    if x.shape[0] >0:
-             x, self.indexes[key] = data_maker.deindexify(x, key)
+            # if x.shape[0] >0:
+            x, self.indexes[key] = data_maker.deindexify(x, key)
 
-        #if 'dummy_id' in data_maker.output_features:
-        #    x, prev_y, y = deindexify_y(x, prev_y, y, np.argmax(self.lookback).item())
+        # if 'dummy_id' in data_maker.output_features:
+        # x, prev_y, y = deindexify_y(x, prev_y, y, np.argmax(self.lookback).item())
 
         return x, prev_y, y, data_maker
 
@@ -968,7 +973,7 @@ class DataHandler(AttributeContainer):
                 prev_y = prev_y[0: train_idx_en, ...]
                 y = y[0: train_idx_en, ...]
 
-            if self.config['val_fraction']>0.0:
+            if self.config['val_fraction'] > 0.0:
                 train_frac = 1.0 - self.config['val_fraction']
                 train_idx_en = int(round(train_frac * len(x)))
 
@@ -978,7 +983,7 @@ class DataHandler(AttributeContainer):
 
         return x, prev_y, y
 
-    def training_data(self, key:str=None, **kwargs)->Tuple[np.ndarray, np.ndarray]:
+    def training_data(self, key: str = None, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
         """Renders the training data."""
         if self._from_h5:
 
@@ -1061,7 +1066,7 @@ class DataHandler(AttributeContainer):
 
                     x[src_name], prev_y[src_name], y[src_name] = _x, _prev_y, _y
 
-                    #if 'dummy_id' in data_maker.output_features:
+                    # if 'dummy_id' in data_maker.output_features:
                     #    x, prev_y, y = deindexify_y(x, prev_y, y, max(self.lookback, key=self.lookback.get))
             else:
                 raise NotImplementedError
@@ -1090,11 +1095,12 @@ class DataHandler(AttributeContainer):
 
         x, prev_y, y = None, None, None
         run = True
-        split1=False
-        split2=False
+        split1 = False
+        split2 = False
         if self.val_data == "same":
             self.make_val_frac_zero()
-            assert self.config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. It is {self.config['test_fraction']}"
+            assert self.config['test_fraction'] > 0.0, f"test_fraction should be > 0.0. " \
+                                                       f"It is {self.config['test_fraction']}"
             if indices is None:
                 split1 = True
         elif np.array(self.val_data).shape.__len__() > 0:
@@ -1116,7 +1122,7 @@ class DataHandler(AttributeContainer):
 
         if split1:
 
-            #if indices is None:
+            # if indices is None:
             # we have to remove training data from it which is the first %x percent
             train_frac = 1.0 - self.config['test_fraction']
             test_frac = self.config['test_fraction']
@@ -1162,7 +1168,7 @@ class DataHandler(AttributeContainer):
         return x, prev_y, y
 
     def validation_data(self, key='val', **kwargs
-                        )->Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
+                        ) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
         """Returns the validation data"""
         if self._from_h5:
 
@@ -1198,7 +1204,7 @@ class DataHandler(AttributeContainer):
                 )
                 x.append(_x)
                 prev_y.append(_prev_y)
-                if _y.size>0:
+                if _y.size > 0:
                     y.append(_y)
 
             if 'dummy_id' in output_features:  # todo why here as well
@@ -1223,7 +1229,8 @@ class DataHandler(AttributeContainer):
         elif self.data.__class__.__name__ == "NoneType":
             return None, None
         else:
-            raise NotImplementedError(f"Can not calculate validation data for data of type {self.data.__class__.__name__}")
+            raise NotImplementedError(f"Can not calculate validation data for data "
+                                      f"of type {self.data.__class__.__name__}")
 
         prev_y = filter_zero_sized_arrays(prev_y)
         y = filter_zero_sized_arrays(y)
@@ -1237,7 +1244,7 @@ class DataHandler(AttributeContainer):
         return return_xy(x, y, "Validation", self.verbosity)
 
     def test_data(self, key='test', data_keys=None, **kwargs
-                  )->Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
+                  ) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
         """Returns the test_data"""
         # user may have defined its own data by overwriting training_data/validation_data
         # and `val_data` is same as test data, thus avoid the situation if the user
@@ -1283,7 +1290,7 @@ class DataHandler(AttributeContainer):
                 x.append(_x)
                 prev_y.append(_prev_y)
 
-                if _y.size>0:
+                if _y.size > 0:
                     y.append(_y)
 
             if 'dummy_id' in output_features:
@@ -1332,9 +1339,9 @@ class DataHandler(AttributeContainer):
         if test_indices is None:
             # we need to divide the data into train/val/test based upon given fractions.
             train_frac = 1.0 -  self.config['test_fraction']
-            #val_frac = self.config['val_fraction']
+            # val_frac = self.config['val_fraction']
             train_idx_en = int(round(train_frac * len(x)))
-            #val_idx = train_idx + int(round(train_frac + val_frac * tot_obs))
+            # val_idx = train_idx + int(round(train_frac + val_frac * tot_obs))
 
             x = x[train_idx_en:, ...]
             prev_y = prev_y[train_idx_en:, ...]
@@ -1545,7 +1552,7 @@ class DataHandler(AttributeContainer):
         if dataset_args is None:
             dataset_args = {}
 
-        #if self.config['input_features'] is not None:
+        # if self.config['input_features'] is not None:
 
         dynamic_features = self.config['input_features'] + self.config['output_features']
 
@@ -1558,7 +1565,6 @@ class DataHandler(AttributeContainer):
         data.columns = [a[1] for a in data.columns.to_flat_index()]
 
         return data
-
 
     def _save_data_to_hdf5(self, data_type, x, prev_y, y, f):
         """Saves one data_type in h5py. data_type is string indicating whether
@@ -1624,7 +1630,7 @@ class MakeData(object):
         self.forecast_step = forecast_step
         self.forecast_len = forecast_len
         self.allow_input_nans = allow_input_nans
-        self.verbosity=verbosity
+        self.verbosity = verbosity
         self.batch_dim = batch_dim
         self.known_future_inputs = known_future_inputs
         self.nans_removed_4m_st = 0
@@ -1700,7 +1706,7 @@ class MakeData(object):
         self.scalers.update(scalers)
         return data, scalers
 
-    def indexify(self, data:pd.DataFrame, key):
+    def indexify(self, data: pd.DataFrame, key):
 
         dummy_index = False
         # for dataframes
@@ -1724,7 +1730,7 @@ class MakeData(object):
         data.insert(0, 'index', index)
 
         self.input_features = ['index'] + self.input_features
-        #setattr(self, 'input_features', ['index'] + self.input_features)
+        # setattr(self, 'input_features', ['index'] + self.input_features)
         self.indexes[key] = {'index': index, 'dummy_index': dummy_index, 'original': original_index}
         return data
 
@@ -1750,18 +1756,17 @@ class MakeData(object):
 
     def get_batches(self, data, num_ins, num_outs):
 
-
         if self.batch_dim == "2D":
             return self.get_2d_batches(data, num_ins, num_outs)
 
         else:
             return self.check_nans(data, *prepare_data(data,
-                                                     num_outputs=num_outs,
-                                                     lookback_steps=self.lookback,
-                                                     input_steps=self.input_step,
-                                                     forecast_step=self.forecast_step,
-                                                     forecast_len=self.forecast_len,
-                                                     known_future_inputs=self.known_future_inputs),
+                                                       num_outputs=num_outs,
+                                                       lookback_steps=self.lookback,
+                                                       input_steps=self.input_step,
+                                                       forecast_step=self.forecast_step,
+                                                       forecast_len=self.forecast_len,
+                                                       known_future_inputs=self.known_future_inputs),
                                    num_outs, self.lookback)
 
     def get_2d_batches(self, data, ins, outs):
@@ -1869,7 +1874,9 @@ class MakeData(object):
 
 
 class SiteDistributedDataHandler(object):
-    """This class is useful to prepare data when we have data of different
+    """Prepares data for mulpltiple sites/locations.
+
+    This class is useful to prepare data when we have data of different
     sites/locations. A `site` here refers to a specific context i.e. data
     of one site is different from another site. In such a case, training
     and test spearation can be done in one of following two ways
@@ -1901,13 +1908,13 @@ class SiteDistributedDataHandler(object):
 
     """
     def __init__(self,
-                 data:dict,
-                 config:dict,
-                 training_sites:list=None,
-                 validation_sites:list=None,
-                 test_sites:list=None,
-                 swap_axes:bool=True,
-                 allow_variable_len:bool=False
+                 data: dict,
+                 config: dict,
+                 training_sites: list = None,
+                 validation_sites: list = None,
+                 test_sites: list = None,
+                 swap_axes: bool = True,
+                 allow_variable_len: bool = False
                  ):
         """
         Initiates data
@@ -2024,7 +2031,7 @@ class SiteDistributedDataHandler(object):
                 new_config[k] = config
         return new_config
 
-    def training_data(self)->Tuple[np.ndarray, np.ndarray]:
+    def training_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for training data"""
         x, y = [], []
 
@@ -2057,7 +2064,7 @@ class SiteDistributedDataHandler(object):
 
         return x, y
 
-    def validation_data(self)->Tuple[np.ndarray, np.ndarray]:
+    def validation_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for the validation data"""
         x, y = [], []
 
@@ -2094,7 +2101,7 @@ class SiteDistributedDataHandler(object):
 
         return x, y
 
-    def test_data(self)->Tuple[np.ndarray, np.ndarray]:
+    def test_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for the test data"""
         x, y = [], []
 
@@ -2132,13 +2139,13 @@ class SiteDistributedDataHandler(object):
 
         return x, y
 
-    def stack(self, data:list, site_names):
+    def stack(self, data: list, site_names):
         if isinstance(data[0], np.ndarray):
 
-            if len(set([len(i) for i in data]))==1:  # all arrays in data are of equal length
+            if len(set([len(i) for i in data])) == 1:  # all arrays in data are of equal length
                 data = np.stack(data)  # (num_sites, num_examples, lookback, num_features)
                 if self.swap_axes:
-                    data = data.swapaxes(0,1)  # (num_examples, num_sites, lookback, num_features)
+                    data = data.swapaxes(0, 1)  # (num_examples, num_sites, lookback, num_features)
 
             elif self.allow_variable_len:
                 data = {k: v for k, v in zip(site_names, data)}
@@ -2150,9 +2157,9 @@ class SiteDistributedDataHandler(object):
         elif isinstance(data[0], dict):
 
             if self.allow_variable_len:
-                raise NotImplementedError # todo
+                raise NotImplementedError  # todo
 
-            new_data = {k:None for k in data[0].keys()}
+            new_data = {k: None for k in data[0].keys()}
             for src_name in new_data.keys():
                 temp = []
                 for src in data:
@@ -2160,7 +2167,7 @@ class SiteDistributedDataHandler(object):
                     temp.append(src[src_name])
 
                 if self.swap_axes:
-                    new_data[src_name] = np.stack(temp).swapaxes(0,1)
+                    new_data[src_name] = np.stack(temp).swapaxes(0, 1)
                 else:
                     new_data[src_name] = np.stack(temp)
 
@@ -2185,7 +2192,7 @@ class MultiLocDataHandler(object):
 
         return dh.training_data()
 
-    def validation_data(self, data, **kwargs)->Tuple[np.ndarray, np.ndarray]:
+    def validation_data(self, data, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
 
         dh = DataHandler(data=data, val_fraction=0.0, test_fraction=0.0, save=False, verbosity=0,
                          **kwargs)
@@ -2203,25 +2210,25 @@ class MultiLocDataHandler(object):
 
 
 def decode(json_string):
-  return json.loads(json_string, object_hook=_decode_helper)
+    return json.loads(json_string, object_hook=_decode_helper)
 
 
 def _decode_helper(obj):
-  """A decoding helper that is TF-object aware."""
-  if isinstance(obj, dict) and 'class_name' in obj:
+    """A decoding helper that is TF-object aware."""
+    if isinstance(obj, dict) and 'class_name' in obj:
 
-    if obj['class_name'] == '__tuple__':
-      return tuple(_decode_helper(i) for i in obj['items'])
-    elif obj['class_name'] == '__ellipsis__':
-      return Ellipsis
-  return obj
+        if obj['class_name'] == '__tuple__':
+            return tuple(_decode_helper(i) for i in obj['items'])
+        elif obj['class_name'] == '__ellipsis__':
+            return Ellipsis
+    return obj
 
 
 def load_data_from_hdf5(data_type, data):
 
     f = h5py.File(data, mode='r')
 
-    weight_names =  ['x', 'prev_y', 'y']
+    weight_names = ['x', 'prev_y', 'y']
 
     g = f[data_type]
     weight_values = (np.asarray(g[weight_name]) for weight_name in weight_names)
@@ -2261,6 +2268,7 @@ def make_config(**kwargs):
 
     return kwargs
 
+
 def copy_features(features):
     if isinstance(features, str):
         _features = copy.deepcopy(features)
@@ -2291,7 +2299,7 @@ def conform_shape(data, shape, features=None):
                 if f not in data:
                     data[f] = np.random.random(len(data))
         # identify how many features to be added by shape information
-        elif dummy_features>0:
+        elif dummy_features > 0:
             dummy_data = pd.DataFrame(np.random.random((len(data), dummy_features)))
             data = pd.concat([dummy_data, data], axis=1)
     else:
@@ -2339,7 +2347,7 @@ def tot_obs_for_one_df(data, allow_nan_labels, output_features, lookback, input_
         return len(data) - more
 
     # todo, why not when allow_nan_labels>0?
-    if forecast_step>0:
+    if forecast_step > 0:
         more += forecast_step
 
     if forecast_len > 1:
@@ -2377,7 +2385,7 @@ def batch_dim_from_lookback(lookback):
     return default
 
 
-def deindexify_y(x:list, prev_y:list, y:list, based_upon:int):
+def deindexify_y(x: list, prev_y: list, y:list, based_upon: int):
 
     indices_to_keep = []
     for e in y[based_upon]:
@@ -2410,11 +2418,11 @@ def deindexify_lists(x, prev_y, y, indices_to_keep):
     return _x, _prevy, _y
 
 
-def deindexify_dicts(x:dict, prev_y:dict, y:dict, indices_to_keep):
+def deindexify_dicts(x: dict, prev_y: dict, y: dict, indices_to_keep):
 
     _x, _prevy, _y = {}, {}, {}
 
-    for (key, xi), (key,prevyi), (key, yi) in zip(x.items(), prev_y.items(), y.items()):
+    for (key, xi), (key, prevyi), (key, yi) in zip(x.items(), prev_y.items(), y.items()):
 
         __x, __prevy, __y = [], [], []
 
@@ -2436,19 +2444,19 @@ def filter_zero_sized_arrays(array):
     if isinstance(array, list):
         new_array = []
         for a in array:
-            if a.size>0:
+            if a.size > 0:
                 new_array.append(a)
     elif isinstance(array, dict):
         new_array = {}
-        for k,v in array.items():
-            if v.size>0:
+        for k, v in array.items():
+            if v.size > 0:
                 new_array[k] = v
     else:
         new_array = array
     return new_array
 
 
-def check_for_classification(label:np.ndarray, to_categorical):
+def check_for_classification(label: np.ndarray, to_categorical):
 
     assert isinstance(label, np.ndarray), f"""
                             classification problem for label of type {label.__class__.__name__} not implemented yet"""
@@ -2465,7 +2473,8 @@ def check_for_classification(label:np.ndarray, to_categorical):
 
 
 def return_x_yy(x, prev_y, y, initial, verbosity):
-    if verbosity>0:
+
+    if verbosity > 0:
         print(f"{'*' * 5} {initial} data {'*' * 5}")
         print_something(x, "input_x")
         print_something(prev_y, "prev_y")
@@ -2473,9 +2482,9 @@ def return_x_yy(x, prev_y, y, initial, verbosity):
     return x, prev_y, y
 
 
-def return_xy(x,y, initial, verbosity):
+def return_xy(x, y, initial, verbosity):
 
-    if verbosity>0:
+    if verbosity > 0:
         print(f"{'*' * 5} {initial} {'*' * 5}")
         print_something(x, "input_x")
         print_something(y, "target")
