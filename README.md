@@ -46,7 +46,6 @@ The specific purposes of the repository are
 -    All of the above functionalities should be available without complicating keras 
  implementation.
 
-
 Currently following models are implemented
 
 | Name                          | Name in this repository  | Reference |

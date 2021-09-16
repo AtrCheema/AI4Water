@@ -37,7 +37,7 @@ class TestModels(unittest.TestCase):
     def test_InputAttentionModel(self):
 
         prediction = make_and_run(InputAttentionModel, data=arg_beach())
-        self.assertGreater(float(prediction[0].sum()), 0.0)
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
 
     # def test_InputAttentionModel_with_drop_remainder(self):
     #
@@ -51,7 +51,7 @@ class TestModels(unittest.TestCase):
             DualAttentionModel,
             data=load_nasdaq(inputs=['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK'])
         )
-        self.assertGreater(float(prediction[0].sum()), 0.0)
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
 
 
 if __name__ == "__main__":

@@ -252,8 +252,8 @@ class MakeHRUs(object):
             second_shp_reader = shapefile.Reader(second_shp_file)
             third_shp_reader = shapefile.Reader(third_shp_file)
 
-            first_shp_area_list_acre, first_shp_geom_list = get_areas_geoms(first_shp_reader)
-            second_shp_area_list_acre, second_shp_geom_list = get_areas_geoms(second_shp_reader)
+            _, first_shp_geom_list = get_areas_geoms(first_shp_reader)
+            _, second_shp_geom_list = get_areas_geoms(second_shp_reader)
             _, third_shp_geom_list = get_areas_geoms(third_shp_reader)
 
             if 'sub' not in self.hru_definition:  # todo
@@ -563,7 +563,7 @@ class MakeHRUs(object):
         for l in labels:
             labels_n.append(l.replace('lu_', ''))
 
-        fig1, ax1 = plt.subplots()
+        _, ax1 = plt.subplots()
         ax1.pie(vals, explode=tuple(explode), labels=labels_n, autopct=autopct,
                 shadow=shadow, startangle=startangle,
                 textprops=textprops)

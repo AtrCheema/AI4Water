@@ -414,7 +414,11 @@ class RegressionMetrics(Metrics):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+        Initializes `Metrics`.
 
+        args and kwargs go to parent class 'Metrics'.
+        """
         super().__init__(*args, **kwargs)
         self.all_methods = list_subclass_methods(RegressionMetrics, True)
 
@@ -430,11 +434,6 @@ class RegressionMetrics(Metrics):
             if (array <= 0).any():  # mean tweedie error is not computable
                 self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
                                                                              'mean_poisson_deviance')]
-        """
-        Initializes `Metrics`.
-        
-        args and kwargs go to parent class 'Metrics'.
-        """
 
     def abs_pbias(self) -> float:
         """ Absolute Percent bias"""

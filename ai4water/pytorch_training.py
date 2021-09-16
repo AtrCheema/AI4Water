@@ -598,7 +598,7 @@ class Learner(AttributeContainer):
         # default `log_dir` is "runs" - we'll be more specific here
         writer = SummaryWriter(path)
         if x is None:
-            x, y = iter(self.train_loader).next()
+            x, _ = iter(self.train_loader).next()
         writer.add_graph(self.model, x)
         writer.close()
         return

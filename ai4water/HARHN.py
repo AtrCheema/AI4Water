@@ -186,9 +186,9 @@ class HARHN(torch.nn.Module):
                 d_t.append(d_t_k)
             d_t = torch.cat(d_t, dim=1)
             if self.use_predicted_output:
-                y_tilda_t, s, y_prev_t = self._last_v2(y_prev_t, d_t, s)
+                _, s, y_prev_t = self._last_v2(y_prev_t, d_t, s)
             else:
-                y_tilda_t, s, _ = self._last_v1(y_prev_t, d_t, s, t)
+                _, s, _ = self._last_v1(y_prev_t, d_t, s, t)
 
         y_t = self.W(s) + self.V(d_t)
         return y_t, y_prev_t

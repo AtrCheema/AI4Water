@@ -5,11 +5,6 @@ import random
 from typing import Union
 
 try:
-    import netCDF4
-except ModuleNotFoundError:
-    netCDF4 = None
-
-try:
     import xarray as xr
 except ModuleNotFoundError:
     xr = None

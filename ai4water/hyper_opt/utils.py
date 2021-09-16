@@ -880,11 +880,11 @@ def scatterplot_matrix_colored(params_names:list,
             axes = ax[i, j]
             # Subplot:
             if blur:
-                s = axes.scatter(p2, p1, s=400, alpha=.1,
+                axes.scatter(p2, p1, s=400, alpha=.1,
                                  c=best_accs, cmap='viridis', norm=norm)
-                s = axes.scatter(p2, p1, s=200, alpha=.2,
+                axes.scatter(p2, p1, s=200, alpha=.2,
                                  c=best_accs, cmap='viridis', norm=norm)
-                s = axes.scatter(p2, p1, s=100, alpha=.3,
+                axes.scatter(p2, p1, s=100, alpha=.3,
                                  c=best_accs, cmap='viridis', norm=norm)
             s = axes.scatter(p2, p1, s=15,
                              c=best_accs, cmap='viridis', norm=norm)
@@ -902,7 +902,7 @@ def scatterplot_matrix_colored(params_names:list,
 
     fig.subplots_adjust(right=0.82, top=0.95)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    # cb = fig.colorbar(s, cax=cbar_ax)
+    fig.colorbar(s, cax=cbar_ax)
 
     plt.suptitle(
         'Scatterplot matrix of tried values in the search space over different params, colored in function of best test accuracy')

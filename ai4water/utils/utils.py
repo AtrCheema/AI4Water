@@ -641,7 +641,7 @@ def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
     if rename:
         # append ranking of models to folder_names
         idx = 0
-        for k,v in od.items():
+        for v in od.values():
             if 'folder' in v:
                 folder = v['folder']
                 old_path = os.path.join(opt_dir, folder)
