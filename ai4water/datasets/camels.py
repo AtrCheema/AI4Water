@@ -677,6 +677,8 @@ class HYSETS(Camels):
                                   stations: list,
                                   dynamic_features: Union[str, list, None] = 'all',
                                   static_features: Union[str, list, None] = None,
+                                  st = None,
+                                  en = None,
                                   as_dataframe: bool = False,
                                   **kwargs):
 
@@ -896,7 +898,7 @@ class CAMELS_US(Camels):
         dyn = {}
         for station in stations:
 
-            attributes = check_attributes(dynamic_features, self.dynamic_features)
+            # attributes = check_attributes(dynamic_features, self.dynamic_features)
 
             assert isinstance(station, str)
             df = None
@@ -1719,7 +1721,7 @@ class HYPE(Camels):
                 index_col_name = 'Date'
             _df = pd.read_csv(fpath, index_col=index_col_name)
             _df.index = pd.to_datetime(_df.index)
-            df_attrs[dyn_attr] = _df[self.start:self.end]  # todo, some stations have wider range than self.st/self.en
+            df_attrs[dyn_attr] = _df.loc[self.start:self.end]  # todo, some stations have wider range than self.st/self.en
 
         stns_dfs = {}
         for st in stations:

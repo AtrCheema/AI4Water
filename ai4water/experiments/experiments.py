@@ -370,7 +370,7 @@ Available cases are {self.models} and you wanted to exclude
             trues = {'train': None, 'test': None}
             for k,v in self.trues.items():
 
-                for idx, (_k,_v) in enumerate(v.items()):
+                for _k,_v in v.items():
 
                     trues[k] = {'std': np.std(_v)}
 
@@ -1518,13 +1518,13 @@ class MLClassificationExperiments(Experiments):
 
         model.fit(**fit_kws)
 
-        t, p = model.predict()
+        t, _ = model.predict()
 
         if view:
             model.view_model()
 
         if predict:
-            tt, tp = model.predict('training')
+            model.predict('training')
 
         return RegressionMetrics(t, t).mse()
 

@@ -13,15 +13,15 @@ for time series and 1D data. To put into Andrej Karapathy's [words](https://twit
 
 The specific purposes of the repository are
 
--  compliment the functionality of `keras`/`pytorch`/`sklearn` by making pre and 
+-    compliment the functionality of `keras`/`pytorch`/`sklearn` by making pre and 
  post processing easeier for time-series prediction/classification problems (also holds
  true for any 1D data).
  
--  save, load/reload or build models from readable json file. This repository 
+-    save, load/reload or build models from readable json file. This repository 
  provides a framework to build layered models using python dictionary and with 
  several helper tools which fasten the process of  modeling time-series forcasting.
 
--  provide a uniform interface for optimizing hyper-parameters for 
+-    provide a uniform interface for optimizing hyper-parameters for 
  [skopt](https://scikit-optimize.github.io/stable/index.html);
  [sklearn](https://scikit-learn.org/stable/modules/classes.html#hyper-parameter-optimizers) 
  based [grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) 
@@ -35,15 +35,15 @@ The specific purposes of the repository are
   See [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)  
   using its application.
  
--  cut short the time to write boiler plate code in developing machine learning 
+-    cut short the time to write boiler plate code in developing machine learning 
  based models.
 
--  It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` 
+-    It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` 
  by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
--  All of the above functionalities should be available without complicating keras 
+-    All of the above functionalities should be available without complicating keras 
  implementation.
 
 

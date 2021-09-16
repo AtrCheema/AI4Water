@@ -206,7 +206,7 @@ class EDA(Plot):
         if isinstance(data.index, pd.DatetimeIndex):
             show_time_on_yaxis = True
 
-        fig, axis = plt.subplots(figsize=_kwargs['figsize'])
+        _, axis = plt.subplots(figsize=_kwargs['figsize'])
         # ax2 - Heatmap
         sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=axis, **kwargs)
 
@@ -288,7 +288,7 @@ class EDA(Plot):
         data = consider_st_en(data, st, en)
 
         # Identify missing values
-        mv_total, mv_rows, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
+        mv_total, _, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
 
         _kwargs = {
             "xtick_labels_fs": 12,

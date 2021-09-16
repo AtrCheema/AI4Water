@@ -1,7 +1,7 @@
 import numpy as np
 
 from ._main import BaseModel
-from ai4water.tf_attributes import ACTIVATION_LAYERS, LAYERS, tf, keras, OPTIMIZERS, tcn
+from ai4water.tf_attributes import ACTIVATION_LAYERS, LAYERS, tf, keras, tcn
 from .nn_tools import get_add_call_args, get_call_args
 
 

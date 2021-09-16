@@ -444,7 +444,7 @@ class BaseModel(NN, Plots):
             _callbacks.append(keras.callbacks.TensorBoard(**tb_kwargs))
             callbacks.pop('tensorboard')
 
-        for key, val in callbacks.items():
+        for val in callbacks.values():
             _callbacks.append(val)
 
         return _callbacks
@@ -1289,7 +1289,7 @@ class BaseModel(NN, Plots):
         # if layer names are not specified, this will get get activations of allparameters
         if x is None:
             data = getattr(self, f'{data}_data')()
-            x, y = maybe_three_outputs(data, self.dh.teacher_forcing)
+            x, _ = maybe_three_outputs(data, self.dh.teacher_forcing)
 
         activations = keract.get_activations(self.dl_model, x, layer_names=layer_names, auto_compile=True)
 
@@ -1340,7 +1340,7 @@ class BaseModel(NN, Plots):
             if list(self.config['model'].keys())[0].lower().startswith("xgb"):
                 self.decision_tree(which="xgboost", **kwargs)
 
-        interpreter = Interpret(self)
+        Interpret(self)
 
         return
 
