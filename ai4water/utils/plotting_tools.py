@@ -160,36 +160,9 @@ class Plots(object):
 
         return
 
-    def save_or_show(self, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
+    def save_or_show(self, *args, **kwargs):
 
-        if save:
-            assert isinstance(fname, str)
-            if "/" in fname:
-                fname = fname.replace("/", "__")
-            if ":" in fname:
-                fname = fname.replace(":", "__")
-
-            save_dir = os.path.join(self.path, where)
-
-            if not os.path.exists(save_dir):
-                assert os.path.dirname(where) in ['',
-                                                  'activations',
-                                                  'weights',
-                                                  'plots', 'data', 'results'], f"unknown directory: {where}"
-                save_dir = os.path.join(self.path, where)
-
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
-
-            fname = os.path.join(save_dir, fname + ".png")
-
-            plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
-        else:
-            plt.show()
-
-        if close:
-            plt.close('all')
-        return
+        return save_or_show(self.path, *args, **kwargs)
 
     def plot2d_act_for_a_sample(self, activations, sample=0, save:bool = False, name: str = None):
         fig, axis = init_subplots(height=8)
@@ -493,4 +466,36 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
+
+
+def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
+
+    if save:
+        assert isinstance(fname, str)
+        if "/" in fname:
+            fname = fname.replace("/", "__")
+        if ":" in fname:
+            fname = fname.replace(":", "__")
+
+        save_dir = os.path.join(path, where)
+
+        if not os.path.exists(save_dir):
+            assert os.path.dirname(where) in ['',
+                                              'activations',
+                                              'weights',
+                                              'plots', 'data', 'results'], f"unknown directory: {where}"
+            save_dir = os.path.join(path, where)
+
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+
+        fname = os.path.join(save_dir, fname + ".png")
+
+        plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
+    else:
+        plt.show()
+
+    if close:
+        plt.close('all')
+    return
 

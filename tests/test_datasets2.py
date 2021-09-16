@@ -1,11 +1,15 @@
-import unittest
 import os
+import unittest
 import site   # so that AI4Water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+site.addsitedir(os.path.dirname(os.path.dirname(__file__)))
 
 import pandas as pd
 
 from ai4water.datasets import WeatherJena, SWECanada, MtropicsLaos
+
+
+laos = MtropicsLaos()
+
 
 def test_jena_weather():
     wj = WeatherJena()
@@ -15,6 +19,7 @@ def test_jena_weather():
     assert df.shape[1] >= 21
 
     return
+
 
 def test_swe_canada():
     swe = SWECanada()
@@ -38,8 +43,6 @@ def test_swe_canada():
 
     return
 
-laos = MtropicsLaos()
-
 
 class TestMtropicsLaos(unittest.TestCase):
 
@@ -58,7 +61,7 @@ class TestMtropicsLaos(unittest.TestCase):
 
     def test_fetch_hydro(self):
         wl, spm = laos.fetch_hydro()
-        assert wl.shape ==  (454699, 1)
+        assert wl.shape == (454699, 1)
         assert isinstance(wl.index, pd.DatetimeIndex)
         assert spm.shape == (6428, 1)
         assert isinstance(spm.index, pd.DatetimeIndex)
@@ -91,18 +94,20 @@ class TestMtropicsLaos(unittest.TestCase):
         assert int(rg.isna().sum().sum()) == 34510
 
     def test_fetch(self):
-        df = laos.make_regression(st="20110525 10:00:00", en="20190910")
+        df = laos.make_regression()
         assert isinstance(df.index, pd.DatetimeIndex)
-        assert int(df.isna().sum().sum()) == 10553086
-        assert df.shape[-1] == 16
+        assert int(df.isna().sum().sum()) == 650483
+        assert df.shape[-1] == 8
         return
 
     def test_swe_canada(self):
-        test_swe_canada()
+        # test_swe_canada()
+        return
 
     def test_jena_weather(self):
-        test_jena_weather()
+        # test_jena_weather()
+        return
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     unittest.main()

@@ -237,7 +237,7 @@ class BaseModel(NN, Plots):
                            config=maker.config)
 
     def __getattr__(self, item):
-        """instead of doing model.num_ins do """
+        """instead of doing model.dh.num_ins do model.num_ins"""
         if item in [
             'data',
             'test_indices', 'train_indices',
@@ -756,8 +756,11 @@ class BaseModel(NN, Plots):
         return
 
     def build_ml_model(self):
-        """ builds models that follow sklearn api such as xgboost,
-        catboost, lightgbm and obviously sklearn."""
+        """Builds ml models
+
+        Models that follow sklearn api such as xgboost,
+        catboost, lightgbm and obviously sklearn.
+        """
         ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models, **tpot_models}
         _model = list(self.config['model'].keys())[0]
         regr_name = _model.upper()
@@ -1171,7 +1174,7 @@ class BaseModel(NN, Plots):
         return true_outputs, predicted
 
     def predict_ml_models(self, inputs, **kwargs):
-        """so that it can be overwritten easily for ML models."""
+        """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
 
     def inverse_transform(self,
@@ -1233,7 +1236,7 @@ class BaseModel(NN, Plots):
         return kwargs
 
     def get_metrics(self) -> list:
-        """returns the performance metrics specified."""
+        """Returns the performance metrics specified."""
         _metrics = self.config['metrics']
 
         metrics = None

@@ -228,12 +228,11 @@ import numpy as np
 import pandas as pd
 
 from ai4water.pre_processing.spatial_utils import find_records
-
 from .download_pangaea import PanDataSet
-from.download_zenodo import download_from_zenodo
+from .download_zenodo import download_from_zenodo
 from .utils import download, download_all_http_directory
 from .utils import check_attributes, sanity_check
-
+from ai4water.pre_processing.resample import Resampler
 
 SEP = os.sep
 # TODO, add visualization
@@ -833,14 +832,14 @@ class MtropicsLaos(Datasets):
         "DO_percent": "DOpercent",
         "DO_mgl": "DO",
         "pH": "pH",
-        "ORP_mV": "ORP", # stream water oxidation-reduction potential
+        "ORP_mV": "ORP",  # stream water oxidation-reduction potential
         "Turbidity_NTU": "Turbidity",
         "TSS_gL": "TSS",
 
                             }
 
-    weather_station_data = ['air_temp', 'humidity', 'wind_run', 'global_rad']
-    inputs = list(physio_chem_features.keys()) + weather_station_data + ['water_level', 'pcp', 'susp_pm']
+    weather_station_data = ['temp', 'rel_hum', 'wind_speed', 'sol_rad']
+    inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
 
     def __init__(self, **kwargs):
 
@@ -873,7 +872,7 @@ class MtropicsLaos(Datasets):
             features: Union[list, str] = 'all',
             st: Union[str, pd.Timestamp] = '20110525 10:00:00',
             en: Union[str, pd.Timestamp] = '20210406 15:05:00',
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """Fetches physio-chemical features of Huoy Pano catchment Laos.
 
         Arguments:
@@ -918,7 +917,7 @@ class MtropicsLaos(Datasets):
             st: Union[str, pd.Timestamp] = '20110525 10:00:00',
             en: Union[str, pd.Timestamp] = '20210406 15:05:00',
             remove_duplicates:bool = True,
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """Fetches E. coli data collected at the outlet.
         ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
         ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
@@ -943,9 +942,9 @@ class MtropicsLaos(Datasets):
         df.index = pd.to_datetime(df['Date_Time'])
 
         available_features = {
-        "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",  # Lower limit of the confidence interval
-        "Ecoli_mpn100": "E-coli_4dilutions",  # Stream water Escherichia coli concentration
-        "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"  # Upper limit of the confidence interval
+            "Ecoli_LL_mpn100": "E-coli_4dilutions_95%-CI-LL",  # Lower limit of the confidence interval
+            "Ecoli_mpn100": "E-coli_4dilutions",  # Stream water Escherichia coli concentration
+            "Ecoli_UL_mpn100": "E-coli_4dilutions_95%-CI-UL"  # Upper limit of the confidence interval
         }
         if isinstance(features, list):
             _features = []
@@ -977,7 +976,7 @@ class MtropicsLaos(Datasets):
             self,
             st: Union[str, pd.Timestamp] = "20010101",
             en: Union[str, pd.Timestamp] = "20191231",
-    )->pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         fetches data from 7 rain gauges which is collected at daily time step
         from 2001 to 2019. [doi](https://doi.org/10.1038/s41598-017-04385-2)
@@ -1014,7 +1013,7 @@ class MtropicsLaos(Datasets):
             self,
             st: Union[str, pd.Timestamp] = "20010101 01:00:00",
             en: Union[str, pd.Timestamp] = "20200101 00:00:00",
-            freq:str = 'H'
+            freq: str = 'H'
     ) -> pd.DataFrame:
         """
         fetches hourly weather station data which consits of air temperature,
@@ -1049,8 +1048,8 @@ class MtropicsLaos(Datasets):
     def fetch_pcp(self,
                   st: Union[str, pd.Timestamp] = '20010101 00:06:00',
                   en: Union[str, pd.Timestamp] = '20200101 00:06:00',
-                  freq:str = '6min'
-                  )->pd.DataFrame:
+                  freq: str = '6min'
+                  ) -> pd.DataFrame:
         """
         Fetches the precipication data which is collected at 6 minutes time-step
         from 2001 to 2020. [doi](https://doi.org/10.1038/s41598-017-04385-2)
@@ -1085,7 +1084,7 @@ class MtropicsLaos(Datasets):
     def fetch_hydro(self,
                     st: Union[str, pd.Timestamp] = '20010101 00:06:00',
                     en: Union[str, pd.Timestamp] = '20200101 00:06:00',
-                    )->Tuple[pd.DataFrame, pd.DataFrame]:
+                    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         fetches water level and suspended particulate matter. Both data are from
         2001 to 2019 but are randomly sampled.
@@ -1112,7 +1111,7 @@ class MtropicsLaos(Datasets):
                 _spm = _spm.iloc[_spm.first_valid_index():_spm.last_valid_index()]
                 if os.path.basename(f) == 'OMPrawdataLaos2016.xlsx':
                     _spm.iloc[166] = ['2016-07-01', '20:43:47', 1.69388]
-                    _spm.iloc[247] =  ['2016-07-23', '12:57:47', 8.15714]
+                    _spm.iloc[247] = ['2016-07-23', '12:57:47', 8.15714]
                     _spm.iloc[248] = ['2016-07-23', '17:56:47', 0.5]
                     _spm.iloc[352] = ['2016-08-16', '03:08:17', 1.12711864406]
                 if os.path.basename(f) == 'OMPrawdataLaos2017.xlsx':
@@ -1132,21 +1131,21 @@ class MtropicsLaos(Datasets):
             wl = xr.load_dataset(wl_fname).to_dataframe(['index'])
             spm = xr.load_dataset(spm_fname).to_dataframe(['index'])
 
-        #wl.index = pd.to_datetime(wl.pop('index'))
-        #spm.index = pd.to_datetime(spm.pop('index'))
+        # wl.index = pd.to_datetime(wl.pop('index'))
+        # spm.index = pd.to_datetime(spm.pop('index'))
         wl = wl[~wl.index.duplicated(keep='first')]
         spm = spm[~spm.index.duplicated(keep='first')]
 
-        return wl.loc[st:en], spm.loc[st:en]  # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
+        # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
+        return wl.loc[st:en], spm.loc[st:en]
 
     def make_regression(self,
-              input_features: Union[None, list]=None,
-              output_features: Union[str, list] = "Ecoli_mpn100",
-              st: Union[None, str] = "20110525 10:00:00",
-              en: Union[None, str] = "20190910",
-              freq:str="6min",
-              **kwargs
-              )->pd.DataFrame:
+                        input_features: Union[None, list] = None,
+                        output_features: Union[str, list] = "Ecoli_mpn100",
+                        st: Union[None, str] = "20110525 14:00:00",
+                        en: Union[None, str] = "20181027 00:00:00",
+                        freq: str = "6min"
+                        ) -> pd.DataFrame:
         """
         Makes a regression problem using hydrological, environmental,
         and water quality data of Huoay pano.
@@ -1157,7 +1156,6 @@ class MtropicsLaos(Datasets):
             st :
             en :
             freq :
-            **kwargs :
 
         returns:
             a dataframe of shape `(inputs+target, st:en)`
@@ -1167,9 +1165,9 @@ class MtropicsLaos(Datasets):
         ```python
         >>>from ai4water.datasets import MtropicsLaos
         >>>laos = MtropicsLaos()
-        >>>ins = ['pcp', 'air_temp']
+        >>>ins = ['pcp', 'temp']
         >>>out = ['Ecoli_mpn100']
-        >>>data = laos.make_regression(ins, out, '20110101', '20181231')
+        >>>reg_data = laos.make_regression(ins, out, '20110101', '20181231')
         ```
 
         # todo add HRU definition
@@ -1179,30 +1177,55 @@ class MtropicsLaos(Datasets):
         features_to_fetch = inputs + target
 
         pcp = self.fetch_pcp(st=st, en=en)
+        pcp = pcp.interpolate('linear', limit=5)
+        pcp = pcp.fillna(0.0)
 
         w = self.fetch_weather_station_data(st=st, en=en)
+        w = w.interpolate()
+        w = w.bfill()
+        assert int(w.isna().sum().sum()) == 0
 
-        wl, spm = self.fetch_hydro(st=st, en=en)
+        w.columns = ['temp', 'rel_hum', 'wind_speed', 'sol_rad']
+        w_6min = Resampler(w,
+                           freq=freq,
+                           how={'temp': 'linear',
+                                'rel_hum': 'linear',
+                                'wind_speed': 'linear',
+                                'sol_rad': 'linear'
+                                }
+                           )()
 
         ecoli = self.fetch_ecoli(st=st, en=en)
+        ecoli = ecoli.dropna()
+        ecoli_6min = ecoli.resample(freq).mean()
 
-        phy_chem = self.fetch_physiochem(st=st, en=en)
+        wl, spm = self.fetch_hydro(st=st, en=en)
+        wl_6min = wl.resample(freq).first().interpolate(method="linear")
+        spm_6min = spm.resample(freq).first().interpolate(method='linear')
 
-        ecoli = ecoli.resample(freq).first()
-        phy_chem = phy_chem.resample(freq).first()
-        wl = wl.resample(freq).first()
-        spm = spm.resample(freq).first()
+        data = pd.concat([w_6min.loc[st:en],
+                          pcp.loc[st:en],
+                          wl_6min.loc[st:en],
+                          spm_6min.loc[st:en],
+                          ecoli_6min.loc[st:en],
+                          ], axis=1)
 
-        df = pd.concat([pcp, w, wl, spm, phy_chem, ecoli], axis=1)
+        if data['water_level'].isna().sum() < 15:
+            data['water_level'] = data['water_level'].bfill()  # only 11 nan present at start
+            data['water_level'] = data['water_level'].ffill()  # only 1 nan is present at ned
 
-        return df.loc[st:en, features_to_fetch]
+        if data['susp_pm'].isna().sum() < 40:
+            data['susp_pm'] = data['susp_pm'].bfill()  # only 26 nan is present at ned
+            data['susp_pm'] = data['susp_pm'].ffill()  # only 9 nan is present
+
+        return data.loc[st:en, features_to_fetch]
 
 
 class MtropcsThailand(Datasets):
     url = {
         "pcp.zip":
             "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=27c65b5f-59cb-87c1-4fdf-628e6143d8c4",
-        #"hydro.zip":
+        # "hydro.zip":
         #    "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=9e6f7144-8984-23bd-741a-06378fabd72",
         "rain_gauge.zip":
             "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0a12ffcf-42bc-0289-1c55-a769ef19bb16",
@@ -1214,13 +1237,14 @@ class MtropcsThailand(Datasets):
         super().__init__(**kwargs)
         self._download()
 
+
 class MtropicsVietnam(Datasets):
     url = {
         "pcp.zip":
             "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=d74ab1b0-379b-71cc-443b-662a73b7f596",
         "hydro.zip":
             "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=85fb6717-4095-a2a2-34b5-4f1b70cfd304",
-        #"lu.zip":
+        # "lu.zip":
         #    "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=c3724992-a043-4bbf-8ac1-bc6f9a608c1c",
         "rain_guage.zip":
             "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3d3382d5-08c1-2595-190b-8568a1d2d6af",
@@ -1252,7 +1276,7 @@ def _process_laos_shpfiles(shape_file, out_path):
         'Culture': [],
         'Fallow': [],
         'Teak': [],
-        #'others': []
+        # 'others': []
     }
 
     for i in range(shp_reader.numRecords):
@@ -1271,7 +1295,7 @@ def _process_laos_shpfiles(shape_file, out_path):
             container['Teak'].append(geom)
         else:  # just consider all others as 'culture' for siplicity
             container['Culture'].append(geom)
-            #container['others'].append(geom)
+            # container['others'].append(geom)
 
     # Define a polygon feature geometry with one attribute
     schema = {

@@ -15,6 +15,7 @@ try:
 except ModuleNotFoundError:
     plotly = None
 
+from .plotting_tools import save_or_show
 from ai4water.utils.utils import init_subplots
 
 # TODO add Murphy's plot as shown in MLAir
@@ -26,10 +27,10 @@ from ai4water.utils.utils import init_subplots
 
 class Plot(object):
 
-    def __init__(self, path = None, backend='plotly', save=True, dpi=300):
+    def __init__(self, path=None, backend='plotly', save=True, dpi=300):
         self.path = path
         self.backend = backend
-        self.save=save
+        self.save = save
         self.dpi = dpi
 
     @property
@@ -42,7 +43,7 @@ class Plot(object):
         _backend = x
         assert x in ['plotly', 'matplotlib'], f"unknown backend {x}. Allowed values are `plotly` and `matplotlib`"
 
-        if x=='plotly':
+        if x == 'plotly':
             if plotly is None:
                 _backend = 'matplotlib'
 
@@ -66,46 +67,22 @@ class Plot(object):
         if dpi is None:
             dpi = self.dpi
 
-        if save:
-            assert isinstance(fname, str)
-            if "/" in fname:
-                fname = fname.replace("/", "__")
-            if ":" in fname:
-                fname = fname.replace(":", "__")
-
-            save_dir = os.path.join(self.path, where)
-
-            if not os.path.exists(save_dir):
-                assert os.path.dirname(where) in ['', 'activations', 'weights', 'plots', 'data', 'results'], f"unknown directory: {where}"
-                save_dir = os.path.join(self.path, where)
-
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
-
-            fname = os.path.join(save_dir, fname + ".png")
-
-            plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
-        else:
-            plt.show()
-
-        if close:
-            plt.close('all')
-        return
+        return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close)
 
 
 class PlotResults(Plot):
 
     def __init__(self,
                  data=None,
-                 config: dict=None,
+                 config: dict = None,
                  path=None,
                  dpi=300,
                  in_cols=None,
                  out_cols=None,
-                 backend:str='plotly'
+                 backend: str = 'plotly'
                  ):
         self.config = config
-        self.data=data
+        self.data = data
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
@@ -128,7 +105,7 @@ class PlotResults(Plot):
     def data(self, x):
         self._data = x
 
-    def horizon_plots(self, errors:dict, fname='', save=True):
+    def horizon_plots(self, errors: dict, fname='', save=True):
         plt.close('')
         _, axis = plt.subplots(len(errors), sharex='all')
 
