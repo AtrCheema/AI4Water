@@ -1,13 +1,19 @@
 import os
 import site
 import unittest
-# so that AI4Water directory is in path
+# so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
+from ai4water.datasets import arg_beach
+from ai4water.private_layers import ConditionalRNN
 
 inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
 outputs = ['tetx_coppml']
@@ -17,8 +23,8 @@ data = arg_beach(inputs, outputs)
 
 def build_model(layers, lookback):
     model = Model(model={'layers': layers},
-        inputs=inputs,
-        outputs=outputs,
+        input_features=inputs,
+        output_features=outputs,
         lookback=lookback,
         data=data,
         verbosity=0
@@ -38,8 +44,10 @@ class TestBuiltTFConfig(unittest.TestCase):
         "Dense_2": {'units': 16, 'activation': 'relu'},
         "Dense_3": 1
     }, 1)
-        assert model._model.count_params() == 3201
-        assert model._model.layers.__len__() == 8
+
+
+        assert model.trainable_parameters() == 3201
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_lstm(self):
@@ -52,8 +60,8 @@ class TestBuiltTFConfig(unittest.TestCase):
                   },
             12)
 
-        assert model._model.count_params() == 31137
-        assert model._model.layers.__len__() == 6
+        assert model.trainable_parameters() == 31137
+        assert model.nn_layers().__len__() == 6
 
     def test_1dcnn(self):
 
@@ -67,8 +75,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
                   },
         12)
-        assert model._model.count_params() == 5377
-        assert model._model.layers.__len__() == 9
+        assert model.trainable_parameters() == 5377
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_lstmcnn(self):
@@ -84,8 +92,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         },
             12)
-        assert model._model.count_params() == 31233
-        assert model._model.layers.__len__() == 10
+        assert model.trainable_parameters() == 31233
+        assert model.nn_layers().__len__() == 10
         return
 
     def test_convlstm(self):
@@ -99,8 +107,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         },
             12)
-        assert model._model.count_params() == 187265
-        assert model._model.layers.__len__() == 7
+        assert model.trainable_parameters() == 187265
+        assert model.nn_layers().__len__() == 7
 
     def test_cnnlstm(self):
         sub_sequences = 3
@@ -131,8 +139,8 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
         15)
 
-        assert model._model.count_params() == 39697
-        assert model._model.layers.__len__() == 15
+        assert model.trainable_parameters() == 39697
+        assert model.nn_layers().__len__() == 15
         return
 
     def test_lstm_autoenc(self):
@@ -145,8 +153,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "relu_1": {},
             'Dense': 1
         }, 12)
-        assert model._model.count_params() == 124101
-        assert model._model.layers.__len__() == 8
+        assert model.trainable_parameters() == 124101
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_tcn(self):
@@ -162,8 +170,8 @@ class TestBuiltTFConfig(unittest.TestCase):
                                'dropout_rate': 0.0},
             'Dense': 1
         }, 12)
-        assert model._model.count_params() == 92545
-        assert model._model.layers.__len__() == 4
+        assert model.trainable_parameters() == 92545
+        assert model.nn_layers().__len__() == 4
 
     def test_multi_inputs(self):
 
@@ -186,8 +194,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dropout": 0.4,
             "Dense_2": 1
         }, 5)
-        assert model._model.count_params() == 20857
-        assert model._model.layers.__len__() == 10
+        assert model.trainable_parameters() == 20857
+        assert model.nn_layers().__len__() == 10
 
     def test_multi_output(self):
 
@@ -211,8 +219,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         },
         15)
-        assert model._model.count_params() == 31491
-        assert model._model.layers.__len__() == 9
+        assert model.trainable_parameters() == 31491
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_add_args(self):
@@ -242,8 +250,53 @@ class TestBuiltTFConfig(unittest.TestCase):
 
             "Dense": 1
         }, 15)
-        assert model._model.count_params() == 50243
-        assert model._model.layers.__len__() == 10
+        assert model.trainable_parameters() == 50243
+        assert model.nn_layers().__len__() == 10
+        return
+
+    def test_custom_layer(self):
+        num_hrus = 7
+        lookback = 5
+
+        if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) in [210, 250, 115]:
+            # todo, write __call__ for custom layer for tf 2.1 and 2.5
+            return
+
+        class SharedRNN(tf.keras.layers.Layer):
+
+            def __init__(self, *args, **kwargs):
+                super().__init__()
+                self.rnn = ConditionalRNN(*args, **kwargs)
+
+            def __call__(self, inputs, conditions, *args, **kwargs):
+                assert len(inputs.shape) == 4
+                assert inputs.shape[1] == conditions.shape[1]
+
+                outputs = []
+
+                for i in range(inputs.shape[1]):
+                    rnn_output = self.rnn([inputs[:, i], conditions[:, i]])
+                    rnn_output = tf.keras.layers.Dense(1, name=f'HRU_{i}')(rnn_output)
+                    outputs.append(rnn_output)
+
+                return outputs
+
+        layers = {
+            'Input_cont': {'shape': (num_hrus, lookback, 3)},  # 3 because a,b,c are input parameters
+            'Input_static': {'shape': (num_hrus, 3)},
+            SharedRNN: {'config': {'units': 32},
+                        'inputs': ['Input_cont', 'Input_static'],
+                        'outputs': 'rnn_outputs'},
+            'Add': {'name': 'total_flow'},
+            'Reshape_output': {'target_shape': (1, 1)}
+        }
+
+        model = Model(
+            model={'layers': layers},
+            verbosity=0
+        )
+        assert model.trainable_parameters() == 4967
+
         return
 
     def test_lambda(self):
@@ -254,8 +307,8 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         },
         10)
-        assert model._model.count_params() == 5281
-        assert model._model.layers.__len__() == 5
+        assert model.trainable_parameters() == 5281
+        assert model.nn_layers().__len__() == 5
         return
 
 

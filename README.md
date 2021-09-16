@@ -12,28 +12,39 @@ for time series and 1D data. To put into Andrej Karapathy's [words](https://twit
  This is necessary, but not sufficient.` 
 
 The specific purposes of the repository are
-* compliment the functionality of keras by making pre and post processing easeier for time-series
-  prediction/classification problems (also holds true for any 1D data)
-* save, load/reload or build models from readable json file.
-* both of above functionalities should be available without complicating keras implementation.
-* provide a uniform interface for optimizing hyper-parameters for [skopt](https://scikit-optimize.github.io/stable/index.html),
- [sklearn](https://scikit-learn.org/stable/modules/classes.html#hyper-parameter-optimizers) based [grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) and [random](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html),
-  [hyperopt](http://hyperopt.github.io/hyperopt/) based [tpe](https://papers.nips.cc/paper/2011/file/86e8f7ab32cfd12577bc2619bc635690-Paper.pdf), [atpe](https://www.electricbrain.io/blog/learning-to-optimize) or [optuna](https://optuna.readthedocs.io/en/stable/) based [tpe](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.TPESampler.html), [cmaes](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.CmaEsSampler.html) etc. See [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)  using its application.
-* It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` by subclassing the
+
+-    compliment the functionality of `keras`/`pytorch`/`sklearn` by making pre and 
+ post processing easeier for time-series prediction/classification problems (also holds
+ true for any 1D data).
+ 
+-    save, load/reload or build models from readable json file. This repository 
+ provides a framework to build layered models using python dictionary and with 
+ several helper tools which fasten the process of  modeling time-series forcasting.
+
+-    provide a uniform interface for optimizing hyper-parameters for 
+ [skopt](https://scikit-optimize.github.io/stable/index.html);
+ [sklearn](https://scikit-learn.org/stable/modules/classes.html#hyper-parameter-optimizers) 
+ based [grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) 
+ and [random](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html);
+  [hyperopt](http://hyperopt.github.io/hyperopt/) based 
+  [tpe](https://papers.nips.cc/paper/2011/file/86e8f7ab32cfd12577bc2619bc635690-Paper.pdf), 
+  [atpe](https://www.electricbrain.io/blog/learning-to-optimize) or 
+  [optuna](https://optuna.readthedocs.io/en/stable/) based 
+  [tpe](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.TPESampler.html), 
+  [cmaes](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.samplers.CmaEsSampler.html) etc. 
+  See [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)  
+  using its application.
+ 
+-    cut short the time to write boiler plate code in developing machine learning 
+ based models.
+
+-    It should be possible to overwrite/customize any of the functionality of the AI4Water's `Model` 
+ by subclassing the
  `Model`. So at the highest level you just need to initiate the `Model`, and then need `fit`, `predict` and 
  `view_model` methods of `Model` class but you can go as low as you could go with tensorflow/keras. 
 
-This repository provides a framework to build layered models using python dictionary and with several helper tools 
-which fasten the process of  modeling time-series forcasting. The purpose is to cut short the time to write boiler plate code
-in developing deep learning based models.
-
-Most of the models in this repository have been adopted from other repositories in order to create an `all in one` code.
-I have tried to reference the original repositories as well.
-
-This repository is for you if you want to
-* avoid pre and post post processing of data to build data-driven models for 1D or time series data.
-* want to save (in) and reload models from readable json config file.
-* Customize some of the utilities provided here while retaining others e.g using your own normalization and denormalization 
+-    All of the above functionalities should be available without complicating keras 
+ implementation.
 
 Currently following models are implemented
 
@@ -47,7 +58,7 @@ Currently following models are implemented
 | Autoencoder  | * |  |
 | ConvLSTM | * | [paper](https://arxiv.org/abs/1506.04214v1) [Code](https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/) |
 | Temporal Convolutional Networks (TCN)  | * | [paper](https://www.nature.com/articles/s41598-020-65070-5) [code](https://github.com/philipperemy/keras-tcn) |
-| Iterpretable Multivariate LSTM (IMV-LSTM)  | `IMVLSTMModel` | [paper](https://arxiv.org/pdf/1905.12034.pdf) [code](https://github.com/KurochkinAlexey/IMV_LSTM) |
+| Iterpretable Multivariate LSTM (IMV-LSTM)  | `IMVModel` | [paper](https://arxiv.org/pdf/1905.12034.pdf) [code](https://github.com/KurochkinAlexey/IMV_LSTM) |
 | HARHN  | `HARHNModel` | [paper](https://arxiv.org/abs/1806.00685) [code](https://github.com/KurochkinAlexey/Hierarchical-Attention-Based-Recurrent-Highway-Networks-for-Time-Series-Prediction)|
 | Neural Beats  | `NBeatsModel` | [paper](https://arxiv.org/pdf/1905.10437.pdf) |
 | Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
@@ -79,14 +90,15 @@ To install the latest branch (`dev`) with all requirements use the following com
 Build a `Model` by providing all the arguments to initiate it.
 
 ```python
-from AI4Water import Model
-from AI4Water.data import load_30min
-data = load_30min()
+from ai4water import Model
+from ai4water.datasets import arg_beach
+data = arg_beach()
 model = Model(
-        model = {'layers': {"LSTM": 64}},
+        model = {'layers': {"LSTM": 64,
+                            'Dense': 1}},
         data = data,
-        inputs=['input1', 'input2', 'input3'],   # columns in csv file to be used as input
-        outputs = ['target5'],     # columns in csv file to be used as output
+        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        output_features = ['tetx_coppml'],     # columns in csv file to be used as output
         lookback = 12
 )
 ```
@@ -101,13 +113,20 @@ Make predictions from it
 true, predicted = model.predict()
 ```
 
+The model object returned from initiating AI4Wwater's `Model` is same as that of Keras' `Model`
+We can verify it by checking its type
+```python
+import tensorflow as tf
+isinstance(model, tf.keras.Model)  # True
+``` 
+
 
 ## Using your own pre-processed data
 You can use your own pre-processed data without using any of pre-processing tools of AI4Water. You will need to provide
 input output paris to `data` argument to `fit` and/or `predict` methods.
 ```python
 import numpy as np
-from AI4Water import Model  # import any of the above model
+from ai4water import Model  # import any of the above model
 
 batch_size = 16
 lookback = 15
@@ -115,19 +134,18 @@ inputs = ['dummy1', 'dummy2', 'dummy3', 'dumm4', 'dummy5']  # just dummy names f
 outputs=['DummyTarget']
 
 model = Model(
-            data=None,
+            model = {'layers': {"LSTM": 64,
+                                'Dense': 1}},
             batch_size=batch_size,
             lookback=lookback,
-            transformation=None,
-            inputs=inputs,
-            outputs=outputs,
+            input_features=inputs,
+            output_features=outputs,
             lr=0.001
               )
 x = np.random.random((batch_size*10, lookback, len(inputs)))
 y = np.random.random((batch_size*10, len(outputs)))
-data = (x,y)
 
-history = model.fit(data=data)
+history = model.fit(x=x,y=y)
 
 ```
 
@@ -136,31 +154,30 @@ The repository can also be used for machine learning based models such as scikit
 classification and regression problems by making use of `model` keyword arguments in `Model` function.
 However, integration of ML based models is not complete yet.
 ```python
-from AI4Water import Model
-import pandas as pd 
+from ai4water import Model
+from ai4water.datasets import arg_beach
 
-df = pd.read_csv('data/data_30min.csv')  # path for data file
+data = arg_beach()  # path for data file
 
-model = Model(batches="2d",
-              inputs=['input1', 'input2', 'input3', 'input4'],
-              outputs=['target7'],
-              lookback=1,
-              val_fraction=0.0,
-              #  any regressor from https://scikit-learn.org/stable/modules/classes.html
-              model={"randomforestregressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
+model = Model(
+        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        output_features = ['tetx_coppml'],  
+        lookback=1,
+        val_fraction=0.0,
+        #  any regressor from https://scikit-learn.org/stable/modules/classes.html
+        model={"randomforestregressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
-              data=df
+        data=data
               )
 
-history = model.fit(st=0, en=150)
+history = model.fit()
 
-preds, obs = model.predict(st=150, en=220)
+preds, obs = model.predict()
 ```
 
 ## Disclaimer
-Athough the purpose of this repo is purportedly `all_in_one` model, however there is no `one_for_all` model. For each
-deep learning proble, the model needs to be build accordingly. I made this repo to teach myself deep learning for time
-series prediction. 
+The library is still under development. Fundamental changes are expected without prior notice or
+without regard of backward compatability.
 
 #### Related
 

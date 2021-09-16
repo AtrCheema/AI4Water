@@ -11,16 +11,18 @@ with open('version.py') as fv:
     exec(fv.read())
 
 min_requirements = [
-        'numpy',
-        'seaborn',
-        'scikit-learn',
-        'pandas',
-        'matplotlib',
-        'scikit-optimize'
+    'numpy',
+    'seaborn',
+    'scikit-learn',
+    'pandas',
+    'matplotlib',
+    'scikit-optimize',
+    'joblib',
+    'requests',
     ]
 
 extra_requires = [
-'tensorflow<=2.3', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
+'tensorflow', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 #'pytorch',  # only if you want to use pytorch-based models
 'h5py<2.11.0', # only if you want to save batches
@@ -31,7 +33,6 @@ extra_requires = [
 'catboost',
 'plotly',
 'tpot',
-'joblib',
 # spatial processing
 'imageio',
 # shapely manually download the wheel file and install
@@ -40,7 +41,12 @@ extra_requires = [
 'optuna',
 'hyperopt',
 
-'netCDF4'  # for reading data
+# for reading data
+'netCDF4',
+ 'xarray',
+
+# for jsonizing
+'wrapt',
 ]
 
 all_requirements = min_requirements + extra_requires
@@ -60,7 +66,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'AI4Water/utils/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
+    package_data={'ai4water/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
     include_package_data=True,
 
     classifiers=[
@@ -79,16 +85,23 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.8',
     ],
 
-    packages=['AI4Water',
-              'AI4Water/models',
-              'AI4Water/hyper_opt',
-              'AI4Water/utils',
-              'AI4Water/utils/SeqMetrics',
-              'AI4Water/utils/datasets',
-              'AI4Water/ETUtil',
-              'AI4Water/experiments'
+    packages=['ai4water',
+              'ai4water/models',
+              'ai4water/hyper_opt',
+              'ai4water/utils',
+              'ai4water/pre_processing',
+              'ai4water/post_processing/',
+              'ai4water/post_processing/SeqMetrics',
+              'ai4water/post_processing/explain',
+              'ai4water/post_processing/interpret',
+              'ai4water/post_processing/visualize',
+              'ai4water/datasets',
+              'ai4water/ETUtil',
+              'ai4water/experiments',
+              'ai4water/eda'
               ],
 
     install_requires=min_requirements,

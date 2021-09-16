@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 import os
 
-from AI4Water import Model
-from AI4Water.utils.visualizations import Visualizations
+from ai4water import Model
+from ai4water.utils.visualizations import PlotResults
 
 
 class MultiInputSharedModel(Model):
@@ -18,13 +18,13 @@ class MultiInputSharedModel(Model):
         x, _, labels = self.fetch_data(data=data, **kwargs)
         return [x], None, [labels]
 
-    def train_data(self, **kwargs):
+    def training_data(self, **kwargs):
 
         x_data = []
         y_data = []
         for out in range(2):
 
-            self.out_cols = [self.config['outputs'][out]]  # because fetch_data depends upon self.outs
+            self.out_cols = [self.config['outputs']['output'][out]]  # because fetch_data depends upon self.num_outs
 
             x, _, labels = self.fetch_data(data=self.data[out], **kwargs)
 
@@ -38,9 +38,9 @@ class MultiInputSharedModel(Model):
 
         return x_data, None, y_data
 
-    def val_data(self, **kwargs):
+    def validation_data(self, **kwargs):
 
-        self.out_cols = [self.config['outputs'][-1]]  # because fetch_data depends upon self.outs
+        self.out_cols = [self.config['outputs'][-1]]  # because fetch_data depends upon self.num_outs
         x, _, labels = self.fetch_data(data=self.data[-1], **kwargs)
 
         self.out_cols = self.config['outputs']  # setting the actual output columns back to original
@@ -49,13 +49,13 @@ class MultiInputSharedModel(Model):
 
     def fit(self, st=0, en=None, indices=None, **callbacks):
 
-        visualizer = Visualizations(path=self.path)
+        visualizer = PlotResults(path=self.path)
 
-        train_data = self.train_data(st=st, en=en, indices=indices)
+        train_data = self.training_data(st=st, en=en, indices=indices)
 
-        val_data = self.val_data(st=st, en=en, indices=indices)
+        val_data = self.validation_data(st=st, en=en, indices=indices)
 
-        history = self._fit(train_data[0], train_data[2], validation_data=(val_data[0], val_data[2]), **callbacks)
+        history = self._FIT(train_data[0], train_data[2], validation_data=(val_data[0], val_data[2]), **callbacks)
 
         visualizer.plot_loss(history.history)
 

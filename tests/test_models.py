@@ -1,15 +1,24 @@
 import os
+import time
 import unittest
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input
+from sklearn.datasets import make_classification
+from sklearn.datasets import make_multilabel_classification
 
-from AI4Water import Model
-from AI4Water.utils.datasets import load_nasdaq, arg_beach
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
+from ai4water.functional import Model as FModel
+from ai4water.datasets import load_nasdaq, arg_beach
 
 
 examples = 200
@@ -59,20 +68,45 @@ def make_layers(outs):
     }
     return layers
 
+
+def test_evaluation(model):
+
+    model.evaluate('training')
+    train_x, train_y = model.training_data()
+
+    model.evaluate('validation')
+    val_data = model.validation_data()
+
+    model.evaluate('test')
+    test_data = model.test_data()
+    if not isinstance(test_data, tf.data.Dataset):
+        test_x, test_y = test_data
+
+    if model.config['val_data'] == 'same' and not isinstance(val_data, tf.data.Dataset):
+        val_x, y = val_data
+        assert test_x[0].shape == val_x[0].shape
+
+    return
+
+
 def build_and_run(outputs, transformation=None, indices=None):
     model = Model(
         model={"layers": make_layers(len(outputs['inp_1d']))},
         lookback=lookback,
-        inputs = {"inp_1d": inp_1d, "inp_2d": inp_2d},
-        outputs=outputs,
+        input_features = {"inp_1d": inp_1d, "inp_2d": inp_2d},
+        output_features=outputs,
         data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d},
         transformation = transformation,
+        train_data=indices,
         epochs=2,
         verbosity=0
     )
 
-    model.fit(indices=indices)
-    return model.predict(indices=model.test_indices if indices else None)
+    model.fit()
+
+    test_evaluation(model)
+
+    return model.predict()
 
 class test_MultiInputModels(unittest.TestCase):
 
@@ -103,8 +137,8 @@ class test_MultiInputModels(unittest.TestCase):
                       data=load_nasdaq(),
                       verbosity=0)
 
-        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
-        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
+        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
 
         return
 
@@ -115,8 +149,8 @@ class test_MultiInputModels(unittest.TestCase):
                       data=load_nasdaq(),
                       verbosity=0)
 
-        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
-        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
+        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
         return
 
     def test_add_no_output_layer(self):
@@ -127,8 +161,8 @@ class test_MultiInputModels(unittest.TestCase):
                       data=load_nasdaq(),
                       verbosity=0)
 
-        self.assertEqual(model._model.outputs[0].shape[1], model.outs)
-        self.assertEqual(model._model.outputs[0].shape[-1], model.forecast_len)
+        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
+        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
         return
 
     def test_same_val_data(self):
@@ -136,7 +170,7 @@ class test_MultiInputModels(unittest.TestCase):
         # tf.data was created successfully and keras Model accepted it to train as well.
         _examples = 200
 
-        class MyModel(Model):
+        class MyModel(FModel):
             def add_layers(self, layers_config:dict, inputs=None):
                 input_layer_names = ['input1', 'input2', 'input3', 'input4']
 
@@ -150,20 +184,29 @@ class test_MultiInputModels(unittest.TestCase):
                 conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
                 s = tf.keras.layers.Concatenate()([out1, conc2])
                 out = Dense(1, name='output')(s)
+                out = tf.keras.layers.Reshape((1,1))(out)
                 return [inp1, inp2, inp3, inp4], out
 
-            def train_data(self, data=None, data_keys=None, **kwargs):
-
+            def training_data(self, data=None, data_keys=None, **kwargs):
+                print('using customized training data')
                 in1 = np.random.random((_examples, 10, 5))
                 in2 = np.random.random((_examples, 10, 4))
                 in3 = np.random.random((_examples, 10))
                 in4 = np.random.random((_examples, 9))
-                o = np.random.random((_examples, 1))
+                o = np.random.random((_examples, 1, 1))
                 return [in1, in2, in3, in4], o
 
-        model = MyModel(val_data='same', verbosity=0, data=arg_beach())
+            def validation_data(self, *args, **kwargs):
+                return self.training_data(*args, **kwargs)
+
+            def test_data(self, *args, **kwargs):
+                return self.training_data(*args, **kwargs)
+
+        model = MyModel(val_data='same', verbosity=0, category="DL")
+
         hist = model.fit()
         self.assertGreater(len(hist.history['loss']), 1)
+        test_evaluation(model)
         return
 
     def test_customize_loss(self):
@@ -204,18 +247,161 @@ class test_MultiInputModels(unittest.TestCase):
 
         # Initiate Model
         model = QuantileModel(
-            inputs=['input_' + str(i) for i in range(cols - 1)],
-            outputs=['input_' + str(cols - 1)],
+            input_features=['input_' + str(i) for i in range(cols - 1)],
+            output_features=['input_' + str(cols - 1)],
             lookback=1,
             verbosity=0,
             model={'layers': layers},
             epochs=2,
-            data=data,
+            data=data.astype(np.float32),
+            train_data = np.arange(1500),
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-        model.fit(st=0, en=1500)
+        model.fit()
+        test_evaluation(model)
         return
+
+    def test_predict_without_y(self):
+        # make sure that .predict method can be called without `y`.
+
+        model = Model(model='RandomForestRegressor',
+                      data=arg_beach(),
+                      verbosity=0
+                      )
+        model.fit()
+        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        assert len(y) == 10
+
+        # check also for functional model
+        model = FModel(model='RandomForestRegressor',
+                      data=arg_beach(),
+                      verbosity=0
+                      )
+        model.fit()
+        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        assert len(y) == 10
+
+        time.sleep(1)
+        return
+
+
+def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation='softmax'):
+
+    input_features = [f'input_{n}' for n in range(10)]
+
+    if is_multilabel:
+        outputs = [f'target_{n}' for n in range(n_classes)]
+        X, y = make_multilabel_classification(n_samples=100, n_features=len(input_features), n_classes=n_classes,
+                                              n_labels=2, random_state=0)
+        y = y.reshape(-1, n_classes)
+
+    else:
+        outputs = ['target']
+        X, y = make_classification(n_samples=100, n_features=len(input_features), n_informative=n_classes, n_classes=n_classes,
+                               random_state=1)
+        y = y.reshape(-1, 1)
+
+    df = pd.DataFrame(np.concatenate([X, y], axis=1), columns=input_features + outputs)
+
+    model = Model(data=df,
+                  model={'layers': {
+                      'Dense_0': 10,
+                      'Flatten': {},
+                      'Dense_1': n_classes, 'activation': activation}},
+                  input_features=input_features,
+                  loss=loss,
+                  output_features=outputs,
+                  verbosity=0,
+                  )
+    model.fit()
+    test_evaluation(model)
+
+    assert model.problem == 'classification'
+    assert len(model.classes) == n_classes
+    assert model.num_classes == n_classes
+    return model
+
+
+class TestClassifications(unittest.TestCase):
+
+    def test_binary_classification(self):
+
+        model = build_and_run_class_problem(2, 'binary_crossentropy')
+
+        assert model.is_binary
+        assert not model.is_multiclass
+        assert not model.is_multilabel
+
+        return
+
+    def test_multiclass_classification(self):
+
+        model = build_and_run_class_problem(3, 'binary_crossentropy')
+
+        assert not model.is_binary
+        assert model.is_multiclass
+        assert not model.is_multilabel
+
+        return
+
+    def test_multilabel_classification(self):
+
+        model = build_and_run_class_problem(5, 'binary_crossentropy', is_multilabel=True)
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_multilabel_classification_with_categorical(self):
+
+        model = build_and_run_class_problem(5, 'categorical_crossentropy', is_multilabel=True)
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_multilabel_classification_with_binary_sigmoid(self):
+
+        model = build_and_run_class_problem(5, 'binary_crossentropy', is_multilabel=True, activation='sigmoid')
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_multilabel_classification_with_categorical_sigmoid(self):
+
+        model = build_and_run_class_problem(5, 'categorical_crossentropy', is_multilabel=True, activation='sigmoid')
+
+        assert not model.is_binary
+        assert not model.is_multiclass
+        assert model.is_multilabel
+
+        return
+
+    def test_basic_multi_output(self):
+        model = Model(
+            model= {'layers': {'LSTM': {'units': 32},
+                               'Dense': {'units': 2},
+                               'Reshape': {'target_shape': (2,1)}}},
+            lookback=5,
+            output_features = ['blaTEM_coppml', 'tetx_coppml'],
+            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml'])
+        )
+
+        model.fit()
+        t,p = model.predict()
+
+        assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
+
+        for out in model.output_features:
+            assert out in os.listdir(model.path)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,7 @@
 mkdocs
 mkdocstrings
 mkdocs-material
+mkdocs-autorefs
 h5py
 matplotlib
 numpy
@@ -16,3 +17,4 @@ netCDF4
 imageio
 pyshp
 shapely
+wrapt

@@ -30,8 +30,6 @@ jobs:
         pip install coverage
         pip install codecov
         pip install python-coveralls
-        pip uninstall tensorflow -y
-        pip install tensorflow==2.3.0
 
         coverage run -m unittest tests.test_tf_losses
         coverage run -m unittest tests.test_activations

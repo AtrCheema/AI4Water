@@ -1,33 +1,32 @@
 import os
 import unittest
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)))
 
 import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from AI4Water.utils.datasets import load_nasdaq
-from AI4Water import InputAttentionModel, DualAttentionModel
+from ai4water.datasets import arg_beach, load_nasdaq
+from ai4water import InputAttentionModel, DualAttentionModel
 
 
-def make_and_run(input_model, _layers=None, lookback=12, epochs=1, **kwargs):
-
-    df = load_nasdaq()
+def make_and_run(input_model, _layers=None, lookback=12, epochs=3, **kwargs):
 
     model = input_model(
-        data=df,
         verbosity=0,
         batch_size=64,
         lookback=lookback,
         lr=0.001,
         epochs=epochs,
+        train_data='random',
         **kwargs
     )
 
-    _ = model.fit(indices='random')
+    _ = model.fit()
 
-    _, pred_y = model.predict(use_datetime_index=False)
+    _, pred_y = model.predict()
+    model.interpret()
 
     return pred_y
 
@@ -37,14 +36,22 @@ class TestModels(unittest.TestCase):
 
     def test_InputAttentionModel(self):
 
-        prediction = make_and_run(InputAttentionModel)
-        self.assertGreater(float(prediction[0].sum()), 0.0)
+        prediction = make_and_run(InputAttentionModel, data=arg_beach())
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+
+    # def test_InputAttentionModel_with_drop_remainder(self):
+    #
+    #     prediction = make_and_run(InputAttentionModel, drop_remainder=True)
+    #     self.assertGreater(float(prediction[0].sum()), 0.0)
 
     def test_DualAttentionModel(self):
         # DualAttentionModel based model
 
-        prediction = make_and_run(DualAttentionModel)
-        self.assertGreater(float(prediction[0].sum()), 0.0)
+        prediction = make_and_run(
+            DualAttentionModel,
+            data=load_nasdaq(inputs=['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK'])
+        )
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
 
 
 if __name__ == "__main__":

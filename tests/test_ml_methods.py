@@ -1,9 +1,15 @@
 import os
 import unittest
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
-from AI4Water import Model
+from ai4water.tf_attributes import tf
+
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
 
 import pandas as pd
 import numpy as np
@@ -42,8 +48,8 @@ def run_class_test(method):
         print(f"testing {method}")
 
         model = Model(
-            inputs=data_reg['feature_names'] if problem=="regression" else data_class['feature_names'],
-            outputs=['target'],
+            input_features=data_reg['feature_names'] if problem=="regression" else data_class['feature_names'],
+            output_features=['target'],
             val_fraction=0.2,
             problem=problem,
             transformation=None,
@@ -360,8 +366,8 @@ class TestMLMethods(unittest.TestCase):
     def test_ml_random_indices(self):
 
         model = Model(
-            inputs=data_reg['feature_names'],
-            outputs=["target"],
+            input_features=data_reg['feature_names'],
+            output_features=["target"],
             lookback=1,
             batches="2d",
             val_fraction=0.0,
@@ -372,11 +378,12 @@ class TestMLMethods(unittest.TestCase):
             model={"xgboostregressor": {}},
             transformation=None,
             data=df_reg,
+            train_data='random',
             verbosity=0)
 
-        model.fit(indices="random")
-        trtt, trp = model.predict(indices=model.train_indices, prefix='train')
-        t, p = model.predict(indices=model.test_indices, prefix='test')
+        model.fit()
+        trtt, trp = model.predict(data='training')
+        t, p = model.predict()
         self.assertGreater(len(t), 1)
         self.assertGreater(len(trtt), 1)
         return

@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from AI4Water.ETUtil import HargreavesSamani, ETBase, Penman, PriestleyTaylor
-from AI4Water.utils.datasets import CAMELS_AUS
-from AI4Water.utils.utils import process_axis
+from ai4water.ETUtil import HargreavesSamani, ETBase, Penman, PriestleyTaylor
+from ai4water.datasets import CAMELS_AUS
+from ai4water.utils.utils import process_axis
 
 
 units = {'tmin': 'Centigrade',

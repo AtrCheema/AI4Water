@@ -1,8 +1,10 @@
-import tensorflow as tf
-from tensorflow import keras
+# This file describes the minimal example of customizing the whole training function ('fit')
+# using AI4Water's Model class.
 
-from AI4Water.main import Model
-from AI4Water.utils.datasets import arg_beach
+import tensorflow as tf
+
+from ai4water import Model
+from ai4water.datasets import arg_beach
 
 # TODO put code in @tf.function
 # TODO write validation code
@@ -10,23 +12,22 @@ from AI4Water.utils.datasets import arg_beach
 
 class CustomModel(Model):
 
-    def fit(self, st=0, en=None, indices=None, **callbacks):
+    def fit(self, data='training', callbacks=None, **kwargs):
         self.is_training = True
         # Instantiate an optimizer.
-        optimizer = keras.optimizers.Adam(learning_rate=self.config['lr'])
+        optimizer = self.get_optimizer()
         # Instantiate a loss function.
-        loss_fn = self.loss
+        if self.api == 'functional':
+            loss_fn = self.loss()
+            _model = self._model
+        else:
+            loss_fn = self.loss
+            _model = self
 
         # Prepare the training dataset.
         batch_size = self.config['batch_size']
 
-        indices = self.get_indices(indices)
-
-        train_x, train_y, train_label = self.fetch_data(data=self.data, st=st, en=en, shuffle=True,
-                                                        write_data=self.config['cache_data'],
-                                                        inps=self.in_cols,
-                                                        outs=self.out_cols,
-                                                        indices=indices)
+        train_x, train_label = self.training_data()
 
         train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_label))
         train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
@@ -50,22 +51,22 @@ class CustomModel(Model):
 
                     if y_obj.shape[0] < 1:  # no observations present for this batch so skip this
                         continue
-                    logits = self._model(x_batch_train, training=True)  # Logits for this minibatch
+                    logits = _model(x_batch_train, training=True)  # Logits for this minibatch
 
                     logits_obj = logits[mask]
                     # Compute the loss value for this minibatch.
-                    loss_value = keras.backend.mean(loss_fn(y_obj, logits_obj))
+                    loss_value = tf.keras.backend.mean(loss_fn(y_obj, logits_obj))
 
                 # Use the gradient tape to automatically retrieve
                 # the gradients of the trainable variables with respect to the loss.
-                grads = tape.gradient(loss_value, self._model.trainable_weights)
+                grads = tape.gradient(loss_value, _model.trainable_weights)
 
                 # grads = [tf.clip_by_norm(g, 1.0) for g in grads]
                 grads = [tf.clip_by_value(g, -1.0, 1.0) for g in grads]
 
                 # Run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(zip(grads, self._model.trainable_weights))
+                optimizer.apply_gradients(zip(grads, _model.trainable_weights))
 
                 # Log every 200 batches.
                 if step % 20 == 0:
@@ -77,31 +78,22 @@ class CustomModel(Model):
         return loss_value
 
 
-layers = {"LSTM_0": {'config': {'units': 64, 'return_sequences': True}},
-          "LSTM_1": {'config':  {'units': 32}},
-          "Dropout": {'config':  {'rate': 0.3}},
-          "Dense": {'config':  {'units': 1}}
+layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
+          "LSTM_1": 32,
+          "Dropout": 0.3,
+          "Dense": 1
           }
-
-df = arg_beach()
-
-input_features = list(df.columns)[0:-1]
-
-# column in dataframe to bse used as output/target
-outputs = list(df.columns)[-1]
-
 
 model = CustomModel(model={'layers':layers},
                     batch_size=12,
                     lookback=15,
                     lr=8.95e-5,
-                    allow_nan_labels=1,
-                    inputs=input_features,
-                    outputs=outputs,
+                    allow_nan_labels=2,
                     epochs=10,
-                    data=df,
+                    data=arg_beach(),
+                    train_data='random'
                     )
-history = model.fit(indices='random', tensorboard=True)
+history = model.fit(callbacks={'tensorboard':True})
 
-test_pred, test_obs = model.predict(indices=model.test_indices)
-train_pred, train_obs = model.predict(indices=model.train_indices)
+test_pred, test_obs = model.predict()
+train_pred, train_obs = model.predict(data='training')

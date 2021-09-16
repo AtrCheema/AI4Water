@@ -2,7 +2,7 @@ import os
 import time
 import pickle
 import unittest
-import site   # so that AI4Water directory is in path
+import site   # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import skopt
@@ -18,11 +18,20 @@ from sklearn.model_selection import train_test_split
 
 np.random.seed(313)
 
-from AI4Water import Model
-from AI4Water.utils.utils import Jsonize
-from AI4Water.utils.SeqMetrics import RegressionMetrics
-from AI4Water.utils.datasets import load_u1
-from AI4Water.hyper_opt import HyperOpt, Real, Categorical, Integer
+
+from ai4water.tf_attributes import tf
+from ai4water.utils.utils import Jsonize
+from ai4water.datasets import load_u1
+from ai4water.post_processing.SeqMetrics import RegressionMetrics
+from ai4water.hyper_opt import HyperOpt, Real, Categorical, Integer
+
+if tf is not None:
+    if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+        from ai4water.functional import Model
+        print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+    else:
+        from ai4water import Model
+
 
 
 data = load_u1()
@@ -36,10 +45,10 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     assert isinstance(space, dict)
     assert len(space)==paras
     assert isinstance(optimizer.xy_of_iterations(), dict)
-    assert len(optimizer.xy_of_iterations())>1
+    assert len(optimizer.xy_of_iterations()) >= optimizer.num_iterations, f'{len(optimizer.xy_of_iterations())}'
     assert isinstance(optimizer.best_paras(as_list=True), list)
     assert isinstance(optimizer.best_paras(False), dict)
-    assert len(optimizer.func_vals()) > 1
+    assert len(optimizer.func_vals()) >= optimizer.num_iterations
     assert isinstance(optimizer.skopt_space(), Space)
     if isinstance(ai4water_args, dict):
         assert 'model' in ai4water_args
@@ -53,8 +62,8 @@ def run_ai4water(method):
             'learning_rate': [0.1,  0.0005],
             'booster': ["gbtree", "dart"]}
 
-    ai4water_args = {"inputs": inputs,
-                   "outputs": outputs,
+    ai4water_args = {"input_features": inputs,
+                   "output_features": outputs,
                    "lookback": 1,
                    "batches": "2d",
                    "val_data": "same",
@@ -86,16 +95,17 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
 
     def fn(**suggestion):
         model = Model(
-            inputs=inputs,
-            outputs=outputs,
+            input_features=inputs,
+            output_features=outputs,
             model={"xgboostregressor": suggestion},
             data=data,
             prefix=f'test_{algorithm}_xgboost_{backend}',
+            train_data='random',
             verbosity=0)
 
-        model.fit(indices="random")
+        model.fit()
 
-        t, p = model.predict(indices=model.test_indices, prefix='test')
+        t, p = model.predict()
         mse = RegressionMetrics(t, p).mse()
 
         return mse
@@ -273,8 +283,8 @@ class TestHyperOpt(unittest.TestCase):
             kwargs = Jsonize(kwargs)()
 
             model = Model(
-                inputs=inputs,
-                outputs=outputs,
+                input_features=inputs,
+                output_features=outputs,
                 lookback=1,
                 batches="2d",
                 val_data="same",
@@ -283,11 +293,12 @@ class TestHyperOpt(unittest.TestCase):
                 transformation=None,
                 data=data,
                 prefix='testing',
+                train_data='random',
                 verbosity=0)
 
-            model.fit(indices="random")
+            model.fit()
 
-            t, p = model.predict(indices=model.test_indices, prefix='test')
+            t, p = model.predict()
             mse = RegressionMetrics(t, p).mse()
             print(f"Validation mse {mse}")
 
@@ -315,8 +326,8 @@ class TestHyperOpt(unittest.TestCase):
                 Categorical(categories=["gbtree", "dart"], name="booster")
                 ]
 
-        ai4water_args = {"inputs": inputs,
-                       "outputs": outputs,
+        ai4water_args = {"input_features": inputs,
+                       "output_features": outputs,
                        "lookback": 1,
                        "batches": "2d",
                        "val_data": "same",
@@ -344,11 +355,11 @@ class TestHyperOpt(unittest.TestCase):
 
     def test_ai4water_grid(self):
         run_ai4water("grid")
-        print("AI4Water for grid passing")
+        print("ai4water for grid passing")
 
     def test_ai4water_random(self):
         run_ai4water("random")
-        print("AI4Water for random passing")
+        print("ai4water for random passing")
         return
 
     def test_hyperopt_basic(self):
@@ -419,16 +430,17 @@ class TestHyperOpt(unittest.TestCase):
         def fn(**suggestion):
 
             model = Model(
-                inputs=inputs,
-                outputs=outputs,
+                input_features=inputs,
+                output_features=outputs,
                 model={"xgboostregressor": suggestion},
                 data=data,
                 prefix='test_tpe_xgboost',
+                train_data='random',
                 verbosity=0)
 
-            model.fit(indices="random")
+            model.fit()
 
-            t, p = model.predict(indices=model.test_indices, prefix='test')
+            t, p = model.predict()
             mse = RegressionMetrics(t, p).mse()
             print(f"Validation mse {mse}")
 
@@ -454,8 +466,8 @@ class TestHyperOpt(unittest.TestCase):
         successfully.
         """
         ai4water_args = {'model': 'XGBoostRegressor',
-                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-                                     'outputs': ['target']
+                                     'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'output_features': ['target']
                                      }
         opt = HyperOpt("tpe",
                        param_space=[Integer(low=1000, high=2000, name='n_estimators', num_samples=5),
@@ -476,8 +488,8 @@ class TestHyperOpt(unittest.TestCase):
         successfully.
         """
         ai4water_args = {'model': 'XGBoostRegressor',
-                                     'inputs': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-                                     'outputs': ['target']
+                                     'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+                                     'output_features': ['target']
                                      }
         opt = HyperOpt("tpe",
                        param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
@@ -502,13 +514,10 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('grid', 'optuna', 5, num_samples=3)
         run_unified_interface('tpe', 'hyperopt', 5)
         #run_unified_interface('atpe', 'hyperopt', 5)  # todo
-        #run_unified_interface('random', 'hyperopt', 5)  # todo
+        run_unified_interface('random', 'hyperopt', 5)
         run_unified_interface('bayes', 'skopt', 12)
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
-
-
-
 
 
 if __name__ == "__main__":

@@ -1,24 +1,25 @@
 # Put channel and spatial attention of CBAM model for time-series prediction
 
 
-from AI4Water import Model
-from AI4Water.utils.datasets import arg_beach
+from ai4water import Model
+from ai4water.datasets import arg_beach
 
 
 layers = {
-    "Conv1D": {"config": {"filters": 64, "kernel_size": 7}},
-    "MaxPool1D": {"config": {}},
-    "ChannelAttention": {"config": {"conv_dim": "1d", "in_planes": 32}},
-    "SpatialAttention": {"config": {"conv_dim": "1d"}},
+    "Conv1D": {"filters": 64, "kernel_size": 7},
+    "MaxPool1D": {},
+    "ChannelAttention": {"conv_dim": "1d", "in_planes": 32},
+    "SpatialAttention": {"conv_dim": "1d"},
 
-    "Flatten": {"config": {}},
-    "Dense": {"config": {"units": 1}},
-    "Reshape": {"config": {"target_shape": (1,1)}}
+    "Flatten": {},
+    "Dense": 1,
+    "Reshape": {"target_shape": (1,1)}
 }
 
 model = Model(
     model={'layers':layers},
     lookback=10,
+    train_data='random',
     data=arg_beach())
 
-history = model.fit(indices="random")
+history = model.fit()

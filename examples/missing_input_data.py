@@ -6,14 +6,13 @@
 import numpy as np
 import tensorflow as tf
 
-from AI4Water import DualAttentionModel
-from AI4Water.utils.datasets import load_nasdaq
+from ai4water import DualAttentionModel
+from ai4water.datasets import load_nasdaq
 
 tf.compat.v1.disable_eager_execution()
 
 df = load_nasdaq()
 
-# df.index = pd.date_range("20110101", periods=len(df), freq='H')
 out = df["NDX"]
 print(out.isna().sum())
 
@@ -31,19 +30,20 @@ print("{} nan values created in NDX column".format(out.isna().sum()))
 print(df[98:108])
 
 model = DualAttentionModel(
-                    data=df,
-                    intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)],
-                    batch_size=32,
-                    lookback=5,
-                    lr=0.0001
-                           )
+    data=df,
+    intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)],
+    batch_size=32,
+    lookback=5,
+    lr=0.0001,
+    train_data='random',
+)
 
-history = model.fit(indices='random')
+history = model.fit()
 
-y, obs = model.predict(indices=model.test_indices, use_datetime_index=False)
+y, obs = model.predict()
 # tr_y, tr_obs = model.predict(indices=model.train_indices, prefix='train', use_datetime_index=False)
 
-model.view_model(st=0, save=True)  # takes a lot of time to save all plots
+model.view_model(save=True)  # takes a lot of time to save all plots
 
 # Since we are using DualAttentionModel which requires observations at previous steps, we can not make
 # predictions at steps which are skipped from `intervals`. However, for a model which does not require previous

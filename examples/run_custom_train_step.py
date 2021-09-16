@@ -1,14 +1,13 @@
-import os
+# This file shows a minimal example how to customize 'train_step' using the Model class of AI4water
 
 import tensorflow as tf
-from tensorflow import keras
-import pandas as pd
 
-from AI4Water import Model
-from AI4Water.utils.datasets import load_nasdaq
+from ai4water import Model
+from ai4water.datasets import arg_beach
 
 
-class CustomModel(keras.Model):
+class CustomModel(Model):
+
     def train_step(self, data):
         print('custom train_step')
         # Unpack the data. Its structure depends on your model and
@@ -32,17 +31,21 @@ class CustomModel(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
 
-df = load_nasdaq()
-
-model = Model(
+model = CustomModel(
+    model={"layers": {"Dense_0": 8,
+                      "Dense_1": 1,
+                      }
+           },
     batch_size=32,
     lookback=1,
     lr=8.95e-5,
-    data=df
+    data=arg_beach(),
+    epochs=2,
+    train_data='random',
 )
 
-model.KModel = CustomModel
 
-history = model.fit(indices='random')
 
-y, obs = model.predict()
+history = model.fit()
+
+#y, obs = model.predict()

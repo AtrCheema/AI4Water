@@ -8,10 +8,11 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from AI4Water.utils.datasets import CAMELS_AUS
-from AI4Water import Model
-from AI4Water.hyper_opt import HyperOpt, Categorical, Real, Integer
-from AI4Water.utils.utils import dateandtime_now
+
+from ai4water import Model
+from ai4water.datasets import CAMELS_AUS
+from ai4water.hyper_opt import HyperOpt, Categorical, Real, Integer
+from ai4water.utils.utils import dateandtime_now
 
 tf.compat.v1.disable_eager_execution()
 
@@ -64,8 +65,8 @@ for m in ['tpe',
                                                   'activation': suggestion['activation'],
                                                   'dropout': 0.2,
                                                   'recurrent_dropout': 0.2}}}},
-            inputs=inputs,
-            outputs=outputs,
+            input_features=inputs,
+            output_features=outputs,
             lookback=int(suggestion['lookback']),
             lr=float(suggestion['lr']),
             batch_size=int(suggestion['batch_size']),

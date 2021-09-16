@@ -8,24 +8,21 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from AI4Water import InputAttentionModel
-from AI4Water.utils.datasets import arg_beach
+from ai4water import InputAttentionModel
+from ai4water.datasets import arg_beach
 
 tf.compat.v1.disable_eager_execution()
 
 class MultiSite(InputAttentionModel):
     """ This is only for two outputs currently. """
 
-    def train_data(self, data=None, data_keys=None, **kwargs):
-        data= self.data if data is None else data
+    def training_data(self, data='training', data_keys=None, **kwargs):
+        #data= self.data if data is None else data
         train_x, train_y, train_label = self.fetch_data(data,
-                                                        inps=self.in_cols,
-                                                        outs=self.out_cols,
-                                                        transformation=self.config['transformation'],
                                                         **kwargs)
-
+        train_x = train_x[0]
         inputs = [train_x]
-        for out in range(self.outs):
+        for out in range(self.num_outs):
             s0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_s']))
             h0_train = np.zeros((train_x.shape[0], self.config['enc_config']['n_h']))
 
@@ -33,7 +30,13 @@ class MultiSite(InputAttentionModel):
 
         return inputs, train_label
 
-    def build(self):
+    def test_data(self, data='test', **kwargs):
+        return self.training_data(data=data, **kwargs)
+
+    def validation_data(self, data='validation', **kwargs):
+        return self.training_data(data=data, **kwargs)
+
+    def build(self, input_shape=None):
 
         setattr(self, 'method', 'input_attention')
         print('building input attention')
@@ -41,17 +44,17 @@ class MultiSite(InputAttentionModel):
         self.config['enc_config'] = self.enc_config
 
         predictions = []
-        enc_input = keras.layers.Input(shape=(self.lookback, self.ins), name='enc_input1')  # Enter time series data
+        enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input1')  # Enter time series data
         inputs = [enc_input]
 
-        for out in range(self.outs):
+        for out in range(self.num_outs):
             lstm_out1, h0, s0 = self._encoder(enc_input, self.enc_config, lstm2_seq=False, suf=str(out))
             act_out = keras.layers.LeakyReLU(name='leaky_relu_' + str(out))(lstm_out1)
             predictions.append(keras.layers.Dense(1)(act_out))
             inputs = inputs + [s0, h0]
 
         predictions = keras.layers.Concatenate()(predictions)
-        predictions = keras.layers.Reshape(target_shape=(2, 1))(predictions)
+        predictions = keras.layers.Reshape(target_shape=(self.num_outs, 1))(predictions)
 
         print('predictions: ', predictions)
 
@@ -71,8 +74,8 @@ if __name__ == "__main__":
         data=df,
         batch_size=4,
         lookback=15,
-        inputs=input_features,
-        outputs=outputs,
+        input_features=input_features,
+        output_features=outputs,
         lr=0.0001,
         epochs=2,
         val_fraction=0.3,  # TODO why less than 0.3 give error here?
@@ -80,17 +83,15 @@ if __name__ == "__main__":
         steps_per_epoch=38
     )
 
-
     def loss(x, _y):
         mse1 = keras.losses.MSE(x[0], _y[0])
         mse2 = keras.losses.MSE(x[1], _y[1])
 
         return mse1 + mse2
 
-
     model.loss = loss
 
-    history = model.fit(indices='random', tensorboard=True)
+    history = model.fit(callbacks={'tensorboard': {}})
 
     y, obs = model.predict()
-    activations = model.activations(st=0, en=1400)
+    activations = model.activations()

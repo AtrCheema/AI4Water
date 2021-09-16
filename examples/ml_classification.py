@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from sklearn.datasets import load_breast_cancer
 
-from AI4Water import Model
+from ai4water import Model
 
 data_class = load_breast_cancer()
 cols = data_class['feature_names'].tolist() + ['target']
@@ -12,8 +12,8 @@ df = pd.DataFrame(np.concatenate([data_class['data'], data_class['target'].resha
 
 model = Model(
     data=df,
-    inputs=data_class['feature_names'].tolist(),
-    outputs=['target'],
+    input_features=data_class['feature_names'].tolist(),
+    output_features=['target'],
     val_fraction=0.0,
     model={"DecisionTreeClassifier":{"max_depth": 4, "random_state": 313}},
     transformation=None,
@@ -22,4 +22,13 @@ model = Model(
 
 h = model.fit()
 
-model.view_model()
+# make prediction on test data
+t,p = model.predict()
+
+# get some useful plots
+model.interpret()
+
+#**********Evaluate the model on test data using only input
+x,y = model.test_data()
+pred = model.evaluate(x=x) # using only `x`
+

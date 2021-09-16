@@ -1,18 +1,28 @@
 
 import os
 import unittest
-import site  # so that AI4Water directory is in path
+import site  # so that ai4water directory is in path
 site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
 
 import tensorflow as tf
 import numpy as np
 
-from AI4Water.models.tft_layer import TemporalFusionTransformer
-from AI4Water import Model
+from ai4water.models.tft_layer import TemporalFusionTransformer
+from ai4water.utils.utils import reset_seed
+
+if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))>=250:
+    tf.compat.v1.experimental.output_all_intermediates(True) # todo
+
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 260:
+    from ai4water.functional import Model
+
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
 
 tf.compat.v1.disable_eager_execution()
-np.random.seed(313)
-tf.random.set_seed(313)
+reset_seed(313, np=np, tf=tf)
+
 
 num_encoder_steps = 168
 params = {
@@ -43,6 +53,8 @@ y = np.random.random((n, tot_steps - num_encoder_steps, len(quantiles)))
 class Test_TFT(unittest.TestCase):
 
     def test_as_model(self):
+        params['total_time_steps'] = 192
+        params['future_inputs'] = True
 
         time_dim = params['total_time_steps']
         if params['total_time_steps'] > params['num_encoder_steps']:
@@ -79,6 +91,8 @@ class Test_TFT(unittest.TestCase):
         return
 
     def test_as_layer(self):
+        params['total_time_steps'] = 192
+        params['future_inputs'] = True
         layers = {
             "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs'])}},
             "TemporalFusionTransformer": {"config": params},
@@ -87,16 +101,48 @@ class Test_TFT(unittest.TestCase):
             "Dense": {"config": {"units": output_size * len(quantiles)}}
         }
         model = Model(model={'layers':layers},
-                      inputs=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
-                      outputs=['out1', 'out2', 'out3'],
+                      input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
+                      output_features=['out1', 'out2', 'out3'],
                       verbosity=0)
-        h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
-        #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
+        if model.api == 'functional':
+            h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
+        else:
+            h = model.fit_fn(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
 
-        num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         self.assertEqual(num_paras, 7411)
         return
 
+    def test_as_layer_for_nowcasting(self):
+        params['total_time_steps'] = num_encoder_steps
+        params['future_inputs'] = False
+        layers = {
+            "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs']), 'name': "Model_Input"}},
+            "TemporalFusionTransformer": {"config": params},
+            "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
+            "Dense": {"config": {"units": output_size * len(quantiles)}},
+            'Reshape': {'target_shape': (3, 1)},
+        }
+        model = Model(model={'layers':layers},
+                      input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
+                      output_features=['out1', 'out2', 'out3'],
+                      verbosity=0)
+        x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
+        y = np.random.random((n, len(quantiles), 1))
+        if model.api == 'functional':
+            model._model.fit(x=x,y=y, validation_split=0.3)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
+        else:
+            model.fit_fn(x=x,y=y, validation_split=0.3)
+            num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
+        #assert model.forecast_len == 1
+        #assert model.forecast_step == 0
+        #assert model.num_outs == len(quantiles)
+        self.assertEqual(num_paras, 5484)
+        return
 
 if __name__ == "__main__":
     unittest.main()
