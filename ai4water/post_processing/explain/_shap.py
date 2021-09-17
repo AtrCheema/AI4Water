@@ -12,42 +12,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.models import Model
-import tensorflow.keras.backend  as K
+import tensorflow.keras.backend as K
 
 from ai4water.backend import get_sklearn_models
+from ._explain import ExplainerMixin
 
 
-class ShapExplainerMixin(object):
-
-    def __init__(
-            self,
-            path,
-            data,
-            features
-    ):
-        self.path = path
-        self.data = data
-        self.features = features
-
-    @property
-    def features(self):
-        return self._features
-
-    @features.setter
-    def features(self, features):
-        if type(self.data) == pd.DataFrame:
-            assert features is None, f"data is given as pandas as dataframe, so columns of dataframe will" \
-                                     f"be used as feature names. No need to provide features separately"
-            features = self.data.columns.to_list()
-        elif features is None:
-            features = [f"Feature {i}" for i in range(self.data.shape[-1])]
-        else:
-            assert isinstance(features, list) and len(features) == self.data.shape[0], f"features must be given as " \
-                                                                                       f"list of length {len(self.data)}"
-            features = features
-        self._features = features
-
-class ShapMLExplainer(ShapExplainerMixin):
+class ShapMLExplainer(ExplainerMixin):
     """
     Wrapper around SHAP `explainers` and `plots` to draw and save all the plots
     for a given model.
@@ -94,15 +65,16 @@ class ShapMLExplainer(ShapExplainerMixin):
         "GPUTreeExplainer",
         "GradientExplainer"
     ]
+
     def __init__(
             self,
             model,
             test_data: Union[np.ndarray, pd.DataFrame],
-            train_data:Union[np.ndarray, pd.DataFrame] = None,
-            explainer:Union[str, Callable] = None,
-            num_means:int = 10,
-            path:str=os.getcwd(),
-            features:list = None
+            train_data: Union[np.ndarray, pd.DataFrame] = None,
+            explainer: Union[str, Callable] = None,
+            num_means: int = 10,
+            path: str = os.getcwd(),
+            features: list = None
     ):
         """
 
@@ -146,10 +118,10 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         self.explainer = self._get_explainer(explainer, train_data=train_data, num_means=num_means)
 
-        self.shap_values = self._get_shap_values(test_data) #
+        self.shap_values = self._get_shap_values(test_data)
 
     def _get_explainer(self,
-                       explainer:Union[str, Callable],
+                       explainer: Union[str, Callable],
                        num_means,
                        train_data
                        ):
@@ -158,7 +130,8 @@ class ShapMLExplainer(ShapExplainerMixin):
             if callable(explainer):
                 return explainer
 
-            assert isinstance(explainer, str), f"explainer should be callable or string but it is {explainer.__class__.__name__}"
+            assert isinstance(explainer, str), f"explainer should be callable or string but" \
+                                               f" it is {explainer.__class__.__name__}"
             assert explainer in self.allowed_explainers, f"{explainer} is not a valid explainer"
 
             if explainer == "KernelExplainer":
@@ -255,7 +228,7 @@ class ShapMLExplainer(ShapExplainerMixin):
         plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
 
         shap.summary_plot(self.shap_values, self.data, show=False, plot_type="bar")
-        plt.savefig(os.path.join(self.path, name+ " _bar"), dpi=300, bbox_inches="tight")
+        plt.savefig(os.path.join(self.path, name + " _bar"), dpi=300, bbox_inches="tight")
 
         return
 
@@ -291,7 +264,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         return
 
-    def waterfall_plot_all_examples(self, name:str="waterfall"):
+    def waterfall_plot_all_examples(self, name: str = "waterfall"):
         """Plots the waterfall plot of SHAP package
 
         It plots for all the examples/instances from test_data.
@@ -301,7 +274,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         return
 
-    def waterfall_plot_single_example(self, example_index:int, name:str="waterfall", show:bool=False):
+    def waterfall_plot_single_example(self, example_index: int, name: str = "waterfall", show: bool = False):
         """draws and saves waterfall plot for one prediction.
 
         Currently only possible with xgboost, catboost, lgbm models
@@ -315,7 +288,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         return
 
-    def scatter_plot_single_feature(self, feature:str, name:str="scatter", show=False):
+    def scatter_plot_single_feature(self, feature: str, name: str = "scatter", show=False):
 
         shap_values = self.explainer(self.data)
         shap.plots.scatter(shap_values[:, feature], show=show)
@@ -336,7 +309,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         return
 
-    def heatmap(self, name:str='heatmap', show:bool=False, max_display=10):
+    def heatmap(self, name: str = 'heatmap', show: bool = False, max_display=10):
         """Plots the heat map and saves it
         https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
         This can be drawn for xgboost/lgbm as well as for randomforest type models
@@ -378,7 +351,7 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         return shap_values
 
-    def beeswarm_plot(self, name:str="beeswarm", show=False, max_display:int=10):
+    def beeswarm_plot(self, name: str = "beeswarm", show=False, max_display: int = 10):
         """
         https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
         """
@@ -392,7 +365,7 @@ class ShapMLExplainer(ShapExplainerMixin):
                             order=shap_values.abs.max(0))
 
         # plot the absolute value
-        self._beeswarm_plot(shap_values.abs, name= f"{name}_abs_shapvalues", show=show, max_display=max_display)
+        self._beeswarm_plot(shap_values.abs, name=f"{name}_abs_shapvalues", show=show, max_display=max_display)
 
         return
 
@@ -405,12 +378,12 @@ class ShapMLExplainer(ShapExplainerMixin):
 
         return
 
-    def decision_plot(self, name:str="decision_"):
+    def decision_plot(self, name: str = "decision_"):
         # https://towardsdatascience.com/introducing-shap-decision-plots-52ed3b4a1cba
         raise NotImplementedError
 
 
-class ShapDLExplainer(ShapExplainerMixin):
+class ShapDLExplainer(ExplainerMixin):
     """Wrapper around SHAPs DeepExplainer and GradientExplainer
     to ease and automate the drawing and saving of plots for a given
     deep learning model.
@@ -420,10 +393,10 @@ class ShapDLExplainer(ShapExplainerMixin):
             self,
             model,
             data,
-            explainer:str = "DeepExplainer",
-            layer:Union[int, str] = None,
-            features:list = None,
-            path:str = os.getcwd()
+            explainer: str = "DeepExplainer",
+            layer: Union[int, str] = None,
+            features: list = None,
+            path: str = os.getcwd()
     ):
         """
         Arguments:
@@ -445,7 +418,6 @@ class ShapDLExplainer(ShapExplainerMixin):
 
         self.layer = layer
         self.explainer = self._get_explainer(explainer)
-
 
     @property
     def layer(self):
@@ -473,11 +445,10 @@ class ShapDLExplainer(ShapExplainerMixin):
 
         if isinstance(self.layer, int):
             return shap.GradientExplainer((self.model.layers[self.layer].input, self.model.layers[-1].output),
-                                       self.map2layer(self.data, self.layer))
+                                          self.map2layer(self.data, self.layer))
         else:
             return shap.GradientExplainer((self.model.get_layer(self.layer).input, self.model.layers[-1].output),
-                                       self.map2layer(self.data, self.layer))
-
+                                          self.map2layer(self.data, self.layer))
 
     def map2layer(self, x, layer):
         feed_dict = dict(zip([self.model.layers[0].input], [x.copy()]))
@@ -494,17 +465,17 @@ class ShapDLExplainer(ShapExplainerMixin):
         else:
 
             shap_values = self.explainer.shap_values(self.map2layer(self.data, self.layer),
-                                                              ranked_outputs=ranked_outputs, **kwargs)
+                                                     ranked_outputs=ranked_outputs, **kwargs)
             if ranked_outputs:
                 shap_values, indexes = shap_values
 
             return shap_values
 
-    def plot_shap_values(self, name:str="shap_values", show:bool=False, interpolation=None):
+    def plot_shap_values(self, name: str = "shap_values", show: bool = False, interpolation=None):
         """Plots the SHAP values."""
         shap_values = self.shap_values()
         if isinstance(shap_values, list):
-            shap_values:np.ndarray = shap_values[0]
+            shap_values: np.ndarray = shap_values[0]
 
         plt.close('all')
         fig, axis = plt.subplots()

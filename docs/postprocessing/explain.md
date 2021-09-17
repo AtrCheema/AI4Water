@@ -9,3 +9,9 @@
     handler: python
     rendering:
         show_root_heading: true
+
+**`LimeMLExplainer`**
+::: ai4water.post_processing.explain.LimeMLExplainer
+    handler: python
+    rendering:
+        show_root_heading: true

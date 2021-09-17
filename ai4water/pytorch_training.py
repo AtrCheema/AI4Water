@@ -572,7 +572,8 @@ class Learner(AttributeContainer):
 
         if data_loader is None:
 
-            if batch_size is None: batch_size = len(dataset)
+            if batch_size is None:
+                batch_size = len(dataset)
 
             data_loader = torch.utils.data.DataLoader(
                 dataset,

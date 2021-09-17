@@ -1,0 +1,34 @@
+
+import pandas as pd
+
+
+class ExplainerMixin(object):
+
+    def __init__(
+            self,
+            path,
+            data,
+            features
+    ):
+        self.path = path
+        self.data = data
+        self.features = features
+
+    @property
+    def features(self):
+        return self._features
+
+    @features.setter
+    def features(self, features):
+        if type(self.data) == pd.DataFrame:
+            assert features is None, f"data is given as pandas as dataframe, so columns of dataframe will" \
+                                     f"be used as feature names. No need to provide features separately"
+            features = self.data.columns.to_list()
+        elif features is None:
+            features = [f"Feature {i}" for i in range(self.data.shape[-1])]
+        else:
+            assert isinstance(features, list) and len(features) == self.data.shape[-1], f"features must be given as " \
+                                                                                f"list of length {self.data.shape[-1]}"
+            features = features
+        self._features = features
+
