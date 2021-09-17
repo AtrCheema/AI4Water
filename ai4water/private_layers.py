@@ -3,6 +3,7 @@ from tensorflow.keras import layers
 
 from ai4water.models.attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
+
 def _get_tensor_shape(t):
     return t.shape
 
@@ -11,11 +12,11 @@ class ConditionalRNN(tf.keras.layers.Layer):
 
     # Arguments to the RNN like return_sequences, return_state...
     def __init__(self, units,
-                 activation = 'tanh',
+                 activation='tanh',
                  recurrent_activation='sigmoid',
                  use_bias=True,
-                 dropout = 0.0,
-                 recurrent_dropout = 0.0,
+                 dropout=0.0,
+                 recurrent_dropout=0.0,
                  kernel_regularizer=None,
                  recurrent_regularizer=None,
                  cell=tf.keras.layers.LSTMCell, *args,
@@ -135,7 +136,7 @@ class BasicBlock(layers.Layer):
         # 2. 第2个；第1个卷积如果做stride就会有一个下采样，在这个里面就不做下采样了。这一块始终保持size一致，把stride固定为1
         self.conv2 = regularized_padded_conv(conv_dim, out_channels, kernel_size=3, strides=1)
         self.bn2 = layers.BatchNormalization()
-        ############################### 注意力机制 ###############################
+        # ############################## 注意力机制 ###############################
         self.ca = ChannelAttention(conv_dim=conv_dim, in_planes=out_channels)
         self.sa = SpatialAttention(conv_dim=conv_dim)
 
@@ -154,7 +155,7 @@ class BasicBlock(layers.Layer):
 
         out = self.conv2(out)
         out = self.bn2(out, training=training)
-        ############################### 注意力机制 ###############################
+        # ############################## 注意力机制 ###############################
         out = self.ca(out) * out
         out = self.sa(out) * out
 
@@ -205,8 +206,10 @@ class scaled_dot_product_attention(layers.Layer):
 
         return output, attention_weights
 
+
 MHW_COUNTER = 0
 ENC_COUNTER = 0
+
 
 class MultiHeadAttention(tf.keras.layers.Layer):
 
@@ -218,7 +221,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         assert d_model % self.num_heads == 0
 
         global MHW_COUNTER
-        MHW_COUNTER +=1
+        MHW_COUNTER += 1
 
         self.depth = d_model // self.num_heads
 
@@ -275,10 +278,10 @@ class EncoderLayer(tf.keras.layers.Layer):
         super(EncoderLayer, self).__init__(**kwargs)
 
         global MHW_COUNTER
-        MHW_COUNTER +=1
+        MHW_COUNTER += 1
 
         self.mha = MultiHeadAttention(d_model, num_heads)
-        #self.ffn = point_wise_feed_forward_network(d_model, dff)
+        # self.ffn = point_wise_feed_forward_network(d_model, dff)
 
         self.swished_dense = layers.Dense(dff, activation='swish', name=f'swished_dense_{MHW_COUNTER}')
         self.ffn_output = layers.Dense(d_model, name=f'ffn_output_{MHW_COUNTER}')
@@ -294,7 +297,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(x + attn_output)  # (batch_size, input_seq_len, d_model)
 
-        #ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
+        # ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
 
         temp = self.swished_dense(out1)
         ffn_output = self.ffn_output(temp)
@@ -318,7 +321,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         self.dff = dff
         self.maximum_position_encoding = maximum_position_encoding
         self.rate = rate
-        self.return_weights=return_weights
+        self.return_weights = return_weights
 
         #         self.pos_encoding = positional_encoding(self.maximum_position_encoding,
         #                                                 self.d_model)
@@ -345,7 +348,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         })
         return config
 
-    #def call(self, x, training, mask=None):
+    # def call(self, x, training, mask=None):
     def __call__(self, x, training=True, mask=None, *args, **kwargs):
 
         seq_len = tf.shape(x)[1]

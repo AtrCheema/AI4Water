@@ -418,6 +418,7 @@ class EDA(Plot):
          greater than max_subplots, a separate plot will be generated for remaining columns.
          """
         assert isinstance(df, pd.DataFrame)
+        plt.close('all')
 
         if leg_kws is None:
             leg_kws = {'fontsize': 14}

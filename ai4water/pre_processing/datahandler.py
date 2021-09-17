@@ -191,14 +191,16 @@ class DataHandler(AttributeContainer):
                 ```python
                 >>>{'fillna': {'method': 'ffill'}}
                 ```
-                For details about fillna keyword options [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
+                For details about fillna keyword options
+                 [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
                 For `interpolate`, the user can specify  the type of interpolation
                 for example
                 ```python
                 >>>{'interpolate': {'method': 'spline', 'order': 2}}
                 ```
                 will perform spline interpolation with 2nd order.
-                For other possible options/keyword arguments for interpolate [see](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html)
+                For other possible options/keyword arguments for interpolate
+                [see](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html)
                 The filling or interpolation is done columnwise, however, the user
                 can specify how to do for each column by providing the above mentioned
                 arguments as dictionary or list. The sklearn based imputation methods
@@ -215,7 +217,8 @@ class DataHandler(AttributeContainer):
                 ```python
                 >>>{'method': 'KNNImputer', 'features': ['b'], 'imputer_args': {'n_neighbors': 4}},
                 ```
-                For more on sklearn based imputation methods [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
+                For more on sklearn based imputation methods
+                [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
             batch_size : size of one batch. Only relevent if `drop_remainder` is True.
             drop_remainder : whether to drop the remainder if len(data) % batch_size != 0 or not?
             teacher_forcing : whether to return previous output/target/ground
@@ -278,7 +281,7 @@ class DataHandler(AttributeContainer):
             self._to_disk()
 
     def __getattr__(self, item):
-        if item in ['lookback', 'input_step', 'transformation','forecast_step',
+        if item in ['lookback', 'input_step', 'transformation', 'forecast_step',
                     'forecast_len',  # todo, can it be local?
                     'known_future_inputs', 'allow_nan_labels', 'allow_input_nans']:
             if self.source_is_df:
@@ -402,7 +405,8 @@ class DataHandler(AttributeContainer):
                 raise NotImplementedError
         elif self.source_is_dict:
             if isinstance(self.lookback, int):
-                batch_dim = {k: batch_dim_from_lookback(self.lookback) for k, v in zip(self.data.keys(), range(len(self.data)))}
+                batch_dim = {k: batch_dim_from_lookback(self.lookback) for k, v in zip(self.data.keys(),
+                                                                                       range(len(self.data)))}
             elif isinstance(self.lookback, dict):
                 batch_dim = {k: batch_dim_from_lookback(lb) for k, lb in self.lookback.items()}
             else:
@@ -415,7 +419,7 @@ class DataHandler(AttributeContainer):
 
     @property
     def is_multiinput(self):
-        if len(self.num_outs)>1:
+        if len(self.num_outs) > 1:
             return True
         return False
 
@@ -718,7 +722,7 @@ class DataHandler(AttributeContainer):
         elif self.source_is_list:
             return [len(out_feat) for out_feat in self.output_features]
         elif self.source_is_dict:
-            return {k:len(out_feat) for k, out_feat in self.output_features.items()}
+            return {k: len(out_feat) for k, out_feat in self.output_features.items()}
         elif self.data.__class__.__name__ == "NoneType":
             return None
         else:
@@ -754,7 +758,7 @@ class DataHandler(AttributeContainer):
         """Yields leave one out splits
         The iterator on every iteration returns following
         `(train_x, train_y), (test_x, test_y)`"""
-        x,y = self._get_xy()
+        x, y = self._get_xy()
 
         kf = LeaveOneOut()
 
@@ -806,7 +810,7 @@ class DataHandler(AttributeContainer):
     def plot_TimeSeriesSplit_splits(self, n_splits=5, show=True, **kwargs):
         """Plots the indices obtained from TimeSeriesSplit strategy"""
 
-        x,y = self._get_xy()
+        x, y = self._get_xy()
 
         spliter = TimeSeriesSplit(n_splits=n_splits, **kwargs).split(x)
 
@@ -1580,7 +1584,10 @@ class DataHandler(AttributeContainer):
                     idx += 1
             elif self.source_is_dict:
                 for src_name in self.data.keys():
-                    save_in_a_group(x.get(src_name, None), prev_y.get(src_name, None), y.get(src_name, None), model_weights_group, prefix=src_name)
+                    save_in_a_group(x.get(src_name, None),
+                                    prev_y.get(src_name, None),
+                                    y.get(src_name, None),
+                                    model_weights_group, prefix=src_name)
             else:
                 save_in_a_group(x, prev_y, y, model_weights_group)
         return
@@ -1874,6 +1881,7 @@ class MakeData(object):
 
 
 class SiteDistributedDataHandler(object):
+
     """Prepares data for mulpltiple sites/locations.
 
     This class is useful to prepare data when we have data of different

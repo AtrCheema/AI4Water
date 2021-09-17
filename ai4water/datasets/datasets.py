@@ -1166,10 +1166,13 @@ class MtropicsLaos(Datasets):
         returns:
             a dataframe of shape `(inputs+target, st:en)`
 
-        # Example
+        Example
+        -------
+        ```python
         >>>from ai4water.datasets import MtropicsLaos
         >>>laos = MtropicsLaos()
         >>>df = laos.make_classification()
+        ```
         """
         thresholds = {
             'Ecoli_mpn100': 400

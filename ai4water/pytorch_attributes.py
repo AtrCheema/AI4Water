@@ -15,9 +15,9 @@ OPTIMIZERS = {}
 if torch is not None:
     LAYERS.update(get_attributes(torch, 'nn'))
 
-    LOSSES.update({"MSE" : torch.nn.MSELoss,
+    LOSSES.update({"MSE": torch.nn.MSELoss,
                    "CROSSENTROPYLOSS": torch.nn.CrossEntropyLoss,
-                   "L1Loss" : torch.nn.L1Loss,
+                   "L1Loss": torch.nn.L1Loss,
                    "NLLLoss": torch.nn.NLLLoss,
                    "HingeEmbeddingLoss": torch.nn.HingeEmbeddingLoss,
                    "MarginRankingLoss": torch.nn.MarginRankingLoss,

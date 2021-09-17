@@ -115,13 +115,14 @@ class PlotResults(Plot):
             ax = axis[idx]
             ax.plot(val, '--o', label=legends.get(metric_name, metric_name))
             ax.legend(fontsize=14)
-            if idx>=len(errors)-1: ax.set_xlabel("Horizons", fontsize=14)
+            if idx >= len(errors)-1:
+                ax.set_xlabel("Horizons", fontsize=14)
             ax.set_ylabel(legends.get(metric_name, metric_name), fontsize=14)
             idx += 1
         self.save_or_show(save=save, fname=fname)
         return
 
-    def plot_results(self, true, predicted:pd.DataFrame, save=True, name=None, where=None,
+    def plot_results(self, true, predicted: pd.DataFrame, save=True, name=None, where=None,
                      annotation_key=None, annotation_val=None):
         """
         # kwargs can be any/all of followings
@@ -139,8 +140,10 @@ class PlotResults(Plot):
 
         _, axis = init_subplots(width=12, height=8)
 
-        # it is quite possible that when data is datetime indexed, then it is not equalidistant and large amount of graph
-        # will have not data in that case lines plot will create a lot of useless interpolating lines where no data is present.
+        # it is quite possible that when data is datetime indexed, then it is not
+        # equalidistant and large amount of graph
+        # will have not data in that case lines plot will create a lot of useless
+        # interpolating lines where no data is present.
         if isinstance(true.index, pd.DatetimeIndex) and pd.infer_freq(true.index) is not None:
             style = '.'
             true = true
@@ -188,7 +191,7 @@ class PlotResults(Plot):
             "r2": "$R^{2}$"
         }
 
-        sub_plots = {1: {'axis': (1,1), 'width': 9, 'height': 6},
+        sub_plots = {1: {'axis': (1, 1), 'width': 9, 'height': 6},
                      2: {'axis': (1, 2), 'width': 9, 'height': 6},
                      3: {'axis': (1, 3), 'width': 9, 'height': 6},
                      4: {'axis': (2, 2), 'width': 9, 'height': 6},
@@ -212,11 +215,11 @@ class PlotResults(Plot):
                 m_name = '_'.join(m_name)
             if m_name in list(axis_cache.keys()):
                 axis = axis_cache[m_name]
-                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label= 'Validation ')
+                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label='Validation ')
                 axis.legend()
             else:
                 axis = fig.add_subplot(*sub_plots[len(history)]['axis'], i)
-                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label= 'Training ')
+                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label='Training ')
                 axis.legend()
                 axis.set_xlabel("Epochs")
                 axis.set_ylabel(legends.get(key, key))
@@ -274,8 +277,9 @@ def regplot(true, pred, title=None, show=False,
     if annotation_key is not None:
         assert annotation_val is not None
 
-        plt.annotate(f'{annotation_key}: {annotation_val}', xy=(0.3, 0.95), xycoords='axes fraction',
-                 horizontalalignment='right', verticalalignment='top', fontsize=16)
+        plt.annotate(f'{annotation_key}: {round(annotation_val, 3)}', xy=(0.3, 0.95),
+                     xycoords='axes fraction',
+                     horizontalalignment='right', verticalalignment='top', fontsize=16)
 
     if kwargs.get('colorbar', False):
         plt.colorbar(points)

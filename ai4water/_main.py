@@ -639,7 +639,8 @@ class BaseModel(NN, Plots):
             pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
             true_labels = [f"true_{i}" for i in range(true.shape[1])]
             fname = os.path.join(self.path, f"{prefix}_prediction.csv")
-            pd.DataFrame(np.concatenate([true, predicted], axis=1), columns=true_labels + pred_labels, index=index).to_csv(fname)
+            pd.DataFrame(np.concatenate([true, predicted], axis=1),
+                         columns=true_labels + pred_labels, index=index).to_csv(fname)
             metrics = ClassificationMetrics(true, predicted, categorical=True)
 
             save_config_file(self.path,
@@ -647,7 +648,7 @@ class BaseModel(NN, Plots):
                              name=f"{prefix}_{dateandtime_now()}.json"
                              )
         else:
-            if predicted.ndim==1:
+            if predicted.ndim == 1:
                 predicted = predicted.reshape(-1, 1)
             for idx, _class in enumerate(self.out_cols):
                 _true = true[:, idx]
@@ -676,7 +677,7 @@ class BaseModel(NN, Plots):
             prefix=None,
             index=None,
             remove_nans=True,
-            user_defined_data:bool = False,
+            user_defined_data: bool = False,
             annotate_with="r2",
     ):
         """
@@ -895,7 +896,7 @@ class BaseModel(NN, Plots):
         self.is_training = False
         return history
 
-    def load_best_weights(self)->None:
+    def load_best_weights(self) -> None:
         if self.config['backend'] != 'pytorch':
             # load the best weights so that the best weights can be used during model.predict calls
             best_weights = find_best_weight(os.path.join(self.path, 'weights'))
@@ -975,7 +976,7 @@ class BaseModel(NN, Plots):
 
             scores.append(val_score)
 
-            if self.verbosity>0:
+            if self.verbosity > 0:
                 print(f'fold: {fold} val_score: {val_score}')
 
         return np.mean(scores).item()
@@ -986,7 +987,7 @@ class BaseModel(NN, Plots):
             old_value = self._model.residual_threshold or mad(outputs.reshape(-1, ).tolist())
             if np.isnan(old_value) or old_value < 0.001:
                 self._model.set_params(residual_threshold=0.001)
-                if self.verbosity>0:
+                if self.verbosity > 0:
                     print(f"changing residual_threshold from {old_value} to {self._model.residual_threshold}")
         return
 
@@ -1110,8 +1111,8 @@ class BaseModel(NN, Plots):
 
     def call_predict(self,
                      data='test',
-                     x = None,
-                     y = None,
+                     x=None,
+                     y=None,
                      process_results=True,
                      **kwargs):
 
@@ -1129,9 +1130,9 @@ class BaseModel(NN, Plots):
             true_outputs = y
 
         if self.category == 'DL':
-            predicted = self.predict_fn(x= inputs,
-                                        batch_size = self.config['batch_size'],
-                                        verbose= self.verbosity,
+            predicted = self.predict_fn(x=inputs,
+                                        batch_size=self.config['batch_size'],
+                                        verbose=self.verbosity,
                                         **kwargs)
         else:
             predicted = self.predict_ml_models(inputs, **kwargs)
@@ -1423,7 +1424,7 @@ class BaseModel(NN, Plots):
                     config_path: str,
                     data,
                     make_new_path: bool = False,
-                    **kwargs)->"BaseModel":
+                    **kwargs) -> "BaseModel":
         """
         Loads the model from a config file.
 

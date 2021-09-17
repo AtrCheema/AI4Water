@@ -42,7 +42,7 @@ if tf is not None:
 if keras is not None:
     # Concatenate and concatenate act differently, so if we want to use Concatenate, then use Concat not Concatenate
     # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
-    LAYERS["CONCAT"] =  keras.layers.Concatenate
+    LAYERS["CONCAT"] = keras.layers.Concatenate
 
     # tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
     LAYERS["MULTIPLY"] = keras.layers.Multiply
@@ -51,7 +51,7 @@ if keras is not None:
     LAYERS["ADD"] = keras.layers.Add
 
 if NBeats is not None:
-    LAYERS.update({"NBEATS": NBeats,})
+    LAYERS.update({"NBEATS": NBeats, })
 
 if attns is not None:
     LAYERS.update(get_attributes(aus=attns, what='attn_layers'))
@@ -96,15 +96,15 @@ ACTIVATION_FNS = {
 
 if tf is not None:
     ACTIVATION_FNS.update({
-    'LEAKYRELU': tf.nn.leaky_relu,
-    'CRELU': tf.nn.crelu,
-    'SELU': tf.nn.selu,  # tf.keras.activations.selu, # https://arxiv.org/pdf/1706.02515.pdf
-    'RELU6': tf.nn.relu6,  # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
-    'SOFTMAX': tf.nn.softmax,
-    "SOFTSIGN": tf.nn.softsign,
-    "SOFTPLUS": tf.nn.softplus,
-    'SIGMOID': tf.nn.sigmoid,
-    "SWISH": tf.nn.swish,  # https://arxiv.org/pdf/1710.05941.pdf
+        'LEAKYRELU': tf.nn.leaky_relu,
+        'CRELU': tf.nn.crelu,
+        'SELU': tf.nn.selu,  # tf.keras.activations.selu, # https://arxiv.org/pdf/1706.02515.pdf
+        'RELU6': tf.nn.relu6,  # http://www.cs.utoronto.ca/%7Ekriz/conv-cifar10-aug2010.pdf
+        'SOFTMAX': tf.nn.softmax,
+        "SOFTSIGN": tf.nn.softsign,
+        "SOFTPLUS": tf.nn.softplus,
+        'SIGMOID': tf.nn.sigmoid,
+        "SWISH": tf.nn.swish,  # https://arxiv.org/pdf/1710.05941.pdf
     })
 
 OPTIMIZERS = {}

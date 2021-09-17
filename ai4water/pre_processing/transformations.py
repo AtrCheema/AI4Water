@@ -159,7 +159,7 @@ class Transformations(scaler_container):
     def __init__(self,
                  data: Union[pd.DataFrame, np.ndarray, list],
                  method: str = 'minmax',
-                 features: list=None,
+                 features: list = None,
                  replace_nans: bool = False,
                  replace_with: Union[str, int, float] = 'mean',
                  replace_zeros: bool = False,
@@ -200,9 +200,9 @@ class Transformations(scaler_container):
         ```python
         >>>from ai4water.pre_processing.transformations import Transformations
         >>>from ai4water.datasets import load_u1
-        >>>data = load_u1()
+        >>>df = load_u1()
         >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-        >>>transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
+        >>>transformer = Transformations(data=df[inputs], method='minmax', features=['x1', 'x2'])
         >>>new_data = transformer.transform()
         ```
 
@@ -222,10 +222,10 @@ class Transformations(scaler_container):
         super().__init__()
 
         self.method = method
-        self.replace_nans=replace_nans
-        self.replace_with=replace_with
-        self.replace_zeros=replace_zeros
-        self.replace_zeros_with=replace_zeros_with
+        self.replace_nans = replace_nans
+        self.replace_with = replace_with
+        self.replace_zeros = replace_zeros
+        self.replace_zeros_with = replace_zeros_with
         data = self.pre_process_data(data.copy())
         self.data = data
 
@@ -258,12 +258,14 @@ class Transformations(scaler_container):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
             transformer = item.split('_')[2]
-            if transformer.lower() in list(self.available_transformers.keys()) + ["log", "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()) + ["log",
+                                                                                  "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.transform_with_sklearn
         elif item.startswith("inverse_transform_with"):
             transformer = item.split('_')[3]
-            if transformer.lower() in list(self.available_transformers.keys()) + ["log", "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()) + ["log",
+                                                                                  "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
         else:
@@ -290,7 +292,7 @@ class Transformations(scaler_container):
     def features(self, x):
         if x is None:
             x = list(self.data.columns)
-        assert len(x) == len(set(x)), "duplicated features are not allowed"
+        assert len(x) == len(set(x)), f"duplicated features are not allowed. Features are: {x}"
         self._features = x
 
     @property
@@ -368,7 +370,8 @@ class Transformations(scaler_container):
                         replace_with = self.replace_zeros_with
                     data[col][indices[col]] = get_val(data[col], replace_with)  # todo SettingWithCopyWarning
 
-            if self.zero_indices is None: self.zero_indices = indices
+            if self.zero_indices is None:
+                self.zero_indices = indices
 
         # if self.replace_negatives:
         #     indices = {}
@@ -409,7 +412,7 @@ class Transformations(scaler_container):
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
 
-        to_transform = self.get_features()  #TODO, shouldn't kwargs go here as input?
+        to_transform = self.get_features()  # TODO, shouldn't kwargs go here as input?
 
         if self.method.lower() in ["log", "log10", "log2"]:
 
@@ -425,10 +428,10 @@ class Transformations(scaler_container):
             if self.method == "log":
                 scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
             elif self.method == "log2":
-                scaler = FunctionTransformer(func=np.log2, inverse_func=lambda x:2**x, validate=True,
+                scaler = FunctionTransformer(func=np.log2, inverse_func=lambda x: 2**x, validate=True,
                                              check_inverse=True)
             else:   # "log10":
-                scaler = FunctionTransformer(func=np.log10, inverse_func=lambda x:10**x, validate=True,
+                scaler = FunctionTransformer(func=np.log10, inverse_func=lambda x: 10**x, validate=True,
                                              check_inverse=True)
         elif self.method.lower() == "tan":
             scaler = FunctionTransformer(func=np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
@@ -509,7 +512,7 @@ class Transformations(scaler_container):
 
         if 'key' in kwargs or 'scaler' in kwargs:
             pass
-        elif len(self.scalers) ==1:
+        elif len(self.scalers) == 1:
             kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
 
         return getattr(self, "inverse_transform_with_" + self.method.lower())(**kwargs)
@@ -556,7 +559,7 @@ class Transformations(scaler_container):
         num_features = len(self.data.columns) if self.method.lower() not in self.mod_dim_methods else transformed_features
         if len(trans_df.columns) != num_features:
             df = pd.DataFrame(index=self.index)
-            for col in self.data.columns: #features:
+            for col in self.data.columns:  # features:
                 if col in trans_df.columns:
                     _df = trans_df[col]
                 else:
@@ -570,7 +573,11 @@ class Transformations(scaler_container):
             assert df.shape == self.initial_shape, f"shape changed from {self.initial_shape} to {df.shape}"
         return df
 
-    def plot_pca(self, target:np.ndarray, pcs:np.ndarray=None, labels:list=None, save=False, dim="3d"):
+    def plot_pca(self, target: np.ndarray,
+                 pcs: np.ndarray = None,
+                 labels: list = None,
+                 save=False,
+                 dim="3d"):
 
         if pcs is None:
             pcs = self.tr_data.values
@@ -605,7 +612,7 @@ class Transformations(scaler_container):
         target = np.choose(target, [1, 2, 0]).astype(np.float)
 
         ax.scatter(pcs[:, 0], pcs[:, 1], pcs[:, 2], c=target, cmap=plt.cm.nipy_spectral,
-               edgecolor='k')
+                   edgecolor='k')
 
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
