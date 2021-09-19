@@ -14,6 +14,7 @@ from ._explain import ExplainerMixin
 
 
 class LimeMLExplainer(ExplainerMixin):
+
     """
     Wrapper around LIME module.
 
@@ -72,7 +73,7 @@ class LimeMLExplainer(ExplainerMixin):
     @mode.setter
     def mode(self, x):
         if x is not None:
-            assert x in ["regression", "classification"], f"mode must be either regression or classification"
+            assert x in ["regression", "classification"], f"mode must be either regression or classification not {x}"
         self._mode = x
 
     def _get_explainer(self, proposed_explainer=None):
@@ -103,7 +104,8 @@ class LimeMLExplainer(ExplainerMixin):
                              num_features=None,
                              **kwargs
                              ):
-        """Draws and saves plot for all examples of test_data.
+        """
+        Draws and saves plot for all examples of test_data.
 
         Arguments:
             plot_type :
@@ -124,7 +126,8 @@ class LimeMLExplainer(ExplainerMixin):
                         num_features: int = None,
                         **kwargs
                         ):
-        """Draws and saves plot for a single example of test_data.
+        """
+        Draws and saves plot for a single example of test_data.
 
         Arguments:
             index : index of test_data

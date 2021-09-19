@@ -92,6 +92,8 @@ class ShapMLExplainer(ExplainerMixin):
                 array.
 
         """
+        test_data = to_dataframe(test_data, features)
+        train_data = to_dataframe(train_data, features)
 
         super(ShapMLExplainer, self).__init__(path=path, data=test_data, features=features)
 
@@ -153,6 +155,10 @@ class ShapMLExplainer(ExplainerMixin):
 
         assert isinstance(num_means,
                           int), f'num_means should be integer but given value is of type {num_means.__class__.__name__}'
+
+        if data is None:
+            raise ValueError("Provide train_data in order to use KernelExplainer.")
+
         self.train_summary = shap.kmeans(data, num_means)
         explainer = shap.KernelExplainer(self.model.predict, self.train_summary)
 
@@ -530,3 +536,9 @@ def make_keras_model(old_model):
         new_model = old_model
 
     return new_model
+
+
+def to_dataframe(data, features=None) -> pd.DataFrame:
+    if isinstance(data, np.ndarray) and isinstance(features, list):
+        data = pd.DataFrame(data, columns=features)
+    return data

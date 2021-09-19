@@ -37,6 +37,7 @@ from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_mo
 from ai4water.utils.utils import maybe_three_outputs
 from ai4water.eda import EDA
 import ai4water.backend as K
+from ai4water.post_processing.explain import LimeMLExplainer, ShapMLExplainer, ShapDLExplainer
 
 if K.BACKEND == 'tensorflow' and tf is not None:
     import ai4water.keract_mod as keract
@@ -703,7 +704,7 @@ class BaseModel(NN, Plots):
 
         for idx, out in enumerate(out_cols):
 
-            horizon_errors = {metric_name:[] for metric_name in ['nse', 'rmse']}
+            horizon_errors = {metric_name: [] for metric_name in ['nse', 'rmse']}
             for h in range(forecast_len):
 
                 errs = dict()
@@ -1349,6 +1350,61 @@ class BaseModel(NN, Plots):
 
         Interpret(self)
 
+        return
+
+    def explain(self, *args, **kwargs):
+        """Calls the Explain module."""
+        explain_using_lime = True
+        explain_using_shap = True
+
+        try:
+            import shap
+        except ModuleNotFoundError:
+            explain_using_shap = False
+            print("unable to interpret using SHAP. Please install SHAP package.")
+
+        try:
+            import lime
+        except ModuleNotFoundError:
+            explain_using_lime = False
+            print("unable to interpret using SHAP. Please install SHAP package.")
+
+        # make directories to save results.
+        train_x, _ = self.training_data()
+        test_x, _ = self.test_data()
+        exp_path = os.path.join(self.path, "explainability")
+        shap_exp_path = os.path.join(exp_path, "shap")
+        if not os.path.exists(shap_exp_path):
+            os.makedirs(shap_exp_path)
+        lime_exp_path = os.path.join(exp_path, "lime")
+        if not os.path.exists(lime_exp_path):
+            os.makedirs(lime_exp_path)
+
+        if explain_using_shap:
+
+            if self.category == "DL":
+                pass  # todo
+                # explainer = ShapDLExplainer(
+                #     model=self if self.api == 'subclassing' else self._model,
+                #     data=test_x,
+                #     path=self.path
+                # )
+                # explainer()
+            else:
+                explainer = ShapMLExplainer(model=self._model, train_data=train_x, test_data=test_x,
+                                            path=shap_exp_path, features=list(self.in_cols))
+                explainer()
+
+        if explain_using_lime:
+            if self.category == "DL":
+                pass
+            else:
+                if self.problem == "classification":
+                    pass # todo
+                else:
+                    explainer = LimeMLExplainer(model=self._model, train_data=train_x, test_data=test_x,
+                                                path=lime_exp_path, mode=self.problem, verbosity=self.verbosity)
+                    explainer()
         return
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):

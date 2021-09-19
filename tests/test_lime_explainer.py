@@ -9,20 +9,42 @@ from ai4water.post_processing.explain import LimeMLExplainer
 
 laos = MtropicsLaos()
 
-data = laos.make_regression()
+reg_data = laos.make_regression()
+class_data = laos.make_classification()
 
 
-def get_lime(to_dataframe=False, examples_to_explain=5):
+def make_class_model(**kwargs):
+
+    model = Model(
+        model="DecisionTreeClassifier",
+        data=class_data,
+        transformation={'method': 'quantile', 'features': ['Ecoli_mpn100']},
+        verbosity=0,
+        **kwargs
+    )
+    return model
+
+
+def make_reg_model(**kwargs):
 
     model = Model(
         model="GradientBoostingRegressor",
-        data=data,
+        data=reg_data,
         cross_validator={'TimeSeriesSplit': {'n_splits': 10}},
-        transformation={'method': 'quantile', 'features': ['Ecoli_mpn100'],
-                        },
+        transformation={'method': 'quantile', 'features': ['Ecoli_mpn100']},
         val_metric='r2',
         verbosity=0,
+        **kwargs
     )
+    return model
+
+
+def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression"):
+
+    if model_type:
+        model = make_reg_model()
+    else:
+        model = make_class_model()
 
     model.fit()
 
@@ -79,12 +101,35 @@ class TestLimeExplainer(unittest.TestCase):
                                    train_data=model.training_data()[0],
                                    test_data=model.test_data()[0][0:3],
                                    mode="regression",
-                                   verbosity=False
+                                   verbosity=False,
+                                   path=model.path
                                    )
         lime_exp()
 
         assert len(lime_exp.explaination_objects) == 3
 
+        return
+
+    def test_classification(self):
+
+        lime_exp = get_lime(examples_to_explain=5, model_type="classification")
+        lime_exp.explain_all_examples()
+        assert len(lime_exp.explaination_objects) == 5
+
+        return
+
+    def test_ai4water_regression(self):
+        model = make_reg_model(test_fraction=0.05)
+        assert model.problem == "regression"
+        model.fit()
+        model.explain()
+        return
+
+    def test_ai4water(self):
+        model = make_class_model(test_fraction=0.05)
+        assert model.problem == "classification"
+        model.fit()
+        model.explain()
         return
 
 

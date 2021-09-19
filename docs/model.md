@@ -14,6 +14,7 @@
             - update_weights
             - activations
             - cross_val_score
+            - explain
     rendering:
         show_root_heading: true
 
