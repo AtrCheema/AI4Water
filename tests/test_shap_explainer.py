@@ -1,3 +1,4 @@
+import time
 import os.path
 import unittest
 
@@ -7,21 +8,31 @@ import matplotlib.pyplot as plt
 from sklearn import linear_model
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import arg_beach, MtropicsLaos
 from sklearn.model_selection import train_test_split
 from ai4water.post_processing.explain import ShapMLExplainer, ShapDLExplainer
 
+laos = MtropicsLaos()
+
+class_data = laos.make_classification()
 
 
-def fit_and_plot(model_name, heatmap=False, beeswarm_plot=False):
+def get_fitted_model(model_name, data):
 
     model = Model(
         model=model_name,
-        data=arg_beach(),
+        data=data,
         verbosity=0
     )
 
     model.fit()
+
+    return model
+
+
+def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
+
+    model = get_fitted_model(model_name, data)
 
     x_test, y_test = model.test_data()
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
@@ -38,50 +49,53 @@ def fit_and_plot(model_name, heatmap=False, beeswarm_plot=False):
     return
 
 
-def fit_and_interpret(model_name:str, draw_heatmap=True):
+def fit_and_interpret(model_name:str,
+                      data,
+                      draw_heatmap=True,
+                      ):
 
-    model = Model(
-        model=model_name,
-        data=arg_beach(),
-        verbosity=0
-    )
+    model = get_fitted_model(model_name, data)
 
-    model.fit()
+    x_train, y_train = model.training_data()
+    x_train = pd.DataFrame(x_train, columns=model.dh.input_features).iloc[0:11]
 
     x_test, y_test = model.test_data()
-    x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
+    x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:2]
 
-    interpreter = ShapMLExplainer(model._model, x_test, path=model.path)
+    interpreter = ShapMLExplainer(model._model, x_test,
+                                  train_data=x_train,
+                                  path=model.path)
     interpreter()
 
     if draw_heatmap:
         interpreter.heatmap()
 
+    interpreter = ShapMLExplainer(model._model,
+                                  x_test.values,
+                                  train_data=x_train.values,
+                                  path=model.path)
+    interpreter()
+
     return
 
 
-def fit_and_draw_plots(model_name, draw_heatmap=False):
+def fit_and_draw_plots(model_name, data, draw_heatmap=False):
 
-    model = Model(
-        model=model_name,
-        data=arg_beach(),
-        verbosity=0
-    )
+    model = get_fitted_model(model_name, data)
 
-    model.fit()
     x_test, y_test = model.test_data()
 
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
 
     explainer = ShapMLExplainer(model._model, x_test, explainer="Explainer",
-                                  path=os.path.join(os.getcwd(), "results"))
+                                  path=model.path)
     explainer.waterfall_plot_all_examples()
     explainer.scatter_plot_all_features()
     if draw_heatmap:
         explainer.heatmap()
 
     explainer = ShapMLExplainer(model._model, x_test.values, explainer="Explainer",
-                           path=os.path.join(os.getcwd(), "results"))
+                           path=model.path)
     explainer.waterfall_plot_all_examples()
     explainer.scatter_plot_all_features()
     #explainer.heatmap()
@@ -184,31 +198,31 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_xgboost(self):
 
-        fit_and_interpret("XGBoostRegressor", draw_heatmap=True)
+        fit_and_interpret("XGBoostRegressor", data=arg_beach(), draw_heatmap=True)
 
         return
 
     def test_lgbm(self):
 
-        fit_and_interpret("LGBMRegressor", draw_heatmap=False)
+        fit_and_interpret("LGBMRegressor", data=arg_beach(), draw_heatmap=False)
 
         return
 
     def test_catboost(self):
 
-        fit_and_interpret("CatBoostRegressor", draw_heatmap=False)
+        fit_and_interpret("CatBoostRegressor", data=arg_beach(), draw_heatmap=False)
 
         return
 
     def test_waterfall_with_xgboost(self):
 
-        fit_and_draw_plots("XGBoostRegressor", draw_heatmap=True)
+        fit_and_draw_plots("XGBoostRegressor", arg_beach(), draw_heatmap=True)
 
         return
 
     def test_waterfall_with_catboost(self):
 
-        fit_and_draw_plots("CatBoostRegressor")
+        fit_and_draw_plots("CatBoostRegressor", arg_beach())
 
         return
 
@@ -226,8 +240,8 @@ class TestShapExplainers(unittest.TestCase):
             "XGBOOSTRFREGRESSOR"
                     ]:
 
-            fit_and_plot(mod, heatmap=True)
-
+            fit_and_plot(mod, arg_beach(), heatmap=True)
+        time.sleep(1)
         return
 
     def test_beeswarm_plot(self):
@@ -244,14 +258,15 @@ class TestShapExplainers(unittest.TestCase):
             "XGBOOSTRFREGRESSOR"
                     ]:
 
-            fit_and_plot(mod, beeswarm_plot=True)
-
+            fit_and_plot(mod, arg_beach(), beeswarm_plot=True)
+            time.sleep(1)
         return
 
     def test_deepexplainer_mlp(self):
 
         model, testx = get_mlp()
-        ex = ShapDLExplainer(model, testx, explainer="DeepExplainer", path=model.path)
+        ex = ShapDLExplainer(model, testx, explainer="DeepExplainer",
+                             path=model.path)
 
         ex.plot_shap_values()
 
@@ -261,12 +276,18 @@ class TestShapExplainers(unittest.TestCase):
 
         model, testx = get_mlp()
 
-        ex = ShapDLExplainer(model, testx, layer=1, explainer="GradientExplainer", path=model.path)
+        ex = ShapDLExplainer(model, testx, layer=1, explainer="GradientExplainer",
+                             path=model.path)
         plt.rcParams.update(plt.rcParamsDefault)
         ex.plot_shap_values()
 
         return
 
+    def test_class_model(self):
+
+        fit_and_interpret("DecisionTreeClassifier", data=class_data, draw_heatmap=False)
+
+        return
 
 if __name__ == "__main__":
 

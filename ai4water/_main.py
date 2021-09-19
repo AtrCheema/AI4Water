@@ -1353,7 +1353,7 @@ class BaseModel(NN, Plots):
         return
 
     def explain(self, *args, **kwargs):
-        """Calls the Explain module."""
+        """Calls the Explain module to explain the model."""
         explain_using_lime = True
         explain_using_shap = True
 
