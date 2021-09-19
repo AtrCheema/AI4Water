@@ -8,13 +8,6 @@ try:
 except ModuleNotFoundError:
     imageio = None
 
-MSG = f"""
-        If you installed shapely using pip, try to resintall it 
-        (after uninstalling the previous installtin obviously)
-        by manually downloading the wheel file from 
-        https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
-        and then istalling using the wheel file using following command
-        pip install path/to/wheel.whl"""
 
 try:
     import shapefile
@@ -24,11 +17,19 @@ except ModuleNotFoundError:
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+MSG = f"""
+        If you installed shapely using pip, try to resintall it 
+        (after uninstalling the previous installtin obviously)
+        by manually downloading the wheel file from 
+        https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
+        and then istalling using the wheel file using following command
+        pip install path/to/wheel.whl"""
+
 M2ToAcre = 0.0002471     # meter square to Acre
 
 COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F',
           '#FF4040', '#8A360F', '#98F5FF', '#FF9912', '#B23AEE', '#9BCD9B', '#8B8B00']
-
 
 
 def get_sorted_dict(dictionary):
@@ -100,11 +101,11 @@ def get_total_area(file_to_read):
 
 class GifUtil(object):
 
-    def __init__(self, folder,initials=None, contains=None):
+    def __init__(self, folder, initials=None, contains=None):
         self.init = initials  # starting name of files
         self.contains = contains
         self.input_files = []   # container for input files
-        self.get_all_files(initials)   #get files to make gif
+        self.get_all_files(initials)   # get files to make gif
         self.dir = folder  # folder containing input files and output gif
 
     def get_all_files(self, init):
@@ -155,7 +156,7 @@ def find_col_name(shp_reader, field_name):
     _col_no = 0
     col_no = -99
     for fields in shp_reader.fields:
-        _col_no +=1
+        _col_no += 1
         for field in fields:
             if field == field_name:
                 col_no = _col_no
@@ -165,7 +166,7 @@ def find_col_name(shp_reader, field_name):
 
 def get_record_in_col(shp_reader, i, col_no):
     recs = shp_reader.records()
-    col_no = col_no - 2  #-2, 1 for index reduction, 1 for a junk column shows up in records
+    col_no = col_no - 2  # -2, 1 for index reduction, 1 for a junk column shows up in records
     return recs[i][col_no]
 
 
@@ -194,7 +195,7 @@ def plot_shapefile(shp_files,
         leg_kws = {'bbox_to_anchor': (0.93, -0.15),
                    'numpoints': 1,
                    'fontsize': 16,
-                   'markerscale':2}
+                   'markerscale': 2}
     if labels is None:
         labels = {}
     if save_kws is None:
@@ -243,7 +244,7 @@ def plot_shapefile(shp_files,
         plt.savefig(**save_kws)
     # if show_all_together:
     plt.show()
-    #shp_reader.close()
+    # shp_reader.close()
     return
 
 

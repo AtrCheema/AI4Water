@@ -8,8 +8,12 @@ from ai4water.backend import imputations
 
 seed = 313
 
+
 class Imputation(object):
-    """Implements imputation of missing values using a range of methods.
+
+    """
+    Implements imputation of missing values using a range of methods.
+
     Imputation Methods:
         - pandas:
             Pandas library provides two methods for filling input data.
@@ -60,15 +64,15 @@ class Imputation(object):
         >>>imputer(n_neighbors=3)
     """
     def __init__(self,
-                 data:Union[pd.DataFrame, np.ndarray, list],
-                 method:str='KNNImputer',
+                 data: Union[pd.DataFrame, np.ndarray, list],
+                 method: str = 'KNNImputer',
                  features=None,
-                 imputer_args:dict=None
+                 imputer_args: dict = None
                  ):
         self.data = self.maybe_make_df(data)
         self.method = method
         self.features = features or self.data.columns
-        self.imputer_args={} if imputer_args is None else imputer_args
+        self.imputer_args = {} if imputer_args is None else imputer_args
         self.new_data = None
 
     @property
@@ -148,7 +152,7 @@ class Imputation(object):
         for col, ax in zip(cols, axis):
             idx = indices[col]
             ax.plot(self.data[col][st:en], linestyle='-', color='k', marker='o', fillstyle='full', label="Original")
-            ax.plot(self.new_data[col][idx][st:en],linestyle='--', marker='*', color='aqua', label="Imputed")
+            ax.plot(self.new_data[col][idx][st:en], linestyle='--', marker='*', color='aqua', label="Imputed")
 
             ax.set_title(col)
             ax.legend()
@@ -157,7 +161,7 @@ class Imputation(object):
 
         return
 
-    def missing_indices(self)->dict:
+    def missing_indices(self) -> dict:
         # https://github.com/scikit-learn/scikit-learn/blob/7cc3dbcbe/sklearn/impute/_base.py#L556
         indices = {}
         for col in self.data.columns:

@@ -30,7 +30,8 @@ from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_
 # Legates׳s coefficient of efficiency
 # outliear percentage : pysteps
 # mean squared error skill score, mean absolute error skill score, https://doi.org/10.1016/j.ijforecast.2018.11.010
-# root mean quartic error, Kolmogorov–Smirnov test integral, OVERPer, Rényi entropy, 95th percentile: https://doi.org/10.1016/j.solener.2014.10.016
+# root mean quartic error, Kolmogorov–Smirnov test integral, OVERPer, Rényi entropy,
+# 95th percentile: https://doi.org/10.1016/j.solener.2014.10.016
 # Friedman test: https://doi.org/10.1016/j.solener.2014.10.016
 
 EPS = 1e-10  # epsilon
@@ -161,9 +162,9 @@ class Metrics(object):
             else:
                 np_array = np.array(array_like).reshape(-1, )
         else:
-            if np.ndim(array_like)>1:
+            if np.ndim(array_like) > 1:
                 sec_dim = array_like.shape[1]
-                if self.metric_type != 'classification' and sec_dim>1:
+                if self.metric_type != 'classification' and sec_dim > 1:
                     raise ValueError(f"Array must not be 2d but it has shape {array_like.shape}")
                 np_array = np.array(array_like).reshape(-1, ) if self.metric_type != 'classification' else array_like
             else:
@@ -235,7 +236,7 @@ class Metrics(object):
             else:
                 seasonality = benchmark
             return self._error(self.true[seasonality:], self.predicted[seasonality:]) / \
-                   (self._error(self.true[seasonality:], self._naive_prognose(seasonality)) + EPS)
+                              (self._error(self.true[seasonality:], self._naive_prognose(seasonality)) + EPS)
 
         return self._error() / (self._error(self.true, benchmark) + EPS)
 
@@ -261,10 +262,10 @@ class Metrics(object):
         return np.abs(self.true - self.predicted)
 
     def scale_free_metrics(self):
-            pass
+        pass
 
     def scale_dependent_metrics(self):
-            pass
+        pass
 
     def stats(self, verbose: bool = False) -> dict:
         """ returs some important stats about true and predicted values."""
@@ -282,13 +283,13 @@ class Metrics(object):
         return _stats
 
     def percentage_metrics(self):
-            pass
+        pass
 
     def relative_metrics(self):
-            pass
+        pass
 
     def composite_metrics(self):
-            pass
+        pass
 
     def treat_values(self):
         """
@@ -436,7 +437,7 @@ class RegressionMetrics(Metrics):
                                                                              'mean_poisson_deviance')]
 
     def abs_pbias(self) -> float:
-        """ Absolute Percent bias"""
+        """Absolute Percent bias"""
         _apb = 100.0 * sum(abs(self.predicted - self.true)) / sum(self.true)  # Absolute percent bias
         return float(_apb)
 
@@ -451,9 +452,7 @@ class RegressionMetrics(Metrics):
         return float(np.dot(a, b / c))
 
     def adjusted_r2(self) -> float:
-        """
-        Adjusted R squared
-        """
+        """Adjusted R squared."""
         k = 1
         n = len(self.predicted)
         adj_r = 1 - ((1 - self.r2()) * (n - 1)) / (n - k - 1)
@@ -462,10 +461,12 @@ class RegressionMetrics(Metrics):
     def agreement_index(self) -> float:
         """
         Agreement Index (d) developed by [Willmott, 1981](https://doi.org/10.1080/02723646.1981.10642213).
+
         It detects additive and pro-portional differences in the observed and
         simulated means and vari-ances [Moriasi et al., 2015](https://doi.org/10.13031/trans.58.10715).
         It is overly sensitive to extreme values due to the squared
-        differences [2]. It can also be used as a substitute for R2 to identify the degree to which model predic-tions
+        differences [2]. It can also be used as a substitute for R2 to
+        identify the degree to which model predic-tions
         are error-free [2].
             .. math::
             d = 1 - \\frac{\\sum_{i=1}^{N}(e_{i} - s_{i})^2}{\\sum_{i=1}^{N}(\\left | s_{i} - \\bar{e}
@@ -521,7 +522,8 @@ class RegressionMetrics(Metrics):
 
     def bias(self) -> float:
         """
-        Bias as shown in  https://doi.org/10.1029/97WR03495 and given by [Gupta et al., 1998](https://doi.org/10.1080/02626667.2018.1552002
+        Bias as shown in  https://doi.org/10.1029/97WR03495 and given by
+        [Gupta et al., 1998](https://doi.org/10.1080/02626667.2018.1552002
             .. math::
             Bias=\\frac{1}{N}\\sum_{i=1}^{N}(e_{i}-s_{i})
         """
@@ -531,6 +533,7 @@ class RegressionMetrics(Metrics):
     def bic(self, p=1) -> float:
         """
         Bayesian Information Criterion
+
         Minimising the BIC is intended to give the best model. The
         model chosen by the BIC is either the same as that chosen by the AIC, or one
         with fewer terms. This is because the BIC penalises the number of parameters
@@ -640,7 +643,7 @@ class RegressionMetrics(Metrics):
 
         return float(crmsd)
 
-    def cosine_similarity(self)->float:
+    def cosine_similarity(self) -> float:
         """[cosine similary](https://en.wikipedia.org/wiki/Cosine_similarity)
 
         It is a judgment of orientation and not magnitude: two vectors with
@@ -648,7 +651,8 @@ class RegressionMetrics(Metrics):
         at 90° relative to each other have a similarity of 0, and two vectors diametrically
         opposed have a similarity of -1, independent of their magnitude.
         """
-        return float(np.dot(self.true.reshape(-1,), self.predicted.reshape(-1,))/(np.linalg.norm(self.true)*np.linalg.norm(self.predicted)))
+        return float(np.dot(self.true.reshape(-1,),
+                            self.predicted.reshape(-1,))/(np.linalg.norm(self.true)*np.linalg.norm(self.predicted)))
 
     def decomposed_mse(self) -> float:
         """
@@ -834,7 +838,7 @@ class RegressionMetrics(Metrics):
         d = 0.5 * sum(d1 + d2)
         return float(d)
 
-    def kendaull_tau(self, return_p=False)->Union[float, tuple]:
+    def kendaull_tau(self, return_p=False) -> Union[float, tuple]:
         """Kendall's tau
         https://machinelearningmastery.com/how-to-calculate-nonparametric-rank-correlation-in-python/
         used in https://www.jmlr.org/papers/volume20/18-444/18-444.pdf
@@ -1668,7 +1672,7 @@ class ClassificationMetrics(Metrics):
         self.pred_logits = self._pred_logits()
 
         all_methods = list_subclass_methods(ClassificationMetrics, True)
-        self.all_methods=  [m for m in all_methods if not m.startswith('_')]
+        self.all_methods = [m for m in all_methods if not m.startswith('_')]
 
     def _num_classes(self):
         return len(self._classes())
@@ -1730,4 +1734,3 @@ class ClassificationMetrics(Metrics):
 
     def accuracy(self):
         return accuracy_score(self.true_labels, self.pred_labels)
-

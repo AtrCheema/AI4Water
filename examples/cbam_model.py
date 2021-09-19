@@ -13,11 +13,11 @@ layers = {
 
     "Flatten": {},
     "Dense": 1,
-    "Reshape": {"target_shape": (1,1)}
+    "Reshape": {"target_shape": (1, 1)}
 }
 
 model = Model(
-    model={'layers':layers},
+    model={'layers': layers},
     lookback=10,
     train_data='random',
     data=arg_beach())

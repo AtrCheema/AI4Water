@@ -1470,7 +1470,6 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'XGBOOSTREGRESSOR': kwargs}}
 
 
-
 class MLClassificationExperiments(Experiments):
     """Runs classification models for comparison, with or without
     optimization of hyperparameters."""

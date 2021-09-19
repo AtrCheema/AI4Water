@@ -21,20 +21,20 @@ layers = {
 }
 
 model = Model(
-    model={'layers':layers},
+    model={'layers': layers},
     lookback=lookback,
     epochs=epochs,
     batch_size=batch_size,
     input_features=[f'in_{i}' for i in range(ins)],
-    output_features = ['out'],
+    output_features=['out'],
     data=None)
 
 x = np.random.random((examples, lookback, ins))
 y = np.random.random((examples, outs))
-model.fit(x=x,y=y)
+model.fit(x=x, y=y)
 
 
 model.plot_layer_outputs(x=x)
-model.plot_act_grads(x=x,y=y)
+model.plot_act_grads(x=x, y=y)
 model.plot_weights()
-model.plot_weight_grads(x=x,y=y)
+model.plot_weight_grads(x=x, y=y)

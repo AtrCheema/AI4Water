@@ -11,6 +11,7 @@ from tensorflow import keras
 
 from ai4water import Model
 
+
 class QuantileModel(Model):
 
     def inverse_transform(self, true, predicted, key):
@@ -20,6 +21,7 @@ class QuantileModel(Model):
     def loss(self):
 
         return qloss
+
 
 def qloss(y_true, y_pred):
     # Pinball loss for multiple quantiles
@@ -53,7 +55,7 @@ model = QuantileModel(
     input_features=['input_' + str(i) for i in range(cols - 1)],
     output_features=['input_' + str(cols - 1)],
     lookback=1,
-    model={'layers':layers},
+    model={'layers': layers},
     epochs=10,
     data=data,
     quantiles=quantiles)

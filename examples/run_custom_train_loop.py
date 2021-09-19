@@ -84,7 +84,7 @@ layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
           "Dense": 1
           }
 
-model = CustomModel(model={'layers':layers},
+model = CustomModel(model={'layers': layers},
                     batch_size=12,
                     lookback=15,
                     lr=8.95e-5,
@@ -93,7 +93,7 @@ model = CustomModel(model={'layers':layers},
                     data=arg_beach(),
                     train_data='random'
                     )
-history = model.fit(callbacks={'tensorboard':True})
+history = model.fit(callbacks={'tensorboard': True})
 
 test_pred, test_obs = model.predict()
 train_pred, train_obs = model.predict(data='training')

@@ -23,7 +23,7 @@ outputs = list(df.columns)[-1]
 model = Model(data=df,
               batch_size=16,
               lookback=1,
-              model = mlp_model,
+              model=mlp_model,
               input_features=input_features,
               output_features=[outputs],
               lr=0.0001,

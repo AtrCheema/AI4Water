@@ -43,11 +43,11 @@ model = Model(
     lookback=lookback,
     input_features=input_features,
     output_features=outputs,
-    model={'layers':layers},
+    model={'layers': layers},
     lr=0.0001
               )
 
 # This model is built only to showcase how to build multi layer model by manipulating config
 # history = model.fit()
 
-#y, obs = model.predict()
+# y, obs = model.predict()
