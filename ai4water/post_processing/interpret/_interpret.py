@@ -146,7 +146,7 @@ class Interpret(Plot):
         if xgboost is None:
             warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
         else:
-            booster = self._model.model.get_booster()
+            booster = self.model._model.get_booster()
             plt.close('all')
             # global feature importance with xgboost comes with different types
             xgboost.plot_importance(booster, max_num_features=max_num_features)
