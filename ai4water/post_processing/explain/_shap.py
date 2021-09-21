@@ -167,7 +167,8 @@ class ShapMLExplainer(ExplainerMixin):
     def _infer_explainer_to_use(self, train_data, num_means):
         """tries to infer explainer to use from the type of model."""
 
-        if self.model.__class__.__name__ in ["XGBRegressor", "LGBMRegressor", "CatBoostRegressor"]:
+        if self.model.__class__.__name__ in ["XGBRegressor", "LGBMRegressor", "CatBoostRegressor",
+                                             "XGBRFRegressor"]:
             explainer = shap.TreeExplainer(self.model)
 
         elif self.model.__class__.__name__.upper() in get_sklearn_models():
@@ -195,32 +196,47 @@ class ShapMLExplainer(ExplainerMixin):
 
         return self.explainer.shap_values(test_data)
 
-    def __call__(self, plot_force_all=False):
+    def __call__(self,
+                 force_plots=True,
+                 plot_force_all=False,
+                 dependence_plots=False,
+                 beeswarm_plots=False,
+                 heatmap=False,
+                 ):
         """Draws and saves all the plots for a given sklearn model in the path.
+
         plot_force_all is set to False by default because it is causing
         Process finished error due. Avoiding this error is a complex function
         of scipy and numba versions.
         """
 
-        for feature in self.features:
-            self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}")
+        if dependence_plots:
+            for feature in self.features:
+                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}")
 
-        for i in range(self.data.shape[0]):
+        if force_plots:
+            for i in range(self.data.shape[0]):
 
-            if type(self.data) == np.ndarray:
-                data = self.data[i]
-            else:
-                data = self.data.iloc[i, :]
+                if type(self.data) == np.ndarray:
+                    data = self.data[i]
+                else:
+                    data = self.data.iloc[i, :]
 
-            if self.is_sklearn:
-                shap_vals = self.explainer.shap_values(data)
-            else:
-                shap_vals = self.shap_values[i, :]
+                if self.is_sklearn:
+                    shap_vals = self.explainer.shap_values(data)
+                else:
+                    shap_vals = self.shap_values[i, :]
 
-            self.force_plot_single_example(data, shap_vals, f"force_plot_{i}")
+                self.force_plot_single_example(data, shap_vals, f"force_plot_{i}")
+
+        if beeswarm_plots:
+            self.beeswarm_plot()
 
         if plot_force_all:
             self.force_plot_all("force_plot_all")
+
+        if heatmap:
+            self.heatmap()
 
         self.summary_plot("summary_plot")
 
@@ -253,6 +269,10 @@ class ShapMLExplainer(ExplainerMixin):
     def dependence_plot_single_feature(self, feature, name="dependence_plot"):
         """dependence plot for a single feature."""
         plt.close('all')
+
+        if len(name)>150:  # matplotlib raises error if the length of filename is too large
+            name = name[0:150]
+
         shap.dependence_plot(feature, self.shap_values, self.data, show=False)
         plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
         return

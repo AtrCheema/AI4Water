@@ -1372,7 +1372,14 @@ class BaseModel(NN, Plots):
 
         return
 
-    def explain(self, *args, **kwargs):
+    def explain(self,
+                force_plots=False,
+                dependence_plots=False,
+                save_lime_plots=False,
+                heatmap=False,
+                beeswarm_plots=False,
+                **kwargs
+                ):
         """Calls the Explain module to explain the model."""
         explain_using_lime = True
         explain_using_shap = True
@@ -1413,18 +1420,25 @@ class BaseModel(NN, Plots):
             else:
                 explainer = ShapMLExplainer(model=self._model, train_data=train_x, test_data=test_x,
                                             path=shap_exp_path, features=list(self.in_cols))
-                explainer()
+
+                explainer(
+                    dependence_plots=dependence_plots,
+                    force_plots=force_plots,
+                    heatmap=heatmap,
+                    beeswarm_plots=beeswarm_plots
+                )
 
         if explain_using_lime:
             if self.category == "DL":
                 pass
             else:
                 if self.problem == "classification":
-                    pass # todo
+                    pass  # todo
                 else:
                     explainer = LimeMLExplainer(model=self._model, train_data=train_x, test_data=test_x,
                                                 path=lime_exp_path, mode=self.problem, verbosity=self.verbosity)
-                    explainer()
+                    if save_lime_plots:
+                        explainer()
         return
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
