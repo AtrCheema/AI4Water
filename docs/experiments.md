@@ -9,8 +9,10 @@
             - fit
             - compare_errors
             - plot_convergence
-            - plot_taylor
+            - taylor_plot
             - plot_losses
+            - plot_improvement
+            - plot_cv_scores
             - from_config
 
 **`RegressionExperiments`**

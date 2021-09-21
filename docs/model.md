@@ -38,5 +38,6 @@
         members:
             - __init__
             - add_layers
+            - from_config
     rendering:
         show_root_heading: true
