@@ -1,3 +1,5 @@
 
-from ai4water.experiments.experiments import Experiments, MLRegressionExperiments, MLClassificationExperiments
-from ai4water.experiments.experiments import TransformationExperiments
+from .experiments import Experiments
+from ._regression import MLRegressionExperiments
+from ._classification import MLClassificationExperiments
+from .experiments import TransformationExperiments
