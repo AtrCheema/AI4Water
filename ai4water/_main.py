@@ -919,6 +919,12 @@ class BaseModel(NN, Plots):
 
         history = self._model.fit(inputs, outputs)
 
+        self._save_ml_model()
+
+        return history
+
+    def _save_ml_model(self):
+        """Saves the non-NN/ML models in the disk."""
         model_name = list(self.config['model'].keys())[0]
         fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
 
@@ -927,7 +933,8 @@ class BaseModel(NN, Plots):
 
         if model_name.lower().startswith("xgb"):
             self._model.save_model(fname + ".json")
-        return history
+
+        return
 
     def cross_val_score(self, scoring: str = None) -> float:
         """computes cross validation score
@@ -979,6 +986,19 @@ class BaseModel(NN, Plots):
 
             if self.verbosity > 0:
                 print(f'fold: {fold} val_score: {val_score}')
+
+        # save all the scores as json in model path
+        cv_name = str(cross_validator)
+        fname = os.path.join(self.path, f'{cv_name}_{scoring}.json')
+        with open(fname, 'w') as fp:
+            json.dump(scores, fp)
+
+        # set it as class attribute so that it can be used
+        setattr(self, f'cross_val_{scoring}', scores)
+
+        # if we do not run .fit(), then we should still have model saved in the disk
+        # so that it can be used.
+        self._save_ml_model()
 
         return np.mean(scores).item()
 
