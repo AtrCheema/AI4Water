@@ -23,6 +23,11 @@ except ModuleNotFoundError:
     rnn_histogram = None
     features_0D, features_1D, features_2D = None, None, None
 
+try:
+    import seaborn as sns
+except ModuleNotFoundError:
+    sns = None
+
 # TODO
 # rank histogram, reliability diagram, ROC curve
 
@@ -466,6 +471,23 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
+
+
+def draw_bar_sns(axis, y, x,
+                 orient='h', xlabel=None, xlabel_fs=None, title=None, title_fs=None, show_yaxis=True):
+
+    ax = sns.barplot(y=y, x=x, orient=orient, ax=axis)
+
+    if not show_yaxis:
+        ax.get_yaxis().set_visible(False)
+
+    if xlabel:
+        ax.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
+
+    if title:
+        ax.set_title(title, fontdict={'fontsize': title_fs})
+
+    return axis
 
 
 def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):

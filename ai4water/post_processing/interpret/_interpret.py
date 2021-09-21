@@ -7,10 +7,11 @@ from typing import Union
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.utils import Jsonize
+from ai4water.utils.plotting_tools import draw_bar_sns
 
 
 class Interpret(Plot):
@@ -57,13 +58,19 @@ class Interpret(Plot):
     def feature_importance(self):
         if self.model.category.upper() == "ML":
 
+            estimator = self.model._model
+
+            if not is_fitted(estimator):
+                print(f"the model {estimator} is not fitted yet so not feature importance")
+                return
+
             model_name = list(self.model.config['model'].keys())[0]
             if model_name.upper() in ["SVC", "SVR"]:
-                if self.model._model.kernel == "linear":
+                if estimator.kernel == "linear":
                     # https://stackoverflow.com/questions/41592661/determining-the-most-contributing-features-for-svm-classifier-in-sklearn
-                    return self.model._model.coef_
-            elif hasattr(self.model._model, "feature_importances_"):
-                return self.model._model.feature_importances_
+                    return estimator.coef_
+            elif hasattr(estimator, "feature_importances_"):
+                return estimator.feature_importances_
 
     def f_importances_svm(self, coef, names, save):
 
@@ -82,7 +89,15 @@ class Interpret(Plot):
         self.save_or_show(save=save, fname=f"{list(self.model.config['model'].keys())[0]}_feature_importance")
         return
 
-    def plot_feature_importance(self, importance=None, save=True, use_xgb=False, **kwargs):
+    def plot_feature_importance(self,
+                                importance=None,
+                                save=True,
+                                use_xgb=False,
+                                max_num_features=20,
+                                figsize=None,
+                                **kwargs):
+
+        figsize = figsize or (8, 8)
 
         if importance is None:
             importance = self.feature_importance()
@@ -93,48 +108,61 @@ class Interpret(Plot):
                 if self.model._model.kernel == "linear":
                     return self.f_importances_svm(importance, self.model.in_cols, save=save)
                 else:
-                    warnings.warn(f"for {self.model._model.kernel} kernels of {model_name}, feature importance can not be plotted.")
+                    warnings.warn(f"for {self.model._model.kernel} kernels of {model_name}, feature "
+                                  f"importance can not be plotted.")
                 return
 
         if isinstance(importance, np.ndarray):
             assert importance.ndim <= 2
 
-        with open(os.path.join(self.model.path, 'feature_importance.json'), 'w') as fp:
-            json.dump(Jsonize(importance)(), fp)
+        if importance is None:
+            return
 
         use_prev = self.model.config['use_predicted_output']
         all_cols = self.model.config['input_features'] if use_prev else self.model.config['input_features'] + \
                                                                                 self.model.config['output_features']
+        imp_sort = np.sort(importance)[::-1]
+        all_cols = np.array(all_cols)
+        all_cols = all_cols[np.argsort(importance)[::-1]]
+
+        # save the whole importance before truncating it
+        fname = os.path.join(self.model.path, 'feature_importance.csv')
+        pd.DataFrame(imp_sort, index=all_cols, columns=['importance_sorted']).to_csv(fname)
+
+        imp = np.concatenate([imp_sort[0:max_num_features], [imp_sort[max_num_features:].sum()]])
+        all_cols = list(all_cols[0:max_num_features]) + [f'rest_{len(all_cols) - max_num_features}']
+
         if use_xgb:
-            self._feature_importance_xgb(save=save)
+            self._feature_importance_xgb(max_num_features=max_num_features, save=save)
         else:
             plt.close('all')
-            plt.figure()
-            plt.title("Feature importance")
-            plt.bar(range(self.model.ins if use_prev else self.model.ins + self.model.outs), importance, **kwargs)
-            plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=12)
+            _, axis = plt.subplots(figsize=figsize)
+            draw_bar_sns(axis, y=all_cols, x=imp, title="Feature importance", xlabel_fs=12)
             self.save_or_show(save, fname="feature_importance.png")
         return
 
-    def _feature_importance_xgb(self, save=True, **kwargs):
-
+    def _feature_importance_xgb(self, save=True, max_num_features=None, **kwargs):
+        # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_importance
         if xgboost is None:
             warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
         else:
+            booster = self._model.model.get_booster()
             plt.close('all')
             # global feature importance with xgboost comes with different types
-            xgboost.plot_importance(self.model._model.get_booster())
+            xgboost.plot_importance(booster, max_num_features=max_num_features)
             self.save_or_show(save, fname="feature_importance_weight.png")
             plt.close('all')
-            xgboost.plot_importance(self.model._model.get_booster(), importance_type="cover", **kwargs)
+            xgboost.plot_importance(booster, importance_type="cover",
+                                    max_num_features=max_num_features, **kwargs)
             self.save_or_show(save, fname="feature_importance_type_cover.png")
             plt.close('all')
-            xgboost.plot_importance(self.model._model.get_booster(), importance_type="gain", **kwargs)
+            xgboost.plot_importance(booster, importance_type="gain",
+                                    max_num_features=max_num_features, **kwargs)
             self.save_or_show(save, fname="feature_importance_type_gain.png")
 
         return
 
-    def tft_attention_components(self, model=None, data_type='training')->dict:
+    def tft_attention_components(self, model=None, data_type='training') -> dict:
         """
         Gets attention components of tft layer from ai4water's Model.
         Arguments:
@@ -163,7 +191,7 @@ class Interpret(Plot):
                 attention_components[k] = temp_model.predict(x=x, verbose=1, steps=1)
         return attention_components
 
-    def interpret_tft(self, outputs:dict, tft_params:dict, reduction: Union[None, str]=None):
+    def interpret_tft(self, outputs: dict, tft_params: dict, reduction: Union[None, str] = None):
         """
         inspired from  `interpret_output` of PyTorchForecasting
         :param outputs: outputs from tft model. It is expected to have following keys and their values as np.ndarrays
@@ -326,3 +354,16 @@ def scatter_numpy(self, dim, index, src):
 
     return self
 
+
+def is_fitted(estimator):
+
+    if hasattr(estimator, 'is_fitted'):  # for CATBoost
+        return estimator.is_fitted
+
+    attrs = [v for v in vars(estimator)
+             if v.endswith("_") and not v.startswith("__")]
+
+    if not attrs:
+        return False
+
+    return True
