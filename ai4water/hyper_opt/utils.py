@@ -38,9 +38,12 @@ from ai4water.utils.utils import Jsonize, clear_weights
 class Counter:
     counter = 0  # todo, not upto the mark
 
+
 class Real(_Real, Counter):
     """
-    Extends the Real class of Skopt so that it has an attribute grid which then
+    This class is used for the parameters which have continuous real values
+    such as real values from 1.0 to 3.5.
+    This class extends the Real class of Skopt so that it has an attribute grid which then
     can be fed to optimization algorithm to create grid space.
 
     Attributes
@@ -56,10 +59,10 @@ class Real(_Real, Counter):
     - serialize
     """
     def __init__(self,
-                 low:float = None,
-                 high:float = None,
-                 num_samples:int=None,
-                 step:int=None,
+                 low: float = None,
+                 high: float = None,
+                 num_samples: int = None,
+                 step: int = None,
                  grid=None,
                  *args,
                  **kwargs
@@ -118,15 +121,17 @@ class Real(_Real, Counter):
 
     def suggest(self, _trial):
         # creates optuna trial
-        log=False
+        log = False
         if self.prior:
             if self.prior == 'log':
-                log=True
+                log = True
+
         return _trial.suggest_float(name=self.name,
                                     low=self.low,
                                     high=self.high,
                                     step=self.step,  # default step is None
                                     log=log)
+
     def to_optuna(self):
         """returns an equivalent optuna space"""
         if self.prior != 'log':
@@ -143,6 +148,7 @@ class Real(_Real, Counter):
 
 class Integer(_Integer, Counter):
     """
+    This class is used when the parameter is integer such as integer values from 1 to 10.
     Extends the Real class of Skopt so that it has an attribute grid which then
     can be fed to optimization algorithm to create grid space. Moreover it also
     generates optuna and hyperopt compatible/equivalent instances.
@@ -161,11 +167,11 @@ class Integer(_Integer, Counter):
 
     """
     def __init__(self,
-                 low:int = None,
-                 high:int = None,
-                 num_samples:int = None,
-                 step:int = None,
-                 grid:"np.ndarray, list"=None,
+                 low: int = None,
+                 high: int = None,
+                 num_samples: int = None,
+                 step: int = None,
+                 grid: "np.ndarray, list" = None,
                  *args,
                  **kwargs
                  ):
@@ -223,16 +229,17 @@ class Integer(_Integer, Counter):
 
     def suggest(self, _trial):
         # creates optuna trial
-        log=False
+        log = False
         if self.prior:
             if self.prior == 'log':
-                log=True
+                log = True
 
         return _trial.suggest_int(name=self.name,
-                                    low=self.low,
-                                    high=self.high,
-                                    step=self.step if self.step else 1,  # default step is 1
-                                    log=log)
+                                  low=self.low,
+                                  high=self.high,
+                                  step=self.step if self.step else 1,  # default step is 1
+                                  log=log)
+
     def to_optuna(self):
         """returns an equivalent optuna space"""
         if self.prior != 'log':
@@ -249,6 +256,7 @@ class Integer(_Integer, Counter):
 
 class Categorical(_Categorical):
     """
+    This class is used when parameter has distinct such as [1,2,3] or ['a', 'b', 'c'].
     Overrides skopt's `Categorical` class. Can be converted to optuna's distribution
     or hyper_opt's choice. It uses same input arguments as received by skopt's
     [`Categorical` class](https://scikit-optimize.github.io/stable/modules/generated/skopt.space.space.Categorical.html)
@@ -284,6 +292,7 @@ class Categorical(_Categorical):
         _raum.update({'type': 'Integer'})
         return _raum
 
+
 def is_choice(space):
     """checks if an hp.space is hp.choice or not"""
     if 'switch' in space.name:
@@ -291,7 +300,7 @@ def is_choice(space):
     return False
 
 
-def x_iter_for_tpe(trials, param_space:dict, as_list=True):
+def x_iter_for_tpe(trials, param_space: dict, as_list=True):
 
     assert isinstance(param_space, dict)
 
@@ -312,7 +321,7 @@ def x_iter_for_tpe(trials, param_space:dict, as_list=True):
     return iterations
 
 
-def get_one_tpe_x_iter(tpe_vals, param_space:dict, sort=True):
+def get_one_tpe_x_iter(tpe_vals, param_space: dict, sort=True):
 
     x_iter = {}
     for para, para_val in tpe_vals.items():
@@ -329,7 +338,7 @@ def get_one_tpe_x_iter(tpe_vals, param_space:dict, sort=True):
     return x_iter
 
 
-def sort_x_iters(x_iter:dict, original_order:list):
+def sort_x_iters(x_iter: dict, original_order: list):
     # the values in x_iter may not be sorted as the parameters provided in original order
 
     new_x_iter = {}
@@ -339,12 +348,12 @@ def sort_x_iters(x_iter:dict, original_order:list):
     return new_x_iter
 
 
-def skopt_space_from_hp_spaces(hp_space:dict)->list:
+def skopt_space_from_hp_spaces(hp_space: dict) -> list:
     """given a dictionary of hp spaces where keys are names, this function
     converts it into skopt space."""
     new_spaces = []
 
-    for k,s in hp_space.items():
+    for k, s in hp_space.items():
 
         new_spaces.append(skopt_space_from_hp_space(s, k))
 
@@ -379,7 +388,7 @@ def to_categorical(_space, prior_name=None):
 
     prior_name = verify_name(prior_name, inferred_name)
 
-    if len(cats)==0:
+    if len(cats) == 0:
         raise NotImplementedError
     return Categorical(categories=cats, name=prior_name)
 
@@ -400,19 +409,19 @@ def to_int(_space, prior_name=None):
     inferred_name = None
     limits = None
     for arg in _space.pos_args:
-        if arg.name == 'literal' and len(arg.named_args)==0:
+        if arg.name == 'literal' and len(arg.named_args) == 0:
             inferred_name = arg._obj
         elif len(arg.named_args) == 2 and arg.name == 'randint':
             limits = {}
             for a in arg.named_args:
-                limits[a[0]] =  a[1]._obj
+                limits[a[0]] = a[1]._obj
 
         elif len(arg.pos_args) == 2 and arg.name == 'randint':
             # high and low are not named args
             _limits = []
             for a in arg.pos_args:
                 _limits.append(a._obj)
-            limits =  {'high': np.max(_limits), 'low': np.min(_limits)}
+            limits = {'high': np.max(_limits), 'low': np.min(_limits)}
         else:
             raise NotImplementedError
 
@@ -439,7 +448,7 @@ def to_real(_space, prior_name=None):
                     limits = {}
                     for _a in a.named_args:
                         limits[_a[0]] = _a[1]._obj
-                elif a.name in allowed_names and len(a.pos_args)==2:
+                elif a.name in allowed_names and len(a.pos_args) == 2:
                     prior = a.name
                     _limits = []
                     for _a in a.pos_args:
@@ -542,7 +551,7 @@ def plot_hyperparameters(
             plt.yticks(nums, ["%.2e" % np.exp(t) for t in nums])
 
     if save:
-        plt.savefig(fname, dpi=300, bbox_inches='tight' )
+        plt.savefig(fname, dpi=300, bbox_inches='tight')
     else:
         plt.show()
 
@@ -582,7 +591,7 @@ def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
     if len(search_result.x) < threshold:  # it takes forever if parameters are > 20
         plt.close('all')
         _ = plot_evaluations(search_result)
-        plt.savefig(os.path.join(pref , 'evaluations'), dpi=400, bbox_inches='tight')
+        plt.savefig(os.path.join(pref, 'evaluations'), dpi=400, bbox_inches='tight')
 
     if len(search_result.x) < threshold:
         if search_result.space.n_dims == 1:
@@ -590,11 +599,11 @@ def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
         else:
             plt.close('all')
             _ = plot_objective(search_result)
-            plt.savefig(os.path.join(pref , 'objective'), dpi=400, bbox_inches='tight')
+            plt.savefig(os.path.join(pref, 'objective'), dpi=400, bbox_inches='tight')
 
     plt.close('all')
     _ = plot_convergence(search_result)
-    plt.savefig(os.path.join(pref , 'convergence'), dpi=400, bbox_inches='tight')
+    plt.savefig(os.path.join(pref, 'convergence'), dpi=400, bbox_inches='tight')
 
 
 class SerializeSKOptResults(object):
@@ -687,7 +696,7 @@ class SerializeSKOptResults(object):
              - model_queue_size: NoneType
          - function: str
      """
-    def __init__(self, results:dict):
+    def __init__(self, results: dict):
         self.results = results
         self.iters = len(results['func_vals'])
         self.paras = len(results['x'])
@@ -753,19 +762,22 @@ class SerializeSKOptResults(object):
         raum = {}
         for sp in self.results['space'].dimensions:
             if sp.__class__.__name__ == 'Categorical':
-                _raum = {k: Jsonize(v)() for k,v in sp.__dict__.items() if k in ['categories', 'transform_', 'prior', '_name']}
+                _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if k in ['categories', 'transform_',
+                                                                                  'prior', '_name']}
                 _raum.update({'type': 'Categorical'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Integer':
                 _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
-                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
+                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base',
+                                             'dtype', 'log_base']}
                 _raum.update({'type': 'Integer'})
                 raum[sp.name] = _raum
 
             elif sp.__class__.__name__ == 'Real':
                 _raum = {k: Jsonize(v)() for k, v in sp.__dict__.items() if
-                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype', 'log_base']}
+                                       k in ['low', 'transform_', 'prior', '_name', 'high', 'base', 'dtype',
+                                             'log_base']}
                 _raum.update({'type': 'Real'})
                 raum[sp.name] = _raum
 
@@ -787,7 +799,7 @@ class SerializeSKOptResults(object):
     def prod_kernel(self, k):
         """Serializes product kernel"""
         kernel = {}
-        for _k,v in k.__dict__.items():
+        for _k, v in k.__dict__.items():
 
             kernel[_k] = self.singleton_kernel(v)
 
@@ -797,7 +809,7 @@ class SerializeSKOptResults(object):
         """Serializes sum kernel"""
         kernel = {}
 
-        for _k,v in k.__dict__.items():
+        for _k, v in k.__dict__.items():
 
             if v.__class__.__name__ == "Product":
                 kernel[_k] = self.prod_kernel(v)
@@ -808,8 +820,7 @@ class SerializeSKOptResults(object):
 
     def singleton_kernel(self, k):
         """Serializes Kernels such as  Matern, White, Constant Kernels"""
-        return {k:Jsonize(v)() for k,v in k.__dict__.items()}
-
+        return {k: Jsonize(v)() for k, v in k.__dict__.items()}
 
     def specs(self):
         _specs = {}
@@ -824,14 +835,16 @@ class SerializeSKOptResults(object):
 
         be = self.results['specs']['args']['base_estimator']
         b_e = {k: Jsonize(v)() for k, v in be.__dict__.items() if
-                                       k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state']}
+                                       k in ['noise', 'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y',
+                                             'copy_X_train', 'random_state']}
         b_e['kernel'] = self.kernel(be.kernel)
 
         args['base_estimator'] = b_e
 
         for k,v in self.results['specs']['args'].items():
-            if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func', 'acq_optimizer',
-                     'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa', 'n_jobs', 'model_queue_size']:
+            if k in ['n_cals', 'n_random_starts', 'n_initial_points', 'initial_point_generator', 'acq_func',
+                     'acq_optimizer', 'verbose', 'callback', 'n_points', 'n_restarts_optimizer', 'xi', 'kappa',
+                     'n_jobs', 'model_queue_size']:
                 args[k] = Jsonize(v)()
 
         args['x0'] = self.x0()
@@ -844,9 +857,10 @@ class SerializeSKOptResults(object):
 
         mods = []
         for model in self.results['models']:
-            mod = {k:Jsonize(v)() for k,v in model.__dict__.items() if k in  ['noise',
+            mod = {k: Jsonize(v)() for k, v in model.__dict__.items() if k in ['noise',
                          'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
-                         '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train', 'log_marginal_likelihood',
+                         '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train',
+                                                                               'log_marginal_likelihood',
                          'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
 
             mod['kernel'] = self.kernel(model.kernel)
@@ -855,9 +869,9 @@ class SerializeSKOptResults(object):
         return mods
 
 
-def scatterplot_matrix_colored(params_names:list,
-                               params_values:list,
-                               best_accs:list,
+def scatterplot_matrix_colored(params_names: list,
+                               params_values: list,
+                               best_accs: list,
                                blur=False,
                                save=True,
                                fname='scatter_plot.png'
@@ -881,11 +895,11 @@ def scatterplot_matrix_colored(params_names:list,
             # Subplot:
             if blur:
                 axes.scatter(p2, p1, s=400, alpha=.1,
-                                 c=best_accs, cmap='viridis', norm=norm)
+                             c=best_accs, cmap='viridis', norm=norm)
                 axes.scatter(p2, p1, s=200, alpha=.2,
-                                 c=best_accs, cmap='viridis', norm=norm)
+                             c=best_accs, cmap='viridis', norm=norm)
                 axes.scatter(p2, p1, s=100, alpha=.3,
-                                 c=best_accs, cmap='viridis', norm=norm)
+                             c=best_accs, cmap='viridis', norm=norm)
             s = axes.scatter(p2, p1, s=15,
                              c=best_accs, cmap='viridis', norm=norm)
 
@@ -905,7 +919,7 @@ def scatterplot_matrix_colored(params_names:list,
     fig.colorbar(s, cax=cbar_ax)
 
     plt.suptitle(
-        'Scatterplot matrix of tried values in the search space over different params, colored in function of best test accuracy')
+        'Mmatrix of tried values in the search space over different params, colored in function of best test accuracy')
     plt.show()
 
 
@@ -953,7 +967,6 @@ def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False,
 
             val_loss = pd.concat([val_loss, vl1], axis=1)
 
-
     # sort min_val_loss by value
     min_vl_sorted = {k: v for k, v in sorted(min_val_loss.items(), key=lambda item: item[1])}
     top_3 = take(show_top, min_vl_sorted)
@@ -986,7 +999,7 @@ def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False,
         val = val_loss[k]
 
         if show_whole:
-            axis.plot(val, color=colors[idx], linewidth=1,   label= f'Rank {idx+1}')
+            axis.plot(val, color=colors[idx], linewidth=1,   label=f'Rank {idx+1}')
 
         default[np.argmin(val.values)] = val.min()
         if show_min:

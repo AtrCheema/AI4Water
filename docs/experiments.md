@@ -1,3 +1,7 @@
+The purpose of this module is to compare more than one models. Furthermore, 
+this module can also optimize the hyper-parameters of these models and compare
+them. 
+
 **`Experiments`**
 ::: ai4water.experiments.Experiments
     handler: python
