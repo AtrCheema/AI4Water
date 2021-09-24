@@ -1,3 +1,6 @@
-"""SeqMetrics"""
-from .SeqMetrics import RegressionMetrics
-from .SeqMetrics import ClassificationMetrics
+"""SeqMetrics, the module to calculate performance related to tabular/structured and sequential data.
+The values in a sequence are not necessarily related.
+"""
+
+from ._regression import RegressionMetrics
+from ._classification import ClassificationMetrics

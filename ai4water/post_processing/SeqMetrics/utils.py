@@ -17,16 +17,16 @@ def take(st, en, d):
     keys = list(d.keys())[st:en]
     values = list(d.values())[st:en]
 
-    return {k:v for k,v in zip(keys, values)}
+    return {k: v for k, v in zip(keys, values)}
 
 
-def plot_metrics(metrics:dict,
-                 ranges:tuple=((0.0, 1.0), (1.0, 10), (10, 1000)),
-                 exclude:list = None,
-                 plot_type:str='bar',
-                 max_metrics_per_fig:int=15,
-                 save:bool=True,
-                 save_path:str=None,
+def plot_metrics(metrics: dict,
+                 ranges: tuple = ((0.0, 1.0), (1.0, 10), (10, 1000)),
+                 exclude: list = None,
+                 plot_type: str = 'bar',
+                 max_metrics_per_fig: int = 15,
+                 save: bool = True,
+                 save_path: str = None,
                  **kwargs):
     """
     Plots the metrics given as dictionary as radial or bar plot between specified ranges.
@@ -65,7 +65,7 @@ def plot_metrics(metrics:dict,
     ```
     """
     for idx, rng in enumerate(ranges):
-        assert rng[1]>rng[0], f'For range {idx}, second value: {rng[1]} is not greater than first value: {rng[0]}. '
+        assert rng[1] > rng[0], f'For range {idx}, second value: {rng[1]} is not greater than first value: {rng[0]}. '
         assert len(rng) == 2, f"Range number {idx} has length {len(rng)}. It must be a tuple of length 2."
 
     if exclude is None:
@@ -88,10 +88,10 @@ def plot_metrics(metrics:dict,
 
 
 def plot_metrics_between(errors: dict,
-                         lower:int,
-                         upper:int,
-                         plot_type:str='bar',
-                         max_metrics_per_fig:int=15,
+                         lower: int,
+                         upper: int,
+                         plot_type: str = 'bar',
+                         max_metrics_per_fig: int = 15,
                          save=True,
                          save_path=None, **kwargs):
     zero_to_one = {}
@@ -107,8 +107,8 @@ def plot_metrics_between(errors: dict,
             pass
         else:
             en = i
-            d = take(st,en, zero_to_one)
-            if plot_type=='radial':
+            d = take(st, en, zero_to_one)
+            if plot_type == 'radial':
                 plot_radial(d, lower, upper, save=save, save_path=save_path, **kwargs)
             else:
                 plot_circular_bar(d, save=save, save_path=save_path, **kwargs)
@@ -116,7 +116,7 @@ def plot_metrics_between(errors: dict,
     return
 
 
-def plot_radial(errors:dict, low:int, up:int, save=True, save_path=None, **kwargs):
+def plot_radial(errors: dict, low: int, up: int, save=True, save_path=None, **kwargs):
     """Plots all the errors in errors dictionary. low and up are used to draw the limits of radial plot."""
     if go is None:
         print("can not plot radial plot because plotly is not installed.")
@@ -164,7 +164,7 @@ def plot_radial(errors:dict, low:int, up:int, save=True, save_path=None, **kwarg
     return
 
 
-def plot_circular_bar(metrics:dict, save:bool, save_path:str, **kwargs):
+def plot_circular_bar(metrics: dict, save: bool, save_path: str, **kwargs):
     """
     modified after https://www.python-graph-gallery.com/circular-barplot-basic
     :param metrics:
@@ -193,7 +193,7 @@ def plot_circular_bar(metrics:dict, save:bool, save_path:str, **kwargs):
     upper = round(np.max(list(metrics.values())), 4)
 
     # Compute max and min in the dataset
-    _max = max(Value) # df['Value'].max()
+    _max = max(Value)  # df['Value'].max()
 
     # Let's compute heights: they are a conversion of each item value in those new coordinates
     # In our example, 0 in the dataset will be converted to the lowerLimit (10)
@@ -231,7 +231,6 @@ def plot_circular_bar(metrics:dict, save:bool, save_path:str, **kwargs):
         rotation = np.rad2deg(angle)
 
         # Flip some labels upside down
-        alignment = ""
         if angle >= np.pi / 2 and angle < 3 * np.pi / 2:
             alignment = "right"
             rotation = rotation + 180
@@ -287,7 +286,8 @@ def _foo(denominator, numerator):
 
 
 def _mean_tweedie_deviance(y_true, y_pred, power=0, weights=None):
-    # copying from https://github.com/scikit-learn/scikit-learn/blob/95d4f0841d57e8b5f6b2a570312e9d832e69debc/sklearn/metrics/_regression.py#L659
+    # copying from
+    # https://github.com/scikit-learn/scikit-learn/blob/95d4f0841d57e8b5f6b2a570312e9d832e69debc/sklearn/metrics/_regression.py#L659
 
     message = ("Mean Tweedie deviance error with power={} can only be used on "
                .format(power))
@@ -358,10 +358,18 @@ def listParentMethods(cls):
         listMethods(c).union(listParentMethods(c)) for c in cls.__bases__))
 
 
-def list_subclass_methods(cls, is_narrow):
+def list_subclass_methods(cls, is_narrow, ignore_underscore=True, additional_ignores=None):
+    """Finds all methods of a child class"""
     methods = listMethods(cls)
+
     if is_narrow:
         parentMethods = listParentMethods(cls)
-        return set(cls for cls in methods if not (cls in parentMethods))
-    else:
-        return methods
+        methods = set(cls for cls in methods if not (cls in parentMethods))
+    
+    if additional_ignores is not None:
+        methods = methods - set(additional_ignores)
+
+    if ignore_underscore:
+        methods = set(cls for cls in methods if not cls.startswith('_'))
+
+    return methods

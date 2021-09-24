@@ -1,401 +1,13 @@
-import json
+
 import warnings
-import numpy as np
 from math import sqrt
 from typing import Union
 
-from sklearn import preprocessing
-# from sklearn.metrics import hinge_loss
 from scipy.stats import gmean, kendalltau
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import balanced_accuracy_score
+import numpy as np
 
-from ai4water.utils.utils import ts_features
 from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
-
-# TODO remove repeated calculation of mse, std, mean etc
-# TODO make weights, class attribute
-# TODO write tests
-# TODO standardized residual sum of squares
-# http://documentation.sas.com/?cdcId=fscdc&cdcVersion=15.1&docsetId=fsug&docsetTarget=n1sm8nk3229ttun187529xtkbtpu.htm&locale=en
-# https://arxiv.org/ftp/arxiv/papers/1809/1809.03006.pdf
-# https://www.researchgate.net/profile/Mark-Tschopp/publication/322147437_Quantifying_Similarity_and_Distance_Measures_for_Vector-Based_Datasets_Histograms_Signals_and_Probability_Distribution_Functions/links/5a48089ca6fdcce1971c8142/Quantifying-Similarity-and-Distance-Measures-for-Vector-Based-Datasets-Histograms-Signals-and-Probability-Distribution-Functions.pdf
-# maximum absolute error
-# relative mean absolute error
-# relative rmse
-# Log mse
-# Jeffreys Divergence
-# kullback-Leibler divergence
-# Peak flow ratio https://hess.copernicus.org/articles/24/869/2020/
-# Legates׳s coefficient of efficiency
-# outliear percentage : pysteps
-# mean squared error skill score, mean absolute error skill score, https://doi.org/10.1016/j.ijforecast.2018.11.010
-# root mean quartic error, Kolmogorov–Smirnov test integral, OVERPer, Rényi entropy,
-# 95th percentile: https://doi.org/10.1016/j.solener.2014.10.016
-# Friedman test: https://doi.org/10.1016/j.solener.2014.10.016
-
-EPS = 1e-10  # epsilon
-
-# TODO classification metrics
-# cross entropy
-
-# TODO probability losses
-# log normal loss
-# skill score
-
-# TODO multi horizon metrics
-
-
-class Metrics(object):
-    """
-    This class does some pre-processign and handles metadata regaring true and
-    predicted arrays.
-
-    The arguments other than `true` and `predicted` are dynamic i.e. they can be
-    changed from outside the class. This means the user can change their value after
-    creating the class. This will be useful if we want to calculate an error once by
-    ignoring NaN and then by not ignoring the NaNs. However, the user has to run
-    the method `treat_arrays` in order to have the changed values impact on true and
-    predicted arrays.
-
-    Literature:
-        https://www-miklip.dkrz.de/about/murcss/
-
-
-    """
-
-    def __init__(self,
-                 true: Union[np.ndarray, list],
-                 predicted: Union[np.ndarray, list],
-                 replace_nan: Union[int, float, None] = None,
-                 replace_inf: Union[int, float, None] = None,
-                 remove_zero: bool = False,
-                 remove_neg: bool = False,
-                 metric_type: str = 'regression'
-                 ):
-
-        """
-        Arguments:
-            true : array like, ture/observed/actual/target values
-            predicted : array like, simulated values
-            replace_nan : default None. if not None, then NaNs in true
-                and predicted will be replaced by this value.
-            replace_inf : default None, if not None, then inf vlaues in true and
-                predicted will be replaced by this value.
-            remove_zero : default False, if True, the zero values in true
-                or predicted arrays will be removed. If a zero is found in one
-                array, the corresponding value in the other array will also be
-                removed.
-            remove_neg : default False, if True, the negative values in true
-                or predicted arrays will be removed.
-            metric_type : type of metric.
-
-        """
-        self.metric_type = metric_type
-        self.true, self.predicted = self._pre_process(true, predicted)
-        self.replace_nan = replace_nan
-        self.replace_inf = replace_inf
-        self.remove_zero = remove_zero
-        self.remove_neg = remove_neg
-
-    @property
-    def replace_nan(self):
-        return self._replace_nan
-
-    @replace_nan.setter
-    def replace_nan(self, x):
-        self._replace_nan = x
-
-    @property
-    def replace_inf(self):
-        return self._replace_inf
-
-    @replace_inf.setter
-    def replace_inf(self, x):
-        self._replace_inf = x
-
-    @property
-    def remove_zero(self):
-        return self._remove_zero
-
-    @remove_zero.setter
-    def remove_zero(self, x):
-        self._remove_zero = x
-
-    @property
-    def remove_neg(self):
-        return self._remove_neg
-
-    @remove_neg.setter
-    def remove_neg(self, x):
-        self._remove_neg = x
-
-    @property
-    def assert_greater_than_one(self):
-        # assert that both true and predicted arrays are greater than one.
-        if len(self.true) <= 1 or len(self.predicted) <= 1:
-            raise ValueError(f"""Expect length of true and predicted arrays to be larger than 1 but they are
-                            {len(self.true)} and {len(self.predicted)}""")
-        return
-
-    def _pre_process(self, true, predicted):
-
-        predicted = self._assert_1darray(predicted)
-        true = self._assert_1darray(true)
-        assert len(predicted) == len(true), "lengths of provided arrays mismatch, predicted array: {}, true array: {}" \
-            .format(len(predicted), len(true))
-
-        return true, predicted
-
-    def _assert_1darray(self, array_like) -> np.ndarray:
-        """Makes sure that the provided `array_like` is 1D numpy array"""
-        if not isinstance(array_like, np.ndarray):
-            if not isinstance(array_like, list):
-                # it can be pandas series or datafrmae
-                if array_like.__class__.__name__ in ['Series', 'DataFrame']:
-                    if len(array_like.shape) > 1:  # 1d series has shape (x,) while 1d dataframe has shape (x,1)
-                        if array_like.shape[1] > 1:  # it is a 2d datafrmae
-                            raise TypeError("only 1d pandas Series or dataframe are allowed")
-                    np_array = np.array(array_like).reshape(-1, )
-                else:
-                    raise TypeError(f"all inputs must be numpy array or list but one is of type {type(array_like)}")
-            else:
-                np_array = np.array(array_like).reshape(-1, )
-        else:
-            if np.ndim(array_like) > 1:
-                sec_dim = array_like.shape[1]
-                if self.metric_type != 'classification' and sec_dim > 1:
-                    raise ValueError(f"Array must not be 2d but it has shape {array_like.shape}")
-                np_array = np.array(array_like).reshape(-1, ) if self.metric_type != 'classification' else array_like
-            else:
-                # maybe the dimension is >1 so make sure it is more
-                np_array = array_like.reshape(-1, ) if self.metric_type != 'classification' else array_like
-
-        if self.metric_type != 'classification':
-            assert len(np_array.shape) == 1
-        return np_array
-
-    def calculate_all(self, statistics=False, verbose=False, write=False, name=None):
-        """ calculates errors using all available methods except brier_score..
-        write: bool, if True, will write the calculated errors in file.
-        name: str, if not None, then must be path of the file in which to write."""
-        errors = {}
-        for m in self.all_methods:
-            if m not in ["brier_score"]:
-                try:
-                    error = float(getattr(self, m)())
-                # some errors might not have been computed and returned a non float-convertible value e.g. None
-                except TypeError:
-                    error = getattr(self, m)()
-                errors[m] = error
-                if verbose:
-                    if error is None:
-                        print('{0:25} :  {1}'.format(m, error))
-                    else:
-                        print('{0:25} :  {1:<12.3f}'.format(m, error))
-
-        if statistics:
-            errors['stats'] = self.stats(verbose=verbose)
-
-        if write:
-            if name is not None:
-                assert isinstance(name, str)
-                fname = name
-            else:
-                fname = 'errors'
-
-            with open(fname + ".json", 'w') as fp:
-                json.dump(errors, fp, sort_keys=True, indent=4)
-
-        return errors
-
-    def _error(self, true=None, predicted=None):
-        """ simple difference """
-        if true is None:
-            true = self.true
-        if predicted is None:
-            predicted = self.predicted
-        return true - predicted
-
-    def _percentage_error(self):
-        """
-        Percentage error
-        """
-        return self._error() / (self.true + EPS) * 100
-
-    def _naive_prognose(self, seasonality: int = 1):
-        """ Naive forecasting method which just repeats previous samples """
-        return self.true[:-seasonality]
-
-    def _relative_error(self, benchmark: np.ndarray = None):
-        """ Relative Error """
-        if benchmark is None or isinstance(benchmark, int):
-            # If no benchmark prediction provided - use naive forecasting
-            if not isinstance(benchmark, int):
-                seasonality = 1
-            else:
-                seasonality = benchmark
-            return self._error(self.true[seasonality:], self.predicted[seasonality:]) / \
-                              (self._error(self.true[seasonality:], self._naive_prognose(seasonality)) + EPS)
-
-        return self._error() / (self._error(self.true, benchmark) + EPS)
-
-    def _bounded_relative_error(self, benchmark: np.ndarray = None):
-        """ Bounded Relative Error """
-        if benchmark is None or isinstance(benchmark, int):
-            # If no benchmark prediction provided - use naive forecasting
-            if not isinstance(benchmark, int):
-                seasonality = 1
-            else:
-                seasonality = benchmark
-
-            abs_err = np.abs(self._error(self.true[seasonality:], self.predicted[seasonality:]))
-            abs_err_bench = np.abs(self._error(self.true[seasonality:], self._naive_prognose(seasonality)))
-        else:
-            abs_err = np.abs(self._error())
-            abs_err_bench = np.abs(self._error())
-
-        return abs_err / (abs_err + abs_err_bench + EPS)
-
-    def _ae(self):
-        """Absolute error """
-        return np.abs(self.true - self.predicted)
-
-    def scale_free_metrics(self):
-        pass
-
-    def scale_dependent_metrics(self):
-        pass
-
-    def stats(self, verbose: bool = False) -> dict:
-        """ returs some important stats about true and predicted values."""
-        _stats = dict()
-        _stats['true'] = ts_features(self.true)
-        _stats['predicted'] = ts_features(self.predicted)
-
-        if verbose:
-            print("\nName            True         Predicted  ")
-            print("----------------------------------------")
-            for k in _stats['true'].keys():
-                print("{:<25},  {:<10},  {:<10}"
-                      .format(k, round(_stats['true'][k], 4), round(_stats['predicted'][k])))
-
-        return _stats
-
-    def percentage_metrics(self):
-        pass
-
-    def relative_metrics(self):
-        pass
-
-    def composite_metrics(self):
-        pass
-
-    def treat_values(self):
-        """
-        This function is applied by default at the start/at the time of initiating
-        the class. However, it can used any time after that. This can be handy
-        if we want to calculate error first by ignoring nan and then by no ignoring
-        nan.
-        Adopting from https://github.com/BYU-Hydroinformatics/HydroErr/blob/master/HydroErr/HydroErr.py#L6210
-        Removes the nan, negative, and inf values in two numpy arrays
-        """
-        sim_copy = np.copy(self.predicted)
-        obs_copy = np.copy(self.true)
-
-        # Treat missing data in observed_array and simulated_array, rows in simulated_array or
-        # observed_array that contain nan values
-        all_treatment_array = np.ones(obs_copy.size, dtype=bool)
-
-        if np.any(np.isnan(obs_copy)) or np.any(np.isnan(sim_copy)):
-            if self.replace_nan is not None:
-                # Finding the NaNs
-                sim_nan = np.isnan(sim_copy)
-                obs_nan = np.isnan(obs_copy)
-                # Replacing the NaNs with the input
-                sim_copy[sim_nan] = self.replace_nan
-                obs_copy[obs_nan] = self.replace_nan
-
-                warnings.warn("Elements(s) {} contained NaN values in the simulated array and "
-                              "elements(s) {} contained NaN values in the observed array and have been "
-                              "replaced (Elements are zero indexed).".format(np.where(sim_nan)[0],
-                                                                             np.where(obs_nan)[0]),
-                              UserWarning)
-            else:
-                # Getting the indices of the nan values, combining them, and informing user.
-                nan_indices_fcst = ~np.isnan(sim_copy)
-                nan_indices_obs = ~np.isnan(obs_copy)
-                all_nan_indices = np.logical_and(nan_indices_fcst, nan_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_nan_indices)
-
-                warnings.warn("Row(s) {} contained NaN values and the row(s) have been "
-                              "removed (Rows are zero indexed).".format(np.where(~all_nan_indices)[0]),
-                              UserWarning)
-
-        if np.any(np.isinf(obs_copy)) or np.any(np.isinf(sim_copy)):
-            if self.replace_nan is not None:
-                # Finding the NaNs
-                sim_inf = np.isinf(sim_copy)
-                obs_inf = np.isinf(obs_copy)
-                # Replacing the NaNs with the input
-                sim_copy[sim_inf] = self.replace_inf
-                obs_copy[obs_inf] = self.replace_inf
-
-                warnings.warn("Elements(s) {} contained Inf values in the simulated array and "
-                              "elements(s) {} contained Inf values in the observed array and have been "
-                              "replaced (Elements are zero indexed).".format(np.where(sim_inf)[0],
-                                                                             np.where(obs_inf)[0]),
-                              UserWarning)
-            else:
-                inf_indices_fcst = ~(np.isinf(sim_copy))
-                inf_indices_obs = ~np.isinf(obs_copy)
-                all_inf_indices = np.logical_and(inf_indices_fcst, inf_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_inf_indices)
-
-                warnings.warn(
-                    "Row(s) {} contained Inf or -Inf values and the row(s) have been removed (Rows "
-                    "are zero indexed).".format(np.where(~all_inf_indices)[0]),
-                    UserWarning
-                )
-
-        # Treat zero data in observed_array and simulated_array, rows in simulated_array or
-        # observed_array that contain zero values
-        if self.remove_zero:
-            if (obs_copy == 0).any() or (sim_copy == 0).any():
-                zero_indices_fcst = ~(sim_copy == 0)
-                zero_indices_obs = ~(obs_copy == 0)
-                all_zero_indices = np.logical_and(zero_indices_fcst, zero_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_zero_indices)
-
-                warnings.warn(
-                    "Row(s) {} contained zero values and the row(s) have been removed (Rows are "
-                    "zero indexed).".format(np.where(~all_zero_indices)[0]),
-                    UserWarning
-                )
-
-        # Treat negative data in observed_array and simulated_array, rows in simulated_array or
-        # observed_array that contain negative values
-
-        # Ignore runtime warnings from comparing
-        if self.remove_neg:
-            with np.errstate(invalid='ignore'):
-                obs_copy_bool = obs_copy < 0
-                sim_copy_bool = sim_copy < 0
-
-            if obs_copy_bool.any() or sim_copy_bool.any():
-                neg_indices_fcst = ~sim_copy_bool
-                neg_indices_obs = ~obs_copy_bool
-                all_neg_indices = np.logical_and(neg_indices_fcst, neg_indices_obs)
-                all_treatment_array = np.logical_and(all_treatment_array, all_neg_indices)
-
-                warnings.warn("Row(s) {} contained negative values and the row(s) have been "
-                              "removed (Rows are zero indexed).".format(np.where(~all_neg_indices)[0]),
-                              UserWarning)
-
-        self.true = obs_copy[all_treatment_array]
-        self.predicted = sim_copy[all_treatment_array]
-
-        return
+from ._SeqMetrics import Metrics, EPS
 
 
 class RegressionMetrics(Metrics):
@@ -421,7 +33,7 @@ class RegressionMetrics(Metrics):
         args and kwargs go to parent class 'Metrics'.
         """
         super().__init__(*args, **kwargs)
-        self.all_methods = list_subclass_methods(RegressionMetrics, True)
+        self.all_methods = list_subclass_methods(RegressionMetrics, True, additional_ignores=['hydro_metrics'])
 
         # if arrays contain negative values, following three errors can not be computed
         for array in [self.true, self.predicted]:
@@ -435,6 +47,15 @@ class RegressionMetrics(Metrics):
             if (array <= 0).any():  # mean tweedie error is not computable
                 self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
                                                                              'mean_poisson_deviance')]
+
+    @staticmethod
+    def _hydro_metrics() -> list:
+        """Names of metrics related to hydrology"""
+
+        return ['r2', 'mape', 'nrmse', 'corr_coeff', 'rmse', 'mae', 'mse', 'mpe', 'mase',
+                'fdc_flv', 'fdc_fhv',
+                'kge', 'kge_np', 'kge_mod', 'kge_bound', 'kgeprime_c2m', 'kgenp_bound',
+                'nse', 'nse_alpha', 'nse_beta', 'nse_mod', 'nse_bound']
 
     def abs_pbias(self) -> float:
         """Absolute Percent bias"""
@@ -518,7 +139,7 @@ class RegressionMetrics(Metrics):
         """Amemiya’s Prediction Criterion"""
         k = 1
         n = len(self.predicted)
-        return float(((n + k) / (n - k)) * (1/n) * self.sse())
+        return float(((n + k) / (n - k)) * ( 1 /n) * self.sse())
 
     def bias(self) -> float:
         """
@@ -652,7 +273,8 @@ class RegressionMetrics(Metrics):
         opposed have a similarity of -1, independent of their magnitude.
         """
         return float(np.dot(self.true.reshape(-1,),
-                            self.predicted.reshape(-1,))/(np.linalg.norm(self.true)*np.linalg.norm(self.predicted)))
+                            self.predicted.reshape(-1,)) /
+                     (np.linalg.norm(self.true) * np.linalg.norm(self.predicted)))
 
     def decomposed_mse(self) -> float:
         """
@@ -812,6 +434,22 @@ class RegressionMetrics(Metrics):
         """ Geometric Mean Relative Absolute Error """
         return _geometric_mean(np.abs(self._relative_error(benchmark)))
 
+    def hydro_metrics(self):
+        """
+        Calculates all metrics for hydrological data.
+
+        Returns
+        -------
+        dict
+            Dictionary with all metrics
+        """
+        metrics = {}
+
+        for metric in self._hydro_metrics():
+            metrics[metric] = getattr(self, metric)()
+
+        return metrics
+
     def inrse(self) -> float:
         """ Integral Normalized Root Squared Error """
         return float(np.sqrt(np.sum(np.square(self._error())) / np.sum(np.square(self.true - np.mean(self.true)))))
@@ -862,11 +500,7 @@ class RegressionMetrics(Metrics):
         cc = np.corrcoef(self.true, self.predicted)[0, 1]
         alpha = np.std(self.predicted) / np.std(self.true)
         beta = np.sum(self.predicted) / np.sum(self.true)
-        kge = float(1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2))
-        if return_all:
-            return np.vstack((kge, cc, alpha, beta))
-        else:
-            return kge
+        return post_process_kge(cc, alpha, beta, return_all)
 
     def kge_bound(self) -> float:
         """
@@ -894,12 +528,7 @@ class RegressionMetrics(Metrics):
         # calculate error in volume beta (bias of mean discharge)
         beta = np.mean(self.predicted, axis=0, dtype=np.float64) / np.mean(self.true, axis=0, dtype=np.float64)
         # calculate the modified Kling-Gupta Efficiency KGE'
-        kgeprime_ = float(1 - np.sqrt((r - 1) ** 2 + (gamma - 1) ** 2 + (beta - 1) ** 2))
-
-        if return_all:
-            return np.vstack((kgeprime_, r, gamma, beta))
-        else:
-            return kgeprime_
+        return post_process_kge(r, gamma, beta, return_all)
 
     def kge_np(self, return_all=False):
         """
@@ -922,11 +551,7 @@ class RegressionMetrics(Metrics):
         alpha = 1 - 0.5 * np.nanmean(np.abs(fdc_sim - fdc_obs))
 
         beta = np.mean(self.predicted) / np.mean(self.true)
-        kge = float(1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2))
-        if return_all:
-            return np.vstack((kge, cc, alpha, beta))
-        else:
-            return kge
+        return post_process_kge(cc, alpha, beta, return_all)
 
     def kgeprime_c2m(self) -> float:
         """
@@ -1323,6 +948,7 @@ class RegressionMetrics(Metrics):
         It is sensitive to outliers.
         Reference: Pearson, K 1895.
         """
+        # todo, it is same with 'corr_coeff'.
         sim_mean = np.mean(self.predicted)
         obs_mean = np.mean(self.true)
 
@@ -1551,6 +1177,7 @@ class RegressionMetrics(Metrics):
         function.
         https://hess.copernicus.org/articles/24/2505/2020/hess-24-2505-2020.pdf
         """
+        # todo, is this spearman rank correlation?
         col = [list(a) for a in zip(self.true, self.predicted)]
         xy = sorted(col, key=lambda _x: _x[0], reverse=False)
         # rang of x-value
@@ -1581,7 +1208,7 @@ class RegressionMetrics(Metrics):
         squared_errors = (self.true - self.predicted) ** 2
         return float(np.sum(squared_errors))
 
-    def std_ratio(self, **kwargs)->float:
+    def std_ratio(self, **kwargs) -> float:
         """ratio of standard deviations of predictions and trues.
         Also known as standard ratio, it varies from 0.0 to infinity while
         1.0 being the perfect value.
@@ -1660,77 +1287,9 @@ class RegressionMetrics(Metrics):
         return float(ft_wmape_forecast)
 
 
-class ClassificationMetrics(Metrics):
-    """Calculates classification metrics."""
-
-    def __init__(self, *args, categorical=False, **kwargs):
-        self.categorical = categorical
-        super().__init__(*args, metric_type='classification', **kwargs)
-        self.true_labels = self._true_labels()
-        self.true_logits = self._true_logits()
-        self.pred_labels = self._pred_labels()
-        self.pred_logits = self._pred_logits()
-
-        all_methods = list_subclass_methods(ClassificationMetrics, True)
-        self.all_methods = [m for m in all_methods if not m.startswith('_')]
-
-    def _num_classes(self):
-        return len(self._classes())
-
-    def _classes(self):
-        array = self.true_labels
-        return np.unique(array[~np.isnan(array)])
-
-    def _true_labels(self):
-        """retuned array is 1d"""
-        if self.categorical:
-            return np.argmax(self.true, axis=1)
-        assert self.true.ndim == 1
-        return self.true
-
-    def _true_logits(self):
-        """returned array is 2d"""
-        if self.categorical:
-            return self.true
-        lb = preprocessing.LabelBinarizer()
-        return lb.fit_transform(self.true)
-
-    def _pred_labels(self):
-        """returns 1d"""
-        if self.categorical:
-            return np.argmax(self.predicted, axis=1)
-        lb = preprocessing.LabelBinarizer()
-        lb.fit(self.true_labels)
-        return lb.inverse_transform(self.predicted)
-
-    def _pred_logits(self):
-        """returned array is 2d"""
-        if self.categorical:
-            return self.true
-        # we can't do it
-        return None
-
-    def cross_entropy(self, epsilon=1e-12):
-        """
-        Computes cross entropy between targets (encoded as one-hot vectors)
-        and predictions.
-        Input: predictions (N, k) ndarray
-               targets (N, k) ndarray
-        Returns: scalar
-        """
-        predictions = np.clip(self.predicted, epsilon, 1. - epsilon)
-        N = predictions.shape[0]
-        ce = -np.sum(self.true * np.log(predictions + 1e-9)) / N
-        return ce
-
-    # def hinge_loss(self):
-    #     """hinge loss using sklearn"""
-    #     if self.pred_logits is not None:
-    #         return hinge_loss(self.true_labels, self.pred_logits)
-    #     return None
-
-    def balanced_accuracy_score(self):
-        return balanced_accuracy_score(self.true_labels, self.pred_labels)
-
-    def accuracy(self):
-        return accuracy_score(self.true_labels, self.pred_labels)
+def post_process_kge(cc, alpha, beta, return_all=False):
+    kge = float(1 - np.sqrt((cc - 1) ** 2 + (alpha - 1) ** 2 + (beta - 1) ** 2))
+    if return_all:
+        return np.vstack((kge, cc, alpha, beta))
+    else:
+        return kge
