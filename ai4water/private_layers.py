@@ -372,6 +372,67 @@ class TransformerEncoder(tf.keras.layers.Layer):
         return x  # (batch_size, input_seq_len, d_model)
 
 
+class Conditionalize(tf.keras.layers.Layer):
+    """Mimics the behaviour of cond_rnn of Philipperemy but puts the logic
+    of condition in a separate layer so that it becomes easier to use it.
+
+    Example
+    --------
+    >>> from ai4water.private_layers import Conditionalize
+    >>> from tensorflow.keras.layers import Input, LSTM
+    >>> i = Input(shape=(10, 3))
+    >>> raw_conditions = Input(shape=(14,))
+    >>> processed_conds = Conditionalize(32)([raw_conditions, raw_conditions, raw_conditions])
+    >>> rnn = LSTM(32)(i, initial_state=[processed_conds, processed_conds])
+    """
+    def __init__(self, units, max_num_cond=10, **kwargs):
+        self.units = units
+        super().__init__(**kwargs)
+
+        # single cond
+        self.cond_to_init_state_dense_1 = tf.keras.layers.Dense(units=self.units, name="conditional_dense")
+
+        # multi cond
+        self.multi_cond_to_init_state_dense = []
+
+        for i in range(max_num_cond):
+            self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(units=self.units, name=f"conditional_dense{i}"))
+
+        self.multi_cond_p = tf.keras.layers.Dense(1, activation=None, use_bias=True, name="conditional_dense_out")
+
+    @staticmethod
+    def _standardize_condition(initial_cond):
+
+        assert len(initial_cond.shape) == 2
+
+        return initial_cond
+
+    def __call__(self, inputs, *args, **kwargs):
+
+        if args or kwargs:
+            raise ValueError(f"Unrecognized input arguments\n args: {args} \nkwargs: {kwargs}")
+
+        if inputs.__class__.__name__ == "Tensor":
+            inputs = [inputs]
+
+        assert (isinstance(inputs, list) or isinstance(inputs, tuple)) and len(inputs) >= 1, f"{type(inputs)}"
+
+        cond = inputs
+        if len(cond) > 1:  # multiple conditions.
+            init_state_list = []
+            for ii, c in enumerate(cond):
+                init_state_list.append(self.multi_cond_to_init_state_dense[ii](self._standardize_condition(c)))
+            multi_cond_state = tf.stack(init_state_list, axis=-1)  # -> (?, units, num_conds)
+            multi_cond_state = self.multi_cond_p(multi_cond_state)  # -> (?, units, 1)
+            cond_state = tf.squeeze(multi_cond_state, axis=-1)  # -> (?, units)
+        else:
+
+            cond = self._standardize_condition(cond[0])
+            cond_state = self.cond_to_init_state_dense_1(cond)    # -> (?, units)
+
+        return cond_state
+
+
 class PrivateLayers(object):
 
     class layers:
@@ -379,3 +440,4 @@ class PrivateLayers(object):
         TransformerEncoder = TransformerEncoder
         BasicBlock = BasicBlock
         CONDRNN = ConditionalRNN
+        Conditionalize = Conditionalize

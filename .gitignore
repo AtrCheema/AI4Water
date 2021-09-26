@@ -9,6 +9,7 @@
 .ipynb_checkpoints/
 __pycache__/
 .idea/
+.vscode/
 AI4Water.egg-info/
 
 # private stuff
@@ -16,7 +17,6 @@ results/
 data/
 testing/
 _models/
-dl4seq/private_layers.py
 paper/
 
 # build related
@@ -35,7 +35,7 @@ coverage.xml
 *.jovianrc
 
 *tests/catboost_info/
-*dl4seq/utils/datasets/data/
+*ai4water/datasets/data/
 
 # docs 
 site/
