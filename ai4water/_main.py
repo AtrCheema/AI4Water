@@ -158,12 +158,12 @@ class BaseModel(NN, Plots):
             batches str:
                 either `2d` or 3d`.
             wandb_config :
-                Only valid if wandb package is installed. A dictionary of all the
+                Only valid if wandb package is installed.  Default value is None,
+                which means, wandb will not be utilized. For simplest case, just pass
+                an empty dictionary. Otherwise use a dictionary of all the
                 arugments for wandb.init, wandb.log and WandbCallback. For
-                `training_data` and and `validation_data` in `WandbCallback`, pass
-                `True` instead of providing a tuple. Default value is None, which
-                means, wandb will not be utilized. For simplest case, just pass
-                an empty dictionary.
+                `training_data` and `validation_data` in `WandbCallback`, pass
+                `True` instead of providing a tuple.
             seed int:
                 random seed for reproducibility. This can be set to None. The seed
                 is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
@@ -1150,10 +1150,19 @@ class BaseModel(NN, Plots):
             inputs = x
             true_outputs = y
 
+        if 'verbose' in kwargs:
+            verbosity = kwargs.pop('verbose')
+        else:
+            verbosity = self.verbosity
+
+        batch_size = self.config['batch_size']
+        if 'batch_size' in kwargs:
+            batch_size = kwargs.pop('batch_size')
+
         if self.category == 'DL':
             predicted = self.predict_fn(x=inputs,
-                                        batch_size=self.config['batch_size'],
-                                        verbose=self.verbosity,
+                                        batch_size=batch_size,
+                                        verbose=verbosity,
                                         **kwargs)
         else:
             predicted = self.predict_ml_models(inputs, **kwargs)
