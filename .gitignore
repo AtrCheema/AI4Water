@@ -22,7 +22,7 @@ paper/
 # build related
 *dist/
 *build/
-*dl4seq.egg-info/
+*ai4water.egg-info/
 
 # Unit test / coverage reports
 .coveralls.yml

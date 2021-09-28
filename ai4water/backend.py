@@ -32,7 +32,9 @@ def get_sklearn_models():
     if sklearn is not None:
         # the following line must be executed in order for get_attributes to work, don't know why
         from sklearn.ensemble import RandomForestRegressor
-        if int(sklearn.__version__.split('.')[1]) < 24:
+        sk_maj_ver = int(sklearn.__version__.split('.')[0])
+        sk_min_ver = int(sklearn.__version__.split('.')[1])
+        if sk_maj_ver==0 and sk_min_ver < 24:
             from sklearn.neural_network import multilayer_perceptron
         else:
             from sklearn.neural_network import MLPClassifier
