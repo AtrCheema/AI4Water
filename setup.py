@@ -11,7 +11,7 @@ with open('version.py') as fv:
     exec(fv.read())
 
 min_requirements = [
-    'numpy',
+    'numpy<=1.19.2',
     'seaborn',
     'scikit-learn',
     'pandas',

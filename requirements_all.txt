@@ -1,6 +1,6 @@
 # this is list of all libraries, if you want to use all features
 tensorflow # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
-numpy>=1.16.5
+numpy>=1.16.5, <=1.19.2
 pandas
 matplotlib
 scikit-learn>=0.22
