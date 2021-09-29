@@ -1,5 +1,7 @@
-import numpy as np
+import unittest
+
 import torch
+import numpy as np
 import torch.nn as nn
 from torch import sigmoid
 import matplotlib.pyplot as plt
@@ -46,26 +48,52 @@ def criterion_cross(labels, outputs):
     return out
 
 
-model = Net(1, 2, 1)
-learner = Learner(model=model,
-                  num_epochs=501,
-                  patience=50,
-                  batch_size=1,
-                  shuffle=False)
-learner.use_cuda = False
-learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-learner.loss = criterion_cross
+def make_learner(epochs=501, use_cuda=False):
+    model = Net(1, 2, 1)
+    learner = Learner(model=model,
+                      num_epochs=epochs,
+                      patience=50,
+                      batch_size=1,
+                      shuffle=False,
+                      use_cuda=use_cuda
+                      )
 
-X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
-Y = torch.zeros(X.shape[0])
-Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
+    learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    learner.loss = criterion_cross
+    return learner
 
 
-h = learner.fit(x=X,
-                y=Y,
-                callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
-                )
-m = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
-assert len(m) == 3
-p = learner.predict(X, y=Y, name='training')
-assert isinstance(p, np.ndarray)
+def get_xy():
+    X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
+    Y = torch.zeros(X.shape[0])
+    Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
+    return X, Y
+
+
+class TestLearner(unittest.TestCase):
+
+    def test_docstring(self):
+        learner = make_learner()
+        X, Y = get_xy()
+
+
+        learner.fit(x=X,
+                        y=Y,
+                        callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
+                        )
+        m = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
+        assert len(m) == 3
+        p = learner.predict(X, y=Y, name='training')
+        assert isinstance(p, np.ndarray)
+
+
+    def test_use_cuda(self):
+        learner = make_learner(epochs=5, use_cuda=True)
+        assert next(learner.model.parameters()).is_cuda
+
+        X, Y = get_xy()
+
+        learner.fit(x=X, y=Y)
+
+if __name__ == "__main__":
+    unittest.main()

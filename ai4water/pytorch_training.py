@@ -17,6 +17,11 @@ try:
 except ModuleNotFoundError:
     to_torch_dataset, TorchMetrics = None, None
 
+if torch is not None:
+    from .pytorch_attributes import LOSSES
+else:
+    LOSSES = {}
+
 from .utils.utils import dateandtime_now, find_best_weight
 from ai4water.post_processing.SeqMetrics import RegressionMetrics
 from .utils.visualizations import regplot
@@ -81,6 +86,8 @@ class AttributeContainer(object):
 
     @loss.setter
     def loss(self, x):
+        if isinstance(x, str):
+            x = LOSSES[x.upper()]()
         self._loss = x
 
     @property
@@ -91,6 +98,11 @@ class AttributeContainer(object):
     def path(self, x):
         self._path = x
 
+    def _device(self):
+        if self.use_cuda:
+            return torch.device("cuda")
+        else:
+            return torch.device("cpu")
 
 class Learner(AttributeContainer):
     """Trains the pytorch model. Motivated from fastai"""
@@ -102,6 +114,7 @@ class Learner(AttributeContainer):
                  patience: int = 100,
                  shuffle: bool = True,
                  to_monitor: list = None,
+                 use_cuda:bool = False,
                  path: str = None,
                  wandb_config:dict = None,
                  verbosity=1,
@@ -110,6 +123,7 @@ class Learner(AttributeContainer):
         """
         Arguments:
             model : a pytorch model having following attributes and methods
+
                 - num_outs
                 - w_path
                 - `loss`
@@ -119,6 +133,7 @@ class Learner(AttributeContainer):
             patience : how many epochs to wait before stopping the training in
                 case `to_monitor` does not improve.
             shuffle :
+            use_cuda : whether to use cuda or not
             to_monitor : list of metrics to monitor
             path : path to save results/weights
             wandb_config : config for wandb
@@ -162,6 +177,9 @@ class Learner(AttributeContainer):
         """
         super().__init__(num_epochs, to_monitor, path=path, **kwargs)
 
+        if self.use_cuda:
+            model = model.to(self._device())
+
         self.model = model
         self.batch_size = batch_size
         self.shuffle = shuffle
@@ -174,11 +192,12 @@ class Learner(AttributeContainer):
 
         Arguments:
             x : Can be one of following
+
                 - an instance of torch.Dataset, y will be ignored
                 - an instance of torch.DataLoader, y will be ignored
                 - a torch tensor containing input data for each example
                 - a numpy array
-                - a list of numpy arrays
+                - a list of torch tensors or numpy arrays
             y : if `x` is torch tensor, then `y` is the label/target for
                 each corresponding example.
             validation_data : can be one of following:
@@ -227,11 +246,12 @@ class Learner(AttributeContainer):
         """Makes prediction on the given data
         Arguments:
             x : data on which to evalute. It can be
+
                 - a torch.utils.data.Dataset
                 - a torch.utils.data.DataLoader
                 - a torch.Tensor
                 - a numpy array
-                - a list of numpy arrays
+                - a list of torch tensors numpy arrays
             y : only relevent if `x` is torch.Tensor. It comprises labels for
                 correspoing x.
             batch_size : None means make prediction on whole data in one go
@@ -255,7 +275,7 @@ class Learner(AttributeContainer):
 
         for i, (batch_x, batch_y) in enumerate(loader):
 
-            batch_y, pred_y = self.__eval(batch_x, batch_y)
+            batch_y, pred_y = self.eval(batch_x, batch_y)
 
             true.append(batch_y.detach().cpu().numpy())
             pred.append(pred_y.detach().cpu().numpy())
@@ -265,8 +285,8 @@ class Learner(AttributeContainer):
 
         return true, pred
 
-    def __eval(self, batch_x, batch_y):
-
+    def eval(self, batch_x, batch_y):
+        """Calls the model with x and y data and returns trues and preds"""
         batch_x = batch_x if isinstance(batch_x, list) else [batch_x]
 
         batch_x = [tensor.float() for tensor in batch_x]
@@ -287,17 +307,22 @@ class Learner(AttributeContainer):
                  **kwargs
                  ):
         """Evaluates the `model` on the given data.
+
         Arguments:
             x : data on which to evalute. It can be
+
                 - a torch.utils.data.Dataset
                 - a torch.utils.data.DataLoader
                 - a torch.Tensor
+                - a numpy.ndarray
+                - a list of torch tensors numpy arrays
             y : only relevent if `x` is torch.Tensor. It comprises labels for
                 correspoing x.
             batch_size : None means make prediction on whole data in one go
             metrics : name of performance metric to measure. It can be a single metric
                 or a list of metrics. Allowed metrics are anyone from
-                AI4Water.utils.SeqMetrics.SeqMetrics.RegressionMetrics
+                `ai4water.post_processing.SeqMetrics.RegressionMetrics`
+            kwargs :
             """
         if isinstance(metrics, str):
             metrics = [metrics]
@@ -328,9 +353,13 @@ class Learner(AttributeContainer):
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
 
-            batch_y, pred_y = self.__eval(batch_x, batch_y)
+            batch_y, pred_y = self.eval(batch_x, batch_y)
 
-            loss = self.criterion(batch_y.float().view(len(batch_y), num_outs), pred_y.view(len(pred_y), num_outs))
+            if num_outs:
+                batch_y = batch_y.float().view(len(batch_y), num_outs)
+                pred_y = pred_y.view(len(pred_y), num_outs)
+
+            loss = self.criterion(batch_y, pred_y)
             loss = loss.float()
             loss.backward()
 
@@ -338,10 +367,11 @@ class Learner(AttributeContainer):
             self.optimizer.zero_grad()
 
             # calculate metrics for each mini-batch
-            er = TorchMetrics(batch_y, pred_y)
+            #er = TorchMetrics(batch_y, pred_y)
 
-            for k, v in epoch_losses.items():
-                v[i] = getattr(er, k)().detach().item()
+            #for k, v in epoch_losses.items():
+            #    v[i] = getattr(er, k)().detach().item()
+            epoch_losses['mse'][i] = loss.detach()
 
         # take the mean for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}
@@ -351,7 +381,6 @@ class Learner(AttributeContainer):
 
         if self.use_cuda:
             torch.cuda.empty_cache()
-
         return
 
     def validate_for_epoch(self):
@@ -363,7 +392,7 @@ class Learner(AttributeContainer):
 
             for i, (batch_x, batch_y) in enumerate(self.val_loader):
 
-                batch_y, pred_y = self.__eval(batch_x, batch_y)
+                batch_y, pred_y = self.eval(batch_x, batch_y)
 
                 # calculate metrics for each mini-batch
                 er = TorchMetrics(batch_y, pred_y)
