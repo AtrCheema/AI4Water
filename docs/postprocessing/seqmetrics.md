@@ -1,11 +1,11 @@
 **`SeqMetrics`**
-::: ai4water.post_processing.SeqMetrics.SeqMetrics.Metrics
+::: ai4water.post_processing.SeqMetrics.Metrics
     handler: python
     rendering:
         show_root_heading: true
 
 **`RegressionMetrics`**
-::: ai4water.post_processing.SeqMetrics.SeqMetrics.RegressionMetrics
+::: ai4water.post_processing.SeqMetrics.RegressionMetrics
     handler: python
     rendering:
         show_root_heading: true

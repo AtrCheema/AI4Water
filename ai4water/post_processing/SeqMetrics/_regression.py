@@ -17,7 +17,7 @@ class RegressionMetrics(Metrics):
     Example
     ---------
     ```python
-    import numpy as np
+    >>>import numpy as np
     >>>from ai4water.post_processing.SeqMetrics import RegressionMetrics
     >>>t = np.random.random(10)
     >>>p = np.random.random(10)

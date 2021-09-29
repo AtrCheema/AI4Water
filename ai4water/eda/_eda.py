@@ -31,7 +31,7 @@ class EDA(Plot):
     - plot_data
     - plot_pcs
     - grouped_scatter
-    - feature_feature_corr
+    - correlation
     - stats
 
     Example
@@ -92,9 +92,9 @@ class EDA(Plot):
         """Shortcut to draw all plots.
 
         Arguments:
-            methods
-            cols
-            save
+            methods :
+            cols :
+            save :
         """
         all_methods = ['heatmap', 'plot_missing', 'plot_histograms', 'plot_data',
                        'plot_index', 'stats', 'box_plot']
@@ -102,7 +102,7 @@ class EDA(Plot):
         if isinstance(self.data, pd.DataFrame) and self.data.shape[-1] > 1:
             all_methods = all_methods + [# 'plot_pcs',
                                          'grouped_scatter',
-                                         'feature_feature_corr']
+                                         'correlation']
 
         if isinstance(methods, str):
             if methods == 'all':
@@ -515,10 +515,10 @@ class EDA(Plot):
                     self.save_or_show(save=save, fname=f'input_{prefix}_{str(yr)} _{str(week)}', where='data/weely')
         return
 
-    def feature_feature_corr(self, cols=None, remove_targets=False, st=None,
+    def correlation(self, cols=None, remove_targets=False, st=None,
                              en=None, save=None, **kwargs):
         """
-        Plots feature feature correlation.
+        Plots correlation between features.
 
         Arguments:
             cols :
@@ -533,9 +533,10 @@ class EDA(Plot):
         ```python
         >>>from ai4water.eda import EDA
         >>>vis = EDA(data)
-        >>>vis.feature_feature_corr(save=False)
+        >>>vis.correlation(save=False)
         ```
         """
+        # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman rank correlation etc
         if cols is None:
             if remove_targets:
                 cols = self.in_cols

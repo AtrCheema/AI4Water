@@ -17,7 +17,7 @@ from .utils import check_attributes, download, sanity_check
 from ai4water.utils.utils import dateandtime_now
 
 try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
-    from ai4water.utils.spatial_utils import plot_shapefile
+    from ai4water.pre_processing.spatial_utils import plot_shapefile
 except ModuleNotFoundError:
     plot_shapefile = None
 
@@ -381,12 +381,13 @@ class LamaH(Camels):
 
         """
         Arguments:
-            time_step :
-            data_type :
+            time_step : possible values are `daily` or `hourly`
+            data_type : possible values are `total_upstrm`, `diff_upstrm_all`
+                or 'diff_upstrm_lowimp'
         """
 
         assert time_step in self.time_steps, f"invalid time_step {time_step} given"
-        assert data_type in self._data_types
+        assert data_type in self._data_types, f"invalid data_type {data_type} given."
 
         self.time_step = time_step
         self.data_type = data_type
