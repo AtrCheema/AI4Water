@@ -1,9 +1,11 @@
 tensorflow # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 numpy<=1.19.2
 pandas
-matplotlib
-scikit-learn>=0.22  # lower versions don't have 3 models https://scikit-learn.org/stable/auto_examples/release_highlights/plot_release_highlights_0_23_0.html#generalized-linear-models-and-poisson-loss-for-gradient-boosting
+# lower versions don't have 3 models https://scikit-learn.org/stable/auto_examples/release_highlights/plot_release_highlights_0_23_0.html#generalized-linear-models-and-poisson-loss-for-gradient-boosting
+# todo sklearn version 1.0 having problem with some imports by scikit-optimize
+scikit-learn>=0.22, <=0.24.2
 seaborn
 h5py<2.11.0 # only if you want to save batches
 joblib
 requests
+matplotlib

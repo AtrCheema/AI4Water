@@ -43,5 +43,7 @@ site/
 # run time junk
 examples/.jovianrc
 examples/catboost_info/
+catboost_info/
+*catboost_info/
 examples/paper_figs/catboost_info/
 tests/__MACOSX/

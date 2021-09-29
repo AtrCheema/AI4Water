@@ -1,6 +1,5 @@
 import os
 import json
-from skopt.utils import dump
 from itertools import islice
 from pickle import PicklingError
 
@@ -26,6 +25,12 @@ except ImportError:
     plot_evaluations, plot_objective, plot_convergence = None, None, None
 
 try:
+    from skopt.utils import dump
+except ImportError:
+    dump = None
+
+
+try:
     from optuna.distributions import CategoricalDistribution, UniformDistribution, IntLogUniformDistribution
     from optuna.distributions import IntUniformDistribution, LogUniformDistribution
 except ImportError:
@@ -41,10 +46,11 @@ class Counter:
 
 class Real(_Real, Counter):
     """
-    This class is used for the parameters which have continuous real values
+    This class is used for the parameters which have fractional values
     such as real values from 1.0 to 3.5.
-    This class extends the Real class of Skopt so that it has an attribute grid which then
-    can be fed to optimization algorithm to create grid space.
+    This class extends the `Real` class of Skopt so that it has an attribute grid which then
+    can be fed to optimization algorithm to create grid space. It also adds several further
+    methods to it.
 
     Attributes
     ------------
@@ -57,6 +63,13 @@ class Real(_Real, Counter):
     - suggest
     - to_optuna
     - serialize
+
+    Example
+    ----------
+    ```python
+    >>>from ai4water.hyper_opt import Real
+    >>>lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
+    ```
     """
     def __init__(self,
                  low: float = None,
@@ -165,6 +178,12 @@ class Integer(_Integer, Counter):
     - to_optuna
     - serialize
 
+    Example
+    ----------
+    ```python
+    >>>from ai4water.hyper_opt import Integer
+    >>>units = Integer(low=16, high=128, name='units')
+    ```
     """
     def __init__(self,
                  low: int = None,
@@ -268,6 +287,13 @@ class Categorical(_Categorical):
     - suggest
     - to_optuna
     - serialize
+
+    Example
+    ----------
+    ```python
+    >>> from ai4water.hyper_opt import Categorical
+    >>> activations = Categorical(categories=['relu', 'tanh', 'sigmoid'], name='activations')
+    ```
     """
     @property
     def grid(self):
@@ -857,11 +883,10 @@ class SerializeSKOptResults(object):
 
         mods = []
         for model in self.results['models']:
-            mod = {k: Jsonize(v)() for k, v in model.__dict__.items() if k in ['noise',
-                         'alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
-                         '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train',
-                                                                               'log_marginal_likelihood',
-                         'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
+            mod = {k: Jsonize(v)() for k, v in model.__dict__.items() if k in [
+                'noise','alpha', 'optimizer', 'n_restarts_optimizer', 'normalize_y', 'copy_X_train', 'random_state',
+                '_rng', 'n_features_in', '_y_tain_mean', '_y_train_std', 'X_train', 'y_train',
+                'log_marginal_likelihood', 'L_', 'K_inv', 'alpha', 'noise_', 'K_inv_', 'y_train_std_', 'y_train_mean_']}
 
             mod['kernel'] = self.kernel(model.kernel)
             mods.append({model.__class__.__name__: mod})

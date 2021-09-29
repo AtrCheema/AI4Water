@@ -13,7 +13,7 @@ with open('version.py') as fv:
 min_requirements = [
     'numpy<=1.19.2',
     'seaborn',
-    'scikit-learn',
+    'scikit-learn<=0.24.2',
     'pandas',
     'matplotlib',
     'scikit-optimize',
