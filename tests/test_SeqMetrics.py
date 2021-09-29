@@ -7,6 +7,7 @@ import numpy as np
 
 from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.post_processing.SeqMetrics.utils import plot_metrics
+from ai4water.post_processing.SeqMetrics.utils import list_subclass_methods
 
 
 t = np.random.random((20, 1))
@@ -97,6 +98,25 @@ class test_errors(unittest.TestCase):
     def test_class_all(self):
         all_metrics = class_metrics.calculate_all()
         assert len(all_metrics) > 1
+        return
+
+    def test_hydro_metrics(self):
+        hydr_metrics = er.hydro_metrics()
+        assert len(hydr_metrics) == len(er._hydro_metrics())
+        return
+
+    def test_list_subclass_methods(self):
+        class DP:
+            def _pa(self): pass
+
+        class D(DP):
+            def a(self): pass
+            def _a(self): pass
+            def b(self): pass
+
+        self.assertEqual(len(list_subclass_methods(D, True)), 2)
+        self.assertEqual(len(list_subclass_methods(D, True, False)), 3)
+        self.assertEqual(len(list_subclass_methods(D, True, False, ['b'])), 2)
         return
 
 
