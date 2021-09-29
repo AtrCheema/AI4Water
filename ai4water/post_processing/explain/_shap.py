@@ -10,9 +10,13 @@ import scipy as sp
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from tensorflow.keras.layers import Flatten
-from tensorflow.keras.models import Model
-import tensorflow.keras.backend as K
+
+try:
+    from tensorflow.keras.layers import Flatten
+    from tensorflow.keras.models import Model
+    import tensorflow.keras.backend as K
+except ModuleNotFoundError:
+    Flatten, Model, K = None, None, None
 
 from ai4water.backend import get_sklearn_models
 from ._explain import ExplainerMixin
@@ -165,7 +169,9 @@ class ShapMLExplainer(ExplainerMixin):
         return explainer
 
     def _infer_explainer_to_use(self, train_data, num_means):
-        """tries to infer explainer to use from the type of model."""
+        """Tries to infer explainer to use from the type of model."""
+        # todo, Fig 3 of Lundberberg's Nature MI paper shows that TreeExplainer
+        # performs better than KernelExplainer, so try to use supports_model_with_masker
 
         if self.model.__class__.__name__ in ["XGBRegressor", "LGBMRegressor", "CatBoostRegressor",
                                              "XGBRFRegressor"]:
@@ -270,7 +276,7 @@ class ShapMLExplainer(ExplainerMixin):
         """dependence plot for a single feature."""
         plt.close('all')
 
-        if len(name)>150:  # matplotlib raises error if the length of filename is too large
+        if len(name) > 150:  # matplotlib raises error if the length of filename is too large
             name = name[0:150]
 
         shap.dependence_plot(feature, self.shap_values, self.data, show=False)
