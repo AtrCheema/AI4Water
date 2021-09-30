@@ -1,5 +1,11 @@
 import unittest
 
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 import torch
 import numpy as np
 import torch.nn as nn
@@ -36,6 +42,7 @@ def PlotStuff(model, train_data, epoch, **kwargs):
     pred_y = model(x)
     x = x.detach().view(-1,)
 
+    plt.close('all')
     plt.plot(x, pred_y.detach().view(-1,), label=('epoch ' + str(epoch)))
     plt.plot(x, torch.stack(y).view(-1,), 'r')
     plt.xlabel('x')
@@ -89,7 +96,9 @@ class TestLearner(unittest.TestCase):
 
     def test_use_cuda(self):
         learner = make_learner(epochs=5, use_cuda=True)
-        assert next(learner.model.parameters()).is_cuda
+        import torch
+        if torch.cuda.is_available():
+            assert next(learner.model.parameters()).is_cuda
 
         X, Y = get_xy()
 

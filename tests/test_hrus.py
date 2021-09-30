@@ -1,4 +1,8 @@
 import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
 
 from ai4water.pre_processing.spatial_processing import MakeHRUs
 
@@ -9,7 +13,9 @@ SLOPE = {0: '0-13',
          #3: '39-53'
          }
 
-shapefile_paths = os.path.join(os.path.dirname(os.getcwd()), 'examples', 'paper_figs', 'shapefiles')
+shapefile_paths = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0]))),
+                               'examples', 'paper_figs', 'shapefiles')
+
 Soil_shp = os.path.join(shapefile_paths, 'soil.shp')
 
 SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
@@ -40,17 +46,18 @@ hru_definitions = {
 }
 
 for hru_def, n_merges in hru_definitions.items():
-    print(f"{'*'*10}{hru_def}{'*'*10}")
+    #print(f"{'*'*10}{hru_def}{'*'*10}")
     hru_object = MakeHRUs(hru_def,
                           index=years if 'lu' in hru_def else years_none,
                           subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'} if 'sub' in hru_def else None,
                           soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'} if 'soil' in hru_def else None,
-                          slope_shape={'shapefile': slope_shp, 'feature': 'percent'} if 'slope' in hru_def else None
+                          slope_shape={'shapefile': slope_shp, 'feature': 'percent'} if 'slope' in hru_def else None,
+                          verbosity=0
                           )
 
     hru_object.call(plot_hrus=False if 'slope' in hru_def else False)
 
     for yr in years:
-        hru_object.draw_pie(yr, title=False, n_merge=n_merges, save=False, textprops={'fontsize': '12'})
+        hru_object.draw_pie(yr, title=False, n_merge=n_merges, save=False, textprops={'fontsize': '12'}, show=False)
 
-    hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=False)
+    hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=False, show=False)
