@@ -178,7 +178,8 @@ class MakeHRUs(object):
             shp_reader = shapefile.Reader(shp_file)
             _, shp_geom_list = get_areas_geoms(shp_reader)
             if 'sub' not in self.hru_definition:
-                shp_geom_list = check_shp_validity(shp_geom_list, len(shp_reader.shapes()), name=shp_name)
+                shp_geom_list = check_shp_validity(shp_geom_list, len(shp_reader.shapes()), name=shp_name,
+                                                   verbosity=self.verbosity)
 
             self.tot_cat_area = get_total_area(shp_geom_list)
 
@@ -210,7 +211,8 @@ class MakeHRUs(object):
             _, second_shp_geom_list = get_areas_geoms(second_shp_reader)
 
             if 'sub' not in self.hru_definition:
-                second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()), name=second_shp_name)
+                second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()),
+                                                          name=second_shp_name, verbosity=self.verbosity)
                 self.tot_cat_area = get_total_area(first_shp_geom_list)
             else:
                 self.tot_cat_area = get_total_area(second_shp_geom_list)
@@ -257,7 +259,9 @@ class MakeHRUs(object):
             _, third_shp_geom_list = get_areas_geoms(third_shp_reader)
 
             if 'sub' not in self.hru_definition:  # todo
-                second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()), name=second_shp_name)
+                second_shp_geom_list = check_shp_validity(second_shp_geom_list, len(second_shp_reader.shapes()),
+                                                          name=second_shp_name,
+                                                          verbosity=self.verbosity)
                 self.tot_cat_area = get_total_area(first_shp_geom_list)
             else:
                 self.tot_cat_area = get_total_area(second_shp_geom_list)
@@ -391,7 +395,7 @@ class MakeHRUs(object):
             plt.savefig('plots/' + name)
         plt.show()
 
-    def plot_as_ts(self, save=False, name=None, **kwargs):
+    def plot_as_ts(self, save=False, name=None, show=True, **kwargs):
         """hru_object.plot_as_ts(save=True, min_xticks=3, max_xticks=4"""
 
         figsize = kwargs.get('figsize', (12, 6))
@@ -429,7 +433,9 @@ class MakeHRUs(object):
             if name is None:
                 name = self.hru_definition
             plt.savefig(f'{name}_hru_as_ts.png', dpi=300, bbox_inches=bbox_inches)
-        plt.show()
+
+        if show:
+            plt.show()
 
         return
 
@@ -515,6 +521,7 @@ class MakeHRUs(object):
                  title:bool=False,
                  save:bool=False,
                  name:str=None,
+                 show:bool = True,
                  **kwargs):
         """
         todo draw nested pie chart for all years
@@ -573,5 +580,7 @@ class MakeHRUs(object):
         if save:
             if name is None: name = self.hru_definition
             plt.savefig(f'{len(self.hru_names)}hrus_for_{year}_{name}.png', dpi=300)
-        plt.show()
+
+        if show:
+            plt.show()
         return

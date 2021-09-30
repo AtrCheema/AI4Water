@@ -69,7 +69,7 @@ def get_areas_geoms(shp_reader):
     return areas, geometries
 
 
-def check_shp_validity(geom_list, no_of_lus, name='landuse'):
+def check_shp_validity(geom_list, no_of_lus, name='landuse', verbosity=1):
     new_geom_list = [None] * no_of_lus  # a container for geometries of landuse shapefile with corrected topology
     for lu in range(no_of_lus):  # iterating over each landuse
         luf = geom_list[lu]
@@ -85,9 +85,9 @@ def check_shp_validity(geom_list, no_of_lus, name='landuse'):
     # checking the validity of each landuse once again to make sure that each landuse's is valid
     for lu in range(no_of_lus):
         sub_lu = new_geom_list[lu]
-        if sub_lu.is_valid:
+        if sub_lu.is_valid and verbosity:
             print('{} {} is valid now'.format(name, lu))
-        else:
+        elif verbosity:
             print('{} {} is still invalid'.format(name, lu))
     return new_geom_list
 
