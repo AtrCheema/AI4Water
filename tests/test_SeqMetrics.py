@@ -1,7 +1,9 @@
 import os
 import unittest
 import site   # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)))
+import sys
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
 
 import numpy as np
 
@@ -37,8 +39,8 @@ class_metrics = ClassificationMetrics(targets, predictions, categorical=True)
 class test_errors(unittest.TestCase):
 
     def test_radial_pots(self):
-        plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
-        plot_metrics(all_errors, plot_type='radial')
+        plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50, save_path=os.path.join(os.getcwd(), "results"))
+        plot_metrics(all_errors, plot_type='radial', save_path=os.path.join(os.getcwd(), "results"))
         return
 
     def test_attrs(self):

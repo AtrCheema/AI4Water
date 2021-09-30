@@ -1,7 +1,10 @@
-import os
 import site   # so that ai4water directory is in path
 import unittest
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 import numpy as np
 import pandas as pd

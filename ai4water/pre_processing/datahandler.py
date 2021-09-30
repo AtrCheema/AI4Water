@@ -1487,8 +1487,9 @@ class DataHandler(AttributeContainer):
         f.close()
         return cls(path, **config)
 
-    def _to_disk(self):
-        filepath = "data.h5"
+    def _to_disk(self, path=None):
+        path = path or os.path.join(os.getcwd(), "results")
+        filepath = os.path.join(path, "data.h5")
 
         f = h5py.File(filepath, mode='w')
 

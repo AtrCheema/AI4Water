@@ -1,8 +1,11 @@
 
-import os
 import unittest
 import site  # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 import tensorflow as tf
 import numpy as np

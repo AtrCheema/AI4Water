@@ -1,4 +1,9 @@
 import unittest
+import os
+import sys
+import site   # so that ai4water directory is in path
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
 
 from tensorflow.keras.layers import Input, Dense, LSTM
 from tensorflow.keras.models import Model

@@ -1,4 +1,10 @@
 import unittest
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 import pandas as pd
 

@@ -1,7 +1,9 @@
-import os
 import unittest
-import site   # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
 
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
 from ai4water.datasets import arg_beach, load_u1

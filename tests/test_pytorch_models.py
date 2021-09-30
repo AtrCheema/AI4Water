@@ -1,6 +1,8 @@
 import os
 import site   # so that AI4Water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import sys
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
 
 from ai4water.datasets import arg_beach, load_u1
 from ai4water.pytorch_models import HARHNModel, IMVModel

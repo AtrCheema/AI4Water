@@ -1,3 +1,9 @@
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 from ai4water import Model
 from ai4water.datasets import arg_beach
 
