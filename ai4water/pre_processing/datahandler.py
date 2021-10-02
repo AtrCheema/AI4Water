@@ -1658,9 +1658,9 @@ class MakeData(object):
             nans = int(nans.sum())
         if nans > 0:
             if self.allow_nan_labels == 2:
-                print("\n{} Allowing NANs in predictions {}\n".format(10 * '*', 10 * '*'))
+                if self.verbosity > 0: print("\n{} Allowing NANs in predictions {}\n".format(10 * '*', 10 * '*'))
             elif self.allow_nan_labels == 1:
-                print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
+                if self.verbosity>0: print("\n{} Ignoring examples whose all labels are NaNs {}\n".format(10 * '*', 10 * '*'))
                 idx = ~np.array([all([np.isnan(x) for x in label_y[i]]) for i in range(len(label_y))])
                 input_x = input_x[idx]
                 input_y = input_y[idx]
@@ -1923,7 +1923,8 @@ class SiteDistributedDataHandler(object):
                  validation_sites: list = None,
                  test_sites: list = None,
                  swap_axes: bool = True,
-                 allow_variable_len: bool = False
+                 allow_variable_len: bool = False,
+                 verbosity: int = 1
                  ):
         """
         Initiates data
@@ -2027,6 +2028,7 @@ class SiteDistributedDataHandler(object):
         self.swap_axes = swap_axes
         self.allow_variable_len = allow_variable_len
         self.dhs = {}
+        self.verbosity = verbosity
 
     def process_config(self, config):
         assert isinstance(config, dict)
@@ -2067,9 +2069,10 @@ class SiteDistributedDataHandler(object):
         x = self.stack(x, training_sites)
         y = self.stack(y, training_sites)
 
-        print(f"{'*' * 5} Training data {'*' * 5}")
-        print_something(x, 'x')
-        print_something(y, 'y')
+        if self.verbosity:
+            print(f"{'*' * 5} Training data {'*' * 5}")
+            print_something(x, 'x')
+            print_something(y, 'y')
 
         return x, y
 
@@ -2104,9 +2107,10 @@ class SiteDistributedDataHandler(object):
         x = self.stack(x, validation_sites)
         y = self.stack(y, validation_sites)
 
-        print(f"{'*' * 5} Validation data {'*' * 5}")
-        print_something(x, 'x')
-        print_something(y, 'y')
+        if self.verbosity:
+            print(f"{'*' * 5} Validation data {'*' * 5}")
+            print_something(x, 'x')
+            print_something(y, 'y')
 
         return x, y
 
@@ -2142,9 +2146,10 @@ class SiteDistributedDataHandler(object):
         x = self.stack(x, test_sites)
         y = self.stack(y, test_sites)
 
-        print(f"{'*' * 5} Test data {'*' * 5}")
-        print_something(x, 'x')
-        print_something(y, 'y')
+        if self.verbosity:
+            print(f"{'*' * 5} Test data {'*' * 5}")
+            print_something(x, 'x')
+            print_something(y, 'y')
 
         return x, y
 
