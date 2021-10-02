@@ -866,6 +866,9 @@ class Model(MODEL, BaseModel):
             # we need to build ai4water's Model class
             config, path = BaseModel._get_config_and_path(cls, _config, kwargs.get('make_new_path', False))
 
+            if 'verbosity' in kwargs:
+                config['config']['verbosity'] = kwargs.pop('verbosity')
+
             return cls(**config['config'],
                    data=data,
                    path=path,
