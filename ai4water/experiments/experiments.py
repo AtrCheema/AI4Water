@@ -476,7 +476,8 @@ Available cases are {self.models} and you wanted to include
             save : whether to save the plot or not
             run_type : which run to use, valid values are `training`, `test` and `validation`.
             orient : valid values are `horizontal` or `vertical`
-            kwargs :
+            kwargs : any of the following keyword arguments
+
                 rotation :
                 name :
                 dpi :
@@ -572,7 +573,7 @@ Available cases are {self.models} and you wanted to include
                 performance matric.
             name str:
                 name of the saved file.
-            show :
+            show : whether to show the plot at the end or not?
 
             kwargs :
                 fig_height:
@@ -835,11 +836,11 @@ Available cases are {self.models} and you wanted to include
         """Plots the box whisker plots of the cross validation scores.
 
         Arguments:
-            show :
-            name :
-            include :
-            exclude :
-            kwargs :
+            show : whether to show the plot or not
+            name : name of the plot
+            include : models to include
+            exclude : models to exclude
+            kwargs : any of the following keyword arguments
 
                 - notch
                 - vert

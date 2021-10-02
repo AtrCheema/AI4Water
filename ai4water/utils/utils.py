@@ -555,7 +555,7 @@ class Jsonize(object):
         if obj is Ellipsis:
             return {'class_name': '__ellipsis__'}
 
-        if isinstance(obj, wrapt.ObjectProxy):
+        if wrapt and isinstance(obj, wrapt.ObjectProxy):
             return obj.__wrapped__
 
         # last solution, it must be of of string type

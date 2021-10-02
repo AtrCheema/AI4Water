@@ -73,7 +73,7 @@ using github link
 
 	python -m pip install git+https://github.com/AtrCheema/AI4Water.git
 
-using setup file, go to folder where repo is downloaded
+or using setup file, go to folder where repo is downloaded
 
     python setup.py install
 
