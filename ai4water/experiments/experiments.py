@@ -23,6 +23,8 @@ if tf is not None:
         print(f"Switching to functional API due to tensorflow version {tf.__version__} for experiments")
     else:
         from ai4water import Model
+else:
+    from ai4water import Model
 
 SEP = os.sep
 

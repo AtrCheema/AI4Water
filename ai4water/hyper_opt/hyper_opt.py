@@ -72,6 +72,8 @@ if tf is not None:
         print(f"Switching to functional API due to tensorflow version {tf.__version__} for hpo")
     else:
         from ai4water import Model
+else:
+    from ai4water import Model
 
 try:
     from ai4water.hyper_opt.testing import plot_param_importances

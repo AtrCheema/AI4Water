@@ -3,12 +3,16 @@ from typing import Union
 from collections import OrderedDict
 
 
-import shapefile
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+try:
+    import shapefile
+except ModuleNotFoundError:
+    shapefile = None
 
 from .spatial_utils import find_records
 from .spatial_utils import plot_shapefile
