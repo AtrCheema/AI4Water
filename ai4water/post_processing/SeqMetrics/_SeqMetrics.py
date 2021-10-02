@@ -91,6 +91,10 @@ class Metrics(object):
         self.remove_zero = remove_zero
         self.remove_neg = remove_neg
 
+    @staticmethod
+    def _minimal()->list:
+        raise NotImplementedError
+
     @property
     def replace_nan(self):
         return self._replace_nan
@@ -201,6 +205,22 @@ class Metrics(object):
                 json.dump(errors, fp, sort_keys=True, indent=4)
 
         return errors
+
+    def calculate_minimal(self):
+        """
+        Calculates some basic metrics.
+
+        Returns
+        -------
+        dict
+            Dictionary with all metrics
+        """
+        metrics = {}
+
+        for metric in self._minimal():
+            metrics[metric] = getattr(self, metric)()
+
+        return metrics
 
     def _error(self, true=None, predicted=None):
         """ simple difference """

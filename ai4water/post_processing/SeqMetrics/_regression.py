@@ -33,7 +33,8 @@ class RegressionMetrics(Metrics):
         args and kwargs go to parent class 'Metrics'.
         """
         super().__init__(*args, **kwargs)
-        self.all_methods = list_subclass_methods(RegressionMetrics, True, additional_ignores=['hydro_metrics'])
+        self.all_methods = list_subclass_methods(RegressionMetrics, True,
+                                                 additional_ignores=['calculate_hydro_metrics'])
 
         # if arrays contain negative values, following three errors can not be computed
         for array in [self.true, self.predicted]:
@@ -48,14 +49,19 @@ class RegressionMetrics(Metrics):
                 self.all_methods = [m for m in self.all_methods if m not in ('mean_gamma_deviance',
                                                                              'mean_poisson_deviance')]
 
-    @staticmethod
-    def _hydro_metrics() -> list:
+    def _hydro_metrics(self) -> list:
         """Names of metrics related to hydrology"""
 
-        return ['r2', 'mape', 'nrmse', 'corr_coeff', 'rmse', 'mae', 'mse', 'mpe', 'mase',
+        return self._minimal() + [
                 'fdc_flv', 'fdc_fhv',
                 'kge', 'kge_np', 'kge_mod', 'kge_bound', 'kgeprime_c2m', 'kgenp_bound',
                 'nse', 'nse_alpha', 'nse_beta', 'nse_mod', 'nse_bound']
+
+    @staticmethod
+    def _minimal() -> list:
+        """some minimal and basic metrics"""
+
+        return ['r2', 'mape', 'nrmse', 'corr_coeff', 'rmse', 'mae', 'mse', 'mpe', 'mase']
 
     def abs_pbias(self) -> float:
         """Absolute Percent bias"""
@@ -434,7 +440,7 @@ class RegressionMetrics(Metrics):
         """ Geometric Mean Relative Absolute Error """
         return _geometric_mean(np.abs(self._relative_error(benchmark)))
 
-    def hydro_metrics(self):
+    def calculate_hydro_metrics(self):
         """
         Calculates all metrics for hydrological data.
 

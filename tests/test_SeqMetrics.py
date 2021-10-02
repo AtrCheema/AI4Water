@@ -2,7 +2,8 @@ import os
 import unittest
 import site   # so that ai4water directory is in path
 import sys
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print('ai4w_dir', ai4_dir)
 site.addsitedir(ai4_dir)
 
 import numpy as np
@@ -103,8 +104,13 @@ class test_errors(unittest.TestCase):
         return
 
     def test_hydro_metrics(self):
-        hydr_metrics = er.hydro_metrics()
+        hydr_metrics = er.calculate_hydro_metrics()
         assert len(hydr_metrics) == len(er._hydro_metrics())
+        return
+
+    def test_minimal(self):
+        minimal_metrics = er.calculate_minimal()
+        assert len(minimal_metrics) == len(er._minimal())
         return
 
     def test_list_subclass_methods(self):

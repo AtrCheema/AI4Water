@@ -21,8 +21,18 @@ class ClassificationMetrics(Metrics):
         self.pred_labels = self._pred_labels()
         self.pred_logits = self._pred_logits()
 
-        all_methods = list_subclass_methods(ClassificationMetrics, True)
-        self.all_methods = [m for m in all_methods if not m.startswith('_')]
+        self.all_methods = list_subclass_methods(ClassificationMetrics, True)
+        #self.all_methods = [m for m in all_methods if not m.startswith('_')]
+
+    @staticmethod
+    def _minimal() -> list:
+        """some minimal and basic metrics"""
+        return list_subclass_methods(ClassificationMetrics, True)
+
+    @staticmethod
+    def _hydro_metrics() -> list:
+        """some minimal and basic metrics"""
+        return list_subclass_methods(ClassificationMetrics, True)
 
     def _num_classes(self):
         return len(self._classes())
