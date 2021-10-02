@@ -1,6 +1,5 @@
 import os
 import json
-import wrapt
 import pprint
 import datetime
 import warnings
@@ -17,6 +16,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
+
+try:
+    import wrapt
+except ModuleNotFoundError:
+    wrapt = None
 
 
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
@@ -509,7 +513,7 @@ class Jsonize(object):
         if self.obj is Ellipsis:
             return {'class_name': '__ellipsis__'}
 
-        if isinstance(self.obj, wrapt.ObjectProxy):
+        if wrapt and  isinstance(self.obj, wrapt.ObjectProxy):
             return self.obj.__wrapped__
 
         return str(self.obj)

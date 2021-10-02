@@ -1,10 +1,15 @@
 import os
 import ssl
-import requests
+
 import tempfile
 import sys, shutil
 import urllib.request as ulib
 import urllib.parse as urlparse
+
+try:
+    import requests
+except ModuleNotFoundError:
+    requests = None
 
 
 # following files must exist withing data folder for CAMELS-GB data
