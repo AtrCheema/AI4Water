@@ -631,6 +631,7 @@ class BaseModel(NN, Plots):
     def process_class_results(self,
                               true: np.ndarray,
                               predicted: np.ndarray,
+                              metrics="minimal",
                               prefix=None,
                               index=None,
                               user_defined_data: bool = False
@@ -661,7 +662,7 @@ class BaseModel(NN, Plots):
 
                 metrics = ClassificationMetrics(_true, _pred, categorical=False)
                 save_config_file(fpath,
-                                 errors=metrics.calculate_all(),
+                                 errors=getattr(metrics, f"calculate_{metrics}")(),
                                  name=f"{prefix}_{_class}_{dateandtime_now()}.json"
                                  )
 
@@ -675,6 +676,7 @@ class BaseModel(NN, Plots):
             self,
             true: np.ndarray,
             predicted: np.ndarray,
+            metrics="minimal",
             prefix=None,
             index=None,
             remove_nans=True,
@@ -689,7 +691,10 @@ class BaseModel(NN, Plots):
 
         if user_defined_data:
             # when data is user_defined, we don't know what out_cols, and forecast_len are
-            out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
+            if predicted.ndim == 1:
+                out_cols = ['output']
+            else:
+                out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
             forecast_len = 1
             true, predicted = self.maybe_not_3d_data(true, predicted, forecast_len)
         else:
@@ -734,7 +739,7 @@ class BaseModel(NN, Plots):
                     p = p.values[~nan_idx]
 
                 errors = RegressionMetrics(t, p)
-                errs[out + '_errors_' + str(h)] = errors.calculate_all()
+                errs[out + '_errors_' + str(h)] = getattr(errors, f'calculate_{metrics}')()
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
 
@@ -1109,6 +1114,7 @@ class BaseModel(NN, Plots):
                 y=None,
                 prefix: str = None,
                 process_results: bool = True,
+                metrics:str = "minimal",
                 **kwargs
                 ) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -1121,25 +1127,31 @@ class BaseModel(NN, Plots):
             process_results : post processing of results
             prefix : prefix used with names of saved results
             kwargs : any keyword argument for `fit` method.
+            metrics : only valid if process_results is True. The metrics to calculate.
+                Valid values are 'minimal', 'all', 'hydro_metrics'
         Returns:
             a tuple of arrays. The first is true and the second is predicted.
             If `x` is given but `y` is not given, then, first array which is
             returned is None.
         """
         assert data in ['training', 'test', 'validation']
+        assert metrics in ("minimal", "all", "hydro_metrics")
 
-        return self.call_predict(data=data, x=x, y=y, process_results=process_results, **kwargs)
+        return self.call_predict(data=data, x=x, y=y, process_results=process_results, metrics=metrics, **kwargs)
 
     def call_predict(self,
                      data='test',
                      x=None,
                      y=None,
                      process_results=True,
+                     metrics="minimal",
                      **kwargs):
 
         transformation_key = '5'
 
         if x is None:
+            if self.data is None:
+                raise ValueError("You must specify the data on which to make prediction")
             user_defined_data = False
             prefix = data
             data = getattr(self, f'{data}_data')(key=transformation_key)
@@ -1179,6 +1191,9 @@ class BaseModel(NN, Plots):
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
 
+        if true_outputs is None:
+            process_results = False
+
         if self.quantiles is None:
 
             # it true_outputs and predicted are dictionary of len(1) then just get the values
@@ -1187,11 +1202,14 @@ class BaseModel(NN, Plots):
 
             if process_results:
                 if self.problem == 'regression':
-                    self.process_regres_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index,
+                    self.process_regres_results(true_outputs, predicted,
+                                                metrics=metrics,
+                                                prefix=prefix + '_', index=dt_index,
                                                 user_defined_data=user_defined_data)
                 else:
                     self.process_class_results(true_outputs,
                                                predicted,
+                                               metrics=metrics,
                                                prefix=prefix,
                                                index=dt_index,
                                                user_defined_data=user_defined_data)
