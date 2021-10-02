@@ -1,7 +1,8 @@
 
-from .experiments import Experiments
+from .experiments import Experiments, Model
 from ai4water.hyper_opt import Real, Categorical, Integer
 from ai4water.post_processing.SeqMetrics import ClassificationMetrics
+
 
 class MLClassificationExperiments(Experiments):
     """Runs classification models for comparison, with or without

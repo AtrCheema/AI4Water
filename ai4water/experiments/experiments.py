@@ -72,7 +72,8 @@ class Experiments(object):
     def __init__(self,
                  cases: dict = None,
                  exp_name: str = None,
-                 num_samples: int = 5
+                 num_samples: int = 5,
+                 verbosity: int = 1,
                  ):
         """
         Arguments:
@@ -80,11 +81,13 @@ class Experiments(object):
             exp_name : name of experiment, used to define path in which results are saved
             num_samples : only relevent when you wan to optimize hyperparameters of models
                 using `grid` method
+            verbosity : determines the amount of information
         """
         self.opt_results = None
         self.optimizer = None
         self.exp_name = 'Experiments_' + str(dateandtime_now()) if exp_name is None else exp_name
         self.num_samples = num_samples
+        self.verbosity = verbosity
 
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
         if cases is None:
@@ -222,7 +225,7 @@ class Experiments(object):
                                               **config)
 
                 if run_type == 'dry_run':
-                    print(f"running  {model_type} model")
+                    if self.verbosity > 0: print(f"running  {model_type} model")
                     train_results, test_results = objective_fn()
                     self._populate_results(model_name, train_results, test_results)
                 else:
@@ -232,7 +235,7 @@ class Experiments(object):
                         getattr(self, model_type)()
 
                     opt_dir = os.path.join(os.getcwd(), f"results{SEP}{self.exp_name}{SEP}{model_name}")
-                    print(f"optimizing  {model_type} using {opt_method} method")
+                    if self.verbosity > 0: print(f"optimizing  {model_type} using {opt_method} method")
                     self.optimizer = HyperOpt(opt_method,
                                               objective_fn=objective_fn,
                                               param_space=self.param_space,
@@ -240,6 +243,7 @@ class Experiments(object):
                                               opt_path=opt_dir,
                                               num_iterations=num_iterations,  # number of iterations
                                               x0=self.x0,
+                                              verbosity=self.verbosity,
                                               **hpo_kws
                                               )
 
@@ -400,7 +404,8 @@ class Experiments(object):
         include = self._check_include_arg(include)
 
         for m in include:
-            filtered[m] = to_filter[m]
+            if m in to_filter:
+                filtered[m] = to_filter[m]
 
         return filtered
 
@@ -537,6 +542,7 @@ Available cases are {self.models} and you wanted to include
             sort_by: str = 'test',
             ignore_nans: bool = True,
             name: str = 'ErrorComparison',
+            show: bool = True,
             **kwargs
     ) -> dict:
         """
@@ -564,6 +570,8 @@ Available cases are {self.models} and you wanted to include
                 performance matric.
             name str:
                 name of the saved file.
+            show :
+
             kwargs :
                 fig_height:
                 fig_width:
@@ -660,7 +668,9 @@ Available cases are {self.models} and you wanted to include
         if save:
             fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}_{appendix}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
-        plt.show()
+
+        if show:
+            plt.show()
         return models
 
     def plot_losses(self,
@@ -828,10 +838,11 @@ Available cases are {self.models} and you wanted to include
             include :
             exclude :
             kwargs :
-                notch
-                vert
-                figsize
-                bbox_inches
+
+                - notch
+                - vert
+                - figsize
+                - bbox_inches
 
         This plot is only available if cross_validation was set to True during
         fit().
@@ -926,6 +937,7 @@ class TransformationExperiments(Experiments):
                  exp_name: str = None,
                  num_samples: int = 5,
                  ai4water_model=None,
+                 verbosity:int = 1,
                  **model_kws):
         self.data = data
         self.param_space = param_space
@@ -937,7 +949,8 @@ class TransformationExperiments(Experiments):
 
         super().__init__(cases=cases,
                          exp_name=exp_name,
-                         num_samples=num_samples)
+                         num_samples=num_samples,
+                         verbosity=verbosity)
 
     def update_paras(self, **suggested_paras):
         raise NotImplementedError(f"""
@@ -955,7 +968,7 @@ be used to build ai4water's Model class.
 
         suggested_paras = jsonize(suggested_paras)
 
-        verbosity = 0
+        verbosity = self.verbosity
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
@@ -992,7 +1005,7 @@ be used to build ai4water's Model class.
 
     def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
 
-        model = self.ai4water_model.from_config(config_path=config_path, data=self.data)
+        model = self.ai4water_model.from_config(config_path=config_path, data=self.data, verbosity=self.verbosity)
         model.update_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)

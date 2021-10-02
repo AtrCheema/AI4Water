@@ -5,6 +5,12 @@ import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
+from utils import tensorflow_shutup
+tensorflow_shutup()
+
+import warnings
+warnings.filterwarnings("ignore")
+
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
 from ai4water.datasets import arg_beach, load_u1
 from ai4water.hyper_opt import Categorical, Integer, Real
@@ -23,20 +29,21 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(
             data=df, input_features=input_features, output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features}
+            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features},
+            verbosity=0
         )
         exclude = []
 
         comparisons.fit(run_type="dry_run", exclude=exclude)
-        comparisons.compare_errors('r2')
-        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01)
+        comparisons.compare_errors('r2', show=False)
+        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01, show=False)
         self.assertGreater(len(best_models), 1), len(best_models)
         return
 
     def test_optimize(self):
         best_models = ['GaussianProcessRegressor',
-                       'HistGradientBoostingRegressor',
-                       'ADABoostRegressor',
+                       #'HistGradientBoostingRegressor',
+                       #'ADABoostRegressor',
                        #'RadiusNeighborsRegressor',  # todo error when using radusneighborsregressor
                        'XGBoostRFRegressor'
             ]
@@ -45,11 +52,34 @@ class TestExperiments(unittest.TestCase):
             data=df,
             input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
-            exp_name="BestMLModels")
+            exp_name="BestMLModels",
+        verbosity=0)
         comparisons.num_samples = 2
-        comparisons.fit(run_type="optimize", opt_method="random", include=best_models, post_optimize='train_best')
-        comparisons.compare_errors('r2')
-        comparisons.taylor_plot()
+        comparisons.fit(run_type="optimize", opt_method="random",
+                        num_iterations=4,
+                        include=best_models, post_optimize='train_best')
+        comparisons.compare_errors('r2', show=False)
+        comparisons.taylor_plot(show=False)
+        return
+
+    def test_cross_val(self):
+
+        comparisons = MLRegressionExperiments(
+            data=df,
+            input_features=input_features, output_features=outputs,
+            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
+            cross_validator = {"KFold": {"n_splits": 5}},
+            exp_name="MLRegrCrossVal",
+        verbosity=0)
+        comparisons.fit(cross_validate=True, include=['GaussianProcessRegressor',
+                       'HistGradientBoostingRegressor',
+                       'XGBoostRFRegressor'])
+        comparisons.compare_errors('r2', show=False)
+        comparisons.taylor_plot(show=False)
+        comparisons.plot_cv_scores(show=False)
+        comparisons.taylor_plot(show=False, include=['GaussianProcessRegressor', 'XGBoostRFRegressor'])
+        comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor', 'XGBoostRFRegressor'])
+        return
 
     def test_from_config(self):
 
@@ -58,7 +88,8 @@ class TestExperiments(unittest.TestCase):
             input_features=input_features,
             output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'features': input_features, 'imputer_args': {'strategy': 'mean'}},
-            exp_name="BestMLModels")
+            exp_name="BestMLModels",
+        verbosity=0)
         exp.fit(run_type="dry_run",
                 include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor'],
@@ -68,6 +99,8 @@ class TestExperiments(unittest.TestCase):
 
         self.assertEqual(exp2.exp_name, exp.exp_name)
         self.assertEqual(exp2.exp_path, exp.exp_path)
+
+        return
 
     def test_transformation_experiments(self):
 
@@ -102,7 +135,8 @@ class TestExperiments(unittest.TestCase):
         ]
 
         x0 = [20, 14, 12, 0.00029613, 'relu']
-        experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
+        experiment = MyTransformationExperiments(cases=cases,
+                                                 input_features=inputs,
                                                  output_features = outputs,
                                                  data = data,
                                                  param_space=search_space,
@@ -110,7 +144,8 @@ class TestExperiments(unittest.TestCase):
                                                  verbosity=0,
                                                  exp_name = "testing")
         experiment.num_samples = 2
-        experiment.fit('optimize', opt_method='random', )
+        experiment.fit('optimize', opt_method='random', num_iterations=4)
+        return
 
 if __name__=="__main__":
     unittest.main()

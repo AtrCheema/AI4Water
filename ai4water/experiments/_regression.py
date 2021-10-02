@@ -1,16 +1,10 @@
 
 
-from .experiments import Experiments
+from .experiments import Experiments, Model
 from ai4water.hyper_opt import Real, Categorical, Integer
 from ai4water.post_processing.SeqMetrics import RegressionMetrics
 from ai4water.backend import VERSION_INFO, tf
 
-if tf is not None:
-    if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-        from ai4water.functional import Model
-        print(f"Switching to functional API due to tensorflow version {tf.__version__} for experiments")
-    else:
-        from ai4water import Model
 
 try:
     import catboost
@@ -55,6 +49,7 @@ class MLRegressionExperiments(Experiments):
                  ai4water_model=None,
                  exp_name='MLExperiments',
                  num_samples=5,
+                 verbosity=1,
                  **model_kwargs):
         """
 
@@ -98,7 +93,7 @@ class MLRegressionExperiments(Experiments):
         self.model_kws = model_kwargs
         self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
-        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
+        super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples, verbosity=verbosity)
 
         if catboost is None:
             self.models.remove('model_CATBoostRegressor')
@@ -128,7 +123,7 @@ class MLRegressionExperiments(Experiments):
         if fit_kws is None:
             fit_kws = {}
 
-        verbosity = 0
+        verbosity = max(self.verbosity-1, 0)
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
@@ -372,6 +367,7 @@ class MLRegressionExperiments(Experiments):
 
     def model_KNeighborsRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
+        # todo, what if data is customized in build_and_run?
         if hasattr(self.ai4water_model, 'config'):
             train_frac = self.ai4water_model.config['train_fraction']
         else:
