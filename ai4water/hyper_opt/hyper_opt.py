@@ -337,6 +337,7 @@ class HyperOpt(object):
                  eval_on_best:bool=False,
                  backend:str=None,
                  opt_path:str = None,
+                 verbosity:int = 1,
                  **kwargs
                  ):
 
@@ -368,6 +369,7 @@ class HyperOpt(object):
                 be evaluated on best parameters and the results will be stored in the
                 folder named "best" inside `title` folder.
             opt_path : path to save the results
+            verbosity : determines amount of information being printed
             kwargs dict:
                 Any additional keyword arguments will for the underlying optimization
                 algorithm. In case of using AI4Water model, these must be arguments
@@ -391,6 +393,7 @@ class HyperOpt(object):
         self.eval_on_best=eval_on_best
         self.opt_path = opt_path
         self.objective_fn_is_dl = False
+        self.verbosity = verbosity
 
         self.gpmin_args = self.check_args(**kwargs)
 
@@ -855,7 +858,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             _model = list(_model.keys())[0]
         model = Model(data=self.data,
                       prefix=title,
-                      verbosity=1 if pp else 0,
+                      verbosity=self.verbosity,
                       model={_model: kwargs},
                       **self.ai4water_args)
 
@@ -872,7 +875,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         self.results[error] = sort_x_iters(kwargs, self.original_para_order())
         COUNTER += 1
 
-        print(f"Validation mse {error}")
+        if self.verbosity>0:
+            print(f"Validation mse {error}")
 
         if view_model:
             model.predict(data='training', prefix='train')
@@ -975,7 +979,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def eval_sequence(self, params):
 
-        print(f"total number of iterations: {len(params)}")
+        if self.verbosity>0:
+            print(f"total number of iterations: {len(params)}")
         for idx, para in enumerate(params):
 
             if self.use_ai4water_model:
@@ -1018,6 +1023,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return self.eval_sequence(param_list)
 
     def optuna_objective(self, **kwargs):
+
+        if self.verbosity==0:
+            optuna.logging.set_verbosity(optuna.logging.ERROR)
 
         sampler = {
             'tpe': optuna.samplers.TPESampler,
