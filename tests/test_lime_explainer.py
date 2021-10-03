@@ -2,6 +2,9 @@ import unittest
 import os
 import sys
 import site
+
+import lime.lime_tabular
+
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
@@ -11,7 +14,7 @@ import pandas as pd
 from ai4water import Model
 from ai4water.datasets import arg_beach
 from ai4water.datasets import MtropicsLaos
-from ai4water.post_processing.explain import LimeMLExplainer
+from ai4water.post_processing.explain import LimeExplainer
 
 laos = MtropicsLaos()
 
@@ -31,6 +34,27 @@ def make_class_model(**kwargs):
     return model
 
 
+def make_lstm_reg_model():
+
+    class MyModel(Model):
+        def predict(self,
+                *args, **kwargs
+                ):
+            t, p = super(MyModel, self).predict(*args, **kwargs)
+
+            return p.reshape(-1,)
+
+
+    model = MyModel(
+        model = {"layers": {
+            "LSTM": 32,
+            "Dense": 1
+        }},
+        data = reg_data,
+        verbosity=0
+    )
+    return model
+
 def make_reg_model(**kwargs):
 
     model = Model(
@@ -45,15 +69,7 @@ def make_reg_model(**kwargs):
     return model
 
 
-def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression"):
-
-    if model_type:
-        model = make_reg_model()
-    else:
-        model = make_class_model()
-
-    model.fit()
-
+def get_data(model, to_dataframe, examples_to_explain):
     train_x, train_y = model.training_data()
     test_x, test_y = model.test_data()
 
@@ -63,7 +79,26 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
     else:
         test_x = test_x[0:examples_to_explain]
 
-    lime_exp = LimeMLExplainer(model=model._model,
+    return train_x, test_x
+
+
+def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression"):
+
+    if model_type=="regression":
+        model = make_reg_model()
+    elif model_type == "lstm_reg":
+        model = make_reg_model()
+    elif model_type == "classification":
+        model = make_class_model()
+    else:
+        raise ValueError
+
+    model.fit()
+
+
+    train_x, test_x = get_data(model, to_dataframe=to_dataframe, examples_to_explain=examples_to_explain)
+
+    lime_exp = LimeExplainer(model=model._model,
                                train_data=train_x,
                                test_data=test_x,
                                mode="regression",
@@ -91,6 +126,12 @@ class TestLimeExplainer(unittest.TestCase):
 
         return
 
+    def test_save_as_html(self):
+
+        lime_exp = get_lime()
+        lime_exp.explain_example(0, plot_type="html")
+        return
+
     def test_wth_pandas(self):
         lime_exp = get_lime(True)
         lime_exp.explain_example(0)
@@ -103,7 +144,7 @@ class TestLimeExplainer(unittest.TestCase):
 
         model = Model(model="GradientBoostingRegressor", data=arg_beach(), verbosity=0)
         model.fit()
-        lime_exp = LimeMLExplainer(model=model._model,
+        lime_exp = LimeExplainer(model=model._model,
                                    train_data=model.training_data()[0],
                                    test_data=model.test_data()[0][0:3],
                                    mode="regression",
@@ -133,12 +174,29 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_ai4water(self):
         model = make_class_model(test_fraction=0.05)
-        assert model.problem == "classification"
+        self.assertEqual(model.problem, "classification")
         model.fit()
         model.explain()
         return
 
+    def test_custom_colors(self):
+        explainer = get_lime()
+        explainer.explain_example(0, colors=([0.9375    , 0.01171875, 0.33203125],
+                                             [0.23828125, 0.53515625, 0.92578125]))
 
-if __name__ == "__main__":
+    def test_lstm_model(self):
+        m = make_lstm_reg_model()
+        train_x, _ =  m.training_data()
+        test_x, _ =  m.test_data()
 
-    unittest.main()
+        exp = LimeExplainer(m, test_x, train_x, mode="regression",
+                              path=m.path,
+                              explainer="RecurrentTabularExplainer", features=m.dh.input_features)
+        exp.explain_example(0)
+        return
+
+
+
+# if __name__ == "__main__":
+#
+#     unittest.main()

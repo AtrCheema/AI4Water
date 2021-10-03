@@ -13,22 +13,24 @@ except ModuleNotFoundError:
 from ._explain import ExplainerMixin
 
 
-class LimeMLExplainer(ExplainerMixin):
+class LimeExplainer(ExplainerMixin):
 
     """
     Wrapper around LIME module.
 
     Example
     -------
+    ```python
     >>>from ai4water import Model
     >>>from ai4water.datasets import arg_beach
     >>>model = Model(model="GradientBoostingRegressor", data=arg_beach())
     >>>model.fit()
-    >>>lime_exp = LimeMLExplainer(model=model._model,
+    >>>lime_exp = LimeExplainer(model=model._model,
     ...                       train_data=model.training_data()[0],
     ...                       test_data=model.test_data()[0],
     ...                       mode="regression")
     >>>lime_exp()
+    ```
 
     Attributes:
         explaination_objects : location explaination objects for each individual example/instance
@@ -46,7 +48,7 @@ class LimeMLExplainer(ExplainerMixin):
     ):
         """
         Arguments:
-            model : the model to explain
+            model : the model to explain. The model must have `predict` method.
             test_data : the data to explain.
             train_data : training data
             mode : either of regression or classification
@@ -58,7 +60,7 @@ class LimeMLExplainer(ExplainerMixin):
         self.model = model
         self.train_data = to_np(train_data)
 
-        super(LimeMLExplainer, self).__init__(path=path, data=to_np(test_data), features=features)
+        super(LimeExplainer, self).__init__(path=path, data=to_np(test_data), features=features)
 
         self.mode = mode
         self.verbosity = verbosity
@@ -88,8 +90,14 @@ class LimeMLExplainer(ExplainerMixin):
                                                                     verbose=self.verbosity,
                                                                     mode=self.mode
                                                                     )
+        elif proposed_explainer in lime.lime_tabular.__dict__.keys():
+            lime_explainer = getattr(lime.lime_tabular, proposed_explainer)(self.train_data,
+                                                                            feature_names=self.features,
+                                                                            mode=self.mode,
+                                                                            verbose=self.verbosity)
         else:
-            lime_explainer = getattr(lime, proposed_explainer)(self.train_data, self.features, mode=self.mode)
+            lime_explainer = getattr(lime, proposed_explainer)(self.train_data,
+                                                               features=self.features, mode=self.mode)
         return lime_explainer
 
     def __call__(self, *args, **kwargs):
@@ -124,6 +132,7 @@ class LimeMLExplainer(ExplainerMixin):
                         plot_type: str = "pyplot",
                         name: str = "lime_explaination",
                         num_features: int = None,
+                        colors = None,
                         **kwargs
                         ):
         """
@@ -134,8 +143,11 @@ class LimeMLExplainer(ExplainerMixin):
             plot_type : either pyplot or html
             name : name with which to save the file
             num_features :
+            colors :
             kwargs : any keyword argument for `explain_instance`
         """
+        assert plot_type in ("pyplot", "html")
+
         exp = self.explainer.explain_instance(self.data[index],
                                               self.model.predict,
                                               num_features=num_features or len(self.features),
@@ -146,7 +158,7 @@ class LimeMLExplainer(ExplainerMixin):
 
         if plot_type == "pyplot":
             plt.close()
-            exp.as_pyplot_figure()
+            as_pyplot_figure(exp, colors=colors)
             plt.savefig(os.path.join(self.path, f"{name}_{index}"), bbox_inches="tight")
         else:
             exp.save_to_file(os.path.join(self.path, f"{name}_{index}"))
@@ -162,3 +174,44 @@ def to_np(x) -> np.ndarray:
         assert isinstance(x, np.ndarray)
 
     return x
+
+def as_pyplot_figure(inst_explainer, label=1, colors:[str, tuple, list]=None, **kwargs):
+    """Returns the explanation as a pyplot figure.
+
+    Will throw an error if you don't have matplotlib installed
+    Args:
+        inst_explainer : instance explainer
+        label: desired label. If you ask for a label for which an
+               explanation wasn't computed, will throw an exception.
+               Will be ignored for regression explanations.
+        colors : if tuple it must be names of two colors for +ve and -ve
+        kwargs: keyword arguments, passed to domain_mapper
+
+    Returns:
+        pyplot figure (barchart).
+    """
+    if colors is None:
+        colors = ([0.9375    , 0.01171875, 0.33203125], [0.23828125, 0.53515625, 0.92578125])
+    elif isinstance(colors, str):
+        colors = (colors, colors)
+
+    exp = inst_explainer.as_list(label=label, **kwargs)
+    fig = plt.figure()
+    vals = [x[1] for x in exp]
+    names = [x[0] for x in exp]
+    vals.reverse()
+    names.reverse()
+
+    if isinstance(colors, tuple):
+        colors = [colors[0] if x > 0 else colors[1] for x in vals]
+
+    pos = np.arange(len(exp)) + .5
+    plt.barh(pos, vals, align='center', color=colors)
+    plt.yticks(pos, names)
+    if inst_explainer.mode == "classification":
+        title = 'Local explanation for class %s' % inst_explainer.class_names[label]
+    else:
+        title = 'Local explanation'
+    plt.title(title)
+    plt.grid(linestyle='--', alpha=0.5)
+    return fig
