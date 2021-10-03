@@ -45,6 +45,14 @@ class TestPredictMethod(unittest.TestCase):
         self.assertRaises(ValueError, model.predict)
         return
 
+    def test_ml_userdefined_non_kw(self):
+        # using non-keyword arguments to .predict
+        model = Model(model="RandomForestRegressor", verbosity=0)
+        model.fit(x=x, y=y)
+
+        model.predict(x)
+        return
+
     def test_hydro_metrics(self):
 
         model = Model(model="RandomForestRegressor", verbosity=0)

@@ -37,7 +37,7 @@ from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_mo
 from ai4water.utils.utils import maybe_three_outputs
 from ai4water.eda import EDA
 import ai4water.backend as K
-from ai4water.post_processing.explain import LimeMLExplainer, ShapMLExplainer, ShapDLExplainer
+from ai4water.post_processing.explain import LimeExplainer, ShapMLExplainer, ShapDLExplainer
 
 if K.BACKEND == 'tensorflow' and tf is not None:
     import ai4water.keract_mod as keract
@@ -1147,20 +1147,26 @@ class BaseModel(NN, Plots):
                      metrics="minimal",
                      **kwargs):
 
-        transformation_key = '5'
-
-        if x is None:
-            if self.data is None:
-                raise ValueError("You must specify the data on which to make prediction")
-            user_defined_data = False
-            prefix = data
-            data = getattr(self, f'{data}_data')(key=transformation_key)
-            inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
-        else:
+        if isinstance(data, np.ndarray):
+            # the predict method is called like .predict(x)
+            inputs = data
             user_defined_data = True
-            prefix = 'x'
-            inputs = x
-            true_outputs = y
+            true_outputs = None
+        else:
+            transformation_key = '5'
+
+            if x is None:
+                if self.data is None:
+                    raise ValueError("You must specify the data on which to make prediction")
+                user_defined_data = False
+                prefix = data
+                data = getattr(self, f'{data}_data')(key=transformation_key)
+                inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
+            else:
+                user_defined_data = True
+                prefix = 'x'
+                inputs = x
+                true_outputs = y
 
         if 'verbose' in kwargs:
             verbosity = kwargs.pop('verbose')
@@ -1462,7 +1468,7 @@ class BaseModel(NN, Plots):
                 if self.problem == "classification":
                     pass  # todo
                 else:
-                    explainer = LimeMLExplainer(model=self._model, train_data=train_x, test_data=test_x,
+                    explainer = LimeExplainer(model=self._model, train_data=train_x, test_data=test_x,
                                                 path=lime_exp_path, mode=self.problem, verbosity=self.verbosity)
                     if save_lime_plots:
                         explainer()
