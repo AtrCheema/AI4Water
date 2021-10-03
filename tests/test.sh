@@ -1,1 +1,0 @@
-python -m unittest discover -s mytools\dl4seq\tests > test_tfcpu23_py37.txt 2>&1
