@@ -37,7 +37,7 @@ from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_mo
 from ai4water.utils.utils import maybe_three_outputs
 from ai4water.eda import EDA
 import ai4water.backend as K
-from ai4water.post_processing.explain import LimeExplainer, ShapMLExplainer, ShapDLExplainer
+from ai4water.post_processing.explain import LimeExplainer, ShapExplainer
 
 if K.BACKEND == 'tensorflow' and tf is not None:
     import ai4water.keract_mod as keract
@@ -1451,7 +1451,7 @@ class BaseModel(NN, Plots):
                 # )
                 # explainer()
             else:
-                explainer = ShapMLExplainer(model=self._model, train_data=train_x, test_data=test_x,
+                explainer = ShapExplainer(model=self._model, train_data=train_x, test_data=test_x,
                                             path=shap_exp_path, features=list(self.in_cols))
 
                 explainer(

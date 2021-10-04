@@ -26,8 +26,11 @@ class ExplainerMixin(object):
         elif features is None:
             features = [f"Feature {i}" for i in range(self.data.shape[-1])]
         else:
-            assert isinstance(features, list) and len(features) == self.data.shape[-1], f"features must be given as " \
-                                                                                f"list of length {self.data.shape[-1]}"
+            assert isinstance(features, list) and len(features) == self.data.shape[-1], f"""
+                features must be given as list of length {self.data.shape[-1]} 
+                but are of len {len(features)}
+                """
+
             features = features
         self._features = features
 

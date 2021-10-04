@@ -1,3 +1,3 @@
 
-from ._shap import ShapMLExplainer, ShapDLExplainer
+from ._shap import ShapExplainer
 from ._lime import LimeExplainer

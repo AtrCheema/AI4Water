@@ -18,11 +18,12 @@ try:
 except ModuleNotFoundError:
     Flatten, Model, K = None, None, None
 
+from ai4water.utils.utils import axis_imshow
 from ai4water.backend import get_sklearn_models
 from ._explain import ExplainerMixin
 
 
-class ShapMLExplainer(ExplainerMixin):
+class ShapExplainer(ExplainerMixin):
     """
     Wrapper around SHAP `explainers` and `plots` to draw and save all the plots
     for a given model.
@@ -44,18 +45,17 @@ class ShapMLExplainer(ExplainerMixin):
     Example
     --------
     ```python
-    from ai4water.utils.visualization import ShapMLExplainer
-    from sklearn.model_selection import train_test_split
-    from sklearn import linear_model
-    import shap
+    >>>from ai4water.post_processing.explain import ShapExplainer
+    >>>from sklearn.model_selection import train_test_split
+    >>>from sklearn import linear_model
+    >>>import shap
 
-    X,y = shap.datasets.diabetes()
-    X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-    lin_regr = linear_model.LinearRegression()
-    lin_regr.fit(X_train, y_train)
-
-    explainer = ShapMLExplainer(lin_regr, X_test, X_train, num_means=10)
-    explainer()
+    >>>X,y = shap.datasets.diabetes()
+    >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+    >>>lin_regr = linear_model.LinearRegression()
+    >>>lin_regr.fit(X_train, y_train)
+    >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
+    >>>explainer()
     ```
     """
 
@@ -78,7 +78,9 @@ class ShapMLExplainer(ExplainerMixin):
             explainer: Union[str, Callable] = None,
             num_means: int = 10,
             path: str = os.getcwd(),
-            features: list = None
+            features: list = None,
+            framework: str = None,
+            layer: Union[int, str] = None,
     ):
         """
 
@@ -94,12 +96,18 @@ class ShapMLExplainer(ExplainerMixin):
                 working directory
             features: Names of features. Should only be given if train/test data is numpy
                 array.
+            framework : either "DL" or "ML", where "DL" represents deep learning or neural
+                network based models and "ML" represents other models. For "DL" the explainer
+                will be eihter "DeepExplainer" or "GradientExplainer". If not given, it will
+                be inferred but "DeepExplainer" will be prioritized over "GradientExplainer".
+            layer : only relevant when framework is "DL" i.e when the model consits of layers
+                of neural networks.
 
         """
-        test_data = to_dataframe(test_data, features)
-        train_data = to_dataframe(train_data, features)
+        test_data = maybe_to_dataframe(test_data, features)
+        train_data = maybe_to_dataframe(train_data, features)
 
-        super(ShapMLExplainer, self).__init__(path=path, data=test_data, features=features)
+        super(ShapExplainer, self).__init__(path=path, data=test_data, features=features)
 
         if train_data is None:
             self._check_data(test_data)
@@ -114,17 +122,73 @@ class ShapMLExplainer(ExplainerMixin):
                                             "XGBRFRegressor"
                                             ]:
                 self.is_sklearn = False
-            else:
+            elif not self._is_dl(model):
                 raise ValueError(f"{model.__class__.__name__} is not a valid model model")
 
-        self.model = model
-        self.data = test_data
+        self._framework = self.infer_framework(model, framework, layer, explainer)
 
+        if self._framework == "DL" and infer_framework(model) == "tensorflow":
+            self.model = make_keras_model(model)
+        else:
+            self.model = model
+        self.data = test_data
+        self.layer = layer
         self.features = features
 
         self.explainer = self._get_explainer(explainer, train_data=train_data, num_means=num_means)
 
-        self.shap_values = self._get_shap_values(test_data)
+        self.shap_values = self.get_shap_values(test_data)
+
+    @staticmethod
+    def _is_dl(model):
+        if hasattr(model, "count_params") or hasattr(model, "named_parameters"):
+            return True
+        return False
+
+    @property
+    def layer(self):
+        return self._layer
+
+    @layer.setter
+    def layer(self, x):
+        if x is not None:
+
+            if not isinstance(x, str):
+                assert isinstance(x, int), f"layer must either b string or integer"
+                assert x <= len(self.model.layers)  # todo, what about pytorch
+
+        self._layer = x
+
+    def map2layer(self, x, layer):
+        feed_dict = dict(zip([self.model.layers[0].input], [x.copy()]))
+        if isinstance(layer, int):
+            return K.get_session().run(self.model.layers[layer].input, feed_dict)
+        else:
+            return K.get_session().run(self.model.get_layer(layer).input, feed_dict)
+
+    def infer_framework(self, model, framework, layer, explainer):
+        if framework is not None:
+            inf_framework = framework
+        elif self._is_dl(model):
+            inf_framework = "DL"
+        elif isinstance(explainer, str) and explainer in ("DeepExplainer", "GradientExplainer"):
+            inf_framework = "DL"
+        elif explainer.__class__.__name__ in ("DeepExplainer", "GradientExplainer"):
+            inf_framework = "DL"
+        else:
+            inf_framework = "ML"
+
+        assert inf_framework in ("ML", "DL")
+
+        if inf_framework == "DL":
+            assert layer is not None, f"You must define layer to explain"
+        else:
+            assert layer is None
+
+        if inf_framework == "DL" and isinstance(explainer, str):
+            assert explainer in ("DeepExplainer", "GradientExplainer"), f"invalid explainer {inf_framework}"
+
+        return inf_framework
 
     def _get_explainer(self,
                        explainer: Union[str, Callable],
@@ -144,8 +208,10 @@ class ShapMLExplainer(ExplainerMixin):
                 explainer = self._get_kernel_explainer(train_data, num_means)
 
             elif explainer == "DeepExplainer":
-                data = self.data.values if isinstance(self.data, pd.DataFrame) else self.data
-                explainer = getattr(shap, explainer)(self.model)(data)
+                explainer = self._get_deep_explainer()
+
+            elif explainer == "GradientExplainer":
+                explainer = self._get_gradient_explainer()
 
             else:
                 explainer = getattr(shap, explainer)(self.model)
@@ -180,11 +246,25 @@ class ShapMLExplainer(ExplainerMixin):
         elif self.model.__class__.__name__.upper() in get_sklearn_models():
             explainer = self._get_kernel_explainer(train_data, num_means)
 
+        elif self._framework == "DL":
+            explainer = self._get_deep_explainer()
         else:
             raise ValueError(f"Can not infer explainer for model {self.model.__class__.__name__}."
                              f" Plesae specify explainer by using `explainer` keyword argument")
-
         return explainer
+
+    def _get_deep_explainer(self):
+        data = self.data.values if isinstance(self.data, pd.DataFrame) else self.data
+        return getattr(shap, "DeepExplainer")(self.model, data)
+
+    def _get_gradient_explainer(self):
+
+        if isinstance(self.layer, int):
+            return shap.GradientExplainer((self.model.layers[self.layer].input, self.model.layers[-1].output),
+                                          self.map2layer(self.data, self.layer))
+        else:
+            return shap.GradientExplainer((self.model.get_layer(self.layer).input, self.model.layers[-1].output),
+                                          self.map2layer(self.data, self.layer))
 
     def _check_data(self, *data):
         for d in data:
@@ -198,9 +278,24 @@ class ShapMLExplainer(ExplainerMixin):
 
         return
 
-    def _get_shap_values(self, test_data):
+    def get_shap_values(self, data, **kwargs):
+        if self._framework == "DL":
+            return self._shap_values_dl(data, **kwargs)
+        return self.explainer.shap_values(data)
 
-        return self.explainer.shap_values(test_data)
+    def _shap_values_dl(self, data, ranked_outputs=None, **kwargs):
+        """Gets the SHAP values"""
+        data = data.values if isinstance(data, pd.DataFrame) else data
+        if self.explainer.__class__.__name__ == "Deep":
+            return self.explainer.shap_values(data)
+        else:
+
+            shap_values = self.explainer.shap_values(self.map2layer(data, self.layer),
+                                                     ranked_outputs=ranked_outputs, **kwargs)
+            if ranked_outputs:
+                shap_values, indexes = shap_values
+
+            return shap_values
 
     def __call__(self,
                  force_plots=True,
@@ -223,17 +318,7 @@ class ShapMLExplainer(ExplainerMixin):
         if force_plots:
             for i in range(self.data.shape[0]):
 
-                if type(self.data) == np.ndarray:
-                    data = self.data[i]
-                else:
-                    data = self.data.iloc[i, :]
-
-                if self.is_sklearn:
-                    shap_vals = self.explainer.shap_values(data)
-                else:
-                    shap_vals = self.shap_values[i, :]
-
-                self.force_plot_single_example(data, shap_vals, f"force_plot_{i}")
+                self.force_plot_single_example(i, f"force_plot_{i}")
 
         if beeswarm_plots:
             self.beeswarm_plot()
@@ -248,28 +333,86 @@ class ShapMLExplainer(ExplainerMixin):
 
         return
 
-    def summary_plot(self, name="summary_plot"):
+    def summary_plot(self, name="summary_plot", show=False, **kwargs):
         """Plots the summary plot of SHAP package."""
-        plt.close('all')
 
-        shap.summary_plot(self.shap_values, self.data, show=False)
-        plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+        def _summary_plot(_shap_val, _data, _name):
+            plt.close('all')
+            shap.summary_plot(_shap_val, _data, show=show, feature_names=self.features, **kwargs)
+            plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
 
-        shap.summary_plot(self.shap_values, self.data, show=False, plot_type="bar")
-        plt.savefig(os.path.join(self.path, name + " _bar"), dpi=300, bbox_inches="tight")
+            shap.summary_plot(_shap_val, _data, show=show, plot_type="bar", feature_names=self.features,
+                              **kwargs)
+            plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300, bbox_inches="tight")
+
+            return
+
+        shap_vals = self.shap_values
+        if isinstance(shap_vals, list):
+            shap_vals = shap_vals[0]
+
+        data = self.data
+
+        if data.ndim == 3:
+            assert shap_vals.ndim == 3
+
+            for lookback in range(data.shape[1]):
+
+                _summary_plot(shap_vals[:, lookback], data[:, lookback],  _name=f"{name}_{lookback}")
+        else:
+            _summary_plot(shap_vals, data, name)
 
         return
 
-    def force_plot_single_example(self, data, shap_vals, name="force_single.png"):
-        """force plot for a single example"""
+    def force_plot_single_example(self, idx:int, name=None, lookback=None, show=False):
+        """Draws force_plot for a single example/row/sample/instance/data point.
+
+        Arguments:
+            idx : index of exmaple
+            name : name of saved file
+            show : whether to show the plot or not
+            lookback : only relevent if input data is 3d
+        """
+
+        shap_vals = self.shap_values
+
+        if isinstance(shap_vals, list):
+            shap_vals = shap_vals[0]
+
+        shap_vals = shap_vals[idx]
+
+        if type(self.data) == np.ndarray:
+            data = self.data[idx]
+        else:
+            data = self.data.iloc[idx, :]
+
+        if self.explainer.__class__.__name__ == "Gradient":
+            expected_value = [0]
+        else:
+            expected_value = self.explainer.expected_value
+
+        if data.ndim == 2:  # input is 3d
+            assert shap_vals.ndim == 2
+            expected_value =  expected_value[idx]
+            shap_vals = shap_vals[lookback]
+            data = None
+
         plt.close('all')
 
-        shap.force_plot(
-            self.explainer.expected_value,
+        plotter = shap.force_plot(
+            expected_value,
             shap_vals,
             data,
-            show=False, matplotlib=True).savefig(
-            os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+            feature_names=self.features,
+            show=False,
+            matplotlib=True)
+
+        name = name or f"force_plot_{idx}_{lookback}"
+        plotter.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+
+        if show:
+            plotter.show()
+
         return
 
     def dependence_plot_single_feature(self, feature, name="dependence_plot"):
@@ -414,114 +557,64 @@ class ShapMLExplainer(ExplainerMixin):
         # https://towardsdatascience.com/introducing-shap-decision-plots-52ed3b4a1cba
         raise NotImplementedError
 
-
-class ShapDLExplainer(ExplainerMixin):
-    """Wrapper around SHAPs DeepExplainer and GradientExplainer
-    to ease and automate the drawing and saving of plots for a given
-    deep learning model.
-    Currently tested with only tensorflow 1.x
-    """
-    def __init__(
-            self,
-            model,
-            data,
-            explainer: str = "DeepExplainer",
-            layer: Union[int, str] = None,
-            features: list = None,
-            path: str = os.getcwd()
-    ):
-        """
-        Arguments:
-            model : a keras or pytorch model
-            data : input data to the deep learning model.
-            explainer : name of explainer to be used
-            layer : name of layer or index of layer whose input behavour is to be explained.
-            features : name of features, used for ploting shap values
-            path : path where plots are saved.
-        """
-        super(ShapDLExplainer, self).__init__(path=path, data=data, features=features)
-
-        self.framework = infer_framework(model)
-
-        if self.framework == 'tensorflow':
-            self.model = make_keras_model(model)
-        else:
-            self.model = model
-
-        self.layer = layer
-        self.explainer = self._get_explainer(explainer)
-
-    @property
-    def layer(self):
-        return self._layer
-
-    @layer.setter
-    def layer(self, x):
-        if x is not None:
-
-            if not isinstance(x, str):
-                assert isinstance(x, int), f"layer must either b string or integer"
-                assert x <= len(self.model.layers)  # todo, what about pytorch
-
-        self._layer = x
-
-    def _get_explainer(self, explainer):
-
-        data = self.data.values if isinstance(self.data, pd.DataFrame) else self.data
-        if explainer == "GradientExplainer":
-            return self._get_gradient_explainer()
-
-        return getattr(shap, explainer)(self.model, data)
-
-    def _get_gradient_explainer(self):
-
-        if isinstance(self.layer, int):
-            return shap.GradientExplainer((self.model.layers[self.layer].input, self.model.layers[-1].output),
-                                          self.map2layer(self.data, self.layer))
-        else:
-            return shap.GradientExplainer((self.model.get_layer(self.layer).input, self.model.layers[-1].output),
-                                          self.map2layer(self.data, self.layer))
-
-    def map2layer(self, x, layer):
-        feed_dict = dict(zip([self.model.layers[0].input], [x.copy()]))
-        if isinstance(layer, int):
-            return K.get_session().run(self.model.layers[layer].input, feed_dict)
-        else:
-            return K.get_session().run(self.model.get_layer(layer).input, feed_dict)
-
-    def shap_values(self, ranked_outputs=None, **kwargs):
-        """Gets the SHAP values"""
-        data = self.data.values if isinstance(self.data, pd.DataFrame) else self.data
-        if self.explainer.__class__.__name__ == "Deep":
-            return self.explainer.shap_values(data)
-        else:
-
-            shap_values = self.explainer.shap_values(self.map2layer(self.data, self.layer),
-                                                     ranked_outputs=ranked_outputs, **kwargs)
-            if ranked_outputs:
-                shap_values, indexes = shap_values
-
-            return shap_values
-
-    def plot_shap_values(self, name: str = "shap_values", show: bool = False, interpolation=None):
+    def plot_shap_values(self, name: str = "shap_values", show: bool = False,
+                         interpolation=None, cmap="coolwarm"):
         """Plots the SHAP values."""
-        shap_values = self.shap_values()
+        shap_values = self.shap_values
+
         if isinstance(shap_values, list):
             shap_values: np.ndarray = shap_values[0]
 
+        if self.data.ndim == 3: # input is 3d
+            assert shap_values.ndim == 3
+            return imshow_3d(shap_values, self.data, self.features, self.path, show=show,
+                             cmap=cmap)
+
         plt.close('all')
         fig, axis = plt.subplots()
-        axis.imshow(shap_values, aspect='auto', interpolation=interpolation)
+        axis.imshow(shap_values, aspect='auto', interpolation=interpolation, cmap=cmap)
         axis.set_xticklabels(self.features, rotation=90)
         axis.set_xlabel("Features")
         axis.set_ylabel("Examples")
 
+        plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+
         if show:
             plt.show()
-        else:
-            plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
 
         return
+
+
+def imshow_3d(values,
+              data,
+              feature_names:list,
+              path, vmin=None, vmax=None, name="shap_values",
+              show=False,
+              cmap=None):
+
+    num_examples, lookback, input_features = values.shape
+    assert data.shape == values.shape
+
+    for idx, feat in enumerate(feature_names):
+        plt.close('all')
+        fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
+
+        axis, im = axis_imshow(ax1, data[:, :, idx].transpose(), lookback, vmin, vmax,
+                               title=feat, cmap=cmap)
+        fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
+
+        axis, im = axis_imshow(ax2, values[:, :, idx].transpose(), lookback, vmin, vmax,
+                               xlabel="Examples", title=f"SHAP Values", cmap=cmap)
+
+        fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
+
+        _name = f'{name}_{feat}'
+        plt.savefig(os.path.join(path, _name), dpi=400, bbox_inches='tight')
+
+        if show:
+            plt.show()
+
+    return
 
 
 def infer_framework(model):
@@ -564,7 +657,7 @@ def make_keras_model(old_model):
     return new_model
 
 
-def to_dataframe(data, features=None) -> pd.DataFrame:
-    if isinstance(data, np.ndarray) and isinstance(features, list):
+def maybe_to_dataframe(data, features=None) -> pd.DataFrame:
+    if isinstance(data, np.ndarray) and isinstance(features, list) and data.ndim == 2:
         data = pd.DataFrame(data, columns=features)
     return data

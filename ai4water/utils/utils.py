@@ -1418,12 +1418,8 @@ def plot_activations_along_inputs(
             ax2.plot(obs, '.', label='Observed')
             ax2.legend()
 
-            im = ax3.imshow(activations[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
-            ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-            ax3.set_ylabel('lookback steps')
-            ax3.set_yticks(np.arange(len(ytick_labels)))
-            ax3.set_yticklabels(ytick_labels)
-            ax3.set_xlabel('Examples')
+            axis, im = axis_imshow(ax3, activations[:, :, idx].transpose(), lookback, vmin, vmax,
+                                   xlabel="Examples")
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attention_weights_{out_name}_{name}'
@@ -1431,6 +1427,21 @@ def plot_activations_along_inputs(
             plt.close('all')
 
     return
+
+def axis_imshow(axis, values, lookback, vmin, vmax, xlabel=None, title=None, cmap=None):
+
+    im = axis.imshow(values, aspect='auto', vmin=vmin, vmax=vmax, cmap=cmap)
+    ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+    axis.set_ylabel('lookback steps')
+    axis.set_yticks(np.arange(len(ytick_labels)))
+    axis.set_yticklabels(ytick_labels)
+    if xlabel:
+        axis.set_xlabel(xlabel)
+
+    if title:
+        axis.set_title(title)
+
+    return axis, im
 
 
 def print_something(something, prefix=''):
