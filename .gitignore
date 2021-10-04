@@ -33,6 +33,8 @@ nosetests.xml
 coverage.xml
 *.cover
 *.jovianrc
+.tox/
+tox.ini
 
 *tests/catboost_info/
 *ai4water/datasets/data/

@@ -880,7 +880,15 @@ class MtropicsLaos(Datasets):
             st : start of data.
             en :end of data.
             features : The physio-chemical features to fetch. Following features
-                are available 'T', 'EC', 'DOpercent', 'DO', 'pH', 'ORP', 'Turbidity',
+                are available
+
+                - 'T',
+                - 'EC',
+                - 'DOpercent',
+                - 'DO',
+                - 'pH',
+                - 'ORP',
+                - 'Turbidity',
                 'TSS'
 
         Returns:
@@ -930,9 +938,10 @@ class MtropicsLaos(Datasets):
             en : end of data. By default the data is fetched til the point it is
                 available.
             features : E. coli concentration data. Following data are available
-                Ecoli_LL_mpn100: Lower limit of the confidence interval
-                Ecoli_mpn100: Stream water Escherichia coli concentration
-                Ecoli_UL_mpn100: Upper limit of the confidence interval
+
+                - Ecoli_LL_mpn100: Lower limit of the confidence interval
+                - Ecoli_mpn100: Stream water Escherichia coli concentration
+                - Ecoli_UL_mpn100: Upper limit of the confidence interval
             remove_duplicates : whether to remove duplicates or not. This is because
                 some values were recorded within a minute,
         Returns:
@@ -981,6 +990,7 @@ class MtropicsLaos(Datasets):
         """
         fetches data from 7 rain gauges which is collected at daily time step
         from 2001 to 2019. [doi](https://doi.org/10.1038/s41598-017-04385-2)
+
         Arguments:
             st : start of data. By default the data is fetched from the point it
                 is available.

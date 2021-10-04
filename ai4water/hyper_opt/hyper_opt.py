@@ -357,7 +357,7 @@ class HyperOpt(object):
                 example the user can specify whether to use `optuna` or `hyper_opt`
                 or `sklearn` for `grid` algorithm.
             param_space list/dict:
-                the space parameters to be optimized. We recommend the use
+                the space of parameters to be optimized. We recommend the use
                 of Real, Integer and categorical classes from ai4water/hyper_opt
                 (not from skopt.space). These classes allow a uniform way of defining
                 the parameter space for all the underlying libraries. However, to
