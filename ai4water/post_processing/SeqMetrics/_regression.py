@@ -34,7 +34,10 @@ class RegressionMetrics(Metrics):
         """
         super().__init__(*args, **kwargs)
         self.all_methods = list_subclass_methods(RegressionMetrics, True,
-                                                 additional_ignores=['calculate_hydro_metrics'])
+                                                 additional_ignores=['calculate_hydro_metrics',
+                                                                     #'calculate_scale_dependent_metrics',
+                                                                     #'calculate_scale_independent_metrics'
+                                                                     ])
 
         # if arrays contain negative values, following three errors can not be computed
         for array in [self.true, self.predicted]:
@@ -56,6 +59,16 @@ class RegressionMetrics(Metrics):
                 'fdc_flv', 'fdc_fhv',
                 'kge', 'kge_np', 'kge_mod', 'kge_bound', 'kgeprime_c2m', 'kgenp_bound',
                 'nse', 'nse_alpha', 'nse_beta', 'nse_mod', 'nse_bound']
+
+    @staticmethod
+    def _scale_independent_metrics() -> list:
+        """Names of scale independent metrics."""
+        return ['mape', 'r2', 'nse']
+
+    @staticmethod
+    def _scale_dependent_metrics() -> list:
+        """Names of scale dependent metrics."""
+        return ['mse', 'rmse', 'mae']
 
     @staticmethod
     def _minimal() -> list:
@@ -1253,8 +1266,10 @@ class RegressionMetrics(Metrics):
 
     def wape(self) -> float:
         """
-        weighted absolute percentage error
-        https://mattdyor.wordpress.com/2018/05/23/calculating-wape/
+        [weighted absolute percentage error](https://mattdyor.wordpress.com/2018/05/23/calculating-wape/)
+
+        It is a variation of mape but [more suitable for intermittent and low-volume
+        data](https://arxiv.org/pdf/2103.12057v1.pdf).
         """
         return float(np.sum(self._ae() / np.sum(self.true)))
 

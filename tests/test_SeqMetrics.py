@@ -113,6 +113,16 @@ class test_errors(unittest.TestCase):
         assert len(minimal_metrics) == len(er._minimal())
         return
 
+    def test_scale_dependent(self):
+        minimal_metrics = er.calculate_scale_dependent_metrics()
+        assert len(minimal_metrics) == len(er._scale_dependent_metrics())
+        return
+
+    def test_scale_independent(self):
+        minimal_metrics = er.calculate_scale_independent_metrics()
+        assert len(minimal_metrics) == len(er._scale_independent_metrics())
+        return
+
     def test_list_subclass_methods(self):
         class DP:
             def _pa(self): pass
