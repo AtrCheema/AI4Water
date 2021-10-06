@@ -385,8 +385,8 @@ class TestMLMethods(unittest.TestCase):
             verbosity=0)
 
         model.fit()
-        trtt, trp = model.predict(data='training')
-        t, p = model.predict()
+        trtt, trp = model.predict(data='training', return_true=True)
+        t, p = model.predict(return_true=True)
         self.assertGreater(len(t), 1)
         self.assertGreater(len(trtt), 1)
         return

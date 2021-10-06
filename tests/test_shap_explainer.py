@@ -15,26 +15,13 @@ from sklearn.model_selection import train_test_split
 
 from ai4water import Model
 from ai4water.datasets import arg_beach, MtropicsLaos
-from ai4water.post_processing.explain import ShapExplainer
+from ai4water.post_processing.explain import ShapExplainer, explain_model_with_shap
 
-from test_lime_explainer import make_lstm_reg_model
+from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
 
 laos = MtropicsLaos()
 
 class_data = laos.make_classification()
-
-
-def get_fitted_model(model_name, data):
-
-    model = Model(
-        model=model_name,
-        data=data,
-        verbosity=0
-    )
-
-    model.fit()
-
-    return model
 
 
 def get_lstm_model():
@@ -126,21 +113,7 @@ def fit_and_draw_plots(model_name, data, draw_heatmap=False):
 
 def get_mlp():
 
-    model = Model(
-        model={'layers': {
-            "Dense_0": {'units': 8},
-            "Dense_1": {'units': 4},
-            "Dense_2": {'units': 2},
-            "Flatten": {},
-            "Dense_3": 1,
-        }},
-        data=arg_beach(),
-        epochs=2,
-        lookback=1,
-        verbosity=0
-    )
-
-    model.fit()
+    model = make_mlp_model()
     #train_x, train_y = model.training_data()
     testx, testy = model.test_data()
     testx = pd.DataFrame(testx, columns=model.dh.input_features).iloc[0:5]
@@ -337,6 +310,32 @@ class TestShapExplainers(unittest.TestCase):
                             features=m.dh.input_features, path=m.path)
         exp.force_plot_single_example(0, lookback=0)
         return
+
+    def test_ai4water_ml(self):
+
+        for m in [
+            "XGBoostRegressor",
+            "RandomForestRegressor",
+            "GRADIENTBOOSTINGREGRESSOR"
+                  ]:
+
+            model = get_fitted_model(m, arg_beach())
+            exp = explain_model_with_shap(model, examples_to_explain=5)
+            assert isinstance(exp, ShapExplainer)
+
+
+    def test_ai4water_mlp(self):
+        model = make_mlp_model()
+
+        exp = explain_model_with_shap(model, examples_to_explain=5)
+        assert isinstance(exp, ShapExplainer)
+
+    def test_ai4water_lstm(self):
+        m = lstm_model()
+        m.fit()
+        exp = explain_model_with_shap(m, examples_to_explain=5)
+        assert isinstance(exp, ShapExplainer)
+
 
 if __name__ == "__main__":
 

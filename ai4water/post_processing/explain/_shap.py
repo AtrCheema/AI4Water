@@ -181,7 +181,8 @@ class ShapExplainer(ExplainerMixin):
         assert inf_framework in ("ML", "DL")
 
         if inf_framework == "DL":
-            assert layer is not None, f"You must define layer to explain"
+            assert layer is not None, f"Inferred framework is {inf_framework}." \
+                                      f"Therefore, you must define layer to explain"
         else:
             assert layer is None
 
@@ -392,8 +393,9 @@ class ShapExplainer(ExplainerMixin):
             expected_value = self.explainer.expected_value
 
         if data.ndim == 2:  # input is 3d
+            assert lookback is not None, f"for 3d input data, lookback must not be None"
             assert shap_vals.ndim == 2
-            expected_value =  expected_value[idx]
+            expected_value =  expected_value[0] #todo
             shap_vals = shap_vals[lookback]
             data = None
 

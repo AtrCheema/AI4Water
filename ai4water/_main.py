@@ -37,7 +37,7 @@ from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_mo
 from ai4water.utils.utils import maybe_three_outputs
 from ai4water.eda import EDA
 import ai4water.backend as K
-from ai4water.post_processing.explain import LimeExplainer, ShapExplainer
+from ai4water.post_processing.explain import explain_model
 
 if K.BACKEND == 'tensorflow' and tf is not None:
     import ai4water.keract_mod as keract
@@ -850,6 +850,14 @@ class BaseModel(NN, Plots):
         visualizer = PlotResults(path=self.path)
         self.is_training = True
 
+        if isinstance(data, np.ndarray):
+            assert 'x' not in kwargs
+            kwargs['x'] = data
+
+        if isinstance(callbacks, np.ndarray):
+            assert 'y' not in kwargs
+            kwargs['y'] = callbacks
+
         if 'x' not in kwargs:
             train_data = getattr(self, f'{data}_data')()
             inputs, outputs = maybe_three_outputs(train_data, self.dh.teacher_forcing)
@@ -1115,6 +1123,7 @@ class BaseModel(NN, Plots):
                 prefix: str = None,
                 process_results: bool = True,
                 metrics:str = "minimal",
+                return_true:bool = False,
                 **kwargs
                 ) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -1126,9 +1135,11 @@ class BaseModel(NN, Plots):
             y : Used for pos-processing etc. if given it will overrite `data`
             process_results : post processing of results
             prefix : prefix used with names of saved results
-            kwargs : any keyword argument for `fit` method.
             metrics : only valid if process_results is True. The metrics to calculate.
                 Valid values are 'minimal', 'all', 'hydro_metrics'
+            return_true : whether to return the true values along with predicted values
+                or not. Default is False, so that this method behaves sklearn type.
+            kwargs : any keyword argument for `fit` method.
         Returns:
             a tuple of arrays. The first is true and the second is predicted.
             If `x` is given but `y` is not given, then, first array which is
@@ -1137,7 +1148,10 @@ class BaseModel(NN, Plots):
         assert data in ['training', 'test', 'validation']
         assert metrics in ("minimal", "all", "hydro_metrics")
 
-        return self.call_predict(data=data, x=x, y=y, process_results=process_results, metrics=metrics, **kwargs)
+        return self.call_predict(data=data, x=x, y=y, process_results=process_results,
+                                 metrics=metrics,
+                                 return_true=return_true,
+                                 **kwargs)
 
     def call_predict(self,
                      data='test',
@@ -1145,6 +1159,7 @@ class BaseModel(NN, Plots):
                      y=None,
                      process_results=True,
                      metrics="minimal",
+                     return_true:bool = False,
                      **kwargs):
 
         if isinstance(data, np.ndarray):
@@ -1186,7 +1201,9 @@ class BaseModel(NN, Plots):
             predicted = self.predict_ml_models(inputs, **kwargs)
 
         if true_outputs is None:
-            return true_outputs, predicted
+            if return_true:
+                return true_outputs, predicted
+            return predicted
 
         dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
         if not user_defined_data:
@@ -1226,7 +1243,9 @@ class BaseModel(NN, Plots):
             self.plot_quantiles2(true_outputs, predicted)
             self.plot_all_qs(true_outputs, predicted)
 
-        return true_outputs, predicted
+        if return_true:
+            return true_outputs, predicted
+        return predicted
 
     def predict_ml_models(self, inputs, **kwargs):
         """So that it can be overwritten easily for ML models."""
@@ -1405,74 +1424,11 @@ class BaseModel(NN, Plots):
 
         return
 
-    def explain(self,
-                force_plots=False,
-                dependence_plots=False,
-                save_lime_plots=False,
-                heatmap=False,
-                beeswarm_plots=False,
-                **kwargs
-                ):
-        """Calls the Explain module to explain the model."""
-        explain_using_lime = True
-        explain_using_shap = True
+    def explain(self, *args, **kwargs):
+        """Calls the ai4water.post_processing.explain.explain_model
+         to explain the model."""
 
-        try:
-            import shap
-        except ModuleNotFoundError:
-            explain_using_shap = False
-            print("unable to interpret using SHAP. Please install SHAP package.")
-
-        try:
-            import lime
-        except ModuleNotFoundError:
-            explain_using_lime = False
-            print("unable to interpret using SHAP. Please install SHAP package.")
-
-        # make directories to save results.
-        train_x, _ = self.training_data()
-        test_x, _ = self.test_data()
-        exp_path = os.path.join(self.path, "explainability")
-        shap_exp_path = os.path.join(exp_path, "shap")
-        if not os.path.exists(shap_exp_path):
-            os.makedirs(shap_exp_path)
-        lime_exp_path = os.path.join(exp_path, "lime")
-        if not os.path.exists(lime_exp_path):
-            os.makedirs(lime_exp_path)
-
-        if explain_using_shap:
-
-            if self.category == "DL":
-                pass  # todo
-                # explainer = ShapDLExplainer(
-                #     model=self if self.api == 'subclassing' else self._model,
-                #     data=test_x,
-                #     path=self.path
-                # )
-                # explainer()
-            else:
-                explainer = ShapExplainer(model=self._model, train_data=train_x, test_data=test_x,
-                                            path=shap_exp_path, features=list(self.in_cols))
-
-                explainer(
-                    dependence_plots=dependence_plots,
-                    force_plots=force_plots,
-                    heatmap=heatmap,
-                    beeswarm_plots=beeswarm_plots
-                )
-
-        if explain_using_lime:
-            if self.category == "DL":
-                pass
-            else:
-                if self.problem == "classification":
-                    pass  # todo
-                else:
-                    explainer = LimeExplainer(model=self._model, train_data=train_x, test_data=test_x,
-                                                path=lime_exp_path, mode=self.problem, verbosity=self.verbosity)
-                    if save_lime_plots:
-                        explainer()
-        return
+        return explain_model(self, *args, **kwargs)
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 

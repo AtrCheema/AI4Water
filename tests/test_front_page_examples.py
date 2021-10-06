@@ -23,7 +23,8 @@ class TestFrontPage(unittest.TestCase):
                 data = data,
                 input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
                 output_features = ['tetx_coppml'],     # columns in csv file to be used as output
-                lookback = 12
+                lookback = 12,
+            verbosity=0
         )
 
         model.fit()
@@ -47,7 +48,8 @@ class TestFrontPage(unittest.TestCase):
                     lookback=lookback,
                     input_features=inputs,
                     output_features=outputs,
-                    lr=0.001
+                    lr=0.001,
+            verbosity=0
                       )
         x = np.random.random((batch_size*10, lookback, len(inputs)))
         y = np.random.random((batch_size*10, len(outputs)))
@@ -68,7 +70,8 @@ class TestFrontPage(unittest.TestCase):
             model={"randomforestregressor": {"n_estimators": 1000}},
             # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
             # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
-            data=data
+            data=data,
+            verbosity=0
         )
 
         model.fit()

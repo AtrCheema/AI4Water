@@ -14,12 +14,58 @@ import pandas as pd
 from ai4water import Model
 from ai4water.datasets import arg_beach
 from ai4water.datasets import MtropicsLaos
-from ai4water.post_processing.explain import LimeExplainer
+from ai4water.post_processing.explain import LimeExplainer, explain_model_with_lime
 
 laos = MtropicsLaos()
 
 reg_data = laos.make_regression()
 class_data = laos.make_classification()
+
+
+def make_mlp_model():
+
+    model = Model(
+        model={'layers': {
+            "Dense_0": {'units': 8},
+            "Dense_1": {'units': 4},
+            "Dense_2": {'units': 2},
+            "Flatten": {},
+            "Dense_3": 1,
+        }},
+        data=arg_beach(),
+        epochs=2,
+        lookback=1,
+        verbosity=0
+    )
+
+    model.fit()
+    return model
+
+
+def get_fitted_model(model_name, data):
+
+    model = Model(
+        model=model_name,
+        data=data,
+        verbosity=0
+    )
+
+    model.fit()
+
+    return model
+
+
+def lstm_model():
+
+    model = Model(
+        model = {"layers": {
+            "LSTM": 32,
+            "Dense": 1
+        }},
+        data = arg_beach(),
+        verbosity=0
+    )
+    return model
 
 
 def make_class_model(**kwargs):
@@ -31,6 +77,7 @@ def make_class_model(**kwargs):
         verbosity=0,
         **kwargs
     )
+    model.fit()
     return model
 
 
@@ -40,7 +87,7 @@ def make_lstm_reg_model():
         def predict(self,
                 *args, **kwargs
                 ):
-            t, p = super(MyModel, self).predict(*args, **kwargs)
+            p = super(MyModel, self).predict(*args, **kwargs)
 
             return p.reshape(-1,)
 
@@ -66,6 +113,9 @@ def make_reg_model(**kwargs):
         verbosity=0,
         **kwargs
     )
+
+    model.fit()
+
     return model
 
 
@@ -92,9 +142,6 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
         model = make_class_model()
     else:
         raise ValueError
-
-    model.fit()
-
 
     train_x, test_x = get_data(model, to_dataframe=to_dataframe, examples_to_explain=examples_to_explain)
 
@@ -168,7 +215,7 @@ class TestLimeExplainer(unittest.TestCase):
     def test_ai4water_regression(self):
         model = make_reg_model(test_fraction=0.05)
         assert model.problem == "regression"
-        model.fit()
+
         model.explain()
         return
 
@@ -195,8 +242,33 @@ class TestLimeExplainer(unittest.TestCase):
         exp.explain_example(0)
         return
 
+    def test_ai4water_ml(self):
+
+        for m in [
+            "XGBoostRegressor",
+            "RandomForestRegressor",
+            "GRADIENTBOOSTINGREGRESSOR"
+                  ]:
+
+            model = get_fitted_model(m, arg_beach())
+            exp = explain_model_with_lime(model, examples_to_explain=5)
+            assert isinstance(exp, LimeExplainer)
+        return
+
+    def test_ai4water_mlp(self):
+        model = make_mlp_model()
+
+        exp = explain_model_with_lime(model, examples_to_explain=5)
+        assert isinstance(exp, LimeExplainer)
+        return
+
+    def test_ai4water_lstm(self):
+        m = lstm_model()
+        m.fit()
+        exp = explain_model_with_lime(m, examples_to_explain=5)
+        assert isinstance(exp, LimeExplainer)
 
 
-# if __name__ == "__main__":
-#
-#     unittest.main()
+if __name__ == "__main__":
+
+    unittest.main()

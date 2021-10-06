@@ -118,7 +118,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
 
         model.fit()
 
-        t, p = model.predict()
+        t, p = model.predict(return_true=True)
         mse = RegressionMetrics(t, p).mse()
 
         return mse
@@ -318,7 +318,7 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit()
 
-            t, p = model.predict()
+            t, p = model.predict(return_true=True)
             mse = RegressionMetrics(t, p).mse()
             #print(f"Validation mse {mse}")
 
@@ -467,7 +467,7 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit()
 
-            t, p = model.predict()
+            t, p = model.predict(return_true=True)
             mse = RegressionMetrics(t, p).mse()
             #print(f"Validation mse {mse}")
 
@@ -549,6 +549,7 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
 
+run_unified_interface('bayes', 'skopt', 12)
 
-if __name__ == "__main__":
-    unittest.main()
+# if __name__ == "__main__":
+#     unittest.main()

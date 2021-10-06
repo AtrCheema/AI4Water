@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import random
 import warnings
 import unittest
@@ -340,6 +341,7 @@ class TestUtils(unittest.TestCase):
         forecast_step = 2
         forecast_len = 3
         """
+        time.sleep(1)
         model = build_model(
             input_features = ['input_0', 'input_1', 'input_2'],
             output_features= ['input_3', 'input_4', 'output'],
@@ -365,6 +367,7 @@ class TestUtils(unittest.TestCase):
         forecast_step = 10
         forecast_len = 10
         """
+        time.sleep(1)
         model = build_model(
             input_features = ['input_0', 'input_1', 'input_2'],
             output_features= ['input_3', 'input_4', 'output'],
@@ -393,7 +396,7 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_same_test_val_data(self):  # todo, failing in plotting
-
+        time.sleep(1)
         x,y = test_train_val_test_data(data=nasdaq_df, val_data="same")
         self.assertEqual(len(x), len(y))
         return
@@ -407,7 +410,8 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_with_st_en_defined(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
+        time.sleep(1)
+        test_train_val_test_data(data=arg_beach(), train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
         return
 
     def test_with_random(self):
@@ -469,7 +473,7 @@ class TestUtils(unittest.TestCase):
 
     def test_datetimeindex(self):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
-
+        time.sleep(1)
         model = Model(
             data=data1.astype(np.float32),
             input_features=in_cols,
@@ -483,10 +487,10 @@ class TestUtils(unittest.TestCase):
             verbosity=0)
 
         model.fit()
-        t,p = model.predict()
+        t,p = model.predict(return_true=True)
         # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
         for i in range(100):
-            idx = model.test_indices[i] + model.lookback - 1
+            idx = model.dh.test_indices[i] + model.lookback - 1
             true = int(round(t[i].item()))
             self.assertEqual(true, idx + 10000)
         test_evaluation(model)
@@ -511,7 +515,7 @@ class TestUtils(unittest.TestCase):
 
         model.fit()
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
-        self.assertTrue(np.allclose(idx5, model.train_indices[-8:]))
+        self.assertTrue(np.allclose(idx5, model.dh.train_indices[-8:]))
 
         x, y = model.training_data()
 
@@ -530,8 +534,8 @@ class TestUtils(unittest.TestCase):
         #self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[10]) # todo
         #self.assertTrue(np.allclose(xx[2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[10])) # todo
 
-        assert np.max(model.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
 
         test_evaluation(model)
 
@@ -563,7 +567,7 @@ class TestUtils(unittest.TestCase):
         test_evaluation(model)
 
         for i in range(100):
-            idx = model.train_indices[i]
+            idx = model.dh.train_indices[i]
             df_x = df[['in1', 'in2']].iloc[idx]
             if idx > model.lookback and int(df_x.isna().sum()) == 0:
                 self.assertAlmostEqual(float(df['out1'].iloc[idx+14]), y[i], 6)
@@ -603,8 +607,8 @@ class TestUtils(unittest.TestCase):
         #         self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
         #         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
 
-        assert np.max(model.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
 
         return
 

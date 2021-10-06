@@ -51,7 +51,7 @@ class MLClassificationExperiments(Experiments):
 
         model.fit(**fit_kws)
 
-        t, _ = model.predict()
+        t = model.predict()
 
         if view:
             model.view_model()

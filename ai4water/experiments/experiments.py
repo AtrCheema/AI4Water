@@ -991,13 +991,13 @@ be used to build ai4water's Model class.
             val_score = model.cross_val_score()
         else:
             model.fit()
-            val_true, val_pred = model.predict('validation')
+            val_true, val_pred = model.predict('validation', return_true=True)
             val_score = getattr(RegressionMetrics(val_true, val_pred), model.config['val_metric'])()
 
         if predict:
-            trt, trp = model.predict('training')
+            trt, trp = model.predict('training', return_true=True)
 
-            testt, testp = model.predict()
+            testt, testp = model.predict(return_true=True)
 
             model.config['allow_nan_labels'] = 2
             model.predict()
@@ -1013,9 +1013,9 @@ be used to build ai4water's Model class.
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict('training')
+        train_true, train_pred = model.predict('training', return_true=True)
 
-        test_true, test_pred = model.predict('test')
+        test_true, test_pred = model.predict('test', return_true=True)
 
         model.data['allow_nan_labels'] = 1
         model.predict()

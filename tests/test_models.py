@@ -14,6 +14,9 @@ from tensorflow.keras.layers import Dense, Input
 from sklearn.datasets import make_classification
 from sklearn.datasets import make_multilabel_classification
 
+from utils import tensorflow_shutup
+tensorflow_shutup()
+
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
     from ai4water.functional import Model
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
@@ -114,6 +117,7 @@ def build_and_run(outputs, transformation=None, indices=None):
 class test_MultiInputModels(unittest.TestCase):
 
     def test_with_no_transformation(self):
+        time.sleep(1)
         outputs = {"inp_1d": ['flow']}
         build_and_run(outputs, transformation=None)
         return
@@ -125,6 +129,7 @@ class test_MultiInputModels(unittest.TestCase):
         return
 
     def test_with_random_sampling(self):
+        time.sleep(1)
         outputs = {"inp_1d": ['flow']}
         build_and_run(outputs, indices="random")
         return
@@ -172,7 +177,7 @@ class test_MultiInputModels(unittest.TestCase):
         # test that we can use val_data="same" with multiple inputs. Execution of model.fit() below means that
         # tf.data was created successfully and keras Model accepted it to train as well.
         _examples = 200
-
+        time.sleep(1)
         class MyModel(FModel):
             def add_layers(self, layers_config:dict, inputs=None):
                 input_layer_names = ['input1', 'input2', 'input3', 'input4']
@@ -273,7 +278,7 @@ class test_MultiInputModels(unittest.TestCase):
                       verbosity=0
                       )
         model.fit()
-        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
         # check also for functional model
@@ -282,7 +287,7 @@ class test_MultiInputModels(unittest.TestCase):
                       verbosity=0
                       )
         model.fit()
-        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
         time.sleep(1)
@@ -395,11 +400,12 @@ class TestClassifications(unittest.TestCase):
                                'Reshape': {'target_shape': (2,1)}}},
             lookback=5,
             output_features = ['blaTEM_coppml', 'tetx_coppml'],
-            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml'])
+            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml']),
+            verbosity=0
         )
 
         model.fit()
-        t,p = model.predict()
+        t,p = model.predict(return_true=True)
 
         assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
 

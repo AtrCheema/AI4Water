@@ -141,16 +141,16 @@ class MLRegressionExperiments(Experiments):
             val_score = model.cross_val_score(model.config['val_metric'])
         else:
             model.fit(**fit_kws)
-            vt, vp = model.predict('validation')
+            vt, vp = model.predict('validation', return_true=True)
             val_score =  getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
 
-        tt, tp = model.predict('test')
+        tt, tp = model.predict('test', return_true=True)
 
         if view:
             model.view_model()
 
         if predict:
-            t, p = model.predict('training')
+            t, p = model.predict('training', return_true=True)
 
             return (t,p), (tt, tp)
 

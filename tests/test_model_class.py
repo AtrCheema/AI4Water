@@ -10,12 +10,12 @@ x, y = dh.training_data()
 
 def test_user_defined_data(_model):
     # using user defined x
-    t,p = _model.predict(x=x)
+    t,p = _model.predict(x=x, return_true=True)
     assert t is None
     assert len(p) == len(x)
 
     # using user defined x and y, post_processing must happen
-    t,p = _model.predict(x=x, y=y)
+    t,p = _model.predict(x=x, y=y, return_true=True)
     assert len(t) == len(p) == len(y)
 
     return
@@ -31,7 +31,7 @@ class TestPredictMethod(unittest.TestCase):
 
         test_user_defined_data(model)
 
-        t,p = model.predict()
+        t,p = model.predict(return_true=True)
         assert len(t) == len(p)
         return
 
@@ -61,6 +61,15 @@ class TestPredictMethod(unittest.TestCase):
         for metrics in ["minimal", "hydro_metrics", "all"]:
             model.predict(x=x, metrics=metrics)
 
+        return
+
+    def test_fit(self):
+        model = Model(model="RandomForestRegressor", verbosity=0)
+        model.fit(x,y)
+
+        model.fit(x, y=y)
+
+        model.fit(x=x, y=y)
         return
 
 if __name__ == "__main__":

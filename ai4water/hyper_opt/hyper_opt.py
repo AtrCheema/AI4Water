@@ -173,7 +173,7 @@ class HyperOpt(object):
     ...
     ...    model.fit()
     ...
-    ...    t, p = model.predict(prefix='test')
+    ...    t, p = model.predict(prefix='test', return_true=True)
     ...    mse = RegressionMetrics(t, p).mse()
     ...    # the objective function must return a scaler value which needs to be minimized
     ...    return mse
@@ -868,7 +868,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                                                " AI4Water model and pass it as custom model."
         model.fit()
 
-        t, p = model.predict(process_results=pp)
+        t, p = model.predict(process_results=pp, return_true=True)
         mse = RegressionMetrics(t, p).mse()
 
         global COUNTER

@@ -328,7 +328,7 @@ class DualAttentionModel(FModel):
 
         assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
 
-        predictions, observations = self.predict(process_results=False, data=data)
+        predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
         activation = self.activations(layer_names=layer_name, data=data)
 

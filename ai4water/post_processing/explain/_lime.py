@@ -82,7 +82,7 @@ class LimeExplainer(ExplainerMixin):
 
         import lime.lime_tabular
 
-        if proposed_explainer is None:
+        if proposed_explainer is None and self.data.ndim <= 2:
             lime_explainer = lime.lime_tabular.LimeTabularExplainer(self.train_data,
                                                                     feature_names=self.features,
                                                                     # class_names=['price'],
@@ -95,9 +95,16 @@ class LimeExplainer(ExplainerMixin):
                                                                             feature_names=self.features,
                                                                             mode=self.mode,
                                                                             verbose=self.verbosity)
-        else:
+        elif self.data.ndim == 3:
+            lime_explainer = lime.lime_tabular.RecurrentTabularExplainer(self.train_data,
+                                                                         mode=self.mode,
+                                                                         feature_names=self.features,
+                                                                         verbose=self.verbosity)
+        elif proposed_explainer is not None:
             lime_explainer = getattr(lime, proposed_explainer)(self.train_data,
                                                                features=self.features, mode=self.mode)
+        else:
+            raise ValueError(f"Can not infer explainer. Please specify explainer to use.")
         return lime_explainer
 
     def __call__(self, *args, **kwargs):
@@ -124,7 +131,8 @@ class LimeExplainer(ExplainerMixin):
         An example here means an instance/sample/data point.
         """
         for i in range(len(self.data)):
-            self.explain_example(i, plot_type=plot_type, name=name, num_features=num_features, **kwargs)
+            self.explain_example(i, plot_type=plot_type, name=f"{name}_{i}",
+                                 num_features=num_features, **kwargs)
         return
 
     def explain_example(self,
