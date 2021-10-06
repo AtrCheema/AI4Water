@@ -27,7 +27,7 @@ def make_and_run(input_model, _layers=None, lookback=12, epochs=3, **kwargs):
 
     _ = model.fit()
 
-    _, pred_y = model.predict()
+    pred_y = model.predict()
     model.interpret()
 
     return pred_y

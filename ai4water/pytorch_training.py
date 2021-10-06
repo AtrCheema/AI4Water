@@ -175,7 +175,7 @@ class Learner(AttributeContainer):
         >>>t = learner.predict(X, y=Y, name='training')
         ```
         """
-        super().__init__(num_epochs, to_monitor, path=path, **kwargs)
+        super().__init__(num_epochs, to_monitor, path=path, use_cuda=use_cuda)
 
         if self.use_cuda:
             model = model.to(self._device())
@@ -367,11 +367,11 @@ class Learner(AttributeContainer):
             self.optimizer.zero_grad()
 
             # calculate metrics for each mini-batch
-            #er = TorchMetrics(batch_y, pred_y)
+            er = TorchMetrics(batch_y, pred_y)
 
-            #for k, v in epoch_losses.items():
-            #    v[i] = getattr(er, k)().detach().item()
-            epoch_losses['mse'][i] = loss.detach()
+            for k, v in epoch_losses.items():
+                v[i] = getattr(er, k)().detach().item()
+            #epoch_losses['mse'][i] = loss.detach()
 
         # take the mean for all mini-batches without considering infinite values
         self.train_epoch_losses = {k: round(float(np.mean(v[np.isfinite(v)])), 4) for k, v in epoch_losses.items()}

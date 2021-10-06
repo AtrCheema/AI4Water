@@ -76,7 +76,7 @@ class IMVModel(HARHNModel):
         mpl.rcParams.update(mpl.rcParamsDefault)
 
         self.alphas, self.betas = [], []
-        true, predicted = self.predict(data=data, process_results=False)
+        true, predicted = self.predict(data=data, process_results=False, return_true=True)
 
         name = f'data_on_{dateandtime_now()}' if x is not None else data
 

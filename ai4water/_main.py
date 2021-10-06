@@ -1125,7 +1125,7 @@ class BaseModel(NN, Plots):
                 metrics:str = "minimal",
                 return_true:bool = False,
                 **kwargs
-                ) -> Any[Tuple[np.ndarray, np.ndarray], np.ndarray]:
+                ):
         """
         Makes prediction from the trained model.
         Arguments:
@@ -1172,7 +1172,7 @@ class BaseModel(NN, Plots):
             transformation_key = '5'
 
             if x is None:
-                if self.data is None:
+                if self.dh.data is None:
                     raise ValueError("You must specify the data on which to make prediction")
                 user_defined_data = False
                 prefix = data

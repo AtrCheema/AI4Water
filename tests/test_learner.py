@@ -48,7 +48,7 @@ def PlotStuff(model, train_data, epoch, **kwargs):
     plt.xlabel('x')
 
     plt.legend()
-    plt.show()
+    #plt.show()
 
 def criterion_cross(labels, outputs):
     out = -1 * torch.mean(labels * torch.log(outputs) + (1 - labels) * torch.log(1 - outputs))
