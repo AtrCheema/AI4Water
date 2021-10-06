@@ -178,7 +178,7 @@ def check_kfold_splits(data_handler):
 
         for (train_x, train_y), (test_x, test_y) in splits:
 
-            print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
+            ... # print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
 
     return
 
@@ -223,7 +223,7 @@ def build_and_test_loader(data, config, out_cols, train_ex=None, val_ex=None, te
 
     config['teacher_forcing'] = True  # todo
 
-    data_loader = DataHandler(data=data, save=save, **config)
+    data_loader = DataHandler(data=data, save=save, verbosity=0, **config)
     #dl = DataLoader.from_h5('data.h5')
     train_x, prev_y, train_y = data_loader.training_data(key='train')
     assert_xy_equal_len(train_x, prev_y, train_y, data_loader, train_ex)
@@ -494,7 +494,7 @@ class TestAllCases(object):
 
     def test_with_dt_index(self):
         # we don't want any test_data
-        print('testing test_with_dt_index', self.lookback)
+        #print('testing test_with_dt_index', self.lookback)
         examples = 20
         data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
         data = pd.DataFrame(data, columns=['a', 'b', 'c'],
@@ -514,7 +514,7 @@ class TestAllCases(object):
         return
 
     def test_with_intervals(self):
-        print('testing test_with_intervals', self.lookback)
+        #print('testing test_with_intervals', self.lookback)
         examples = 35
         data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
         data = pd.DataFrame(data, columns=['a', 'b', 'c'],
@@ -562,7 +562,7 @@ class TestAllCases(object):
         return
 
     def test_with_custom_train_indices(self):
-        print('testing test_with_custom_train_indices')
+        #print('testing test_with_custom_train_indices')
 
         examples = 20
         data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
@@ -604,7 +604,7 @@ class TestAllCases(object):
         return
 
     def test_with_custom_train_indices_same_val_data(self):
-        print('testing test_with_custom_train_indices_same_val_data')
+        #print('testing test_with_custom_train_indices_same_val_data')
         examples = 20
         data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
         data = pd.DataFrame(data, columns=['a', 'b', 'c'],
@@ -652,7 +652,7 @@ class TestAllCases(object):
     #     return
 
     def test_with_custom_train_indices_and_intervals(self):
-        print('testing test_with_custom_train_indices_and_intervals', self.lookback)
+        #print('testing test_with_custom_train_indices_and_intervals', self.lookback)
         examples = 30
         data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
         data = pd.DataFrame(data, columns=['a', 'b', 'c'],
@@ -1316,7 +1316,7 @@ def test_with_random_with_transformation_of_features():
               'lookback': 5,
               'train_data': 'random'}
 
-    dh = DataHandler(data, **config)
+    dh = DataHandler(data, verbosity=0, **config)
 
     x,y = dh.training_data()
 
@@ -1363,6 +1363,7 @@ def make_cross_validator(cv, **kwargs):
         data=arg_beach(),
         cross_validator=cv,
         val_metric="mse",
+        verbosity=0,
         **kwargs
     )
 
@@ -1549,7 +1550,7 @@ def test_multisource_basic3():
     #                   val_ex=4,
     #                   test_ex=6, save=True)
 
-    data_handler = DataHandler(data=[static_df, cont_df, disc_df], **config)
+    data_handler = DataHandler(data=[static_df, cont_df, disc_df], verbosity=0, **config)
     data_handler.training_data()
     data_handler.validation_data()
     data_handler.test_data()
@@ -1610,11 +1611,12 @@ def site_distributed_basic():
                         index=pd.date_range('20110101', periods=examples, freq='D'))
     config = {'input_features': ['a', 'b'],
               'output_features': ['c'],
-              'lookback': 4}
+              'lookback': 4,
+              'verbosity': 0}
     data = {'0': df, '1': df+1000, '2': df+2000, '3': df+3000}
     configs = {'0': config, '1': config, '2': config, '3': config}
 
-    dh = SiteDistributedDataHandler(data, configs)
+    dh = SiteDistributedDataHandler(data, configs, verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
@@ -1622,7 +1624,8 @@ def site_distributed_basic():
     assert val_x.shape == (10, len(data),  config['lookback'], len(config['input_features']))
     assert test_x.shape == (14, len(data),  config['lookback'], len(config['input_features']))
 
-    dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
+    dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'],
+                                    test_sites=['3'], verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
@@ -1639,7 +1642,8 @@ def site_distributed_diff_lens():
                         index=pd.date_range('20110101', periods=examples, freq='D'))
     config = {'input_features': ['a', 'b'],
               'output_features': ['c'],
-              'lookback': 4}
+              'lookback': 4,
+              'verbosity': 0}
     data = {'0': df,
             '1': pd.concat([df, df], axis=0)+1000,
             '2': pd.concat([df, df, df], axis=0)+2000,
@@ -1648,7 +1652,7 @@ def site_distributed_diff_lens():
     configs = {'0': config, '1': config, '2': config, '3': config}
 
     #dh = SiteDistributedDataHandler(data, configs) # This should raise NotImplementedError
-    dh = SiteDistributedDataHandler(data, configs, allow_variable_len=True)
+    dh = SiteDistributedDataHandler(data, configs, allow_variable_len=True, verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
@@ -1656,7 +1660,7 @@ def site_distributed_diff_lens():
 
 
     dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'],
-                                    test_sites=['3'], allow_variable_len=True)
+                                    test_sites=['3'], allow_variable_len=True, verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
@@ -1673,20 +1677,21 @@ def site_distributed_multiple_srcs():
 
     config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
               'output_features': {'cont_data': ['d']},
-              'lookback': {'cont_data': 4, 'static_data':1}
+              'lookback': {'cont_data': 4, 'static_data':1},
+              'verbosity': 0
               }
 
     data = {'cont_data': cont_df, 'static_data': static_df}
     datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
     configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
 
-    dh = SiteDistributedDataHandler(datas, configs)
+    dh = SiteDistributedDataHandler(datas, configs, verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
 
     dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
-                                    validation_sites=['3', '4'], test_sites=['5', '6'])
+                                    validation_sites=['3', '4'], test_sites=['5', '6'], verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()

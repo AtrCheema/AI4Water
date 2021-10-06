@@ -95,8 +95,13 @@ class TestLearner(unittest.TestCase):
 
 
     def test_use_cuda(self):
-        learner = make_learner(epochs=5, use_cuda=True)
         import torch
+        use_cuda = False
+
+        if torch.cuda.is_available():
+            use_cuda = True
+        learner = make_learner(epochs=5, use_cuda=use_cuda)
+
         if torch.cuda.is_available():
             assert next(learner.model.parameters()).is_cuda
 

@@ -44,7 +44,7 @@ def run_method1(method,
                 data=None,
                 **kwargs):
 
-    print(f"testing: {method} with {cols} features")
+    #print(f"testing: {method} with {cols} features")
 
     normalized_df1, scaler = Transformations(data=df if data is None else data,
                                              method=method,
@@ -166,7 +166,7 @@ class test_Scalers(unittest.TestCase):
     def run_method(self, method, cols=None, index=None, assert_equality=False):
 
         cols = ['data1', 'data2'] if cols is None else cols
-        print(f"testing: {method} with {cols} features")
+        #print(f"testing: {method} with {cols} features")
 
         normalized_df1, denormalized_df1 = run_method1(method, cols)
 
@@ -298,7 +298,7 @@ class test_Scalers(unittest.TestCase):
             self.assertEqual(orig_df.shape, (df_len, features))
 
     def do_decomposition(self, df_len, features, components, m, method):
-        print(f"testing {method} with {features} features and {components} components with {m} call method")
+        #print(f"testing {method} with {features} features and {components} components with {m} call method")
 
         data = pd.DataFrame(np.random.random((df_len, features)),
                           columns=['data' + str(i) for i in range(features)])

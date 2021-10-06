@@ -6,6 +6,8 @@ import sys
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
+from utils import tensorflow_shutup
+tensorflow_shutup()
 
 import tensorflow as tf
 import numpy as np
@@ -86,7 +88,7 @@ class Test_TFT(unittest.TestCase):
         num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
         self.assertEqual(num_paras, 7411)
 
-        h = model.fit(x, y, validation_split=0.3)
+        h = model.fit(x, y, validation_split=0.3, verbose=0)
 
         # The following test is passing if only one test is run in this file and it fails if multiple tests are run
         # Thus if will fail due to randomness.
@@ -108,11 +110,11 @@ class Test_TFT(unittest.TestCase):
                       output_features=['out1', 'out2', 'out3'],
                       verbosity=0)
         if model.api == 'functional':
-            h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            h = model._model.fit(x=x,y=y, validation_split=0.3, verbose=0)  # TODO, this h['loss'] is different than what we got from other test
             #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         else:
-            h = model.fit_fn(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            h = model.fit_fn(x=x,y=y, validation_split=0.3, verbose=0)  # TODO, this h['loss'] is different than what we got from other test
             #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
 
@@ -136,10 +138,10 @@ class Test_TFT(unittest.TestCase):
         x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
         y = np.random.random((n, len(quantiles), 1))
         if model.api == 'functional':
-            model._model.fit(x=x,y=y, validation_split=0.3)
+            model._model.fit(x=x,y=y, validation_split=0.3, verbose=0)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         else:
-            model.fit_fn(x=x,y=y, validation_split=0.3)
+            model.fit_fn(x=x,y=y, validation_split=0.3, verbose=0)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
         #assert model.forecast_len == 1
         #assert model.forecast_step == 0
