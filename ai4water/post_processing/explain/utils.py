@@ -29,11 +29,13 @@ def explain_model(
             in prediction.
         explainer : the explainer to use. If None, it will be inferred based
             upon the model type.
-        layer : layer to explain.
+        layer : layer to explain. Only relevant if the model consits of layers
+            of neural networks. If integer, it will be the number of layer
+            to explain. If string, it will be name of layer of to explain.
         method : either 'both', 'shap' or 'lime'. If both, then the model will
             be explained using both lime and shap methods.
     Returns:
-        if `method`==2, it will return a tuple of LimeExplainer and ShapExplainer
+        if `method`==both, it will return a tuple of LimeExplainer and ShapExplainer
         otherwise it will return the instance of either LimeExplainer or ShapExplainer.
 
     Example
@@ -75,8 +77,8 @@ def explain_model_with_lime(
     """Explains the model with LimeExplainer
 
     Arguments:
-        model : the model to explain
-        examples_to_explain : the features to explain
+        model : the AI4Water's model to explain
+        examples_to_explain : the examples to explain
     Returns:
         an instance of LimeExplainer
 
@@ -89,6 +91,7 @@ def explain_model_with_lime(
     >>>model = Model(model="RandForestRegressor", data=arg_beach())
     >>>model.fit()
     >>>explain_model_with_lime(model)
+    ```
     """
 
     features = model.dh.input_features
@@ -162,6 +165,7 @@ def explain_model_with_shap(
     >>>model = Model(model="RandForestRegressor", data=arg_beach())
     >>>model.fit()
     >>>explain_model_with_shap(model)
+    ```
     """
     assert hasattr(model, 'path')
 

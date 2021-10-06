@@ -3,7 +3,7 @@ import json
 import time
 import random
 import warnings
-from typing import Union, Callable, Tuple
+from typing import Union, Callable, Tuple, Any
 from types import MethodType
 
 try:
@@ -1125,7 +1125,7 @@ class BaseModel(NN, Plots):
                 metrics:str = "minimal",
                 return_true:bool = False,
                 **kwargs
-                ) -> Tuple[np.ndarray, np.ndarray]:
+                ) -> Any[Tuple[np.ndarray, np.ndarray], np.ndarray]:
         """
         Makes prediction from the trained model.
         Arguments:
@@ -1141,9 +1141,10 @@ class BaseModel(NN, Plots):
                 or not. Default is False, so that this method behaves sklearn type.
             kwargs : any keyword argument for `fit` method.
         Returns:
-            a tuple of arrays. The first is true and the second is predicted.
-            If `x` is given but `y` is not given, then, first array which is
-            returned is None.
+            An numpy array of predicted values.
+            If return_true is True then a tuple of arrays. The first is true
+            and the second is predicted. If `x` is given but `y` is not given,
+            then, first array which is returned is None.
         """
         assert data in ['training', 'test', 'validation']
         assert metrics in ("minimal", "all", "hydro_metrics")
