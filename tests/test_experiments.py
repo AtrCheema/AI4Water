@@ -5,15 +5,13 @@ import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
-from utils import tensorflow_shutup
-tensorflow_shutup()
-
 import warnings
 warnings.filterwarnings("ignore")
 
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
 from ai4water.datasets import arg_beach, load_u1
 from ai4water.hyper_opt import Categorical, Integer, Real
+from ai4water.utils.utils import dateandtime_now
 
 
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp12_mm',
@@ -142,7 +140,7 @@ class TestExperiments(unittest.TestCase):
                                                  param_space=search_space,
                                                  x0=x0,
                                                  verbosity=0,
-                                                 exp_name = "testing")
+                                                 exp_name = f"testing_{dateandtime_now()}")
         experiment.num_samples = 2
         experiment.fit('optimize', opt_method='random', num_iterations=4)
         return

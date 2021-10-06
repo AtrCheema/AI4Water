@@ -850,7 +850,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         kwargs = Jsonize(kwargs)()
 
         if title is None:
-            title =  self.opt_path #self.method + '_' + config.model["problem"] + '_' + config.model["ml_model"]
+            title =  self.opt_path #self.method + '_' + config.model["mode"] + '_' + config.model["ml_model"]
             self.title = title
         else:
             title = title

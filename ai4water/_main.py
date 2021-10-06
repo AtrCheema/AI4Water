@@ -231,10 +231,10 @@ class BaseModel(NN, Plots):
             self.path = maybe_create_path(path=path, prefix=prefix)
             self.verbosity = verbosity
             self.category = self.config['category']
-            self.problem = self.config['problem']
+            self.mode = self.config['mode']
             self.info = {}
 
-            Plots.__init__(self, self.path, self.problem, self.category,
+            Plots.__init__(self, self.path, self.mode, self.category,
                            config=maker.config)
 
     def __getattr__(self, item):
@@ -565,7 +565,7 @@ class BaseModel(NN, Plots):
                 self.use_wandb = True
                 wandb.init(name=os.path.basename(self.path),
                            project=wandb_config.get('project', 'keras_with_ai4water'),
-                           notes=wandb_config.get('notes', f"{self.problem} with {self.config['backend']}"),
+                           notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
                            tags=['ai4water', 'keras'],
                            entity=wandb_config.get('entity', 'atherabbas'))
 
@@ -581,6 +581,8 @@ class BaseModel(NN, Plots):
                 if 'validation_data' in wandb_config:
                     add_val_data = wandb_config.pop('validation_data')
 
+                    assert callable(WandbCallback)
+
                     callback['wandb_callback'] = WandbCallback(monitor=monitor,
                                                                training_data=train_data if add_train_data else None,
                                                                validation_data=validation_data if add_val_data else None,
@@ -592,7 +594,7 @@ class BaseModel(NN, Plots):
     def post_fit_wandb(self):
         """does some stuff related to wandb at the end of training."""
         if K.BACKEND == 'tensorflow' and self.use_wandb:
-            wandb.finish()
+            getattr(wandb, 'finish')()
 
         return
 
@@ -877,7 +879,7 @@ class BaseModel(NN, Plots):
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
                 # todo, it is assumed that there is softmax as the last layer
-                elif self.problem == 'classification':
+                elif self.mode == 'classification':
                     # todo, don't know why it is working
                     assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
                             {self.num_classes} while model's output has {model_output_shape[0]} nodes """
@@ -939,7 +941,7 @@ class BaseModel(NN, Plots):
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
         model_name = list(self.config['model'].keys())[0]
-        fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
+        fname = os.path.join(self.w_path, self.category + '_' + self.mode + '_' + model_name)
 
         if "TPOT" not in model_name.upper():
             joblib.dump(self._model, fname)
@@ -1225,7 +1227,7 @@ class BaseModel(NN, Plots):
             predicted = get_values(predicted)
 
             if process_results:
-                if self.problem == 'regression':
+                if self.mode == 'regression':
                     self.process_regres_results(true_outputs, predicted,
                                                 metrics=metrics,
                                                 prefix=prefix + '_', index=dt_index,
@@ -1408,7 +1410,7 @@ class BaseModel(NN, Plots):
 
             self.plot_treeviz_leaves()
 
-            if self.problem.lower().startswith("cl"):
+            if self.mode.lower().startswith("cl"):
                 self.plot_treeviz_leaves()
                 self.decision_tree(which="sklearn", **kwargs)
 
@@ -1490,7 +1492,7 @@ class BaseModel(NN, Plots):
         config['config'] = self.config
         config['method'] = self.method
         config['category'] = self.category
-        config['problem'] = self.problem
+        config['mode'] = self.mode
         config['quantiles'] = self.quantiles
 
         if self.category == "DL":
@@ -1670,7 +1672,7 @@ class BaseModel(NN, Plots):
         if self.verbosity > 0:
             print('building {} model for {} {} problem using {}'.format(self.category,
                                                                         class_type,
-                                                                        self.problem,
+                                                                        self.mode,
                                                                         model_name))
         return
 

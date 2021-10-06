@@ -102,7 +102,7 @@ def explain_model_with_lime(
 
     test_x, index = consider_examples(test_x, examples_to_explain, test_y)
 
-    problem = model.problem
+    mode = model.mode
     verbosity = model.verbosity
     if model.lookback > 1:
         explainer = "RecurrentTabularExplainer"
@@ -114,7 +114,7 @@ def explain_model_with_lime(
     else:
         model = make_model(model)
 
-    if problem == "classification":
+    if mode == "classification":
         return
 
     explainer = LimeExplainer(model,
@@ -123,7 +123,7 @@ def explain_model_with_lime(
                               path=lime_exp_path,
                               features=features,
                               explainer=explainer,
-                              mode=problem,
+                              mode=mode,
                               verbosity=verbosity
                               )
 

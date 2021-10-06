@@ -228,17 +228,17 @@ def _make_model(data, **kwargs):
 
     kwargs = check_kwargs(**kwargs)
 
-    def_prob = "regression"  # default problem
+    def_mode = "regression"  # default mode
     model = kwargs.get('model', None)
     def_cat = None
 
     if model is not None:
         if 'layers' in model:
             def_cat = "DL"
-            # for DL, the default problem case will be regression
+            # for DL, the default mode case will be regression
         else:
             if list(model.keys())[0].upper().endswith("CLASSIFIER"):
-                def_prob = "classification"
+                def_mode = "classification"
             def_cat = "ML"
 
     if 'loss' in kwargs:
@@ -251,7 +251,7 @@ def _make_model(data, **kwargs):
             'categorical_crossentropy',
             'binary_crossentropy'
         ]:
-            def_prob = 'classification'
+            def_mode = 'classification'
 
     accept_additional_args = False
     if 'accept_additional_args' in kwargs:
@@ -322,7 +322,7 @@ def _make_model(data, **kwargs):
         # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'problem': {'type': str, 'default': def_prob, 'lower': None, 'upper': None,
+        'mode': {'type': str, 'default': def_mode, 'lower': None, 'upper': None,
                     'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},

@@ -8,7 +8,6 @@ import lime.lime_tabular
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
-
 import pandas as pd
 
 from ai4water import Model
@@ -214,14 +213,14 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_ai4water_regression(self):
         model = make_reg_model(test_fraction=0.05)
-        assert model.problem == "regression"
+        assert model.mode == "regression"
 
         model.explain()
         return
 
     def test_ai4water(self):
         model = make_class_model(test_fraction=0.05)
-        self.assertEqual(model.problem, "classification")
+        self.assertEqual(model.mode, "classification")
         model.fit()
         model.explain()
         return

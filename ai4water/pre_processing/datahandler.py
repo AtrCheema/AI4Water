@@ -88,7 +88,7 @@ class DataHandler(AttributeContainer):
                  seed: int = 313,
                  save: bool = False,
                  verbosity: int = 1,
-                 problem=None,
+                 mode=None,
                  category=None,
                  ):
         """
@@ -272,7 +272,7 @@ class DataHandler(AttributeContainer):
         self.data = self._process_source(data)
         self.verbosity = verbosity
         self.teacher_forcing = teacher_forcing
-        self.problem = problem
+        self.mode = mode
 
         self.scalers = {}
         self.indexes = {}
@@ -313,7 +313,7 @@ class DataHandler(AttributeContainer):
     @property
     def classes(self):
         _classes = []
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             if self.num_outs == 1:  # for binary/multiclass
                 array = self.data[self.output_features].values
                 _classes = np.unique(array[~np.isnan(array)])
@@ -330,7 +330,7 @@ class DataHandler(AttributeContainer):
     def is_binary(self) -> bool:
         """Returns True if the porblem is binary classification"""
         _default = False
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             if self.num_outs == 1:
                 array = self.data[self.output_features].values
                 unique_vals = np.unique(array[~np.isnan(array)])
@@ -345,7 +345,7 @@ class DataHandler(AttributeContainer):
     def is_multiclass(self) -> bool:
         """Returns True if the porblem is multiclass classification"""
         _default = False
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             if self.num_outs == 1:
                 array = self.data[self.output_features].values
                 unique_vals = np.unique(array[~np.isnan(array)])
@@ -360,7 +360,7 @@ class DataHandler(AttributeContainer):
     def is_multilabel(self) -> bool:
         """Returns True if the porblem is multilabel classification"""
         _default = False
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             if self.num_outs > 1:
                 _default = True
 
@@ -1082,7 +1082,7 @@ class DataHandler(AttributeContainer):
 
         prev_y = filter_zero_sized_arrays(prev_y)
         y = filter_zero_sized_arrays(y)
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             y = check_for_classification(y, self._to_categorical)
 
         if self.teacher_forcing:
@@ -1239,7 +1239,7 @@ class DataHandler(AttributeContainer):
         prev_y = filter_zero_sized_arrays(prev_y)
         y = filter_zero_sized_arrays(y)
 
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             y = check_for_classification(y, self._to_categorical)
 
         if self.teacher_forcing:
@@ -1318,7 +1318,7 @@ class DataHandler(AttributeContainer):
 
         prev_y = filter_zero_sized_arrays(prev_y)
         y = filter_zero_sized_arrays(y)
-        if self.problem == 'classification':
+        if self.mode == 'classification':
             y = check_for_classification(y, self._to_categorical)
 
         if self.teacher_forcing:

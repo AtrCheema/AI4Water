@@ -14,9 +14,6 @@ from tensorflow.keras.layers import Dense, Input
 from sklearn.datasets import make_classification
 from sklearn.datasets import make_multilabel_classification
 
-from utils import tensorflow_shutup
-tensorflow_shutup()
-
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
     from ai4water.functional import Model
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
@@ -325,7 +322,7 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation
     model.fit()
     test_evaluation(model)
 
-    assert model.problem == 'classification'
+    assert model.mode == 'classification'
     assert len(model.classes) == n_classes
     assert model.num_classes == n_classes
     return model
@@ -394,6 +391,7 @@ class TestClassifications(unittest.TestCase):
         return
 
     def test_basic_multi_output(self):
+        time.sleep(1)
         model = Model(
             model= {'layers': {'LSTM': {'units': 32},
                                'Dense': {'units': 2},
