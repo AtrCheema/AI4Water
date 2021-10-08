@@ -64,6 +64,6 @@ model = QuantileModel(
 model.fit()
 
 # make predictions on a chunk of test data, which was retained while training
-true_y, pred_y = model.predict()
+true_y, pred_y = model.predict(return_true=True)
 
 model.plot_quantile(true_y, pred_y, 3, 5)

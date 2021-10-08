@@ -95,5 +95,5 @@ model = CustomModel(model={'layers': layers},
                     )
 history = model.fit(callbacks={'tensorboard': True})
 
-test_pred, test_obs = model.predict()
-train_pred, train_obs = model.predict(data='training')
+test_pred = model.predict()
+train_pred = model.predict(data='training')

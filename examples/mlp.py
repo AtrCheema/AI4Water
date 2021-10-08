@@ -32,5 +32,5 @@ model = Model(data=df,
 
 history = model.fit()
 
-y, obs = model.predict()
+y = model.predict()
 model.view_model()

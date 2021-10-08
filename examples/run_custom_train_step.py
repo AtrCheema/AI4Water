@@ -47,4 +47,4 @@ model = CustomModel(
 
 history = model.fit()
 
-# y, obs = model.predict()
+# y = model.predict()

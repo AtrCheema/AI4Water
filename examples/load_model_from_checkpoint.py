@@ -5,7 +5,6 @@ import os
 
 from ai4water import Model
 from ai4water.datasets import arg_beach
-from ai4water.utils.utils import find_best_weight
 
 model = Model(lookback=1,
               epochs=2,

@@ -18,7 +18,7 @@ model = Model(
 h = model.fit()
 
 # make prediction on test data
-t, p = model.predict()
+p = model.predict()
 #
 # # get some useful plots
 model.interpret()

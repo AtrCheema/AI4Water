@@ -50,4 +50,4 @@ model = Model(
 # This model is built only to showcase how to build multi layer model by manipulating config
 # history = model.fit()
 
-# y, obs = model.predict()
+# y = model.predict()
