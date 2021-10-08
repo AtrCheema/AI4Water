@@ -840,7 +840,8 @@ class BaseModel(NN, Plots):
             as backend or anything returned by `fit` method of underlying model.
         """
 
-        assert data in ['training', 'test', 'validation']
+        if isinstance(data, str):
+            assert data in ['training', 'test', 'validation']
 
         return self.call_fit(data=data, callbacks=callbacks, **kwargs)
 
@@ -852,13 +853,14 @@ class BaseModel(NN, Plots):
         visualizer = PlotResults(path=self.path)
         self.is_training = True
 
-        if isinstance(data, np.ndarray):
+        if isinstance(data, np.ndarray):  # .fit(x,...)
             assert 'x' not in kwargs
             kwargs['x'] = data
 
-        if isinstance(callbacks, np.ndarray):
+        if isinstance(callbacks, np.ndarray):  # .fit(x,y)
             assert 'y' not in kwargs
             kwargs['y'] = callbacks
+            callbacks = None
 
         if 'x' not in kwargs:
             train_data = getattr(self, f'{data}_data')()
@@ -920,7 +922,7 @@ class BaseModel(NN, Plots):
                 warnings.warn("best weights could not be found and are not loaded", UserWarning)
             else:
                 self.allow_weight_loading = True
-                self.update_weights(best_weights)
+                self.update_weights(os.path.join(self.w_path, best_weights))
         return
 
     def fit_ml_models(self, inputs, outputs):
@@ -945,9 +947,6 @@ class BaseModel(NN, Plots):
 
         if "TPOT" not in model_name.upper():
             joblib.dump(self._model, fname)
-
-        if model_name.lower().startswith("xgb"):
-            self._model.save_model(fname + ".json")
 
         return
 
@@ -1148,7 +1147,9 @@ class BaseModel(NN, Plots):
             and the second is predicted. If `x` is given but `y` is not given,
             then, first array which is returned is None.
         """
-        assert data in ['training', 'test', 'validation']
+        if isinstance(data, str):
+            assert data in ['training', 'test', 'validation']
+
         assert metrics in ("minimal", "all", "hydro_metrics")
 
         return self.call_predict(data=data, x=x, y=y, process_results=process_results,
@@ -1556,23 +1557,29 @@ class BaseModel(NN, Plots):
 
         return config, path
 
-    def update_weights(self, weight_file: str):
+    def update_weights(self, weight_file: str=None):
         """
         Updates the weights of the underlying model.
         Arguments:
-            weight_file str: name of file which contains parameters of model.
+            weight_file str: complete path of weight file. If not given, the
+                weights are updated from model.w_path directory. For neural
+                network based models, the best weights are updated if more
+                than one weight file is present in model.w_path.
         """
-        weight_file_path = os.path.join(self.w_path, weight_file)
+        if weight_file is None:
+            weight_file = find_best_weight(self.w_path)
+            weight_file_path = os.path.join(self.w_path, weight_file)
+        else:
+            assert os.path.isfile(weight_file), f'weight_file must be complete path of weight file'
+            weight_file_path = weight_file
+            weight_file = os.path.basename(weight_file)  # for printing
+
         if not self.allow_weight_loading:
             raise ValueError(f"Weights loading not allowed because allow_weight_loading is {self.allow_weight_loading}"
                              f"and model path is {self.path}")
 
         if self.category == "ML":
-            if list(self.config['model'].keys())[0].lower().startswith("xgb"):
-                self._model.load_model(weight_file_path)
-            else:
-                # for sklearn based models
-                self._model = joblib.load(weight_file_path)
+            self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.
             if self.api == 'functional' and self.config['backend'] == 'tensorflow':

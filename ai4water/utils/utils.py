@@ -370,7 +370,8 @@ def _make_model(data, **kwargs):
         # For further usage see `examples/using_intervals`
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
-        'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]}
+        'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
+        'dataset_args' : {'type': dict, 'default': {}}
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -593,6 +594,10 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_i
     """
     assert best in ['min', 'max']
     all_weights = os.listdir(w_path)
+
+    if len(all_weights)==1:
+        return all_weights[0]
+
     losses = {}
     for w in all_weights:
         wname = w.split(ext)[0]
