@@ -14,7 +14,7 @@ Some utility functions
         show_root_heading: true
 
 **`regression plot`**
-::: ai4water.utils.visualizations.reg_plot
+::: ai4water.utils.visualizations.regplot
     handler: python
     rendering:
         show_root_heading: true

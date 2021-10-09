@@ -480,7 +480,10 @@ def bar_chart(labels,
               orient='h',
               sort=False,
               color=None,
-              xlabel=None, xlabel_fs=None, title=None, title_fs=None,
+              xlabel=None,
+              xlabel_fs=None,
+              title=None,
+              title_fs=None,
               show_yaxis=True):
 
 
