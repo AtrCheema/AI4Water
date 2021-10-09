@@ -1,4 +1,5 @@
 import os
+import random
 import warnings
 from typing import Union
 
@@ -23,10 +24,10 @@ except ModuleNotFoundError:
     rnn_histogram = None
     features_0D, features_1D, features_2D = None, None, None
 
-try:
-    import seaborn as sns
-except ModuleNotFoundError:
-    sns = None
+
+BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
+             'GnBu', 'PuBu', 'PuBuGn', 'summer_r']
+
 
 # TODO
 # rank histogram, reliability diagram, ROC curve
@@ -473,19 +474,45 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
     return n_rows, n_cols
 
 
-def draw_bar_sns(axis, y, x,
-                 orient='h', xlabel=None, xlabel_fs=None, title=None, title_fs=None, show_yaxis=True):
+def bar_chart(labels,
+              values,
+              axis=None,
+              orient='h',
+              sort=False,
+              color=None,
+              xlabel=None, xlabel_fs=None, title=None, title_fs=None,
+              show_yaxis=True):
 
-    ax = sns.barplot(y=y, x=x, orient=orient, ax=axis)
+
+    cm = cmap(random.choice(BAR_CMAPS), len(values), 0.2)
+    color = color if color is not None else cm
+
+    if not axis:
+        _, axis = plt.subplots()
+
+    if sort:
+        sort_idx = np.argsort(values)
+        values = values[sort_idx]
+        labels = np.array(labels)[sort_idx]
+
+    if orient=='h':
+        axis.barh(np.arange(len(values)), values, color=color)
+        axis.set_yticks(np.arange(len(values)))
+        axis.set_yticklabels(labels)
+
+    else:
+        axis.bar(np.arange(len(values)), values, color=color)
+        axis.set_xticks(np.arange(len(values)))
+        axis.set_xticklabels(labels)
 
     if not show_yaxis:
-        ax.get_yaxis().set_visible(False)
+        axis.get_yaxis().set_visible(False)
 
     if xlabel:
-        ax.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
+        axis.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
 
     if title:
-        ax.set_title(title, fontdict={'fontsize': title_fs})
+        axis.set_title(title, fontdict={'fontsize': title_fs})
 
     return axis
 
@@ -521,3 +548,8 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
         plt.close('all')
     return
 
+
+def cmap(cm:str, num_cols:int, low=0.0, high=1.0):
+
+    cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
+    return cols

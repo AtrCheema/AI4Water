@@ -7,8 +7,14 @@ Some utility functions
     rendering:
         show_root_heading: true
         
-**`plot_taylor`**
+**`Taylor Plot`**
 ::: ai4water.utils.taylor_diagram.taylor_plot
+    handler: python
+    rendering:
+        show_root_heading: true
+
+**`regression plot`**
+::: ai4water.utils.visualizations.reg_plot
     handler: python
     rendering:
         show_root_heading: true
