@@ -341,6 +341,8 @@ class Model(MODEL, BaseModel):
                                                                         'tf_name': lyr_name}
                                 wrp_layer = None
                             else:
+                                if lyr_name.upper() == "TEMPORALFUSIONTRANSFORMER":
+                                    lyr_config['return_attention_components'] = True
                                 initialized_layer = LAYERS[lyr_name.upper()](*args, **lyr_config)
                                 initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                         'named_outs': named_outs,
@@ -676,6 +678,11 @@ class Model(MODEL, BaseModel):
 
                 # call the initiated layer
                 outs = lyr_args['layer'](call_args, **add_args)
+
+                # if the layer is TFT, we need to extract the attention components
+                # so that they can be used during post-processign
+                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                    outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
                     if isinstance(outs, list):
