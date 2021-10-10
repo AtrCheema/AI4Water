@@ -1014,6 +1014,7 @@ be used to build ai4water's Model class.
     def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
 
         model = self.ai4water_model.from_config(config_path=config_path, data=self.data, verbosity=self.verbosity)
+        weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)
