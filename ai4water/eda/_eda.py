@@ -13,6 +13,7 @@ except ModuleNotFoundError:
 
 from ai4water.utils.utils import _missing_vals
 from ai4water.utils.visualizations import Plot
+from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import find_tot_plots
 from ai4water.pre_processing import Transformations
 from ai4water.utils.utils import  save_config_file, dateandtime_now, ts_features
@@ -288,7 +289,7 @@ class EDA(Plot):
             xtick_labels_fs
             ytick_labels_fs
             figsize
-            any other keyword argument will be passed to sns.barplot()
+            any other keyword argument will be passed to bar_chart()
         """
         if cols is None:
             cols = data.columns
@@ -317,8 +318,8 @@ class EDA(Plot):
             ax1 = fig.add_subplot(gs[:1, :5])
 
             # ax1 - Barplot
-            ax1 = sns.barplot(x=list(data.columns), y=np.round(mv_cols_ratio * 100, 2),
-                              ax=ax1, **kwargs)
+            ax1 = bar_chart(labels=list(data.columns), values=np.round(mv_cols_ratio * 100, 2),
+                            orient='v', axis=ax1)
 
             ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
             ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)

@@ -15,7 +15,7 @@ from ai4water.hyper_opt import Real, Categorical, Integer
 from ai4water.utils.utils import init_subplots, process_axis, jsonize
 from ai4water.utils.utils import clear_weights, dateandtime_now, save_config_file
 from ai4water.backend import tf
-from ai4water.utils.plotting_tools import draw_bar_sns
+from ai4water.utils.plotting_tools import bar_chart
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -576,10 +576,12 @@ Available cases are {self.models} and you wanted to include
             show : whether to show the plot at the end or not?
 
             kwargs :
-                fig_height:
-                fig_width:
-                title_fs:
-                xlabel_fs:
+
+                - fig_height :
+                - fig_width :
+                - title_fs :
+                - xlabel_fs :
+                - color :
 
         returns:
             dictionary whose keys are models and values are performance metrics.
@@ -652,15 +654,18 @@ Available cases are {self.models} and you wanted to include
         fig.set_figheight(kwargs.get('fig_height', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
-        draw_bar_sns(axis[0], y=names, x=train_matrics,
-                     title="Train",
-                     xlabel=LABELS.get(matric_name, matric_name),
-                     xlabel_fs=kwargs.get('xlabel_fs', 16),
-                     title_fs=kwargs.get('title_fs', 20)
+        bar_chart(axis=axis[0],
+                  labels=names, values=train_matrics,
+                  color = kwargs.get('color', None),
+                  title="Train",
+                  xlabel=LABELS.get(matric_name, matric_name),
+                  xlabel_fs=kwargs.get('xlabel_fs', 16),
+                  title_fs=kwargs.get('title_fs', 20)
                      )
 
-        draw_bar_sns(axis[1], y=names, x=test_matrics,
+        bar_chart(axis=axis[1], labels=names, values=test_matrics,
                      title="Test",
+                     color=kwargs.get('color', None),
                      xlabel=LABELS.get(matric_name, matric_name),
                      xlabel_fs=kwargs.get('xlabel_fs', 16),
                      title_fs=kwargs.get('title_fs', 20),

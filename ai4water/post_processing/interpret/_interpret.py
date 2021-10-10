@@ -11,7 +11,7 @@ import pandas as pd
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.plotting_tools import draw_bar_sns
+from ai4water.utils.plotting_tools import bar_chart
 
 
 class Interpret(Plot):
@@ -137,7 +137,7 @@ class Interpret(Plot):
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
-            draw_bar_sns(axis, y=all_cols, x=imp, title="Feature importance", xlabel_fs=12)
+            bar_chart(labels=all_cols, values=imp, axis=axis, title="Feature importance", xlabel_fs=12)
             self.save_or_show(save, fname="feature_importance.png")
         return
 
