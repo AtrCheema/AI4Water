@@ -125,7 +125,7 @@ def tft_model(**kwargs):
                   dataset_args={'st': '19700101', 'en': '20141231', 'stations': '224206'},
                   lookback=num_encoder_steps,
                   epochs=2,
-                  verbosity=1)
+                  verbosity=0)
     return model
 
 
@@ -153,6 +153,7 @@ class TestInterpret(unittest.TestCase):
     def test_ia_interpret(self):
         m = ia_lstm_model()
         m.interpret()
+        return
 
     def test_ml(self):
         for m in ['XGBoostRegressor', 'RandomForestRegressor',
@@ -162,6 +163,7 @@ class TestInterpret(unittest.TestCase):
                                 data=arg_beach())
             model.fit()
             model.interpret()
+        return
 
     def test_tft(self):
 

@@ -312,6 +312,8 @@ class DualAttentionModel(FModel):
         return self.fetch_data('test', **kwargs)
 
     def interpret(self, data='training', **kwargs):
+        import matplotlib
+        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 
         self.plot_act_along_inputs(f'attn_weight_{self.lookback - 1}_1',
                                    data=data,

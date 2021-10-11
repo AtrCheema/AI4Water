@@ -7,9 +7,6 @@ import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
-from utils import tensorflow_shutup
-tensorflow_shutup()
-
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -549,7 +546,6 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
 
-run_unified_interface('bayes', 'skopt', 12)
 
-# if __name__ == "__main__":
-#     unittest.main()
+if __name__ == "__main__":
+    unittest.main()

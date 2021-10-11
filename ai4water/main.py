@@ -510,6 +510,11 @@ class Model(MODEL, BaseModel):
                 # call the initiated layer
                 outs = lyr_args['layer'](call_args, **add_args)
 
+                # if the layer is TFT, we need to extract the attention components
+                # so that they can be used during post-processign
+                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                    outs, self.TemporalFusionTransformer_attentions = outs
+
                 if lyr_args['named_outs'] is not None:
                     if isinstance(outs, list):
                         assert len(lyr_args['named_outs']) == len(outs)
@@ -583,6 +588,11 @@ class Model(MODEL, BaseModel):
                 # call the initiated layer
                 #print(f"fetching {_inputs} for layer {lyr} call_args are \n{call_args} \n while cache has {cache.keys()}")
                 outs = lyr_args['layer'](call_args, **add_args)
+
+                # if the layer is TFT, we need to extract the attention components
+                # so that they can be used during post-processign
+                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                    outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
                     if isinstance(outs, list):

@@ -33,7 +33,7 @@ df_class = pd.DataFrame(np.concatenate([data_class['data'], data_class['target']
 
 def run_class_test(method):
 
-    mode = "classification" if method.lower().startswith("class") else "regression"
+    mode = "classification" if "class" in method.lower() else "regression"
 
     if method not in ["STACKINGREGRESSOR", "VOTINGREGRESSOR",  "LOGISTICREGRESSIONCV", # has convergence issues
                       "RIDGE_REGRESSION", "MULTIOUTPUTREGRESSOR", "REGRESSORCHAIN", "REGRESSORMIXIN",
@@ -51,12 +51,12 @@ def run_class_test(method):
         print(f"testing {method}")
 
         model = Model(
-            input_features=data_reg['feature_names'] if mode=="regression" else data_class['feature_names'],
+            input_features=data_reg['feature_names'] if mode=="regression" else data_class['feature_names'].tolist(),
             output_features=['target'],
             val_fraction=0.2,
             mode=mode,
             transformation=None,
-            data=df_reg if mode=="regression" else data_class,
+            data=df_reg if mode=="regression" else df_class,
             model={method: kwargs},
             verbosity=0)
 

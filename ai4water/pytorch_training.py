@@ -263,7 +263,7 @@ class Learner(AttributeContainer):
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
         if reg_plot and true.size > 0.0:
-            regplot(true, pred, name=name)
+            regplot(true, pred)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
         return pred
