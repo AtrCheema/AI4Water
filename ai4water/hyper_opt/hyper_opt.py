@@ -873,10 +873,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         global COUNTER
 
-        error = float(f'{round(mse, 7)}_{COUNTER}')
+        error = f'{round(mse, 9)}_{COUNTER+1}'  # don't convert to float now
         self.results[error] = sort_x_iters(kwargs, self.original_para_order())
         COUNTER += 1
 
+        error = float(error)
         if self.verbosity>0:
             print(f"Validation mse {error}")
 
@@ -1020,6 +1021,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         param_list = list(ParameterSampler(self.param_space, n_iter=self.num_iterations,
                                            random_state=self.random_state))
+
+        if len(param_list) < self.num_iterations:
+            # we need to correct it so that num_iterations gets calculated correctly next time
+            self.gpmin_args['n_calls'] = len(param_list)
+            self.gpmin_args['n_iter'] = len(param_list)
+
         self.param_grid = param_list
 
         return self.eval_sequence(param_list)
@@ -1134,7 +1141,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             # adding idx because sometimes the difference between two func_vals is negligible
             fv = self.gpmin_results['func_vals']
             xiters = self.gpmin_results['x_iters']
-            return {float(f'{round(k, 5)}_{idx}'):self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
+            return {f'{round(k, 5)}_{idx}':self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
         else:
             # for sklearn based
             return self.results
@@ -1370,7 +1377,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 elif isinstance(values, float) or isinstance(values, int):
                     self.value = values
                 else:
-                    raise NotImplementedError(f"values must be convertible to list but it is {values} of type {values.__class__.__name__}")
+                    try:  # try to convert it to float if possible
+                        self.value = float(values)
+                    except Exception as e:
+                        raise NotImplementedError(f"""values must be convertible to list but it is {values} of type
+                         {values.__class__.__name__} Actual error message was {e}""")
                 self.params = params
                 self._distributions = distributions
                 self.distributions = distributions
