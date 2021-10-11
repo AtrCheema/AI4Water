@@ -802,7 +802,7 @@ class TestUtils(unittest.TestCase):
 
     def test_prepare_data_with_mask1(self):
         data = np.arange(int(50 * 5), dtype=np.float32).reshape(-1, 50).transpose()
-        idx = random.choices(np.arange(49), k=20)
+        idx = [9, 14, 24, 36, 36, 43, 0, 3, 24, 11, 48, 25, 46, 40, 42, 2, 42, 37, 2, 38]
         data[idx, -1] = np.nan
         x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=np.nan)
         self.assertEqual(len(x), len(y))
