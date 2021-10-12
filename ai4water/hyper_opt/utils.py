@@ -332,13 +332,13 @@ def x_iter_for_tpe(trials, param_space: dict, as_list=True):
 
     x_iters = []  # todo, remove x_iters, it is just values of iterations
     iterations = {}
-    for t in trials.trials:
+    for idx, t in enumerate(trials.trials):
 
         vals = t['misc']['vals']
         y = t['result']['loss']
 
         _iter = get_one_tpe_x_iter(vals, param_space)
-        iterations[y] = _iter
+        iterations[f'{round(y, 5)}_{idx}'] = _iter
 
         x_iters.append(_iter)
 

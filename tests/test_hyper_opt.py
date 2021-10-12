@@ -65,6 +65,8 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     fpath = os.path.join(optimizer.opt_path, 'serialized.json')
     assert os.path.exists(fpath)
 
+    return
+
 def run_ai4water(method):
     dims = {'n_estimators': [10,  20],
             'learning_rate': [0.1,  0.0005],
@@ -443,11 +445,6 @@ class TestHyperOpt(unittest.TestCase):
     # #         'x2': hp.randint('x2', -5, 5)
     # #     }
     # #
-    # #     optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, use_named_args=True,
-    # #                          backend='hyperopt', max_evals=100)
-    # #     best = optimizer.fit()
-    # #     self.assertEqual(len(best), 2)
-    #
     def test_ai4waterModel_with_hyperopt(self):
         """"""
         def fn(**suggestion):
@@ -490,8 +487,8 @@ class TestHyperOpt(unittest.TestCase):
         successfully.
         """
         ai4water_args = {'model': 'XGBoostRegressor',
-                                     'input_features': inputs,
-                                     'output_features': outputs
+                         'input_features': inputs,
+                         'output_features': outputs
                                      }
         opt = HyperOpt("tpe",
                        param_space=[Integer(low=10, high=20, name='n_estimators', num_samples=5),
@@ -507,14 +504,15 @@ class TestHyperOpt(unittest.TestCase):
         opt.fit()
         check_attrs(opt, 3, ai4water_args)
         assert isinstance(list(opt.best_paras().values())[-1], str)
+        return
 
     def test_hp_to_skopt_space1(self):
         """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
         successfully.
         """
         ai4water_args = {'model': 'XGBoostRegressor',
-                                     'input_features': inputs,
-                                     'output_features': outputs
+                         'input_features': inputs,
+                         'output_features': outputs
                                      }
         opt = HyperOpt("tpe",
                        param_space=[hp.randint('n_estimators', low=10, high=20),  # todo
