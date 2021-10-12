@@ -161,10 +161,16 @@ class ShapExplainer(ExplainerMixin):
 
     def map2layer(self, x, layer):
         feed_dict = dict(zip([self.model.layers[0].input], [x.copy()]))
-        if isinstance(layer, int):
-            return K.get_session().run(self.model.layers[layer].input, feed_dict)
+        import tensorflow as tf
+        if int(tf.__version__[0])<2:
+            sess = K.get_session()
         else:
-            return K.get_session().run(self.model.get_layer(layer).input, feed_dict)
+            sess = tf.compat.v1.keras.backend.get_session()
+
+        if isinstance(layer, int):
+            return sess.run(self.model.layers[layer].input, feed_dict)
+        else:
+            return sess.run(self.model.get_layer(layer).input, feed_dict)
 
     def infer_framework(self, model, framework, layer, explainer):
         if framework is not None:
