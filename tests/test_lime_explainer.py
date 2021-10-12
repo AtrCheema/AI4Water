@@ -205,9 +205,9 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_classification(self):
 
-        lime_exp = get_lime(examples_to_explain=5, model_type="classification")
+        lime_exp = get_lime(examples_to_explain=2, model_type="classification")
         lime_exp.explain_all_examples()
-        assert len(lime_exp.explaination_objects) == 5
+        assert len(lime_exp.explaination_objects) == 2
 
         return
 
@@ -250,21 +250,21 @@ class TestLimeExplainer(unittest.TestCase):
                   ]:
 
             model = get_fitted_model(m, arg_beach())
-            exp = explain_model_with_lime(model, examples_to_explain=5)
+            exp = explain_model_with_lime(model, examples_to_explain=2)
             assert isinstance(exp, LimeExplainer)
         return
 
     def test_ai4water_mlp(self):
         model = make_mlp_model()
 
-        exp = explain_model_with_lime(model, examples_to_explain=5)
+        exp = explain_model_with_lime(model, examples_to_explain=2)
         assert isinstance(exp, LimeExplainer)
         return
 
     def test_ai4water_lstm(self):
         m = lstm_model()
         m.fit()
-        exp = explain_model_with_lime(m, examples_to_explain=5)
+        exp = explain_model_with_lime(m, examples_to_explain=2)
         assert isinstance(exp, LimeExplainer)
 
 

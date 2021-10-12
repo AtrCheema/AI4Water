@@ -12,7 +12,12 @@ import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from ai4water import Model
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
 from ai4water.datasets import arg_beach
 from ai4water.post_processing import Interpret
 from ai4water import InputAttentionModel, DualAttentionModel
