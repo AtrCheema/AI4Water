@@ -94,15 +94,16 @@ class DataHandler(AttributeContainer):
         """
         Arguments:
             data : source from which to make the data. It can be one of the following:
-                pandas dataframe: each columns is a feature and each row is an example
-                xarray dataset: it can be xarray dataset or it
-                list of pandas dataframes :
-                dictionary of pandas dataframes :
-                path like: if the path is the path of a file, then this file can
-                    be a csv/xlsx/nc file. The .nc file will be read using xarray
-                    to load datasets. If the path refers to a directory, it is
-                    supposed that each file in the directory refers to one example.
-                ai4water dataset : any of dataset name from ai4water.utils.datasets
+
+                - pandas dataframe: each columns is a feature and each row is an example
+                - xarray dataset: it can be xarray dataset or it
+                - list of pandas dataframes :
+                - dictionary of pandas dataframes :
+                - path like: if the path is the path of a file, then this file can
+                    be a csv/xlsx/nc/npz/mat/parquet/feather file. The .nc file
+                    will be read using xarray to load datasets. If the path refers
+                    to a directory, it is supposed that each file in the directory refers to one example.
+                - ai4water dataset : any of dataset name from ai4water.datasets
             input_features : features to use as input. If `data` is pandas dataframe
                 then this is list of column names from `data` to be used as input.
             output_features : features to use as output. When `data` is dataframe
@@ -840,7 +841,7 @@ class DataHandler(AttributeContainer):
             indices[split[1]] = 0
 
             ax.scatter(range(len(indices)), [ii + .5] * len(indices),
-                       c=indices, marker='_', lw=10, cmap=cmap_cv,
+                       c=indices, marker='_', lw=10, cmap="coolwarm",
                        vmin=-.2, vmax=1.2)
 
         yticklabels = list(range(len(splits)))

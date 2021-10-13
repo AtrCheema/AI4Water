@@ -1,10 +1,9 @@
 import os
 from typing import Union
 
-import numpy as np
-
 from ._shap import ShapExplainer, shap
 from ._lime import LimeExplainer, lime
+from ..utils import choose_examples
 
 
 def explain_model(
@@ -100,7 +99,7 @@ def explain_model_with_lime(
 
     lime_exp_path = maybe_make_path(os.path.join(model.path, "explainability", "lime"))
 
-    test_x, index = consider_examples(test_x, examples_to_explain, test_y)
+    test_x, index = choose_examples(test_x, examples_to_explain, test_y)
 
     mode = model.mode
     verbosity = model.verbosity
@@ -118,7 +117,7 @@ def explain_model_with_lime(
         return
 
     explainer = LimeExplainer(model,
-                              test_data=test_x,
+                              data=test_x,
                               train_data=train_x,
                               path=lime_exp_path,
                               features=features,
@@ -191,10 +190,10 @@ def explain_model_with_shap(
     else:
         layer = layer or 2
 
-    test_x, index = consider_examples(test_x, examples_to_explain, test_y)
+    test_x, index = choose_examples(test_x, examples_to_explain, test_y)
 
     explainer = ShapExplainer(model=model,
-                              test_data=test_x,
+                              data=test_x,
                               train_data=train_x,
                               explainer=explainer,
                               path=shap_exp_path,
@@ -249,45 +248,6 @@ def get_features(features, features_to_explain):
     return features_to_explain
 
 
-def consider_examples(x, examples_to_explain, y):
-
-    if isinstance(examples_to_explain, int):
-        # randomly chose x values from test_x
-        x, index = choose_n_imp_exs(x, examples_to_explain, y)
-    elif isinstance(examples_to_explain, float):
-        assert examples_to_explain < 1.0
-        # randomly choose x fraction from test_x
-        x, index = choose_n_imp_exs(x, int(examples_to_explain * len(x)), y)
-
-    elif hasattr(examples_to_explain, '__len__'):
-        index = np.array(examples_to_explain)
-        x = x[index]
-    else:
-        raise ValueError(f"unrecognized value of examples_to_explain: {examples_to_explain}")
-
-    return x, index
-
-
-def choose_n_imp_exs(x:np.ndarray, n:int, y=None):
-    """Chooses the n important examples to explain"""
-
-    n = min(len(x), n)
-
-    st = n // 2
-    en = n - st
-
-    if y is None:
-        idx = np.random.randint(0, len(x), n)
-    else:
-        st = np.argsort(y, axis=0)[0:st].reshape(-1,)
-        en = np.argsort(y, axis=0)[-en:].reshape(-1,)
-        idx = np.hstack([st, en])
-
-    x = x[idx]
-
-    return x, idx
-
-
 def _explain_with_lime(*args, **kwargs):
     explainer = None
     if lime:
@@ -300,4 +260,3 @@ def _explain_with_shap(*args, **kwargs):
     if shap:
         explainer = explain_model_with_shap(*args, **kwargs)
     return explainer
-

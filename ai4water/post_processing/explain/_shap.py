@@ -73,11 +73,11 @@ class ShapExplainer(ExplainerMixin):
     def __init__(
             self,
             model,
-            test_data: Union[np.ndarray, pd.DataFrame],
+            data: Union[np.ndarray, pd.DataFrame],
             train_data: Union[np.ndarray, pd.DataFrame] = None,
             explainer: Union[str, Callable] = None,
             num_means: int = 10,
-            path: str = os.getcwd(),
+            path: str = None,
             features: list = None,
             framework: str = None,
             layer: Union[int, str] = None,
@@ -86,7 +86,7 @@ class ShapExplainer(ExplainerMixin):
 
         Args:
             model: an sklearn/xgboost/catboost/LightGBM Model/regressor
-            test_data: Data on which to make interpretation. Its dimension should be
+            data: Data on which to make interpretation. Its dimension should be
                 same as that of training data.
             train_data: training data. It is used to get train_summary. It can a numpy array
                 or a pandas DataFrame. Only required for scikit-learn based models.
@@ -104,10 +104,10 @@ class ShapExplainer(ExplainerMixin):
                 of neural networks.
 
         """
-        test_data = maybe_to_dataframe(test_data, features)
+        test_data = maybe_to_dataframe(data, features)
         train_data = maybe_to_dataframe(train_data, features)
 
-        super(ShapExplainer, self).__init__(path=path, data=test_data, features=features)
+        super(ShapExplainer, self).__init__(path=path or os.getcwd(), data=test_data, features=features)
 
         if train_data is None:
             self._check_data(test_data)

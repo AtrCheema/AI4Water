@@ -11,3 +11,7 @@
 [ecoli modeling with transformations](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/ecoli_modeling_with_transformations.ipynb)
 
 [reading input data from different file types](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/input_data_file_types.ipynb)
+
+[Model Explaination using LIME](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/lime_explainations.ipynb)
+
+[Model Explaination using SHAP](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/shap_explainations.ipynb)

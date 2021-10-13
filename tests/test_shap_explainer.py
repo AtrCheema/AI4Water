@@ -132,7 +132,7 @@ class TestShapExplainers(unittest.TestCase):
         lin_regr = linear_model.LinearRegression()
         lin_regr.fit(X_train, y_train)
 
-        explainer = ShapExplainer(lin_regr, test_data=X_test.iloc[0:10],
+        explainer = ShapExplainer(lin_regr, data=X_test.iloc[0:10],
                                         train_data=X_train,
                                         num_means=10,
                                         path=os.path.join(os.getcwd(), "results"))
@@ -160,15 +160,15 @@ class TestShapExplainers(unittest.TestCase):
         x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
 
         explainer = ShapExplainer(model._model,
-                                        test_data=x_test, train_data=x_train,
+                                  data=x_test, train_data=x_train,
                                         num_means=10, path=model.path)
 
         explainer(plot_force_all=False)
         #explainer.heatmap()
 
         explainer = ShapExplainer(model._model,
-                                             train_data=x_train.values, test_data=x_test.values,
-                                             num_means=10, path=model.path)
+                                  train_data=x_train.values, data=x_test.values,
+                                  num_means=10, path=model.path)
         explainer(plot_force_all=False)
         #explainer.heatmap()
         return
@@ -287,7 +287,7 @@ class TestShapExplainers(unittest.TestCase):
 
         m, train_x, features, _path = get_lstm_model()
         #
-        exp = ShapExplainer(model=m, test_data=train_x, layer=2, features=features, path=_path)
+        exp = ShapExplainer(model=m, data=train_x, layer=2, features=features, path=_path)
         exp.summary_plot()
         exp.force_plot_single_example(0, lookback=0)
         exp.plot_shap_values()
@@ -297,7 +297,7 @@ class TestShapExplainers(unittest.TestCase):
 
         m, train_x, features, _path = get_lstm_model()
 
-        exp = ShapExplainer(model=m, test_data=train_x, layer="LSTM", explainer="GradientExplainer",
+        exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=features, path=_path)
         exp.plot_shap_values()
         exp.force_plot_single_example(0, lookback=0)
@@ -306,7 +306,7 @@ class TestShapExplainers(unittest.TestCase):
     def test_lstm_model_ai4water(self):
         m = make_lstm_reg_model()
         train_x, _ = m.training_data()
-        exp = ShapExplainer(model=m, test_data=train_x, layer="LSTM", explainer="GradientExplainer",
+        exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=m.dh.input_features, path=m.path)
         exp.force_plot_single_example(0, lookback=0)
         return

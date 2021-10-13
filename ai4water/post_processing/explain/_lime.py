@@ -38,29 +38,30 @@ class LimeExplainer(ExplainerMixin):
     def __init__(
             self,
             model,
-            test_data,
+            data,
             train_data,
             mode: str,
             explainer=None,
-            path=os.getcwd(),
+            path=None,
             features: list = None,
             verbosity: Union[int, bool] = True
     ):
         """
         Arguments:
             model : the model to explain. The model must have `predict` method.
-            test_data : the data to explain.
-            train_data : training data
-            mode : either of regression or classification
+            data : the data to explain.
+            train_data : the data on which the model was trained.
+            mode : either of `regression` or `classification`
             explainer : The explainer to use. By default, LimeTabularExplainer is used.
-            path : path where to save all the plots
+            path : path where to save all the plots. By default, plots will be saved in
+                current working directory.
             features : name/names of features.
             verbosity : whether to print information or not.
         """
         self.model = model
         self.train_data = to_np(train_data)
 
-        super(LimeExplainer, self).__init__(path=path, data=to_np(test_data), features=features)
+        super(LimeExplainer, self).__init__(path=path or os.getcwd(), data=to_np(data), features=features)
 
         self.mode = mode
         self.verbosity = verbosity
@@ -166,7 +167,7 @@ class LimeExplainer(ExplainerMixin):
 
         if plot_type == "pyplot":
             plt.close()
-            as_pyplot_figure(exp, colors=colors)
+            as_pyplot_figure(exp, colors=colors, example_index=index)
             plt.savefig(os.path.join(self.path, f"{name}_{index}"), bbox_inches="tight")
         else:
             exp.save_to_file(os.path.join(self.path, f"{name}_{index}"))
@@ -183,7 +184,11 @@ def to_np(x) -> np.ndarray:
 
     return x
 
-def as_pyplot_figure(inst_explainer, label=1, colors:[str, tuple, list]=None, **kwargs):
+def as_pyplot_figure(inst_explainer,
+                     label=1,
+                     example_index=None,
+                     colors:[str, tuple, list]=None,
+                     **kwargs):
     """Returns the explanation as a pyplot figure.
 
     Will throw an error if you don't have matplotlib installed
@@ -193,6 +198,7 @@ def as_pyplot_figure(inst_explainer, label=1, colors:[str, tuple, list]=None, **
                explanation wasn't computed, will throw an exception.
                Will be ignored for regression explanations.
         colors : if tuple it must be names of two colors for +ve and -ve
+        example_index :
         kwargs: keyword arguments, passed to domain_mapper
 
     Returns:
@@ -219,7 +225,7 @@ def as_pyplot_figure(inst_explainer, label=1, colors:[str, tuple, list]=None, **
     if inst_explainer.mode == "classification":
         title = 'Local explanation for class %s' % inst_explainer.class_names[label]
     else:
-        title = 'Local explanation'
+        title = f'Local explanation for example {example_index}'
     plt.title(title)
     plt.grid(linestyle='--', alpha=0.5)
     return fig

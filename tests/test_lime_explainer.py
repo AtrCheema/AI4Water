@@ -146,7 +146,7 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
 
     lime_exp = LimeExplainer(model=model._model,
                                train_data=train_x,
-                               test_data=test_x,
+                               data=test_x,
                                mode="regression",
                                features=list(model.in_cols),
                                path=model.path,
@@ -192,7 +192,7 @@ class TestLimeExplainer(unittest.TestCase):
         model.fit()
         lime_exp = LimeExplainer(model=model._model,
                                    train_data=model.training_data()[0],
-                                   test_data=model.test_data()[0][0:3],
+                                   data=model.test_data()[0][0:3],
                                    mode="regression",
                                    verbosity=False,
                                    path=model.path
