@@ -37,7 +37,6 @@ from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_mo
 from ai4water.utils.utils import maybe_three_outputs
 from ai4water.eda import EDA
 import ai4water.backend as K
-from ai4water.post_processing.explain import explain_model
 
 if K.BACKEND == 'tensorflow' and tf is not None:
     import ai4water.keract_mod as keract
@@ -1431,7 +1430,7 @@ class BaseModel(NN, Plots):
     def explain(self, *args, **kwargs):
         """Calls the ai4water.post_processing.explain.explain_model
          to explain the model."""
-
+        from ai4water.post_processing.explain import explain_model
         return explain_model(self, *args, **kwargs)
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
