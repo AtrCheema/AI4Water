@@ -65,8 +65,8 @@ class DataHandler(AttributeContainer):
                  output_features: Union[list, dict, str, None] = None,
                  dataset_args: dict = None,
 
-                 val_fraction: float = 0.3,
-                 test_fraction: float = 0.3,
+                 val_fraction: float = 0.2,
+                 test_fraction: float = 0.2,
 
                  input_step: int = 1,
                  lookback: int = 1,
@@ -243,6 +243,9 @@ class DataHandler(AttributeContainer):
         data_handler = DataHandler(data=data, lookback=5)
         x,y = data_handler.training_data()
         ```
+
+        # Note
+        The word 'index' is not allowed as column name, input_features or output_features
         """
         super().__init__()
 
@@ -269,7 +272,7 @@ class DataHandler(AttributeContainer):
                                   seed=seed,
                                   category=category,
                                   )
-        self.data = self._process_source(data)
+        self.data = self._process_source(data, input_features, output_features)
         self.verbosity = verbosity
         self.teacher_forcing = teacher_forcing
         self.mode = mode
@@ -514,10 +517,10 @@ class DataHandler(AttributeContainer):
             raise NotImplementedError
         return _len
 
-    def _process_source(self, data):
+    def _process_source(self, data, input_features, output_features):
 
         if isinstance(data, str):
-            _source = self._get_source_from_str(data)
+            _source = self._get_source_from_str(data, input_features, output_features)
             if isinstance(_source, str) and _source.endswith('.h5'):
                 self._from_h5 = True
             self.num_sources = 1
@@ -1514,14 +1517,54 @@ class DataHandler(AttributeContainer):
         f.close()
         return
 
-    def _get_source_from_str(self, data):
+    def _get_source_from_str(self, data, input_features, output_features):
+        if isinstance(output_features, str):
+            output_features = [output_features]
+
         # dir path/file path/ ai4water dataset name
         if data.endswith('.h5'):
             _source = data
         if data.endswith('.csv'):
             _source = pd.read_csv(data)
+            if _source.columns[0] in ['index', 'time', 'date']:
+                _source.index = pd.to_datetime(_source.pop('index'))
+
         elif data.endswith('.xlsx') or data.endswith('xlx'):
             _source = pd.read_excel(data)
+            if _source.columns[0] in ['index', 'time', 'date']:
+                _source.index = pd.to_datetime(_source.pop('index'))
+
+        elif data.endswith('.parquet'):
+            _source = pd.read_parquet(data)
+
+        elif data.endswith('.feather'):
+            _source = pd.read_feather(data)
+            if _source.columns[0] in ['index', 'time', 'date']:
+                _source.index = pd.to_datetime(_source.pop('index'))
+
+        # netcdf file
+        elif data.endswith('.nc'):
+            import xarray as xr
+            _source = xr.open_dataset(data)
+            _source = _source.to_dataframe()
+
+        elif data.endswith('npz'):
+            data = np.load(data)
+            assert len(data) == 1
+            d = []
+            for k,v in data.items():
+                d.append(v)
+
+            data:np.ndarray = d[0]
+            _source = pd.DataFrame(data, columns=input_features + output_features)
+
+        # matlab's mat file
+        elif data.endswith('.mat'):
+            import scipy
+            mat = scipy.io.loadmat(data)
+            data:np.ndarray = mat['data']
+            _source = pd.DataFrame(data, columns=input_features + output_features)
+
         elif os.path.isfile(data):
             assert os.path.exists(data)
             assert len(os.listdir(data)) > 1

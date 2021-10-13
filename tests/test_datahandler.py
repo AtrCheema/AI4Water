@@ -6,6 +6,7 @@ import site   # so that ai4water directory is in path
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
+import scipy
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -222,6 +223,11 @@ def build_and_test_loader(data, config, out_cols, train_ex=None, val_ex=None, te
                           true_train_y=None, true_val_y=None, true_test_y=None):
 
     config['teacher_forcing'] = True  # todo
+
+    if 'val_fraction' not in config:
+        config['val_fraction'] = 0.3
+    if 'test_fraction' not in config:
+        config['test_fraction'] = 0.3
 
     data_loader = DataHandler(data=data, save=save, verbosity=0, **config)
     #dl = DataLoader.from_h5('data.h5')
@@ -1544,6 +1550,8 @@ def test_multisource_basic3():
     lookback = [1, 4, 1]
     config = {'input_features': input_features,
               'output_features': output_features,
+              'test_fraction': 0.3,
+              'val_fraction': 0.3,
               'lookback': lookback}
 
     # build_and_test_loader(data=[static_df, cont_df, disc_df], config=config, out_cols=output_features, train_ex=6,
@@ -1612,6 +1620,8 @@ def site_distributed_basic():
     config = {'input_features': ['a', 'b'],
               'output_features': ['c'],
               'lookback': 4,
+              'val_fraction': 0.3,
+              'test_fraction': 0.3,
               'verbosity': 0}
     data = {'0': df, '1': df+1000, '2': df+2000, '3': df+3000}
     configs = {'0': config, '1': config, '2': config, '3': config}
@@ -1730,6 +1740,66 @@ def test_with_indices_and_nans():
                           out_cols=out_cols, train_ex=163, val_ex=55, test_ex=55,
                           check_examples=False, save=False)
 
+def test_file_formats(data):
+    csv_fname = os.path.join(os.getcwd(), "results", "data.csv")
+    data.to_csv(csv_fname)
+
+    xlsx_fname = os.path.join(os.getcwd(), "results", "data.xlsx")
+    data.to_excel(xlsx_fname, engine="xlsxwriter")
+
+    parq_fname = os.path.join(os.getcwd(), "results", "data.parquet")
+    data.to_parquet(parq_fname)
+
+    feather_fname = os.path.join(os.getcwd(), "results", "data.feather")
+    data.reset_index().to_feather(feather_fname)
+
+    nc_fname = os.path.join(os.getcwd(), "results", "data.nc")
+    xds = data.to_xarray()
+    xds.to_netcdf(nc_fname)
+
+    npz_fname = os.path.join(os.getcwd(), "results", "data.npz")
+    np.savez(npz_fname, data.values)
+
+    mat_fname = os.path.join(os.getcwd(), "results", "data.mat")
+    scipy.io.savemat(mat_fname, {'data': data.values})
+
+    dh = DataHandler(data, verbosity=0)
+    input_features = dh.input_features
+    output_features = dh.output_features
+    train_x, train_y = dh.training_data()
+    val_x, val_y = dh.validation_data()
+    test_x, test_y = dh.test_data()
+    train_x_shape, train_y_shape = train_x.shape, train_y.shape
+    val_x_shape, val_y_shape = val_x.shape, val_y.shape
+    test_x_shape, test_y_shape = test_x.shape, test_y.shape
+
+    for fname in [csv_fname,
+                  xlsx_fname, parq_fname,
+                  feather_fname,
+                  nc_fname,
+                  npz_fname,
+                  mat_fname
+                  ]:
+        #print(f'readeing {fname}')
+        dh = DataHandler(fname,
+                         input_features=input_features,
+                         output_features=output_features,
+                         verbosity=0)
+
+        train_x, train_y = dh.training_data()
+        assert train_x.shape == train_x_shape
+        assert train_y.shape == train_y_shape
+
+        val_x, val_y = dh.validation_data()
+        assert val_x.shape == val_x_shape
+        assert val_y.shape == val_y_shape
+
+        test_x, test_y = dh.test_data()
+        assert test_x.shape == test_x_shape
+        assert test_y.shape == test_y_shape
+
+    return
+
 test_with_indices_and_nans()
 test_with_string_index()
 site_distributed_basic()
@@ -1743,6 +1813,7 @@ test_multisource_basic()
 test_multisource_basic2()
 test_multisource_basic3()
 # #test_multisource_basic4() todo
+test_file_formats(arg_beach())
 
 cv_tester = TestCVs()
 cv_tester.test_loocv()
