@@ -88,7 +88,7 @@ except ModuleNotFoundError:
 
 try:
     import torch
-except ModuleNotFoundError:
+except Exception:  # there can be many reasons for unavailability(unproper installation) fo pytorch
     torch = None
 
 catboost_models = {}
@@ -133,7 +133,7 @@ try:
     from tpot import TPOTRegressor, TPOTClassifier
     tpot_models.update({'TPOTREGRESSOR': TPOTRegressor,
                        'TPOTCLASSIFIER': TPOTClassifier})
-except ModuleNotFoundError:
+except Exception as e:
     tpot = None
 
 sklearn_models = get_sklearn_models()
