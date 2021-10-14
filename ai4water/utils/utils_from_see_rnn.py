@@ -10,6 +10,7 @@ from see_rnn import scalefig
 from see_rnn.inspect_gen import detect_nans
 from see_rnn.utils import _kw_from_configs, _save_rnn_fig
 
+
 def rnn_histogram(data, rnn_info, equate_axes=1, configs=None,
                   **kwargs):
     """Plots histogram grid of RNN weights/gradients by kernel, gate (if gated),
@@ -58,6 +59,7 @@ def rnn_histogram(data, rnn_info, equate_axes=1, configs=None,
     show_bias     = kwargs.get('show_bias', True)
     bins          = kwargs.get('bins', 150)
     savepath      = kwargs.get('savepath', False)
+    show          = kwargs.get('show', False)
 
     def _process_configs(configs, w, h, equate_axes):
         defaults = {
@@ -254,7 +256,7 @@ def rnn_histogram(data, rnn_info, equate_axes=1, configs=None,
 
     if savepath:
         _save_rnn_fig(subplots_figs, savepath, kw['save'])
-    else:
+    if show:
         plt.show()
 
     return subplots_figs, subplots_axes

@@ -10,9 +10,11 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ai4water import Model
 from ai4water.datasets import arg_beach
+from ai4water.post_processing.visualize import Visualize
 from ai4water.utils.visualizations import PlotResults, regplot
-from ai4water.utils.plotting_tools import bar_chart, BAR_CMAPS, cmap
+from ai4water.utils.plotting_tools import bar_chart, BAR_CMAPS, get_cmap
 
 
 data = arg_beach()
@@ -91,32 +93,74 @@ class TestBarChart(unittest.TestCase):
 
     def test_bar_h(self):
         d, names = get_chart_data(5)
-        cm = cmap(random.choice(BAR_CMAPS), len(d), 0.2)
+        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
 
         plt.close('all')
         _, axis = plt.subplots()
         bar_chart(values=d, labels=names, axis=axis, color=cm)
-
+        return
 
     def test_bar_v_without_axis(self):
         d, names = get_chart_data(5)
-        cm = cmap(random.choice(BAR_CMAPS), len(d), 0.2)
+        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
 
         bar_chart(values=d, labels=names, color=cm, sort=True)
 
     def test_h_sorted(self):
         d, names = get_chart_data(5)
-        cm = cmap(random.choice(BAR_CMAPS), len(d), 0.2)
+        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
 
         bar_chart(values=d, labels=names, color=cm, orient='v')
-
+        return
 
     def test_vertical_without_axis(self):
         d, names = get_chart_data(5)
-        cm = cmap(random.choice(BAR_CMAPS), len(d), 0.2)
+        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
         bar_chart(values=d, labels=names, color=cm, sort=True, orient='v')
         return
 
+
+class TestVisualize(unittest.TestCase):
+
+    def test_dl(self):
+        model = Model(model={'layers': {
+            "LSTM_0": {"units": 8, "return_sequences": True},
+            "LSTM_1": {"units": 8},
+            "Dense": 1,
+        }},
+            data=arg_beach(),
+            lookback=12,
+            epochs=2,
+            verbosity=0
+        )
+
+        model.fit()
+
+        vis = Visualize(model)
+
+        for lyr in ['LSTM_0', 'LSTM_1']:
+            vis.activations(layer_name=lyr, examples_to_use=range(24))
+            vis.activations(layer_name=lyr, examples_to_use=30)
+
+            vis.activation_gradients(lyr, examples_to_use=range(30))
+
+            vis.weights(layer_name=lyr)
+
+            vis.weight_gradients(layer_name=lyr)
+
+        return
+
+    def test_ml(self):
+
+        for m in ["DecisionTreeRegressor", "XGBoostRegressor", "CatBoostRegressor", "LGBMRegressor"]:
+            model = Model(
+                model=m,
+                data=arg_beach(),
+                verbosity=0
+            )
+            model.fit()
+            model.view(show=False)
+        return
 
 if __name__ == "__main__":
     unittest.main()

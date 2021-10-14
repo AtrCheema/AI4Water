@@ -1,12 +1,12 @@
 The post-processing part consists of modules which handles the output of `Model` after
 the model has been trained i.e. after `.fit` method has been called on it.
 
-# [Model Explainer](postprocessing/explain.md)
+# [Model Explaination](postprocessing/explain.md)
 This module applies post-hoc methods such as LIME or SHAP to interpret/explain the
 behaviour of model. These are all model-agnostic methods to interpret machine learning
 models. 
 
-# [Model Interpreter](postprocessing/interpret.md)
+# [Model Interpretation](postprocessing/interpret.md)
 This module is useful for models which are inherently interpretable
 such as NBeats, TFT, DA-LSTM, IA-LSTM or models which contain attention mechanism.
 

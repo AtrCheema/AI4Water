@@ -15,3 +15,5 @@
 [Model Explaination using LIME](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/lime_explainations.ipynb)
 
 [Model Explaination using SHAP](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/shap_explainations.ipynb)
+
+[Visualizing model](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper_figs/visualize.ipynb)

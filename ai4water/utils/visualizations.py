@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+import matplotlib.dates as mdates
 
 try:
     import plotly
@@ -75,7 +75,8 @@ class Plot(object):
             x = os.getcwd()
         self._path = x
 
-    def save_or_show(self, save: bool = None, fname=None, where='', dpi=None, bbox_inches='tight', close=True):
+    def save_or_show(self, save: bool = None, fname=None, where='', dpi=None, bbox_inches='tight',
+                     close=True, show=False):
 
         if save is None:
             save = self.save
@@ -83,7 +84,7 @@ class Plot(object):
         if dpi is None:
             dpi = self.dpi
 
-        return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close)
+        return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close, show=show)
 
 
 class PlotResults(Plot):
@@ -139,7 +140,7 @@ class PlotResults(Plot):
         return
 
     def plot_results(self, true, predicted: pd.DataFrame, save=True, name=None, where=None,
-                     annotation_key=None, annotation_val=None):
+                     annotation_key=None, annotation_val=None, show=False):
         """
         # kwargs can be any/all of followings
             # fillstyle:
@@ -149,8 +150,12 @@ class PlotResults(Plot):
             # color:
         """
 
-        regplot(true, predicted, title=name, annotation_key=annotation_key, annotation_val=annotation_val)
-        self.save_or_show(save=save, fname=f"{name}_reg", close=False, where=where)
+        regplot(true, predicted, title=name[15:],
+                annotation_key=annotation_key,
+                annotation_val=annotation_val)
+
+        self.save_or_show(save=save, fname=f"{name}_reg", close=False,
+                          where=where, show=show)
 
         mpl.rcParams.update(mpl.rcParamsDefault)
 
@@ -160,10 +165,12 @@ class PlotResults(Plot):
         # equalidistant and large amount of graph
         # will have not data in that case lines plot will create a lot of useless
         # interpolating lines where no data is present.
+        datetime_axis = False
         if isinstance(true.index, pd.DatetimeIndex) and pd.infer_freq(true.index) is not None:
             style = '.'
             true = true
             predicted = predicted
+            datetime_axis = True
         else:
             if np.isnan(true.values).sum() > 0:
                 style = '.'  # For Nan values we should be using this style otherwise nothing is plotted.
@@ -174,11 +181,21 @@ class PlotResults(Plot):
 
         ms = 4 if style == '.' else 2
 
+        if len(true)>1000: # because the data is very large, so better to use small marker size
+            ms = 2
+
         axis.plot(predicted, style, color='r',  label='Prediction')
 
         axis.plot(true, style, color='b', marker='o', fillstyle='none',  markersize=ms, label='True')
 
         axis.legend(loc="best", fontsize=22, markerscale=4)
+
+        if datetime_axis:
+                loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
+                axis.xaxis.set_major_locator(loc)
+                fmt = mdates.AutoDateFormatter(loc)
+                axis.xaxis.set_major_formatter(fmt)
+
         plt.xticks(fontsize=18)
         plt.yticks(fontsize=18)
         plt.xlabel("Time", fontsize=18)
@@ -186,9 +203,9 @@ class PlotResults(Plot):
         self.save_or_show(save=save, fname=name, close=False, where=where)
         return
 
-    def plot_loss(self, history: dict, name="loss_curve"):
-        """Considering history is a dictionary of different arrays, possible training and validation loss arrays,
-        this method plots those arrays."""
+    def plot_loss(self, history: dict, name="loss_curve", show=False):
+        """Considering history is a dictionary of different arrays, possible
+        training and validation loss arrays, this method plots those arrays."""
 
         plt.clf()
         plt.close('all')
@@ -245,7 +262,7 @@ class PlotResults(Plot):
 
         fig.set_figheight(sub_plots[len(history)]['height'])
         fig.set_figwidth(sub_plots[len(history)]['width'])
-        self.save_or_show(fname=name, save=True if name is not None else False)
+        self.save_or_show(fname=name, save=True if name is not None else False, show=show)
         return
 
 

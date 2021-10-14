@@ -5,24 +5,10 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from sklearn import tree
 import matplotlib.pyplot as plt
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 
-try:
-    from dtreeviz import trees
-except ModuleNotFoundError:
-    trees = None
-
-from ai4water.backend import xgboost
 from ai4water.utils.utils import init_subplots
-
-try:
-    from ai4water.utils.utils_from_see_rnn import rnn_histogram
-    from see_rnn.visuals_gen import features_0D, features_1D, features_2D
-except ModuleNotFoundError:
-    rnn_histogram = None
-    features_0D, features_1D, features_2D = None, None, None
 
 
 BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
@@ -32,14 +18,6 @@ BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
 # TODO
 # rank histogram, reliability diagram, ROC curve
 
-
-rnn_info = {"LSTM": {'rnn_type': 'LSTM',
-                     'gate_names': ['INPUT', 'FORGET', 'CELL', 'OUTPUT'],
-                     'n_gates': 4,
-                     'is_bidir': False,
-                     'rnn_dim': 64,
-                     'uses_bias': True,
-                     'direction_names': [[]]}}
 
 
 class Plots(object):
@@ -90,8 +68,10 @@ class Plots(object):
 
     def _imshow_3d(self, activation,
                    lyr_name,
+                   xticklabels=None,
                    save=True,
-                   where='activations'):
+                   where='activations',
+                   xlabel=None):
 
         act_2d = []
         for i in range(activation.shape[2]):
@@ -102,57 +82,59 @@ class Plots(object):
                      save,
                      lyr_name,
                      where=where,
-                     xlabel=self.in_cols)
+                     xticklabels=xticklabels,
+                     xlabel=xlabel)
         return
 
-    def _imshow(self, img,
+    def _imshow(self,
+                img,
                 label: str = '',
                 save=True,
                 fname=None,
                 interpolation: str = 'none',
-                where='activations',
+                where='',
                 rnn_args=None,
+                cmap = None,
+                show=False,
                 **kwargs):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
-        plt.close('all')
-        plt.rcParams.update(plt.rcParamsDefault)
-        plt.imshow(img, aspect='auto', interpolation=interpolation)
+
+        _, axis = plt.subplots()
+        im = axis.imshow(img, aspect='auto', interpolation=interpolation, cmap=cmap)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
 
             rnn_dim = int(img.shape[1] / rnn_args['n_gates'])
-            [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.5, color='k')
+            [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.8, color='k')
                      for gate_idx in range(1, rnn_args['n_gates'])]
 
-            plt.xlabel(rnn_args['gate_names_str'])
+            kwargs['xlabel'] = rnn_args['gate_names_str']
             if "RECURRENT" in label.upper():
                 plt.ylabel("Hidden Units")
             else:
                 plt.ylabel("Channel Units")
         else:
-            plt.ylabel('Examples' if 'weight' not in label.lower() else '')
-            xlabels = kwargs.get('xlabel', None)
+            axis.set_ylabel('Examples' if 'weight' not in label.lower() else '')
+            xlabels = kwargs.get('xticklabels', None)
             if xlabels is not None:
                 if len(xlabels) < 30:
-                    plt.xlabel(xlabels, rotation=90)
-            else:
-                plt.xlabel("Inputs")
+                    axis.set_xticklabels(xlabels, rotation=90)
 
-        plt.colorbar()
+        plt.xlabel(kwargs.get('xlabel', 'inputs'))
+
+        plt.colorbar(im)
         plt.title(label)
-        self.save_or_show(save, fname, where=where)
+        self.save_or_show(save, fname, where=where, show=show)
 
         return
 
-    def plot1d(self, array, label: str = '', save=True, fname=None, rnn_args=None, where='activations'):
+    def plot1d(self, array, label: str = '', show=False, fname=None, rnn_args=None, where=''):
         plt.close('all')
-        plt.style.use('ggplot')
         plt.plot(array)
         plt.xlabel("Examples")
         plt.title(label)
-        plt.grid(b=True, which='major', color='0.2', linestyle='-')
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
@@ -162,7 +144,7 @@ class Plots(object):
                      for gate_idx in range(1, rnn_args['n_gates'])]
             plt.xlabel(rnn_args['gate_names_str'])
 
-        self.save_or_show(save, fname, where=where)
+        self.save_or_show(save=True, fname=fname, where=where, show=show)
 
         return
 
@@ -247,67 +229,6 @@ class Plots(object):
                                         where='data')
             else:
                 print(f'skipping shape is {inputs.shape}')
-        return
-
-    def features_2d(self, data, name, save=True, slices=32, slice_dim=0, where='activations', **kwargs):
-        """Calls the features_2d from see-rnn"""
-        st=0
-        if features_2D is None:
-            warnings.warn("install see-rnn to plot features-2D plot", UserWarning)
-        else:
-            for en in np.arange(slices, data.shape[slice_dim] + slices, slices):
-
-                if save:
-                    fname = name + f"_{st}_{en}"
-                    save = os.path.join(os.path.join(self.path, where), fname+".png")
-                else:
-                    save = None
-
-                if slice_dim == 0:
-                    features_2D(data[st:en, :], savepath=save, **kwargs)
-                else:
-                    # assuming it will always be the last dim if not first
-                    features_2D(data[..., st:en], savepath=save, **kwargs)
-                st = en
-        return
-
-    def features_1d(self, data, save=True, name='', **kwargs):
-
-        if save:
-            save = os.path.join(self.act_path, name + ".png")
-        else:
-            save=None
-
-        if features_1D is None:
-            warnings.warn("install see-rnn to plot features-1D plot", UserWarning)
-        else:
-            features_1D(data, savepath=save, **kwargs)
-
-        return
-
-    def features_0d(self, data, save=True, name='', **kwargs):
-        if save:
-            save = os.path.join(self.act_path, name + "0D.png")
-        else:
-            save = None
-
-        if features_0D is None:
-            warnings.warn("install see-rnn to plot 0D-features plot")
-        else:
-            return features_0D(data, savepath=save, **kwargs)
-
-    def rnn_histogram(self, data, save=True, name='', **kwargs):
-
-        if save:
-            save = os.path.join(self.act_path, name + "0D.png")
-        else:
-            save = None
-
-        if rnn_histogram is None:
-            warnings.warn("install see-rnn to plot rnn_histogram plot", UserWarning)
-        else:
-            rnn_histogram(data, rnn_info["LSTM"], bins=400, savepath=save, **kwargs)
-
         return
 
     def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
@@ -402,41 +323,6 @@ class Plots(object):
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
 
-    def decision_tree(self, which="sklearn", save=True, **kwargs):
-        """For kwargs see https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree"""
-        plt.close('')
-        if which == "sklearn":
-            if hasattr(self._model, "tree_"):
-                tree.plot_tree(self._model, **kwargs)
-        else:  # xgboost
-            if xgboost is None:
-                warnings.warn("install xgboost to use plot_tree method")
-            else:
-                xgboost.plot_tree(self._model, **kwargs)
-        self.save_or_show(save, fname="decision_tree", where="results", dpi=1000)
-        return
-
-    def plot_treeviz_leaves(self, save=True):
-        """Plots dtreeviz related plots if dtreeviz is installed"""
-
-        model = list(self.config['model'].keys())[0].upper()
-        if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"] or model.startswith("XGBOOST"):
-            if  model in ['XGBOOSTRFREGRESSOR', 'XGBOOSTREGRESSOR']:  # dtreeviz doesn't plot this
-                pass
-            elif trees is None:
-                print("dtreeviz related plots can not be plotted")
-            else:
-                x, _, y = self.test_data()
-
-                if np.ndim(y) > 2:
-                    y = np.squeeze(y, axis=2)
-
-                trees.viz_leaf_samples(self._model, x, self.in_cols)
-                self.save_or_show(save, fname="viz_leaf_samples", where="plots")
-
-                trees.ctreeviz_leaf_samples(self._model, x, y, self.in_cols)
-                self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
-
     def plot_histogram(self,
                        data: np.ndarray,
                        save: bool = True,
@@ -487,7 +373,7 @@ def bar_chart(labels,
               show_yaxis=True):
 
 
-    cm = cmap(random.choice(BAR_CMAPS), len(values), 0.2)
+    cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
     color = color if color is not None else cm
 
     if not axis:
@@ -520,7 +406,8 @@ def bar_chart(labels,
     return axis
 
 
-def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True):
+def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True,
+                 show=False):
 
     if save:
         assert isinstance(fname, str)
@@ -544,7 +431,7 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
         fname = os.path.join(save_dir, fname + ".png")
 
         plt.savefig(fname, dpi=dpi, bbox_inches=bbox_inches)
-    else:
+    if show:
         plt.show()
 
     if close:
@@ -552,7 +439,7 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
     return
 
 
-def cmap(cm:str, num_cols:int, low=0.0, high=1.0):
+def get_cmap(cm:str, num_cols:int, low=0.0, high=1.0):
 
     cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
     return cols

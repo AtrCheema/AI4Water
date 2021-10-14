@@ -39,7 +39,6 @@ from ai4water.eda import EDA
 import ai4water.backend as K
 
 if K.BACKEND == 'tensorflow' and tf is not None:
-    import ai4water.keract_mod as keract
     from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif K.BACKEND == 'pytorch' and torch is not None:
@@ -174,7 +173,9 @@ class BaseModel(NN, Plots):
                 if not given, new model_path path will not be created.
             verbosity int: default is 1.
                 determines the amount of information being printed. 0 means no
-                print information. Can be between 0 and 3.
+                print information. Can be between 0 and 3. Setting this value to 0
+                will also reqult in not showing some plots such as loss curve or
+                regression plot. These plots will only be saved in self.path.
             accept_additional_args bool:  Default is False
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
@@ -732,7 +733,9 @@ class BaseModel(NN, Plots):
 
                 annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
                 visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out,
-                                        annotation_key=annotate_with, annotation_val=annotation_val)
+                                        annotation_key=annotate_with,
+                                        annotation_val=annotation_val,
+                                        show=self.verbosity)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -900,7 +903,7 @@ class BaseModel(NN, Plots):
                 kwargs['validation_data'] = val_data
             history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
 
-            visualizer.plot_loss(history.history)
+            visualizer.plot_loss(history.history, show=self.verbosity)
 
             self.load_best_weights()
         else:
@@ -1134,7 +1137,6 @@ class BaseModel(NN, Plots):
             x : if given, it will override `data`
             y : Used for pos-processing etc. if given it will overrite `data`
             process_results : post processing of results
-            prefix : prefix used with names of saved results
             metrics : only valid if process_results is True. The metrics to calculate.
                 Valid values are 'minimal', 'all', 'hydro_metrics'
             return_true : whether to return the true values along with predicted values
@@ -1165,6 +1167,8 @@ class BaseModel(NN, Plots):
                      return_true:bool = False,
                      **kwargs):
 
+        prefix = dateandtime_now()
+
         if isinstance(data, np.ndarray):
             # the predict method is called like .predict(x)
             inputs = data
@@ -1177,12 +1181,12 @@ class BaseModel(NN, Plots):
                 if self.dh.data is None:
                     raise ValueError("You must specify the data on which to make prediction")
                 user_defined_data = False
-                prefix = data
+                prefix = prefix + data
                 data = getattr(self, f'{data}_data')(key=transformation_key)
                 inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
             else:
                 user_defined_data = True
-                prefix = 'x'
+                prefix = prefix + 'x'
                 inputs = x
                 true_outputs = y
 
@@ -1352,51 +1356,48 @@ class BaseModel(NN, Plots):
         return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
                                self.config['allow_nan_labels'])
 
-    def activations(self,
-                    layer_names: Union[list, str] = None,
-                    x=None,
-                    data: str = 'training'
-                    ) -> dict:
-        """gets the activations of any layer of the Keras Model.
-        Activation here means output of a layer of a deep learning model.
-        Arguments:
-            layer_names : name of list of names of layers whose activations are
-                to be returned.
-            x : If provided, it will override `data`.
-            data : data to use to get activations. Only relevent if `x` is not
-                provided. By default training data is used. Possible values are
-                `training`, `test` or `validation`.
-        Returns:
-            a dictionary whose keys are names of layers and values are weights
-            of those layers as numpy arrays
-        """
-        if x is None:
-            # if layer names are not specified, this will get get activations of allparameters
-            data = getattr(self, f'{data}_data')()
-            x, _ = maybe_three_outputs(data, self.dh.teacher_forcing)
-
-        activations = keract.get_activations(self.dl_model, x, layer_names=layer_names, auto_compile=True)
-
-        return activations
-
-    def view_model(self, **kwargs):
+    def view(self,
+             layer_name=None,
+             data='training',
+             x=None,
+             y=None,
+             examples_to_view=None,
+             show=False
+             ):
         """shows all activations, weights and gradients of the model.
 
         Arguments:
-            kwargs : keyword arguments for specifying the data. These arguments
-                must be same which are used by `fit` method for specifying data.
-        """
-        if self.category.upper() == "DL":
-            self.plot_act_grads(**kwargs)
-            self.plot_weight_grads(**kwargs)
-            self.plot_layer_outputs(**kwargs)
-            self.plot_weights()
+            layer_name : the layer to view. If not given, all the layers will be viewed.
+                This argument is only required when the model consists of layers of neural
+                networks.
+            data : the data to use when making calls to model for activation calculation
+                or for gradient calculation. It can either 'training', 'validation' or
+                'test'.
+            x : alternative to data.
+            y : alternative to data
+            examples_to_view : the examples to view.
+            show : whether to show the plot or not!
 
-        return
+        Returns:
+            An isntance of ai4water.post_processing.visualize.Visualize class.
+        """
+        from ai4water.post_processing.visualize import Visualize
+
+        visualizer = Visualize(model=self)
+
+        visualizer(layer_name,
+                   data=data, x=x, y=y,
+                   examples_to_use=examples_to_view,
+                   show=show)
+
+        return visualizer
 
     def interpret(self, **kwargs):
         """
         Interprets the underlying model. Call it after training.
+
+        Returns:
+            An instance of ai4water.post_processing.interpret.Interpret class
 
         Example
         -------
@@ -1408,10 +1409,8 @@ class BaseModel(NN, Plots):
         matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         if 'layers' not in self.config['model']:
 
-            self.plot_treeviz_leaves()
-
             if self.mode.lower().startswith("cl"):
-                self.plot_treeviz_leaves()
+
                 self.decision_tree(which="sklearn", **kwargs)
 
                 data = self.test_data()
@@ -1420,16 +1419,12 @@ class BaseModel(NN, Plots):
                 self.precision_recall_curve(x=x, y=y)
                 self.roc_curve(x=x, y=y)
 
-            if list(self.config['model'].keys())[0].lower().startswith("xgb"):
-                self.decision_tree(which="xgboost", **kwargs)
-
-        Interpret(self)
-
-        return
+        return Interpret(self)
 
     def explain(self, *args, **kwargs):
         """Calls the ai4water.post_processing.explain.explain_model
-         to explain the model."""
+         to explain the model.
+         """
         from ai4water.post_processing.explain import explain_model
         return explain_model(self, *args, **kwargs)
 
