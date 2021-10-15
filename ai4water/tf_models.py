@@ -321,10 +321,12 @@ class DualAttentionModel(FModel):
         return
 
     def plot_act_along_inputs(self,
-                              layer_name: str, name: str = None,
+                              layer_name: str,
+                              name: str = None,
                               vmin=None,
                               vmax=None,
-                              data='training'):
+                              data='training',
+                              show=False):
 
         data_name = name or data
 
@@ -357,18 +359,20 @@ class DualAttentionModel(FModel):
 
         data = self.inputs_for_attention(data)
 
-        plot_activations_along_inputs(data=data,
-                                      activations=activation,
-                                      observations=observations,
-                                      predictions=predictions,
-                                      in_cols=self.in_cols,
-                                      out_cols=self.out_cols,
-                                      lookback=lookback,
-                                      name=name,
-                                      path=self.act_path,
-                                      vmin=vmin,
-                                      vmax=vmax
-                                      )
+        plot_activations_along_inputs(
+            data=data,
+            activations=activation,
+            observations=observations,
+            predictions=predictions,
+            in_cols=self.in_cols,
+            out_cols=self.out_cols,
+            lookback=lookback,
+            name=name,
+            path=self.act_path,
+            vmin=vmin,
+            vmax=vmax,
+            show=show
+        )
         return
 
     def plot_act_along_lookback(self, activations, sample=0):

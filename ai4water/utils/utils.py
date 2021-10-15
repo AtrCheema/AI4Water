@@ -1394,6 +1394,7 @@ def plot_activations_along_inputs(
         path: str,
         vmin=None,
         vmax=None,
+        show=False
 ):
     # activation must be of shape (num_examples, lookback, input_features)
     assert activations.shape[1] == lookback
@@ -1429,6 +1430,10 @@ def plot_activations_along_inputs(
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attention_weights_{out_name}_{name}'
             plt.savefig(os.path.join(path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
+
+            if show:
+                plt.show()
+
             plt.close('all')
 
     return
