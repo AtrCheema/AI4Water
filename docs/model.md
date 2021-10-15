@@ -8,7 +8,7 @@
             - evaluate
             - predict
             - interpret
-            - view_model
+            - view
             - eda
             - from_config
             - update_weights
