@@ -689,6 +689,9 @@ class BaseModel(NN, Plots):
         predicted, true are arrays of shape (examples, outs, forecast_len).
         annotate_with : which value to write on regression plot
         """
+
+        metric_names = {'r2': "$R^2$"}
+
         visualizer = PlotResults(path=self.path)
 
         if user_defined_data:
@@ -733,7 +736,7 @@ class BaseModel(NN, Plots):
 
                 annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
                 visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out,
-                                        annotation_key=annotate_with,
+                                        annotation_key=metric_names.get(annotate_with, annotate_with),
                                         annotation_val=annotation_val,
                                         show=self.verbosity)
 
