@@ -731,7 +731,7 @@ class BaseModel(NN, Plots):
 
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
-                fname = prefix + out + '_' + str(h) + ".csv"
+                fname = prefix + out + '_' + str(h) + dateandtime_now() + ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='index')
 
                 annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
@@ -1170,13 +1170,12 @@ class BaseModel(NN, Plots):
                      return_true:bool = False,
                      **kwargs):
 
-        prefix = dateandtime_now()
-
         if isinstance(data, np.ndarray):
             # the predict method is called like .predict(x)
             inputs = data
             user_defined_data = True
             true_outputs = None
+            prefix = 'x'
         else:
             transformation_key = '5'
 
@@ -1184,12 +1183,12 @@ class BaseModel(NN, Plots):
                 if self.dh.data is None:
                     raise ValueError("You must specify the data on which to make prediction")
                 user_defined_data = False
-                prefix = prefix + data
+                prefix = data
                 data = getattr(self, f'{data}_data')(key=transformation_key)
                 inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
             else:
                 user_defined_data = True
-                prefix = prefix + 'x'
+                prefix = 'x'
                 inputs = x
                 true_outputs = y
 

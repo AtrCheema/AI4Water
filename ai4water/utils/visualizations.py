@@ -150,7 +150,7 @@ class PlotResults(Plot):
             # color:
         """
 
-        regplot(true, predicted, title=name[15:],
+        regplot(true, predicted, title=name,
                 annotation_key=annotation_key,
                 annotation_val=annotation_val)
 

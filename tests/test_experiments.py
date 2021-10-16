@@ -86,7 +86,7 @@ class TestExperiments(unittest.TestCase):
             input_features=input_features,
             output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'features': input_features, 'imputer_args': {'strategy': 'mean'}},
-            exp_name="BestMLModels",
+            exp_name=f"BestMLModels_{dateandtime_now()}",
         verbosity=0)
         exp.fit(run_type="dry_run",
                 include=['GaussianProcessRegressor',
