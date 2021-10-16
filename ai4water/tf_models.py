@@ -334,7 +334,9 @@ class DualAttentionModel(FModel):
 
         predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
-        activation = self.activations(layer_names=layer_name, data=data)
+        from ai4water.post_processing.visualize import Visualize
+
+        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data)
 
         data, _, _ = getattr(self, f'{data}_data')()
         lookback = self.config['lookback']
