@@ -1,8 +1,10 @@
 import os
+import math
 from typing import Union
 
 import numpy as np
 import pandas as pd
+from scipy import linalg
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
@@ -34,13 +36,15 @@ class EDA(Plot):
     - grouped_scatter
     - correlation
     - stats
+    - autocorrelation
+    - partial_autocorrelation
 
     Example
     --------
     ```python
-    >>>from ai4water.datasets import arg_beach
-    >>>eda = EDA(data=arg_beach(), save=True)
-    >>>eda()
+    >>> from ai4water.datasets import arg_beach
+    >>> eda = EDA(data=arg_beach(), save=True)
+    >>> eda()
     ```
     """
 
@@ -90,7 +94,7 @@ class EDA(Plot):
                  cols=None,
                  save: bool = True
                  ):
-        """Shortcut to draw all plots.
+        """Shortcut to draw maximum possible plots.
 
         Arguments:
             methods :
@@ -1239,6 +1243,80 @@ class EDA(Plot):
                                       **kwargs)
         return
 
+    def autocorrelation(self, nlags:int, show:bool=True):
+        """autocorrelation of individual features of data
+        Arguments:
+            nlags : number of lag steps to consider
+            show : whether to show the plot or not
+        """
+        return self._autocorrelation(False, nlags, show)
+
+    def partial_autocorrelation(self, nlags:int, show:bool=True):
+        """Partial autocorrelation of individual features of data
+        Arguments:
+            nlags : number of lag steps to consider
+            show : whether to show the plot or not.
+        """
+        return self._autocorrelation(True, nlags, show)
+
+    def _autocorrelation(self, partial, nlags, show=True):
+
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                self.autocorr_df(data, nlags, partial, show=show, fname=str(idx))
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                self.autocorr_df(data, nlags, partial, fname=data_name, show=show)
+        else:
+            self.autocorr_df(self.data, nlags, partial, show=show)
+        return
+
+    def autocorr_df(
+            self,
+            data:pd.DataFrame,
+            nlags:int,
+            partial:bool=False,
+            show:bool=True,
+            fname='',
+    ):
+        """autocorrelation on a dataframe."""
+        prefix = 'Partial' if partial else ''
+
+        non_nan = data.isna().sum()
+        num_subplots = math.ceil(len(non_nan[non_nan==0])/2)*2
+
+        if num_subplots==1:
+            nrows, ncols = 1,1
+        elif num_subplots == 2:
+            nrows, ncols = 1, 2
+        else:
+            nrows, ncols = int(num_subplots/2), 2
+
+        fig, axis = plt.subplots(nrows, ncols, figsize=(9, nrows*2),
+                               sharex="all", sharey="all")
+
+        for col, ax in zip(data.columns, axis.flat):
+
+            x = data[col].values
+            if np.isnan(x).sum() == 0:
+
+                if partial:
+                    _ac = pac_yw(x, nlags)
+                else:
+                    _ac = auto_corr(x, nlags)
+
+                plot_autocorr(_ac, axis=ax, legend=col, show=False, legend_fs=nrows*2)
+            else:
+                print(f"cannot plot autocorrelation for {col} feature")
+
+        plt.suptitle(f"{prefix} Autocorrelation",
+                     fontsize=nrows*3)
+
+        fname = f"{prefix} autocorr_{fname}"
+        self.save_or_show(save=self.save, show=show, fname=fname)
+
+        return fig
+
 
 def set_axis_paras(axis, leg_kws, label_kws, tick_kws):
     axis.legend(**leg_kws)
@@ -1273,3 +1351,90 @@ def consider_st_en(df, st=None, en=None):
         df = df.loc[st:en]
 
     return df
+
+
+
+def auto_corr(x, nlags, demean=True):
+    """
+    autocorrelation like statsmodels
+    https://stackoverflow.com/a/51168178
+    """
+
+    var=np.var(x)
+
+    if demean:
+        x -= np.mean(x)
+
+    corr = np.full(nlags+1, np.nan, np.float64)
+    corr[0] = 1.
+
+    for l in range(1, nlags+1):
+        corr[l] = np.sum(x[l:]*x[:-l])/len(x)/var
+
+    return corr
+
+
+def pac_yw(x, nlags):
+    """partial autocorrelation according to ywunbiased method"""
+
+    pac = np.full(nlags+1, fill_value=np.nan, dtype=np.float64)
+    pac[0] = 1.
+
+    for l in range(1, nlags+1):
+        pac[l] = ar_yw(x, l)[-1]
+
+    return pac
+
+
+def ar_yw(x, order=1, adj_needed=True, demean=True):
+    """Performs autoregressor using Yule-Walker method.
+    Returns:
+        rho : np array
+        coefficients of AR
+    """
+    x = np.array(x, dtype=np.float64)
+
+    if demean:
+        x -= x.mean()
+
+    n = len(x)
+    r = np.zeros(order+1, np.float64)
+    r[0] = (x ** 2).sum() / n
+    for k in range(1, order+1):
+        r[k] = (x[0:-k] * x[k:]).sum() / (n - k * adj_needed)
+    R = linalg.toeplitz(r[:-1])
+
+    rho = np.linalg.solve(R, r[1:])
+    return rho
+
+
+
+def plot_autocorr(x,
+                  axis=None,
+                  show=True,
+                  legend=None,
+                  title=None, xlabel=None,
+                  vlines_colors=None,
+                  hline_color=None,
+                  marker_color=None,
+                  legend_fs=None
+                  ):
+
+    if not axis:
+        _, axis = plt.subplots()
+    axis.plot(x, 'o', color=marker_color, label=legend)
+    if legend:
+        axis.legend(fontsize=legend_fs)
+    axis.vlines(range(len(x)), [0], x, colors=vlines_colors)
+    axis.axhline(color=hline_color)
+
+    if title:
+        axis.set_title(title)
+    if xlabel:
+        axis.set_xlabel("Lags")
+
+    if show:
+        plt.show()
+
+    return axis
+
