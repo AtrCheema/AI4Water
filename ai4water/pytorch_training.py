@@ -501,8 +501,8 @@ class Learner(AttributeContainer):
                 weight_file_path = os.path.join(w_path, best_weights)
 
         if best_weights is not None:
-            fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
-            self.model.load_state_dict(torch.load(fpath))
+            #fpath = os.path.splitext(weight_file_path)[0]  # we are not saving the whole model but only state_dict
+            self.model.load_state_dict(torch.load(weight_file_path))
             if self.verbosity > 0:
                 print("{} Successfully loaded weights from {} file {}".format('*' * 10, best_weights, '*' * 10))
         return
