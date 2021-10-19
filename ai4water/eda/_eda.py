@@ -4,7 +4,6 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from scipy import linalg
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
@@ -13,6 +12,7 @@ try:
 except ModuleNotFoundError:
     sns = None
 
+from .utils import pac_yw, auto_corr, plot_autocorr
 from ai4water.utils.utils import _missing_vals
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
@@ -101,8 +101,11 @@ class EDA(Plot):
             cols :
             save :
         """
-        all_methods = ['heatmap', 'plot_missing', 'plot_histograms', 'plot_data',
-                       'plot_index', 'stats', 'box_plot']
+        all_methods = [
+            'heatmap', 'plot_missing', 'plot_histograms', 'plot_data',
+            'plot_index', 'stats', 'box_plot',
+            'autocorrelation', 'partial_autocorrelation'
+        ]
 
         if isinstance(self.data, pd.DataFrame) and self.data.shape[-1] > 1:
             all_methods = all_methods + [# 'plot_pcs',
@@ -1243,7 +1246,11 @@ class EDA(Plot):
                                       **kwargs)
         return
 
-    def autocorrelation(self, nlags:int, show:bool=True):
+    def autocorrelation(
+            self,
+            nlags:int,
+            show:bool=True
+    ):
         """autocorrelation of individual features of data
         Arguments:
             nlags : number of lag steps to consider
@@ -1251,7 +1258,11 @@ class EDA(Plot):
         """
         return self._autocorrelation(False, nlags, show)
 
-    def partial_autocorrelation(self, nlags:int, show:bool=True):
+    def partial_autocorrelation(
+            self,
+            nlags:int,
+            show:bool=True
+    ):
         """Partial autocorrelation of individual features of data
         Arguments:
             nlags : number of lag steps to consider
@@ -1263,15 +1274,15 @@ class EDA(Plot):
 
         if isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self.autocorr_df(data, nlags, partial, show=show, fname=str(idx))
+                self._autocorr_df(data, nlags, partial, show=show, fname=str(idx))
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
-                self.autocorr_df(data, nlags, partial, fname=data_name, show=show)
+                self._autocorr_df(data, nlags, partial, fname=data_name, show=show)
         else:
-            self.autocorr_df(self.data, nlags, partial, show=show)
+            self._autocorr_df(self.data, nlags, partial, show=show)
         return
 
-    def autocorr_df(
+    def _autocorr_df(
             self,
             data:pd.DataFrame,
             nlags:int,
@@ -1353,88 +1364,4 @@ def consider_st_en(df, st=None, en=None):
     return df
 
 
-
-def auto_corr(x, nlags, demean=True):
-    """
-    autocorrelation like statsmodels
-    https://stackoverflow.com/a/51168178
-    """
-
-    var=np.var(x)
-
-    if demean:
-        x -= np.mean(x)
-
-    corr = np.full(nlags+1, np.nan, np.float64)
-    corr[0] = 1.
-
-    for l in range(1, nlags+1):
-        corr[l] = np.sum(x[l:]*x[:-l])/len(x)/var
-
-    return corr
-
-
-def pac_yw(x, nlags):
-    """partial autocorrelation according to ywunbiased method"""
-
-    pac = np.full(nlags+1, fill_value=np.nan, dtype=np.float64)
-    pac[0] = 1.
-
-    for l in range(1, nlags+1):
-        pac[l] = ar_yw(x, l)[-1]
-
-    return pac
-
-
-def ar_yw(x, order=1, adj_needed=True, demean=True):
-    """Performs autoregressor using Yule-Walker method.
-    Returns:
-        rho : np array
-        coefficients of AR
-    """
-    x = np.array(x, dtype=np.float64)
-
-    if demean:
-        x -= x.mean()
-
-    n = len(x)
-    r = np.zeros(order+1, np.float64)
-    r[0] = (x ** 2).sum() / n
-    for k in range(1, order+1):
-        r[k] = (x[0:-k] * x[k:]).sum() / (n - k * adj_needed)
-    R = linalg.toeplitz(r[:-1])
-
-    rho = np.linalg.solve(R, r[1:])
-    return rho
-
-
-
-def plot_autocorr(x,
-                  axis=None,
-                  show=True,
-                  legend=None,
-                  title=None, xlabel=None,
-                  vlines_colors=None,
-                  hline_color=None,
-                  marker_color=None,
-                  legend_fs=None
-                  ):
-
-    if not axis:
-        _, axis = plt.subplots()
-    axis.plot(x, 'o', color=marker_color, label=legend)
-    if legend:
-        axis.legend(fontsize=legend_fs)
-    axis.vlines(range(len(x)), [0], x, colors=vlines_colors)
-    axis.axhline(color=hline_color)
-
-    if title:
-        axis.set_title(title)
-    if xlabel:
-        axis.set_xlabel("Lags")
-
-    if show:
-        plt.show()
-
-    return axis
 
