@@ -3,7 +3,7 @@
 from .experiments import Experiments, Model
 from ai4water.hyper_opt import Real, Categorical, Integer
 from ai4water.post_processing.SeqMetrics import RegressionMetrics
-from ai4water.backend import VERSION_INFO
+from ai4water.utils.utils import get_version_info
 
 
 try:
@@ -20,6 +20,10 @@ try:
     import xgboost
 except ModuleNotFoundError:
     xgboost = None
+
+import sklearn
+
+VERSION_INFO = get_version_info(sklearn=sklearn)
 
 
 class MLRegressionExperiments(Experiments):
