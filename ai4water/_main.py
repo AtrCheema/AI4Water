@@ -30,12 +30,10 @@ from ai4water.utils.utils import ts_features, make_model
 from ai4water.utils.utils import find_best_weight, reset_seed
 from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
-from ai4water.post_processing import Interpret
 from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
 from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
 from ai4water.utils.utils import maybe_three_outputs
-from ai4water.eda import EDA
 import ai4water.backend as K
 
 if K.BACKEND == 'tensorflow' and tf is not None:
@@ -1406,6 +1404,9 @@ class BaseModel(NN, Plots):
         model.interpret()
         ```
         """
+        # importing ealier will try to import np types as well again
+        from ai4water.post_processing import Interpret
+
         matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         if 'layers' not in self.config['model']:
 
@@ -1604,6 +1605,9 @@ class BaseModel(NN, Plots):
             cols :
         `monthly`.
         """
+        # importing EDA earlier will import numpy etc as well
+        from ai4water.eda import EDA
+
         # todo, Uniform Manifold Approximation and Projection (UMAP) of input data
         if self.data is None:
             print("data is None so eda can not be performed.")
@@ -1621,7 +1625,7 @@ class BaseModel(NN, Plots):
         eda.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
-        eda.feature_feature_corr(cols=cols)
+        eda.correlation(cols=cols)
 
         # print stats about input/output data
         eda.stats()
