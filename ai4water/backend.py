@@ -1,9 +1,7 @@
 __all__ = ["tf", "keras", "torch",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
-           "VERSION_INFO"]
+           "get_attributes"]
 
-import os
-import sys
 from types import FunctionType
 
 try:
@@ -175,27 +173,6 @@ keras = keras
 torch = torch
 tf = tf
 
-def get_version_info():
-    # todo, chekc which attributes are not available in different versions
-    return {
-    'python': sys.version,
-    'os': os.name,
-    'tensorflow': str(tf.__version__) if tf is not None else None,
-    'tf_is_built_with_cuda': tf.test.is_built_with_cuda() if tf is not None else None,
-    'is_built_with_gpu_support': tf.test.is_built_with_gpu_support() if tf is not None else None,
-    'tf_is_gpu_available': tf.test.is_gpu_available() if tf is not None else None,
-    'keras': str(keras.__version__) if keras is not None else None,
-    'tcn': str(tcn.__version__) if tcn is not None else None,
-    'pytorch': str(torch.__version__) if torch is not None else None,
-    'catboost': str(catboost.__version__) if catboost is not None else None,
-    'xgboost': str(xgboost.__version__) if xgboost is not None else None,
-    'lightgbm': str(lightgbm.__version__) if lightgbm is not None else None,
-    'sklearn': str(sklearn.__version__) if sklearn is not None else None,
-    'tpot': str(tpot.__version__) if tpot else None,
-    'eager_execution': tf.executing_eagerly() if tf is not None else None
-}
-
-VERSION_INFO = get_version_info()
 
 if tf is not None:
     BACKEND = 'tensorflow'

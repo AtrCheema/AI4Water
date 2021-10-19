@@ -31,8 +31,8 @@ from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
 from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
-from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
-from ai4water.utils.utils import maybe_three_outputs
+from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
+from ai4water.utils.utils import maybe_three_outputs, get_version_info
 import ai4water.backend as K
 
 if K.BACKEND == 'tensorflow' and tf is not None:
@@ -808,12 +808,15 @@ class BaseModel(NN, Plots):
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
         else:
+            from .backend import sklearn, lightgbm, catboost, xgboost
+            version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
+                                             xgboost=xgboost)
             if regr_name in ['TWEEDIEREGRESSOR', 'POISSONREGRESSOR', 'LGBMREGRESSOR', 'LGBMCLASSIFIER',
                              'GAMMAREGRESSOR']:
-                if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
+                if int(version_info['sklearn'].split('.')[1]) < 23:
                     raise ValueError(
-                        f"{regr_name} is available with sklearn version >= 0.23 but you have {VERSION_INFO['sklearn']}")
-            raise ValueError(f"model {regr_name} not found. {VERSION_INFO}")
+                        f"{regr_name} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
+            raise ValueError(f"model {regr_name} not found. {version_info}")
 
         self._model = model
 
@@ -1646,13 +1649,21 @@ class BaseModel(NN, Plots):
         return
 
     def update_info(self):
-
-        VERSION_INFO.update({'numpy': str(np.__version__),
-                             'pandas': str(pd.__version__),
-                             'matplotlib': str(matplotlib.__version__),
-                             'h5py': h5py.__version__ if h5py is not None else None,
-                            'joblib': joblib.__version__})
-        self.info['version_info'] = VERSION_INFO
+        from .backend import lightgbm, tcn, catboost, xgboost
+        self.info['version_info'] = get_version_info(
+            tf=tf,
+            keras=keras,
+            torch=torch,
+            np=np,
+            pd=pd,
+            matplotlib=matplotlib,
+            h5py=h5py,
+            joblib=joblib,
+            lightgbm=lightgbm,
+            tcn=tcn,
+            catboost=catboost,
+            xgboost=xgboost
+        )
         return
 
     def print_info(self):

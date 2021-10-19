@@ -1484,3 +1484,21 @@ def maybe_three_outputs(data, teacher_forcing=False):
             return data[0], data[2]
     else:
         return [data[0], data[1]], data[2]
+
+def get_version_info(
+        **kwargs
+)->dict:
+    # todo, chekc which attributes are not available in different versions
+    import sys
+    info = {'python': sys.version, 'os': os.name}
+    if kwargs.get('tf', None):
+        tf = kwargs['tf']
+        info['tf_is_built_with_cuda'] = tf.test.is_built_with_cuda()
+        info['is_built_with_gpu_support'] = tf.test.is_built_with_gpu_support()
+        info['tf_is_gpu_available'] = tf.test.is_gpu_available()
+        info['eager_execution'] = tf.executing_eagerly()
+
+    for k,v in kwargs.items():
+        info[k] = getattr(v, '__version__')
+
+    return info
