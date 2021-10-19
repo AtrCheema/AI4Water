@@ -139,14 +139,14 @@ class TestVisualize(unittest.TestCase):
         vis = Visualize(model)
 
         for lyr in ['LSTM_0', 'LSTM_1']:
-            vis.activations(layer_name=lyr, examples_to_use=range(24))
-            vis.activations(layer_name=lyr, examples_to_use=30)
+            vis.activations(layer_names=lyr, examples_to_use=range(24))
+            vis.activations(layer_names=lyr, examples_to_use=30)
 
             vis.activation_gradients(lyr, examples_to_use=range(30))
 
-            vis.weights(layer_name=lyr)
+            vis.weights(layer_names=lyr)
 
-            vis.weight_gradients(layer_name=lyr)
+            vis.weight_gradients(layer_names=lyr)
 
         return
 

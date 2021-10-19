@@ -150,7 +150,7 @@ class PlotResults(Plot):
             # color:
         """
 
-        regplot(true, predicted, title=name[15:],
+        regplot(true, predicted, title=name,
                 annotation_key=annotation_key,
                 annotation_val=annotation_val)
 
@@ -263,6 +263,7 @@ class PlotResults(Plot):
         fig.set_figheight(sub_plots[len(history)]['height'])
         fig.set_figwidth(sub_plots[len(history)]['width'])
         self.save_or_show(fname=name, save=True if name is not None else False, show=show)
+        mpl.rcParams.update(mpl.rcParamsDefault)
         return
 
 

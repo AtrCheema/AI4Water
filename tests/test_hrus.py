@@ -14,7 +14,7 @@ SLOPE = {0: '0-13',
          }
 
 shapefile_paths = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                               'examples', 'paper_figs', 'shapefiles')
+                               'examples', 'paper', 'shapefiles')
 
 Soil_shp = os.path.join(shapefile_paths, 'soil.shp')
 

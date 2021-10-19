@@ -172,7 +172,7 @@ class Visualize(Plots):
         return activations
 
     def activations(self,
-                    layer_name=None,
+                    layer_names=None,
                     data:str='training',
                     x=None,
                     examples_to_use:Union[int, list, np.ndarray, range]=None,
@@ -183,7 +183,7 @@ class Visualize(Plots):
         Arguments:
             data : The data to be used for calculating outputs of layers.
             x : if given, will override, 'data'.
-            layer_name : name of layer whose output is to be plotted. If None,
+            layer_names : name of layer whose output is to be plotted. If None,
                 it will plot outputs of all layers
             examples_to_use : If integer, it will be the number of examples to use.
                 If array like, it will be the indices of examples to use.
@@ -191,11 +191,11 @@ class Visualize(Plots):
         """
         activations = self.get_activations(x=x, data=data)
 
-        if layer_name is not None:
-            if isinstance(layer_name, str):
-                layer_names = [layer_name]
+        if layer_names is not None:
+            if isinstance(layer_names, str):
+                layer_names = [layer_names]
             else:
-                layer_names = layer_name
+                layer_names = layer_names
         else:
             layer_names = list(activations.keys())
 
@@ -276,13 +276,13 @@ class Visualize(Plots):
         return weights
 
     def weights(self,
-                layer_name:Union[str, list]=None,
+                layer_names:Union[str, list]=None,
                 show=False
                 ):
         """Plots the weights of a specific layer or all layers.
 
         Arguments:
-            layer_name : The layer whose weights are to be viewed.
+            layer_names : The layer whose weights are to be viewed.
             show :
         """
 
@@ -291,12 +291,12 @@ class Visualize(Plots):
         if self.verbosity > 0:
             print("Plotting trainable weights of layers of the model.")
 
-        if layer_name is None:
+        if layer_names is None:
             layer_names = list(weights.keys())
-        elif isinstance(layer_name, str):
-            layer_names = [layer_name]
+        elif isinstance(layer_names, str):
+            layer_names = [layer_names]
         else:
-            layer_names = layer_name
+            layer_names = layer_names
 
         for lyr in layer_names:
 
@@ -329,7 +329,7 @@ class Visualize(Plots):
         return
 
     def get_activation_gradients(self,
-                                 layer_name: Union[str, list] = None,
+                                 layer_names: Union[str, list] = None,
                                  x=None,
                                  y=None,
                                  data:str='training'
@@ -339,23 +339,23 @@ class Visualize(Plots):
 
         either x,y or data is required
         Arguments:
-            layer_name : The layer for which, the gradients of its outputs are to be
+            layer_names : The layer for which, the gradients of its outputs are to be
                 calculated.
             x : input data. Will overwrite `data`
             y : corresponding label of x. Will overwrite `data`.
             data : one of `training`, `test` or `validation`
         """
-        if isinstance(layer_name, str):
-            layer_name = [layer_name]
+        if isinstance(layer_names, str):
+            layer_names = [layer_names]
 
         if x is None:
             data = getattr(self.model, f'{data}_data')()
             x, y = maybe_three_outputs(data)
 
-        return keract.get_gradients_of_activations(self.model, x, y, layer_names=layer_name)
+        return keract.get_gradients_of_activations(self.model, x, y, layer_names=layer_names)
 
     def activation_gradients(self,
-                             layer_name:Union[str, list],
+                             layer_names:Union[str, list],
                              data='training',
                              x=None,
                              y=None,
@@ -366,7 +366,7 @@ class Visualize(Plots):
         """Plots the gradients o activations/outputs of layers
 
         Arguments:
-            layer_name : the layer name for which the gradients of its outputs are to be plotted.
+            layer_names : the layer name for which the gradients of its outputs are to be plotted.
             data : the data to be used for calculating gradients
             x : alternative to data
             y : alternative to data
@@ -376,12 +376,12 @@ class Visualize(Plots):
             show :
         """
         if plot_type == "2D":
-            return self.activation_gradients_2D(layer_name, data, x, y, examples_to_use, show)
+            return self.activation_gradients_2D(layer_names, data, x, y, examples_to_use, show)
 
-        return self.activation_gradients_1D(layer_name, data, x, y, examples_to_use, show)
+        return self.activation_gradients_1D(layer_names, data, x, y, examples_to_use, show)
 
     def activation_gradients_2D(self,
-                                layer_name=None,
+                                layer_names=None,
                                 data='training',
                                 x=None,
                                 y=None,
@@ -391,7 +391,7 @@ class Visualize(Plots):
         """Plots activations of intermediate layers except input and output
 
         Arguments:
-            layer_name :
+            layer_names :
             data :
             x :
             y :
@@ -400,12 +400,12 @@ class Visualize(Plots):
             show :
         """
 
-        gradients = self.get_activation_gradients(layer_name=layer_name, data=data, x=x, y=y)
+        gradients = self.get_activation_gradients(layer_names=layer_names, data=data, x=x, y=y)
 
         return self._plot_act_grads(gradients, examples_to_use, show=show)
 
     def activation_gradients_1D(self,
-                                layer_name,
+                                layer_names,
                                 data='training',
                                 x=None,
                                 y=None,
@@ -414,14 +414,14 @@ class Visualize(Plots):
         """Plots gradients of layer outputs as 1D
 
         Arguments:
-            layer_name :
+            layer_names :
             examples_to_use :
             data :
             x :
             y :
             show :
         """
-        gradients = self.get_activation_gradients(layer_name=layer_name, data=data, x=x, y=y)
+        gradients = self.get_activation_gradients(layer_names=layer_names, data=data, x=x, y=y)
 
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_output_grads"
@@ -515,7 +515,7 @@ class Visualize(Plots):
         return keract.get_gradients_of_trainable_weights(self.model, x, y)
 
     def weight_gradients(self,
-                         layer_name:Union[str, list]=None,
+                         layer_names:Union[str, list]=None,
                          data='training',
                          x=None,
                          y=None,
@@ -524,7 +524,7 @@ class Visualize(Plots):
         """Plots gradient of all trainable weights
 
         Arguments:
-            layer_name : the layer whose weeights are to be considered.
+            layer_names : the layer whose weeights are to be considered.
             data :  the data to use to calculate gradients of weights
             x : alternative to data
             y : alternative to data
@@ -532,12 +532,12 @@ class Visualize(Plots):
         """
         gradients = self.get_weight_gradients(data=data, x=x,y=y)
 
-        if layer_name is None:
+        if layer_names is None:
             layers_to_plot = list(gradients.keys())
-        elif isinstance(layer_name, str):
-            layers_to_plot = [layer_name]
+        elif isinstance(layer_names, str):
+            layers_to_plot = [layer_names]
         else:
-            layers_to_plot = layer_name
+            layers_to_plot = layer_names
 
         if self.verbosity > 0:
             print("Plotting gradients of trainable weights")
