@@ -18,3 +18,9 @@ Some utility functions
     handler: python
     rendering:
         show_root_heading: true
+
+**`get_attributes`**
+::: ai4water.backend.get_attributes
+    handler: python
+    rendering:
+        show_root_heading: true

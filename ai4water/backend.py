@@ -4,26 +4,58 @@ __all__ = ["tf", "keras", "torch",
 
 import os
 import sys
+from types import FunctionType
 
 try:
     import sklearn
 except ModuleNotFoundError:
     sklearn = None
 
-def get_attributes(aus, what:str) ->dict:
-    """ gets all callable attributes of aus e.g. from tf.keras.
+def get_attributes(
+        aus,
+        what:str,
+        retain:str=None,
+        case_sensitive:bool=False
+) ->dict:
+    """gets all callable attributes of aus e.g. from tf.keras.
 
     what and saves them in dictionary with their names all
     capitalized so that calling them becomes case insensitive. It is possible
     that some of the attributes of tf.keras.layers are callable but still not
     a valid `layer`, sor some attributes of tf.keras.losses are callable but
     still not valid losses, in that case the error will be generated from tensorflow.
-    We are not catching those error right now."""
+    We are not catching those error right now.
+
+    Arguments:
+        aus : parent module
+        what : child module/package
+        retain : if duplicates of 'what' exist then whether to prefer class or function.
+            For example, fastica and FastICA exist in sklearn.decomposition then if retain
+            is 'function' then fastica will be kept, if retain is 'class' then FastICA is
+            kept. If retain is None, then what comes later will overwrite the previously
+            kept object.
+        case_sensitive : what to consider what as case-sensitive or not. In such
+            a case, fastica and FastICA will both be saved as separate objects.
+    """
+
+    if retain:
+        assert retain in ("class", "function")
     all_attrs = {}
     for l in dir(getattr(aus, what)):
         attr = getattr(getattr(aus, what), l)
         if callable(attr) and not l.startswith('_'):
-            all_attrs[l.upper()] = attr
+
+            if not case_sensitive:
+                l = l.upper()
+
+            if l in all_attrs and retain == 'function':
+                if isinstance(attr, FunctionType):
+                    all_attrs[l] = attr
+            elif l in all_attrs and retain == 'class':
+                if not isinstance(attr, FunctionType):
+                    all_attrs[l] = attr
+            else:
+                all_attrs[l] = attr
 
     return all_attrs
 
