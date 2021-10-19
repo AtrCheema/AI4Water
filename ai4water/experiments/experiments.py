@@ -1,7 +1,7 @@
 import os
 import json
 import warnings
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,8 @@ from ai4water.utils.utils import init_subplots, process_axis, jsonize
 from ai4water.utils.utils import clear_weights, dateandtime_now, save_config_file
 from ai4water.backend import tf
 from ai4water.utils.plotting_tools import bar_chart
+from ai4water.utils.visualizations import PlotResults
+from ai4water.pre_processing import DataHandler
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -42,6 +44,17 @@ LABELS = {
     'msle': 'MSLE',
     'nrmse': 'Normalized RMSE',
     'mape': 'MAPE'
+}
+
+MATRIC_TYPES = {
+    "r2": "max",
+    "nse": "max",
+    "mse": "min",
+    "rmse": "min",
+    "mape": "min",
+    "kge": "max",
+    "corr_coeff": "max",
+    "nrmse": "min",
 }
 
 
@@ -121,6 +134,10 @@ class Experiments(object):
 
     def build_from_config(self, config_path, weights, fit_kws, **kwargs):
         setattr(self, '_model', None)
+        raise NotImplementedError
+
+    @property
+    def tpot_estimator(self):
         raise NotImplementedError
 
     @property
@@ -601,50 +618,9 @@ Available cases are {self.models} and you wanted to include
         ```
         """
 
-        def find_matric_array(true, sim):
-            errors = RegressionMetrics(true, sim)
-            matric_val = getattr(errors, matric_name)()
-            if matric_name in ['nse', 'kge']:
-                if matric_val < 0.0:
-                    matric_val = 0.0
+        models = self.sort_models_by_metric(matric_name, cutoff_val, cutoff_type,
+                                       ignore_nans, sort_by)
 
-            if cutoff_type is not None:
-                assert cutoff_val is not None
-                if not getattr(np, cutoff_type)(matric_val, cutoff_val):
-                    return None
-            return matric_val
-
-        train_matrics = []
-        test_matrics = []
-        models = {}
-
-        for mod in self.models:
-            # find the models which have been run
-            if mod in self.simulations['test']:  # maybe we have not done some models by using include/exclude
-                test_matric = find_matric_array(self.trues['test'][mod], self.simulations['test'][mod])
-                if test_matric is not None:
-                    test_matrics.append(test_matric)
-                    models[mod.split('model_')[1]] = {'test': test_matric}
-
-                    train_matric = find_matric_array(self.trues['train'][mod], self.simulations['train'][mod])
-                    if train_matric is None:
-                        train_matric = np.nan
-                    train_matrics.append(train_matric)
-                    models[mod.split('model_')[1]] = {'train': train_matric, 'test': test_matric}
-
-        if len(models) <= 1:
-            warnings.warn(f"Comparison can not be plotted because the obtained models are <=1 {models}", UserWarning)
-            return models
-
-        if sort_by == 'test':
-            d = sort_metric_dicts(ignore_nans, test_matrics, train_matrics, list(models.keys()))
-
-        elif sort_by == 'train':
-            d = sort_metric_dicts(ignore_nans, train_matrics, test_matrics, list(models.keys()))
-        else:
-            raise ValueError(f'sort_by must be either train or test but it is {sort_by}')
-
-        models = dict(sorted(d.items(), reverse=True))
         names = [i[1] for i in models.values()]
         test_matrics = list(models.keys())
         train_matrics = [i[0] for i in models.values()]
@@ -898,6 +874,197 @@ Available cases are {self.models} and you wanted to include
 
         return
 
+    def sort_models_by_metric(
+            self,
+            matric_name,
+            cutoff_val=None,
+            cutoff_type=None,
+            ignore_nans:bool = True,
+            sort_by="test"
+    )->dict:
+        """returns the models sorted according to their performance"""
+        def find_matric_array(true, sim):
+            errors = RegressionMetrics(true, sim)
+            matric_val = getattr(errors, matric_name)()
+            if matric_name in ['nse', 'kge']:
+                if matric_val < 0.0:
+                    matric_val = 0.0
+
+            if cutoff_type is not None:
+                assert cutoff_val is not None
+                if not getattr(np, cutoff_type)(matric_val, cutoff_val):
+                    return None
+            return matric_val
+
+        train_matrics = []
+        test_matrics = []
+        models = {}
+
+        for mod in self.models:
+            # find the models which have been run
+            if mod in self.simulations['test']:  # maybe we have not done some models by using include/exclude
+                test_matric = find_matric_array(self.trues['test'][mod], self.simulations['test'][mod])
+                if test_matric is not None:
+                    test_matrics.append(test_matric)
+                    models[mod.split('model_')[1]] = {'test': test_matric}
+
+                    train_matric = find_matric_array(self.trues['train'][mod], self.simulations['train'][mod])
+                    if train_matric is None:
+                        train_matric = np.nan
+                    train_matrics.append(train_matric)
+                    models[mod.split('model_')[1]] = {'train': train_matric, 'test': test_matric}
+
+        if len(models) <= 1:
+            warnings.warn(f"Comparison can not be plotted because the obtained models are <=1 {models}", UserWarning)
+            return models
+
+        if sort_by == 'test':
+            d = sort_metric_dicts(ignore_nans, test_matrics, train_matrics, list(models.keys()))
+
+        elif sort_by == 'train':
+            d = sort_metric_dicts(ignore_nans, train_matrics, test_matrics, list(models.keys()))
+        else:
+            raise ValueError(f'sort_by must be either train or test but it is {sort_by}')
+
+        sorted_models = dict(sorted(d.items(), reverse=True))
+
+        return sorted_models
+
+    def fit_with_tpot(
+            self,
+            models: Union[int, List[str], dict],
+            selection_criteria:str = 'mse',
+            scoring : str = None,
+            **tpot_args
+    ):
+        """
+        Fits the [tpot's](http://epistasislab.github.io/tpot/) fit  method which
+        finds out the best pipline for the given data.
+
+        Arguments:
+            models: It can be of three types.
+                - If list, it will be the names of machine learning models/
+                algorithms to consider.
+                - If integer, it will be the number of top
+                algorithms to consider for tpot. In such a case, you must have
+                first run `.fit` method before running this method. If you run
+                the tpot using all available models, it will take hours to days
+                for medium sized data (consisting of few thousand examples). However,
+                if you run first .fit and see for example what are the top 5 models,
+                then you can set this argument to 5. In such a case, tpot will search
+                pipeline using only the top 5 algorithms/models that have been found
+                using .fit method.
+                - if dictionary, then the keys should be the names of algorithms/models
+                and values shoudl be the parameters for each model/algorithm to be
+                optimized.
+            selection_criteria : If `models` is integer, then according to which criteria
+                the models will be choosen. By default the models will be selected
+                based upon their mse values on test data.
+            scoring : the performance metric to use for finding the pipeline.
+            tpot_args : any keyword argument for tpot's [Regressor](http://epistasislab.github.io/tpot/api/#regression)
+                or [Classifier](http://epistasislab.github.io/tpot/api/#classification) class.
+                This can include arguments like `generations`, `population_size` etc.
+
+        Returns:
+            the tpot object
+
+        Example
+        -------
+        ```python
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import arg_beach
+        >>> exp = MLRegressionExperiments(data=arg_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
+        >>> exp.fit()
+        >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
+        ```
+        """
+        tpot_caller = self.tpot_estimator
+        assert tpot_caller is not None, f"tpot must be installed"
+
+        param_space = {}
+        tpot_config = None
+        for m in self.models:
+            getattr(self, m)()
+            ps = getattr(self, 'param_space')
+            path = getattr(self, 'path')
+            param_space[m] = {path: {p.name: p.grid for p in ps}}
+
+        if isinstance(models, int):
+            trues = getattr(self, 'trues', {})
+            assert len(trues)>1, f"you must first run .fit() method in order to choose top {models} models"
+
+            # sort the models w.r.t their performance
+            sorted_models = self.sort_models_by_metric(selection_criteria)
+
+            # get names of models
+            models = [v[1] for idx, v in enumerate(sorted_models.values()) if idx < models]
+
+            tpot_config = {}
+            for m in models:
+                c:dict = param_space[f"model_{m}"]
+                tpot_config.update(c)
+
+        elif isinstance(models, list):
+
+            tpot_config = {}
+            for m in models:
+                c:dict = param_space[f"model_{m}"]
+                tpot_config.update(c)
+
+        elif isinstance(models, dict):
+
+            tpot_config = {}
+            for mod_name, mod_paras in models.items():
+
+                if "." in mod_name:
+                    mod_path = mod_name
+                else:
+                    c:dict = param_space[f"model_{mod_name}"]
+                    mod_path = list(c.keys())[0]
+                d = {mod_path: mod_paras}
+                tpot_config.update(d)
+
+        fname = os.path.join(self.exp_path, "tpot_config.json")
+        with open(fname, 'w') as fp:
+            json.dump(jsonize(tpot_config), fp, indent=True)
+
+        tpot = tpot_caller(
+            verbosity=self.verbosity+1,
+            scoring=scoring,
+            config_dict=tpot_config,
+            **tpot_args
+        )
+
+        dh = DataHandler(self.data, **self.model_kws)
+        train_x, train_y = dh.training_data()
+        tpot.fit(train_x, train_y.reshape(-1, 1))
+
+        visualizer = PlotResults(path=self.exp_path)
+
+        for idx, data_name in enumerate(['training', 'test']):
+
+            x_data, y_data = getattr(dh, f"{data_name}_data")(key=str(idx))
+
+            pred = tpot.fitted_pipeline_.predict(x_data)
+            r2 = RegressionMetrics(y_data, pred).r2()
+
+            # todo, perform inverse transform and deindexification
+            visualizer.plot_results(
+                pd.DataFrame(y_data.reshape(-1,)),
+                pd.DataFrame(pred.reshape(-1,)),
+                annotation_key='$R^2$', annotation_val=r2,
+                show=self.verbosity,
+                where='',  name=data_name
+            )
+        # save the python code of fitted pipeline
+        tpot.export(os.path.join(self.exp_path, "tpot_fitted_pipeline.py"))
+
+        # save each iteration
+        fname = os.path.join(self.exp_path, "evaludated_individuals.json")
+        with open(fname, 'w') as fp:
+            json.dump(tpot.evaluated_individuals_, fp, indent=True)
+        return tpot
+
 
 class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
@@ -959,6 +1126,10 @@ class TransformationExperiments(Experiments):
                          exp_name=exp_name,
                          num_samples=num_samples,
                          verbosity=verbosity)
+
+    @property
+    def tpot_estimator(self):
+        return None
 
     def update_paras(self, **suggested_paras):
         raise NotImplementedError(f"""

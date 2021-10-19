@@ -11,6 +11,7 @@ them.
         members:
             - __init__
             - fit
+            - fit_with_tpot
             - compare_errors
             - plot_convergence
             - taylor_plot
