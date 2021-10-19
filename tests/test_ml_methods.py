@@ -344,28 +344,6 @@ class TestMLMethods(unittest.TestCase):
         run_class_test("HISTGRADIENTBOOSTINGREGRESSOR")
         return
 
-    def test_tpot_TPOTRegressor(self):
-        do_test = True
-        try:
-            import tpot
-        except ImportError:
-            do_test = False
-
-        if do_test:
-            run_class_test("TPOTRegressor")
-        return
-
-    def test_tpot_TPOTCLASSIFIER(self):
-        do_test = True
-        try:
-            import tpot
-        except ImportError:
-            do_test = False
-
-        if do_test:
-            run_class_test("TPOTCLASSIFIER")
-        return
-
     def test_ml_random_indices(self):
 
         model = Model(

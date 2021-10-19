@@ -23,7 +23,6 @@ except ImportError:
 
 from ai4water.nn_tools import NN
 from ai4water.pre_processing.datahandler import DataHandler
-from ai4water.backend import tpot_models
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
@@ -183,7 +182,7 @@ class BaseModel(NN, Plots):
         ---------
         ```python
         >>>from ai4water import Model
-         >>>from ai4water.datasets import arg_beach
+        >>>from ai4water.datasets import arg_beach
         >>>df = arg_beach()
         >>>model = Model(data=df,
         ...              batch_size=16,
@@ -773,7 +772,7 @@ class BaseModel(NN, Plots):
         Models that follow sklearn api such as xgboost,
         catboost, lightgbm and obviously sklearn.
         """
-        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models, **tpot_models}
+        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
         _model = list(self.config['model'].keys())[0]
         regr_name = _model.upper()
 

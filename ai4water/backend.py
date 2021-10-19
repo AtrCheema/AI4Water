@@ -17,9 +17,8 @@ def get_attributes(
         retain:str=None,
         case_sensitive:bool=False
 ) ->dict:
-    """gets all callable attributes of aus e.g. from tf.keras.
-
-    what and saves them in dictionary with their names all
+    """gets all callable attributes of aus from what and saves them in dictionary
+    with their names as keys. If case_sensitive is True, then the all keys are
     capitalized so that calling them becomes case insensitive. It is possible
     that some of the attributes of tf.keras.layers are callable but still not
     a valid `layer`, sor some attributes of tf.keras.losses are callable but
@@ -34,8 +33,13 @@ def get_attributes(
             is 'function' then fastica will be kept, if retain is 'class' then FastICA is
             kept. If retain is None, then what comes later will overwrite the previously
             kept object.
-        case_sensitive : what to consider what as case-sensitive or not. In such
+        case_sensitive : whether to consider what as case-sensitive or not. In such
             a case, fastica and FastICA will both be saved as separate objects.
+    Example
+    ---------
+    ```python
+    >>> get_attributes(tf.keras, 'layers')  # will get all layers from tf.keras.layers
+    ```
     """
 
     if retain:
@@ -158,15 +162,6 @@ try:
                             "LGBMREGRESSOR": LGBMRegressor})
 except ModuleNotFoundError:
     lightgbm = None
-
-tpot_models = {}
-try:
-    import tpot
-    from tpot import TPOTRegressor, TPOTClassifier
-    tpot_models.update({'TPOTREGRESSOR': TPOTRegressor,
-                       'TPOTCLASSIFIER': TPOTClassifier})
-except Exception as e:
-    tpot = None
 
 sklearn_models = get_sklearn_models()
 

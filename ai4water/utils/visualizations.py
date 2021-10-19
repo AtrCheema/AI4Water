@@ -267,21 +267,22 @@ class PlotResults(Plot):
         return
 
 
-def regplot(x:Union[np.ndarray, pd.DataFrame, pd.Series, list],
-            y:Union[np.ndarray, pd.DataFrame, pd.Series, list],
-            title:str = None,
-            show:bool = False,
-            annotation_key:str=None,
-            annotation_val=None,
-            line_color = None,
-            marker_color = None,
-            fill_color = None,
-            marker_size:int = 20,
-            ci:Union[int, None] = 95,
-            figsize:tuple = None,
-            xlabel:str = 'Observed',
-            ylabel:str = 'Predicted'
-            ):
+def regplot(
+        x:Union[np.ndarray, pd.DataFrame, pd.Series, list],
+        y:Union[np.ndarray, pd.DataFrame, pd.Series, list],
+        title:str = None,
+        show:bool = False,
+        annotation_key:str=None,
+        annotation_val=None,
+        line_color = None,
+        marker_color = None,
+        fill_color = None,
+        marker_size:int = 20,
+        ci:Union[int, None] = 95,
+        figsize:tuple = None,
+        xlabel:str = 'Observed',
+        ylabel:str = 'Predicted'
+):
     """
     Regpression plot with regression line and confidence interval
 
@@ -308,7 +309,7 @@ def regplot(x:Union[np.ndarray, pd.DataFrame, pd.Series, list],
     >>>from ai4water.utils.visualizations import regplot
     >>>data = arg_beach()
     >>>regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
-    ```python
+    ```
     """
     x = to_1d_array(x)
     y = to_1d_array(y)
