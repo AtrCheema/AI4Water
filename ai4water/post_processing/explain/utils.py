@@ -72,7 +72,7 @@ def explain_model(
 def explain_model_with_lime(
         model,
         examples_to_explain:Union[int, float, list] = 20,
-):
+)->"LimeExplainer":
     """Explains the model with LimeExplainer
 
     Arguments:
@@ -138,7 +138,7 @@ def explain_model_with_shap(
         examples_to_explain:Union[int, float, list] = 20,
         explainer=None,
         layer:Union[str, int] = None,
-):
+)->"ShapExplainer":
     """Expalins the model which is built by AI4Water's Model class using SHAP.
 
     Arguments:
