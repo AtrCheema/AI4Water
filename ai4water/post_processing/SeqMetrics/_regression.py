@@ -863,6 +863,7 @@ class RegressionMetrics(Metrics):
 
     def nse(self) -> float:
         """Nash-Sutcliff Efficiency.
+
         It determine how well the model simulates trends for the output response of concern. But cannot help identify
         model bias and cannot be used to identify differences in timing and magnitude of peak flows and shape of
         recession curves; in other words, it cannot be used for single-event simulations. It is sensitive to extreme
@@ -950,12 +951,15 @@ class RegressionMetrics(Metrics):
     def pbias(self) -> float:
         """
         Percent Bias.
-        It determine how well the model simulates the average magnitudes for the output response of interest. It can
-        also determine over and under-prediction. It cannot be used (1) for single-event simula-tions to identify
-        differences in timing and magnitude of peak flows and the shape of recession curves nor (2) to determine how
-        well the model simulates residual variations and/or trends for the output response of interest. It can  give a
-        deceiving rating of model performance if the model overpredicts as much as it underpredicts, in which case
-        PBIAS will be close to zero even though the model simulation is poor. [1]
+        It determine how well the model simulates the average magnitudes for the
+        output response of interest. It can also determine over and under-prediction.
+        It cannot be used (1) for single-event simula-tions to identify differences
+        in timing and magnitude of peak flows and the shape of recession curves nor (2)
+        to determine how well the model simulates residual variations and/or trends
+        for the output response of interest. It can  give a deceiving rating of
+        model performance if the model overpredicts as much as it underpredicts,
+        in which case PBIAS will be close to zero even though the model simulation
+        is poor. [1]
         [1] Moriasi et al., 2015
         """
         return float(100.0 * sum(self.predicted - self.true) / sum(self.true))
@@ -978,10 +982,14 @@ class RegressionMetrics(Metrics):
         return float(top / (bot1 * bot2))
 
     def rmsle(self) -> float:
-        """Root mean square log error. Compared to RMSE, RMSLE only considers the relative error between predicted and
-         actual values, and the scale of the error is nullified by the log-transformation. Furthermore, RMSLE penalizes
-         underestimation more than overestimation. This is especially useful in our studies where the underestimation
-         of the target variable is not acceptable but overestimation can be tolerated. [1]
+        """Root mean square log error.
+
+        This error is less sensitive to [outliers](https://stats.stackexchange.com/q/56658/314919).
+        Compared to RMSE, RMSLE only considers the relative error between predicted
+        and actual values, and the scale of the error is nullified by the log-transformation.
+        Furthermore, RMSLE penalizes underestimation more than overestimation.
+        This is especially useful in those studies where the underestimation
+        of the target variable is not acceptable but overestimation can be tolerated. [1]
 
          [1] https://doi.org/10.1016/j.scitotenv.2020.137894
          """
@@ -1089,8 +1097,9 @@ class RegressionMetrics(Metrics):
     def rsr(self) -> float:
         """
         Moriasi et al., 2007.
-        It incorporates the benefits of error index statistics andincludes a scaling/normalization factor,
-        so that the resulting statistic and reported values can apply to various constitu-ents."""
+        It incorporates the benefits of error index statistics andincludes a
+        scaling/normalization factor, so that the resulting statistic and reported
+        values can apply to various constitu-ents."""
         return float(self.rmse() / np.std(self.true))
 
     def rmsse(self, seasonality: int = 1) -> float:
@@ -1100,8 +1109,8 @@ class RegressionMetrics(Metrics):
 
     def sa(self) -> float:
         """Spectral angle. From -pi/2 to pi/2. Closer to 0 is better.
-        It measures angle between two vectors in hyperspace indicating how well the shape of two arrays match instead
-        of their magnitude.
+        It measures angle between two vectors in hyperspace indicating
+        how well the shape of two arrays match instead of their magnitude.
         Reference: Robila and Gershman, 2005."""
         a = np.dot(self.predicted, self.true)
         b = np.linalg.norm(self.predicted) * np.linalg.norm(self.true)

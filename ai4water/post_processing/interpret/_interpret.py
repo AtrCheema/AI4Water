@@ -16,9 +16,13 @@ from ai4water.utils.utils import plot_activations_along_inputs
 
 
 class Interpret(Plot):
+    """Interprets the ai4water Model."""
 
     def __init__(self, model):
-        """Interprets the ai4water Model."""
+        """
+        Arguments:
+            model : an instance of ai4water's Model
+        """
         self.model = model
 
         super().__init__(model.path)
@@ -45,16 +49,6 @@ class Interpret(Plot):
     @model.setter
     def model(self, x):
         self._model = x
-
-    def plot(self):
-        """
-        Currently does nothing.
-
-        For NBeats, plot seasonality and trend https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/ar.html#Interpret-model
-        For TFT, attention, variable importance of static, encoder and decoder, partial dependency
-        # https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/stallion.html#Variable-importances
-
-        """
 
     def feature_importance(self):
         if self.model.category.upper() == "ML":
@@ -163,13 +157,17 @@ class Interpret(Plot):
 
         return
 
-    def tft_attention_components(self, model=None, data='test') -> dict:
+    def tft_attention_components(
+            self,
+            model=None,
+            data='test'
+    ) -> dict:
         """
         Gets attention components of tft layer from ai4water's Model.
+
         Arguments:
-        model : a ai4water's Model instance.
-        train_data_args : keyword arguments which will passed to `training_data`
-        method to fetch processed input data
+            model : a ai4water's Model instance.
+            data : the data to use to calculate attention components
 
         returns:
             dictionary containing attention components of tft as numpy arrays.
@@ -264,6 +262,7 @@ def maybe_create_path(path):
     if not os.path.exists(path):
         os.makedirs(path)
     return path
+
 
 def is_fitted(estimator):
 

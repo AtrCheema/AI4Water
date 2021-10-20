@@ -638,7 +638,7 @@ class Learner(AttributeContainer):
         Arguments:
             y : torch.Tensor
                 output tensor
-            """
+        """
         try:
             from torchviz import make_dot
         except ModuleNotFoundError:
