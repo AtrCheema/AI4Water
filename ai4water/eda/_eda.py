@@ -126,7 +126,7 @@ class EDA(Plot):
             if m in ["plot_index", "stats", "plot_pcs"]:
                 getattr(self, m)(save=save)
             else:
-                getattr(self, m)(cols=cols, save=save)
+                getattr(self, m)(cols=cols)
 
         return
 
@@ -1249,37 +1249,41 @@ class EDA(Plot):
     def autocorrelation(
             self,
             nlags:int,
-            show:bool=True
+            show:bool=True,
+            cols:Union[list]=None,
     ):
         """autocorrelation of individual features of data
         Arguments:
             nlags : number of lag steps to consider
             show : whether to show the plot or not
+            cols : columns to use. If not defined then all the columns are used
         """
-        return self._autocorrelation(False, nlags, show)
+        return self._autocorrelation(False, nlags, show, cols=cols)
 
     def partial_autocorrelation(
             self,
             nlags:int,
-            show:bool=True
+            show:bool=True,
+            cols:Union[list]=None,
     ):
         """Partial autocorrelation of individual features of data
         Arguments:
             nlags : number of lag steps to consider
             show : whether to show the plot or not.
+            cols : columns to use. If not defined then all the columns are used
         """
-        return self._autocorrelation(True, nlags, show)
+        return self._autocorrelation(True, nlags, show, cols=cols)
 
-    def _autocorrelation(self, partial, nlags, show=True):
+    def _autocorrelation(self, partial, nlags, show=True, cols=None):
 
         if isinstance(self.data, list):
             for idx, data in enumerate(self.data):
-                self._autocorr_df(data, nlags, partial, show=show, fname=str(idx))
+                self._autocorr_df(data, nlags, partial, show=show, fname=str(idx), cols=cols)
         elif isinstance(self.data, dict):
             for data_name, data in self.data.items():
-                self._autocorr_df(data, nlags, partial, fname=data_name, show=show)
+                self._autocorr_df(data, nlags, partial, fname=data_name, show=show, cols=cols)
         else:
-            self._autocorr_df(self.data, nlags, partial, show=show)
+            self._autocorr_df(self.data, nlags, partial, show=show, cols=cols)
         return
 
     def _autocorr_df(
@@ -1287,11 +1291,18 @@ class EDA(Plot):
             data:pd.DataFrame,
             nlags:int,
             partial:bool=False,
+            cols=None,
             show:bool=True,
             fname='',
     ):
         """autocorrelation on a dataframe."""
         prefix = 'Partial' if partial else ''
+
+        if cols is not None:
+            if isinstance(cols, str):
+                cols = [cols]
+            assert isinstance(cols, list)
+            data = data[cols]
 
         non_nan = data.isna().sum()
         num_subplots = math.ceil(len(non_nan[non_nan==0])/2)*2
