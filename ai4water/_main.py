@@ -129,7 +129,8 @@ class BaseModel(NN, Plots):
             min_val_loss float:  Default is 0.0001.
                 minimum value of validatin loss/error to be used for early stopping.
             patience int:
-                number of epochs to wait before early stopping.
+                number of epochs to wait before early stopping. Set this value to None
+                if you don't want to use EarlyStopping.
             save_model bool:,
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
@@ -222,6 +223,11 @@ class BaseModel(NN, Plots):
                 tf.keras.backend.clear_session()
 
             self.dh = DataHandler(data=data, **maker.data_config)
+
+            # if DataHanlder defines input and output features, we must put it back in config
+            # so that it can be accessed as .config['input_features'] etc.
+            maker.config['input_features'] = self.dh.input_features
+            maker.config['output_features'] = self.dh.output_features
 
             NN.__init__(self, config=maker.config)
 
@@ -409,7 +415,7 @@ class BaseModel(NN, Plots):
 
         if callbacks is None:
             callbacks = {}
-
+        # container to hold all callbacks
         _callbacks = list()
 
         _monitor = 'val_loss' if val_data else 'loss'
@@ -430,10 +436,11 @@ class BaseModel(NN, Plots):
                 mode='min',
                 save_best_only=True))
 
-        _callbacks.append(keras.callbacks.EarlyStopping(
-            monitor=_monitor, min_delta=self.config['min_val_loss'],
-            patience=self.config['patience'], verbose=0, mode='auto'
-        ))
+        if self.config['patience']:
+            _callbacks.append(keras.callbacks.EarlyStopping(
+                monitor=_monitor, min_delta=self.config['min_val_loss'],
+                patience=self.config['patience'], verbose=0, mode='auto'
+            ))
 
         if 'tensorboard' in callbacks:
             tb_kwargs = callbacks['tensorboard']
@@ -1170,6 +1177,8 @@ class BaseModel(NN, Plots):
                      return_true:bool = False,
                      **kwargs):
 
+        transformation_key = None
+
         if isinstance(data, np.ndarray):
             # the predict method is called like .predict(x)
             inputs = data
@@ -1179,14 +1188,14 @@ class BaseModel(NN, Plots):
         else:
             transformation_key = '5'
 
-            if x is None:
+            if x is None:  # .predict('training')
                 if self.dh.data is None:
                     raise ValueError("You must specify the data on which to make prediction")
                 user_defined_data = False
                 prefix = data
                 data = getattr(self, f'{data}_data')(key=transformation_key)
                 inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
-            else:
+            else:  # .predict(x=x,...)
                 user_defined_data = True
                 prefix = 'x'
                 inputs = x

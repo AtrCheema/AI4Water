@@ -200,14 +200,14 @@ def process_io(data, **kwargs):
     if isinstance(output_features, str):
         output_features = [output_features]
 
-    if input_features is None:  # when input_features and output_features are not defined.
-        if data is not None:  # when no data is given, input_features and output_features can not be defined.
-            assert isinstance(data, pd.DataFrame)
-            if output_features is None:
-                input_features = list(data.columns)[0:-1]
-                output_features = [list(data.columns)[-1]]
-            elif isinstance(output_features, list):
-                input_features = [col for col in list(data.columns) if col not in output_features]
+    # if input_features is None:  # when input_features and output_features are not defined.
+    #     if data is not None:  # when no data is given, input_features and output_features can not be defined.
+    #         assert isinstance(data, pd.DataFrame)
+    #         if output_features is None:
+    #             input_features = list(data.columns)[0:-1]
+    #             output_features = [list(data.columns)[-1]]
+    #         elif isinstance(output_features, list):
+    #             input_features = [col for col in list(data.columns) if col not in output_features]
 
     kwargs['input_features'] = input_features
     kwargs['output_features'] = output_features
@@ -1499,6 +1499,7 @@ def get_version_info(
         info['eager_execution'] = tf.executing_eagerly()
 
     for k,v in kwargs.items():
-        info[k] = getattr(v, '__version__')
+        if v is not None:
+            info[k] = getattr(v, '__version__', 'NotDefined')
 
     return info

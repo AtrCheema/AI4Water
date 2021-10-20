@@ -531,6 +531,22 @@ class DataHandler(AttributeContainer):
             self.is_multi_source = False
             self.num_sources = 1
 
+        elif isinstance(data, np.ndarray):
+            assert data.ndim == 2, f"input data as numpy array must be 2 dimension, found {data.ndim} dimensions"
+            # if output_features is not defined, consider 1 output and name it as 'output'
+            if output_features is None:
+                output_features = ['outout']
+                self.config['output_features'] = output_features  # we should put it in config as well
+            elif isinstance(output_features, str):
+                output_features = [output_features]
+            else:
+                assert isinstance(output_features, list)
+
+            if input_features is None:  # define dummy names for input_features
+                input_features = [f'input_{i}' for i in range(data.shape[1]-len(output_features))]
+                self.config['input_features'] = input_features
+            _source = pd.DataFrame(data, columns=input_features + output_features)
+
         elif data.__class__.__name__ == "Dataset":
             _source = data
             self.num_sources = 1
