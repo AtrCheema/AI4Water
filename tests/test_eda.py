@@ -21,31 +21,33 @@ pcp = laos.fetch_pcp(
 class TestEDA(unittest.TestCase):
 
     def test_series(self):
-        eda = EDA(data=pcp, save=True)
+        eda = EDA(data=pcp, save=False, show=False)
         eda()
         return
 
     def test_dataframe(self):
-        eda = EDA(data=arg_beach(), dpi=50, save=True)
+        eda = EDA(data=arg_beach(), dpi=50, save=False, show=False)
         eda()
         return
 
     def test_with_input_features(self):
-        eda = EDA(data=arg_beach(), in_cols=arg_beach().columns.to_list()[0:-1],
-              dpi=50,
-              save=True)
+        eda = EDA(
+            data=arg_beach(), in_cols=arg_beach().columns.to_list()[0:-1],
+            dpi=50,
+            save=False,
+            show=False)
         eda()
         return
 
     def test_autocorr(self):
 
-        eda = EDA(data=arg_beach())
-        eda.autocorrelation(nlags=10, show=False)
+        eda = EDA(data=arg_beach(), path=os.path.join(os.getcwd(), "results"), save=False, show=False)
+        eda.autocorrelation(nlags=10)
         return
 
     def test_partial_autocorr(self):
-        eda = EDA(data=arg_beach())
-        eda.partial_autocorrelation(nlags=10, show=False)
+        eda = EDA(data=arg_beach(), path=os.path.join(os.getcwd(), "results"), save=False, show=False)
+        eda.partial_autocorrelation(nlags=10)
         return
 
     def test_autocorr_against_statsmodels(self):
@@ -68,13 +70,14 @@ class TestEDA(unittest.TestCase):
         except (ModuleNotFoundError, ImportError):
             ccf, ccovf = None, None
 
-        a = np.linspace(0, 40, 100)
-        b = np.sin(a)
-        c = np.cos(b)
+        if ccf is not None:
+            a = np.linspace(0, 40, 100)
+            b = np.sin(a)
+            c = np.cos(b)
 
-        np.allclose(ccf(b, c), ccf_np(b, c))
+            np.allclose(ccf(b, c), ccf_np(b, c))
 
-        np.allclose(ccovf_np(b, c), ccovf(b, c).sum())
+            np.allclose(ccovf_np(b, c), ccovf(b, c).sum())
 
         return
 
