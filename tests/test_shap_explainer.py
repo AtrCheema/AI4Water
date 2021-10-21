@@ -146,7 +146,7 @@ class TestShapExplainers(unittest.TestCase):
 
         model = Model(
             model="LinearRegression",
-            data=arg_beach(),
+            data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
             verbosity=0
         )
 
@@ -177,7 +177,7 @@ class TestShapExplainers(unittest.TestCase):
 
         model = Model(
             model={"layers": {"LSTM":{"units": 4}}},
-            data=arg_beach(),
+            data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
             verbosity=0
         )
 
@@ -192,31 +192,31 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_xgboost(self):
 
-        fit_and_interpret("XGBoostRegressor", data=arg_beach(), draw_heatmap=True)
+        fit_and_interpret("XGBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
 
         return
 
     def test_lgbm(self):
 
-        fit_and_interpret("LGBMRegressor", data=arg_beach(), draw_heatmap=False)
+        fit_and_interpret("LGBMRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=False)
 
         return
 
     def test_catboost(self):
 
-        fit_and_interpret("CatBoostRegressor", data=arg_beach(), draw_heatmap=False)
+        fit_and_interpret("CatBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=False)
 
         return
 
     def test_waterfall_with_xgboost(self):
 
-        fit_and_draw_plots("XGBoostRegressor", arg_beach(), draw_heatmap=True)
+        fit_and_draw_plots("XGBoostRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
 
         return
 
     def test_waterfall_with_catboost(self):
 
-        fit_and_draw_plots("CatBoostRegressor", arg_beach())
+        fit_and_draw_plots("CatBoostRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']))
 
         return
 
@@ -319,21 +319,21 @@ class TestShapExplainers(unittest.TestCase):
             "GRADIENTBOOSTINGREGRESSOR"
                   ]:
 
-            model = get_fitted_model(m, arg_beach())
-            exp = explain_model_with_shap(model, examples_to_explain=5)
+            model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+            exp = explain_model_with_shap(model, examples_to_explain=2)
             assert isinstance(exp, ShapExplainer)
 
 
     def test_ai4water_mlp(self):
         model = make_mlp_model()
 
-        exp = explain_model_with_shap(model, examples_to_explain=5)
+        exp = explain_model_with_shap(model, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
 
     def test_ai4water_lstm(self):
         m = lstm_model()
         m.fit()
-        exp = explain_model_with_shap(m, examples_to_explain=5)
+        exp = explain_model_with_shap(m, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
 
 

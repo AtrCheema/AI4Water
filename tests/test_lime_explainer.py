@@ -3,7 +3,6 @@ import os
 import sys
 import site
 
-import lime.lime_tabular
 
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
@@ -17,8 +16,8 @@ from ai4water.post_processing.explain import LimeExplainer, explain_model_with_l
 
 laos = MtropicsLaos()
 
-reg_data = laos.make_regression()
-class_data = laos.make_classification()
+reg_data = laos.make_regression(input_features=['temp', 'rel_hum'])
+class_data = laos.make_classification(input_features=['temp', 'rel_hum'])
 
 
 def make_mlp_model():
@@ -31,7 +30,7 @@ def make_mlp_model():
             "Flatten": {},
             "Dense_3": 1,
         }},
-        data=arg_beach(),
+        data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
         epochs=2,
         lookback=1,
         verbosity=0
@@ -58,10 +57,10 @@ def lstm_model():
 
     model = Model(
         model = {"layers": {
-            "LSTM": 32,
+            "LSTM": 4,
             "Dense": 1
         }},
-        data = arg_beach(),
+        data = arg_beach(inputs=['wat_temp_c', 'tide_cm']).iloc[0:400],
         verbosity=0
     )
     return model
@@ -71,7 +70,7 @@ def make_class_model(**kwargs):
 
     model = Model(
         model="DecisionTreeClassifier",
-        data=class_data,
+        data=class_data.dropna().iloc[0:30],
         transformation={'method': 'quantile', 'features': ['Ecoli_mpn100']},
         verbosity=0,
         **kwargs
@@ -93,10 +92,11 @@ def make_lstm_reg_model():
 
     model = MyModel(
         model = {"layers": {
-            "LSTM": 32,
+            "LSTM": 4,
             "Dense": 1
         }},
-        data = reg_data,
+        # dropna would be wrong for lstm based models but we are just testing
+        data = reg_data.dropna(),
         verbosity=0
     )
     return model
@@ -105,9 +105,7 @@ def make_reg_model(**kwargs):
 
     model = Model(
         model="GradientBoostingRegressor",
-        data=reg_data,
-        cross_validator={'TimeSeriesSplit': {'n_splits': 10}},
-        transformation={'method': 'quantile', 'features': ['Ecoli_mpn100']},
+        data=reg_data.dropna().iloc[0:30],
         val_metric='r2',
         verbosity=0,
         **kwargs
@@ -188,7 +186,9 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_docstring_example(self):
 
-        model = Model(model="GradientBoostingRegressor", data=arg_beach(), verbosity=0)
+        model = Model(model="GradientBoostingRegressor",
+                      data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+                      verbosity=0)
         model.fit()
         lime_exp = LimeExplainer(model=model._model,
                                    train_data=model.training_data()[0],
@@ -212,14 +212,14 @@ class TestLimeExplainer(unittest.TestCase):
         return
 
     def test_ai4water_regression(self):
-        model = make_reg_model(test_fraction=0.05)
+        model = make_reg_model()
         assert model.mode == "regression"
 
-        model.explain()
+        model.explain(examples_to_explain=2)
         return
 
     def test_ai4water(self):
-        model = make_class_model(test_fraction=0.05)
+        model = make_class_model(test_fraction=0.1)
         self.assertEqual(model.mode, "classification")
         model.fit()
         model.explain()
@@ -249,7 +249,7 @@ class TestLimeExplainer(unittest.TestCase):
             "GRADIENTBOOSTINGREGRESSOR"
                   ]:
 
-            model = get_fitted_model(m, arg_beach())
+            model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
             exp = explain_model_with_lime(model, examples_to_explain=2)
             assert isinstance(exp, LimeExplainer)
         return
@@ -263,7 +263,7 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_ai4water_lstm(self):
         m = lstm_model()
-        m.fit()
+        m.fit(epochs=1)
         exp = explain_model_with_lime(m, examples_to_explain=2)
         assert isinstance(exp, LimeExplainer)
 
