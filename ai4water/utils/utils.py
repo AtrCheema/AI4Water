@@ -185,12 +185,12 @@ def check_kwargs(**kwargs):
 
 class make_model(object):
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, **kwargs):
 
-        self.config, self.data_config = _make_model(data, **kwargs)
+        self.config, self.data_config = _make_model(**kwargs)
 
 
-def process_io(data, **kwargs):
+def process_io(**kwargs):
 
     input_features = kwargs.get('input_features', None)
     output_features = kwargs.get('output_features', None)
@@ -200,21 +200,12 @@ def process_io(data, **kwargs):
     if isinstance(output_features, str):
         output_features = [output_features]
 
-    # if input_features is None:  # when input_features and output_features are not defined.
-    #     if data is not None:  # when no data is given, input_features and output_features can not be defined.
-    #         assert isinstance(data, pd.DataFrame)
-    #         if output_features is None:
-    #             input_features = list(data.columns)[0:-1]
-    #             output_features = [list(data.columns)[-1]]
-    #         elif isinstance(output_features, list):
-    #             input_features = [col for col in list(data.columns) if col not in output_features]
-
     kwargs['input_features'] = input_features
     kwargs['output_features'] = output_features
     return kwargs
 
 
-def _make_model(data, **kwargs):
+def _make_model(**kwargs):
     """
     This functions fills the default arguments needed to run all the models.
     All the input arguments can be overwritten
@@ -224,7 +215,7 @@ def _make_model(data, **kwargs):
         such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
-    kwargs = process_io(data, **kwargs)
+    kwargs = process_io(**kwargs)
 
     kwargs = check_kwargs(**kwargs)
 
@@ -276,15 +267,6 @@ def _make_model(data, **kwargs):
         # used for cnn_lst structure
         'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},
 
-        'nbeats_options': {'type': dict, 'default': {
-                                        'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
-                                        'forecast_len': 1,
-                                        'stack_types': ('generic', 'generic'),
-                                        'nb_blocks_per_stack': 2,
-                                        'thetas_dim': (4, 4),
-                                        'share_weights_in_stack': True,
-                                        'hidden_layer_units': 62
-                                    }, 'lower': None, 'upper': None, 'between': None},
         'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None,
                           'between': ['tensorflow', 'pytorch']},
         # buffer_size is only relevant if 'val_data' is same and shuffle is true.
@@ -402,12 +384,6 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
 """
 
     config.update(model_config)
-
-    assert type(config['input_features']) == type(config['output_features']), f"""
-        input_features is of type {config['input_features'].__class__.__name__}
-        but output_features is of type {config['output_features'].__class__.__name__}.
-        Input_features and output_features must be of same type.
-"""
 
     if isinstance(config['input_features'], dict):
         for data in [config['input_features'], config['output_features']]:

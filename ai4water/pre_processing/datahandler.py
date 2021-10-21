@@ -435,7 +435,7 @@ class DataHandler(AttributeContainer):
             assert isinstance(_inputs, list)
         elif isinstance(self.data, dict):
             assert isinstance(_inputs, dict), f'input_features are of type {_inputs.__class__.__name__}'
-        elif _inputs is None:
+        elif _inputs is None and self.data is not None:
             assert isinstance(self.data, pd.DataFrame)
             _inputs = self.data.columns[0:-1].to_list()
 
@@ -455,7 +455,7 @@ class DataHandler(AttributeContainer):
                 if k not in _outputs:
                     _outputs[k] = []
 
-        elif _outputs is None:
+        elif _outputs is None and self.data is not None:
             assert isinstance(self.data, pd.DataFrame)
             _outputs = [col for col in self.data.columns if col not in self.input_features]
 
@@ -527,6 +527,13 @@ class DataHandler(AttributeContainer):
             self.num_sources = 1
 
         elif isinstance(data, pd.DataFrame):
+            if input_features is None and output_features is not None:
+                if isinstance(output_features, str):
+                    output_features = [output_features]
+                assert isinstance(output_features, list)
+                input_features = [col for col in data.columns if col not in output_features]
+                # since we have inferred the input_features, they should be put back into config
+                self.config['input_features'] = input_features
             _source = data
             self.is_multi_source = False
             self.num_sources = 1

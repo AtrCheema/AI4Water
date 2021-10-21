@@ -194,26 +194,27 @@ class BaseModel(NN, Plots):
         ```
         """
         if self._go_up:
-            maker = make_model(data,
-                               model=model,
-                               prefix=prefix,
-                               path=path,
-                               verbosity=verbosity,
-                               lr=lr,
-                               optimizer=optimizer,
-                               loss = loss,
-                               quantiles = quantiles,
-                               epochs = epochs,
-                               min_val_loss=min_val_loss,
-                               patience = patience,
-                               save_model = save_model,
-                               metrics = metrics or ['nse'],
-                               val_metric = val_metric,
-                               cross_validator = cross_validator,
-                               accept_additional_args = accept_additional_args,
-                               seed = seed,
-                               wandb_config = wandb_config,
-                               **kwargs)
+            maker = make_model(
+                model=model,
+                prefix=prefix,
+                path=path,
+                verbosity=verbosity,
+                lr=lr,
+                optimizer=optimizer,
+                loss = loss,
+                quantiles = quantiles,
+                epochs = epochs,
+                min_val_loss=min_val_loss,
+                patience = patience,
+                save_model = save_model,
+                metrics = metrics or ['nse'],
+                val_metric = val_metric,
+                cross_validator = cross_validator,
+                accept_additional_args = accept_additional_args,
+                seed = seed,
+                wandb_config = wandb_config,
+                **kwargs
+            )
 
             # data_config, model_config = config['data_config'], config['model_config']
             reset_seed(maker.config['seed'], os, random, np, tf, torch)
