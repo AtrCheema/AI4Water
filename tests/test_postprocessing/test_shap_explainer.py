@@ -86,6 +86,16 @@ def fit_and_interpret(model_name:str,
 
     return
 
+def get_explainer(model_name, data):
+    model = get_fitted_model(model_name, data)
+
+    x_test, y_test = model.test_data()
+
+    x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
+
+    explainer = ShapExplainer(model._model, x_test, explainer="Explainer",
+                                  path=model.path)
+    return explainer
 
 def fit_and_draw_plots(model_name, data, draw_heatmap=False):
 
@@ -97,6 +107,7 @@ def fit_and_draw_plots(model_name, data, draw_heatmap=False):
 
     explainer = ShapExplainer(model._model, x_test, explainer="Explainer",
                                   path=model.path)
+
     explainer.waterfall_plot_all_examples()
     explainer.scatter_plot_all_features()
     if draw_heatmap:
@@ -132,14 +143,36 @@ class TestShapExplainers(unittest.TestCase):
         lin_regr = linear_model.LinearRegression()
         lin_regr.fit(X_train, y_train)
 
-        explainer = ShapExplainer(lin_regr, data=X_test.iloc[0:10],
-                                        train_data=X_train,
-                                        num_means=10,
-                                        path=os.path.join(os.getcwd(), "results"))
+        explainer = ShapExplainer(lin_regr,
+                                  data=X_test.iloc[0:14],
+                                  train_data=X_train,
+                                  num_means=12,
+                                  path=os.path.join(os.getcwd(), "results"))
         explainer(plot_force_all=True)
 
-        #explainer.heatmap()
+        explainer.heatmap()
+        explainer.plot_shap_values(show=False)
 
+        return
+
+    def test_pd_plot(self):
+
+        for mod in [
+            "XGBoostRegressor", # todo error
+            "RandomForestRegressor",
+            "LGBMRegressor",
+            "DECISIONTREEREGRESSOR",
+            "ExtraTreeRegressor",
+            "ExtraTreesRegressor",
+            "GRADIENTBOOSTINGREGRESSOR",
+            "HISTGRADIENTBOOSTINGREGRESSOR",
+            "XGBOOSTRFREGRESSOR" # todo error
+                    ]:
+
+            exp = get_explainer(mod, arg_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
+            exp.pdp_single_feature(feature_name=exp.features[0], show=False, save=False)
+
+            time.sleep(1)
         return
 
     def test_ai4water_model(self):
