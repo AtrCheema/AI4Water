@@ -663,10 +663,13 @@ class ShapExplainer(ExplainerMixin):
         else:
             raise NotImplementedError
 
-    def plot_shap_values(self, name: str = "shap_values",
-                         show: bool = False,
-                         interpolation=None,
-                         cmap="coolwarm"):
+    def plot_shap_values(
+            self,
+            name: str = "shap_values",
+            show: bool = False,
+            interpolation=None,
+            cmap="coolwarm"
+    ):
         """Plots the SHAP values."""
         shap_values = self.shap_values
 
@@ -680,11 +683,11 @@ class ShapExplainer(ExplainerMixin):
 
         plt.close('all')
         fig, axis = plt.subplots()
-        im = axis.imshow(shap_values, aspect='auto', interpolation=interpolation, cmap=cmap)
-        axis.set_xticks(np.arange(len(self.features)))
-        axis.set_xticklabels(self.features, rotation=90)
-        axis.set_xlabel("Features")
-        axis.set_ylabel("Examples")
+        im = axis.imshow(shap_values.T, aspect='auto', interpolation=interpolation, cmap=cmap)
+        axis.set_yticks(np.arange(len(self.features)))
+        axis.set_yticklabels(self.features)
+        axis.set_ylabel("Features")
+        axis.set_xlabel("Examples")
 
         fig.colorbar(im)
 
