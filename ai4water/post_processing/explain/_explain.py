@@ -1,3 +1,4 @@
+import os
 
 import pandas as pd
 
@@ -10,6 +11,9 @@ class ExplainerMixin(object):
             data,
             features
     ):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         self.path = path
         self.data = data
         self.features = features
