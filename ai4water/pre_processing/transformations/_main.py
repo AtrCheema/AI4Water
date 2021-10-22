@@ -1,20 +1,21 @@
-from typing import Union
 import warnings
+from typing import Union
 
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, PowerTransformer,\
-    QuantileTransformer, FunctionTransformer
+import numpy as np
+import pandas as pd
 from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA, FastICA, SparsePCA
+
 try:
     from PyEMD import EMD, EEMD
 except ModuleNotFoundError:
     EMD, EEMD = None, None
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
 from ai4water.utils.utils import dateandtime_now
+
+from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
+from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
+
+
 
 # TODO add logistic, tanh and more scalers.
 # rpca
@@ -199,10 +200,10 @@ class Transformations(scaler_container):
         ---------
         ```python
         >>>from ai4water.pre_processing.transformations import Transformations
-        >>>from ai4water.datasets import load_u1
-        >>>df = load_u1()
-        >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-        >>>transformer = Transformations(data=df[inputs], method='minmax', features=['x1', 'x2'])
+        >>>from ai4water.datasets import arg_beach
+        >>>df = arg_beach()
+        >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+        >>>transformer = Transformations(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
         >>>new_data = transformer.transform()
         ```
 
@@ -428,10 +429,10 @@ class Transformations(scaler_container):
             if self.method == "log":
                 scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
             elif self.method == "log2":
-                scaler = FunctionTransformer(func=np.log2, inverse_func=lambda x: 2**x, validate=True,
+                scaler = FunctionTransformer(func=np.log2, inverse_func="""lambda x: 2**x""", validate=True,
                                              check_inverse=True)
             else:   # "log10":
-                scaler = FunctionTransformer(func=np.log10, inverse_func=lambda x: 10**x, validate=True,
+                scaler = FunctionTransformer(func=np.log10, inverse_func="""lambda x: 10**x""", validate=True,
                                              check_inverse=True)
         elif self.method.lower() == "tan":
             scaler = FunctionTransformer(func=np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
@@ -573,64 +574,6 @@ class Transformations(scaler_container):
             assert df.shape == self.initial_shape, f"shape changed from {self.initial_shape} to {df.shape}"
         return df
 
-    def plot_pca(self, target: np.ndarray,
-                 pcs: np.ndarray = None,
-                 labels: list = None,
-                 save=False,
-                 dim="3d"):
-
-        if pcs is None:
-            pcs = self.tr_data.values
-            labels = list(self.tr_data.columns) if labels is None else labels
-
-        if labels is not None:
-            assert len(labels) == pcs.shape[1]
-        else:
-            labels = self.transformed_features
-
-        if dim.upper() == "3D":
-            self.plot_pca3d(target, pcs, labels, save)
-        elif dim.upper() == "2D":
-            self.plot_pca2d(target, pcs, labels, save)
-        else:
-            raise ValueError
-
-    def plot_pca3d(self, target, pcs, labels, save):
-
-        fig = plt.figure(1, figsize=(4, 3))
-        plt.clf()
-        ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
-
-        plt.cla()
-        for label, name in enumerate(labels):
-            ax.text3D(pcs[target == label, 0].mean(),
-                      pcs[target == label, 1].mean() + 1.5,
-                      pcs[target == label, 2].mean(), name,
-                      horizontalalignment='center',
-                      bbox=dict(alpha=.5, edgecolor='w', facecolor='w'))
-        # Reorder the labels to have colors matching the cluster results
-        target = np.choose(target, [1, 2, 0]).astype(np.float)
-
-        ax.scatter(pcs[:, 0], pcs[:, 1], pcs[:, 2], c=target, cmap=plt.cm.nipy_spectral,
-                   edgecolor='k')
-
-        ax.xaxis.set_ticklabels([])
-        ax.yaxis.set_ticklabels([])
-        ax.zaxis.set_ticklabels([])
-
-        end_fig(save)
-        return
-
-    def plot_pca2d(self, target, pcs, labels, save):
-
-        for i, target_name in zip([0, 1, 2], labels):
-            plt.scatter(pcs[target == i, 0], pcs[target == i, 1], alpha=.8, lw=2,
-                        label=target_name)
-        plt.legend(loc='best', shadow=False, scatterpoints=1)
-        plt.title('PCA of IRIS dataset')
-        end_fig(save)
-        return
-
 
 def get_val(df:pd.DataFrame, method):
 
@@ -646,16 +589,6 @@ def get_val(df:pd.DataFrame, method):
     else:
         raise ValueError(f"unknown method {method} to replace nan vlaues")
 
-
-def end_fig(save):
-    if save is None:
-        pass
-    elif save:
-        plt.savefig('pca')
-    else:
-        plt.show()
-    plt.close('all')
-    return
 
 
 class InvalidValueError(Exception):

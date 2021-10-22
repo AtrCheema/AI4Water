@@ -12,3 +12,13 @@
             - inverse_transform
     rendering:
         show_root_heading: true
+
+::: ai4water.pre_processing.transformations.ScalerWithConfig
+    handler: python
+    rendering:
+        show_root_heading: true
+
+::: ai4water.pre_processing.transformations.FunctionTransformer
+    handler: python
+    rendering:
+        show_root_heading: true

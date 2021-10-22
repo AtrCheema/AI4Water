@@ -10,6 +10,13 @@ import numpy as np
 import pandas as pd
 
 from ai4water.pre_processing.transformations import Transformations
+from ai4water.pre_processing.transformations import StandardScaler
+from ai4water.pre_processing.transformations import MinMaxScaler
+from ai4water.pre_processing.transformations import RobustScaler
+from ai4water.pre_processing.transformations import QuantileTransformer
+from ai4water.pre_processing.transformations import PowerTransformer
+from ai4water.pre_processing.transformations import FunctionTransformer
+
 
 from ai4water.tf_attributes import tf
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -20,8 +27,11 @@ else:
 
 from ai4water.datasets import load_u1
 
+
+x = np.random.randint(1, 100, (20, 2))
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
                   columns=['data1', 'data2'])
+
 
 def build_and_run(transformation, data, inputs, outputs):
 
@@ -37,6 +47,7 @@ def build_and_run(transformation, data, inputs, outputs):
     pred, index = model.dh.deindexify(pred, key='junk')
     pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs), columns=outputs, index=index).sort_index()
     return pred
+
 
 def run_method1(method,
                 cols=None,
@@ -56,6 +67,7 @@ def run_method1(method,
                                        features=cols,
                                        replace_nans=replace_nans)('inverse', scaler=scaler['scaler'])
     return normalized_df1, denormalized_df1
+
 
 def run_method2(method,
                 replace_nans=False,
@@ -77,6 +89,7 @@ def run_method2(method,
 
     denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
     return data, normalized_df, denormalized_df
+
 
 def run_method3(method,
                 replace_nans=False,
@@ -112,10 +125,6 @@ def run_method4(method,
     denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
 
     return normalized_df4, denormalized_df4
-
-def run_plot_pca(scaler, y, dim):
-    scaler.plot_pca(target=y, labels=['Setosa', 'Versicolour', 'Virginica'], save=None, dim=dim)
-    return
 
 
 def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False, assert_equality=True,
@@ -160,6 +169,38 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
         assert np.allclose(df3, dfo3, equal_nan=True)
         assert np.allclose(df3, dfo4, equal_nan=True)
     return
+
+def test_custom_scaler(Scaler, array):
+
+    mysc = Scaler()
+    _x1 = mysc.fit_transform(array)
+
+    mysc1 = Scaler.from_config(mysc.config())
+
+    _x2 = mysc1.fit_transform(array)
+
+    _x = mysc1.inverse_transform(_x2)
+    np.testing.assert_array_almost_equal(_x1, _x2)
+
+    np.testing.assert_array_almost_equal(array, _x)
+
+    return
+
+
+def test_func_transformer(array, func, inverse_func, **kwargs):
+    sc = FunctionTransformer(func=func, inverse_func=inverse_func, **kwargs)
+    t_x1 = sc.fit_transform(array)
+
+    sc1 = FunctionTransformer.from_config(sc.config())
+    t_x2 = sc1.fit_transform(array)
+    np.testing.assert_array_almost_equal(t_x1, t_x2)
+
+    _x = sc1.inverse_transform(t_x2)
+
+    if sc1.check_inverse and sc1.inverse_func is not None:
+        np.testing.assert_array_almost_equal(array, _x)
+    return
+
 
 class test_Scalers(unittest.TestCase):
 
@@ -323,19 +364,6 @@ class test_Scalers(unittest.TestCase):
 
         return None, normalized_df, denormalized_df
 
-    def test_plot_pca3d(self):
-        from sklearn import datasets
-
-        iris = datasets.load_iris()
-        X = iris.data
-        y = iris.target
-
-        scaler = Transformations(X, method="pca", n_components=3)
-        scaler()
-        for dim in ["2d", "3D"]:
-            run_plot_pca(scaler, y, dim=dim)
-        return
-
     def test_log_with_nans(self):
         run_log_methods(index=None)
         return
@@ -474,6 +502,33 @@ class test_Scalers(unittest.TestCase):
     # def test_multile_transformations_multile_outputs(self):
     #     # TODO
     #     return
+
+
+    def test_minmax(self):
+        test_custom_scaler(MinMaxScaler, x)
+
+    def test_std(self):
+        test_custom_scaler(StandardScaler, x)
+
+    def test_robust(self):
+        test_custom_scaler(RobustScaler, x)
+
+    def test_power(self):
+        test_custom_scaler(PowerTransformer, x)
+
+    def test_quantile(self):
+        test_custom_scaler(QuantileTransformer, x)
+
+    def test_function(self):
+        test_func_transformer(x, np.log, None)
+        test_func_transformer(x, np.log, np.exp)
+        test_func_transformer(x, np.log2, inverse_func="""lambda _x: 2**_x""", validate=True)
+        test_func_transformer(x, np.log10, inverse_func="""lambda _x: 10**_x""", validate=True, check_inverse=False)
+        test_func_transformer(x, np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
+        test_func_transformer(x, np.cumsum, inverse_func=np.diff,
+                              validate=True, check_inverse=False,
+                              kw_args={"axis": 0},
+                              inv_kw_args={"axis": 0, "append": 0})
 
 
 if __name__ == "__main__":
