@@ -87,6 +87,7 @@ class Interpret(Plot):
     def plot_feature_importance(self,
                                 importance=None,
                                 save=True,
+                                show=False,
                                 use_xgb=False,
                                 max_num_features=20,
                                 figsize=None,
@@ -128,32 +129,33 @@ class Interpret(Plot):
         all_cols = list(all_cols[0:max_num_features]) + [f'rest_{len(all_cols) - max_num_features}']
 
         if use_xgb:
-            self._feature_importance_xgb(max_num_features=max_num_features, save=save)
+            self._feature_importance_xgb(max_num_features=max_num_features, save=save, show=show)
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
             bar_chart(labels=all_cols, values=imp, axis=axis, title="Feature importance", xlabel_fs=12)
-            self.save_or_show(save, fname="feature_importance.png")
+            self.save_or_show(save=save, show=show, fname="feature_importance.png")
         return
 
-    def _feature_importance_xgb(self, save=True, max_num_features=None, **kwargs):
+    def _feature_importance_xgb(self, save=True, show=False, max_num_features=None, **kwargs):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_importance
         if xgboost is None:
             warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
         else:
             booster = self.model._model.get_booster()
+            booster.feature_names = self.model.in_cols
             plt.close('all')
             # global feature importance with xgboost comes with different types
             xgboost.plot_importance(booster, max_num_features=max_num_features)
-            self.save_or_show(save, fname="feature_importance_weight.png")
+            self.save_or_show(save=save, show=show, fname="feature_importance_weight.png")
             plt.close('all')
             xgboost.plot_importance(booster, importance_type="cover",
                                     max_num_features=max_num_features, **kwargs)
-            self.save_or_show(save, fname="feature_importance_type_cover.png")
+            self.save_or_show(save=save, show=show, fname="feature_importance_type_cover.png")
             plt.close('all')
             xgboost.plot_importance(booster, importance_type="gain",
                                     max_num_features=max_num_features, **kwargs)
-            self.save_or_show(save, fname="feature_importance_type_gain.png")
+            self.save_or_show(save=save, show=show, fname="feature_importance_type_gain.png")
 
         return
 
