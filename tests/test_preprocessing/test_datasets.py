@@ -424,6 +424,7 @@ class TestPangaea(unittest.TestCase):
         dataset = GeoChemMatane()
         check_data(dataset, 1, 166)
 
-
+import inspect
+inspect.getsource(f)
 if __name__=="__main__":
     unittest.main()

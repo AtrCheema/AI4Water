@@ -1,7 +1,7 @@
 import os
 import unittest
 import site
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(ai4_dir)
 
 from ai4water.pre_processing.spatial_processing import MakeHRUs
@@ -13,7 +13,7 @@ SLOPE = {0: '0-13',
          #3: '39-53'
          }
 
-shapefile_paths = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+shapefile_paths = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                                'examples', 'paper', 'shapefiles')
 
 Soil_shp = os.path.join(shapefile_paths, 'soil.shp')
