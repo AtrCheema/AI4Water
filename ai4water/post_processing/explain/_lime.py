@@ -136,14 +136,18 @@ class LimeExplainer(ExplainerMixin):
                                  num_features=num_features, **kwargs)
         return
 
-    def explain_example(self,
-                        index: int,
-                        plot_type: str = "pyplot",
-                        name: str = "lime_explaination",
-                        num_features: int = None,
-                        colors = None,
-                        **kwargs
-                        ):
+    def explain_example(
+            self,
+            index: int,
+            plot_type: str = "pyplot",
+            name: str = "lime_explaination",
+            num_features: int = None,
+            colors = None,
+            annotate=False,
+            show=False,
+            save=True,
+            **kwargs
+    ):
         """
         Draws and saves plot for a single example of test_data.
 
@@ -153,7 +157,13 @@ class LimeExplainer(ExplainerMixin):
             name : name with which to save the file
             num_features :
             colors :
+            annotate : whether to annotate figure or not
+            show : whether to show figure or not
+            save : wheter to save figure or not
             kwargs : any keyword argument for `explain_instance`
+
+        Returns:
+            matplotlib figure if plot_type="pyplot" and show is False.
         """
         assert plot_type in ("pyplot", "html")
 
@@ -165,14 +175,18 @@ class LimeExplainer(ExplainerMixin):
 
         self.explaination_objects[index] = exp
 
+        fig = None
         if plot_type == "pyplot":
             plt.close()
-            as_pyplot_figure(exp, colors=colors, example_index=index)
-            plt.savefig(os.path.join(self.path, f"{name}_{index}"), bbox_inches="tight")
+            fig = as_pyplot_figure(exp, colors=colors, example_index=index, annotate=annotate)
+            if save:
+                plt.savefig(os.path.join(self.path, f"{name}_{index}"), bbox_inches="tight")
+            if show:
+                plt.show()
         else:
             exp.save_to_file(os.path.join(self.path, f"{name}_{index}"))
 
-        return
+        return fig
 
 
 def to_np(x) -> np.ndarray:
@@ -184,11 +198,13 @@ def to_np(x) -> np.ndarray:
 
     return x
 
-def as_pyplot_figure(inst_explainer,
-                     label=1,
-                     example_index=None,
-                     colors:[str, tuple, list]=None,
-                     **kwargs):
+def as_pyplot_figure(
+        inst_explainer,
+        label=1,
+        example_index=None,
+        colors:[str, tuple, list]=None,
+        annotate=False,
+        **kwargs):
     """Returns the explanation as a pyplot figure.
 
     Will throw an error if you don't have matplotlib installed
@@ -199,11 +215,15 @@ def as_pyplot_figure(inst_explainer,
                Will be ignored for regression explanations.
         colors : if tuple it must be names of two colors for +ve and -ve
         example_index :
+        annotate : whether to annotate the figure or not?
         kwargs: keyword arguments, passed to domain_mapper
 
     Returns:
         pyplot figure (barchart).
     """
+    textstr = f"""Prediction: {round(inst_explainer.predicted_value, 2)}
+Local prediction: {round(inst_explainer.local_pred.item(), 2)}"""
+
     if colors is None:
         colors = ([0.9375    , 0.01171875, 0.33203125], [0.23828125, 0.53515625, 0.92578125])
     elif isinstance(colors, str):
@@ -220,7 +240,7 @@ def as_pyplot_figure(inst_explainer,
         colors = [colors[0] if x > 0 else colors[1] for x in vals]
 
     pos = np.arange(len(exp)) + .5
-    plt.barh(pos, vals, align='center', color=colors)
+    h = plt.barh(pos, vals, align='center', color=colors)
     plt.yticks(pos, names)
     if inst_explainer.mode == "classification":
         title = 'Local explanation for class %s' % inst_explainer.class_names[label]
@@ -228,4 +248,10 @@ def as_pyplot_figure(inst_explainer,
         title = f'Local explanation for example {example_index}'
     plt.title(title)
     plt.grid(linestyle='--', alpha=0.5)
+
+    if annotate:
+        # https://stackoverflow.com/a/59109053/5982232
+        plt.legend(h, [textstr], loc="best",
+                   fancybox=True, framealpha=0.7,
+                   handlelength=0, handletextpad=0)
     return fig
