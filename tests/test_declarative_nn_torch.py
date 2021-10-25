@@ -34,6 +34,7 @@ def build_and_fit(nn_model, parameters, lookback=1):
     return model
 
 class TestTorchDeclarativeDef(unittest.TestCase):
+
     def test_mlp(self):
         default_model = {'layers':{
             "Linear_0": {"in_features": 8, "out_features": 64},
@@ -47,6 +48,7 @@ class TestTorchDeclarativeDef(unittest.TestCase):
         }}
 
         build_and_fit(default_model, 3201)
+        return
 
     def test_lstm(self):
         default_model = {'layers':{
@@ -61,6 +63,7 @@ class TestTorchDeclarativeDef(unittest.TestCase):
         }}
 
         build_and_fit(default_model, 31521, lookback=12)
+        return
 
 
 if __name__ == "__main__":

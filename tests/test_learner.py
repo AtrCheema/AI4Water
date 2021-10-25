@@ -93,6 +93,7 @@ class TestLearner(unittest.TestCase):
         p = learner.predict(X, y=Y, name='training')
         assert isinstance(p, np.ndarray)
 
+        return
 
     def test_use_cuda(self):
         import torch
@@ -108,6 +109,7 @@ class TestLearner(unittest.TestCase):
         X, Y = get_xy()
 
         learner.fit(x=X, y=Y)
+        return
 
 if __name__ == "__main__":
     unittest.main()

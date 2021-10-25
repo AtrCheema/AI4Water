@@ -497,6 +497,9 @@ class Learner(AttributeContainer):
         else:
             w_path = getattr(self.model, 'w_path', self.path)
             best_weights = find_best_weight(w_path, epoch_identifier=self.best_epoch)
+            if best_weights.endswith(".hdf5"):  # todo, find_best_weight should not add .hdf5
+                best_weights = best_weights.split(".hdf5")[0]
+
             if best_weights is not None:
                 weight_file_path = os.path.join(w_path, best_weights)
 

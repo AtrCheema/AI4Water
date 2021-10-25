@@ -18,7 +18,7 @@ class TestPytorchModels(unittest.TestCase):
         model = HARHNModel(data=load_u1(),
                            teacher_forcing=True,
                            epochs=3,
-                           model={'layers': {'n_conv_lyrs': 3, 'enc_units': 64, 'dec_units': 64}},
+                           model={'layers': {'n_conv_lyrs': 3, 'enc_units': 4, 'dec_units': 4}},
                            verbosity=0
                            )
         model.fit()
@@ -38,7 +38,7 @@ class TestPytorchModels(unittest.TestCase):
                              {'method': 'minmax', 'features': list(arg_beach().columns)[0:-1]},
                              {'method': 'log2', 'features': ['tetx_coppml'], 'replace_zeros': True, 'replace_nans': True}
                          ],
-                         model={'layers': {'hidden_units': 64}},
+                         model={'layers': {'hidden_units': 4}},
                          verbosity=0
                          )
 
