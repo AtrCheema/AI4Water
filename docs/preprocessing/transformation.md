@@ -1,7 +1,7 @@
 
 
 **`Transformations`**
-::: ai4water.pre_processing.transformations.Transformations
+::: ai4water.preprocessing.transformations.Transformations
     handler: python
     selection:
         members:
@@ -13,12 +13,12 @@
     rendering:
         show_root_heading: true
 
-::: ai4water.pre_processing.transformations.ScalerWithConfig
+::: ai4water.preprocessing.transformations.ScalerWithConfig
     handler: python
     rendering:
         show_root_heading: true
 
-::: ai4water.pre_processing.transformations.FunctionTransformer
+::: ai4water.preprocessing.transformations.FunctionTransformer
     handler: python
     rendering:
         show_root_heading: true

@@ -8,9 +8,9 @@ site.addsitedir(ai4_dir)
 
 import numpy as np
 
-from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
-from ai4water.post_processing.SeqMetrics.utils import plot_metrics
-from ai4water.post_processing.SeqMetrics.utils import list_subclass_methods
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
+from ai4water.postprocessing.SeqMetrics.utils import plot_metrics
+from ai4water.postprocessing.SeqMetrics.utils import list_subclass_methods
 
 
 t = np.random.random((20, 1))

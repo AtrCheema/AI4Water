@@ -12,8 +12,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from ai4water import Model
-from ai4water.pre_processing import DataHandler, SiteDistributedDataHandler
-from ai4water.pre_processing.datahandler import MultiLocDataHandler
+from ai4water.preprocessing import DataHandler, SiteDistributedDataHandler
+from ai4water.preprocessing.datahandler import MultiLocDataHandler
 from ai4water.datasets import load_u1, arg_beach
 
 os.environ['PYTHONHASHSEED'] = '313'

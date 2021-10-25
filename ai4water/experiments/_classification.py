@@ -1,7 +1,7 @@
 
 from .experiments import Experiments, Model
-from ai4water.hyper_opt import Real, Categorical, Integer
-from ai4water.post_processing.SeqMetrics import ClassificationMetrics
+from ai4water.hyperopt import Real, Categorical, Integer
+from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
 
 
 class MLClassificationExperiments(Experiments):

@@ -15,9 +15,9 @@ from sklearn.model_selection import train_test_split
 
 from ai4water import Model
 from ai4water.datasets import arg_beach, MtropicsLaos
-from ai4water.post_processing.explain import ShapExplainer, explain_model_with_shap
+from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
-from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
+from .test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
 
 laos = MtropicsLaos()
 

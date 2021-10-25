@@ -19,7 +19,7 @@ else:
     from ai4water import Model
 
 from ai4water.datasets import arg_beach
-from ai4water.post_processing import Interpret
+from ai4water.postprocessing import Interpret
 from ai4water import InputAttentionModel, DualAttentionModel
 
 default_model = {

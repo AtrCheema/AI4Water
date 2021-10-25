@@ -14,7 +14,7 @@ else:
 from ai4water.datasets import arg_beach
 from ai4water.utils.utils import find_best_weight
 from ai4water.functional import Model as FModel
-from ai4water.pre_processing.datahandler import DataHandler
+from ai4water.preprocessing.datahandler import DataHandler
 
 
 dh = DataHandler(data=arg_beach(), verbosity=0)

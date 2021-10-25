@@ -9,13 +9,13 @@ site.addsitedir(ai4_dir)
 import numpy as np
 import pandas as pd
 
-from ai4water.pre_processing.transformations import Transformations
-from ai4water.pre_processing.transformations import StandardScaler
-from ai4water.pre_processing.transformations import MinMaxScaler
-from ai4water.pre_processing.transformations import RobustScaler
-from ai4water.pre_processing.transformations import QuantileTransformer
-from ai4water.pre_processing.transformations import PowerTransformer
-from ai4water.pre_processing.transformations import FunctionTransformer
+from ai4water.preprocessing.transformations import Transformations
+from ai4water.preprocessing.transformations import StandardScaler
+from ai4water.preprocessing.transformations import MinMaxScaler
+from ai4water.preprocessing.transformations import RobustScaler
+from ai4water.preprocessing.transformations import QuantileTransformer
+from ai4water.preprocessing.transformations import PowerTransformer
+from ai4water.preprocessing.transformations import FunctionTransformer
 
 
 from ai4water.tf_attributes import tf

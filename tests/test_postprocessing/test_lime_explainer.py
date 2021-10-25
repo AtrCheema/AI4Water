@@ -12,7 +12,7 @@ import pandas as pd
 from ai4water import Model
 from ai4water.datasets import arg_beach
 from ai4water.datasets import MtropicsLaos
-from ai4water.post_processing.explain import LimeExplainer, explain_model_with_lime
+from ai4water.postprocessing.explain import LimeExplainer, explain_model_with_lime
 
 laos = MtropicsLaos()
 

@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
 from ai4water.datasets import arg_beach
-from ai4water.hyper_opt import Categorical, Integer, Real
+from ai4water.hyperopt import Categorical, Integer, Real
 from ai4water.utils.utils import dateandtime_now
 
 

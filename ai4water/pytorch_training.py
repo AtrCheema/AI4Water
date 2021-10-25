@@ -23,7 +23,7 @@ else:
     LOSSES = {}
 
 from .utils.utils import dateandtime_now, find_best_weight
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from .utils.visualizations import regplot
 
 F = {

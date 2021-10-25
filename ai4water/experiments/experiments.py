@@ -8,16 +8,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import ParameterGrid
 
-from ai4water.hyper_opt import HyperOpt
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
+from ai4water.hyperopt import HyperOpt
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.taylor_diagram import taylor_plot
-from ai4water.hyper_opt import Real, Categorical, Integer
+from ai4water.hyperopt import Real, Categorical, Integer
 from ai4water.utils.utils import init_subplots, process_axis, jsonize
 from ai4water.utils.utils import clear_weights, dateandtime_now, save_config_file
 from ai4water.backend import tf
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.visualizations import PlotResults
-from ai4water.pre_processing import DataHandler
+from ai4water.preprocessing import DataHandler
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:

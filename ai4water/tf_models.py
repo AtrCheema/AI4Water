@@ -334,7 +334,7 @@ class DualAttentionModel(FModel):
 
         predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
-        from ai4water.post_processing.visualize import Visualize
+        from ai4water.postprocessing.visualize import Visualize
 
         activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data)
 

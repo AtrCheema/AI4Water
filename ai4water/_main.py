@@ -22,14 +22,13 @@ except ImportError:
     from scipy.stats import median_absolute_deviation as mad
 
 from ai4water.nn_tools import NN
-from ai4water.pre_processing.datahandler import DataHandler
+from ai4water.preprocessing.datahandler import DataHandler
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
 from ai4water.utils.utils import find_best_weight, reset_seed
 from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
-from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
@@ -644,6 +643,8 @@ class BaseModel(NN, Plots):
                               user_defined_data: bool = False
                               ):
         """post-processes classification results."""
+        from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
+
         if self.is_multiclass:
             pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
             true_labels = [f"true_{i}" for i in range(true.shape[1])]
@@ -694,6 +695,7 @@ class BaseModel(NN, Plots):
         predicted, true are arrays of shape (examples, outs, forecast_len).
         annotate_with : which value to write on regression plot
         """
+        from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
         metric_names = {'r2': "$R^2$"}
 
@@ -972,6 +974,8 @@ class BaseModel(NN, Plots):
         Note: Currently not working for deep learning models.
 
         """
+        from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
+
         if self.num_outs > 1:
             raise ValueError
 
@@ -1393,7 +1397,7 @@ class BaseModel(NN, Plots):
         Returns:
             An isntance of ai4water.post_processing.visualize.Visualize class.
         """
-        from ai4water.post_processing.visualize import Visualize
+        from ai4water.postprocessing.visualize import Visualize
 
         visualizer = Visualize(model=self)
 
@@ -1419,7 +1423,7 @@ class BaseModel(NN, Plots):
         ```
         """
         # importing ealier will try to import np types as well again
-        from ai4water.post_processing import Interpret
+        from ai4water.postprocessing import Interpret
 
         matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         if 'layers' not in self.config['model']:
@@ -1440,7 +1444,7 @@ class BaseModel(NN, Plots):
         """Calls the ai4water.post_processing.explain.explain_model
          to explain the model.
          """
-        from ai4water.post_processing.explain import explain_model
+        from ai4water.postprocessing.explain import explain_model
         return explain_model(self, *args, **kwargs)
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):

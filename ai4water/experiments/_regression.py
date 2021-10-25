@@ -1,8 +1,8 @@
 
 
 from .experiments import Experiments, Model
-from ai4water.hyper_opt import Real, Categorical, Integer
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
+from ai4water.hyperopt import Real, Categorical, Integer
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.utils import get_version_info
 
 

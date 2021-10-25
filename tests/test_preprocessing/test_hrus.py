@@ -4,7 +4,7 @@ import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(ai4_dir)
 
-from ai4water.pre_processing.spatial_processing import MakeHRUs
+from ai4water.preprocessing.spatial_processing import MakeHRUs
 
 
 SLOPE = {0: '0-13',

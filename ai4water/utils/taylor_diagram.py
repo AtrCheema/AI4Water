@@ -6,7 +6,7 @@ from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
 COLORS = {
     0: np.array([0.89411765, 0.10196078, 0.10980392, 1.]),

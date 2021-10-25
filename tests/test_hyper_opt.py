@@ -30,8 +30,8 @@ optuna.logging.set_verbosity(optuna.logging.ERROR)
 from ai4water.tf_attributes import tf
 from ai4water.utils.utils import Jsonize
 from ai4water.datasets import arg_beach
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
-from ai4water.hyper_opt import HyperOpt, Real, Categorical, Integer
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:

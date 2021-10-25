@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from ai4water import Model
 from ai4water.datasets import arg_beach
-from ai4water.post_processing.visualize import Visualize
+from ai4water.postprocessing.visualize import Visualize
 from ai4water.utils.visualizations import PlotResults, regplot
 from ai4water.utils.plotting_tools import bar_chart, BAR_CMAPS, get_cmap
 

@@ -17,9 +17,14 @@ from ai4water.utils.utils import _missing_vals
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import find_tot_plots
-from ai4water.pre_processing import Transformations
+from ai4water.preprocessing import Transformations
 from ai4water.utils.utils import  save_config_file, dateandtime_now, ts_features
 
+
+# ECDF
+# qq plot
+# decompose into trend/seasonality and noise
+# probplot
 
 class EDA(Plot):
     """Performns a comprehensive exploratory data analysis on a tabular/structured

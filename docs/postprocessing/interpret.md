@@ -1,5 +1,5 @@
 # Interpreter
-::: ai4water.post_processing.interpret.Interpret
+::: ai4water.postprocessing.interpret.Interpret
     handler: python
     rendering:
         show_root_heading: tru
