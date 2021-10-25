@@ -3,7 +3,7 @@ import json
 import time
 import random
 import warnings
-from typing import Union, Callable, Tuple
+from typing import Union, Callable, Tuple, Any
 from types import MethodType
 
 try:
@@ -22,24 +22,19 @@ except ImportError:
     from scipy.stats import median_absolute_deviation as mad
 
 from ai4water.nn_tools import NN
-from ai4water.pre_processing.datahandler import DataHandler
-from ai4water.backend import tpot_models
+from ai4water.preprocessing.datahandler import DataHandler
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
 from ai4water.utils.utils import find_best_weight, reset_seed
 from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
-from ai4water.post_processing import Interpret
-from ai4water.post_processing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
-from .backend import tf, keras, torch, VERSION_INFO, catboost_models, xgboost_models, lightgbm_models
-from ai4water.utils.utils import maybe_three_outputs
-from ai4water.eda import EDA
+from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
+from ai4water.utils.utils import maybe_three_outputs, get_version_info
 import ai4water.backend as K
 
 if K.BACKEND == 'tensorflow' and tf is not None:
-    import ai4water.keract_mod as keract
     from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif K.BACKEND == 'pytorch' and torch is not None:
@@ -53,30 +48,30 @@ except ModuleNotFoundError:
     wandb = None
 
 
-
 class BaseModel(NN, Plots):
+
     """ Model class that implements logic of AI4Water. """
 
     def __init__(self,
                  model: Union[dict, str] = None,
-                 data = None,
+                 data=None,
                  lr: float = 0.001,
-                 optimizer = 'adam',
-                 loss:Union[str, Callable] = 'mse',
-                 quantiles = None,
-                 epochs:int = 14,
-                 min_val_loss:float = 0.0001,
-                 patience:int = 100,
-                 save_model:bool = True,
-                 metrics:Union[str, list] = None,
-                 val_metric:str = 'mse',
-                 cross_validator:dict=None,
-                 wandb_config:dict = None,
-                 seed:int = 313,
+                 optimizer='adam',
+                 loss: Union[str, Callable] = 'mse',
+                 quantiles=None,
+                 epochs: int = 14,
+                 min_val_loss: float = 0.0001,
+                 patience: int = 100,
+                 save_model: bool = True,
+                 metrics: Union[str, list] = None,
+                 val_metric: str = 'mse',
+                 cross_validator: dict = None,
+                 wandb_config: dict = None,
+                 seed: int = 313,
                  prefix: str = None,
                  path: str = None,
                  verbosity: int = 1,
-                 accept_additional_args:bool = False,
+                 accept_additional_args: bool = False,
                  **kwargs):
         """
         The Model class can take a large number of possible arguments depending
@@ -133,7 +128,8 @@ class BaseModel(NN, Plots):
             min_val_loss float:  Default is 0.0001.
                 minimum value of validatin loss/error to be used for early stopping.
             patience int:
-                number of epochs to wait before early stopping.
+                number of epochs to wait before early stopping. Set this value to None
+                if you don't want to use EarlyStopping.
             save_model bool:,
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
@@ -157,12 +153,12 @@ class BaseModel(NN, Plots):
             batches str:
                 either `2d` or 3d`.
             wandb_config :
-                Only valid if wandb package is installed. A dictionary of all the
+                Only valid if wandb package is installed.  Default value is None,
+                which means, wandb will not be utilized. For simplest case, just pass
+                an empty dictionary. Otherwise use a dictionary of all the
                 arugments for wandb.init, wandb.log and WandbCallback. For
-                `training_data` and and `validation_data` in `WandbCallback`, pass
-                `True` instead of providing a tuple. Default value is None, which
-                means, wandb will not be utilized. For simplest case, just pass
-                an empty dictionary.
+                `training_data` and `validation_data` in `WandbCallback`, pass
+                `True` instead of providing a tuple.
             seed int:
                 random seed for reproducibility. This can be set to None. The seed
                 is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
@@ -174,7 +170,9 @@ class BaseModel(NN, Plots):
                 if not given, new model_path path will not be created.
             verbosity int: default is 1.
                 determines the amount of information being printed. 0 means no
-                print information. Can be between 0 and 3.
+                print information. Can be between 0 and 3. Setting this value to 0
+                will also reqult in not showing some plots such as loss curve or
+                regression plot. These plots will only be saved in self.path.
             accept_additional_args bool:  Default is False
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
@@ -184,7 +182,7 @@ class BaseModel(NN, Plots):
         ---------
         ```python
         >>>from ai4water import Model
-         >>>from ai4water.datasets import arg_beach
+        >>>from ai4water.datasets import arg_beach
         >>>df = arg_beach()
         >>>model = Model(data=df,
         ...              batch_size=16,
@@ -195,26 +193,27 @@ class BaseModel(NN, Plots):
         ```
         """
         if self._go_up:
-            maker = make_model(data,
-                               model=model,
-                               prefix=prefix,
-                               path=path,
-                               verbosity=verbosity,
-                               lr=lr,
-                               optimizer=optimizer,
-                               loss = loss,
-                               quantiles = quantiles,
-                               epochs = epochs,
-                               min_val_loss=min_val_loss,
-                               patience = patience,
-                               save_model = save_model,
-                               metrics = metrics or ['nse'],
-                               val_metric = val_metric,
-                               cross_validator = cross_validator,
-                               accept_additional_args = accept_additional_args,
-                               seed = seed,
-                               wandb_config = wandb_config,
-                               **kwargs)
+            maker = make_model(
+                model=model,
+                prefix=prefix,
+                path=path,
+                verbosity=verbosity,
+                lr=lr,
+                optimizer=optimizer,
+                loss = loss,
+                quantiles = quantiles,
+                epochs = epochs,
+                min_val_loss=min_val_loss,
+                patience = patience,
+                save_model = save_model,
+                metrics = metrics or ['nse'],
+                val_metric = val_metric,
+                cross_validator = cross_validator,
+                accept_additional_args = accept_additional_args,
+                seed = seed,
+                wandb_config = wandb_config,
+                **kwargs
+            )
 
             # data_config, model_config = config['data_config'], config['model_config']
             reset_seed(maker.config['seed'], os, random, np, tf, torch)
@@ -225,19 +224,24 @@ class BaseModel(NN, Plots):
 
             self.dh = DataHandler(data=data, **maker.data_config)
 
+            # if DataHanlder defines input and output features, we must put it back in config
+            # so that it can be accessed as .config['input_features'] etc.
+            maker.config['input_features'] = self.dh.input_features
+            maker.config['output_features'] = self.dh.output_features
+
             NN.__init__(self, config=maker.config)
 
             self.path = maybe_create_path(path=path, prefix=prefix)
             self.verbosity = verbosity
             self.category = self.config['category']
-            self.problem = self.config['problem']
+            self.mode = self.config['mode']
             self.info = {}
 
-            Plots.__init__(self, self.path, self.problem, self.category,
+            Plots.__init__(self, self.path, self.mode, self.category,
                            config=maker.config)
 
     def __getattr__(self, item):
-        # instead of doing model.dh.training
+        """instead of doing model.dh.num_ins do model.num_ins"""
         if item in [
             'data',
             'test_indices', 'train_indices',
@@ -323,7 +327,7 @@ class BaseModel(NN, Plots):
 
     @property
     def ai4w_outputs(self):
-        """alias for keras.MOdel.outputs"""
+        """alias for keras.MOdel.outputs!"""
         if hasattr(self, 'outputs'):
             return self.outputs
         elif hasattr(self._model, 'outputs'):
@@ -331,10 +335,10 @@ class BaseModel(NN, Plots):
         else:
             return None
 
-    def trainable_parameters(self)->int:
+    def trainable_parameters(self) -> int:
         """Calculates trainable parameters in the model
 
-        https://discuss.pytorch.org/t/how-do-i-check-the-number-of-parameters-of-a-model/4325/9
+        for more [see](https://discuss.pytorch.org/t/how-do-i-check-the-number-of-parameters-of-a-model/4325/9)
         """
         if self.config['backend'] == 'pytorch':
             return sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -351,7 +355,7 @@ class BaseModel(NN, Plots):
         if callable(self.config['loss']):
             return self.config['loss']
 
-        if self.config['backend']=='pytorch':
+        if self.config['backend'] == 'pytorch':
             return LOSSES[self.config['loss'].upper()]()
 
         return LOSSES[self.config['loss'].upper()]
@@ -398,21 +402,20 @@ class BaseModel(NN, Plots):
 
     def get_callbacks(self, val_data, callbacks=None):
 
-
         if self.config['backend'] == 'pytorch':
             return self.cbs_for_pytorch(val_data, callbacks)
         else:
             return self.cbs_for_tf(val_data, callbacks)
 
     def cbs_for_pytorch(self, *args, **kwargs):
-        """callbacks for pytorch training."""
+        """Callbacks for pytorch training."""
         return []
 
     def cbs_for_tf(self, val_data, callbacks=None):
 
         if callbacks is None:
             callbacks = {}
-
+        # container to hold all callbacks
         _callbacks = list()
 
         _monitor = 'val_loss' if val_data else 'loss'
@@ -433,10 +436,11 @@ class BaseModel(NN, Plots):
                 mode='min',
                 save_best_only=True))
 
-        _callbacks.append(keras.callbacks.EarlyStopping(
-            monitor=_monitor, min_delta=self.config['min_val_loss'],
-            patience=self.config['patience'], verbose=0, mode='auto'
-        ))
+        if self.config['patience']:
+            _callbacks.append(keras.callbacks.EarlyStopping(
+                monitor=_monitor, min_delta=self.config['min_val_loss'],
+                patience=self.config['patience'], verbose=0, mode='auto'
+            ))
 
         if 'tensorboard' in callbacks:
             tb_kwargs = callbacks['tensorboard']
@@ -464,16 +468,16 @@ class BaseModel(NN, Plots):
                 x = val_data[0]
                 if x is not None:
                     if isinstance(x, np.ndarray):
-                        if x.size>0:
+                        if x.size > 0:
                             validation_data = val_data
                     elif isinstance(x, dict):  # x may be a dictionary
-                        for k,v in x.items():
-                            if v.size>0:
+                        for v in x.values():
+                            if v.size > 0:
                                 validation_data = val_data
                                 break
                     elif isinstance(x, list):
                         for v in x:
-                            if v.size>0:
+                            if v.size > 0:
                                 validation_data = val_data
                                 break
                     else:
@@ -482,8 +486,12 @@ class BaseModel(NN, Plots):
         return validation_data
 
     def DO_fit(self, x, **kwargs):
-        """If nans are present in y, then tf.keras.model.fit is called as it is otherwise it is called with custom
-        train_step and test_step which avoids calculating loss at points containing nans."""
+        """
+        Some preprocessing before calling actual fit
+
+        If nans are present in y, then tf.keras.model.fit is called as it
+        is otherwise it is called with custom train_step and test_step which
+        avoids calculating loss at points containing nans."""
         if kwargs.pop('nans_in_y_exist'):  # todo, for model-subclassing?
             if not isinstance(x, tf.data.Dataset):  # when x is tf.Dataset, we don't have y in kwargs
                 y = kwargs['y']
@@ -505,7 +513,7 @@ class BaseModel(NN, Plots):
                 if np.isnan(out_array).sum() > 0:
                     nans_in_y_exist = True
         elif isinstance(outputs, dict):
-            for out_name, out_array in outputs.items():
+            for out_array in outputs.values():
                 if np.isnan(out_array).sum() > 0:
                     nans_in_y_exist = True
 
@@ -549,21 +557,19 @@ class BaseModel(NN, Plots):
 
         return self.post_fit()
 
-
-    def get_wandb_cb(self, callback, train_data, validation_data)->dict:
+    def get_wandb_cb(self, callback, train_data, validation_data) -> dict:
         """Makes WandbCallback and add it in callback"""
-
         if callback is None:
             callback = {}
 
         self.use_wandb = False
         if wandb is not None:
-            wandb_config:dict = self.config['wandb_config']
+            wandb_config: dict = self.config['wandb_config']
             if wandb_config is not None:
                 self.use_wandb = True
                 wandb.init(name=os.path.basename(self.path),
                            project=wandb_config.get('project', 'keras_with_ai4water'),
-                           notes=wandb_config.get('notes', f"{self.problem} with {self.config['backend']}"),
+                           notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
                            tags=['ai4water', 'keras'],
                            entity=wandb_config.get('entity', 'atherabbas'))
 
@@ -579,25 +585,25 @@ class BaseModel(NN, Plots):
                 if 'validation_data' in wandb_config:
                     add_val_data = wandb_config.pop('validation_data')
 
+                    assert callable(WandbCallback)
+
                     callback['wandb_callback'] = WandbCallback(monitor=monitor,
-                                  training_data=train_data if add_train_data else None,
-                                  validation_data=validation_data if add_val_data else None,
-                                  **wandb_config
-                                  )
+                                                               training_data=train_data if add_train_data else None,
+                                                               validation_data=validation_data if add_val_data else None,
+                                                               **wandb_config
+                                                               )
 
         return callback
 
     def post_fit_wandb(self):
         """does some stuff related to wandb at the end of training."""
-
         if K.BACKEND == 'tensorflow' and self.use_wandb:
-            wandb.finish()
+            getattr(wandb, 'finish')()
 
         return
 
     def post_fit(self):
         """Does some stuff after Keras model.fit has been called"""
-
         if K.BACKEND == 'pytorch':
             history = self.torch_learner.history
 
@@ -631,17 +637,20 @@ class BaseModel(NN, Plots):
     def process_class_results(self,
                               true: np.ndarray,
                               predicted: np.ndarray,
+                              metrics="minimal",
                               prefix=None,
                               index=None,
-                              user_defined_data:bool = False
+                              user_defined_data: bool = False
                               ):
         """post-processes classification results."""
+        from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
 
         if self.is_multiclass:
             pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
             true_labels = [f"true_{i}" for i in range(true.shape[1])]
             fname = os.path.join(self.path, f"{prefix}_prediction.csv")
-            pd.DataFrame(np.concatenate([true, predicted], axis=1), columns=true_labels + pred_labels, index=index).to_csv(fname)
+            pd.DataFrame(np.concatenate([true, predicted], axis=1),
+                         columns=true_labels + pred_labels, index=index).to_csv(fname)
             metrics = ClassificationMetrics(true, predicted, categorical=True)
 
             save_config_file(self.path,
@@ -649,8 +658,8 @@ class BaseModel(NN, Plots):
                              name=f"{prefix}_{dateandtime_now()}.json"
                              )
         else:
-            if predicted.ndim==1:
-                predicted = predicted.reshape(-1,1)
+            if predicted.ndim == 1:
+                predicted = predicted.reshape(-1, 1)
             for idx, _class in enumerate(self.out_cols):
                 _true = true[:, idx]
                 _pred = predicted[:, idx]
@@ -661,7 +670,7 @@ class BaseModel(NN, Plots):
 
                 metrics = ClassificationMetrics(_true, _pred, categorical=False)
                 save_config_file(fpath,
-                                 errors=metrics.calculate_all(),
+                                 errors=getattr(metrics, f"calculate_{metrics}")(),
                                  name=f"{prefix}_{_class}_{dateandtime_now()}.json"
                                  )
 
@@ -675,21 +684,29 @@ class BaseModel(NN, Plots):
             self,
             true: np.ndarray,
             predicted: np.ndarray,
+            metrics="minimal",
             prefix=None,
             index=None,
             remove_nans=True,
-            user_defined_data:bool = False,
+            user_defined_data: bool = False,
             annotate_with="r2",
     ):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len).
         annotate_with : which value to write on regression plot
         """
+        from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+
+        metric_names = {'r2': "$R^2$"}
+
         visualizer = PlotResults(path=self.path)
 
         if user_defined_data:
             # when data is user_defined, we don't know what out_cols, and forecast_len are
-            out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
+            if predicted.ndim == 1:
+                out_cols = ['output']
+            else:
+                out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
             forecast_len = 1
             true, predicted = self.maybe_not_3d_data(true, predicted, forecast_len)
         else:
@@ -704,7 +721,7 @@ class BaseModel(NN, Plots):
 
         for idx, out in enumerate(out_cols):
 
-            horizon_errors = {metric_name:[] for metric_name in ['nse', 'rmse']}
+            horizon_errors = {metric_name: [] for metric_name in ['nse', 'rmse']}
             for h in range(forecast_len):
 
                 errs = dict()
@@ -721,12 +738,14 @@ class BaseModel(NN, Plots):
 
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
-                fname = prefix + out + '_' + str(h) + ".csv"
+                fname = prefix + out + '_' + str(h) + dateandtime_now() + ".csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='index')
 
-                annotation_val = getattr(RegressionMetrics(t,p), annotate_with)()
+                annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
                 visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out,
-                                        annotation_key=annotate_with, annotation_val=annotation_val)
+                                        annotation_key=metric_names.get(annotate_with, annotate_with),
+                                        annotation_val=annotation_val,
+                                        show=self.verbosity)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -734,32 +753,36 @@ class BaseModel(NN, Plots):
                     p = p.values[~nan_idx]
 
                 errors = RegressionMetrics(t, p)
-                errs[out + '_errors_' + str(h)] = errors.calculate_all()
+                errs[out + '_errors_' + str(h)] = getattr(errors, f'calculate_{metrics}')()
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
 
                 save_config_file(fpath, errors=errs, name=prefix)
 
-                [horizon_errors[p].append(getattr(errors, p)()) for p in horizon_errors.keys()]
+                for p in horizon_errors.keys():
+                    horizon_errors[p].append(getattr(errors, p)())
 
-            if forecast_len>1:
+            if forecast_len > 1:
                 visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
         return
 
-    def _wandb_scatter(self, true:np.ndarray, predicted:np.ndarray, name:str)->None:
-        """Adds a scatter plot on wandb"""
+    def _wandb_scatter(self, true: np.ndarray, predicted: np.ndarray, name: str) -> None:
+        """Adds a scatter plot on wandb."""
         data = [[x, y] for (x, y) in zip(true.reshape(-1,), predicted.reshape(-1,))]
         table = wandb.Table(data=data, columns=["true", "predicted"])
         wandb.log({
             "scatter_plot": wandb.plot.scatter(table, "true", "predicted",
-                                                    title=name)
+                                               title=name)
                    })
         return
 
     def build_ml_model(self):
-        """ builds models that follow sklearn api such as xgboost, catboost, lightgbm and obviously sklearn."""
+        """Builds ml models
 
-        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models, **tpot_models}
+        Models that follow sklearn api such as xgboost,
+        catboost, lightgbm and obviously sklearn.
+        """
+        ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
         _model = list(self.config['model'].keys())[0]
         regr_name = _model.upper()
 
@@ -795,20 +818,23 @@ class BaseModel(NN, Plots):
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
         else:
+            from .backend import sklearn, lightgbm, catboost, xgboost
+            version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
+                                             xgboost=xgboost)
             if regr_name in ['TWEEDIEREGRESSOR', 'POISSONREGRESSOR', 'LGBMREGRESSOR', 'LGBMCLASSIFIER',
                              'GAMMAREGRESSOR']:
-                if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
+                if int(version_info['sklearn'].split('.')[1]) < 23:
                     raise ValueError(
-                        f"{regr_name} is available with sklearn version >= 0.23 but you have {VERSION_INFO['sklearn']}")
-            raise ValueError(f"model {regr_name} not found. {VERSION_INFO}")
+                        f"{regr_name} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
+            raise ValueError(f"model {regr_name} not found. {version_info}")
 
         self._model = model
 
         return
 
     def fit(self,
-            data:str = 'training',
-            callbacks:dict=None,
+            data: str = 'training',
+            callbacks: dict = None,
             **kwargs
             ):
         """
@@ -829,7 +855,8 @@ class BaseModel(NN, Plots):
             as backend or anything returned by `fit` method of underlying model.
         """
 
-        assert data in ['training', 'test', 'validation']
+        if isinstance(data, str):
+            assert data in ['training', 'test', 'validation']
 
         return self.call_fit(data=data, callbacks=callbacks, **kwargs)
 
@@ -840,6 +867,15 @@ class BaseModel(NN, Plots):
 
         visualizer = PlotResults(path=self.path)
         self.is_training = True
+
+        if isinstance(data, np.ndarray):  # .fit(x,...)
+            assert 'x' not in kwargs
+            kwargs['x'] = data
+
+        if isinstance(callbacks, np.ndarray):  # .fit(x,y)
+            assert 'y' not in kwargs
+            kwargs['y'] = callbacks
+            callbacks = None
 
         if 'x' not in kwargs:
             train_data = getattr(self, f'{data}_data')()
@@ -860,7 +896,7 @@ class BaseModel(NN, Plots):
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
                 # todo, it is assumed that there is softmax as the last layer
-                elif self.problem == 'classification':
+                elif self.mode == 'classification':
                     # todo, don't know why it is working
                     assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
                             {self.num_classes} while model's output has {model_output_shape[0]} nodes """
@@ -880,7 +916,7 @@ class BaseModel(NN, Plots):
                 kwargs['validation_data'] = val_data
             history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
 
-            visualizer.plot_loss(history.history)
+            visualizer.plot_loss(history.history, show=self.verbosity)
 
             self.load_best_weights()
         else:
@@ -893,7 +929,7 @@ class BaseModel(NN, Plots):
         self.is_training = False
         return history
 
-    def load_best_weights(self)->None:
+    def load_best_weights(self) -> None:
         if self.config['backend'] != 'pytorch':
             # load the best weights so that the best weights can be used during model.predict calls
             best_weights = find_best_weight(os.path.join(self.path, 'weights'))
@@ -901,7 +937,7 @@ class BaseModel(NN, Plots):
                 warnings.warn("best weights could not be found and are not loaded", UserWarning)
             else:
                 self.allow_weight_loading = True
-                self.update_weights(best_weights)
+                self.update_weights(os.path.join(self.w_path, best_weights))
         return
 
     def fit_ml_models(self, inputs, outputs):
@@ -915,24 +951,31 @@ class BaseModel(NN, Plots):
 
         history = self._model.fit(inputs, outputs)
 
+        self._save_ml_model()
+
+        return history
+
+    def _save_ml_model(self):
+        """Saves the non-NN/ML models in the disk."""
         model_name = list(self.config['model'].keys())[0]
-        fname = os.path.join(self.w_path, self.category + '_' + self.problem + '_' + model_name)
+        fname = os.path.join(self.w_path, self.category + '_' + self.mode + '_' + model_name)
 
         if "TPOT" not in model_name.upper():
             joblib.dump(self._model, fname)
 
-        if model_name.lower().startswith("xgb"):
-            self._model.save_model(fname + ".json")
-        return history
+        return
 
-    def cross_val_score(self, scoring:str=None)->float:
+    def cross_val_score(self, scoring: str = None) -> float:
         """computes cross validation score
+
         Arguments:
             scoring : performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
         Note: Currently not working for deep learning models.
 
         """
+        from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
+
         if self.num_outs > 1:
             raise ValueError
 
@@ -972,8 +1015,21 @@ class BaseModel(NN, Plots):
 
             scores.append(val_score)
 
-            if self.verbosity>0:
+            if self.verbosity > 0:
                 print(f'fold: {fold} val_score: {val_score}')
+
+        # save all the scores as json in model path
+        cv_name = str(cross_validator)
+        fname = os.path.join(self.path, f'{cv_name}_{scoring}.json')
+        with open(fname, 'w') as fp:
+            json.dump(scores, fp)
+
+        # set it as class attribute so that it can be used
+        setattr(self, f'cross_val_{scoring}', scores)
+
+        # if we do not run .fit(), then we should still have model saved in the disk
+        # so that it can be used.
+        self._save_ml_model()
 
         return np.mean(scores).item()
 
@@ -983,7 +1039,7 @@ class BaseModel(NN, Plots):
             old_value = self._model.residual_threshold or mad(outputs.reshape(-1, ).tolist())
             if np.isnan(old_value) or old_value < 0.001:
                 self._model.set_params(residual_threshold=0.001)
-                if self.verbosity>0:
+                if self.verbosity > 0:
                     print(f"changing residual_threshold from {old_value} to {self._model.residual_threshold}")
         return
 
@@ -1033,7 +1089,7 @@ class BaseModel(NN, Plots):
             #     else:  # give priority to xy
             #         eval_output = self._evaluate_with_xy(**kwargs)
 
-            #else:
+            # else:
             eval_output = self._evaluate_with_xy(data, **kwargs)
 
         else:
@@ -1079,13 +1135,15 @@ class BaseModel(NN, Plots):
         )
 
     def predict(self,
-                data: str='test',
+                data: str = 'test',
                 x=None,
                 y=None,
                 prefix: str = None,
-                process_results:bool = True,
+                process_results: bool = True,
+                metrics:str = "minimal",
+                return_true:bool = False,
                 **kwargs
-                )->Tuple[np.ndarray, np.ndarray]:
+                ):
         """
         Makes prediction from the trained model.
         Arguments:
@@ -1094,47 +1152,81 @@ class BaseModel(NN, Plots):
             x : if given, it will override `data`
             y : Used for pos-processing etc. if given it will overrite `data`
             process_results : post processing of results
-            prefix : prefix used with names of saved results
+            metrics : only valid if process_results is True. The metrics to calculate.
+                Valid values are 'minimal', 'all', 'hydro_metrics'
+            return_true : whether to return the true values along with predicted values
+                or not. Default is False, so that this method behaves sklearn type.
             kwargs : any keyword argument for `fit` method.
         Returns:
-            a tuple of arrays. The first is true and the second is predicted.
-            If `x` is given but `y` is not given, then, first array which is
-            returned is None.
+            An numpy array of predicted values.
+            If return_true is True then a tuple of arrays. The first is true
+            and the second is predicted. If `x` is given but `y` is not given,
+            then, first array which is returned is None.
         """
-        assert data in ['training', 'test', 'validation']
+        if isinstance(data, str):
+            assert data in ['training', 'test', 'validation']
 
-        return self.call_predict(data=data, x=x, y=y, process_results=process_results, **kwargs)
+        assert metrics in ("minimal", "all", "hydro_metrics")
+
+        return self.call_predict(data=data, x=x, y=y, process_results=process_results,
+                                 metrics=metrics,
+                                 return_true=return_true,
+                                 **kwargs)
 
     def call_predict(self,
                      data='test',
-                     x = None,
-                     y = None,
+                     x=None,
+                     y=None,
                      process_results=True,
+                     metrics="minimal",
+                     return_true:bool = False,
                      **kwargs):
 
-        transformation_key = '5'
+        transformation_key = None
 
-        if x is None:
-            user_defined_data = False
-            prefix = data
-            data = getattr(self, f'{data}_data')(key=transformation_key)
-            inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
-        else:
+        if isinstance(data, np.ndarray):
+            # the predict method is called like .predict(x)
+            inputs = data
             user_defined_data = True
+            true_outputs = None
             prefix = 'x'
-            inputs = x
-            true_outputs = y
+        else:
+            transformation_key = '5'
+
+            if x is None:  # .predict('training')
+                if self.dh.data is None:
+                    raise ValueError("You must specify the data on which to make prediction")
+                user_defined_data = False
+                prefix = data
+                data = getattr(self, f'{data}_data')(key=transformation_key)
+                inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
+            else:  # .predict(x=x,...)
+                user_defined_data = True
+                prefix = 'x'
+                inputs = x
+                true_outputs = y
+
+        if 'verbose' in kwargs:
+            verbosity = kwargs.pop('verbose')
+        else:
+            verbosity = self.verbosity
+
+        batch_size = self.config['batch_size']
+        if 'batch_size' in kwargs:
+            batch_size = kwargs.pop('batch_size')
 
         if self.category == 'DL':
-            predicted = self.predict_fn(x= inputs,
-                                        batch_size = self.config['batch_size'],
-                                        verbose= self.verbosity,
+            predicted = self.predict_fn(x=inputs,
+                                        batch_size=batch_size,
+                                        verbose=verbosity,
                                         **kwargs)
         else:
             predicted = self.predict_ml_models(inputs, **kwargs)
 
         if true_outputs is None:
-            return true_outputs, predicted
+            if return_true:
+                return true_outputs, predicted
+            return predicted
 
         dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
         if not user_defined_data:
@@ -1145,6 +1237,9 @@ class BaseModel(NN, Plots):
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
 
+        if true_outputs is None:
+            process_results = False
+
         if self.quantiles is None:
 
             # it true_outputs and predicted are dictionary of len(1) then just get the values
@@ -1152,12 +1247,18 @@ class BaseModel(NN, Plots):
             predicted = get_values(predicted)
 
             if process_results:
-                if self.problem == 'regression':
-                    self.process_regres_results(true_outputs, predicted, prefix=prefix + '_', index=dt_index,
+                if self.mode == 'regression':
+                    self.process_regres_results(true_outputs, predicted,
+                                                metrics=metrics,
+                                                prefix=prefix + '_', index=dt_index,
                                                 user_defined_data=user_defined_data)
                 else:
-                    self.process_class_results(true_outputs, predicted, prefix=prefix, index=dt_index,
-                                                user_defined_data=user_defined_data)
+                    self.process_class_results(true_outputs,
+                                               predicted,
+                                               metrics=metrics,
+                                               prefix=prefix,
+                                               index=dt_index,
+                                               user_defined_data=user_defined_data)
 
         else:
             assert self.num_outs == 1
@@ -1165,17 +1266,19 @@ class BaseModel(NN, Plots):
             self.plot_quantiles2(true_outputs, predicted)
             self.plot_all_qs(true_outputs, predicted)
 
-        return true_outputs, predicted
+        if return_true:
+            return true_outputs, predicted
+        return predicted
 
     def predict_ml_models(self, inputs, **kwargs):
-        """so that it can be overwritten easily for ML models"""
+        """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
 
     def inverse_transform(self,
-                          true:Union[np.ndarray, dict],
-                          predicted:Union[np.ndarray, dict],
-                          key:str
-                          )->Tuple[np.ndarray, np.ndarray]:
+                          true: Union[np.ndarray, dict],
+                          predicted: Union[np.ndarray, dict],
+                          key: str
+                          ) -> Tuple[np.ndarray, np.ndarray]:
 
         if self.dh.source_is_dict or self.dh.source_is_list:
             true = self.dh.inverse_transform(true, key=key)
@@ -1186,13 +1289,12 @@ class BaseModel(NN, Plots):
 
         else:
             true_shape, pred_shape = true.shape, predicted.shape
-            if isinstance(true, np.ndarray) and self.forecast_len==1 and isinstance(self.num_outs, int):
+            if isinstance(true, np.ndarray) and self.forecast_len == 1 and isinstance(self.num_outs, int):
                 true = pd.DataFrame(true.reshape(len(true), self.num_outs), columns=self.out_cols)
                 predicted = pd.DataFrame(predicted.reshape(len(predicted), self.num_outs), columns=self.out_cols)
 
             true = self.dh.inverse_transform(true, key=key)
             predicted = self.dh.inverse_transform(predicted, key=key)
-
 
             if predicted.__class__.__name__ in ['DataFrame', 'Series']:
                 predicted = predicted.values
@@ -1204,7 +1306,7 @@ class BaseModel(NN, Plots):
 
         return true, predicted
 
-    def plot_model(self, nn_model)->None:
+    def plot_model(self, nn_model) -> None:
         kwargs = {}
         if int(tf.__version__.split('.')[1]) > 14:
             kwargs['dpi'] = 300
@@ -1212,14 +1314,15 @@ class BaseModel(NN, Plots):
         try:
             keras.utils.plot_model(nn_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, **kwargs)
         except (AssertionError, ImportError) as e:
-            print("dot plot of model could not be plotted")
+            print(f"dot plot of model could not be plotted due to {e}")
         return
 
-    def get_opt_args(self)->dict:
-        """ get input arguments for an optimizer.
+    def get_opt_args(self) -> dict:
+        """get input arguments for an optimizer.
 
         It is being explicitly defined here so that it can be overwritten
-        in sub-classes"""
+        in sub-classes
+        """
         kwargs = {'lr': self.config['lr']}
 
         if self.config['backend'] == 'tensorflow' and int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
@@ -1230,7 +1333,7 @@ class BaseModel(NN, Plots):
         return kwargs
 
     def get_metrics(self) -> list:
-        """ returns the performance metrics specified"""
+        """Returns the performance metrics specified."""
         _metrics = self.config['metrics']
 
         metrics = None
@@ -1269,51 +1372,48 @@ class BaseModel(NN, Plots):
         return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
                                self.config['allow_nan_labels'])
 
-    def activations(self,
-                    layer_names:Union[list, str]=None,
-                    x=None,
-                    data:str='training')->dict:
-        """gets the activations of any layer of the Keras Model.
-        Activation here means output of a layer of a deep learning model.
-        Arguments:
-            layer_names : name of list of names of layers whose activations are
-                to be returned.
-            x : If provided, it will override `data`.
-            data : data to use to get activations. Only relevent if `x` is not
-                provided. By default training data is used. Possible values are
-                `training`, `test` or `validation`.
-        Returns:
-            a dictionary whose keys are names of layers and values are weights
-            of those layers as numpy arrays
-        """
-        # if layer names are not specified, this will get get activations of allparameters
-        if x is None:
-            data = getattr(self, f'{data}_data')()
-            x, _ = maybe_three_outputs(data, self.dh.teacher_forcing)
-
-        activations = keract.get_activations(self.dl_model, x, layer_names=layer_names, auto_compile=True)
-
-        return activations
-
-    def view_model(self, **kwargs):
+    def view(self,
+             layer_name=None,
+             data='training',
+             x=None,
+             y=None,
+             examples_to_view=None,
+             show=False
+             ):
         """shows all activations, weights and gradients of the model.
 
         Arguments:
-            kwargs : keyword arguments for specifying the data. These arguments
-                must be same which are used by `fit` method for specifying data.
+            layer_name : the layer to view. If not given, all the layers will be viewed.
+                This argument is only required when the model consists of layers of neural
+                networks.
+            data : the data to use when making calls to model for activation calculation
+                or for gradient calculation. It can either 'training', 'validation' or
+                'test'.
+            x : alternative to data.
+            y : alternative to data
+            examples_to_view : the examples to view.
+            show : whether to show the plot or not!
+
+        Returns:
+            An isntance of ai4water.post_processing.visualize.Visualize class.
         """
+        from ai4water.postprocessing.visualize import Visualize
 
-        if self.category.upper() == "DL":
-            self.plot_act_grads(**kwargs)
-            self.plot_weight_grads(**kwargs)
-            self.plot_layer_outputs(**kwargs)
-            self.plot_weights()
+        visualizer = Visualize(model=self)
 
-        return
+        visualizer(layer_name,
+                   data=data, x=x, y=y,
+                   examples_to_use=examples_to_view,
+                   show=show)
+
+        return visualizer
 
     def interpret(self, **kwargs):
         """
         Interprets the underlying model. Call it after training.
+
+        Returns:
+            An instance of ai4water.post_processing.interpret.Interpret class
 
         Example
         -------
@@ -1322,13 +1422,14 @@ class BaseModel(NN, Plots):
         model.interpret()
         ```
         """
+        # importing ealier will try to import np types as well again
+        from ai4water.postprocessing import Interpret
+
         matplotlib.rcParams.update(matplotlib.rcParamsDefault)
         if 'layers' not in self.config['model']:
 
-            self.plot_treeviz_leaves()
+            if self.mode.lower().startswith("cl"):
 
-            if self.problem.lower().startswith("cl"):
-                self.plot_treeviz_leaves()
                 self.decision_tree(which="sklearn", **kwargs)
 
                 data = self.test_data()
@@ -1337,12 +1438,14 @@ class BaseModel(NN, Plots):
                 self.precision_recall_curve(x=x, y=y)
                 self.roc_curve(x=x, y=y)
 
-            if list(self.config['model'].keys())[0].lower().startswith("xgb"):
-                self.decision_tree(which="xgboost", **kwargs)
+        return Interpret(self)
 
-        Interpret(self)
-
-        return
+    def explain(self, *args, **kwargs):
+        """Calls the ai4water.post_processing.explain.explain_model
+         to explain the model.
+         """
+        from ai4water.postprocessing.explain import explain_model
+        return explain_model(self, *args, **kwargs)
 
     def prepare_batches(self, df: pd.DataFrame, ins, outs):
 
@@ -1403,7 +1506,7 @@ class BaseModel(NN, Plots):
         config['config'] = self.config
         config['method'] = self.method
         config['category'] = self.category
-        config['problem'] = self.problem
+        config['mode'] = self.mode
         config['quantiles'] = self.quantiles
 
         if self.category == "DL":
@@ -1417,7 +1520,7 @@ class BaseModel(NN, Plots):
                     config_path: str,
                     data,
                     make_new_path: bool = False,
-                    **kwargs)->"BaseModel":
+                    **kwargs) -> "BaseModel":
         """
         Loads the model from a config file.
 
@@ -1441,6 +1544,7 @@ class BaseModel(NN, Plots):
     @staticmethod
     def _get_config_and_path(cls, config_path, make_new_path):
         """Sets some attributes of the cls so that it can be built from config.
+
         Also fetches config and path which are used to initiate cls."""
         with open(config_path, 'r') as fp:
             config = json.load(fp)
@@ -1466,23 +1570,29 @@ class BaseModel(NN, Plots):
 
         return config, path
 
-    def update_weights(self, weight_file: str):
+    def update_weights(self, weight_file: str=None):
         """
         Updates the weights of the underlying model.
         Arguments:
-            weight_file str: name of file which contains parameters of model.
+            weight_file str: complete path of weight file. If not given, the
+                weights are updated from model.w_path directory. For neural
+                network based models, the best weights are updated if more
+                than one weight file is present in model.w_path.
         """
-        weight_file_path = os.path.join(self.w_path, weight_file)
+        if weight_file is None:
+            weight_file = find_best_weight(self.w_path)
+            weight_file_path = os.path.join(self.w_path, weight_file)
+        else:
+            assert os.path.isfile(weight_file), f'weight_file must be complete path of weight file'
+            weight_file_path = weight_file
+            weight_file = os.path.basename(weight_file)  # for printing
+
         if not self.allow_weight_loading:
             raise ValueError(f"Weights loading not allowed because allow_weight_loading is {self.allow_weight_loading}"
                              f"and model path is {self.path}")
 
         if self.category == "ML":
-            if list(self.config['model'].keys())[0].lower().startswith("xgb"):
-                self._model.load_model(weight_file_path)
-            else:
-                # for sklearn based models
-                self._model = joblib.load(weight_file_path)
+            self._model = joblib.load(weight_file_path)
         else:
             # loads the weights of keras model from weight file `w_file`.
             if self.api == 'functional' and self.config['backend'] == 'tensorflow':
@@ -1503,11 +1613,19 @@ class BaseModel(NN, Plots):
             h5.close()
         return
 
-    def eda(self, freq=None, cols=None):
+    def eda(self, freq: str = None, cols=None):
         """Performs comprehensive Exploratory Data Analysis.
-        freq: str, if specified, small chunks of data will be plotted instead of whole data at once. The data will NOT
-        be resampled. This is valid only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
-        `monthly`."""
+
+        Arguments:
+            freq : if specified, small chunks of data will be plotted instead of
+                whole data at once. The data will NOT be resampled. This is valid
+                only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
+            cols :
+        `monthly`.
+        """
+        # importing EDA earlier will import numpy etc as well
+        from ai4water.eda import EDA
+
         # todo, Uniform Manifold Approximation and Projection (UMAP) of input data
         if self.data is None:
             print("data is None so eda can not be performed.")
@@ -1525,7 +1643,7 @@ class BaseModel(NN, Plots):
         eda.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
 
         # plot feature-feature correlation as heatmap
-        eda.feature_feature_corr(cols=cols)
+        eda.correlation(cols=cols)
 
         # print stats about input/output data
         eda.stats()
@@ -1545,13 +1663,21 @@ class BaseModel(NN, Plots):
         return
 
     def update_info(self):
-
-        VERSION_INFO.update({'numpy': str(np.__version__),
-                             'pandas': str(pd.__version__),
-                             'matplotlib': str(matplotlib.__version__),
-                             'h5py': h5py.__version__ if h5py is not None else None,
-                            'joblib': joblib.__version__})
-        self.info['version_info'] = VERSION_INFO
+        from .backend import lightgbm, tcn, catboost, xgboost
+        self.info['version_info'] = get_version_info(
+            tf=tf,
+            keras=keras,
+            torch=torch,
+            np=np,
+            pd=pd,
+            matplotlib=matplotlib,
+            h5py=h5py,
+            joblib=joblib,
+            lightgbm=lightgbm,
+            tcn=tcn,
+            catboost=catboost,
+            xgboost=xgboost
+        )
         return
 
     def print_info(self):
@@ -1577,7 +1703,7 @@ class BaseModel(NN, Plots):
         if self.verbosity > 0:
             print('building {} model for {} {} problem using {}'.format(self.category,
                                                                         class_type,
-                                                                        self.problem,
+                                                                        self.mode,
                                                                         model_name))
         return
 

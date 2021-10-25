@@ -2,19 +2,8 @@ mkdocs
 mkdocstrings
 mkdocs-material
 mkdocs-autorefs
-h5py
 matplotlib
-numpy
-scikit-learn
-tensorflow <=2.3.1
-seaborn
+numpy<=1.19.2
+scikit-learn>=0.22, <=0.24.2
 pandas
-optuna
-hyperopt
-plotly
 scikit-optimize
-netCDF4
-imageio
-pyshp
-shapely
-wrapt

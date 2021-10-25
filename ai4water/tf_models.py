@@ -312,6 +312,8 @@ class DualAttentionModel(FModel):
         return self.fetch_data('test', **kwargs)
 
     def interpret(self, data='training', **kwargs):
+        import matplotlib
+        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 
         self.plot_act_along_inputs(f'attn_weight_{self.lookback - 1}_1',
                                    data=data,
@@ -319,18 +321,22 @@ class DualAttentionModel(FModel):
         return
 
     def plot_act_along_inputs(self,
-                              layer_name: str, name: str = None,
+                              layer_name: str,
+                              name: str = None,
                               vmin=None,
                               vmax=None,
-                              data='training'):
+                              data='training',
+                              show=False):
 
         data_name = name or data
 
         assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
 
-        predictions, observations = self.predict(process_results=False, data=data)
+        predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
-        activation = self.activations(layer_names=layer_name, data=data)
+        from ai4water.postprocessing.visualize import Visualize
+
+        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data)
 
         data, _, _ = getattr(self, f'{data}_data')()
         lookback = self.config['lookback']
@@ -355,18 +361,20 @@ class DualAttentionModel(FModel):
 
         data = self.inputs_for_attention(data)
 
-        plot_activations_along_inputs(data=data,
-                                      activations=activation,
-                                      observations=observations,
-                                      predictions=predictions,
-                                      in_cols=self.in_cols,
-                                      out_cols=self.out_cols,
-                                      lookback=lookback,
-                                      name=name,
-                                      path=self.act_path,
-                                      vmin=vmin,
-                                      vmax=vmax
-                                      )
+        plot_activations_along_inputs(
+            data=data,
+            activations=activation,
+            observations=observations,
+            predictions=predictions,
+            in_cols=self.in_cols,
+            out_cols=self.out_cols,
+            lookback=lookback,
+            name=name,
+            path=self.act_path,
+            vmin=vmin,
+            vmax=vmax,
+            show=show
+        )
         return
 
     def plot_act_along_lookback(self, activations, sample=0):

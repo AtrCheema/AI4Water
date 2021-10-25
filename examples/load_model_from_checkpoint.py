@@ -5,7 +5,6 @@ import os
 
 from ai4water import Model
 from ai4water.datasets import arg_beach
-from ai4water.utils.utils import find_best_weight
 
 model = Model(lookback=1,
               epochs=2,
@@ -24,6 +23,5 @@ del model
 cpath = os.path.join(w_path, "config.json") # "provide complete path of config file"
 model = Model.from_config(cpath, data=arg_beach())
 
-w_file = find_best_weight(os.path.join(w_path, "weights"))  # The file name of weights
-model.update_weights(w_file)
-x, y = model.predict()
+model.update_weights()
+y = model.predict()

@@ -8,7 +8,11 @@ import xml.etree.ElementTree as ET
 import re
 import io
 
-import requests
+try:
+    import requests
+except ModuleNotFoundError:
+    requests = None
+
 import pandas as pd
 
 

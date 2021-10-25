@@ -7,8 +7,12 @@ import json
 import signal
 import time
 import hashlib
-import requests
 from contextlib import contextmanager
+
+try:
+    import requests
+except ModuleNotFoundError:
+    requests = None
 
 from .utils import download
 

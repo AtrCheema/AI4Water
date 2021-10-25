@@ -1,7 +1,7 @@
 
 
 **`Transformations`**
-::: ai4water.pre_processing.transformations.Transformations
+::: ai4water.preprocessing.transformations.Transformations
     handler: python
     selection:
         members:
@@ -10,5 +10,15 @@
             - __getattr__
             - transform
             - inverse_transform
+    rendering:
+        show_root_heading: true
+
+::: ai4water.preprocessing.transformations.ScalerWithConfig
+    handler: python
+    rendering:
+        show_root_heading: true
+
+::: ai4water.preprocessing.transformations.FunctionTransformer
+    handler: python
     rendering:
         show_root_heading: true

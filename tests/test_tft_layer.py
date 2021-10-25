@@ -1,8 +1,11 @@
 
-import os
 import unittest
 import site  # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 import tensorflow as tf
 import numpy as np
@@ -10,10 +13,11 @@ import numpy as np
 from ai4water.models.tft_layer import TemporalFusionTransformer
 from ai4water.utils.utils import reset_seed
 
-if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))>=250:
+tf_version = int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))
+if tf_version>=250:
     tf.compat.v1.experimental.output_all_intermediates(True) # todo
 
-if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 260:
+if 230 <= tf_version < 260:
     from ai4water.functional import Model
 
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
@@ -50,11 +54,17 @@ tot_steps = int(params['total_time_steps'])
 x = np.random.random((n, tot_steps, int(params['num_inputs'])))
 y = np.random.random((n, tot_steps - num_encoder_steps, len(quantiles)))
 
+# in tf version 2.1, callbacks must be [] if not defined!
+kwargs = {}
+if tf_version == 210:
+    kwargs['callbacks'] = []  # todo
+
 class Test_TFT(unittest.TestCase):
 
     def test_as_model(self):
         params['total_time_steps'] = 192
         params['future_inputs'] = True
+        params['return_attention_components'] = False
 
         time_dim = params['total_time_steps']
         if params['total_time_steps'] > params['num_encoder_steps']:
@@ -83,7 +93,7 @@ class Test_TFT(unittest.TestCase):
         num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
         self.assertEqual(num_paras, 7411)
 
-        h = model.fit(x, y, validation_split=0.3)
+        h = model.fit(x, y, validation_split=0.3, verbose=0, **kwargs)
 
         # The following test is passing if only one test is run in this file and it fails if multiple tests are run
         # Thus if will fail due to randomness.
@@ -104,12 +114,13 @@ class Test_TFT(unittest.TestCase):
                       input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
                       output_features=['out1', 'out2', 'out3'],
                       verbosity=0)
+
         if model.api == 'functional':
-            h = model._model.fit(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            h = model._model.fit(x=x,y=y, validation_split=0.3, verbose=0)  # TODO, this h['loss'] is different than what we got from other test
             #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         else:
-            h = model.fit_fn(x=x,y=y, validation_split=0.3)  # TODO, this h['loss'] is different than what we got from other test
+            h = model.fit_fn(x=x,y=y, validation_split=0.3, verbose=0, **kwargs)  # TODO, this h['loss'] is different than what we got from other test
             #np.testing.assert_almost_equal(h.history['loss'][0], 0.4319019560303007)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
 
@@ -133,10 +144,10 @@ class Test_TFT(unittest.TestCase):
         x = np.random.random((n,  int(params['total_time_steps']), int(params['num_inputs'])))
         y = np.random.random((n, len(quantiles), 1))
         if model.api == 'functional':
-            model._model.fit(x=x,y=y, validation_split=0.3)
+            model._model.fit(x=x,y=y, validation_split=0.3, verbose=0)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model._model.trainable_variables])
         else:
-            model.fit_fn(x=x,y=y, validation_split=0.3)
+            model.fit_fn(x=x,y=y, validation_split=0.3, verbose=0, **kwargs)
             num_paras = np.sum([np.prod(v.get_shape().as_list()) for v in model.trainable_variables])
         #assert model.forecast_len == 1
         #assert model.forecast_step == 0

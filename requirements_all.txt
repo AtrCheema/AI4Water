@@ -1,16 +1,15 @@
 # this is list of all libraries, if you want to use all features
 tensorflow # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
-numpy>=1.16.5
+numpy>=1.16.5, <=1.19.2
 pandas
 matplotlib
-scikit-learn>=0.22
+scikit-learn>=0.22, <=0.24.2
 scikit-optimize>=0.8.1  # only if you want to use file hyper_opt.py for hyper-parameter optimization
 seaborn
 # pytorch # only if you want to use pytorch-based models
 h5py<2.11.0 # only if you want to save batches
 xgboost
 EMD-signal  # for emd transformation
-see-rnn   # for rnn visualizations
 lightgbm
 catboost
 plotly

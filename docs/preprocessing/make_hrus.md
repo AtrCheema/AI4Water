@@ -1,7 +1,7 @@
 
 
 **`HRU Discretization`**
-::: ai4water.pre_processing.spatial_processing.MakeHRUs
+::: ai4water.preprocessing.spatial_processing.MakeHRUs
     handler: python
     selection:
         members:

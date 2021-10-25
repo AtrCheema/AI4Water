@@ -1,28 +1,32 @@
 # HyperParameter Optimization 
-This modeule is for optimization of hyper-parameters. `HyperOpt` class is used for 
-optimizing hyperparameters, while space of hyperparameters can be defined by 
+This module is for optimization of hyper-parameters. The `HyperOpt` class performs 
+optimization by minimizing the objective which is defined by a user defined
+objective function, while space of hyperparameters can be defined by 
 using `Categorical`, `Integer` and `Real` classes.
 
+For tutorial on using this class, see 
+[this](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb) notebook
+
 **`Categorical`**
-::: ai4water.hyper_opt.utils.Categorical 
+::: ai4water.hyperopt.utils.Categorical 
     rendering:
         show_root_heading: true
 
 
 **`Real`**
-::: ai4water.hyper_opt.utils.Real 
+::: ai4water.hyperopt.utils.Real 
     rendering:
         show_root_heading: true
 
 
 **`Integer`**
-::: ai4water.hyper_opt.utils.Integer 
+::: ai4water.hyperopt.utils.Integer 
     rendering:
         show_root_heading: true
 
 
 **`HyperOpt`**
-::: ai4water.hyper_opt.hyper_opt.HyperOpt 
+::: ai4water.hyperopt.hyper_opt.HyperOpt 
     handler: python
     rendering:
         show_root_heading: true
@@ -35,7 +39,3 @@ using `Categorical`, `Integer` and `Real` classes.
             - skopt_sapce
             - hp_space
             - optuna_study
-
- 
- 
-For tutorial on using this class, see [this](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb) notebook

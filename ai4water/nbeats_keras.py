@@ -16,46 +16,63 @@ class NBeats(keras.layers.Layer):
     TREND_BLOCK = 'trend'
     SEASONALITY_BLOCK = 'seasonality'
 
-    def __init__(self,
-                 input_dim=1,
-                 exo_dim=0,
-                 backcast_length=10,
-                 forecast_length=2,
-                 stack_types=(TREND_BLOCK, SEASONALITY_BLOCK),
-                 nb_blocks_per_stack=3,
-                 thetas_dim=(4, 8),
-                 share_weights_in_stack=False,
-                 hidden_layer_units=256,
-                 nb_harmonics=None,
-                 **kwargs
-                 ):
+    def __init__(
+            self,
+            units:int=256,
+            lookback:int=10,
+            forecast_length:int=2,
+            stack_types=(TREND_BLOCK, SEASONALITY_BLOCK),
+            nb_blocks_per_stack=3,
+            thetas_dim=(4, 8),
+            share_weights_in_stack=False,
+            nb_harmonics=None,
+            num_inputs=1,
+            num_exo_inputs=0,
+            **kwargs
+    ):
+
+        if num_inputs != 1:
+            raise NotImplementedError
 
         self.stack_types = stack_types
         self.nb_blocks_per_stack = nb_blocks_per_stack
         self.thetas_dim = thetas_dim
-        self.units = hidden_layer_units
+        self.units = units
         self.share_weights_in_stack = share_weights_in_stack
-        self.backcast_length = backcast_length
+        self.backcast_length = lookback
         self.forecast_length = forecast_length
-        self.input_dim = input_dim
-        self.exo_dim = exo_dim
+        self.input_dim = num_inputs
+        self.exo_dim = num_exo_inputs
         self.exo_shape = (self.backcast_length, self.exo_dim)
         self._weights = {}
         self.nb_harmonics = nb_harmonics
         assert len(self.stack_types) == len(self.thetas_dim)
         super().__init__(**kwargs)
 
-    def __call__(self, prev_inputs,  *args, **kwargs):
+    def __call__(self, inputs,  *args, **kwargs):
+        """The first num_inputs from inputs will be considered as the same feature
+        which is being predicted. Since the ai4water, by default does nowcasting
+        instead of forecasting, and NBeats using the target/ground truth as input,
+        using NBeats for nowcasting does not make sense.
 
-        x = prev_inputs
-        e = kwargs['exo_inputs'] if self.has_exog() else None
+        For example in case, the inputs is of shape (100, 5, 3), then
+        inputs consists of three inputs and we consider the first
+        input as target feature and other two as exogenous features.
+        """
+        e_ = {}
+
+        if self.has_exog():
+            x = inputs[..., 0:self.input_dim]
+            e = inputs[..., self.input_dim:]
+
+            for k in range(self.exo_dim):
+                e_[k] = Lambda(lambda z: z[..., k])(e)
+        else:
+            x = inputs
+
         x_ = {}
         for k in range(self.input_dim):
             x_[k] = Lambda(lambda z: z[..., k])(x)
-        e_ = {}
-        if self.has_exog():
-            for k in range(self.exo_dim):
-                e_[k] = Lambda(lambda z: z[..., k])(e)
 
         y_ = {}
 

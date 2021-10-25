@@ -138,7 +138,7 @@ class Model(BaseModel):
             shape.append(d)
         return shape
 
-    def add_layers(self, layers_config:dict, inputs=None):
+    def add_layers(self, layers_config: dict, inputs=None):
         """
         Builds the NN from dictionary.
         Arguments:
@@ -186,7 +186,6 @@ class Model(BaseModel):
                 self.config['model']['layers'] = update_layers_config(layers_config, lyr)
                 lyr = lyr.__name__
 
-
             lyr_config, lyr_inputs, named_outs, call_args = self.deconstruct_lyr_args(lyr, lyr_args)
 
             if callable(lyr) and not hasattr(lyr, '__call__'):
@@ -196,10 +195,11 @@ class Model(BaseModel):
 
             # may be user has defined layers without input layer, in this case add Input layer as first layer
             if first_layer:
-                if inputs is not None: # This method was called by providing it inputs.
+                if inputs is not None:  # This method was called by providing it inputs.
                     assert isinstance(inputs, tf.Tensor)
                     lyr_cache["INPUT"] = inputs
-                    first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
+                    # since inputs have been defined, all the layers that will be added will be next to first layer
+                    first_layer = False
                     layer_outputs = inputs
                     assign_dummy_name(layer_outputs, 'input')
                 elif lyr_name.upper() != "INPUT":
@@ -233,7 +233,7 @@ class Model(BaseModel):
                         wrp_layer = LAYERS[lyr_name.upper()]
                         lyr_cache[lyr_name] = wrp_layer
                         continue
-                    elif  "LAMBDA" in lyr_name.upper():
+                    elif "LAMBDA" in lyr_name.upper():
                         # lyr_config is serialized lambda layer, which needs to be deserialized
                         # by default the lambda layer takes the previous output as input
                         # however when `call_args` are provided, they overwrite the layer_outputs
@@ -289,7 +289,9 @@ class Model(BaseModel):
 
                 if isinstance(named_outs, list):
                     # this layer is returning more than one output
-                    assert len(named_outs) == len(layer_outputs), "Layer {} is expected to return {} outputs but it actually returns {}".format(lyr_name, named_outs, layer_outputs)
+                    assert len(named_outs) == len(layer_outputs), "Layer {} is expected to return {} " \
+                                                                  "outputs but it actually returns " \
+                                                                  "{}".format(lyr_name, named_outs, layer_outputs)
                     for idx, out_name in enumerate(named_outs):
                         self.update_cache(lyr_cache, out_name, layer_outputs[idx])
                 else:
@@ -359,7 +361,8 @@ class Model(BaseModel):
             if self.verbosity > 0 and self.config['model'] is not None:
                 if 'tcn' in self.config['model']['layers']:
                     if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) >= 250:
-                        setattr(self._model, '_layers', self._model.layers)  # tf >= 2.5 does not have _layers and tcn uses _layers
+                        # tf >= 2.5 does not have _layers and tcn uses _layers
+                        setattr(self._model, '_layers', self._model.layers)
                     tcn.tcn_full_summary(self._model, expand_residual_blocks=True)
         else:
             self.build_ml_model()

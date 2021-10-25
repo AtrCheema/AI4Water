@@ -2,10 +2,17 @@ import os
 import time
 import pickle
 import unittest
-import site   # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
+import warnings
+warnings.filterwarnings("ignore")
+
 
 import skopt
+import optuna
 import sklearn
 import numpy as np
 from sklearn.svm import SVC
@@ -18,12 +25,13 @@ from sklearn.model_selection import train_test_split
 
 np.random.seed(313)
 
+optuna.logging.set_verbosity(optuna.logging.ERROR)
 
 from ai4water.tf_attributes import tf
 from ai4water.utils.utils import Jsonize
-from ai4water.datasets import load_u1
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
-from ai4water.hyper_opt import HyperOpt, Real, Categorical, Integer
+from ai4water.datasets import arg_beach
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -34,9 +42,9 @@ if tf is not None:
 
 
 
-data = load_u1()
+data = arg_beach()
 inputs = list(data.columns)[0:-1]
-outputs = ['target']
+outputs = [list(data.columns)[-1]]
 
 
 def check_attrs(optimizer, paras, ai4water_args=None):
@@ -45,7 +53,8 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     assert isinstance(space, dict)
     assert len(space)==paras
     assert isinstance(optimizer.xy_of_iterations(), dict)
-    assert len(optimizer.xy_of_iterations()) >= optimizer.num_iterations, f'{len(optimizer.xy_of_iterations())}'
+    assert len(optimizer.xy_of_iterations()) >= optimizer.num_iterations, f"""
+            {len(optimizer.xy_of_iterations())}, {optimizer.num_iterations}"""
     assert isinstance(optimizer.best_paras(as_list=True), list)
     assert isinstance(optimizer.best_paras(False), dict)
     assert len(optimizer.func_vals()) >= optimizer.num_iterations
@@ -56,9 +65,10 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     fpath = os.path.join(optimizer.opt_path, 'serialized.json')
     assert os.path.exists(fpath)
 
+    return
+
 def run_ai4water(method):
-    dims = {'n_estimators': [1000,  2000],
-            'max_depth': [3,  6],
+    dims = {'n_estimators': [10,  20],
             'learning_rate': [0.1,  0.0005],
             'booster': ["gbtree", "dart"]}
 
@@ -67,6 +77,7 @@ def run_ai4water(method):
                    "lookback": 1,
                    "batches": "2d",
                    "val_data": "same",
+                     "val_fraction": 0.0,
                    "test_fraction": 0.3,
                    "model": {"xgboostregressor": {}},
                    "transformation": None
@@ -80,14 +91,15 @@ def run_ai4water(method):
                    n_calls=12,
                    n_iter=12,
                    # acq_optimizer='auto',
-                   x0=[1000, 3, 0.01, "gbtree"],
+                   x0=[10, 0.01, "gbtree"],
                    n_random_starts=3,  # the number of random initialization points
-                   random_state=2
+                   random_state=2,
+                   verbosity=0
                    )
 
     # executes bayesian optimization
     opt.fit()
-    check_attrs(opt, 4, ai4water_args)
+    check_attrs(opt, len(dims), ai4water_args)
     return
 
 
@@ -105,24 +117,25 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
 
         model.fit()
 
-        t, p = model.predict()
+        t, p = model.predict(return_true=True, process_results=False)
         mse = RegressionMetrics(t, p).mse()
 
         return mse
 
     search_space = [
         Categorical(['gbtree', 'dart'], name='booster'),
-        Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
+        Integer(low=10, high=20, name='n_estimators', num_samples=num_samples),
         Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
     ]
 
     optimizer = HyperOpt(algorithm, objective_fn=fn, param_space=search_space,
                          backend=backend,
                          num_iterations=num_iterations,
+                         verbosity=0,
                          opt_path=os.path.join(os.getcwd(), f'results\\test_{algorithm}_xgboost_{backend}'))
 
     optimizer.fit()
-    check_attrs(optimizer, 3)
+    check_attrs(optimizer, len(search_space))
 
     for f in ["fanova_importance.html", "convergence.png", "iterations.json", "iterations_sorted.json"]:
         fpath = os.path.join(optimizer.opt_path, f)
@@ -175,12 +188,14 @@ class TestHyperOpt(unittest.TestCase):
         distributions1 = dict(C=uniform(loc=0, scale=4),
                              penalty=['l2', 'l1'])
 
-        clf = HyperOpt('random', objective_fn=logistic, param_space=distributions1, random_state=0)
+        clf = HyperOpt('random', objective_fn=logistic, param_space=distributions1,
+                       random_state=0,
+                       verbosity=0)
 
         search = clf.fit(iris.data, iris.target)
         np.testing.assert_almost_equal(search.best_params_['C'], 2.195254015709299, 5)
         assert search.best_params_['penalty'] == 'l1'
-        print("RandomizeSearchCV test passed")
+        #print("RandomizeSearchCV test passed")
         return clf
 
 
@@ -190,14 +205,14 @@ class TestHyperOpt(unittest.TestCase):
         iris = load_iris()
         parameters = {'kernel': ('linear', 'rbf'), 'C': [1, 10]}
         svc = SVC()
-        clf = HyperOpt("grid", objective_fn=svc, param_space=parameters)
+        clf = HyperOpt("grid", objective_fn=svc, param_space=parameters, verbosity=0)
         search = clf.fit(iris.data, iris.target)
 
         sorted(clf.cv_results_.keys())
 
         assert search.best_params_['C'] == 1
         assert search.best_params_['kernel'] == 'linear'
-        print("GridSearchCV test passed")
+        #print("GridSearchCV test passed")
         return clf
 
     def test_bayes(self):
@@ -217,7 +232,8 @@ class TestHyperOpt(unittest.TestCase):
                 'kernel': Categorical(['linear', 'poly', 'rbf']),
                 },
                 n_iter=32,
-                random_state=0
+                random_state=0,
+                           verbosity=0
             )
 
             # executes bayesian optimization
@@ -225,7 +241,7 @@ class TestHyperOpt(unittest.TestCase):
 
             # model can be saved, used for predictions or scoring
             np.testing.assert_almost_equal(0.9736842105263158, opt.score(X_test, y_test), 5)
-        print("BayesSearchCV test passed")
+        #("BayesSearchCV test passed")
         return
 
     def test_gpmin_skopt(self):
@@ -240,7 +256,8 @@ class TestHyperOpt(unittest.TestCase):
                        n_calls=15,  # the number of evaluations of f
                        n_random_starts=5,  # the number of random initialization points
                        noise=0.1 ** 2,  # the noise level (optional)
-                       random_state=1234
+                       random_state=1234,
+                       verbosity=0
                        )
 
         # executes bayesian optimization
@@ -261,7 +278,8 @@ class TestHyperOpt(unittest.TestCase):
         opt = HyperOpt("grid",
                        objective_fn=f,
                        param_space=[Real(low=-2.0, high=2.0, num_samples=20)],
-                       n_calls=15,  # the number of evaluations of f
+                       n_calls=15,  # the number of evaluations of f,
+                       verbosity=0
                        )
 
         # executes bayesian optimization
@@ -270,8 +288,7 @@ class TestHyperOpt(unittest.TestCase):
         return
 
     def test_named_custom_bayes(self):
-        dims = [Integer(low=1000, high=2000, name='n_estimators'),
-                Integer(low=3, high=6, name='max_depth'),
+        dims = [Integer(low=10, high=20, name='n_estimators'),
                 Real(low=1e-5, high=0.1, name='learning_rate'),
                 Categorical(categories=["gbtree", "dart"], name="booster")
                 ]
@@ -289,6 +306,7 @@ class TestHyperOpt(unittest.TestCase):
                 batches="2d",
                 val_data="same",
                 test_fraction=0.3,
+                val_fraction=0.0,
                 model={"xgboostregressor": kwargs},
                 transformation=None,
                 data=data,
@@ -298,9 +316,9 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit()
 
-            t, p = model.predict()
+            t, p = model.predict(return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()
-            print(f"Validation mse {mse}")
+            #print(f"Validation mse {mse}")
 
             return mse
 
@@ -310,18 +328,19 @@ class TestHyperOpt(unittest.TestCase):
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
                        # acq_optimizer='auto',
-                       x0=[1000, 3, 0.01, "gbtree"],
+                       x0=[10, 0.01, "gbtree"],
                        n_random_starts=3,  # the number of random initialization points
-                       random_state=2
+                       random_state=2,
+                       verbosity=0
                        )
 
         opt.fit()
-        check_attrs(opt, 4)
+        check_attrs(opt, len(dims))
         return
 
     def test_ai4water_bayes(self):
-        dims = [Integer(low=1000, high=2000, name='n_estimators'),
-                Integer(low=3, high=6, name='max_depth'),
+        dims = [Integer(low=10, high=20, name='n_estimators'),
+                #Integer(low=3, high=6, name='max_depth'),
                 Real(low=1e-5, high=0.1, name='learning_rate'),
                 Categorical(categories=["gbtree", "dart"], name="booster")
                 ]
@@ -332,6 +351,7 @@ class TestHyperOpt(unittest.TestCase):
                        "batches": "2d",
                        "val_data": "same",
                        "test_fraction": 0.3,
+                         "val_fraction": 0.0,
                        "model": {"xgboostregressor": {}},
                        #"ml_model_args": {'objective': 'reg:squarederror'}, TODO
                        "transformation": None
@@ -344,22 +364,23 @@ class TestHyperOpt(unittest.TestCase):
                        acq_func='EI',  # Expected Improvement.
                        n_calls=12,
                        # acq_optimizer='auto',
-                       x0=[1000, 3, 0.01, "gbtree"],
+                       x0=[10, 0.01, "gbtree"],
                        n_random_starts=3,  # the number of random initialization points
-                       random_state=2
+                       random_state=2,
+                       verbosity=0
                        )
 
         opt.fit()
-        check_attrs(opt, 4, ai4water_args)
+        check_attrs(opt, len(dims), ai4water_args)
         return
 
     def test_ai4water_grid(self):
         run_ai4water("grid")
-        print("ai4water for grid passing")
+        return
 
     def test_ai4water_random(self):
         run_ai4water("random")
-        print("ai4water for random passing")
+
         return
 
     def test_hyperopt_basic(self):
@@ -380,7 +401,9 @@ class TestHyperOpt(unittest.TestCase):
                              objective_fn=objective,
                              param_space=hp.uniform('x', -10, 10),
                              backend='hyperopt',
-                             max_evals=100)
+                             max_evals=100,
+                             verbosity=0
+                             )
         best = optimizer.fit()
         check_attrs(optimizer, 1)
         self.assertGreater(len(best), 0)
@@ -398,7 +421,9 @@ class TestHyperOpt(unittest.TestCase):
         }
 
         optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt',
-                             max_evals=100)
+                             max_evals=100,
+                             verbosity=0
+                             )
         best = optimizer.fit()
         check_attrs(optimizer, 2)
         self.assertEqual(len(best), 2)
@@ -420,11 +445,6 @@ class TestHyperOpt(unittest.TestCase):
     # #         'x2': hp.randint('x2', -5, 5)
     # #     }
     # #
-    # #     optimizer = HyperOpt('tpe', objective_fn=f, param_space=search_space, use_named_args=True,
-    # #                          backend='hyperopt', max_evals=100)
-    # #     best = optimizer.fit()
-    # #     self.assertEqual(len(best), 2)
-    #
     def test_ai4waterModel_with_hyperopt(self):
         """"""
         def fn(**suggestion):
@@ -440,19 +460,20 @@ class TestHyperOpt(unittest.TestCase):
 
             model.fit()
 
-            t, p = model.predict()
+            t, p = model.predict(return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()
-            print(f"Validation mse {mse}")
+            #print(f"Validation mse {mse}")
 
             return mse
 
         search_space = {
             'booster': hp.choice('booster', ['gbtree', 'dart']),
-            'n_estimators': hp.randint('n_estimators', low=1000, high=2000),
+            'n_estimators': hp.randint('n_estimators', low=10, high=20),
             'learning_rate': hp.uniform('learning_rate', low=1e-5, high=0.1)
         }
         optimizer = HyperOpt('tpe', objective_fn=fn, param_space=search_space, max_evals=5,
                              backend='hyperopt',
+                             verbosity=0,
                              opt_path=os.path.join(os.getcwd(), 'results', 'test_tpe_xgboost'))
 
         optimizer.fit()
@@ -466,45 +487,49 @@ class TestHyperOpt(unittest.TestCase):
         successfully.
         """
         ai4water_args = {'model': 'XGBoostRegressor',
-                                     'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-                                     'output_features': ['target']
+                         'input_features': inputs,
+                         'output_features': outputs
                                      }
         opt = HyperOpt("tpe",
-                       param_space=[Integer(low=1000, high=2000, name='n_estimators', num_samples=5),
+                       param_space=[Integer(low=10, high=20, name='n_estimators', num_samples=5),
                                     Integer(low=3, high=6, name='max_depth', num_samples=5),
-                                    Categorical(['gbtree', 'gblinear', 'dart'], name='booster')
+                                    Categorical(['gbtree',  'dart'], name='booster')
                                     ],
                        ai4water_args =ai4water_args,
                        data =data,
                        backend='hyperopt',
-                       num_iterations =5
+                       num_iterations =5,
+                       verbosity=0
                        )
         opt.fit()
         check_attrs(opt, 3, ai4water_args)
         assert isinstance(list(opt.best_paras().values())[-1], str)
+        return
 
     def test_hp_to_skopt_space1(self):
         """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
         successfully.
         """
         ai4water_args = {'model': 'XGBoostRegressor',
-                                     'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-                                     'output_features': ['target']
+                         'input_features': inputs,
+                         'output_features': outputs
                                      }
         opt = HyperOpt("tpe",
-                       param_space=[hp.randint('n_estimators', low=1000, high=2000),  # todo
-                                    hp.randint('max_depth', low=3, high=6),
-                                    hp.choice('booster', ['gbtree', 'gblinear', 'dart']),
+                       param_space=[hp.randint('n_estimators', low=10, high=20),  # todo
+                                    hp.randint('max_depth', low=3, high=5),
+                                    hp.choice('booster', ['gbtree',  'dart']),
                                     ],
 
                        ai4water_args =ai4water_args,
                        data =data,
                        backend='hyperopt',
-                       num_iterations =5
+                       num_iterations =5,
+                       verbosity=0
                        )
         opt.fit()
         check_attrs(opt, 3, ai4water_args)
         assert isinstance(list(opt.best_paras().values())[-1], str)
+        return
 
     def test_unified_interface(self):
 
@@ -518,6 +543,7 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('bayes', 'skopt', 12)
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
+        return
 
 
 if __name__ == "__main__":

@@ -1,7 +1,10 @@
-import os
 import unittest
-import site   # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 from ai4water.tf_attributes import tf
 
@@ -30,7 +33,7 @@ df_class = pd.DataFrame(np.concatenate([data_class['data'], data_class['target']
 
 def run_class_test(method):
 
-    problem = "classification" if method.lower().startswith("class") else "regression"
+    mode = "classification" if "class" in method.lower() else "regression"
 
     if method not in ["STACKINGREGRESSOR", "VOTINGREGRESSOR",  "LOGISTICREGRESSIONCV", # has convergence issues
                       "RIDGE_REGRESSION", "MULTIOUTPUTREGRESSOR", "REGRESSORCHAIN", "REGRESSORMIXIN",
@@ -48,12 +51,12 @@ def run_class_test(method):
         print(f"testing {method}")
 
         model = Model(
-            input_features=data_reg['feature_names'] if problem=="regression" else data_class['feature_names'],
+            input_features=data_reg['feature_names'] if mode=="regression" else data_class['feature_names'].tolist(),
             output_features=['target'],
             val_fraction=0.2,
-            problem=problem,
+            mode=mode,
             transformation=None,
-            data=df_reg if problem=="regression" else data_class,
+            data=df_reg if mode=="regression" else df_class,
             model={method: kwargs},
             verbosity=0)
 
@@ -341,28 +344,6 @@ class TestMLMethods(unittest.TestCase):
         run_class_test("HISTGRADIENTBOOSTINGREGRESSOR")
         return
 
-    def test_tpot_TPOTRegressor(self):
-        do_test = True
-        try:
-            import tpot
-        except ImportError:
-            do_test = False
-
-        if do_test:
-            run_class_test("TPOTRegressor")
-        return
-
-    def test_tpot_TPOTCLASSIFIER(self):
-        do_test = True
-        try:
-            import tpot
-        except ImportError:
-            do_test = False
-
-        if do_test:
-            run_class_test("TPOTCLASSIFIER")
-        return
-
     def test_ml_random_indices(self):
 
         model = Model(
@@ -374,7 +355,7 @@ class TestMLMethods(unittest.TestCase):
             val_data="same",
             test_fraction=0.3,
             category="ML",
-            problem="regression",
+            mode="regression",
             model={"xgboostregressor": {}},
             transformation=None,
             data=df_reg,
@@ -382,8 +363,8 @@ class TestMLMethods(unittest.TestCase):
             verbosity=0)
 
         model.fit()
-        trtt, trp = model.predict(data='training')
-        t, p = model.predict()
+        trtt, trp = model.predict(data='training', return_true=True)
+        t, p = model.predict(return_true=True)
         self.assertGreater(len(t), 1)
         self.assertGreater(len(trtt), 1)
         return

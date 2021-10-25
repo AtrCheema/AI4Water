@@ -1,11 +1,17 @@
-import os
 import unittest
-import site   # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
+import warnings
+warnings.filterwarnings("ignore")
 
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
-from ai4water.datasets import arg_beach, load_u1
-from ai4water.hyper_opt import Categorical, Integer, Real
+from ai4water.datasets import arg_beach
+from ai4water.hyperopt import Categorical, Integer, Real
+from ai4water.utils.utils import dateandtime_now
 
 
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp12_mm',
@@ -21,20 +27,21 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(
             data=df, input_features=input_features, output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features}
+            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features},
+            verbosity=0
         )
         exclude = []
 
         comparisons.fit(run_type="dry_run", exclude=exclude)
-        comparisons.compare_errors('r2')
-        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01)
+        comparisons.compare_errors('r2', show=False)
+        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01, show=False)
         self.assertGreater(len(best_models), 1), len(best_models)
         return
 
     def test_optimize(self):
         best_models = ['GaussianProcessRegressor',
-                       'HistGradientBoostingRegressor',
-                       'ADABoostRegressor',
+                       #'HistGradientBoostingRegressor',
+                       #'ADABoostRegressor',
                        #'RadiusNeighborsRegressor',  # todo error when using radusneighborsregressor
                        'XGBoostRFRegressor'
             ]
@@ -43,11 +50,34 @@ class TestExperiments(unittest.TestCase):
             data=df,
             input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
-            exp_name="BestMLModels")
+            exp_name="BestMLModels",
+        verbosity=0)
         comparisons.num_samples = 2
-        comparisons.fit(run_type="optimize", opt_method="random", include=best_models, post_optimize='train_best')
-        comparisons.compare_errors('r2')
-        comparisons.taylor_plot()
+        comparisons.fit(run_type="optimize", opt_method="random",
+                        num_iterations=4,
+                        include=best_models, post_optimize='train_best')
+        comparisons.compare_errors('r2', show=False)
+        comparisons.taylor_plot(show=False)
+        return
+
+    def test_cross_val(self):
+
+        comparisons = MLRegressionExperiments(
+            data=df,
+            input_features=input_features, output_features=outputs,
+            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
+            cross_validator = {"KFold": {"n_splits": 5}},
+            exp_name="MLRegrCrossVal",
+        verbosity=0)
+        comparisons.fit(cross_validate=True, include=['GaussianProcessRegressor',
+                       'HistGradientBoostingRegressor',
+                       'XGBoostRFRegressor'])
+        comparisons.compare_errors('r2', show=False)
+        comparisons.taylor_plot(show=False)
+        comparisons.plot_cv_scores(show=False)
+        comparisons.taylor_plot(show=False, include=['GaussianProcessRegressor', 'XGBoostRFRegressor'])
+        comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor', 'XGBoostRFRegressor'])
+        return
 
     def test_from_config(self):
 
@@ -56,7 +86,8 @@ class TestExperiments(unittest.TestCase):
             input_features=input_features,
             output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'features': input_features, 'imputer_args': {'strategy': 'mean'}},
-            exp_name="BestMLModels")
+            exp_name=f"BestMLModels_{dateandtime_now()}",
+        verbosity=0)
         exp.fit(run_type="dry_run",
                 include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor'],
@@ -66,6 +97,8 @@ class TestExperiments(unittest.TestCase):
 
         self.assertEqual(exp2.exp_name, exp.exp_name)
         self.assertEqual(exp2.exp_path, exp.exp_path)
+
+        return
 
     def test_transformation_experiments(self):
 
@@ -86,9 +119,7 @@ class TestExperiments(unittest.TestCase):
                     'lr': float(kwargs['lr']),
                     'transformation': kwargs['transformation']
                 }
-        data = load_u1()
-        inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-        outputs = ['target']
+
         cases = {'model_minmax': {'transformation': 'minmax'},
                  'model_zscore': {'transformation': 'zscore'}}
         search_space = [
@@ -99,16 +130,44 @@ class TestExperiments(unittest.TestCase):
             Categorical(categories=['relu', 'elu'], name='dense_actfn'),
         ]
 
-        x0 = [20, 14, 12, 0.00029613, 'relu']
-        experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
+        x0 = [4, 5, 32, 0.00029613, 'relu']
+        experiment = MyTransformationExperiments(cases=cases,
+                                                 input_features=input_features,
                                                  output_features = outputs,
-                                                 data = data,
+                                                 data = df,
                                                  param_space=search_space,
                                                  x0=x0,
                                                  verbosity=0,
-                                                 exp_name = "testing")
+                                                 exp_name = f"testing_{dateandtime_now()}")
         experiment.num_samples = 2
-        experiment.fit('optimize', opt_method='random', )
+        experiment.fit('optimize', opt_method='random', num_iterations=2)
+        return
+
+    def test_fit_with_tpot(self):
+        exp = MLRegressionExperiments(data=arg_beach(),
+                                      exp_name=f"tpot_{dateandtime_now()}",
+                                      verbosity=0)
+
+        exp.fit(include=[
+            "XGBoostRegressor",
+            "LGBMRegressor",
+            "RandomForestRegressor",
+            "GradientBoostingRegressor"])
+
+        exp.fit_with_tpot(2, generations=1, population_size=1)
+        return
+
+    def test_fit_with_tpot1(self):
+
+        exp = MLRegressionExperiments(data=arg_beach(),
+                                      exp_name=f"tpot_{dateandtime_now()}",
+                                      verbosity=0)
+
+        exp.fit_with_tpot(["LGBMRegressor",
+                           "RandomForestRegressor"],
+                          generations=1, population_size=1)
+        return
+
 
 if __name__=="__main__":
     unittest.main()

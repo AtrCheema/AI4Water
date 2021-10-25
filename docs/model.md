@@ -8,12 +8,13 @@
             - evaluate
             - predict
             - interpret
-            - view_model
+            - view
             - eda
             - from_config
             - update_weights
             - activations
             - cross_val_score
+            - explain
     rendering:
         show_root_heading: true
 
@@ -37,5 +38,6 @@
         members:
             - __init__
             - add_layers
+            - from_config
     rendering:
         show_root_heading: true

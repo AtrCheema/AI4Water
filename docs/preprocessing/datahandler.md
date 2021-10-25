@@ -1,5 +1,5 @@
 **`DataHanlder`**
-::: ai4water.pre_processing.DataHandler
+::: ai4water.preprocessing.DataHandler
     handler: python
     selection:
         members:
@@ -18,7 +18,7 @@
         show_root_heading: true
 
 **`SiteDistributedDataHandler`**
-::: ai4water.pre_processing.SiteDistributedDataHandler
+::: ai4water.preprocessing.SiteDistributedDataHandler
     handler: python
     selection:
         members:

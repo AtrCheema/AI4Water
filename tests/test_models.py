@@ -1,8 +1,11 @@
-import os
 import time
 import unittest
-import site  # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 import numpy as np
 import pandas as pd
@@ -111,6 +114,7 @@ def build_and_run(outputs, transformation=None, indices=None):
 class test_MultiInputModels(unittest.TestCase):
 
     def test_with_no_transformation(self):
+        time.sleep(1)
         outputs = {"inp_1d": ['flow']}
         build_and_run(outputs, transformation=None)
         return
@@ -122,6 +126,7 @@ class test_MultiInputModels(unittest.TestCase):
         return
 
     def test_with_random_sampling(self):
+        time.sleep(1)
         outputs = {"inp_1d": ['flow']}
         build_and_run(outputs, indices="random")
         return
@@ -169,7 +174,7 @@ class test_MultiInputModels(unittest.TestCase):
         # test that we can use val_data="same" with multiple inputs. Execution of model.fit() below means that
         # tf.data was created successfully and keras Model accepted it to train as well.
         _examples = 200
-
+        time.sleep(1)
         class MyModel(FModel):
             def add_layers(self, layers_config:dict, inputs=None):
                 input_layer_names = ['input1', 'input2', 'input3', 'input4']
@@ -270,7 +275,7 @@ class test_MultiInputModels(unittest.TestCase):
                       verbosity=0
                       )
         model.fit()
-        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
         # check also for functional model
@@ -279,7 +284,7 @@ class test_MultiInputModels(unittest.TestCase):
                       verbosity=0
                       )
         model.fit()
-        _, y = model.predict(x=np.random.random((10, model.num_ins)))
+        y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
         time.sleep(1)
@@ -317,7 +322,7 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation
     model.fit()
     test_evaluation(model)
 
-    assert model.problem == 'classification'
+    assert model.mode == 'classification'
     assert len(model.classes) == n_classes
     assert model.num_classes == n_classes
     return model
@@ -386,17 +391,19 @@ class TestClassifications(unittest.TestCase):
         return
 
     def test_basic_multi_output(self):
+        time.sleep(1)
         model = Model(
             model= {'layers': {'LSTM': {'units': 32},
                                'Dense': {'units': 2},
                                'Reshape': {'target_shape': (2,1)}}},
             lookback=5,
             output_features = ['blaTEM_coppml', 'tetx_coppml'],
-            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml'])
+            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml']),
+            verbosity=0
         )
 
         model.fit()
-        t,p = model.predict()
+        t,p = model.predict(return_true=True)
 
         assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
 

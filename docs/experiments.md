@@ -1,3 +1,7 @@
+The purpose of this module is to compare more than one models. Furthermore, 
+this module can also optimize the hyper-parameters of these models and compare
+them. 
+
 **`Experiments`**
 ::: ai4water.experiments.Experiments
     handler: python
@@ -7,10 +11,13 @@
         members:
             - __init__
             - fit
+            - fit_with_tpot
             - compare_errors
             - plot_convergence
-            - plot_taylor
+            - taylor_plot
             - plot_losses
+            - plot_improvement
+            - plot_cv_scores
             - from_config
 
 **`RegressionExperiments`**

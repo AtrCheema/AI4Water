@@ -1,16 +1,17 @@
 import unittest
-import numpy as np
+
 import os
-
+import sys
 import site   # so that ai4water directory is in path
-site.addsitedir(os.path.dirname(os.path.dirname(__file__)) )
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
 
-from ai4water.utils import tf_losses
-from ai4water.post_processing.SeqMetrics import RegressionMetrics
-
-
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
+
+from ai4water.utils import tf_losses
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
 tf_losses.reset_graph()
 _true = np.random.random(10)

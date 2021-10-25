@@ -93,5 +93,5 @@ if __name__ == "__main__":
 
     history = model.fit(callbacks={'tensorboard': {}})
 
-    y, obs = model.predict()
+    y = model.predict()
     activations = model.activations()

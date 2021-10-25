@@ -1,9 +1,21 @@
 import unittest
+import os
+import sys
+import site
+ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+site.addsitedir(ai4_dir)
+
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
-from ai4water import Model
+if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
+    from ai4water.functional import Model
+    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
+else:
+    from ai4water import Model
+
 from ai4water.datasets import arg_beach
 
 beach_data:pd.DataFrame = arg_beach()

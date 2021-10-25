@@ -1,6 +1,5 @@
 import os
 import json
-import wrapt
 import pprint
 import datetime
 import warnings
@@ -18,8 +17,13 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
+try:
+    import wrapt
+except ModuleNotFoundError:
+    wrapt = None
 
-def reset_seed(seed:Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
+
+def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
     """
     Sets the random seed for a given module if the module is not None
     Arguments:
@@ -54,6 +58,7 @@ def reset_seed(seed:Union[int, None], os=None, random=None, np=None, tf=None, to
             torch.backends.cudnn.benchmark = True
     return
 
+
 def maybe_create_path(prefix=None, path=None):
     if path is None:
         save_dir = dateandtime_now()
@@ -76,7 +81,7 @@ def maybe_create_path(prefix=None, path=None):
     return save_dir
 
 
-def dateandtime_now()->str:
+def dateandtime_now() -> str:
     """
     Returns the datetime in following format as string
     YYYYMMDD_HHMMSS
@@ -98,7 +103,7 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
     sort_keys = True
     if errors is not None:
         suffix = dateandtime_now()
-        fpath = path + "/errors_" + name +  suffix + ".json"
+        fpath = path + "/errors_" + name + suffix + ".json"
         # maybe some errors are not json serializable.
         for er_name, er_val in errors.items():
             if "int" in er_val.__class__.__name__:
@@ -132,7 +137,7 @@ def save_config_file(path, config=None, errors=None, indices=None, others=None, 
     return
 
 
-def check_min_loss(epoch_losses, epoch, msg:str, save_fg:bool, to_save=None):
+def check_min_loss(epoch_losses, epoch, msg: str, save_fg: bool, to_save=None):
     epoch_loss_array = epoch_losses[:-1]
 
     current_epoch_loss = epoch_losses[-1]
@@ -159,7 +164,7 @@ def check_kwargs(**kwargs):
     lr = kwargs.get("lr", 0.001)
     if kwargs.get('model', None) is not None:
         model = kwargs['model']
-        if 'layers' not  in model:
+        if 'layers' not in model:
             # for case when model='randomforestregressor'
             if isinstance(model, str):
                 model = {model: {}}
@@ -167,9 +172,9 @@ def check_kwargs(**kwargs):
 
             if list(model.keys())[0].startswith("XGB"):
                 if "learning_rate" not in model:
-                        kwargs["model"]["learning_rate"] = lr
+                    kwargs["model"]["learning_rate"] = lr
 
-            if "batches" not in kwargs: # for ML, default batches will be 2d unless the user specifies otherwise.
+            if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
                 kwargs["batches"] = "2d"
 
             if "lookback" not in kwargs:
@@ -180,12 +185,12 @@ def check_kwargs(**kwargs):
 
 class make_model(object):
 
-    def __init__(self,data, **kwargs):
+    def __init__(self, **kwargs):
 
-        self.config, self.data_config = _make_model(data, **kwargs)
+        self.config, self.data_config = _make_model(**kwargs)
 
 
-def process_io(data, **kwargs):
+def process_io(**kwargs):
 
     input_features = kwargs.get('input_features', None)
     output_features = kwargs.get('output_features', None)
@@ -195,21 +200,12 @@ def process_io(data, **kwargs):
     if isinstance(output_features, str):
         output_features = [output_features]
 
-    if input_features is None:  # when input_features and output_features are not defined.
-        if data is not None:  # when no data is given, input_features and output_features can not be defined.
-            assert isinstance(data, pd.DataFrame)
-            if output_features is None:
-                input_features = list(data.columns)[0:-1]
-                output_features = [list(data.columns)[-1]]
-            elif isinstance(output_features, list):
-                input_features = [col for col in list(data.columns) if col not in output_features]
-
     kwargs['input_features'] = input_features
     kwargs['output_features'] = output_features
     return kwargs
 
 
-def _make_model(data, **kwargs):
+def _make_model(**kwargs):
     """
     This functions fills the default arguments needed to run all the models.
     All the input arguments can be overwritten
@@ -219,21 +215,21 @@ def _make_model(data, **kwargs):
         such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
-    kwargs = process_io(data, **kwargs)
+    kwargs = process_io(**kwargs)
 
     kwargs = check_kwargs(**kwargs)
 
-    def_prob = "regression"  # default problem
+    def_mode = "regression"  # default mode
     model = kwargs.get('model', None)
     def_cat = None
 
     if model is not None:
         if 'layers' in model:
             def_cat = "DL"
-            # for DL, the default problem case will be regression
+            # for DL, the default mode case will be regression
         else:
-            if list(model.keys())[0].startswith("CLASS"):
-                def_prob = "classification"
+            if list(model.keys())[0].upper().endswith("CLASSIFIER"):
+                def_mode = "classification"
             def_cat = "ML"
 
     if 'loss' in kwargs:
@@ -246,7 +242,7 @@ def _make_model(data, **kwargs):
             'categorical_crossentropy',
             'binary_crossentropy'
         ]:
-            def_prob = 'classification'
+            def_mode = 'classification'
 
     accept_additional_args = False
     if 'accept_additional_args' in kwargs:
@@ -255,29 +251,26 @@ def _make_model(data, **kwargs):
     model_args = {
 
         'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
-        'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},   # for auto-encoders
+        # for auto-encoders
+        'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
-        'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},  # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+        # can be any of valid keras optimizers https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+        'optimizer':    {'type': str, 'default': 'adam', 'lower': None, 'upper': None, 'between': None},
         'loss':         {'type': [str, 'callable'], 'default': 'mse', 'lower': None, 'upper': None, 'between': None},
         'quantiles':    {'type': list, 'default': None, 'lower': None, 'upper': None, 'between': None},
         'epochs':       {'type': int, 'default': 14, 'lower': None, 'upper': None, 'between': None},
         'min_val_loss': {'type': float, 'default': 0.0001, 'lower': None, 'upper': None, 'between': None},
         'patience':     {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
         'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
-        'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},  # to save the best models using checkpoints
-        'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},  # used for cnn_lst structure
+        # to save the best models using checkpoints
+        'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
+        # used for cnn_lst structure
+        'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},
 
-        'nbeats_options': {'type': dict, 'default': {
-                                        'backcast_length': 15 if 'lookback' not in kwargs else int(kwargs['lookback']),
-                                        'forecast_len': 1,
-                                        'stack_types': ('generic', 'generic'),
-                                        'nb_blocks_per_stack': 2,
-                                        'thetas_dim': (4, 4),
-                                        'share_weights_in_stack': True,
-                                        'hidden_layer_units': 62
-                                    }, 'lower': None, 'upper': None, 'between': None},
-        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None, 'between': ['tensorflow', 'pytorch']},
-        # buffer_size is only relevant if 'val_data' is same and shuffle is true. https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
+        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None,
+                          'between': ['tensorflow', 'pytorch']},
+        # buffer_size is only relevant if 'val_data' is same and shuffle is true.
+        # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
         # It is used to shuffle tf.Dataset of training data.
         'buffer_size': {'type': int, 'default': 100, 'lower': None, 'upper': None, 'between': None},
         # comes handy if we want to skip certain batches from last
@@ -289,9 +282,11 @@ def _make_model(data, **kwargs):
         # if true, model will use previous predictions as input  # todo, where it is used?
         'use_predicted_output': {"type": bool, "default": True, 'lower': None, 'upper': None, 'between': None},
         # todo, is it  redundant?
-        # If the model takes one kind of input_features that is it consists of only 1 Input layer, then the shape of the batches
+        # If the model takes one kind of input_features that is it consists of
+        # only 1 Input layer, then the shape of the batches
         # will be inferred from the Input layer but for cases, the model takes more than 1 Input, then there can be two
-        # cases, either all the input_features are of same shape or they  are not. In second case, we should overwrite `train_paras`
+        # cases, either all the input_features are of same shape or they
+        # are not. In second case, we should overwrite `train_paras`
         # method. In former case, define whether the batches are 2d or 3d. 3d means it is for an LSTM and 2d means it is
         # for Dense layer.
         'batches': {"type": str, "default": '3d', 'lower': None, 'upper': None, 'between': ["2d", "3d"]},
@@ -304,17 +299,20 @@ def _make_model(data, **kwargs):
     }
 
     data_args = {
-        # if the shape of last batch is smaller than batch size and if we want to skip this last batch, set following to True.
+        # if the shape of last batch is smaller than batch size and if we
+        # want to skip this last batch, set following to True.
         # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'problem': {'type': str, 'default': def_prob, 'lower': None, 'upper': None,
+        'mode': {'type': str, 'default': def_mode, 'lower': None, 'upper': None,
                     'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
         # can be None or any of the method defined in ai4water.utils.transformatinos.py
-        'transformation':         {"type": [str, type(None), dict, list],   "default": None, 'lower': None, 'upper': None, 'between': None},
-        # The term lookback has been adopted from Francois Chollet's "deep learning with keras" book. This means how many
+        'transformation':         {"type": [str, type(None), dict, list],   "default": None, 'lower': None,
+                                   'upper': None, 'between': None},
+        # The term lookback has been adopted from Francois Chollet's
+        # "deep learning with keras" book. This means how many
         # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
         # for any non timeseries forecasting related problems.
         'lookback':          {"type": int,   "default": 15, 'lower': 1, 'upper': None, 'between': None},
@@ -346,12 +344,16 @@ def _make_model(data, **kwargs):
         'input_features':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
         'output_features':           {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
-        # tuple of tuples where each tuple consits of two integers, marking the start and end of interval. An interval here
-        # means chunk/rows from the input file/dataframe to be skipped when when preparing data/batches for NN. This happens
-        # when we have for example some missing values at some time in our data. For further usage see `examples/using_intervals`
+        # tuple of tuples where each tuple consits of two integers, marking the start and end
+        # of interval. An interval here
+        # means chunk/rows from the input file/dataframe to be skipped when when preparing
+        # data/batches for NN. This happens
+        # when we have for example some missing values at some time in our data.
+        # For further usage see `examples/using_intervals`
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
-        'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]}
+        'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
+        'dataset_args' : {'type': dict, 'default': {}}
     }
 
     model_config=  {key:val['default'] for key,val in model_args.items()}
@@ -373,7 +375,7 @@ def _make_model(data, **kwargs):
         else:
             config[key] = val
 
-    if config['allow_nan_labels']>0:
+    if config['allow_nan_labels'] > 0:
         assert 'layers' in model_config['model'], f"""
 The model appears to be deep learning based because 
 the argument `model` does not have layers. But you are
@@ -382,12 +384,6 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
 """
 
     config.update(model_config)
-
-    assert type(config['input_features']) == type(config['output_features']), f"""
-        input_features is of type {config['input_features'].__class__.__name__}
-        but output_features is of type {config['output_features'].__class__.__name__}.
-        Input_features and output_features must be of same type.
-"""
 
     if isinstance(config['input_features'], dict):
         for data in [config['input_features'], config['output_features']]:
@@ -440,7 +436,7 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     return
 
 
-def to_datetime_index(idx_array, fmt='%Y%m%d%H%M')->pd.DatetimeIndex:
+def to_datetime_index(idx_array, fmt='%Y%m%d%H%M') -> pd.DatetimeIndex:
     """ converts a numpy 1d array into pandas DatetimeIndex type."""
 
     if not isinstance(idx_array, np.ndarray):
@@ -456,6 +452,7 @@ class Jsonize(object):
     If the object is sequence then each member of the sequence is checked and
     converted if needed. Same goes for nested sequences like lists of lists
     or list of dictionaries.
+
     Examples:
     ---------
     >>>import numpy as np
@@ -478,7 +475,7 @@ class Jsonize(object):
             return float(self.obj)
 
         if isinstance(self.obj, dict):
-            return {k:self.stage2(v) for k,v in self.obj.items()}
+            return {k: self.stage2(v) for k, v in self.obj.items()}
 
         if hasattr(self.obj, '__len__') and not isinstance(self.obj, str):
             return [self.stage2(i) for i in self.obj]
@@ -493,7 +490,7 @@ class Jsonize(object):
         if self.obj is Ellipsis:
             return {'class_name': '__ellipsis__'}
 
-        if isinstance(self.obj, wrapt.ObjectProxy):
+        if wrapt and  isinstance(self.obj, wrapt.ObjectProxy):
             return self.obj.__wrapped__
 
         return str(self.obj)
@@ -519,9 +516,9 @@ class Jsonize(object):
         if hasattr(obj, '__len__') and not isinstance(obj, str):
             if len(obj) > 1:  # it is a list like with length greater than 1
                 return [self.stage2(i) for i in obj]
-            elif isinstance(obj, list) and len(obj)>0:  # for cases like obj is [np.array([1.0])] -> [1.0]
+            elif isinstance(obj, list) and len(obj) > 0:  # for cases like obj is [np.array([1.0])] -> [1.0]
                 return [self.stage2(obj[0])]
-            elif len(obj)==1:  # for cases like obj is np.array([1.0])
+            elif len(obj) == 1:  # for cases like obj is np.array([1.0])
                 if isinstance(obj, list) or isinstance(obj, tuple):
                     return obj  # for cases like (1, ) or [1,]
                 return self.stage2(obj[0])
@@ -535,11 +532,12 @@ class Jsonize(object):
         if obj is Ellipsis:
             return {'class_name': '__ellipsis__'}
 
-        if isinstance(obj, wrapt.ObjectProxy):
+        if wrapt and isinstance(obj, wrapt.ObjectProxy):
             return obj.__wrapped__
 
         # last solution, it must be of of string type
         return str(obj)
+
 
 def jsonize(obj):
     """functional interface to `Jsonize` class"""
@@ -561,7 +559,7 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
     return results
 
 
-def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5", epoch_identifier:int=None):
+def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_identifier: int = None):
     """Given weights in w_path, find the best weight.
     if epoch_identifier is given, it will be given priority to find best_weights
     The file_names are supposed in following format FileName_Epoch_Error.ext
@@ -572,6 +570,10 @@ def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5", epoch_identifi
     """
     assert best in ['min', 'max']
     all_weights = os.listdir(w_path)
+
+    if len(all_weights)==1:
+        return all_weights[0]
+
     losses = {}
     for w in all_weights:
         wname = w.split(ext)[0]
@@ -587,7 +589,7 @@ def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5", epoch_identifi
 
     else:
         loss_array = np.array([float(l) for l in losses.keys()])
-        if len(loss_array)==0:
+        if len(loss_array) == 0:
             return None
         best_loss = getattr(np, best)(loss_array)
         best_weight = f"weights_{losses[str(best_loss)]['epoch']}_{losses[str(best_loss)]['loss']}.hdf5"
@@ -595,9 +597,9 @@ def find_best_weight(w_path:str, best:str="min", ext:str=".hdf5", epoch_identifi
     return best_weight
 
 
-def remove_all_but_best_weights(w_path, best:str="min", ext:str=".hdf5"):
+def remove_all_but_best_weights(w_path, best: str = "min", ext: str = ".hdf5"):
     """removes all the weights from a folder except the best weigtht"""
-    best_weights =  None
+    best_weights = None
     if os.path.exists(w_path):
         # remove all but best weight
         all_weights = os.listdir(w_path)
@@ -609,10 +611,11 @@ def remove_all_but_best_weights(w_path, best:str="min", ext:str=".hdf5"):
     return best_weights
 
 
-def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
-    """ Optimization will save weights of all the trained models, not all of them are useful. Here removing weights
-    of all except top 3. The number of models whose weights to be retained can be set by `keep` para."""
-
+def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True):
+    """Optimization will save weights of all the trained models, not all of them
+    are useful. Here removing weights of all except top 3. The number of models
+    whose weights to be retained can be set by `keep` para.
+    """
     fname = 'sorted.json'
     if results is None:
         results = make_hpo_results(opt_dir)
@@ -653,7 +656,7 @@ def clear_weights(opt_dir, results:dict=None, keep=3, rename=True, write=True):
 
                 idx += 1
 
-    od = {k:Jsonize(v)() for k,v in od.items()}
+    od = {k: Jsonize(v)() for k, v in od.items()}
 
     if write:
         sorted_fname = os.path.join(opt_dir, fname)
@@ -706,12 +709,12 @@ def split_by_indices(x, y, indices):
 
 
 def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
-          precision:int=3,
-          name:str='',
-          st: int = 0,
-          en: int = None,
-          features: Union[list, str] = None
-          ) ->dict:
+                precision: int = 3,
+                name: str = '',
+                st: int = 0,
+                en: int = None,
+                features: Union[list, str] = None
+                ) -> dict:
     """
     Extracts features from 1d time series data. Features can be
         * point, one integer or float point value for example mean
@@ -832,16 +835,16 @@ def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
 
 def prepare_data(
         data: np.ndarray,
-        lookback_steps:int,
-        num_inputs:int=None,
-        num_outputs:int=None,
-        input_steps:int=1,
-        forecast_step:int=0,
-        forecast_len:int=1,
-        known_future_inputs:bool=False,
+        lookback_steps: int,
+        num_inputs: int = None,
+        num_outputs: int = None,
+        input_steps: int = 1,
+        forecast_step: int = 0,
+        forecast_len: int = 1,
+        known_future_inputs: bool = False,
         output_steps=1,
-        mask:Union[int, float, np.ndarray]=None
-)-> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        mask: Union[int, float, np.ndarray] = None
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     converts a numpy nd array into a supervised machine learning problem.
 
@@ -1092,7 +1095,7 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     time_steps = lookback_steps
     if known_future_inputs:
         lookback_steps = lookback_steps + forecast_len
-        assert forecast_len>1, f"""
+        assert forecast_len > 1, f"""
             known_futre_inputs should be True only when making predictions at multiple 
             horizons i.e. when forecast length/number of horizons to predict is > 1.
             known_future_inputs: {known_future_inputs}
@@ -1124,18 +1127,18 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     # transpose because we want labels to be of shape (examples, outs, forecast_len)
     y = np.array([np.array(i, dtype=np.float32).T for i in y], dtype=np.float32)
 
-
     if mask is not None:
         if isinstance(mask, np.ndarray):
             assert mask.ndim == 1
-            assert len(x) == len(mask), f"Number of generated examples are {len(x)} but the length of mask is {len(mask)}"
+            assert len(x) == len(mask), f"Number of generated examples are {len(x)} " \
+                                        f"but the length of mask is {len(mask)}"
         elif isinstance(mask, float) and np.isnan(mask):
             mask = np.invert(np.isnan(y))
             mask = np.array([all(i.reshape(-1,)) for i in mask])
         else:
             assert isinstance(mask, int), f"""
                     Invalid mask identifier given of type: {mask.__class__.__name__}"""
-            mask = y!=mask
+            mask = y != mask
             mask = np.array([all(i.reshape(-1,)) for i in mask])
 
         x = x[mask]
@@ -1163,7 +1166,6 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
     if height is not None:
         fig.set_figheight(height)
     return fig, axis
-
 
 
 def process_axis(axis,
@@ -1219,7 +1221,7 @@ def process_axis(axis,
             style = x
             x = None
             if marker == '.':
-                use_third=  True
+                use_third = True
 
     if log_nz:
         data = deepcopy(data)
@@ -1251,8 +1253,10 @@ def process_axis(axis,
     _kwargs = {}
     if label is not None:
         if label != "__nolabel__":
-            if leg_fs is not None: _kwargs.update({'fontsize': leg_fs})
-            if leg_ms is not None: _kwargs.update({'markerscale': leg_ms})
+            if leg_fs is not None:
+                _kwargs.update({'fontsize': leg_fs})
+            if leg_ms is not None:
+                _kwargs.update({'markerscale': leg_ms})
             if bbox_to_anchor is not None:
                 _kwargs['bbox_to_anchor'] = bbox_to_anchor
             else:
@@ -1282,7 +1286,7 @@ def process_axis(axis,
         ytpc = 'k'
 
     _kwargs = {'colors': xtpc}
-    if x_label is not None or xtp_ls is not None: # better not change these paras if user has not defined any x_label
+    if x_label is not None or xtp_ls is not None:  # better not change these paras if user has not defined any x_label
         if xtp_ls is not None:
             _kwargs.update({'labelsize': xtp_ls})
         axis.tick_params(axis="x", which='major', **_kwargs)
@@ -1297,7 +1301,8 @@ def process_axis(axis,
 
     _kwargs = {}
     if x_label is not None:
-        if xl_fs is not None: _kwargs.update({'fontsize': xl_fs})
+        if xl_fs is not None:
+            _kwargs.update({'fontsize': xl_fs})
         axis.set_xlabel(x_label, **_kwargs)
 
     axis.spines['top'].set_visible(top_spine)
@@ -1352,18 +1357,20 @@ class JsonEncoder(json.JSONEncoder):
         else:
             return super(JsonEncoder, self).default(obj)
 
+
 def plot_activations_along_inputs(
-        data:np.ndarray,
-        activations:np.ndarray,
-        observations:np.ndarray,
-        predictions:np.ndarray,
-        in_cols:list,
-        out_cols:list,
-        lookback:int,
-        name:str,
-        path:str,
+        data: np.ndarray,
+        activations: np.ndarray,
+        observations: np.ndarray,
+        predictions: np.ndarray,
+        in_cols: list,
+        out_cols: list,
+        lookback: int,
+        name: str,
+        path: str,
         vmin=None,
         vmax=None,
+        show=False
 ):
     # activation must be of shape (num_examples, lookback, input_features)
     assert activations.shape[1] == lookback
@@ -1393,19 +1400,34 @@ def plot_activations_along_inputs(
             ax2.plot(obs, '.', label='Observed')
             ax2.legend()
 
-            im = ax3.imshow(activations[:, :, idx].transpose(), aspect='auto', vmin=vmin, vmax=vmax)
-            ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-            ax3.set_ylabel('lookback steps')
-            ax3.set_yticks(np.arange(len(ytick_labels)))
-            ax3.set_yticklabels(ytick_labels)
-            ax3.set_xlabel('Examples')
+            axis, im = axis_imshow(ax3, activations[:, :, idx].transpose(), lookback, vmin, vmax,
+                                   xlabel="Examples")
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attention_weights_{out_name}_{name}'
             plt.savefig(os.path.join(path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
+
+            if show:
+                plt.show()
+
             plt.close('all')
 
     return
+
+def axis_imshow(axis, values, lookback, vmin, vmax, xlabel=None, title=None, cmap=None):
+
+    im = axis.imshow(values, aspect='auto', vmin=vmin, vmax=vmax, cmap=cmap)
+    ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+    axis.set_ylabel('lookback steps')
+    axis.set_yticks(np.arange(len(ytick_labels)))
+    axis.set_yticklabels(ytick_labels)
+    if xlabel:
+        axis.set_xlabel(xlabel)
+
+    if title:
+        axis.set_title(title)
+
+    return axis, im
 
 
 def print_something(something, prefix=''):
@@ -1438,3 +1460,22 @@ def maybe_three_outputs(data, teacher_forcing=False):
             return data[0], data[2]
     else:
         return [data[0], data[1]], data[2]
+
+def get_version_info(
+        **kwargs
+)->dict:
+    # todo, chekc which attributes are not available in different versions
+    import sys
+    info = {'python': sys.version, 'os': os.name}
+    if kwargs.get('tf', None):
+        tf = kwargs['tf']
+        info['tf_is_built_with_cuda'] = tf.test.is_built_with_cuda()
+        info['is_built_with_gpu_support'] = tf.test.is_built_with_gpu_support()
+        info['tf_is_gpu_available'] = tf.test.is_gpu_available()
+        info['eager_execution'] = tf.executing_eagerly()
+
+    for k,v in kwargs.items():
+        if v is not None:
+            info[k] = getattr(v, '__version__', 'NotDefined')
+
+    return info

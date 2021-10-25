@@ -341,6 +341,8 @@ class Model(MODEL, BaseModel):
                                                                         'tf_name': lyr_name}
                                 wrp_layer = None
                             else:
+                                if lyr_name.upper() == "TEMPORALFUSIONTRANSFORMER":
+                                    lyr_config['return_attention_components'] = True
                                 initialized_layer = LAYERS[lyr_name.upper()](*args, **lyr_config)
                                 initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                         'named_outs': named_outs,
@@ -422,7 +424,7 @@ class Model(MODEL, BaseModel):
         #     if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
         #         print("Warning: the output is of Input tensor class type")
 
-        outs = None
+        # outs = None
         #if BACKEND == 'tensorflow':
             # outs = self.call(input_lyrs)
             # setattr(self, 'output_lyrs', outs)
@@ -508,6 +510,11 @@ class Model(MODEL, BaseModel):
                 # call the initiated layer
                 outs = lyr_args['layer'](call_args, **add_args)
 
+                # if the layer is TFT, we need to extract the attention components
+                # so that they can be used during post-processign
+                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                    outs, self.TemporalFusionTransformer_attentions = outs
+
                 if lyr_args['named_outs'] is not None:
                     if isinstance(outs, list):
                         assert len(lyr_args['named_outs']) == len(outs)
@@ -581,6 +588,11 @@ class Model(MODEL, BaseModel):
                 # call the initiated layer
                 #print(f"fetching {_inputs} for layer {lyr} call_args are \n{call_args} \n while cache has {cache.keys()}")
                 outs = lyr_args['layer'](call_args, **add_args)
+
+                # if the layer is TFT, we need to extract the attention components
+                # so that they can be used during post-processign
+                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                    outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
                     if isinstance(outs, list):
@@ -676,6 +688,11 @@ class Model(MODEL, BaseModel):
 
                 # call the initiated layer
                 outs = lyr_args['layer'](call_args, **add_args)
+
+                # if the layer is TFT, we need to extract the attention components
+                # so that they can be used during post-processign
+                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                    outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
                     if isinstance(outs, list):
@@ -865,6 +882,9 @@ class Model(MODEL, BaseModel):
         if 'make_new_path' in kwargs or os.path.isfile(_config):
             # we need to build ai4water's Model class
             config, path = BaseModel._get_config_and_path(cls, _config, kwargs.get('make_new_path', False))
+
+            if 'verbosity' in kwargs:
+                config['config']['verbosity'] = kwargs.pop('verbosity')
 
             return cls(**config['config'],
                    data=data,

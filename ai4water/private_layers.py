@@ -3,6 +3,7 @@ from tensorflow.keras import layers
 
 from ai4water.models.attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
+
 def _get_tensor_shape(t):
     return t.shape
 
@@ -11,11 +12,11 @@ class ConditionalRNN(tf.keras.layers.Layer):
 
     # Arguments to the RNN like return_sequences, return_state...
     def __init__(self, units,
-                 activation = 'tanh',
+                 activation='tanh',
                  recurrent_activation='sigmoid',
                  use_bias=True,
-                 dropout = 0.0,
-                 recurrent_dropout = 0.0,
+                 dropout=0.0,
+                 recurrent_dropout=0.0,
                  kernel_regularizer=None,
                  recurrent_regularizer=None,
                  cell=tf.keras.layers.LSTMCell, *args,
@@ -135,7 +136,7 @@ class BasicBlock(layers.Layer):
         # 2. 第2个；第1个卷积如果做stride就会有一个下采样，在这个里面就不做下采样了。这一块始终保持size一致，把stride固定为1
         self.conv2 = regularized_padded_conv(conv_dim, out_channels, kernel_size=3, strides=1)
         self.bn2 = layers.BatchNormalization()
-        ############################### 注意力机制 ###############################
+        # ############################## 注意力机制 ###############################
         self.ca = ChannelAttention(conv_dim=conv_dim, in_planes=out_channels)
         self.sa = SpatialAttention(conv_dim=conv_dim)
 
@@ -154,7 +155,7 @@ class BasicBlock(layers.Layer):
 
         out = self.conv2(out)
         out = self.bn2(out, training=training)
-        ############################### 注意力机制 ###############################
+        # ############################## 注意力机制 ###############################
         out = self.ca(out) * out
         out = self.sa(out) * out
 
@@ -205,8 +206,10 @@ class scaled_dot_product_attention(layers.Layer):
 
         return output, attention_weights
 
+
 MHW_COUNTER = 0
 ENC_COUNTER = 0
+
 
 class MultiHeadAttention(tf.keras.layers.Layer):
 
@@ -218,7 +221,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         assert d_model % self.num_heads == 0
 
         global MHW_COUNTER
-        MHW_COUNTER +=1
+        MHW_COUNTER += 1
 
         self.depth = d_model // self.num_heads
 
@@ -275,10 +278,10 @@ class EncoderLayer(tf.keras.layers.Layer):
         super(EncoderLayer, self).__init__(**kwargs)
 
         global MHW_COUNTER
-        MHW_COUNTER +=1
+        MHW_COUNTER += 1
 
         self.mha = MultiHeadAttention(d_model, num_heads)
-        #self.ffn = point_wise_feed_forward_network(d_model, dff)
+        # self.ffn = point_wise_feed_forward_network(d_model, dff)
 
         self.swished_dense = layers.Dense(dff, activation='swish', name=f'swished_dense_{MHW_COUNTER}')
         self.ffn_output = layers.Dense(d_model, name=f'ffn_output_{MHW_COUNTER}')
@@ -294,7 +297,7 @@ class EncoderLayer(tf.keras.layers.Layer):
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(x + attn_output)  # (batch_size, input_seq_len, d_model)
 
-        #ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
+        # ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
 
         temp = self.swished_dense(out1)
         ffn_output = self.ffn_output(temp)
@@ -318,7 +321,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         self.dff = dff
         self.maximum_position_encoding = maximum_position_encoding
         self.rate = rate
-        self.return_weights=return_weights
+        self.return_weights = return_weights
 
         #         self.pos_encoding = positional_encoding(self.maximum_position_encoding,
         #                                                 self.d_model)
@@ -345,7 +348,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         })
         return config
 
-    #def call(self, x, training, mask=None):
+    # def call(self, x, training, mask=None):
     def __call__(self, x, training=True, mask=None, *args, **kwargs):
 
         seq_len = tf.shape(x)[1]
@@ -369,6 +372,67 @@ class TransformerEncoder(tf.keras.layers.Layer):
         return x  # (batch_size, input_seq_len, d_model)
 
 
+class Conditionalize(tf.keras.layers.Layer):
+    """Mimics the behaviour of cond_rnn of Philipperemy but puts the logic
+    of condition in a separate layer so that it becomes easier to use it.
+
+    Example
+    --------
+    >>> from ai4water.private_layers import Conditionalize
+    >>> from tensorflow.keras.layers import Input, LSTM
+    >>> i = Input(shape=(10, 3))
+    >>> raw_conditions = Input(shape=(14,))
+    >>> processed_conds = Conditionalize(32)([raw_conditions, raw_conditions, raw_conditions])
+    >>> rnn = LSTM(32)(i, initial_state=[processed_conds, processed_conds])
+    """
+    def __init__(self, units, max_num_cond=10, **kwargs):
+        self.units = units
+        super().__init__(**kwargs)
+
+        # single cond
+        self.cond_to_init_state_dense_1 = tf.keras.layers.Dense(units=self.units, name="conditional_dense")
+
+        # multi cond
+        self.multi_cond_to_init_state_dense = []
+
+        for i in range(max_num_cond):
+            self.multi_cond_to_init_state_dense.append(tf.keras.layers.Dense(units=self.units, name=f"conditional_dense{i}"))
+
+        self.multi_cond_p = tf.keras.layers.Dense(1, activation=None, use_bias=True, name="conditional_dense_out")
+
+    @staticmethod
+    def _standardize_condition(initial_cond):
+
+        assert len(initial_cond.shape) == 2
+
+        return initial_cond
+
+    def __call__(self, inputs, *args, **kwargs):
+
+        if args or kwargs:
+            raise ValueError(f"Unrecognized input arguments\n args: {args} \nkwargs: {kwargs}")
+
+        if inputs.__class__.__name__ == "Tensor":
+            inputs = [inputs]
+
+        assert (isinstance(inputs, list) or isinstance(inputs, tuple)) and len(inputs) >= 1, f"{type(inputs)}"
+
+        cond = inputs
+        if len(cond) > 1:  # multiple conditions.
+            init_state_list = []
+            for ii, c in enumerate(cond):
+                init_state_list.append(self.multi_cond_to_init_state_dense[ii](self._standardize_condition(c)))
+            multi_cond_state = tf.stack(init_state_list, axis=-1)  # -> (?, units, num_conds)
+            multi_cond_state = self.multi_cond_p(multi_cond_state)  # -> (?, units, 1)
+            cond_state = tf.squeeze(multi_cond_state, axis=-1)  # -> (?, units)
+        else:
+
+            cond = self._standardize_condition(cond[0])
+            cond_state = self.cond_to_init_state_dense_1(cond)    # -> (?, units)
+
+        return cond_state
+
+
 class PrivateLayers(object):
 
     class layers:
@@ -376,3 +440,4 @@ class PrivateLayers(object):
         TransformerEncoder = TransformerEncoder
         BasicBlock = BasicBlock
         CONDRNN = ConditionalRNN
+        Conditionalize = Conditionalize

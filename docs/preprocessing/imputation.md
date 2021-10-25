@@ -1,2 +1,2 @@
-::: ai4water.pre_processing.imputation.Imputation
+::: ai4water.preprocessing.imputation.Imputation
     handler: python

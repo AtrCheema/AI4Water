@@ -1,31 +1,31 @@
 All evapotranspiration methods inherit from `ETBase`. class.
 
-::: ai4water.ETUtil.et_methods.ETBase
+::: ai4water.et.et_methods.ETBase
     handler: python
     rendering:
         show_root_heading: true
         
-::: ai4water.ETUtil.et_methods.Abtew
+::: ai4water.et.et_methods.Abtew
     handler: python
     rendering:
         show_root_heading: true
         
-::: ai4water.ETUtil.et_methods.Albrecht
+::: ai4water.et.et_methods.Albrecht
     handler: python
     rendering:
         show_root_heading: true
 
-::: ai4water.ETUtil.et_methods.BlaneyCriddle
+::: ai4water.et.et_methods.BlaneyCriddle
     handler: python
     rendering:
         show_root_heading: true
 
-::: ai4water.ETUtil.et_methods.BrutsaertStrickler
+::: ai4water.et.et_methods.BrutsaertStrickler
     handler: python
     rendering:
         show_root_heading: true
 
-::: ai4water.ETUtil.et_methods.Camargo
+::: ai4water.et.et_methods.Camargo
     handler: python
     rendering:
         show_root_heading: true

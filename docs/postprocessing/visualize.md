@@ -1,5 +1,5 @@
 # Visualizer
-::: ai4water.post_processing.visualize.Visualize
+::: ai4water.postprocessing.visualize.Visualize
     handler: python
     rendering:
         show_root_heading: tru
