@@ -1035,7 +1035,14 @@ Available cases are {self.models} and you wanted to include
             **tpot_args
         )
 
-        dh = DataHandler(self.data, **self.model_kws)
+        not_allowed_args = ["cross_validator", "wandb_config", "val_metric",
+                            "loss", "optimizer", "lr", "epochs", "quantiles", "patience"]
+        model_kws = self.model_kws
+        for arg in not_allowed_args:
+            if arg in model_kws:
+                model_kws.pop(arg)
+
+        dh = DataHandler(self.data, **model_kws)
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
