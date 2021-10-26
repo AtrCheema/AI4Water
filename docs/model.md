@@ -11,6 +11,7 @@
             - view
             - eda
             - from_config
+            - from_config_path
             - update_weights
             - activations
             - cross_val_score

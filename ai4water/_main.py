@@ -29,7 +29,7 @@ from ai4water.utils.utils import ts_features, make_model
 from ai4water.utils.utils import find_best_weight, reset_seed
 from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
-from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
+from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 import ai4water.backend as K
@@ -232,6 +232,7 @@ class BaseModel(NN, Plots):
             NN.__init__(self, config=maker.config)
 
             self.path = maybe_create_path(path=path, prefix=prefix)
+            self.config['path'] = self.path
             self.verbosity = verbosity
             self.category = self.config['category']
             self.mode = self.config['mode']
@@ -653,7 +654,7 @@ class BaseModel(NN, Plots):
                          columns=true_labels + pred_labels, index=index).to_csv(fname)
             metrics = ClassificationMetrics(true, predicted, categorical=True)
 
-            save_config_file(self.path,
+            dict_to_file(self.path,
                              errors=metrics.calculate_all(),
                              name=f"{prefix}_{dateandtime_now()}.json"
                              )
@@ -669,7 +670,7 @@ class BaseModel(NN, Plots):
                     os.makedirs(fpath)
 
                 metrics = ClassificationMetrics(_true, _pred, categorical=False)
-                save_config_file(fpath,
+                dict_to_file(fpath,
                                  errors=getattr(metrics, f"calculate_{metrics}")(),
                                  name=f"{prefix}_{_class}_{dateandtime_now()}.json"
                                  )
@@ -757,7 +758,7 @@ class BaseModel(NN, Plots):
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
 
-                save_config_file(fpath, errors=errs, name=prefix)
+                dict_to_file(fpath, errors=errs, name=prefix)
 
                 for p in horizon_errors.keys():
                     horizon_errors[p].append(getattr(errors, p)())
@@ -924,7 +925,7 @@ class BaseModel(NN, Plots):
 
         self.info['training_end'] = dateandtime_now()
         self.save_config()
-        save_config_file(os.path.join(self.path, 'info.json'), others=self.info)
+        dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         self.is_training = False
         return history
@@ -1484,7 +1485,7 @@ class BaseModel(NN, Plots):
                 idx_val = None
 
             indices[idx] = idx_val
-        save_config_file(indices=indices, path=self.path)
+        dict_to_file(indices=indices, path=self.path)
         return
 
     def save_config(self, history: dict = None):
@@ -1503,24 +1504,47 @@ class BaseModel(NN, Plots):
             if min_loss_array is not None and not all(np.isnan(min_loss_array)):
                 config['min_loss'] = np.nanmin(min_loss_array)
 
-        config['config'] = self.config
+        config['config'] = self.config.copy()
         config['method'] = self.method
-        config['category'] = self.category
-        config['mode'] = self.mode
-        config['quantiles'] = self.quantiles
+
+        if 'path' in config['config']:  # we don't want our saved config to have 'path' key in it
+            config['config'].pop('path')
 
         if self.category == "DL":
             config['loss'] = self.loss_name()
 
-        save_config_file(config=config, path=self.path)
+        dict_to_file(config=config, path=self.path)
         return config
 
     @classmethod
-    def from_config(cls,
-                    config_path: str,
-                    data,
-                    make_new_path: bool = False,
-                    **kwargs) -> "BaseModel":
+    def from_config(
+            cls,
+            config:dict,
+            data=None,
+            make_new_path=False,
+            **kwargs
+    ):
+        """Loads the model from config dictionary i.e. model.config
+        Arguments:
+            config : dictionary containing model's parameters i.e. model.config
+            data : the data
+            make_new_path : whether to make new path or not?
+            kwargs : any additional keyword arguments to Model class.
+        """
+        config, path = cls._get_config_and_path(cls, config=config, make_new_path=make_new_path)
+
+        return cls(**config,
+                   data=data,
+                   path=path,
+                   **kwargs)
+
+    @classmethod
+    def from_config_file(
+            cls,
+            config_path: str,
+            data=None,
+            make_new_path: bool = False,
+            **kwargs) -> "BaseModel":
         """
         Loads the model from a config file.
 
@@ -1534,24 +1558,38 @@ class BaseModel(NN, Plots):
         return:
             a `Model` instance
         """
-        config, path = cls._get_config_and_path(cls, config_path, make_new_path)
+        config, path = cls._get_config_and_path(cls, config_path=config_path, make_new_path=make_new_path)
 
-        return cls(**config['config'],
+        return cls(**config,
                    data=data,
                    path=path,
                    **kwargs)
 
     @staticmethod
-    def _get_config_and_path(cls, config_path, make_new_path):
+    def _get_config_and_path(cls, config_path:str=None, config=None, make_new_path=False):
         """Sets some attributes of the cls so that it can be built from config.
 
         Also fetches config and path which are used to initiate cls."""
-        with open(config_path, 'r') as fp:
-            config = json.load(fp)
+        if config is not None and config_path is not None:
+            raise ValueError
 
-        if 'path' in config['config']: config['config'].pop('path')
+        if config is None:
+            assert config_path is not None
+            with open(config_path, 'r') as fp:
+                config = json.load(fp)
+                config = config['config']
+                idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
+                path = os.path.dirname(config_path)
+        else:
+            assert isinstance(config, dict), f"config must be dictionary but it is of type {config.__class__.__name__}"
+            path = config['path']
+            idx_file = os.path.join(path, 'indices.json')
 
-        idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
+        # todo
+        # shouldn't we remove 'path' from Model's init? we just need prefix
+        # path is needed in clsas methods only?
+        if 'path' in config: config.pop('path')
+
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
 
@@ -1566,7 +1604,6 @@ class BaseModel(NN, Plots):
             path = None
         else:
             cls.allow_weight_loading = True
-            path = os.path.dirname(config_path)
 
         return config, path
 

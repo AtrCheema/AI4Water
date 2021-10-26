@@ -805,7 +805,7 @@ class Model(MODEL, BaseModel):
             self.build_ml_model()
 
         if not getattr(self, 'from_check_point', False):
-            # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
+            # fit may fail so better to save config before as well. This will be overwritten once the fit is complete
             self.save_config()
 
         self.update_info()
@@ -879,19 +879,39 @@ class Model(MODEL, BaseModel):
         if 'data' in kwargs:
             kwargs.pop('data')
 
-        if 'make_new_path' in kwargs or os.path.isfile(_config):
+        local = False
+        if 'make_new_path' in kwargs:
+            local = True
+        elif isinstance(_config, str) and os.path.isfile(_config):
+            local = True
+        elif isinstance(_config, dict) and "category" in _config:
+            local = True
+
+        if local:
+            config = None
+            config_path = None
+
             # we need to build ai4water's Model class
-            config, path = BaseModel._get_config_and_path(cls, _config, kwargs.get('make_new_path', False))
+            if isinstance(_config, dict):
+                config = _config
+            else:
+                config_path = _config
+            config, path = BaseModel._get_config_and_path(cls,
+                                                          config = config,
+                                                          config_path=config_path,
+                                                          make_new_path=kwargs.get('make_new_path', False))
+            if 'make_new_path' in kwargs:
+                kwargs.pop('make_new_path')
 
             if 'verbosity' in kwargs:
-                config['config']['verbosity'] = kwargs.pop('verbosity')
+                config['verbosity'] = kwargs.pop('verbosity')
 
-            return cls(**config['config'],
+            return cls(**config,
                    data=data,
                    path=path,
                    **kwargs)
 
-        # todo, justify its usage
+        # tf1.15 has from_config so call it
         return super().from_config(*args, **kwargs)
 
     def fit_pytorch(self,  x, **kwargs):

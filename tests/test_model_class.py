@@ -83,7 +83,7 @@ def _test_hydro_metrics(_model):
     return
 
 
-def _test_from_config_basic(_model, find_best=False):
+def _test_from_config_basic(_model, find_best=False, config_file=False):
 
     for m in ["RandomForestRegressor",
               "XGBoostRegressor",
@@ -95,7 +95,10 @@ def _test_from_config_basic(_model, find_best=False):
         model.fit(x,y)
         ini_y = model.predict(np.arange(13).reshape(-1,13)).item()
 
-        m2 = Model.from_config(os.path.join(model.path, 'config.json'))
+        if config_file:
+            m2 = Model.from_config_file(os.path.join(model.path, 'config.json'))
+        else:
+            m2 = Model.from_config(model.config)
 
         best_weight = None
         if find_best:
@@ -161,17 +164,29 @@ class TestFit(unittest.TestCase):
 
 class TestFromConfig(unittest.TestCase):
 
-    def test_basic_subclassing(self):
+    def test_subclassing(self):
         _test_from_config_basic(Model)
+        return
 
-    def test_basic_subclassing_fn(self):
+    def test_subclassing_fn(self):
         _test_from_config_basic(FModel)
 
-    def test_basic_subclassing_with_weiths(self):
+    def test_subclassing_with_weights(self):
         _test_from_config_basic(Model, find_best=True)
 
-    def test_basic_subclassing_fn_with_weights(self):
+    def test_subclassing_fn_with_weights(self):
+        # we are able to load functinoal model
         _test_from_config_basic(FModel, find_best=True)
+
+    def test_subclassing_with_config_file(self):
+        # we are able to load subclassing Model from config_file
+        _test_from_config_basic(Model, config_file=True)
+        return
+
+    def test_fn_with_config_file(self):
+        # we are able to load functional model from config_file
+        _test_from_config_basic(FModel, config_file=True)
+        return
 
 
 if __name__ == "__main__":
