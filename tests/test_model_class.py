@@ -15,9 +15,11 @@ from ai4water.datasets import arg_beach
 from ai4water.utils.utils import find_best_weight
 from ai4water.functional import Model as FModel
 from ai4water.preprocessing.datahandler import DataHandler
+from ai4water._optimize import make_space
 
 
-dh = DataHandler(data=arg_beach(), verbosity=0)
+data = arg_beach()
+dh = DataHandler(data=data, verbosity=0)
 x, y = dh.training_data()
 
 mlp_model = {"layers": {"Dense": 8, "Dense_1": 1}}
@@ -188,6 +190,46 @@ class TestFromConfig(unittest.TestCase):
         _test_from_config_basic(FModel, config_file=True)
         return
 
+
+class TestOptimize(unittest.TestCase):
+
+    def test_optimize_transformations(self):
+
+        df = arg_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum"])
+
+        model = FModel(model="xgboostregressor", data=df)
+
+        model.optimize_transformations(exclude="tide_cm", algorithm="random", num_iterations=3)
+        assert isinstance(model.config['transformation'], dict)
+        return
+
+    def test_make_space(self):
+        space = make_space(data.columns.to_list())
+        assert len(space) == 14
+        # include
+        space = make_space(data.columns.to_list(), include="tide_cm")
+        assert len(space) == 1
+
+        include = ["tide_cm", "tetx_coppml"]
+        space = make_space(data.columns.to_list(), include=include)
+        for sp, _name in zip(space, include):
+            assert sp.name == _name
+
+        exclude = "tide_cm"
+        space = make_space(data.columns.to_list(), exclude=exclude)
+        for sp in space:
+            assert sp.name != exclude
+
+        exclude = ["tide_cm", "tetx_coppml"]
+        space = make_space(data.columns.to_list(), exclude=exclude)
+        for sp in space:
+            assert sp.name not in exclude
+
+        new = {"tetx_coppml": ["log", "log2", "log10"]}
+        space = make_space(data.columns.to_list(), include="tetx_coppml", append=new)
+        assert len(space) == 1, space
+        assert len(space[0].categories) == 3
+        return
 
 if __name__ == "__main__":
 

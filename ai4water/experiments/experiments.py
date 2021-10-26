@@ -13,7 +13,7 @@ from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.taylor_diagram import taylor_plot
 from ai4water.hyperopt import Real, Categorical, Integer
 from ai4water.utils.utils import init_subplots, process_axis, jsonize
-from ai4water.utils.utils import clear_weights, dateandtime_now, save_config_file
+from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 from ai4water.backend import tf
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.visualizations import PlotResults
@@ -44,17 +44,6 @@ LABELS = {
     'msle': 'MSLE',
     'nrmse': 'Normalized RMSE',
     'mape': 'MAPE'
-}
-
-MATRIC_TYPES = {
-    "r2": "max",
-    "nse": "max",
-    "mse": "min",
-    "rmse": "min",
-    "mape": "min",
-    "kge": "max",
-    "corr_coeff": "max",
-    "nrmse": "min",
 }
 
 
@@ -126,7 +115,7 @@ class Experiments(object):
         self.config.update(kwargs.copy())
 
     def save_config(self):
-        save_config_file(self.exp_path, config=self.config)
+        dict_to_file(self.exp_path, config=self.config)
 
     def build_and_run(self, predict=False, title=None, fit_kws=None, **kwargs):
         setattr(self, '_model', None)

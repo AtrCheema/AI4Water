@@ -23,6 +23,17 @@ except ModuleNotFoundError:
     wrapt = None
 
 
+MATRIC_TYPES = {
+    "r2": "max",
+    "nse": "max",
+    "mse": "min",
+    "rmse": "min",
+    "mape": "min",
+    "kge": "max",
+    "corr_coeff": "max",
+    "nrmse": "min",
+}
+
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
     """
     Sets the random seed for a given module if the module is not None

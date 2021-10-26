@@ -16,6 +16,7 @@
             - activations
             - cross_val_score
             - explain
+            - optimize_transformations
     rendering:
         show_root_heading: true
 

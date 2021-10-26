@@ -1750,6 +1750,57 @@ class BaseModel(NN, Plots):
 
         return optimizer
 
+    def optimize_transformations(
+            self,
+            algorithm="bayes",
+            num_iterations:int=12,
+            include: Union[str, list, dict] = None,
+            exclude: Union[str, list] = None,
+            append: dict = None,
+            update_config:bool=True
+    ):
+        """optimizes the transformations for the input/output features
+
+        The 'val_score' parameter given as input to the Model is used as objective
+        function for optimization problem.
+        Arguments:
+            algorithm : The algorithm to use for optimizing transformations
+            num_iterations : The number of iterations for optimizatino algorithm.
+            include : the names of features to include
+            exclude : the name/names of features to exclude
+            append : the features with custom candidate transformations
+            update_config : whether to update the config of model or not.
+
+        Returns:
+            an instance of ai4water.hyperopt.HyperOpt which is used for optimization
+
+        Example
+        -------
+        ```python
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water import Model
+        >>> model = Model(model="xgboostregressor", data=arg_beach())
+        >>> best_transformations = model.optimize_transformations(exclude="tide_cm")
+        >>> model.fit()
+        >>> model.predict()
+        ```
+        """
+        from ._optimize import optimize_transformations
+
+        optimizer = optimize_transformations(
+            self,
+            algorithm=algorithm,
+            num_iterations=num_iterations,
+            include=include,
+            exclude=exclude,
+            append=append
+        )
+
+        if update_config:
+            self.config['transformation'] = optimizer.best_paras()
+
+        return optimizer
+
 
 def get_values(outputs):
 
