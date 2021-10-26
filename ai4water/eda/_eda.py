@@ -4,6 +4,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+import scipy.stats as stats
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
@@ -24,7 +25,6 @@ from ai4water.utils.utils import  save_config_file, dateandtime_now, ts_features
 # ECDF
 # qq plot
 # decompose into trend/seasonality and noise
-# probplot
 
 class EDA(Plot):
     """Performns a comprehensive exploratory data analysis on a tabular/structured
@@ -43,6 +43,7 @@ class EDA(Plot):
     - stats
     - autocorrelation
     - partial_autocorrelation
+    - probability_plots
 
     Example
     --------
@@ -1238,7 +1239,7 @@ class EDA(Plot):
             nlags : number of lag steps to consider
             cols : columns to use. If not defined then all the columns are used
         """
-        return self._autocorrelation(False, nlags, cols=cols)
+        return self._call_method("_autocorr_df", partial=False, nlags=nlags, cols=cols)
 
     def partial_autocorrelation(
             self,
@@ -1250,19 +1251,7 @@ class EDA(Plot):
             nlags : number of lag steps to consider
             cols : columns to use. If not defined then all the columns are used
         """
-        return self._autocorrelation(True, nlags,cols=cols)
-
-    def _autocorrelation(self, partial, nlags, cols=None):
-
-        if isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                self._autocorr_df(data, nlags, partial, fname=str(idx), cols=cols)
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                self._autocorr_df(data, nlags, partial, fname=data_name, cols=cols)
-        else:
-            self._autocorr_df(self.data, nlags, partial, cols=cols)
-        return
+        return self._call_method("_autocorr_df", partial=True, nlags=nlags, cols=cols)
 
     def _autocorr_df(
             self,
@@ -1313,6 +1302,128 @@ class EDA(Plot):
 
         fname = f"{prefix} autocorr_{fname}"
         self._save_or_show(fname=fname)
+
+        return fig
+
+    def _call_method(self, method_name, *args, **kwargs):
+        """calls the method with the data and args + kwargs"""
+
+        if isinstance(self.data, list):
+            for idx, data in enumerate(self.data):
+                getattr(self, method_name)(data, fname=str(idx), *args, **kwargs)
+
+        elif isinstance(self.data, dict):
+            for data_name, data in self.data.items():
+                getattr(self, method_name)(data, fname=data_name, *args, **kwargs)
+
+        else:
+            getattr(self, method_name)(self.data, *args, **kwargs)
+
+        return
+
+    def probability_plots(
+            self,
+            cols:Union[str, list]=None
+    ):
+        """
+        draws prbability plot using scipy.stats.probplot
+        https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.probplot.html
+        https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions
+
+        """
+        return self._call_method("_plot_prob_df", cols=cols)
+
+    def _plot_prob_df(
+            self,
+            data:pd.DataFrame,
+            cols:Union[str, list] = None,
+            fname=None,
+    ):
+        """probability plots for one dataframe"""
+        assert isinstance(data, pd.DataFrame)
+
+        if cols is not None:
+            if isinstance(cols, str):
+                cols = [cols]
+        else:
+            cols = data.columns.to_list()
+
+        assert isinstance(cols, list)
+        data = data[cols]
+
+        for col in data.columns:
+            series = data[col]
+
+            self._prob_plot_series(series, fname=fname)
+
+        return
+
+    def _prob_plot_series(
+            self,
+            data:Union[pd.DataFrame, pd.Series],
+            fname:str = None
+    ):
+        """probability plots for one series."""
+        if not isinstance(data, pd.Series):
+            assert isinstance(data, pd.DataFrame) and data.shape[1] == 1
+            data = pd.Series(data)
+
+        if data.isna().sum() > 0:
+            print(f"removing nan values from {data.name}")
+            data = data.dropna()
+
+        array = data.values
+
+        cont_distros = {
+            "norm": stats.norm(),
+            "uniform": stats.uniform(),
+            "semicircular": stats.semicircular(),
+            "cauchy": stats.cauchy(),
+            "expon": stats.expon(),
+            "rayleight": stats.rayleigh(),
+            "moyal": stats.moyal(),
+            "arcsine": stats.arcsine(),
+            "anglit": stats.anglit(),
+            "gumbel_l": stats.gumbel_l(),
+            "gilbrat": stats.gilbrat(),
+            "levy": stats.levy(),
+            "laplace": stats.laplace(),
+            "bradford": stats.bradford(0.5),
+            "kappa3":   stats.kappa3(1),
+            "pareto":   stats.pareto(2.62)
+        }
+
+        fig, axis = plt.subplots(4,4, figsize=(10, 10))
+
+        for (idx, rv), ax in zip(enumerate(cont_distros.values()), axis.flat):
+
+            if isinstance(rv, str):
+                _name = rv
+            else:
+                _name = rv.dist.name
+
+            (osm, osr), (slope, intercept, r) = stats.probplot(array, dist=rv, plot=ax)
+
+            h = ax.plot(osm, osr, label="bo")
+
+            if idx%4==0:
+                ax.set_ylabel("Ordered Values", fontsize=12)
+            else:
+                ax.set_ylabel("")
+
+            if idx>11:
+                ax.set_xlabel("Theoretical Quantiles", fontsize=12)
+            else:
+                ax.set_xlabel("")
+            ax.set_title("")
+            text = f"{_name}"
+
+            ax.legend(h, [text], loc="best", fontsize=12,
+                       fancybox=True, framealpha=0.7,
+                       handlelength=0, handletextpad=0)
+
+        plt.suptitle(data.name, fontsize=18)
+        self._save_or_show(f"probplot_{data.name}_{fname}")
 
         return fig
 

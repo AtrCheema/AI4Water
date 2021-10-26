@@ -81,6 +81,11 @@ class TestEDA(unittest.TestCase):
 
         return
 
+    def test_probplot(self):
+        EDA(data=arg_beach(), save=False, show=False).probability_plots(cols="pcp_mm")
+        return
+
+
 if __name__ == "__main__":
 
     unittest.main()
