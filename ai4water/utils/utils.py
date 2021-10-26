@@ -98,7 +98,7 @@ def dateandtime_now() -> str:
     return dt
 
 
-def save_config_file(path, config=None, errors=None, indices=None, others=None, name=''):
+def dict_to_file(path, config=None, errors=None, indices=None, others=None, name=''):
 
     sort_keys = True
     if errors is not None:
