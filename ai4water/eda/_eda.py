@@ -19,7 +19,7 @@ from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import find_tot_plots
 from ai4water.preprocessing import Transformations
-from ai4water.utils.utils import  save_config_file, dateandtime_now, ts_features
+from ai4water.utils.utils import  dict_to_file, dateandtime_now, ts_features
 
 
 # ECDF
@@ -935,7 +935,7 @@ class EDA(Plot):
                 if out_fmt == "csv":
                     pd.DataFrame.from_dict(_description).to_csv(_fpath + ".csv")
                 else:
-                    save_config_file(others=_description, path=_fpath + ".json")
+                    dict_to_file(others=_description, path=_fpath + ".json")
 
         description = {}
         if isinstance(self.data, pd.DataFrame):
