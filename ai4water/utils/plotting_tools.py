@@ -370,8 +370,9 @@ def bar_chart(labels,
               xlabel_fs=None,
               title=None,
               title_fs=None,
-              show_yaxis=True):
-
+              show_yaxis=True,
+              rotation=0
+              ):
 
     cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
     color = color if color is not None else cm
@@ -387,12 +388,12 @@ def bar_chart(labels,
     if orient=='h':
         axis.barh(np.arange(len(values)), values, color=color)
         axis.set_yticks(np.arange(len(values)))
-        axis.set_yticklabels(labels)
+        axis.set_yticklabels(labels, rotation=rotation)
 
     else:
         axis.bar(np.arange(len(values)), values, color=color)
         axis.set_xticks(np.arange(len(values)))
-        axis.set_xticklabels(labels)
+        axis.set_xticklabels(labels, rotation=rotation)
 
     if not show_yaxis:
         axis.get_yaxis().set_visible(False)
