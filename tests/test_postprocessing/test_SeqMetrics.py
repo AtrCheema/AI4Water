@@ -9,7 +9,7 @@ site.addsitedir(ai4_dir)
 import numpy as np
 
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
-from ai4water.postprocessing.SeqMetrics.utils import plot_metrics
+from ai4water.postprocessing.SeqMetrics import plot_metrics
 from ai4water.postprocessing.SeqMetrics.utils import list_subclass_methods
 
 
@@ -40,8 +40,15 @@ class_metrics = ClassificationMetrics(targets, predictions, categorical=True)
 class test_errors(unittest.TestCase):
 
     def test_radial_pots(self):
-        plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50, save_path=os.path.join(os.getcwd(), "results"))
-        plot_metrics(all_errors, plot_type='radial', save_path=os.path.join(os.getcwd(), "results"))
+        plot_metrics(all_errors,
+                     plot_type='bar',
+                     max_metrics_per_fig=50,
+                     save_path=os.path.join(os.getcwd(), "results"),
+                     show=False)
+        plot_metrics(all_errors,
+                     plot_type='radial',
+                     save_path=os.path.join(os.getcwd(), "results"),
+                     show=False)
         return
 
     def test_attrs(self):
