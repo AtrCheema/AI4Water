@@ -1796,8 +1796,22 @@ class BaseModel(NN, Plots):
             append=append
         )
 
+        transformations = []
+        for feature, method in optimizer.best_paras().items():
+            if method == "none":
+                pass
+            else:
+                t = {'method': method, 'features': [feature]}
+
+                if method.startswith("log"):
+                    t["replace_nans"] = True
+                    t["replace_zeros"] = True
+
+                transformations.append(t)
+
         if update_config:
-            self.config['transformation'] = optimizer.best_paras()
+            self.config['transformation'] = transformations
+            self.dh.config['transformation'] = transformations
 
         return optimizer
 
