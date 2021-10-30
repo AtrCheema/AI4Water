@@ -63,7 +63,7 @@ def optimize_transformations(
 
         if cross_validator is None:
 
-            t, p = _model.predict(return_true=True)
+            t, p = _model.predict(return_true=True, process_results=False)
             metrics = RegressionMetrics(t, p)
             val_score = getattr(metrics, val_metric)()
         else:
@@ -81,6 +81,7 @@ def optimize_transformations(
         objective_fn=objective_fn,
         param_space=space,
         num_iterations=num_iterations,
+        process_results=False,
         opt_path=f"results\\{PREFIX}"
     )
 
