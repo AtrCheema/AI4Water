@@ -6,7 +6,7 @@ from matplotlib.projections import PolarAxes
 import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+
 
 COLORS = {
     0: np.array([0.89411765, 0.10196078, 0.10980392, 1.]),
@@ -400,7 +400,9 @@ def taylor_plot(trues:dict,
     if axis_locs is None:
         axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
 
-
+    # importing it at the start will be too early, because every sub-module imports from utils
+    # so utils must not import something from other sub-modules at the start
+    from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
     sims = list(simulations.values())
     models = len(sims[0])
