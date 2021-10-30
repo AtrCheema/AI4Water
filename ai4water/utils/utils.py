@@ -278,7 +278,7 @@ def _make_model(**kwargs):
         # used for cnn_lst structure
         'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},
 
-        'backend':       {'type': str, 'default': 'tensorflow', 'lower': None, 'upper': None,
+        'backend':       {'type': None, 'default': 'tensorflow', 'lower': None, 'upper': None,
                           'between': ['tensorflow', 'pytorch']},
         # buffer_size is only relevant if 'val_data' is same and shuffle is true.
         # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
@@ -1471,6 +1471,7 @@ def maybe_three_outputs(data, teacher_forcing=False):
             return data[0], data[2]
     else:
         return [data[0], data[1]], data[2]
+
 
 def get_version_info(
         **kwargs
