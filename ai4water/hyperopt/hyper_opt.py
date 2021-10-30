@@ -56,15 +56,15 @@ except ImportError:
 
 from ai4water.backend import tf
 from ai4water.utils.utils import JsonEncoder
-from ai4water.hyperopt.utils import plot_convergences
+from .utils import plot_convergences
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from ai4water.hyperopt.utils import get_one_tpe_x_iter
+from .utils import get_one_tpe_x_iter
 from ai4water.utils.utils import Jsonize, dateandtime_now
-from ai4water.hyperopt.utils import skopt_space_from_hp_space
-from ai4water.hyperopt.utils import post_process_skopt_results
-from ai4water.hyperopt.utils import Categorical, Real, Integer
-from ai4water.hyperopt.utils import sort_x_iters, x_iter_for_tpe
-from ai4water.hyperopt.utils import loss_histogram, plot_hyperparameters
+from .utils import skopt_space_from_hp_space
+from .utils import post_process_skopt_results
+from .utils import Categorical, Real, Integer
+from .utils import sort_x_iters, x_iter_for_tpe
+from .utils import loss_histogram, plot_hyperparameters
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -339,6 +339,7 @@ class HyperOpt(object):
                  eval_on_best:bool=False,
                  backend:str=None,
                  opt_path:str = None,
+                 process_results:bool = True,
                  verbosity:int = 1,
                  **kwargs
                  ):
@@ -394,6 +395,7 @@ class HyperOpt(object):
         self.data = None
         self.eval_on_best=eval_on_best
         self.opt_path = opt_path
+        self.process_results=process_results
         self.objective_fn_is_dl = False
         self.verbosity = verbosity
 
@@ -971,9 +973,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             xiters = search_result.x_iters
             self.results = {f'{round(k, 8)}_{idx}': self.to_kw(v) for idx, k, v in zip(range(self.num_iterations), fv, xiters)}
 
-        post_process_skopt_results(search_result, self.results, self.opt_path)
+        if self.process_results:
+            post_process_skopt_results(search_result, self.results, self.opt_path)
 
-        self._plot()
+            self._plot()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -1003,7 +1006,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if not self.use_ai4water_model:
                 self.results[err + idx] = sort_x_iters(para, self.original_para_order())
 
-        self._plot()
+        if self.process_results:
+            self._plot()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -1057,7 +1061,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         study.optimize(objective, n_trials=self.num_iterations)
         setattr(self, 'study', study)
 
-        self._plot()
+        if self.process_results:
+            self._plot()
 
         return study
 
@@ -1110,7 +1115,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         setattr(self, 'trials', trials)
         #self.results = trials.results
-        self._plot()
+        if self.process_results:
+            self._plot()
 
         return best
 
