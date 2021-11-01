@@ -97,12 +97,6 @@ class Transformations(scaler_container):
         - ipca :    incremental principle component analysis
         - fastica : fast incremental component analysis
 
-    Following methods have only transformations and not inverse transformations.
-    They can be used for feature creation.
-
-        emd :    empirical mode decomposition
-        eemd :   ensemble empirical mode decomposition
-
     To transform a datafrmae using any of the above methods use
 
     ```python

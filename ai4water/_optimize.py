@@ -1,5 +1,4 @@
 import importlib
-import os.path
 from typing import Union
 
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES
@@ -11,6 +10,7 @@ PREFIX = f"trans_hpo_{dateandtime_now()}"
 
 def optimize_transformations(
         model,
+        categories,
         num_iterations=12,
         algorithm="bayes",
         include=None,
@@ -26,7 +26,7 @@ def optimize_transformations(
     cross_validator = model.config['cross_validator']
     config = jsonize(model.config)
 
-    space = make_space(data.columns.to_list(), include=include, exclude=exclude, append=append)
+    space = make_space(data.columns.to_list(), include=include, exclude=exclude, append=append, categories=categories)
 
     def objective_fn(
             seed=None,
@@ -92,21 +92,21 @@ def optimize_transformations(
 
 def make_space(
         features:list,
+        categories:list,
         include:Union[str, list, dict]=None,
         exclude:Union[str, list]=None,
-        append:dict=None
+        append:dict=None,
 )->list:
     """
     Arguments:
         features :
+        categories :
         include: the names of features to include
         exclude: the name/names of features to exclude
         append: the features with custom candidate transformations
     """
     hpo = importlib.import_module("ai4water.hyperopt")
     Categorical = hpo.Categorical
-
-    categories = ["minmax", "zscore", "log", "robust", "quantile", "log2", "log10", "none"]
 
     # although we need space as list at the end, it is better to create a dictionary of it
     # because manipulating dictionary is easier

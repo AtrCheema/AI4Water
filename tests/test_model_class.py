@@ -200,36 +200,42 @@ class TestOptimize(unittest.TestCase):
         model = FModel(model="xgboostregressor", data=df)
 
         model.optimize_transformations(exclude="tide_cm", algorithm="random", num_iterations=3)
-        assert isinstance(model.config['transformation'], dict)
+        assert isinstance(model.config['transformation'], list)
         return
 
     def test_make_space(self):
-        space = make_space(data.columns.to_list())
+        space = make_space(data.columns.to_list(), categories=['log', 'log2', 'minmax', 'none'])
         assert len(space) == 14
         # include
-        space = make_space(data.columns.to_list(), include="tide_cm")
+        space = make_space(data.columns.to_list(), include="tide_cm",
+                           categories=['log', 'log2', 'minmax', 'none'])
         assert len(space) == 1
 
         include = ["tide_cm", "tetx_coppml"]
-        space = make_space(data.columns.to_list(), include=include)
+        space = make_space(data.columns.to_list(), include=include,
+                           categories=['log', 'log2', 'minmax', 'none'])
         for sp, _name in zip(space, include):
             assert sp.name == _name
 
         exclude = "tide_cm"
-        space = make_space(data.columns.to_list(), exclude=exclude)
+        space = make_space(data.columns.to_list(), exclude=exclude,
+                           categories=['log', 'log2', 'minmax', 'none'])
         for sp in space:
             assert sp.name != exclude
 
         exclude = ["tide_cm", "tetx_coppml"]
-        space = make_space(data.columns.to_list(), exclude=exclude)
+        space = make_space(data.columns.to_list(), exclude=exclude,
+                           categories=['log', 'log2', 'minmax', 'none'])
         for sp in space:
             assert sp.name not in exclude
 
         new = {"tetx_coppml": ["log", "log2", "log10"]}
-        space = make_space(data.columns.to_list(), include="tetx_coppml", append=new)
+        space = make_space(data.columns.to_list(), include="tetx_coppml", append=new,
+                           categories=['log', 'log2', 'minmax', 'none', 'log10'])
         assert len(space) == 1, space
         assert len(space[0].categories) == 3
         return
+
 
 if __name__ == "__main__":
 

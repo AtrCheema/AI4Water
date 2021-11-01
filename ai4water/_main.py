@@ -1752,6 +1752,7 @@ class BaseModel(NN, Plots):
 
     def optimize_transformations(
             self,
+            transformations:Union[list, str] = None,
             algorithm="bayes",
             num_iterations:int=12,
             include: Union[str, list, dict] = None,
@@ -1763,7 +1764,20 @@ class BaseModel(NN, Plots):
 
         The 'val_score' parameter given as input to the Model is used as objective
         function for optimization problem.
+
         Arguments:
+            transformations : the transformations to consider. By default, following
+                transformations are considered
+
+                - minmax
+                - zscore also known as standard scaler
+                - power
+                - quantile
+                - robust
+                - log
+                - log2
+                - log10
+
             algorithm : The algorithm to use for optimizing transformations
             num_iterations : The number of iterations for optimizatino algorithm.
             include : the names of features to include
@@ -1787,13 +1801,21 @@ class BaseModel(NN, Plots):
         """
         from ._optimize import optimize_transformations
 
+        categories = ["minmax", "zscore", "log", "robust", "quantile", "log2", "log10", "power", "none"]
+
+        if transformations is not None:
+            assert isinstance(transformations, list)
+            assert all([t in categories for t in transformations]), f"transformations must be one of {categories}"
+            categories = transformations
+
         optimizer = optimize_transformations(
             self,
             algorithm=algorithm,
             num_iterations=num_iterations,
             include=include,
             exclude=exclude,
-            append=append
+            append=append,
+            categories=categories
         )
 
         transformations = []
