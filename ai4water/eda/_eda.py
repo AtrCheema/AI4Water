@@ -22,14 +22,13 @@ from ai4water.preprocessing import Transformations
 from ai4water.utils.utils import  dict_to_file, dateandtime_now, ts_features
 
 
-# ECDF
 # qq plot
 # decompose into trend/seasonality and noise
 
 
 class EDA(Plot):
     """Performns a comprehensive exploratory data analysis on a tabular/structured
-    data
+    data. It is meant to be a one stop shop for eda.
 
     Methods
     ---------
@@ -47,6 +46,7 @@ class EDA(Plot):
     - partial_autocorrelation
     - probability_plots
     - lag_plot
+    - plot_ecdf
 
     Example
     --------
@@ -132,7 +132,7 @@ class EDA(Plot):
             'heatmap', 'plot_missing', 'plot_histograms', 'plot_data',
             'plot_index', 'stats', 'box_plot',
             'autocorrelation', 'partial_autocorrelation',
-            'lag_plot'
+            'lag_plot', 'plot_ecdf'
         ]
 
         if isinstance(self.data, pd.DataFrame) and self.data.shape[-1] > 1:
@@ -1440,12 +1440,81 @@ class EDA(Plot):
         """
         return self._call_method("_lag_plot_df", n_lags=n_lags, cols=cols, figsize=figsize, **kwargs)
 
+    def plot_ecdf(
+            self,
+            cols,
+            figsize=None,
+            **kwargs
+    ):
+        """plots empirical cummulative distribution function
+
+        Arguments:
+            cols : columns to use
+            figsize :
+            kwargs : any keyword argument for axis.plot
+        """
+        return self._call_method("_plot_ecdf_df", cols=cols, figsize=figsize, **kwargs)
+
+    def _plot_ecdf_df(self, data:pd.DataFrame, cols=None, figsize=None, fname=None, **kwargs):
+
+        data = _preprocess_df(data, cols=cols)
+
+        ncols = data.shape[1]
+        n_rows, n_cols = 1, 1
+        if ncols > 1:
+            n_rows = (math.ceil(ncols / 2) * 2) // 2
+            n_cols = 2
+
+        figsize = figsize or (6, 5 + ncols * 0.2)
+
+        fig, axis = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=figsize)
+
+        if ncols == 1:
+            axis = np.array([axis])
+
+        for col, ax in zip(data.columns, axis.flat):
+            plot_ecdf(data[col], ax=ax, **kwargs)
+
+        self._save_or_show(fname=f"ecdf_{fname}")
+
+        return axis
+
+
+def plot_ecdf(x:Union[pd.Series, np.ndarray], ax=None, **kwargs):
+
+    if ax is None:
+        ax = plt.gca()
+
+    if isinstance(x, pd.Series):
+        _name = x.name
+        x = x.values
+    else:
+        assert isinstance(x, np.ndarray)
+        _name = "ecdf"
+
+    x,y = ecdf(x)
+    ax.plot(x, y, label=_name, **kwargs)
+    ax.legend()
+
+    return ax
+
+
+def ecdf(x:np.ndarray):
+    # https://stackoverflow.com/a/37660583/5982232
+    xs = np.sort(x)
+    ys = np.arange(1, len(xs)+1)/float(len(xs))
+
+    return xs, ys
+
 
 def lag_plot(series: pd.Series, lag: int, ax, **kwargs):
 
     data = series.values
     y1 = data[:-lag]
     y2 = data[lag:]
+
+    if ax is None:
+        ax = plt.gca()
 
     ax.set_xlabel("y(t)")
     ax.set_ylabel(f"y(t + {lag})")
