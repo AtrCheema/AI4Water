@@ -1,6 +1,6 @@
 import os
 import math
-from typing import Union
+from typing import Union, List, Dict
 
 import numpy as np
 import pandas as pd
@@ -33,6 +33,7 @@ class EDA(Plot):
     Methods
     ---------
     - heatmap
+    - box_plot
     - plot_missing
     - plot_histograms
     - plot_index
@@ -56,7 +57,7 @@ class EDA(Plot):
 
     def __init__(
             self,
-            data,
+            data:Union[pd.DataFrame, List[pd.DataFrame], Dict, np.ndarray],
             in_cols=None,
             out_cols=None,
             path=None,
@@ -64,6 +65,20 @@ class EDA(Plot):
             save=True,
             show=True,
     ):
+        """
+        Arguments:
+            data : either a dataframe, or list of dataframes or a dictionary whose
+                values are dataframes or a numpy array
+            in_cols :
+            out_cols :
+            path : the path where to save the figures
+            save : whether to save the plots or not
+            show : whether to show the plots or not
+            dpi :  the resolution with which to save the image
+        """
+        if isinstance(data, np.ndarray):
+            data = pd.DataFrame(data)
+
         self.data = data
         self.in_cols = in_cols
         self.out_cols = out_cols
@@ -99,7 +114,7 @@ class EDA(Plot):
 
     def _save_or_show(self, fname, dpi=None):
 
-        return self.save_or_show(where='data', fname=fname, show=self.show, dpi=dpi)
+        return self.save_or_show(where='data', fname=fname, show=self.show, dpi=dpi, close=False)
 
     def __call__(self,
                  methods: Union[str, list] = 'all',
@@ -145,10 +160,10 @@ class EDA(Plot):
         Plots a heatmap which depicts missing values.
 
         Arguments:
-            cols :
+            cols : columns to use to draw heatmap
             kwargs :
-            st :
-            en :
+            st : Starting index of data to be used
+            en : end index of data to be used
 
         Return:
             None
@@ -160,21 +175,7 @@ class EDA(Plot):
         >>>vis.heatmap()
         ```
         """
-        if isinstance(self.data, pd.DataFrame):
-            self._heatmap_df(self.data, cols=cols, st=st, en=en, **kwargs)
-
-        elif isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                if isinstance(data, pd.DataFrame):
-                    self._heatmap_df(data, cols=cols[idx] if isinstance(cols, list) else None,
-                                     fname=f"data_heatmap_{idx}", **kwargs)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    _cols = cols[data_name] if cols is not None else None
-                    self._heatmap_df(data, _cols, fname=data_name, **kwargs)
-        return
+        return self._call_method('_heatmap_df', cols=cols, st=st, en=en, **kwargs)
 
     def _heatmap_df(
             self,
@@ -256,7 +257,8 @@ class EDA(Plot):
         if title is not None:
             axis.set_title(title, fontsize=title_fs)
 
-        return self._save_or_show(fname=fname+'_heat_map', dpi=500)
+        self._save_or_show(fname=fname + '_heat_map', dpi=500)
+        return axis
 
     def plot_missing(self, st=None, en=None, cols=None, **kwargs):
         """
@@ -273,22 +275,7 @@ class EDA(Plot):
         >>>vis.plot_missing()
         ```
         """
-        if isinstance(self.data, pd.DataFrame):
-            self._plot_missing_df(self.data, st=st, en=en, cols=cols, **kwargs)
-
-        elif isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                _cols = cols[idx] if isinstance(cols, list) else None
-                self._plot_missing_df(data, st=st, en=en, cols=None, fname=str(idx),
-                                      **kwargs)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    _cols = cols[data_name] if cols else None
-                    self._plot_missing_df(data, cols=_cols, st=st, en=en, fname=data_name,
-                                          **kwargs)
-        return
+        return self._call_method('_plot_missing_df', cols=cols, st=st, en=en, **kwargs)
 
     def _plot_missing_df(self,
                          data: pd.DataFrame,
@@ -304,6 +291,8 @@ class EDA(Plot):
             figsize
             any other keyword argument will be passed to bar_chart()
         """
+        ax1 = None
+
         if cols is None:
             cols = data.columns
         data = data[cols]
@@ -365,14 +354,17 @@ class EDA(Plot):
                     fontsize="11",
                 )
             self._save_or_show(fname=fname+'_missing_vals', dpi=500)
-        return
+        return ax1
 
-    def plot_data(self,
-                  st=None, en=None,
-                  freq: str = None,
-                  cols=None,
-                  max_subplots: int = 10,
-                  **kwargs):
+    def plot_data(
+            self,
+            st=None,
+            en=None,
+            freq: str = None,
+            cols=None,
+            max_subplots: int = 10,
+            **kwargs
+    ):
         """
         Plots the data.
 
@@ -397,19 +389,8 @@ class EDA(Plot):
         ```
         """
         # TODO, this method should be available from `model` as well
-        if isinstance(self.data, pd.DataFrame):
-            self._plot_df(self.data, st=st, en=en, cols=cols, freq=freq, max_subplots=max_subplots, **kwargs)
-
-        if isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                self._plot_df(data, cols=cols[idx] if isinstance(cols, list) else None,
-                              freq=freq, prefix=str(idx), max_subplots=max_subplots, **kwargs)
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    self._plot_df(data, cols=cols, prefix=data_name, freq=freq, max_subplots=max_subplots,
-                                  **kwargs)
-        return
+        return self._call_method("_plot_df", st=st, en=en, cols=cols, freq=freq, max_subplots=max_subplots,
+                                 **kwargs)
 
     def _plot_df(self,
                  df,
@@ -529,9 +510,14 @@ class EDA(Plot):
                     self._save_or_show(fname=f'input_{prefix}_{str(yr)} _{str(week)}')
         return
 
-    def correlation(self, cols=None,
-                    remove_targets=False, st=None,
-                    en=None, **kwargs):
+    def correlation(
+            self,
+            cols=None,
+            remove_targets=False,
+            st=None,
+            en=None,
+            **kwargs
+    ):
         """
         Plots correlation between features.
 
@@ -559,24 +545,7 @@ class EDA(Plot):
             if isinstance(cols, dict):
                 cols = None
 
-        if isinstance(self.data, pd.DataFrame):
-            self._feature_feature_corr_df(self.data, cols, st=st, en=en, **kwargs)
-
-        elif isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                if isinstance(data, pd.DataFrame):
-                    self._feature_feature_corr_df(data, cols[idx] if cols is not None else None,
-                                                  st=st, en=en,
-                                                  prefix=str(idx), **kwargs)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    self._feature_feature_corr_df(data, cols,
-                                                  st=st, en=en,
-                                                  prefix=data_name,
-                                                  **kwargs)
-        return
+        return self._call_method("_feature_feature_corr_df", cols=cols, st=st, en=en, **kwargs)
 
     def _feature_feature_corr_df(self,
                                  data,
@@ -639,8 +608,10 @@ class EDA(Plot):
 
         ax = sns.heatmap(corr, center=0, fmt=".2f", ax=ax, **_kwargs)
         ax.set(frame_on=True)
+
         self._save_or_show(fname=f"{split if split else ''}_feature_corr_{prefix}")
-        return
+
+        return ax
 
     def plot_pcs(self, num_pcs=None, st=None, en=None, save_as_csv=False,
                  figsize=(12, 8), **kwargs):
@@ -734,15 +705,16 @@ class EDA(Plot):
         self._save_or_show(fname=f"first_{num_pcs}_pcs_{prefix}")
         return
 
-    def grouped_scatter(self,
-                        inputs: bool = True,
-                        outputs: bool = True,
-                        cols=None,
-                        st=None,
-                        en=None,
-                        max_subplots: int = 8,
-                        **kwargs
-                        ):
+    def grouped_scatter(
+            self,
+            inputs: bool = True,
+            outputs: bool = True,
+            cols=None,
+            st=None,
+            en=None,
+            max_subplots: int = 8,
+            **kwargs
+    ):
         """Makes scatter plot for each of feature in data.
         Arguments:
             inputs :
@@ -827,18 +799,7 @@ class EDA(Plot):
             kwargs :
         kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
         """
-        if isinstance(self.data, pd.DataFrame):
-            self._plot_his_df(self.data, st=st, en=en, cols=cols, **kwargs)
-
-        elif isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                self._plot_his_df(data, st=st, en=en, prefix=str(idx), cols=cols, **kwargs)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    self._plot_his_df(data, st=st, en=en, prefix=data_name, **kwargs)
-        return
+        return self._call_method("_plot_his_df", st=st, en=en, cols=cols, **kwargs)
 
     def _plot_his_df(self,
                      data: pd.DataFrame,
@@ -856,26 +817,16 @@ class EDA(Plot):
 
         data = consider_st_en(data, st, en)
 
-        data[cols].hist(bins=bins, figsize=figsize, **kwargs)
+        axis = data[cols].hist(bins=bins, figsize=figsize, **kwargs)
+
         self._save_or_show(fname=f"hist_{prefix}")
-        return
+
+        return axis
 
     def plot_index(self, st=None, en=None, **kwargs):
         """plots the datetime index of dataframe
         """
-        if isinstance(self.data, pd.DataFrame):
-            self._plot_index(self.data, st=st, en=en, **kwargs)
-
-        elif isinstance(self.data, list):
-            for data in self.data:
-                if isinstance(data, pd.DataFrame):
-                    self._plot_index(data, st=st, en=en, **kwargs)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.values():
-                if isinstance(data, pd.DataFrame):
-                    self._plot_index(data, st=st, en=en, **kwargs)
-        return
+        return self._call_method("_plot_index", st=st, en=en, **kwargs)
 
     def _plot_index(self,
                     index,
@@ -905,7 +856,8 @@ class EDA(Plot):
         axis.set_title("Temporal distribution of Observations", fontsize=title_fs)
         axis.get_yaxis().set_visible(False)
         self._save_or_show(fname=fname)
-        return
+
+        return axis
 
     def stats(self,
               precision=3,
@@ -1001,7 +953,7 @@ class EDA(Plot):
             outputs :
             st :
             en :
-            normalize :
+            normalize : If True, then each feature/column is rescaled between 0 and 1.
             figsize :
             freq : str, one of 'weekly', 'monthly', 'yearly'. If given, box plot
                 will be plotted for these intervals.
@@ -1010,8 +962,10 @@ class EDA(Plot):
             cols : list, the name of columns from data to be plotted.
             kwargs : any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
             show_datapoints : if True, sns.swarmplot() will be plotted. Will be time
-                consuming for bigger data."""
+                consuming for bigger data.
+        """
 
+        axis = None
         data = self.data
         fname = "violen_plot_" if violen else "box_plot_"
 
@@ -1059,12 +1013,13 @@ class EDA(Plot):
                                **kwargs)
         else:
             cols = cols + self.out_cols if outputs else cols
-            self._box_plot(data, cols, st=st, en=en,
+            axis = self._box_plot(data, cols, st=st, en=en,
                            normalize=normalize, figsize=figsize,
                            max_features=max_features,
                            show_datapoints=show_datapoints, freq=freq,
                            violen=violen,
                            **kwargs)
+        return axis
 
     def _box_plot(self,
                   data,
@@ -1080,9 +1035,10 @@ class EDA(Plot):
                   prefix='',
                   **kwargs):
         data = data[cols]
+        axis = None
 
         if data.shape[1] <= max_features:
-            self._box_plot_df(data,
+            axis = self._box_plot_df(data,
                               st=st,
                               en=en,
                               normalize=normalize, show_datapoints=show_datapoints,
@@ -1104,7 +1060,7 @@ class EDA(Plot):
                                   freq=freq,
                                   prefix=f"{'violen' if violen else 'box'}_{prefix}_{_st}_{_en}",
                                   **kwargs)
-        return
+        return axis
 
     def _box_plot_df(self,
                      data,
@@ -1158,7 +1114,7 @@ class EDA(Plot):
         plt.figure(figsize=figsize)
 
         if violen:
-            sns.violinplot(data=data, **kwargs)
+            axis = sns.violinplot(data=data, **kwargs)
         else:
             axis = sns.boxplot(data=data, **kwargs)
             axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
@@ -1167,7 +1123,8 @@ class EDA(Plot):
             sns.swarmplot(data=data)
 
         self._save_or_show(fname=name)
-        return
+
+        return axis
 
     def _box_plot_with_freq(self,
                             data,
@@ -1303,7 +1260,7 @@ class EDA(Plot):
         fname = f"{prefix} autocorr_{fname}"
         self._save_or_show(fname=fname)
 
-        return fig
+        return axis
 
     def _call_method(self, method_name, *args, **kwargs):
         """calls the method with the data and args + kwargs"""
@@ -1317,9 +1274,7 @@ class EDA(Plot):
                 getattr(self, method_name)(data, fname=data_name, *args, **kwargs)
 
         else:
-            getattr(self, method_name)(self.data, *args, **kwargs)
-
-        return
+            return getattr(self, method_name)(self.data, *args, **kwargs)
 
     def probability_plots(
             self,
