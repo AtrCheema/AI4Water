@@ -49,6 +49,10 @@ extra_requires = [
 'wrapt',
 ]
 
+hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
+post_process_requirements = ['lime', 'shap']
+exp_requirements = ['catboost', 'lightgbm', 'xgboost', 'tpot']
+
 all_requirements = min_requirements + extra_requires
 
 setup(
@@ -99,12 +103,17 @@ setup(
               'ai4water/postprocessing/interpret',
               'ai4water/postprocessing/visualize',
               'ai4water/datasets',
-              'ai4water/ETUtil',
+              'ai4water/et',
               'ai4water/experiments',
               'ai4water/eda'
               ],
 
     install_requires=min_requirements,
 
-    extras_require={'all': extra_requires}
+    extras_require={
+        'all': extra_requires,
+        'hpo': hpo_requirements,
+        'post_process': post_process_requirements,
+        'exp': exp_requirements
+    }
 )
