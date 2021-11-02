@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# some rights may be researved by 2020  Ather Abbas
+# some rights may be reserved by 2020  Ather Abbas
 from setuptools import setup
 from version import __version__ as ver
 
@@ -12,7 +12,7 @@ with open('version.py') as fv:
 
 min_requirements = [
     'numpy<=1.19.2',
-    'seaborn',
+    'h5py<2.11.0',
     'scikit-learn<=0.24.2',
     'pandas',
     'matplotlib',
@@ -47,11 +47,15 @@ extra_requires = [
 
 # for jsonizing
 'wrapt',
+
+# eda
+'seaborn'
 ]
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
 post_process_requirements = ['lime', 'shap']
 exp_requirements = ['catboost', 'lightgbm', 'xgboost', 'tpot']
+pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
 
 all_requirements = min_requirements + extra_requires
 
@@ -61,7 +65,7 @@ setup(
 
     version=ver,
 
-    description='Platform for developing deep learning based for sequential data',
+    description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
@@ -70,7 +74,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'ai4water/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
+    package_data={'ai4water/datasets': ['arg_busan.csv']},
     include_package_data=True,
 
     classifiers=[
@@ -97,6 +101,7 @@ setup(
               'ai4water/hyperopt',
               'ai4water/utils',
               'ai4water/preprocessing',
+              'ai4water/preprocessing/transformations',
               'ai4water/postprocessing/',
               'ai4water/postprocessing/SeqMetrics',
               'ai4water/postprocessing/explain',

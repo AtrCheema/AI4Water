@@ -126,21 +126,6 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     return df
 
 
-def load_u1(target: Union[str, list] = 'target') -> pd.DataFrame:
-    """Loads 1d data that can be used fo regression and classification"""
-    fpath = os.path.join(os.path.dirname(__file__), "input_target_u1.csv")
-    df = pd.read_csv(fpath, index_col='index')
-
-    inputs = [col for col in df.columns if col not in ['target', 'target_by_group']]
-
-    if isinstance(target, str):
-        target = [target]
-
-    df = df[inputs + target]
-
-    return df
-
-
 def load_nasdaq(inputs: Union[str, list, None] = None, target: str = 'NDX'):
     """Loads Nasdaq100 by downloading it if it is not already downloaded."""
     fname = os.path.join(os.path.dirname(__file__), "nasdaq100_padding.csv")

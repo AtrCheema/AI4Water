@@ -6,7 +6,6 @@ from typing import Union, Tuple, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import ParameterGrid
 
 from ai4water.hyperopt import HyperOpt
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
@@ -1066,7 +1065,7 @@ class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
     Examples
     --------
-    >>>from ai4water.datasets import load_u1
+    >>>from ai4water.datasets import arg_beach
     >>>from ai4water.experiments import TransformationExperiments
     ...# Define your experiment
     >>>class MyTransformationExperiments(TransformationExperiments):
@@ -1082,9 +1081,9 @@ class TransformationExperiments(Experiments):
     ...                'batch_size': int(kwargs['batch_size']),
     ...                'lr': float(kwargs['lr']),
     ...                'transformation': kwargs['transformation']}
-    >>>data = load_u1()
-    >>>inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    >>>outputs = ['target']
+    >>>data = arg_beach()
+    >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+    >>>outputs = ['tetx_coppml']
     >>>cases = {'model_minmax': {'transformation': 'minmax'},
     ...         'model_zscore': {'transformation': 'zscore'}}
     >>>search_space = [
@@ -1180,7 +1179,7 @@ be used to build ai4water's Model class.
 
     def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
 
-        model = self.ai4water_model.from_config_file(config_path=config_path, data=self.data, verbosity=self.verbosity)
+        model = self.ai4water_model.from_config_file(config_path=config_path, data=self.data)
         weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
 

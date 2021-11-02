@@ -154,11 +154,11 @@ class HyperOpt(object):
     ```python
     >>>from ai4water import Model
     >>>from ai4water.hyperopt import HyperOpt, Categorical, Integer, Real
-    >>>from ai4water.datasets import load_u1
+    >>>from ai4water.datasets import arg_beach
     >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>data = load_u1()
-    >>>input_features = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    >>>output_features = ['target']
+    >>>data = arg_beach()
+    >>>input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+    >>>output_features = ['tetx_coppml']
     ...# We have to define an objective function which will take keyword arguments
     ...# and return a scaler value as output. This scaler value will be minized during optimzation
     >>>def objective_fn(**suggestion)->float:
