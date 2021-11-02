@@ -26,6 +26,7 @@ from ai4water.utils.utils import  dict_to_file, dateandtime_now, ts_features
 # qq plot
 # decompose into trend/seasonality and noise
 
+
 class EDA(Plot):
     """Performns a comprehensive exploratory data analysis on a tabular/structured
     data
@@ -45,6 +46,7 @@ class EDA(Plot):
     - autocorrelation
     - partial_autocorrelation
     - probability_plots
+    - lag_plot
 
     Example
     --------
@@ -129,7 +131,8 @@ class EDA(Plot):
         all_methods = [
             'heatmap', 'plot_missing', 'plot_histograms', 'plot_data',
             'plot_index', 'stats', 'box_plot',
-            'autocorrelation', 'partial_autocorrelation'
+            'autocorrelation', 'partial_autocorrelation',
+            'lag_plot'
         ]
 
         if isinstance(self.data, pd.DataFrame) and self.data.shape[-1] > 1:
@@ -214,7 +217,7 @@ class EDA(Plot):
         if cols is None:
             cols = data.columns
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en)
 
         _kwargs = {
             "xtick_labels_fs": 12,
@@ -262,6 +265,7 @@ class EDA(Plot):
 
     def plot_missing(self, st=None, en=None, cols=None, **kwargs):
         """
+        plot data to indicate missingness in data
 
         Arguments:
             cols : columns to be used.
@@ -297,7 +301,7 @@ class EDA(Plot):
             cols = data.columns
         data = data[cols]
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en)
 
         # Identify missing values
         mv_total, _, mv_cols, _, mv_cols_ratio = _missing_vals(data).values()
@@ -419,11 +423,7 @@ class EDA(Plot):
         if tick_kws is None:
             tick_kws = {'axis': "both", 'which': 'major', 'labelsize': 12}
 
-        if cols is None:
-            cols = list(df.columns)
-        df = df[cols]
-
-        df = consider_st_en(df, st, en)
+        df = _preprocess_df(df, st, en, cols)
 
         if df.shape[1] <= max_subplots:
 
@@ -522,7 +522,7 @@ class EDA(Plot):
         Plots correlation between features.
 
         Arguments:
-            cols :
+            cols : columns to use
             remove_targets :
             st :
             en :
@@ -581,7 +581,7 @@ class EDA(Plot):
         if cols is None:
             cols = data.columns.to_list()
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en)
 
         corr = data[cols].corr(method=method)
 
@@ -658,7 +658,7 @@ class EDA(Plot):
                   hue=None,
                   figsize=(12, 8), **kwargs):
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en)
 
         if num_pcs is None:
             _num_pcs = int(data.shape[1]/2)
@@ -771,7 +771,7 @@ class EDA(Plot):
         """
         data = data.copy()
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en)
 
         if data.shape[1] <= max_subplots:
             self._grouped_scatter_plot(data, name=f'grouped_scatter_{prefix}',  **kwargs)
@@ -790,14 +790,21 @@ class EDA(Plot):
         self._save_or_show(fname=name)
         return
 
-    def plot_histograms(self, st=None, en=None, cols=None, **kwargs):
+    def plot_histograms(
+            self,
+            st=None,
+            en=None,
+            cols=None,
+            **kwargs
+    ):
         """Plots distribution of data as histogram.
+        https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
+
         Arguments:
-            st :
-            en :
-            cols :
-            kwargs :
-        kwargs: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
+            st : starting index of data to use
+            en : end index of data to use
+            cols : columns to use
+            kwargs : anykeyword argument for pandas.DataFrame.hist function
         """
         return self._call_method("_plot_his_df", st=st, en=en, cols=cols, **kwargs)
 
@@ -812,12 +819,10 @@ class EDA(Plot):
                      **kwargs
                      ):
         """Plots histogram of one dataframe"""
-        if cols is None:
-            cols = data.columns
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en, cols)
 
-        axis = data[cols].hist(bins=bins, figsize=figsize, **kwargs)
+        axis = data.hist(bins=bins, figsize=figsize, **kwargs)
 
         self._save_or_show(fname=f"hist_{prefix}")
 
@@ -894,7 +899,7 @@ class EDA(Plot):
             description = {}
             for col in cols:
                 if col in self.data:
-                    description[col] = ts_features(consider_st_en(self.data[col], st, en),
+                    description[col] = ts_features(_preprocess_df(self.data[col], st, en),
                                                    precision=precision, name=col)
 
             save_stats(description, self.path)
@@ -909,7 +914,7 @@ class EDA(Plot):
 
                     for col in cols:
                         if col in data:
-                            _description[col] = ts_features(consider_st_en(data[col], st, en),
+                            _description[col] = ts_features(_preprocess_df(data[col], st, en),
                                                             precision=precision, name=col)
 
                 description['data' + str(idx)] = _description
@@ -921,7 +926,7 @@ class EDA(Plot):
                 _description = {}
                 if isinstance(data, pd.DataFrame):
                     for col in data.columns:
-                        _description[col] = ts_features(consider_st_en(data[col], st, en),
+                        _description[col] = ts_features(_preprocess_df(data[col], st, en),
                                                         precision=precision, name=col)
 
                 description[f'data_{data_name}'] = _description
@@ -932,19 +937,21 @@ class EDA(Plot):
 
         return description
 
-    def box_plot(self,
-                 inputs: bool = True,
-                 outputs: bool = True,
-                 st=None,
-                 en=None,
-                 violen=False,
-                 normalize=True,
-                 cols=None,
-                 figsize=(12, 8),
-                 max_features=8,
-                 show_datapoints=False,
-                 freq=None,
-                 **kwargs):
+    def box_plot(
+            self,
+            inputs: bool = True,
+            outputs: bool = True,
+            st=None,
+            en=None,
+            violen=False,
+            normalize=True,
+            cols=None,
+            figsize=(12, 8),
+            max_features=8,
+            show_datapoints=False,
+            freq=None,
+            **kwargs
+    ):
         """
         Plots box whister or violen plot of data.
 
@@ -1077,7 +1084,7 @@ class EDA(Plot):
 
         data = data.copy()
 
-        data = consider_st_en(data, st, en)
+        data = _preprocess_df(data, st, en)
 
         # if data contains duplicated columns, transformation will not work
         data = data.loc[:, ~data.columns.duplicated()]
@@ -1382,6 +1389,70 @@ class EDA(Plot):
 
         return fig
 
+    def _lag_plot_series(self, series:pd.Series, n_lags:int, figsize=None, **kwargs):
+
+        if hasattr(n_lags, '__len__'):
+            lags = np.array(n_lags)
+            n_lags = len(lags)
+        else:
+            lags = range(1, n_lags+1)
+
+        figsize = figsize or (5, 5 + n_lags*0.2)
+
+        n_rows, n_cols = 1,1
+        if n_lags>1:
+            n_rows = (math.ceil(n_lags/2) * 2) // 2
+            n_cols = 2
+
+        fig, axis = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=figsize, sharex="all")
+
+        if n_lags == 1:
+            axis = np.array([axis])
+
+        for n, ax in zip(lags, axis.flat):
+            lag_plot(series, n, ax, **kwargs)
+
+        plt.suptitle(series.name)
+        self._save_or_show(fname=f"lagplot_{series.name}")
+
+        return axis
+
+    def _lag_plot_df(self, data:pd.DataFrame, n_lags:int, cols=None, **kwargs):
+
+        data = _preprocess_df(data, cols=cols)
+
+        axes = []
+
+        for col in data.columns:
+            axes.append(self._lag_plot_series(data[col], n_lags, **kwargs))
+
+        return axes
+
+    def lag_plot(self, n_lags:Union[int, list]=1, cols=None, figsize=None, **kwargs):
+        """lag plot between series and its lags
+
+        Arguments:
+            n_lags : lag step against which to plot the data, it can be integer
+                or a list of integers
+            cols : columns to use
+            figsize : figsize
+            kwargs : any keyword arguments for axis.scatter
+        """
+        return self._call_method("_lag_plot_df", n_lags=n_lags, cols=cols, figsize=figsize, **kwargs)
+
+
+def lag_plot(series: pd.Series, lag: int, ax, **kwargs):
+
+    data = series.values
+    y1 = data[:-lag]
+    y2 = data[lag:]
+
+    ax.set_xlabel("y(t)")
+    ax.set_ylabel(f"y(t + {lag})")
+    ax.scatter(y1, y2, **kwargs)
+
+    return ax
+
 
 def set_axis_paras(axis, leg_kws, label_kws, tick_kws):
     axis.legend(**leg_kws)
@@ -1404,7 +1475,13 @@ def validate_freq(df, freq):
     return
 
 
-def consider_st_en(df, st=None, en=None):
+def _preprocess_df(df, st=None, en=None, cols=None):
+
+    if cols is not None:
+        if isinstance(cols, str):
+            cols = [cols]
+        df = df[cols]
+
     if st is None:
         st = df.index[0]
     if en is None:
