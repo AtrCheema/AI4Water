@@ -15,7 +15,7 @@ df = arg_beach()
 
 class TestPytorchModels(unittest.TestCase):
     def test_hrhnmodel(self):
-        model = HARHNModel(data=arg_beach(),
+        model = HARHNModel(data=arg_beach().dropna(),  # doping na will be wrong but it is just for test purpose
                            teacher_forcing=True,
                            epochs=3,
                            model={'layers': {'n_conv_lyrs': 3, 'enc_units': 4, 'dec_units': 4}},

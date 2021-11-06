@@ -19,6 +19,7 @@ min_requirements = [
     'scikit-optimize',
     'joblib',
     'requests',
+    'plotly',
     ]
 
 extra_requires = [
@@ -31,7 +32,6 @@ extra_requires = [
 'see-rnn',   # for rnn visualizations
 'lightgbm',
 'catboost',
-'plotly',
 'tpot',
 # spatial processing
 'imageio',
