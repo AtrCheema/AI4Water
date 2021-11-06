@@ -1,7 +1,7 @@
 # HyperParameter Optimization 
 This module is for optimization of hyper-parameters. The `HyperOpt` class performs 
 optimization by minimizing the objective which is defined by a user defined
-objective function, while space of hyperparameters can be defined by 
+objective function. The space of hyperparameters can be defined by 
 using `Categorical`, `Integer` and `Real` classes.
 
 For tutorial on using this class, see 
