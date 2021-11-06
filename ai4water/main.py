@@ -445,6 +445,9 @@ class Model(MODEL, BaseModel):
     def call_260(self, *args, **kwargs):
         return self.call_250(*args, **kwargs)
 
+    def call_270(self, *args, **kwargs):
+        return self.call_250(*args, **kwargs)
+
     def call_200(self, *args, **kwargs):
         return self.call_210(*args, **kwargs)
 
