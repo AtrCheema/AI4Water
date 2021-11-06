@@ -1023,6 +1023,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def random_search(self):
 
+        for k, v in self.param_space.items():
+            if v is None:
+                grid = self.space()[k].grid
+                assert grid is not None, f"""grid for parameter {k} could not be created. Inferred grid is 
+                {grid}. Please either provide the `num_samples` parameter while creating space or explicitly
+                provide grid for {k}"""
+
         param_list = list(ParameterSampler(self.param_space, n_iter=self.num_iterations,
                                            random_state=self.random_state))
 
