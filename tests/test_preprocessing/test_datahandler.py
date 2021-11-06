@@ -159,10 +159,10 @@ def compare_individual_item(data, key, cols, y, data_loader):
                         print(f'true: {_t}, : pred: {_p}, index: {i}, col: {cols}')
             else:
                 if isinstance(v, np.ndarray):
-                    v = round(v.item(), 3)
-                _true = round(data[cols].loc[i], 3).item()
+                    v = v.item()
+                _true = data[cols].loc[i]
                 _p = round(v, 3)
-                if _true != _p:
+                if not np.allclose(v, _true):
                     print(f'true: {_true}, : pred: {_p}, index: {i}, col: {cols}')
         else:
             if isinstance(train_index, pd.DatetimeIndex):
