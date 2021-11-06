@@ -945,6 +945,11 @@ class BaseModel(NN, Plots):
         return
 
     def fit_ml_models(self, inputs, outputs):
+        # following arguments are strictly about nn so we don't need to save them in config file
+        # so that it does not confuse the reader.
+        for arg in ["batch_size", "composite", "optimizer", "lr", "epochs", "subsequences"]:
+            if arg in self.config:
+                self.config.pop(arg)
 
         if self.dh.is_multiclass:
             outputs = outputs
@@ -1533,6 +1538,8 @@ class BaseModel(NN, Plots):
             data : the data
             make_new_path : whether to make new path or not?
             kwargs : any additional keyword arguments to Model class.
+        Returns:
+            an instalnce of Model
         """
         config, path = cls._get_config_and_path(cls, config=config, make_new_path=make_new_path)
 
@@ -1614,10 +1621,13 @@ class BaseModel(NN, Plots):
         """
         Updates the weights of the underlying model.
         Arguments:
-            weight_file str: complete path of weight file. If not given, the
+            weight_file:
+                complete path of weight file. If not given, the
                 weights are updated from model.w_path directory. For neural
                 network based models, the best weights are updated if more
                 than one weight file is present in model.w_path.
+        Returns:
+            None
         """
         if weight_file is None:
             weight_file = find_best_weight(self.w_path)
@@ -1673,34 +1683,9 @@ class BaseModel(NN, Plots):
         # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
         eda = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols, save=True)
 
-        # plot number if missing vals
-        eda.plot_missing(cols=cols)
+        eda()
 
-        # show data as heatmapt
-        eda.heatmap(cols=cols)
-
-        # line plots of input/output data
-        eda.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
-
-        # plot feature-feature correlation as heatmap
-        eda.correlation(cols=cols)
-
-        # print stats about input/output data
-        eda.stats()
-
-        # box-whisker plot
-        eda.box_plot(freq=freq)
-
-        # principle components
-        eda.plot_pcs()
-
-        # scatter plots of input/output data
-        eda.grouped_scatter(cols=cols)
-
-        # distributions as histograms
-        eda.plot_histograms(cols=cols)
-
-        return
+        return eda
 
     def update_info(self):
         from .backend import lightgbm, tcn, catboost, xgboost
