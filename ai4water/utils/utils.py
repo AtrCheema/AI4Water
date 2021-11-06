@@ -457,6 +457,22 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     dict_to_update[key] = val
     return
 
+
+def deepcopy_dict_without_clone(d:dict)->dict:
+    """makes deepcopy of a dictionary without cloning it"""
+    assert isinstance(d, dict)
+
+    new_d = {}
+    for k,v in d.items():
+        if isinstance(v, dict):
+            new_d[k] = deepcopy_dict_without_clone(v)
+        elif hasattr(v, '__len__'):
+            new_d[k] = v[:]
+        else:
+            new_d[k] = copy.copy(v)
+    return new_d
+
+
 def find_opt_paras_from_model_config(
         config:Union[dict, str, None]
 )->Tuple[Union[dict, None, str], dict, Union[dict, str, None]]:
@@ -469,7 +485,7 @@ def find_opt_paras_from_model_config(
     assert isinstance(config, dict) and len(config) == 1
 
     if 'layers' in config:
-        original_model_config, _ = process_config_dict(copy.deepcopy(config['layers']), False)
+        original_model_config, _ = process_config_dict(deepcopy_dict_without_clone(config['layers']), False)
 
         # it is a nn based model
         new_lyrs_config, opt_paras = process_config_dict(config['layers'])
@@ -477,7 +493,6 @@ def find_opt_paras_from_model_config(
 
     else:
         # it is a classical ml model
-
         _ml_config = {}
         ml_config:dict = list(config.values())[0]
         model_name = list(config.keys())[0]
@@ -531,7 +546,7 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
     return config_dict, opt_paras
 
 
-def update_model_config(config, suggestions):
+def update_model_config(config:dict, suggestions):
     """returns the updated config if config contains any parameter from suggestions."""
     cc = copy.deepcopy(config)
     def update(c):
