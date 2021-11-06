@@ -26,7 +26,7 @@ from ai4water.preprocessing.datahandler import DataHandler
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
-from ai4water.utils.utils import find_best_weight, reset_seed
+from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
 from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
 from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
@@ -223,6 +223,9 @@ class BaseModel(NN, Plots):
                 tf.keras.backend.clear_session()
 
             self.dh = DataHandler(data=data, **maker.data_config)
+
+            self.opt_paras = maker.opt_paras
+            self._original_model_config = maker.orig_model
 
             # if DataHanlder defines input and output features, we must put it back in config
             # so that it can be accessed as .config['input_features'] etc.
@@ -1750,6 +1753,72 @@ class BaseModel(NN, Plots):
 
         return optimizer
 
+    def optimize_hyperparameters(
+            self,
+            algorithm:str="bayes",
+            num_iterations:int = 14,
+            process_results:bool=True,
+            update_config:bool=True,
+            **kwargs
+    ):
+        """
+        optimizes the hyperparameters of the built model
+
+        The parameaters that needs to be optimized, must be given as space.
+
+        Arguments:
+            algorithm:
+                the algorithm to use for optimization
+            num_iterations:
+                number of iterations for optimization.
+            process_results:
+                whether to perform postprocessing of optimization results or not
+            update_config:
+                whether to update the config of model or not.
+        Returns:
+            an instance of ai4water.hyperopt.HyperOpt which is used for optimization
+
+        Examples
+        --------
+        ```python
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.hyperopt import Integer, Categorical, Real
+        >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
+        >>>                 "max_depth": Categorical([10, 20, 30]),
+        >>>                 "learning_rate": Real(0.00001, 0.1)}}
+        >>> model = Model(model=model_config, data=arg_beach())
+        >>> optimizer = model.optimize_hyperparameters()
+        ```
+        Same can be done if a model is defined using neural networks
+        ```python
+        >>> model_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
+        ...                          "Dense1": {"units": 1,
+        ...                                     "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
+        >>> model = Model(model=model_config, data=arg_beach())
+        >>> optimizer = model.optimize_hyperparameters()
+        ```
+        """
+        from ._optimize import OptimizeHyperparameters #optimize_hyperparameters
+
+        _optimizer = OptimizeHyperparameters(
+            self,
+            list(self.opt_paras.values()),
+            algorithm=algorithm,
+            num_iterations=num_iterations,
+            process_results=process_results,
+            **kwargs
+        ).fit()
+
+        algo_type = list(self.config['model'].keys())[0]
+
+        if update_config:
+            new_model_config = update_model_config(self._original_model_config,
+                                             _optimizer.best_paras())
+            self.config['model'][algo_type] = new_model_config
+
+        return _optimizer
+
     def optimize_transformations(
             self,
             transformations:Union[list, str] = None,
@@ -1766,7 +1835,8 @@ class BaseModel(NN, Plots):
         function for optimization problem.
 
         Arguments:
-            transformations : the transformations to consider. By default, following
+            transformations:
+                the transformations to consider. By default, following
                 transformations are considered
 
                 - minmax
@@ -1778,12 +1848,14 @@ class BaseModel(NN, Plots):
                 - log2
                 - log10
 
-            algorithm : The algorithm to use for optimizing transformations
-            num_iterations : The number of iterations for optimizatino algorithm.
-            include : the names of features to include
-            exclude : the name/names of features to exclude
-            append : the features with custom candidate transformations
-            update_config : whether to update the config of model or not.
+            algorithm: str
+                The algorithm to use for optimizing transformations
+            num_iterations: int
+                The number of iterations for optimizatino algorithm.
+            include: the names of features to include
+            exclude: the name/names of features to exclude
+            append: the features with custom candidate transformations
+            update_config: whether to update the config of model or not.
 
         Returns:
             an instance of ai4water.hyperopt.HyperOpt which is used for optimization
@@ -1799,7 +1871,7 @@ class BaseModel(NN, Plots):
         >>> model.predict()
         ```
         """
-        from ._optimize import optimize_transformations
+        from ._optimize import OptimizeTransformations #optimize_transformations
 
         categories = ["minmax", "zscore", "log", "robust", "quantile", "log2", "log10", "power", "none"]
 
@@ -1808,7 +1880,7 @@ class BaseModel(NN, Plots):
             assert all([t in categories for t in transformations]), f"transformations must be one of {categories}"
             categories = transformations
 
-        optimizer = optimize_transformations(
+        optimizer = OptimizeTransformations(
             self,
             algorithm=algorithm,
             num_iterations=num_iterations,
@@ -1816,7 +1888,7 @@ class BaseModel(NN, Plots):
             exclude=exclude,
             append=append,
             categories=categories
-        )
+        ).fit()
 
         transformations = []
         for feature, method in optimizer.best_paras().items():

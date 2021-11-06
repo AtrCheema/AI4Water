@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import pprint
@@ -181,9 +182,9 @@ def check_kwargs(**kwargs):
                 model = {model: {}}
                 kwargs['model'] = model
 
-            if list(model.keys())[0].startswith("XGB"):
-                if "learning_rate" not in model:
-                    kwargs["model"]["learning_rate"] = lr
+            #if list(model.keys())[0].startswith("XGB"):
+            #    if "learning_rate" not in model:
+            #        kwargs["model"]["learning_rate"] = lr
 
             if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
                 kwargs["batches"] = "2d"
@@ -198,7 +199,7 @@ class make_model(object):
 
     def __init__(self, **kwargs):
 
-        self.config, self.data_config = _make_model(**kwargs)
+        self.config, self.data_config, self.opt_paras, self.orig_model = _make_model(**kwargs)
 
 
 def process_io(**kwargs):
@@ -371,8 +372,18 @@ def _make_model(**kwargs):
 
     config = {key:val['default'] for key,val in data_args.items()}
 
+    opt_paras = {}
+
     for key, val in kwargs.items():
         arg_name = key.lower()  # todo, why this?
+
+        if val.__class__.__name__ in ['Integer', "Real", "Categorical"]:
+            opt_paras[key] = val
+            val = val.rvs(1).items()[0]
+
+        if key == 'model':
+            val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
+            opt_paras.update(_opt_paras)
 
         if arg_name in model_config:
             update_dict(arg_name, val, model_args, model_config)
@@ -406,7 +417,7 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
         if key in data_args:
             _data_config[key] = val
 
-    return config, _data_config
+    return config, _data_config, opt_paras, original_mod_conf
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):
@@ -445,6 +456,95 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
 
     dict_to_update[key] = val
     return
+
+def find_opt_paras_from_model_config(
+        config:Union[dict, str, None]
+)->Tuple[Union[dict, None, str], dict, Union[dict, str, None]]:
+
+    opt_paras = {}
+
+    if config is None or isinstance(config, str):
+        return config, opt_paras, config
+
+    assert isinstance(config, dict) and len(config) == 1
+
+    if 'layers' in config:
+        original_model_config, _ = process_config_dict(copy.deepcopy(config['layers']), False)
+
+        # it is a nn based model
+        new_lyrs_config, opt_paras = process_config_dict(config['layers'])
+        new_model_config = {'layers': new_lyrs_config}
+
+    else:
+        # it is a classical ml model
+
+        _ml_config = {}
+        ml_config:dict = list(config.values())[0]
+        model_name = list(config.keys())[0]
+
+        original_model_config, _ = process_config_dict(copy.deepcopy(config[model_name]), False)
+
+        for k,v in ml_config.items():
+
+            if v.__class__.__name__ in ['Integer', 'Real', 'Categorical']:
+
+                if v.name is None or v.name.startswith("integer_") or v.name.startswith("real_"):
+                    v.name = k
+                opt_paras[k] = v
+                v = v.rvs(1)[0]
+
+            _ml_config[k] = v
+        val = _ml_config
+        new_model_config = {model_name: val}
+
+    return new_model_config, opt_paras, original_model_config
+
+
+def process_config_dict(config_dict:dict, update_initial_guess=True):
+    """From a dicitonary defining structure of neural networks, this function
+    finds out which are hyperparameters from them"""
+
+    assert isinstance(config_dict, dict)
+
+    opt_paras = {}
+
+    def pd(d):
+        for k, v in d.items():
+            if isinstance(v, dict) and len(v)>0:
+                pd(v)
+            elif v.__class__.__name__ in ["Integer", "Real", "Categorical"]:
+                if v.name is None or v.name.startswith("integer_") or v.name.startswith("real_"):
+                    v.name = k
+
+                if v.name in opt_paras:
+                    raise ValueError("Hyperparameters with duplicate name found. A hyperparameter to be "
+                                     f"optimized with name '{v.name}' already exists")
+                opt_paras[v.name] = v
+                if update_initial_guess:
+                    x0 = jsonize(v.rvs(1)[0])  # get initial guess
+                    d[k] = x0  # inplace change of dictionary
+                else: # we most probably have updated the name, so doing inplace change
+                    d[k] = v
+        return
+
+    pd(config_dict)
+    return config_dict, opt_paras
+
+
+def update_model_config(config, suggestions):
+    """returns the updated config if config contains any parameter from suggestions."""
+    cc = copy.deepcopy(config)
+    def update(c):
+        for k,v in c.items():
+            if isinstance(v, dict):
+                update(v)
+            elif v.__class__.__name__ in ["Integer", "Real", "Categorical"]:
+                c[k] = suggestions[v.name]
+        return
+
+    update(cc)
+
+    return cc
 
 
 def to_datetime_index(idx_array, fmt='%Y%m%d%H%M') -> pd.DatetimeIndex:

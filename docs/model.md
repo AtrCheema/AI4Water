@@ -17,6 +17,7 @@
             - cross_val_score
             - explain
             - optimize_transformations
+            - optimize_hyperparameters
     rendering:
         show_root_heading: true
 
