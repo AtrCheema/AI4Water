@@ -495,7 +495,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
         # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
         # available with class.
-        return getattr(self.optfn, item)
+        if self.use_sklearn or self.use_skopt_bayes:
+            return getattr(self.optfn, item)
+        else:
+            raise AttributeError(f"HyperOpt does not have attribute {item}")
 
     @property
     def param_space(self):
