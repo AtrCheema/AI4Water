@@ -26,10 +26,10 @@ from ai4water.preprocessing.datahandler import DataHandler
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
-from ai4water.utils.utils import find_best_weight, reset_seed
+from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
 from ai4water.models.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
-from ai4water.utils.utils import maybe_create_path, save_config_file, dateandtime_now
+from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 import ai4water.backend as K
@@ -224,6 +224,9 @@ class BaseModel(NN, Plots):
 
             self.dh = DataHandler(data=data, **maker.data_config)
 
+            self.opt_paras = maker.opt_paras
+            self._original_model_config = maker.orig_model
+
             # if DataHanlder defines input and output features, we must put it back in config
             # so that it can be accessed as .config['input_features'] etc.
             maker.config['input_features'] = self.dh.input_features
@@ -232,6 +235,7 @@ class BaseModel(NN, Plots):
             NN.__init__(self, config=maker.config)
 
             self.path = maybe_create_path(path=path, prefix=prefix)
+            self.config['path'] = self.path
             self.verbosity = verbosity
             self.category = self.config['category']
             self.mode = self.config['mode']
@@ -653,7 +657,7 @@ class BaseModel(NN, Plots):
                          columns=true_labels + pred_labels, index=index).to_csv(fname)
             metrics = ClassificationMetrics(true, predicted, categorical=True)
 
-            save_config_file(self.path,
+            dict_to_file(self.path,
                              errors=metrics.calculate_all(),
                              name=f"{prefix}_{dateandtime_now()}.json"
                              )
@@ -669,7 +673,7 @@ class BaseModel(NN, Plots):
                     os.makedirs(fpath)
 
                 metrics = ClassificationMetrics(_true, _pred, categorical=False)
-                save_config_file(fpath,
+                dict_to_file(fpath,
                                  errors=getattr(metrics, f"calculate_{metrics}")(),
                                  name=f"{prefix}_{_class}_{dateandtime_now()}.json"
                                  )
@@ -757,7 +761,7 @@ class BaseModel(NN, Plots):
                 errs[out + 'true_stats_' + str(h)] = ts_features(t)
                 errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
 
-                save_config_file(fpath, errors=errs, name=prefix)
+                dict_to_file(fpath, errors=errs, name=prefix)
 
                 for p in horizon_errors.keys():
                     horizon_errors[p].append(getattr(errors, p)())
@@ -924,7 +928,7 @@ class BaseModel(NN, Plots):
 
         self.info['training_end'] = dateandtime_now()
         self.save_config()
-        save_config_file(os.path.join(self.path, 'info.json'), others=self.info)
+        dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         self.is_training = False
         return history
@@ -941,6 +945,11 @@ class BaseModel(NN, Plots):
         return
 
     def fit_ml_models(self, inputs, outputs):
+        # following arguments are strictly about nn so we don't need to save them in config file
+        # so that it does not confuse the reader.
+        for arg in ["composite", "optimizer", "lr", "epochs", "subsequences"]:
+            if arg in self.config:
+                self.config.pop(arg)
 
         if self.dh.is_multiclass:
             outputs = outputs
@@ -1484,7 +1493,7 @@ class BaseModel(NN, Plots):
                 idx_val = None
 
             indices[idx] = idx_val
-        save_config_file(indices=indices, path=self.path)
+        dict_to_file(indices=indices, path=self.path)
         return
 
     def save_config(self, history: dict = None):
@@ -1503,24 +1512,49 @@ class BaseModel(NN, Plots):
             if min_loss_array is not None and not all(np.isnan(min_loss_array)):
                 config['min_loss'] = np.nanmin(min_loss_array)
 
-        config['config'] = self.config
+        config['config'] = self.config.copy()
         config['method'] = self.method
-        config['category'] = self.category
-        config['mode'] = self.mode
-        config['quantiles'] = self.quantiles
+
+        if 'path' in config['config']:  # we don't want our saved config to have 'path' key in it
+            config['config'].pop('path')
 
         if self.category == "DL":
             config['loss'] = self.loss_name()
 
-        save_config_file(config=config, path=self.path)
+        dict_to_file(config=config, path=self.path)
         return config
 
     @classmethod
-    def from_config(cls,
-                    config_path: str,
-                    data,
-                    make_new_path: bool = False,
-                    **kwargs) -> "BaseModel":
+    def from_config(
+            cls,
+            config:dict,
+            data=None,
+            make_new_path=False,
+            **kwargs
+    ):
+        """Loads the model from config dictionary i.e. model.config
+        Arguments:
+            config : dictionary containing model's parameters i.e. model.config
+            data : the data
+            make_new_path : whether to make new path or not?
+            kwargs : any additional keyword arguments to Model class.
+        Returns:
+            an instalnce of Model
+        """
+        config, path = cls._get_config_and_path(cls, config=config, make_new_path=make_new_path)
+
+        return cls(**config,
+                   data=data,
+                   path=path,
+                   **kwargs)
+
+    @classmethod
+    def from_config_file(
+            cls,
+            config_path: str,
+            data=None,
+            make_new_path: bool = False,
+            **kwargs) -> "BaseModel":
         """
         Loads the model from a config file.
 
@@ -1534,24 +1568,38 @@ class BaseModel(NN, Plots):
         return:
             a `Model` instance
         """
-        config, path = cls._get_config_and_path(cls, config_path, make_new_path)
+        config, path = cls._get_config_and_path(cls, config_path=config_path, make_new_path=make_new_path)
 
-        return cls(**config['config'],
+        return cls(**config,
                    data=data,
                    path=path,
                    **kwargs)
 
     @staticmethod
-    def _get_config_and_path(cls, config_path, make_new_path):
+    def _get_config_and_path(cls, config_path:str=None, config=None, make_new_path=False):
         """Sets some attributes of the cls so that it can be built from config.
 
         Also fetches config and path which are used to initiate cls."""
-        with open(config_path, 'r') as fp:
-            config = json.load(fp)
+        if config is not None and config_path is not None:
+            raise ValueError
 
-        if 'path' in config['config']: config['config'].pop('path')
+        if config is None:
+            assert config_path is not None
+            with open(config_path, 'r') as fp:
+                config = json.load(fp)
+                config = config['config']
+                idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
+                path = os.path.dirname(config_path)
+        else:
+            assert isinstance(config, dict), f"config must be dictionary but it is of type {config.__class__.__name__}"
+            path = config['path']
+            idx_file = os.path.join(path, 'indices.json')
 
-        idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
+        # todo
+        # shouldn't we remove 'path' from Model's init? we just need prefix
+        # path is needed in clsas methods only?
+        if 'path' in config: config.pop('path')
+
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
 
@@ -1566,7 +1614,6 @@ class BaseModel(NN, Plots):
             path = None
         else:
             cls.allow_weight_loading = True
-            path = os.path.dirname(config_path)
 
         return config, path
 
@@ -1574,10 +1621,13 @@ class BaseModel(NN, Plots):
         """
         Updates the weights of the underlying model.
         Arguments:
-            weight_file str: complete path of weight file. If not given, the
+            weight_file:
+                complete path of weight file. If not given, the
                 weights are updated from model.w_path directory. For neural
                 network based models, the best weights are updated if more
                 than one weight file is present in model.w_path.
+        Returns:
+            None
         """
         if weight_file is None:
             weight_file = find_best_weight(self.w_path)
@@ -1633,34 +1683,9 @@ class BaseModel(NN, Plots):
         # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
         eda = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols, save=True)
 
-        # plot number if missing vals
-        eda.plot_missing(cols=cols)
+        eda()
 
-        # show data as heatmapt
-        eda.heatmap(cols=cols)
-
-        # line plots of input/output data
-        eda.plot_data(cols=cols, freq=freq, subplots=True, figsize=(12, 14), sharex=True)
-
-        # plot feature-feature correlation as heatmap
-        eda.correlation(cols=cols)
-
-        # print stats about input/output data
-        eda.stats()
-
-        # box-whisker plot
-        eda.box_plot(freq=freq)
-
-        # principle components
-        eda.plot_pcs()
-
-        # scatter plots of input/output data
-        eda.grouped_scatter(cols=cols)
-
-        # distributions as histograms
-        eda.plot_histograms(cols=cols)
-
-        return
+        return eda
 
     def update_info(self):
         from .backend import lightgbm, tcn, catboost, xgboost
@@ -1710,6 +1735,162 @@ class BaseModel(NN, Plots):
     def get_optimizer(self):
         opt_args = self.get_opt_args()
         optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
+
+        return optimizer
+
+    def optimize_hyperparameters(
+            self,
+            algorithm:str="bayes",
+            num_iterations:int = 14,
+            process_results:bool=True,
+            update_config:bool=True,
+            **kwargs
+    ):
+        """
+        optimizes the hyperparameters of the built model
+
+        The parameaters that needs to be optimized, must be given as space.
+
+        Arguments:
+            algorithm:
+                the algorithm to use for optimization
+            num_iterations:
+                number of iterations for optimization.
+            process_results:
+                whether to perform postprocessing of optimization results or not
+            update_config:
+                whether to update the config of model or not.
+        Returns:
+            an instance of ai4water.hyperopt.HyperOpt which is used for optimization
+
+        Examples
+        --------
+        ```python
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.hyperopt import Integer, Categorical, Real
+        >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
+        >>>                 "max_depth": Categorical([10, 20, 30]),
+        >>>                 "learning_rate": Real(0.00001, 0.1)}}
+        >>> model = Model(model=model_config, data=arg_beach())
+        >>> optimizer = model.optimize_hyperparameters()
+        ```
+        Same can be done if a model is defined using neural networks
+        ```python
+        >>> model_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
+        ...                          "Dense1": {"units": 1,
+        ...                                     "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
+        >>> model = Model(model=model_config, data=arg_beach())
+        >>> optimizer = model.optimize_hyperparameters()
+        ```
+        """
+        from ._optimize import OptimizeHyperparameters #optimize_hyperparameters
+
+        _optimizer = OptimizeHyperparameters(
+            self,
+            list(self.opt_paras.values()),
+            algorithm=algorithm,
+            num_iterations=num_iterations,
+            process_results=process_results,
+            **kwargs
+        ).fit()
+
+        algo_type = list(self.config['model'].keys())[0]
+
+        if update_config:
+            new_model_config = update_model_config(self._original_model_config,
+                                             _optimizer.best_paras())
+            self.config['model'][algo_type] = new_model_config
+
+        return _optimizer
+
+    def optimize_transformations(
+            self,
+            transformations:Union[list, str] = None,
+            algorithm="bayes",
+            num_iterations:int=12,
+            include: Union[str, list, dict] = None,
+            exclude: Union[str, list] = None,
+            append: dict = None,
+            update_config:bool=True
+    ):
+        """optimizes the transformations for the input/output features
+
+        The 'val_score' parameter given as input to the Model is used as objective
+        function for optimization problem.
+
+        Arguments:
+            transformations:
+                the transformations to consider. By default, following
+                transformations are considered
+
+                - minmax
+                - zscore also known as standard scaler
+                - power
+                - quantile
+                - robust
+                - log
+                - log2
+                - log10
+
+            algorithm: str
+                The algorithm to use for optimizing transformations
+            num_iterations: int
+                The number of iterations for optimizatino algorithm.
+            include: the names of features to include
+            exclude: the name/names of features to exclude
+            append: the features with custom candidate transformations
+            update_config: whether to update the config of model or not.
+
+        Returns:
+            an instance of ai4water.hyperopt.HyperOpt which is used for optimization
+
+        Example
+        -------
+        ```python
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water import Model
+        >>> model = Model(model="xgboostregressor", data=arg_beach())
+        >>> best_transformations = model.optimize_transformations(exclude="tide_cm")
+        >>> model.fit()
+        >>> model.predict()
+        ```
+        """
+        from ._optimize import OptimizeTransformations #optimize_transformations
+
+        categories = ["minmax", "zscore", "log", "robust", "quantile", "log2", "log10", "power", "none"]
+
+        if transformations is not None:
+            assert isinstance(transformations, list)
+            assert all([t in categories for t in transformations]), f"transformations must be one of {categories}"
+            categories = transformations
+
+        optimizer = OptimizeTransformations(
+            self,
+            algorithm=algorithm,
+            num_iterations=num_iterations,
+            include=include,
+            exclude=exclude,
+            append=append,
+            categories=categories
+        ).fit()
+
+        transformations = []
+        for feature, method in optimizer.best_paras().items():
+            if method == "none":
+                pass
+            else:
+                t = {'method': method, 'features': [feature]}
+
+                if method.startswith("log"):
+                    t["replace_nans"] = True
+                    t["replace_zeros"] = True
+
+                transformations.append(t)
+
+        if update_config:
+            self.config['transformation'] = transformations
+            self.dh.config['transformation'] = transformations
 
         return optimizer
 

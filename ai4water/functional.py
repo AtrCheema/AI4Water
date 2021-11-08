@@ -368,7 +368,7 @@ class Model(BaseModel):
             self.build_ml_model()
 
         if not getattr(self, 'from_check_point', False):
-            # fit main fail so better to save config before as well. This will be overwritten once the fit is complete
+            # fit may fail so better to save config before as well. This will be overwritten once the fit is complete
             self.save_config()
 
         self.update_info()

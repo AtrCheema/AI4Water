@@ -25,7 +25,7 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.datasets import load_u1
+from ai4water.datasets import arg_beach
 
 
 x = np.random.randint(1, 100, (20, 2))
@@ -486,9 +486,9 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_example(self):
-        data = load_u1()
-        inputs = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-        transformer = Transformations(data=data[inputs], method='minmax', features=['x1', 'x2'])
+        data = arg_beach()
+        inputs = ['pcp6_mm', 'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa']
+        transformer = Transformations(data=data[inputs], method='minmax', features=['pcp6_mm', 'pcp12_mm'])
         new_data = transformer.transform()
         orig_data = transformer.inverse_transform(data=new_data)
         np.allclose(data[inputs].values, orig_data.values)
@@ -529,6 +529,7 @@ class test_Scalers(unittest.TestCase):
                               validate=True, check_inverse=False,
                               kw_args={"axis": 0},
                               inv_kw_args={"axis": 0, "append": 0})
+        return
 
 
 if __name__ == "__main__":

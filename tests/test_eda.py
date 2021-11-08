@@ -2,6 +2,9 @@ import os
 import sys
 import site
 import unittest
+
+import pandas as pd
+
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
@@ -80,6 +83,16 @@ class TestEDA(unittest.TestCase):
             np.allclose(ccovf_np(b, c), ccovf(b, c).sum())
 
         return
+
+    def test_probplot(self):
+        EDA(data=arg_beach(), save=False, show=False).probability_plots(cols="pcp_mm")
+        return
+
+    def test_ndarray(self):
+        vis = EDA(np.random.random((100, 10)))
+        assert isinstance(vis.data, pd.DataFrame)
+        return
+
 
 if __name__ == "__main__":
 

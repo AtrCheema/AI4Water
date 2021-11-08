@@ -1,6 +1,5 @@
 
 import os
-import json
 import warnings
 from typing import Union
 
@@ -8,11 +7,14 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import plot_activations_along_inputs
+from ai4water.preprocessing import Transformations
 
 
 class Interpret(Plot):
@@ -158,6 +160,87 @@ class Interpret(Plot):
             self.save_or_show(save=save, show=show, fname="feature_importance_type_gain.png")
 
         return
+
+    def compare_xgb_f_imp(
+            self,
+            calculation_method="all",
+            rescale=True,
+            fig_width=1200,
+            fig_height=1000,
+    ):
+        """compare various feature importance calculations methods that are built
+        in in XGBoost"""
+
+        inp_features = self.model.dh.input_features
+        assert isinstance(inp_features, list)
+
+        booster = self.model._model.get_booster()
+        booster.feature_names = self.model.in_cols
+
+        _importance_types = ['weight', 'gain', 'cover', 'total_gain', 'total_cover']
+        importance_types = _importance_types.copy()
+
+        if calculation_method != "all":
+            if isinstance(calculation_method, str):
+                calculation_method = [calculation_method]
+            assert isinstance(calculation_method, list)
+            # remove those which are not desired
+            for imp in _importance_types:
+                if imp not in calculation_method:
+                    importance_types.remove(imp)
+
+        # container to hold importances with each method
+        importance = []
+
+        for idx, imp_type in enumerate(importance_types):
+            score = pd.Series(booster.get_score(importance_type=imp_type))
+            score = pd.DataFrame(score, columns=[imp_type])
+
+            if rescale:
+                # so that the sum of all feature importance is 1.0 and the scale is relative
+                score = score / score.sum()
+
+            importance.append(score)
+
+        importance = pd.concat(importance, axis=1)
+
+        # initiate figure with subplots
+        fig = make_subplots(
+            rows=len(importance_types) + 1, cols=1,
+            vertical_spacing=0.02
+            # shared_xaxes=True
+        )
+
+        for idx, col in enumerate(importance.columns):
+            fig.add_trace(go.Bar(
+                x=importance.index.tolist(),
+                y=importance[col],
+                name=col
+            ), row=idx + 1, col=1)
+
+        fig.update_xaxes(showticklabels=False)  # hide all the xticks
+        fig.update_xaxes(showticklabels=True,
+                         row=len(importance_types),
+                         col=1,
+                         tickangle=-45,
+                         title="Input Features"
+                         )
+
+        # Here we modify the tickangle of the xaxis, resulting in rotated labels.
+        fig.update_layout(
+            height=fig_height,
+            width=fig_width,
+            legend_title="Calculation Method",
+            title_text="XGBoost Feature Importance",
+            title_x=0.42,
+            font=dict(
+                family="Times New Roman",
+                size=26,
+            )
+        )
+        fname = os.path.join(self.model.path, "xgb_f_imp_comp.html")
+        fig.write_html(fname)
+        return fig
 
     def tft_attention_components(
             self,

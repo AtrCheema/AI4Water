@@ -85,6 +85,14 @@ To install the latest branch (`dev`) with all requirements use the following com
 
     python -m pip install "AI4Water[all] @ git+https://github.com/AtrCheema/AI4Water.git@dev"
 
+### installation options
+`all` keyword will install all the dependencies. You can choose the dependencies of particular sub-module
+by using the specific keyword. Following keywords are available
+
+ - `hpo` if you want hyperparameter optimization
+ - `post_process` if you want postprocessing
+ - `exp` for experiments sub-module
+
 ## How to use
 
 Build a `Model` by providing all the arguments to initiate it.

@@ -20,14 +20,16 @@ def take(st, en, d):
     return {k: v for k, v in zip(keys, values)}
 
 
-def plot_metrics(metrics: dict,
-                 ranges: tuple = ((0.0, 1.0), (1.0, 10), (10, 1000)),
-                 exclude: list = None,
-                 plot_type: str = 'bar',
-                 max_metrics_per_fig: int = 15,
-                 save: bool = True,
-                 save_path: str = None,
-                 **kwargs):
+def plot_metrics(
+        metrics: dict,
+        ranges: tuple = ((0.0, 1.0), (1.0, 10), (10, 1000)),
+        exclude: list = None,
+        plot_type: str = 'bar',
+        max_metrics_per_fig: int = 15,
+        show:bool = True,
+        save: bool = False,
+        save_path: str = None,
+        **kwargs):
     """
     Plots the metrics given as dictionary as radial or bar plot between specified ranges.
 
@@ -42,6 +44,7 @@ def plot_metrics(metrics: dict,
             maximum number of metrics to show in one figure.
         plot_type str:
             either of `radial` or `bar`.
+        show : If, then figure will be shown/drawn
         save bool:
             if True, the figure will be saved.
         save_path string/pathlike:
@@ -54,7 +57,7 @@ def plot_metrics(metrics: dict,
     ```python
     >>>import numpy as np
     >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>from ai4water.postprocessing.SeqMetrics.utils import plot_metrics
+    >>>from ai4water.postprocessing.SeqMetrics import plot_metrics
     >>>t = np.random.random((20, 1))
     >>>p = np.random.random((20, 1))
     >>>er = RegressionMetrics(t, p)
@@ -79,21 +82,27 @@ def plot_metrics(metrics: dict,
     assert plot_type in ['bar', 'radial'], f'plot_type must be either `bar` or `radial`.'
 
     for _range in ranges:
-        plot_metrics_between(_metrics,
-                             *_range,
-                             plot_type=plot_type,
-                             max_metrics_per_fig=max_metrics_per_fig,
-                             save=save, save_path=save_path, **kwargs)
+        plot_metrics_between(
+            _metrics,
+            *_range,
+            plot_type=plot_type,
+            max_metrics_per_fig=max_metrics_per_fig,
+            show=show,
+            save=save,
+            save_path=save_path, **kwargs)
     return
 
 
-def plot_metrics_between(errors: dict,
-                         lower: int,
-                         upper: int,
-                         plot_type: str = 'bar',
-                         max_metrics_per_fig: int = 15,
-                         save=True,
-                         save_path=None, **kwargs):
+def plot_metrics_between(
+        errors: dict,
+        lower: int,
+        upper: int,
+        plot_type: str = 'bar',
+        max_metrics_per_fig: int = 15,
+        save=False,
+        show=True,
+        save_path=None,
+        **kwargs):
     zero_to_one = {}
     for k, v in errors.items():
         if v is not None:
@@ -109,9 +118,9 @@ def plot_metrics_between(errors: dict,
             en = i
             d = take(st, en, zero_to_one)
             if plot_type == 'radial':
-                plot_radial(d, lower, upper, save=save, save_path=save_path, **kwargs)
+                plot_radial(d, lower, upper, save=save, show=show, save_path=save_path, **kwargs)
             else:
-                plot_circular_bar(d, save=save, save_path=save_path, **kwargs)
+                plot_circular_bar(d, save=save, show=show, save_path=save_path, **kwargs)
             st = i
     return
 
@@ -164,10 +173,16 @@ def plot_radial(errors: dict, low: int, up: int, save=True, save_path=None, **kw
     return
 
 
-def plot_circular_bar(metrics: dict, save: bool, save_path: str, **kwargs):
+def plot_circular_bar(
+        metrics: dict,
+        show=False,
+        save: bool=True,
+        save_path: str='',
+        **kwargs):
     """
     modified after https://www.python-graph-gallery.com/circular-barplot-basic
     :param metrics:
+    :param show:
     :param save:
     :param save_path:
     :param kwargs:
@@ -222,9 +237,17 @@ def plot_circular_bar(metrics: dict, save: bool, save_path: str, **kwargs):
     # little space between the bar and the label
     labelPadding = 4
 
+    metric_names = {
+        'r2': "$R^2$",
+        'r2_mod': "$R^2$ mod",
+        'adjusted_r2': 'adjusted $R^2$',
+        #'nse': "NSE"
+    }
+
     # Add labels
     for bar, angle, label1, label2 in zip(bars, angles, metrics.keys(), metrics.values()):
 
+        label1 = metric_names.get(label1, label1)
         label = f'{label1} {round(label2, 4)}'
 
         # Labels are rotated. Rotation must be specified in degrees :(
@@ -248,12 +271,13 @@ def plot_circular_bar(metrics: dict, save: bool, save_path: str, **kwargs):
             rotation_mode="anchor")
 
     if save:
-        fname = f"bar_errors_from_{lower}_to_{upper}.png"
+        fname = f"{len(metrics)}_bar_errors_from_{lower}_to_{upper}.png"
         if save_path is not None:
             fname = os.path.join(save_path, fname)
-        plt.savefig(fname, dpi=300, bbox_inches='tight')
-    else:
+        plt.savefig(fname, dpi=400, bbox_inches='tight')
+    if show:
         plt.show()
+
     return
 
 

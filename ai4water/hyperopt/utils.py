@@ -275,9 +275,10 @@ class Integer(_Integer, Counter):
 
 class Categorical(_Categorical):
     """
-    This class is used when parameter has distinct such as [1,2,3] or ['a', 'b', 'c'].
-    Overrides skopt's `Categorical` class. Can be converted to optuna's distribution
-    or hyper_opt's choice. It uses same input arguments as received by skopt's
+    This class is used when parameter has distinct group/class of values such
+    as [1,2,3] or ['a', 'b', 'c']. This class overrides skopt's `Categorical` class.
+    It Can be converted to optuna's distribution or hyper_opt's choice. It uses
+    same input arguments as received by skopt's
     [`Categorical` class](https://scikit-optimize.github.io/stable/modules/generated/skopt.space.space.Categorical.html)
 
     Methods

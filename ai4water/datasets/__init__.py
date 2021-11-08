@@ -57,6 +57,7 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     Arguments:
         inputs list: features to use as input. By default all environmental data
             is used which consists of following parameters
+
                 - tide_cm
                 - wat_temp_c
                 - sal_psu
@@ -74,6 +75,7 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
         target list/str: feature/features to use as target/output. By default
             `tetx_coppml` is used as target.
             Logically one or more from following can be considered as target
+
                 - ecoli
                 - 16s
                 - inti1
@@ -118,21 +120,6 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
         target = default_targets
 
     assert isinstance(target, list)
-
-    df = df[inputs + target]
-
-    return df
-
-
-def load_u1(target: Union[str, list] = 'target') -> pd.DataFrame:
-    """Loads 1d data that can be used fo regression and classification"""
-    fpath = os.path.join(os.path.dirname(__file__), "input_target_u1.csv")
-    df = pd.read_csv(fpath, index_col='index')
-
-    inputs = [col for col in df.columns if col not in ['target', 'target_by_group']]
-
-    if isinstance(target, str):
-        target = [target]
 
     df = df[inputs + target]
 

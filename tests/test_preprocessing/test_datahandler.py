@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from ai4water import Model
 from ai4water.preprocessing import DataHandler, SiteDistributedDataHandler
 from ai4water.preprocessing.datahandler import MultiLocDataHandler
-from ai4water.datasets import load_u1, arg_beach
+from ai4water.datasets import arg_beach
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
@@ -159,10 +159,10 @@ def compare_individual_item(data, key, cols, y, data_loader):
                         print(f'true: {_t}, : pred: {_p}, index: {i}, col: {cols}')
             else:
                 if isinstance(v, np.ndarray):
-                    v = round(v.item(), 3)
-                _true = round(data[cols].loc[i], 3).item()
+                    v = v.item()
+                _true = data[cols].loc[i]
                 _p = round(v, 3)
-                if _true != _p:
+                if not np.allclose(v, _true):
                     print(f'true: {_true}, : pred: {_p}, index: {i}, col: {cols}')
         else:
             if isinstance(train_index, pd.DatetimeIndex):
@@ -1709,16 +1709,20 @@ def site_distributed_multiple_srcs():
 
 def test_with_string_index():
 
-    data = load_u1()
+    data = arg_beach()
+    data.index = [f"ind_{i}" for i in range(len(data))]
     config = {
-        'input_features': ['x1', 'x2', 'x3', 'x4'],
-        'output_features': ['target'],
+        #'input_features': ['x1', 'x2', 'x3', 'x4'],
+        #'output_features': ['target'],
+        'input_features': ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c'],
+        'output_features': ['tetx_coppml'],
         'lookback': 3,
         'train_data': 'random',
         'transformation': 'minmax'
     }
 
-    build_and_test_loader(data, config, out_cols=['target'], train_ex=136, val_ex=58, test_ex=84)
+    #build_and_test_loader(data, config, out_cols=['target'], train_ex=136, val_ex=58, test_ex=84)
+    build_and_test_loader(data, config, out_cols=['tetx_coppml'], train_ex=106, val_ex=46, test_ex=66)
     return
 
 def test_with_indices_and_nans():

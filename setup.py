@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# some rights may be researved by 2020  Ather Abbas
+# some rights may be reserved by 2020  Ather Abbas
 from setuptools import setup
 from version import __version__ as ver
 
@@ -12,13 +12,14 @@ with open('version.py') as fv:
 
 min_requirements = [
     'numpy<=1.19.2',
-    'seaborn',
+    'h5py<2.11.0',
     'scikit-learn<=0.24.2',
     'pandas',
     'matplotlib',
     'scikit-optimize',
     'joblib',
     'requests',
+    'plotly',
     ]
 
 extra_requires = [
@@ -31,7 +32,6 @@ extra_requires = [
 'see-rnn',   # for rnn visualizations
 'lightgbm',
 'catboost',
-'plotly',
 'tpot',
 # spatial processing
 'imageio',
@@ -47,7 +47,15 @@ extra_requires = [
 
 # for jsonizing
 'wrapt',
+
+# eda
+'seaborn'
 ]
+
+hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
+post_process_requirements = ['lime', 'shap']
+exp_requirements = ['catboost', 'lightgbm', 'xgboost', 'tpot']
+pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
 
 all_requirements = min_requirements + extra_requires
 
@@ -57,7 +65,7 @@ setup(
 
     version=ver,
 
-    description='Platform for developing deep learning based for sequential data',
+    description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,
     long_description_content_type="text/markdown",
 
@@ -66,7 +74,7 @@ setup(
     author='Ather Abbas',
     author_email='ather_abbas786@yahoo.com',
 
-    package_data={'ai4water/datasets': ['arg_busan.csv', "input_target_u1.csv"]},
+    package_data={'ai4water/datasets': ['arg_busan.csv']},
     include_package_data=True,
 
     classifiers=[
@@ -90,21 +98,27 @@ setup(
 
     packages=['ai4water',
               'ai4water/models',
-              'ai4water/hyper_opt',
+              'ai4water/hyperopt',
               'ai4water/utils',
-              'ai4water/pre_processing',
-              'ai4water/post_processing/',
-              'ai4water/post_processing/SeqMetrics',
-              'ai4water/post_processing/explain',
-              'ai4water/post_processing/interpret',
-              'ai4water/post_processing/visualize',
+              'ai4water/preprocessing',
+              'ai4water/preprocessing/transformations',
+              'ai4water/postprocessing/',
+              'ai4water/postprocessing/SeqMetrics',
+              'ai4water/postprocessing/explain',
+              'ai4water/postprocessing/interpret',
+              'ai4water/postprocessing/visualize',
               'ai4water/datasets',
-              'ai4water/ETUtil',
+              'ai4water/et',
               'ai4water/experiments',
               'ai4water/eda'
               ],
 
     install_requires=min_requirements,
 
-    extras_require={'all': extra_requires}
+    extras_require={
+        'all': extra_requires,
+        'hpo': hpo_requirements,
+        'post_process': post_process_requirements,
+        'exp': exp_requirements
+    }
 )

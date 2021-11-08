@@ -56,15 +56,15 @@ except ImportError:
 
 from ai4water.backend import tf
 from ai4water.utils.utils import JsonEncoder
-from ai4water.hyperopt.utils import plot_convergences
+from .utils import plot_convergences
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from ai4water.hyperopt.utils import get_one_tpe_x_iter
+from .utils import get_one_tpe_x_iter
 from ai4water.utils.utils import Jsonize, dateandtime_now
-from ai4water.hyperopt.utils import skopt_space_from_hp_space
-from ai4water.hyperopt.utils import post_process_skopt_results
-from ai4water.hyperopt.utils import Categorical, Real, Integer
-from ai4water.hyperopt.utils import sort_x_iters, x_iter_for_tpe
-from ai4water.hyperopt.utils import loss_histogram, plot_hyperparameters
+from .utils import skopt_space_from_hp_space
+from .utils import post_process_skopt_results
+from .utils import Categorical, Real, Integer
+from .utils import sort_x_iters, x_iter_for_tpe
+from .utils import loss_histogram, plot_hyperparameters
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -154,11 +154,11 @@ class HyperOpt(object):
     ```python
     >>>from ai4water import Model
     >>>from ai4water.hyperopt import HyperOpt, Categorical, Integer, Real
-    >>>from ai4water.datasets import load_u1
+    >>>from ai4water.datasets import arg_beach
     >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>data = load_u1()
-    >>>input_features = ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10']
-    >>>output_features = ['target']
+    >>>data = arg_beach()
+    >>>input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+    >>>output_features = ['tetx_coppml']
     ...# We have to define an objective function which will take keyword arguments
     ...# and return a scaler value as output. This scaler value will be minized during optimzation
     >>>def objective_fn(**suggestion)->float:
@@ -339,6 +339,7 @@ class HyperOpt(object):
                  eval_on_best:bool=False,
                  backend:str=None,
                  opt_path:str = None,
+                 process_results:bool = True,
                  verbosity:int = 1,
                  **kwargs
                  ):
@@ -394,6 +395,7 @@ class HyperOpt(object):
         self.data = None
         self.eval_on_best=eval_on_best
         self.opt_path = opt_path
+        self.process_results=process_results
         self.objective_fn_is_dl = False
         self.verbosity = verbosity
 
@@ -493,7 +495,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # Since it was not possible to inherit this class from BaseSearchCV and BayesSearchCV at the same time, this
         # hack makes sure that all the functionalities of GridSearchCV, RandomizeSearchCV and BayesSearchCV are also
         # available with class.
-        return getattr(self.optfn, item)
+        if self.use_sklearn or self.use_skopt_bayes:
+            return getattr(self.optfn, item)
+        else:
+            raise AttributeError(f"HyperOpt does not have attribute {item}")
 
     @property
     def param_space(self):
@@ -971,9 +976,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             xiters = search_result.x_iters
             self.results = {f'{round(k, 8)}_{idx}': self.to_kw(v) for idx, k, v in zip(range(self.num_iterations), fv, xiters)}
 
-        post_process_skopt_results(search_result, self.results, self.opt_path)
+        if self.process_results:
+            post_process_skopt_results(search_result, self.results, self.opt_path)
 
-        self._plot()
+            self._plot()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -1003,7 +1009,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if not self.use_ai4water_model:
                 self.results[err + idx] = sort_x_iters(para, self.original_para_order())
 
-        self._plot()
+        if self.process_results:
+            self._plot()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -1018,6 +1025,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return self.eval_sequence(params)
 
     def random_search(self):
+
+        for k, v in self.param_space.items():
+            if v is None:
+                grid = self.space()[k].grid
+                assert grid is not None, f"""grid for parameter {k} could not be created. Inferred grid is 
+                {grid}. Please either provide the `num_samples` parameter while creating space or explicitly
+                provide grid for {k}"""
 
         param_list = list(ParameterSampler(self.param_space, n_iter=self.num_iterations,
                                            random_state=self.random_state))
@@ -1057,7 +1071,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         study.optimize(objective, n_trials=self.num_iterations)
         setattr(self, 'study', study)
 
-        self._plot()
+        if self.process_results:
+            self._plot()
 
         return study
 
@@ -1110,7 +1125,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         setattr(self, 'trials', trials)
         #self.results = trials.results
-        self._plot()
+        if self.process_results:
+            self._plot()
 
         return best
 

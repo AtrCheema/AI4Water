@@ -134,7 +134,8 @@ layers = {
     'Dense': 1
 }
 ```
-<img src="imgs/cnn_lstm.png" width="800" height="900" />
+#<img src="imgs/cnn_lstm.png" width="800" height="900" />
+![lstm autoenc](imgs/cnn_lstm.png)
 
 ### LSTM based auto-encoder
 ```python
@@ -182,6 +183,9 @@ class MyModel(Model):
             list [(samples, 1)]
          """
         return 
+    
+    def test_data(self, **kwargs):
+        return 
 
 
 layers = {"Input_0": {"shape": (5, 10), "name": "cont_inputs"},
@@ -203,7 +207,8 @@ layers = {"Input_0": {"shape": (5, 10), "name": "cont_inputs"},
         }
 ```
 
-As the above model takes two inputs, we will have to overwrite `run_paras` method in our own class which should inherit
+As the above model takes two inputs, we will have to overwrite `training_data`, 
+`validation_data` and  `test_data` methods in our own class which should inherit
 from `Model` class
 
 ![lstm_dense](imgs/lstm_dense.png)

@@ -182,5 +182,13 @@ class TestInterpret(unittest.TestCase):
         i.interpret_tft(data='test')
         return
 
+    def test_xgb_f_imp_comparison(self):
+        model = Model(model="xgboostregressor",
+                      data=arg_beach(inputs=["tide_cm", "rel_hum"]))
+        model.fit()
+        interpreter = Interpret(model)
+        interpreter.compare_xgb_f_imp()
+        return
+
 if __name__ == "__main__":
     unittest.main()

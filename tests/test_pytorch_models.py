@@ -5,7 +5,7 @@ import unittest
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
-from ai4water.datasets import arg_beach, load_u1
+from ai4water.datasets import arg_beach
 from ai4water.pytorch_models import HARHNModel, IMVModel
 
 lookback = 10
@@ -15,7 +15,7 @@ df = arg_beach()
 
 class TestPytorchModels(unittest.TestCase):
     def test_hrhnmodel(self):
-        model = HARHNModel(data=load_u1(),
+        model = HARHNModel(data=arg_beach().dropna(),  # doping na will be wrong but it is just for test purpose
                            teacher_forcing=True,
                            epochs=3,
                            model={'layers': {'n_conv_lyrs': 3, 'enc_units': 4, 'dec_units': 4}},

@@ -11,10 +11,13 @@
             - view
             - eda
             - from_config
+            - from_config_file
             - update_weights
             - activations
             - cross_val_score
             - explain
+            - optimize_transformations
+            - optimize_hyperparameters
     rendering:
         show_root_heading: true
 
