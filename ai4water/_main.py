@@ -947,7 +947,7 @@ class BaseModel(NN, Plots):
     def fit_ml_models(self, inputs, outputs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
-        for arg in ["batch_size", "composite", "optimizer", "lr", "epochs", "subsequences"]:
+        for arg in ["composite", "optimizer", "lr", "epochs", "subsequences"]:
             if arg in self.config:
                 self.config.pop(arg)
 

@@ -17,7 +17,7 @@ from .utils import check_attributes, download, sanity_check
 from ai4water.utils.utils import dateandtime_now
 
 try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
-    from ai4water.pre_processing.spatial_utils import plot_shapefile
+    from ai4water.preprocessing.spatial_utils import plot_shapefile
 except ModuleNotFoundError:
     plot_shapefile = None
 
@@ -565,6 +565,13 @@ class HYSETS(Camels):
     |pr                          |   (14425, 25202) |
     |tasmax                      |   (14425, 25202) |
     |tasmin                      |   (14425, 25202) |
+
+    Examples
+    --------
+    ```python
+    >>> dataset = HYSETS(path="path/to/HYSETS")
+    >>> df = dataset.fetch(0.01, as_dataframe=True) # 1% of stations
+    ```
 
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"
@@ -1300,7 +1307,15 @@ class CAMELS_GB(Camels):
 
 class CAMELS_AUS(Camels):
     """
-    Inherits from Camels class. Fetches CAMELS-AUS dataset.
+    Inherits from Camels class. Reads [CAMELS-AUS](https://doi.org/10.5194/essd-13-3847-2021)
+     dataset.
+
+    Examples
+    --------
+    ```python
+    >>> dataset = CAMELS_AUS()
+    >>> df = dataset.fetch(stations=1, static_features=None, as_dataframe=True)
+    ```
     """
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
     urls = {
