@@ -93,12 +93,12 @@ class TestPandasSKLearn(unittest.TestCase):
         assert df.isna().sum().sum() == 4
 
     def test_knnimputer(self):
-        imputer = Imputation(df, 'KNNIMPUTER')
+        imputer = Imputation(df, 'KNNImputer')
         ndf = imputer()
         assert ndf.isna().sum().sum() == 0
 
     def test_knn_with_features(self):
-        imputer = Imputation(df, 'KNNIMPUTER', features=['a'], imputer_args={'n_neighbors': 1})
+        imputer = Imputation(df, 'KNNImputer', features=['a'], imputer_args={'n_neighbors': 1})
         ndf = imputer()
         assert df.isna().sum().sum() == 4
         assert ndf.isna().sum().sum() == 2

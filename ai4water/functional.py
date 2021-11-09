@@ -78,7 +78,7 @@ class Model(BaseModel):
 
     @property
     def num_input_layers(self) -> int:
-        if self.category.upper() != "DL":
+        if self.category != "DL":
             return np.inf
         else:
             return len(self._model.inputs)
@@ -182,7 +182,7 @@ class Model(BaseModel):
             idx += 0
 
             if callable(lyr) and hasattr(lyr, '__call__'):
-                LAYERS[lyr.__name__.upper()] = lyr
+                LAYERS[lyr.__name__] = lyr
                 self.config['model']['layers'] = update_layers_config(layers_config, lyr)
                 lyr = lyr.__name__
 
@@ -197,40 +197,40 @@ class Model(BaseModel):
             if first_layer:
                 if inputs is not None:  # This method was called by providing it inputs.
                     assert isinstance(inputs, tf.Tensor)
-                    lyr_cache["INPUT"] = inputs
+                    lyr_cache["Input"] = inputs
                     # since inputs have been defined, all the layers that will be added will be next to first layer
                     first_layer = False
                     layer_outputs = inputs
                     assign_dummy_name(layer_outputs, 'input')
-                elif lyr_name.upper() != "INPUT":
+                elif lyr_name != "Input":
                     if 'input_shape' in lyr_config:  # input_shape is given in the first layer so make input layer
-                        layer_outputs = LAYERS["INPUT"](shape=lyr_config['input_shape'])
+                        layer_outputs = LAYERS["Input"](shape=lyr_config['input_shape'])
                         assign_dummy_name(layer_outputs, 'input')
                     else:
                         # for simple dense layer based models, lookback will not be used
                         def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
-                        layer_outputs = LAYERS["INPUT"](shape=def_shape)
+                        layer_outputs = LAYERS["Input"](shape=def_shape)
 
                     # first layer is built so next iterations will not be for first layer
                     first_layer = False
                     # put the first layer in memory to be used for model compilation
-                    lyr_cache["INPUT"] = layer_outputs
+                    lyr_cache["Input"] = layer_outputs
                     # add th layer which the user had specified as first layer
 
                     assign_dummy_name(layer_outputs, 'input')
 
             if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
                 # or it uses the previous outputs as inputs
-                if lyr_name.upper() == "INPUT":
+                if lyr_name == "Input":
                     # it is an Input layer, hence should not be called
-                    layer_outputs = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                    layer_outputs = LAYERS[lyr_name](*args, **lyr_config)
                     assign_dummy_name(layer_outputs, 'input')
                 else:
                     # it is executable and uses previous outputs as inputs
-                    if lyr_name.upper() in ACTIVATION_LAYERS:
-                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(layer_outputs)
-                    elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                        wrp_layer = LAYERS[lyr_name.upper()]
+                    if lyr_name in ACTIVATION_LAYERS:
+                        layer_outputs = ACTIVATION_LAYERS[lyr_name](name=lyr_config['name'])(layer_outputs)
+                    elif lyr_name in ['TimeDistributed', 'Bidirectional']:
+                        wrp_layer = LAYERS[lyr_name]
                         lyr_cache[lyr_name] = wrp_layer
                         continue
                     elif "LAMBDA" in lyr_name.upper():
@@ -245,21 +245,21 @@ class Model(BaseModel):
                         layers_config[lyr]['config'] = lyr_config
                     else:
                         if wrp_layer is not None:
-                            layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(layer_outputs)
+                            layer_outputs = wrp_layer(LAYERS[lyr_name](*args, **lyr_config))(layer_outputs)
                             wrp_layer = None
                         else:
                             add_args = get_add_call_args(call_args, lyr_cache, lyr_config['name'])
-                            layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                            layer_initialized = LAYERS[lyr_name](*args, **lyr_config)
                             layer_outputs = layer_initialized(layer_outputs, **add_args)
                             self.get_and_set_attrs(layer_initialized)
 
             else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                 # it is an executable
-                if lyr_name.upper() in ACTIVATION_LAYERS:
+                if lyr_name in ACTIVATION_LAYERS:
                     call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                    layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])(call_args, **add_args)
-                elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                    wrp_layer = LAYERS[lyr_name.upper()]
+                    layer_outputs = ACTIVATION_LAYERS[lyr_name](name=lyr_config['name'])(call_args, **add_args)
+                elif lyr_name in ['TimeDistributed', 'Bidirectional']:
+                    wrp_layer = LAYERS[lyr_name]
                     lyr_cache[lyr_name] = wrp_layer
                     continue
                 elif "LAMBDA" in lyr_name.upper():
@@ -269,11 +269,11 @@ class Model(BaseModel):
                 else:
                     if wrp_layer is not None:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_outputs = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))(call_args, **add_args)
+                        layer_outputs = wrp_layer(LAYERS[lyr_name](*args, **lyr_config))(call_args, **add_args)
                         wrp_layer = None
                     else:
                         call_args, add_args = get_call_args(lyr_inputs, lyr_cache, call_args, lyr_config['name'])
-                        layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                        layer_initialized = LAYERS[lyr_name](*args, **lyr_config)
                         # todo, following conditioning is not good
                         # for concat layer inputs should be ([a,b,c]) instaed of (a,b,c)
                         if isinstance(lyr_inputs, list) and lyr_name.upper() != "CONCAT":
@@ -309,7 +309,7 @@ class Model(BaseModel):
             # the only way to know that how many `Input` layers were encountered during the run of this method. Each
             # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
             if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
-                if k.upper() != "TIMEDISTRIBUTED" and hasattr(v, 'op'):
+                if k != "TimeDistributed" and hasattr(v, 'op'):
                     if hasattr(v.op, 'inputs'):
                         _ins = v.op.inputs
                         if len(_ins) == 0:
@@ -377,7 +377,7 @@ class Model(BaseModel):
 
     def _do_predict(self, inputs):
 
-        if self.category.upper() == "DL":
+        if self.category == "DL":
             predicted = self._model.predict(x=inputs,
                                             batch_size=self.config['batch_size'],
                                             verbose=self.verbosity)

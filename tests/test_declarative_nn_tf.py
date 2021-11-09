@@ -69,11 +69,11 @@ class TestBuiltTFConfig(unittest.TestCase):
 
         model = build_model({
             "Conv1D_9": {'filters': 64, 'kernel_size': 2},
-            "dropout": 0.3,
+            "Dropout": 0.3,
             "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-            "maxpool1d": 2,
-            'flatten': {},  # This layer does not receive any input arguments
-            'leakyrelu': {},  # activation function can also be used as a separate layer
+            "MaxPool1D": 2,
+            'Flatten': {},  # This layer does not receive any input arguments
+            'LeakyReLU': {},  # activation function can also be used as a separate layer
             "Dense": 1
                   },
         12)
@@ -86,11 +86,11 @@ class TestBuiltTFConfig(unittest.TestCase):
         model = build_model({
             "LSTM":{'units': 64, 'return_sequences': True},
             "Conv1D_0": {'filters': 64, 'kernel_size': 2},
-            "dropout": 0.3,
+            "Dropout": 0.3,
             "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-            "maxpool1d": 2,
-            'flatten': {},
-            'leakyrelu': {},
+            "MaxPool1D": 2,
+            'Flatten': {},
+            'LeakyReLU': {},
             "Dense": 1
         },
             12)
@@ -102,10 +102,10 @@ class TestBuiltTFConfig(unittest.TestCase):
 
         model = build_model({
             'Input': {'shape': (3, 1, 4, 8)},
-            'convlstm2d': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
-            'flatten': {},
-            'repeatvector': 1,
-            'lstm': {'units': 128, 'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4},
+            'ConvLSTM2D': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
+            'Flatten': {},
+            'RepeatVector': 1,
+            'LSTM': {'units': 128, 'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4},
             'Dense': 1
         },
             12)
@@ -120,22 +120,22 @@ class TestBuiltTFConfig(unittest.TestCase):
         model = build_model({
             "Input": {'shape': (sub_sequences, time_steps, 10)},
             "TimeDistributed_0": {},
-            'conv1d_0': {'filters': 64, 'kernel_size': 2},
-            'LeakyRelu_0': {},
+            'Conv1D_0': {'filters': 64, 'kernel_size': 2},
+            'LeakyReLU_0': {},
             "TimeDistributed_1": {},
-            'conv1d_1': {'filters': 32, 'kernel_size': 2},
-            'elu_1': {},
+            'Conv1D_1': {'filters': 32, 'kernel_size': 2},
+            'ELU_1': {},
             "TimeDistributed_2": {},
-            'conv1d_2': {'filters': 16, 'kernel_size': 2},
+            'Conv1D_2': {'filters': 16, 'kernel_size': 2},
             'tanh_2': {},
             "TimeDistributed_3": {},
-            "maxpool1d": 2,
+            "MaxPool1D": 2,
             "TimeDistributed_4": {},
-            'flatten': {},
-            'lstm_0':  {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+            'Flatten': {},
+            'LSTM_0':  {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
                        'name': 'lstm_0'},
-            'Relu_1': {},
-            'lstm_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
+            'relu_1': {},
+            'LSTM_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
             'sigmoid_2': {},
             'Dense': 1
         },
@@ -148,10 +148,10 @@ class TestBuiltTFConfig(unittest.TestCase):
     def test_lstm_autoenc(self):
 
         model = build_model({
-            'lstm_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
-            "leakyrelu_0":{},
+            'LSTM_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+            "LeakyReLU_0":{},
             'RepeatVector': 11,
-            'lstm_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+            'LSTM_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
             "relu_1": {},
             'Dense': 1
         }, 12)
@@ -162,7 +162,7 @@ class TestBuiltTFConfig(unittest.TestCase):
     def test_tcn(self):
 
         model = build_model({
-            "tcn": {'nb_filters': 64,
+            "TCN": {'nb_filters': 64,
                                'kernel_size': 2,
                                'nb_stacks': 1,
                                'dilations': [1, 2, 4, 8, 16, 32],
@@ -179,17 +179,17 @@ class TestBuiltTFConfig(unittest.TestCase):
 
         model = build_model({
             "Input_0": {"shape": (5, 10), "name": "cont_inputs"},
-            "lstm_0": {"config": {"units": 62, "activation": "leakyrelu", "dropout": 0.4, "recurrent_dropout": 0.4,
+            "LSTM_0": {"config": {"units": 62, "activation": "leakyrelu", "dropout": 0.4, "recurrent_dropout": 0.4,
                                   "return_sequences": False, "name": "lstm_0"},
                        "inputs": "cont_inputs"},
 
             "Input_1": {"shape": 10, "name": "disc_inputs"},
             "Dense_0": {"config": {"units": 64, "activation": "leakyrelu", "name": "Dense_0"},
                         "inputs": "disc_inputs"},
-            "flatten_0": {"config": {"name": "flatten_0"},
+            "Flatten_0": {"config": {"name": "flatten_0"},
                           "inputs": "Dense_0"},
 
-            "Concat": {"config": {"name": "Concat"},
+            "Concatenate": {"config": {"name": "Concat"},
                        "inputs": ["lstm_0", "flatten_0"]},
 
             "Dense_1": {"units": 16, "activation": "leakyrelu", "name": "Dense_1"},
@@ -215,7 +215,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Flatten": {'config': {'name': 'MyFlatten'},
                         'inputs': 'MyMaxPool'},
 
-            "Concat": {'config': {'name': 'MyConcat'},
+            "Concatenate": {'config': {'name': 'MyConcat'},
                     'inputs': ['MyDense', 'MyFlatten']},
 
             "Dense": 1
@@ -247,7 +247,7 @@ class TestBuiltTFConfig(unittest.TestCase):
                        'inputs': 'MyInputs',
                        'call_args': {'initial_state': ['h_state', 'c_state']}},
 
-            "Concat": {'config': {'name': 'MyConcat'},
+            "Concatenate": {'config': {'name': 'MyConcat'},
                     'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
 
             "Dense": 1

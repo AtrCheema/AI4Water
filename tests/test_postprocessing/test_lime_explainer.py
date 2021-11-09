@@ -251,9 +251,9 @@ class TestLimeExplainer(unittest.TestCase):
     def test_ai4water_ml(self):
 
         for m in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
-            "GRADIENTBOOSTINGREGRESSOR"
+            "GradientBoostingRegressor"
                   ]:
 
             model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))

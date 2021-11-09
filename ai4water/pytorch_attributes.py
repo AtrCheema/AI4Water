@@ -13,9 +13,10 @@ LOSSES = {}
 OPTIMIZERS = {}
 
 if torch is not None:
-    LAYERS.update(get_attributes(torch, 'nn'))
+    LAYERS.update(get_attributes(torch, 'nn', case_sensitive=True))
 
     LOSSES.update({"MSE": torch.nn.MSELoss,
+                   "mse": torch.nn.MSELoss,
                    "CROSSENTROPYLOSS": torch.nn.CrossEntropyLoss,
                    "L1Loss": torch.nn.L1Loss,
                    "NLLLoss": torch.nn.NLLLoss,
@@ -25,4 +26,4 @@ if torch is not None:
                    "KLDivLoss": torch.nn.KLDivLoss,
 
                    })
-    OPTIMIZERS.update(get_attributes(torch, 'optim'))
+    OPTIMIZERS.update(get_attributes(torch, 'optim', case_sensitive=True))

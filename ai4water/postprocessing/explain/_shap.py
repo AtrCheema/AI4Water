@@ -119,7 +119,7 @@ class ShapExplainer(ExplainerMixin):
             self._check_data(train_data, test_data)
 
         self.is_sklearn = True
-        if model.__class__.__name__.upper() not in get_sklearn_models():
+        if model.__class__.__name__ not in get_sklearn_models():
             if model.__class__.__name__ in ["XGBRegressor",
                                             "LGBMRegressor",
                                             "CatBoostRegressor",
@@ -254,7 +254,7 @@ class ShapExplainer(ExplainerMixin):
                                              "XGBRFRegressor"]:
             explainer = shap.TreeExplainer(self.model)
 
-        elif self.model.__class__.__name__.upper() in get_sklearn_models():
+        elif self.model.__class__.__name__ in get_sklearn_models():
             explainer = self._get_kernel_explainer(train_data, num_means)
 
         elif self._framework == "DL":
@@ -325,21 +325,21 @@ class ShapExplainer(ExplainerMixin):
 
         if dependence_plots:
             for feature in self.features:
-                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}")
+                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}", show=False)
 
         if force_plots:
             for i in range(self.data.shape[0]):
 
-                self.force_plot_single_example(i, f"force_plot_{i}")
+                self.force_plot_single_example(i, f"force_plot_{i}", show=False)
 
         if beeswarm_plots:
-            self.beeswarm_plot()
+            self.beeswarm_plot(show=False)
 
         if plot_force_all:
-            self.force_plot_all("force_plot_all")
+            self.force_plot_all("force_plot_all", show=False)
 
         if heatmap:
-            self.heatmap()
+            self.heatmap(show=False)
 
         self.summary_plot("summary_plot")
 

@@ -167,7 +167,7 @@ class Model(MODEL, BaseModel):
 
     @property
     def num_input_layers(self) -> int:
-        if self.category.upper() != "DL":
+        if self.category != "DL":
             return np.inf
         if K.BACKEND == 'pytorch':
             return 1
@@ -268,7 +268,7 @@ class Model(MODEL, BaseModel):
                 if callable(lyr_config):
                     lyr_initiated = lyr_config
                 else:
-                    lyr_initiated = TORCH_LAYERS[lyr_name.upper()](**lyr_config)
+                    lyr_initiated = TORCH_LAYERS[lyr_name](**lyr_config)
                 setattr(self, lyr, lyr_initiated)
                 initiated_layers[lyr] = {"layer": lyr_initiated, "named_outs": named_outs, 'call_args': call_args,
                                          'inputs': lyr_inputs}
@@ -282,13 +282,13 @@ class Model(MODEL, BaseModel):
                         layer_outputs = inputs
                         initiated_layers[layer_outputs.name] = {'layer': layer_outputs, 'tf_name': lyr_name}
 
-                    elif lyr_name.upper() != "INPUT":
+                    elif lyr_name != "Input":
                         if 'input_shape' in lyr_config:  # input_shape is given in the first layer so make input layer
-                            initialized_layer = LAYERS["INPUT"](shape=lyr_config['input_shape'])
+                            initialized_layer = LAYERS["Input"](shape=lyr_config['input_shape'])
                         else:
                             # for simple dense layer based models, lookback will not be used
                             def_shape = (self.dh.num_ins,) if self.lookback == 1 else (self.lookback, self.dh.num_ins)
-                            initialized_layer = LAYERS["INPUT"](shape=def_shape)
+                            initialized_layer = LAYERS["Input"](shape=def_shape)
 
                         # first layer is built so next iterations will not be for first layer
                         first_layer = False
@@ -300,23 +300,23 @@ class Model(MODEL, BaseModel):
 
                 if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
                     # or it uses the previous outputs as inputs
-                    if lyr_name.upper() == "INPUT":
+                    if lyr_name == "Input":
                         # it is an Input layer, hence should not be called
-                        initialized_layer = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                        initialized_layer = LAYERS[lyr_name](*args, **lyr_config)
                         initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                 'tf_name': lyr_name}
                         input_lyrs.append(initialized_layer)
                     else:
                         # it is executable and uses previous outputs as inputs
-                        if lyr_name.upper() in ACTIVATION_LAYERS:
-                            layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])
+                        if lyr_name in ACTIVATION_LAYERS:
+                            layer_outputs = ACTIVATION_LAYERS[lyr_name](name=lyr_config['name'])
                             initiated_layers[lyr_config['name']] = {'layer': layer_outputs,
                                                                     'named_outs': named_outs,
                                                                     'call_args': call_args,
                                                                     'inputs': lyr_inputs,
                                                                     'tf_name': lyr_name}
-                        elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                            wrp_layer = LAYERS[lyr_name.upper()]
+                        elif lyr_name in ['TimeDistributed', 'Bidirectional']:
+                            wrp_layer = LAYERS[lyr_name]
                             initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
                                                                     'tf_name': lyr_name}  # because wrapper layer name is property
                             continue
@@ -333,7 +333,7 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                         else:
                             if wrp_layer is not None:
-                                initialized_layer = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))
+                                initialized_layer = wrp_layer(LAYERS[lyr_name](*args, **lyr_config))
                                 initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                         'named_outs': named_outs,
                                                                         'call_args': call_args,
@@ -341,9 +341,9 @@ class Model(MODEL, BaseModel):
                                                                         'tf_name': lyr_name}
                                 wrp_layer = None
                             else:
-                                if lyr_name.upper() == "TEMPORALFUSIONTRANSFORMER":
+                                if lyr_name == "TemporalFusionTransformer":
                                     lyr_config['return_attention_components'] = True
-                                initialized_layer = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                                initialized_layer = LAYERS[lyr_name](*args, **lyr_config)
                                 initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                         'named_outs': named_outs,
                                                                         'call_args': call_args,
@@ -352,16 +352,16 @@ class Model(MODEL, BaseModel):
 
                 else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                     # it is an executable
-                    if lyr_name.upper() in ACTIVATION_LAYERS:
+                    if lyr_name in ACTIVATION_LAYERS:
 
-                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])
+                        layer_outputs = ACTIVATION_LAYERS[lyr_name](name=lyr_config['name'])
                         initiated_layers[lyr_config['name']] = {'layer': layer_outputs,
                                                                 'named_outs': named_outs,
                                                                 'call_args': call_args,
                                                                 'inputs': lyr_inputs,
                                                                 'tf_name': lyr_name}
-                    elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                        wrp_layer = LAYERS[lyr_name.upper()]
+                    elif lyr_name in ['TimeDistributed', 'Bidirectional']:
+                        wrp_layer = LAYERS[lyr_name]
                         initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
                                                                 'tf_name': lyr_name}  # because wrapper layer name is property
                         continue
@@ -375,7 +375,7 @@ class Model(MODEL, BaseModel):
                                                                 'tf_name': lyr_name}
                     else:
                         if wrp_layer is not None:
-                            initialized_layer = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))
+                            initialized_layer = wrp_layer(LAYERS[lyr_name](*args, **lyr_config))
                             initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                     'named_outs': named_outs,
                                                                     'call_args': call_args,
@@ -383,7 +383,7 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                             wrp_layer = None
                         else:
-                            layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                            layer_initialized = LAYERS[lyr_name](*args, **lyr_config)
                             initiated_layers[lyr_config['name']] = {'layer': layer_initialized,
                                                                     'named_outs': named_outs,
                                                                     'call_args': call_args,
@@ -494,7 +494,7 @@ class Model(MODEL, BaseModel):
                 # don't use the tf.keras.Input from self.initiated_layers
                 #outs = lyr_args['layer']
 
-            elif lyr_args['tf_name'].upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+            elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
                 continue
 
@@ -515,7 +515,7 @@ class Model(MODEL, BaseModel):
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
-                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
@@ -573,7 +573,7 @@ class Model(MODEL, BaseModel):
                 if isinstance(inputs, tuple):
                      assert all([is_input(_input) for _input in inputs])
 
-            elif lyr_args['tf_name'].upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+            elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
                 continue
             else:
@@ -594,7 +594,7 @@ class Model(MODEL, BaseModel):
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
-                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
@@ -676,8 +676,7 @@ class Model(MODEL, BaseModel):
                 input_tensor = True
                 # don't use the tf.keras.Input from self.initiated_layers
 
-
-            elif lyr_args['tf_name'].upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+            elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
                 continue
             else:
@@ -694,7 +693,7 @@ class Model(MODEL, BaseModel):
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
-                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
@@ -956,7 +955,7 @@ def is_input(tensor, name=''):
         # Each tensor (except TimeDistributed) has .op.inputs attribute, which is empty
         # if a tensor represents output of Input layer.
 
-        if name.upper() != "TIMEDISTRIBUTED" and hasattr(tensor, 'op'):
+        if name != "TimeDistributed" and hasattr(tensor, 'op'):
             if hasattr(tensor.op, 'inputs'):
                 _ins = tensor.op.inputs
                 if len(_ins) == 0:

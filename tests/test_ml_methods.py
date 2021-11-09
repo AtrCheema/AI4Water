@@ -33,7 +33,7 @@ df_class = pd.DataFrame(np.concatenate([data_class['data'], data_class['target']
 
 def run_class_test(method):
 
-    mode = "classification" if "class" in method.lower() else "regression"
+    mode = "classification" if "class" in method else "regression"
 
     if method not in ["STACKINGREGRESSOR", "VOTINGREGRESSOR",  "LOGISTICREGRESSIONCV", # has convergence issues
                       "RIDGE_REGRESSION", "MULTIOUTPUTREGRESSOR", "REGRESSORCHAIN", "REGRESSORMIXIN",
@@ -43,10 +43,8 @@ def run_class_test(method):
                       ]:
 
         kwargs = {}
-        if "CATBOOST" in method:
+        if "CatBoost" in method:
             kwargs = {'iterations': 2}
-        elif "TPOT" in method.upper():
-            kwargs = {'generations': 2, 'population_size': 2}
 
         print(f"testing {method}")
 
@@ -65,20 +63,20 @@ def run_class_test(method):
 
 class TestMLMethods(unittest.TestCase):
 
-    def test_XGBOOSTRFCLASSIFIER(self):
-        run_class_test("XGBOOSTRFCLASSIFIER")
+    def test_XGBRFCLASSIFIER(self):
+        run_class_test("XGBRFClassifier")
         return
 
-    def test_XGBOOSTRFREGRESSOR(self):
-        run_class_test("XGBOOSTRFREGRESSOR")
+    def test_XGBRFREGRESSOR(self):
+        run_class_test("XGBRFRegressor")
         return
 
-    def test_XGBOOSTCLASSIFIER(self):
-        run_class_test("XGBOOSTCLASSIFIER")
+    def test_XGBCLASSIFIER(self):
+        run_class_test("XGBRFClassifier")
         return
 
-    def test_XGBOOSTREGRESSOR(self):
-        run_class_test("XGBOOSTREGRESSOR")
+    def test_XGBREGRESSOR(self):
+        run_class_test("XGBRegressor")
         return
 
     def test_KernelRidge(self):
@@ -162,186 +160,186 @@ class TestMLMethods(unittest.TestCase):
     #     return
 
     def test_EXTRATREEREGRESSOR(self):
-        run_class_test("EXTRATREEREGRESSOR")
+        run_class_test("ExtraTreeRegressor")
         return
 
     def test_EXTRATREECLASSIFIER(self):
-        run_class_test("EXTRATREECLASSIFIER")
+        run_class_test("ExtraTreeClassifier")
         return
 
     def test_DECISIONTREEREGRESSOR(self):
-        run_class_test("DECISIONTREEREGRESSOR")
+        run_class_test("DecisionTreeRegressor")
         return
 
     def test_DECISIONTREECLASSIFIER(self):
-        run_class_test("DECISIONTREECLASSIFIER")
+        run_class_test("DecisionTreeClassifier")
         return
 
     def test_ONECLASSSVM(self):
-        run_class_test("ONECLASSSVM")
+        run_class_test("OneClassSVM")
         return
 
     def test_MLPREGRESSOR(self):
-        run_class_test("MLPREGRESSOR")
+        run_class_test("MLPRegressor")
         return
 
     def test_MLPCLASSIFIER(self):
-        run_class_test("MLPCLASSIFIER")
+        run_class_test("MLPClassifier")
         return
 
     def test_RADIUSNEIGHBORSREGRESSOR(self):
-        run_class_test("RADIUSNEIGHBORSREGRESSOR")
+        run_class_test("RadiusNeighborsRegressor")
         return
 
     def test_RADIUSNEIGHBORSCLASSIFIER(self):
-        run_class_test("RADIUSNEIGHBORSCLASSIFIER")
+        run_class_test("RadiusNeighborsClassifier")
         return
 
     def test_KNEIGHBORSREGRESSOR(self):
-        run_class_test("KNEIGHBORSREGRESSOR")
+        run_class_test("KNeighborsRegressor")
         return
 
     def test_KNEIGHBORSCLASSIFIER(self):
-        run_class_test("KNEIGHBORSCLASSIFIER")
+        run_class_test("KNeighborsClassifier")
         return
 
     def test_TWEEDIEREGRESSOR(self):
         if int(sklearn.__version__.split('.')[1]) < 23:
             self.assertRaises(ValueError)
         else:
-            run_class_test("TWEEDIEREGRESSOR")
+            run_class_test("TweedieRegressor")
         return
 
     def test_THEILSENREGRESSOR(self):
-        run_class_test("THEILSENREGRESSOR")
+        run_class_test("TheilSenRegressor")
         return
 
     def test_SGDREGRESSOR(self):
-        run_class_test("SGDREGRESSOR")
+        run_class_test("SGDRegressor")
         return
 
     def test_SGDCLASSIFIER(self):
-        run_class_test("SGDCLASSIFIER")
+        run_class_test("SGDClassifier")
         return
 
     def test_RIDGECLASSIFIERCV(self):
-        run_class_test("RIDGECLASSIFIERCV")
+        run_class_test("RidgeClassifierCV")
         return
 
     def test_RIDGECLASSIFIER(self):
-        run_class_test("RIDGECLASSIFIER")
+        run_class_test("RidgeClassifier")
         return
 
     def test_RANSACREGRESSOR(self):
         if int(sklearn.__version__.split('.')[1]) < 23:
             self.assertRaises(ValueError)
         else:
-            run_class_test("RANSACREGRESSOR")
+            run_class_test("RANSACRegressor")
         return
 
     def test_POISSONREGRESSOR(self):
         if int(sklearn.__version__.split('.')[1]) < 23:
             self.assertRaises(ValueError)
         else:
-            run_class_test("POISSONREGRESSOR")
+            run_class_test("PoissonRegressor")
         return
 
     def test_PASSIVEAGGRESSIVEREGRESSOR(self):
-        run_class_test("PASSIVEAGGRESSIVEREGRESSOR")
+        run_class_test("PassiveAggressiveRegressor")
         return
 
     def test_PASSIVEAGGRESSIVECLASSIFIER(self):
-        run_class_test("PASSIVEAGGRESSIVECLASSIFIER")
+        run_class_test("PassiveAggressiveClassifier")
         return
 
     def test_LOGISTICREGRESSION(self):
-        run_class_test("LOGISTICREGRESSION")
+        run_class_test("LogisticRegression")
         return
 
     def test_LINEARREGRESSION(self):
         if int(sklearn.__version__.split('.')[1]) < 23:
             self.assertRaises(ValueError)
         else:
-            run_class_test("LINEARREGRESSION")
+            run_class_test("LinearRegression")
         return
 
     def test_HUBERREGRESSOR(self):
-        run_class_test("HUBERREGRESSOR")
+        run_class_test("HuberRegressor")
         return
 
     def test_GAMMAREGRESSOR(self):
         if int(sklearn.__version__.split('.')[1]) < 23:
             self.assertRaises(ValueError)
         else:
-            run_class_test("GAMMAREGRESSOR")
+            run_class_test("GammaRegressor")
         return
 
     def test_ARDREGRESSION(self):
-        run_class_test("ARDREGRESSION")
+        run_class_test("ARDRegression")
         return
 
     def test_RANDOMFORESTREGRESSOR(self):
-        run_class_test("RANDOMFORESTREGRESSOR")
+        run_class_test("RandomForestRegressor")
         return
 
     def test_RANDOMFORESTCLASSIFIER(self):
-        run_class_test("RANDOMFORESTCLASSIFIER")
+        run_class_test("RandomForestClassifier")
         return
 
     def test_GRADIENTBOOSTINGREGRESSOR(self):
-        run_class_test("GRADIENTBOOSTINGREGRESSOR")
+        run_class_test("GradientBoostingRegressor")
         return
 
     def test_GRADIENTBOOSTINGCLASSIFIER(self):
-        run_class_test("GRADIENTBOOSTINGCLASSIFIER")
+        run_class_test("GradientBoostingClassifier")
         return
 
     def test_EXTRATREESREGRESSOR(self):
-        run_class_test("EXTRATREESREGRESSOR")
+        run_class_test("ExtraTreesRegressor")
         return
 
     def test_EXTRATREESCLASSIFIER(self):
-        run_class_test("EXTRATREESCLASSIFIER")
+        run_class_test("ExtraTreesClassifier")
         return
 
     def test_BAGGINGREGRESSOR(self):
-        run_class_test("BAGGINGREGRESSOR")
+        run_class_test("BaggingRegressor")
         return
 
     def test_BAGGINGCLASSIFIER(self):
-        run_class_test("BAGGINGCLASSIFIER")
+        run_class_test("BaggingClassifier")
         return
 
     def test_ADABOOSTREGRESSOR(self):
-        run_class_test("ADABOOSTREGRESSOR")
+        run_class_test("AdaBoostRegressor")
         return
 
     def test_ADABOOSTCLASSIFIER(self):
-        run_class_test("ADABOOSTCLASSIFIER")
+        run_class_test("AdaBoostClassifier")
         return
 
     def test_LGBMCLASSIFIER(self):
-        run_class_test("LGBMCLASSIFIER")
+        run_class_test("LGBMClassifier")
         return
 
     def test_CATBOOSTCLASSIFIER(self):
-        run_class_test("CATBOOSTCLASSIFIER")
+        run_class_test("CatBoostClassifier")
         return
 
     def test_LGBMREGRESSOR(self):
-        run_class_test("LGBMREGRESSOR")
+        run_class_test("LGBMRegressor")
         return
 
     def test_CATBOOSTREGRESSOR(self):
-        run_class_test("CATBOOSTREGRESSOR")
+        run_class_test("CatBoostRegressor")
         return
 
     def test_HISTGRADIENTBOOSTINGCLASSIFIER(self):
-        run_class_test("HISTGRADIENTBOOSTINGCLASSIFIER")
+        run_class_test("HistGradientBoostingClassifier")
         return
 
     def test_HISTGRADIENTBOOSTINGREGRESSOR(self):
-        run_class_test("HISTGRADIENTBOOSTINGREGRESSOR")
+        run_class_test("HistGradientBoostingRegressor")
         return
 
     def test_ml_random_indices(self):
@@ -356,7 +354,7 @@ class TestMLMethods(unittest.TestCase):
             test_fraction=0.3,
             category="ML",
             mode="regression",
-            model={"xgboostregressor": {}},
+            model={"XGBRegressor": {}},
             transformation=None,
             data=df_reg,
             train_data='random',

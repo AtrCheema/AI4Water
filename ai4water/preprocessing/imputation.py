@@ -96,13 +96,13 @@ class Imputation(object):
         else:
             kwargs = self.imputer_args
 
-        if self.method.lower() in ['fillna', 'interpolate']:  # it is a pandas based
+        if self.method in ['fillna', 'interpolate']:  # it is a pandas based
             for col in self.data.columns:
                 if col in self.features:
                     self.data[col] = getattr(self.data[col], self.method)(**kwargs)
 
-        elif self.method.upper() in imputations:
-            imputer = imputations[self.method.upper()](**kwargs)
+        elif self.method in imputations:
+            imputer = imputations[self.method](**kwargs)
 
             data = self.data.copy()  # making a copy so that non-imputed features remain intact
             _data = self.data[self.features].values

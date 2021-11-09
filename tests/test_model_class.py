@@ -90,7 +90,7 @@ def _test_hydro_metrics(_model):
 def _test_from_config_basic(_model, find_best=False, config_file=False):
 
     for m in ["RandomForestRegressor",
-              "XGBoostRegressor",
+              "XGBRegressor",
               "CatBoostRegressor",
               "LGBMRegressor",
               mlp_model
@@ -200,7 +200,7 @@ class TestOptimize(unittest.TestCase):
         df = arg_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum"])
 
         setattr(Model, 'from_check_point', False)
-        model = Model(model="xgboostregressor", data=df)
+        model = Model(model="XGBRegressor", data=df)
 
         model.optimize_transformations(exclude="tide_cm", algorithm="random", num_iterations=3)
         assert isinstance(model.config['transformation'], list)
@@ -241,18 +241,18 @@ class TestOptimize(unittest.TestCase):
 
 
 class TestOptimizeHyperparas(unittest.TestCase):
-    config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20, num_samples=10),
+    config = {"XGBRegressor": {"n_estimators": Integer(low=10, high=20, num_samples=10),
                                    "max_depth": Categorical([10, 20, 30]),
                                    "learning_rate": Real(0.00001, 0.1, num_samples=10)}}
 
     def test_no_opt_paras(self):
-        conf = "XGBoostRegressor"
+        conf = "XGBRegressor"
         c,op, _ = find_opt_paras_from_model_config(conf)
         assert len(op) == 0
         return
 
     def test_no_opt_paras1(self):
-        config = {"XGBoostRegressor": {"n_estimators": 2, "max_depth": 23}}
+        config = {"XGBRegressor": {"n_estimators": 2, "max_depth": 23}}
         c, op, _ = find_opt_paras_from_model_config(config)
         assert len(op) == 0
         return
@@ -271,7 +271,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
         # make sure that model's config has been updated
         for k, v in optimizer.best_paras().items():
-            assert model.config['model']['XGBoostRegressor'][k] == v
+            assert model.config['model']['XGBRegressor'][k] == v
         return
 
     def test_ml_without_procesisng_results(self):
@@ -289,7 +289,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
         # make sure that model's config has been updated
         for k, v in optimizer.best_paras().items():
-            assert model.config['model']['XGBoostRegressor'][k] == v
+            assert model.config['model']['XGBRegressor'][k] == v
         return
 
     def test_without_model(self):
@@ -354,7 +354,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"units": Integer(32, 64)},
-                             "ReLU": {},
+                             "relu": {},
                              "Dense": {"units": 1, "activation": "relu"}}}
         c,op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['units'], int)
@@ -388,7 +388,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-                             "ReLU": {},
+                             "relu": {},
                              "Dense": {"config": {"units": 1, "activation": "relu"}}}}
         c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['config']['units'], int)
@@ -398,7 +398,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
     def test_nn_multiple_opt_paras(self):
         # multiple hpo arguments in multiple layers
         m_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-                             "ReLU": {},
+                             "relu": {},
                              "Dense1": {"units": Integer(10, 20, name="dense1_units"),
                                         "activation": Categorical(["relu", "tanh"], name="dense1_act")},
                              "Dense": {"config": {"units": 1, "activation": "relu"}}}}
@@ -410,7 +410,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
     def test_raise_duplicate_name_error(self):
         # duplication error
         m_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-                             "ReLU": {},
+                             "relu": {},
                              "Dense1": {"units": Integer(10, 20),
                                         "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
         self.assertRaises(ValueError, process_config_dict, m_conf)
@@ -439,7 +439,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
                        'inputs': 'MyInputs',
                        'call_args': {'initial_state': ['h_state', 'c_state']}},
 
-            "Concat": {'config': {'name': 'MyConcat'},
+            "Concatenate": {'config': {'name': 'MyConcat'},
                     'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
 
             "Dense": 1
@@ -451,7 +451,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
     def test_nn_optimize(self):
 
         m_conf = {"layers": {"LSTM":  {"config": {"units": Integer(2, 5, num_samples=10)}},
-                              "ReLU": {},
+                              "relu": {},
                               "Dense_0": {"units": Integer(2, 5, name="dense1_units", num_samples=10),
                                          "activation": Categorical(["relu", "tanh"], name="dense1_act")},
                               "Dense_1": {"config": {"units": 1, "activation": "relu"}}}}

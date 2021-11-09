@@ -61,10 +61,10 @@ def make_layers(outs):
         "LSTM_1d": {"units": 12},
 
         "Input_2d": {"shape": (lookback, len(inp_2d), w, h), "name": "inp_2d"},
-        "ConvLSTM2d": {"filters": 32, "kernel_size": (3,3), "data_format": "channels_first"},
+        "ConvLSTM2D": {"filters": 32, "kernel_size": (3,3), "data_format": "channels_first"},
         "Flatten": {"config": {},
-                    "inputs": "ConvLSTM2d"},
-        "Concat": {"config": {},
+                    "inputs": "ConvLSTM2D"},
+        "Concatenate": {"config": {},
                    "inputs": ["LSTM_1d", "Flatten"]},
         "Dense": {"units": outs},
         "Reshape": {"target_shape": (outs, 1)}
@@ -138,7 +138,7 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_output_layer1(self):
         # check if it adds both dense and reshapes it correctly or not
-        model = Model(model={'layers': {'lstm': 64}},
+        model = Model(model={'layers': {'LSTM': 64}},
                       data=load_nasdaq(),
                       verbosity=0)
 
@@ -149,7 +149,7 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_output_layer2(self):
         # check if it reshapes the output correctly
-        model = Model(model={'layers': {'lstm': 64,
+        model = Model(model={'layers': {'LSTM': 64,
                                         'Dense': 1}},
                       data=load_nasdaq(),
                       verbosity=0)
@@ -160,7 +160,7 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_no_output_layer(self):
         # check if it does not add layers when it does not have to
-        model = Model(model={'layers': {'lstm': 64,
+        model = Model(model={'layers': {'LSTM': 64,
                                         'Dense': 1,
                                         'Reshape': {'target_shape': (1,1)}}},
                       data=load_nasdaq(),
@@ -313,7 +313,8 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation
                   model={'layers': {
                       'Dense_0': 10,
                       'Flatten': {},
-                      'Dense_1': n_classes, 'activation': activation}},
+                      'Dense_1': n_classes,
+                      'Activation': activation}},
                   input_features=input_features,
                   loss=loss,
                   output_features=outputs,

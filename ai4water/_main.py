@@ -56,7 +56,7 @@ class BaseModel(NN, Plots):
                  model: Union[dict, str] = None,
                  data=None,
                  lr: float = 0.001,
-                 optimizer='adam',
+                 optimizer='Adam',
                  loss: Union[str, Callable] = 'mse',
                  quantiles=None,
                  epochs: int = 14,
@@ -118,7 +118,7 @@ class BaseModel(NN, Plots):
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
-                the optimizer to be used for neural network training. Default is 'adam'
+                the optimizer to be used for neural network training. Default is 'Adam'
             loss str/callable:  Default is `mse`.
                 the cost/loss function to be used for training neural networks.
             quantiles list: Default is None
@@ -138,11 +138,11 @@ class BaseModel(NN, Plots):
                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
             metrics str/list:
                 metrics to be monitored. e.g. ['nse', 'pbias']
-            val_metric :
+            val_metric str:
                 performance metric to be used for validation/cross_validation.
                 This metric will be used for hyper-parameter optimizationa and
                 experiment comparison
-            cross_validator :
+            cross_validator dict:
                 selects the type of cross validation to be applied. It can be any
                 cross validator from sklear.model_selection. Default is None, which
                 means validation will be done using `validation_data`. To use
@@ -152,7 +152,7 @@ class BaseModel(NN, Plots):
                 ```
             batches str:
                 either `2d` or 3d`.
-            wandb_config :
+            wandb_config dict:
                 Only valid if wandb package is installed.  Default value is None,
                 which means, wandb will not be utilized. For simplest case, just pass
                 an empty dictionary. Otherwise use a dictionary of all the
@@ -360,9 +360,9 @@ class BaseModel(NN, Plots):
             return self.config['loss']
 
         if self.config['backend'] == 'pytorch':
-            return LOSSES[self.config['loss'].upper()]()
+            return LOSSES[self.config['loss']]()
 
-        return LOSSES[self.config['loss'].upper()]
+        return LOSSES[self.config['loss']]
 
     @property
     def fit_fn(self):
@@ -788,25 +788,21 @@ class BaseModel(NN, Plots):
         """
         ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
         _model = list(self.config['model'].keys())[0]
-        regr_name = _model.upper()
+        regr_name = _model
 
         kwargs = list(self.config['model'].values())[0]
 
-        if regr_name in ['HISTGRADIENTBOOSTINGREGRESSOR', 'SGDREGRESSOR', 'MLPREGRESSOR']:
+        if regr_name in ['HistGradientBoostingRegressor', 'SGDRegressor', 'MLPRegressor']:
             if self.config['val_fraction'] > 0.0:
                 kwargs.update({'validation_fraction': self.config['val_fraction']})
             elif self.config['test_fraction'] > 0.0:
                 kwargs.update({'validation_fraction': self.config['test_fraction']})
 
         # some algorithms allow detailed output during training, this is allowed when self.verbosity is > 1
-        if regr_name in ['ONECLASSSVM']:
+        if regr_name in ['OneClassSVM']:
             kwargs.update({'verbose': True if self.verbosity > 1 else False})
 
-        if regr_name in ['TPOTREGRESSOR', 'TPOTCLASSIFIER']:
-            if 'verbosity' not in kwargs:
-                kwargs.update({'verbosity': self.verbosity})
-
-        if regr_name == "CATBOOSTREGRESSOR":  # https://stackoverflow.com/a/52921608/5982232
+        if regr_name == "CatBoostRegressor":  # https://stackoverflow.com/a/52921608/5982232
             if not any([arg in kwargs for arg in ['verbose', 'silent', 'logging_level']]):
                 if self.verbosity == 0:
                     kwargs['logging_level'] = 'Silent'
@@ -816,7 +812,7 @@ class BaseModel(NN, Plots):
                     kwargs['logging_level'] = 'Info'
 
         self.residual_threshold_not_set = False
-        if regr_name == "RANSACREGRESSOR" and 'residual_threshold' not in kwargs:
+        if regr_name == "RANSACRegressor" and 'residual_threshold' not in kwargs:
             self.residual_threshold_not_set = True
 
         if regr_name in ml_models:
@@ -825,8 +821,8 @@ class BaseModel(NN, Plots):
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
                                              xgboost=xgboost)
-            if regr_name in ['TWEEDIEREGRESSOR', 'POISSONREGRESSOR', 'LGBMREGRESSOR', 'LGBMCLASSIFIER',
-                             'GAMMAREGRESSOR']:
+            if regr_name in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
+                             'GammaRegressor']:
                 if int(version_info['sklearn'].split('.')[1]) < 23:
                     raise ValueError(
                         f"{regr_name} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
@@ -891,7 +887,7 @@ class BaseModel(NN, Plots):
                 kwargs.pop('y')
             inputs = kwargs.pop('x')
 
-        if isinstance(outputs, np.ndarray) and self.category.upper() == "DL":
+        if isinstance(outputs, np.ndarray) and self.category == "DL":
             if isinstance(self.ai4w_outputs, list):
                 assert len(self.ai4w_outputs) == 1
                 model_output_shape = tuple(self.ai4w_outputs[0].shape.as_list()[1:])
@@ -912,7 +908,7 @@ class BaseModel(NN, Plots):
 
         self.info['training_start'] = dateandtime_now()
 
-        if self.category.upper() == "DL":
+        if self.category == "DL":
             if 'validation_data' not in kwargs:
                 val_data = self.validation_data()
                 val_x, val_y = maybe_three_outputs(val_data, self.dh.teacher_forcing)
@@ -969,18 +965,24 @@ class BaseModel(NN, Plots):
         model_name = list(self.config['model'].keys())[0]
         fname = os.path.join(self.w_path, self.category + '_' + self.mode + '_' + model_name)
 
-        if "TPOT" not in model_name.upper():
+        if "tpot" not in model_name:
             joblib.dump(self._model, fname)
 
         return
 
-    def cross_val_score(self, scoring: str = None) -> float:
+    def cross_val_score(
+            self,
+            scoring: str = None
+    ) -> float:
         """computes cross validation score
 
         Arguments:
-            scoring : performance metric to use for cross validation.
+            scoring : str
+                performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
-        Note: Currently not working for deep learning models.
+
+        Note:
+            Currently not working for deep learning models.
 
         """
         from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
@@ -1363,15 +1365,15 @@ class BaseModel(NN, Plots):
 
             from ai4water.utils.tf_losses import nse, kge, pbias, tf_r2
 
-            METRICS = {'NSE': nse,
-                       'KGE': kge,
-                       "R2": tf_r2,
-                       'PBIAS': pbias}
+            METRICS = {'nse': nse,
+                       'kge': kge,
+                       "r2": tf_r2,
+                       'pbias': pbias}
 
             metrics = []
             for m in _metrics:
-                if m.upper() in METRICS.keys():
-                    metrics.append(METRICS[m.upper()])
+                if m in METRICS.keys():
+                    metrics.append(METRICS[m])
                 else:
                     metrics.append(m)
         return metrics
@@ -1391,14 +1393,15 @@ class BaseModel(NN, Plots):
         return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
                                self.config['allow_nan_labels'])
 
-    def view(self,
-             layer_name:Any[list, str]=None,
-             data:str='training',
-             x=None,
-             y=None,
-             examples_to_view=None,
-             show=False
-             ):
+    def view(
+            self,
+            layer_name:Union[list, str]=None,
+            data:str='training',
+            x=None,
+            y=None,
+            examples_to_view=None,
+            show=False
+    ):
         """shows all activations, weights and gradients of the model.
 
         Arguments:
@@ -1411,9 +1414,10 @@ class BaseModel(NN, Plots):
                 or for gradient calculation. It can either 'training', 'validation' or
                 'test'.
             x:
-                alternative to data. If given it will override `data` argument.
+                input, alternative to data. If given it will override `data` argument.
             y:
-                alternative to data. If given it will override `data` argument.
+                target/observed/label, alternative to data. If given it will
+                override `data` argument.
             examples_to_view:
                 the examples to view.
             show:
@@ -1435,7 +1439,10 @@ class BaseModel(NN, Plots):
 
         return visualizer
 
-    def interpret(self, **kwargs):
+    def interpret(
+            self,
+            **kwargs
+    ):
         """
         Interprets the underlying model. Call it after training.
 
@@ -1468,7 +1475,7 @@ class BaseModel(NN, Plots):
         return Interpret(self)
 
     def explain(self, *args, **kwargs):
-        """Calls the ai4water.post_processing.explain.explain_model
+        """Calls the ai4water.postprocessing.explain.explain_model
          to explain the model.
          """
         from ai4water.postprocessing.explain import explain_model
@@ -1757,7 +1764,7 @@ class BaseModel(NN, Plots):
 
     def get_optimizer(self):
         opt_args = self.get_opt_args()
-        optimizer = OPTIMIZERS[self.config['optimizer'].upper()](**opt_args)
+        optimizer = OPTIMIZERS[self.config['optimizer']](**opt_args)
 
         return optimizer
 

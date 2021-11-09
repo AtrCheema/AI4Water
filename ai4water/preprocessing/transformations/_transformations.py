@@ -14,6 +14,9 @@ import numpy as np
 from ai4water.utils.utils import jsonize
 
 
+# todo
+# inverse hyperbolic transformation: effective with many zeros
+
 class ScalerWithConfig(object):
     """Extends the sklearn's scalers in such a way that they can be
     saved to a json file an d loaded from a json file

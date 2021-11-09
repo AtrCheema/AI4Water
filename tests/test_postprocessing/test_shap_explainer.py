@@ -18,7 +18,7 @@ from ai4water import Model
 from ai4water.datasets import arg_beach, MtropicsLaos
 from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
-from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
+from .test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
 
 laos = MtropicsLaos()
 
@@ -159,15 +159,15 @@ class TestShapExplainers(unittest.TestCase):
     def test_pd_plot(self):
 
         for mod in [
-            "XGBoostRegressor", # todo error
+            "XGBRegressor", # todo error
             "RandomForestRegressor",
             "LGBMRegressor",
-            "DECISIONTREEREGRESSOR",
+            "DecisionTreeRegressor",
             "ExtraTreeRegressor",
             "ExtraTreesRegressor",
-            "GRADIENTBOOSTINGREGRESSOR",
-            "HISTGRADIENTBOOSTINGREGRESSOR",
-            "XGBOOSTRFREGRESSOR" # todo error
+            "GradientBoostingRegressor",
+            "HistGradientBoostingRegressor",
+            "XGBRFRegressor" # todo error
                     ]:
 
             exp = get_explainer(mod, arg_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
@@ -224,9 +224,9 @@ class TestShapExplainers(unittest.TestCase):
                           initiate_class)
         return
 
-    def test_xgboost(self):
+    def test_xgb(self):
 
-        fit_and_interpret("XGBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
+        fit_and_interpret("XGBRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
 
         return
 
@@ -242,9 +242,9 @@ class TestShapExplainers(unittest.TestCase):
 
         return
 
-    def test_waterfall_with_xgboost(self):
+    def test_waterfall_with_xgb(self):
 
-        fit_and_draw_plots("XGBoostRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
+        fit_and_draw_plots("XGBRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
 
         return
 
@@ -257,15 +257,15 @@ class TestShapExplainers(unittest.TestCase):
     def test_heatmap(self):
 
         for mod in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
             ##"LGBMRegressor",  # process stopping problem
-            "DECISIONTREEREGRESSOR",
+            "DecisionTreeRegressor",
             "ExtraTreeRegressor",
             "ExtraTreesRegressor",
-            "GRADIENTBOOSTINGREGRESSOR",
+            "GradientBoostingRegressor",
             ##"HISTGRADIENTBOOSTINGREGRESSOR", # taking very long time
-            "XGBOOSTRFREGRESSOR"
+            "XGBRFRegressor"
                     ]:
 
             fit_and_plot(mod, arg_beach(), heatmap=True)
@@ -275,15 +275,15 @@ class TestShapExplainers(unittest.TestCase):
     def test_beeswarm_plot(self):
 
         for mod in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
             "LGBMRegressor",
-            "DECISIONTREEREGRESSOR",
+            "DecisionTreeRegressor",
             "ExtraTreeRegressor",
             "ExtraTreesRegressor",
-            "GRADIENTBOOSTINGREGRESSOR",
-            "HISTGRADIENTBOOSTINGREGRESSOR",
-            "XGBOOSTRFREGRESSOR"
+            "GradientBoostingRegressor",
+            "HistGradientBoostingRegressor",
+            "XGBRFRegressor"
                     ]:
 
             fit_and_plot(mod, arg_beach(), beeswarm_plot=True)
@@ -348,9 +348,9 @@ class TestShapExplainers(unittest.TestCase):
     def test_ai4water_ml(self):
 
         for m in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
-            "GRADIENTBOOSTINGREGRESSOR"
+            "GradientBoostingRegressor"
                   ]:
 
             model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
@@ -380,7 +380,7 @@ class TestShapExplainers(unittest.TestCase):
                                         "LSTM_1": {"config": {"units": 32},
                                                    "inputs": "Input_1",
                                                    "outputs": "lstm1_output"},
-                                        "Concat": {"config": {}, "inputs": ["lstm0_output", "lstm1_output"]},
+                                        "Concatenate": {"config": {}, "inputs": ["lstm0_output", "lstm1_output"]},
                                         "Dense": {"config": 1}
                                         }}, verbosity=0)
         test_x = [np.random.random((100, 10, 2)), np.random.random((100, 5, 3))]

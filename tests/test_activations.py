@@ -26,13 +26,13 @@ class TestActivations(unittest.TestCase):
 
         layers = {}
 
-        for lyr in ['PRELU', "RELU", "TANH", "ELU", "LEAKYRELU", "THRESHOLDRELU", "SELU", 'sigmoid', 'hardsigmoid',
+        for lyr in ['PReLU', "relu", "tanh", "ELU", "LeakyReLU", "ThresholdedReLU", "selu", 'sigmoid', 'hardsigmoid',
                     'crelu',
                     'relu6', 'softmax', 'softplus', 'softsign', 'swish']:
             layers[lyr] = {'config': {}}
 
         layers["Dense"] = {'config': {'units': 1}}
-        layers["reshape"] = {'config': {'target_shape': (1, 1)}}
+        layers["Reshape"] = {'config': {'target_shape': (1, 1)}}
 
         model = Model(epochs=2,
                       lookback=1,
@@ -76,7 +76,7 @@ class TestActivations(unittest.TestCase):
 
             layers["Dense_" + str(idx)] = {'config': {'units': 1, 'activation': act_fn}}
 
-        layers["reshape"] = {'config': {'target_shape': (1, 1)}}
+        layers["Reshape"] = {'config': {'target_shape': (1, 1)}}
 
         model = Model(epochs=2,
                       lookback=1,
@@ -94,6 +94,7 @@ class TestActivations(unittest.TestCase):
             '24_posix_functional': [0.025749117136001587, 0.037755679339170456],
             '25_posix_functional': [0.10781528055667877, 0.09552989155054092],
             '26_posix_functional': [0.025749117136001587, 0.037755679339170456],
+            '27_posix_functional': [0.025749117136001587, 0.037755679339170456],
 
             '21_nt_subclassing': [0.02578388827527157, 0.03749684586972845],
             '23_nt_functional': [0.025749117136001587, 0.037755679339170456],

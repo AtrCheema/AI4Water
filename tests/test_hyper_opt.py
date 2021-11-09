@@ -79,7 +79,7 @@ def run_ai4water(method):
                    "val_data": "same",
                      "val_fraction": 0.0,
                    "test_fraction": 0.3,
-                   "model": {"xgboostregressor": {}},
+                   "model": {"XGBRegressor": {}},
                    "transformation": None
                    }
 
@@ -109,7 +109,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
         model = Model(
             input_features=inputs,
             output_features=outputs,
-            model={"xgboostregressor": suggestion},
+            model={"XGBRegressor": suggestion},
             data=data,
             prefix=f'test_{algorithm}_xgboost_{backend}',
             train_data='random',
@@ -307,7 +307,7 @@ class TestHyperOpt(unittest.TestCase):
                 val_data="same",
                 test_fraction=0.3,
                 val_fraction=0.0,
-                model={"xgboostregressor": kwargs},
+                model={"XGBRegressor": kwargs},
                 transformation=None,
                 data=data,
                 prefix='testing',
@@ -352,7 +352,7 @@ class TestHyperOpt(unittest.TestCase):
                        "val_data": "same",
                        "test_fraction": 0.3,
                          "val_fraction": 0.0,
-                       "model": {"xgboostregressor": {}},
+                       "model": {"XGBRegressor": {}},
                        #"ml_model_args": {'objective': 'reg:squarederror'}, TODO
                        "transformation": None
                        }
@@ -452,7 +452,7 @@ class TestHyperOpt(unittest.TestCase):
             model = Model(
                 input_features=inputs,
                 output_features=outputs,
-                model={"xgboostregressor": suggestion},
+                model={"XGBRegressor": suggestion},
                 data=data,
                 prefix='test_tpe_xgboost',
                 train_data='random',
@@ -486,7 +486,7 @@ class TestHyperOpt(unittest.TestCase):
         """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
         successfully.
         """
-        ai4water_args = {'model': 'XGBoostRegressor',
+        ai4water_args = {'model': 'XGBRegressor',
                          'input_features': inputs,
                          'output_features': outputs
                                      }
@@ -510,7 +510,7 @@ class TestHyperOpt(unittest.TestCase):
         """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
         successfully.
         """
-        ai4water_args = {'model': 'XGBoostRegressor',
+        ai4water_args = {'model': 'XGBRegressor',
                          'input_features': inputs,
                          'output_features': outputs
                                      }

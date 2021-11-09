@@ -161,7 +161,7 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_ml(self):
-        for m in ['XGBoostRegressor', 'RandomForestRegressor',
+        for m in ['XGBRegressor', 'RandomForestRegressor',
                   'GradientBoostingRegressor', 'LinearRegression']:
 
             model = build_model(model=m,
@@ -183,7 +183,7 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_xgb_f_imp_comparison(self):
-        model = Model(model="xgboostregressor",
+        model = Model(model="XGBRegressor",
                       data=arg_beach(inputs=["tide_cm", "rel_hum"]))
         model.fit()
         interpreter = Interpret(model)

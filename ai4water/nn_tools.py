@@ -92,7 +92,7 @@ class NN(AttributeStore):
             num_outs = outs * quantiles
             if shape[-1] != num_outs:  # we add a Dense layer followed by reshaping it
 
-                dense = LAYERS["DENSE"](num_outs, name="model_output")
+                dense = LAYERS["Dense"](num_outs, name="model_output")
                 dense_out = dense(current_outputs)
                 self.update_cache(lyr_cache, dense.name, dense)
                 reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len), name="output_reshaped")
@@ -192,7 +192,7 @@ class NN(AttributeStore):
     def get_layer_name(self, lyr: str) -> str:
 
         layer_name = lyr.split('_')[0]
-        if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
+        if layer_name not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
             raise ValueError(f"""
                             The layer name '{lyr}' you specified, does not exist.
                             Is this a user defined layer? If so, make sure your
@@ -215,7 +215,7 @@ def check_act_fn(config: dict):
         activation = config['activation']
     if activation is not None:
         assert isinstance(activation, str), f"unknown activation function {activation}"
-        config['activation'] = ACTIVATION_FNS[activation.upper()]
+        config['activation'] = ACTIVATION_FNS[activation]
 
     return config, activation
 

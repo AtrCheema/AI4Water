@@ -83,22 +83,22 @@ def get_sklearn_models():
         from sklearn.ensemble import HistGradientBoostingRegressor
         from sklearn.compose import TransformedTargetRegressor
 
-        skl_models = get_attributes(sklearn, "ensemble")
-        skl_models.update(get_attributes(sklearn, "dummy"))
-        skl_models.update(get_attributes(sklearn, "gaussian_process"))
-        skl_models.update(get_attributes(sklearn, "compose"))
-        skl_models.update(get_attributes(sklearn, "linear_model"))
-        skl_models.update(get_attributes(sklearn, "multioutput"))
-        skl_models.update(get_attributes(sklearn, "neighbors"))
-        skl_models.update(get_attributes(sklearn, "neural_network"))
-        skl_models.update(get_attributes(sklearn, "svm"))
-        skl_models.update(get_attributes(sklearn, "tree"))
-        skl_models.update(get_attributes(sklearn, "naive_bayes"))
-        skl_models.update(get_attributes(sklearn, "kernel_ridge"))
-        skl_models.update(get_attributes(sklearn, "isotonic"))
+        skl_models = get_attributes(sklearn, "ensemble", case_sensitive=True)
+        skl_models.update(get_attributes(sklearn, "dummy", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "gaussian_process", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "compose", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "linear_model", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "multioutput", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "neighbors", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "neural_network", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "svm", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "tree", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "naive_bayes", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "kernel_ridge", case_sensitive=True))
+        skl_models.update(get_attributes(sklearn, "isotonic", case_sensitive=True))
 
-        skl_models.update({"HISTGRADIENTBOOSTINGREGRESSOR": HistGradientBoostingRegressor,
-            "HISTGRADIENTBOOSTINGCLASSIFIER": HistGradientBoostingClassifier})
+        skl_models.update({"HistGradientBoostingRegressor": HistGradientBoostingRegressor,
+            "HistGradientBoostingClassifier": HistGradientBoostingClassifier})
     else:
         skl_models = {}
 
@@ -130,8 +130,8 @@ catboost_models = {}
 try:
     import catboost
     from catboost import CatBoostClassifier, CatBoostRegressor
-    catboost_models.update({"CATBOOSTCLASSIFIER": CatBoostClassifier})
-    catboost_models.update({"CATBOOSTREGRESSOR": CatBoostRegressor})
+    catboost_models.update({"CatBoostClassifier": CatBoostClassifier})
+    catboost_models.update({"CatBoostRegressor": CatBoostRegressor})
 
 except ModuleNotFoundError:
     catboost = None
@@ -143,10 +143,10 @@ try:
     import xgboost
     from xgboost import XGBRegressor, XGBClassifier, XGBRFRegressor, XGBRFClassifier
     xgboost_models.update({
-        "XGBOOSTREGRESSOR": XGBRegressor,
-        "XGBOOSTCLASSIFIER": XGBClassifier,
-        "XGBOOSTRFREGRESSOR": XGBRFRegressor,
-        "XGBOOSTRFCLASSIFIER": XGBRFClassifier,
+        "XGBRegressor": XGBRegressor,
+        "XGBClassifier": XGBClassifier,
+        "XGBRFRegressor": XGBRFRegressor,
+        "XGBRFClassifier": XGBRFClassifier,
     })
 except ModuleNotFoundError:
     xgboost = None
@@ -156,8 +156,8 @@ lightgbm_models = {}
 try:
     import lightgbm
     from lightgbm.sklearn import LGBMClassifier, LGBMRegressor
-    lightgbm_models.update({"LGBMCLASSIFIER": LGBMClassifier,
-                            "LGBMREGRESSOR": LGBMRegressor})
+    lightgbm_models.update({"LGBMClassifier": LGBMClassifier,
+                            "LGBMRegressor": LGBMRegressor})
 except ModuleNotFoundError:
     lightgbm = None
 
@@ -165,7 +165,7 @@ sklearn_models = get_sklearn_models()
 
 if sklearn is not None:
     from sklearn.experimental import enable_iterative_imputer  # noqa
-    imputations = get_attributes(sklearn, 'impute')
+    imputations = get_attributes(sklearn, 'impute', case_sensitive=True)
 else:
     imputations = {}
 

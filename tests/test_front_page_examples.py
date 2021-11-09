@@ -72,7 +72,7 @@ class TestFrontPage(unittest.TestCase):
             lookback=1,
             val_fraction=0.0,
             #  any regressor from https://scikit-learn.org/stable/modules/classes.html
-            model={"randomforestregressor": {"n_estimators": 1000}},
+            model={"RandomForestRegressor": {"n_estimators": 1000}},
             # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
             # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
             data=data,

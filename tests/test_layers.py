@@ -268,11 +268,11 @@ class TestModels(unittest.TestCase):
         # CNN based model
         lyrs = {
             "Conv1D_9": {'config': {'filters': 64, 'kernel_size': 2}},
-            "dropout": {'config': {'rate': 0.3}},
+            "Dropout": {'config': {'rate': 0.3}},
             "Conv1D_1": {'config': {'filters': 32, 'kernel_size': 2}},
-            "maxpool1d": {'config': {'pool_size': 2}},
-            'flatten': {'config': {}},
-            'leakyrelu': {'config': {}},
+            "MaxPool1D": {'config': {'pool_size': 2}},
+            'Flatten': {'config': {}},
+            'LeakyReLU': {'config': {}},
             "Dense": {'config': {'units': outs}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
@@ -292,8 +292,8 @@ class TestModels(unittest.TestCase):
         lyrs = {
             "Conv1D_9": {'config': {'filters': 8, 'kernel_size': 2}},
             "ChannelAttention": {'config': {'conv_dim': '1d', 'in_planes': 32}},
-            'flatten': {'config': {}},
-            'leakyrelu': {'config': {}},
+            'Flatten': {'config': {}},
+            'LeakyReLU': {'config': {}},
             "Dense": {'config': {'units': outs}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
         }
@@ -314,8 +314,8 @@ class TestModels(unittest.TestCase):
         lyrs = {
             "Conv1D_9": {'config': {'filters': 8, 'kernel_size': 2}},
             "SpatialAttention": {'config': {'conv_dim': '1d'}},
-            'flatten': {'config': {}},
-            'leakyrelu': {'config': {}},
+            'Flatten': {'config': {}},
+            'LeakyReLU': {'config': {}},
             "Dense": {'config': {'units': outs}},
             "Reshape": {"config": {"target_shape": (outs, 1)}}
                   }

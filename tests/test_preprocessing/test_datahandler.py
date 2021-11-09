@@ -1365,7 +1365,7 @@ def test_random_with_intervals():
 def make_cross_validator(cv, **kwargs):
 
     model = Model(
-        model={'randomforestregressor': {}},
+        model={'RandomForestRegressor': {}},
         data=arg_beach(),
         cross_validator=cv,
         val_metric="mse",
