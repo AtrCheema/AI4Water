@@ -8,6 +8,7 @@ site.addsitedir(ai4_dir)
 
 
 import shap
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import linear_model
@@ -17,7 +18,7 @@ from ai4water import Model
 from ai4water.datasets import arg_beach, MtropicsLaos
 from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
-from .test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
+from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
 
 laos = MtropicsLaos()
 
@@ -295,7 +296,7 @@ class TestShapExplainers(unittest.TestCase):
         ex = ShapExplainer(model, testx, explainer="DeepExplainer", layer=2,
                              path=model.path)
 
-        ex.plot_shap_values()
+        ex.plot_shap_values(show=False)
 
         return
 
@@ -306,7 +307,7 @@ class TestShapExplainers(unittest.TestCase):
         ex = ShapExplainer(model, testx, layer=1, explainer="GradientExplainer",
                              path=model.path)
         plt.rcParams.update(plt.rcParamsDefault)
-        ex.plot_shap_values()
+        ex.plot_shap_values(show=False)
 
         return
 
@@ -321,9 +322,9 @@ class TestShapExplainers(unittest.TestCase):
         m, train_x, features, _path = get_lstm_model()
         #
         exp = ShapExplainer(model=m, data=train_x, layer=2, features=features, path=_path)
-        exp.summary_plot()
+        exp.summary_plot(show=False)
         exp.force_plot_single_example(0, lookback=0)
-        exp.plot_shap_values()
+        exp.plot_shap_values(show=False)
         return
 
     def test_lstm_model_gradient_exp(self):
@@ -332,7 +333,7 @@ class TestShapExplainers(unittest.TestCase):
 
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=features, path=_path)
-        exp.plot_shap_values()
+        exp.plot_shap_values(show=False)
         exp.force_plot_single_example(0, lookback=0)
         return
 
@@ -368,7 +369,25 @@ class TestShapExplainers(unittest.TestCase):
         m.fit()
         exp = explain_model_with_shap(m, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
+        return
 
+    def test_multiple_inputs(self):
+        model = Model(model={"layers": {"Input_0": {"shape": (10, 2)},
+                                        "LSTM_0": {"config": {"units": 62},
+                                                   "inputs": "Input_0",
+                                                   "outputs": "lstm0_output"},
+                                        "Input_1": {"shape": (5, 3)},
+                                        "LSTM_1": {"config": {"units": 32},
+                                                   "inputs": "Input_1",
+                                                   "outputs": "lstm1_output"},
+                                        "Concat": {"config": {}, "inputs": ["lstm0_output", "lstm1_output"]},
+                                        "Dense": {"config": 1}
+                                        }}, verbosity=0)
+        test_x = [np.random.random((100, 10, 2)), np.random.random((100, 5, 3))]
+        exp = ShapExplainer(model, test_x, layer="LSTM_1", path=model.path)
+        exp.summary_plot(show=False)
+        exp.plot_shap_values(show=False)
+        return
 
 if __name__ == "__main__":
 

@@ -1,5 +1,5 @@
 import os
-from typing import Union, Callable
+from typing import Union, Callable, List
 
 try:
     import shap
@@ -49,7 +49,7 @@ class ShapExplainer(ExplainerMixin):
     Example
     --------
     ```python
-    >>>from ai4water.post_processing.explain import ShapExplainer
+    >>>from ai4water.postprocessing.explain import ShapExplainer
     >>>from sklearn.model_selection import train_test_split
     >>>from sklearn import linear_model
     >>>import shap
@@ -77,8 +77,8 @@ class ShapExplainer(ExplainerMixin):
     def __init__(
             self,
             model,
-            data: Union[np.ndarray, pd.DataFrame],
-            train_data: Union[np.ndarray, pd.DataFrame] = None,
+            data: Union[np.ndarray, pd.DataFrame, List[np.ndarray]],
+            train_data: Union[np.ndarray, pd.DataFrame, List[np.ndarray]] = None,
             explainer: Union[str, Callable] = None,
             num_means: int = 10,
             path: str = None,
@@ -278,14 +278,15 @@ class ShapExplainer(ExplainerMixin):
                                           self.map2layer(self.data, self.layer))
 
     def _check_data(self, *data):
-        for d in data:
-            assert type(d) == np.ndarray or type(d) == pd.DataFrame, f"" \
-                                                                     f"data must be numpy array or pandas dataframe " \
-                                                                     f"but it is of type {d.__class__.__name__}"
+        if self.single_source:
+            for d in data:
+                assert type(d) == np.ndarray or type(d) == pd.DataFrame, f"" \
+                                                                         f"data must be numpy array or pandas dataframe " \
+                                                                         f"but it is of type {d.__class__.__name__}"
 
-        assert len(set([d.ndim for d in data])) == 1, "train and test data should have same ndim"
-        assert len(set([d.shape[-1] for d in data])) == 1, "train and test data should have same input features"
-        assert len(set([type(d) for d in data])) == 1, "train and test data should be of same type"
+            assert len(set([d.ndim for d in data])) == 1, "train and test data should have same ndim"
+            assert len(set([d.shape[-1] for d in data])) == 1, "train and test data should have same input features"
+            assert len(set([type(d) for d in data])) == 1, "train and test data should be of same type"
 
         return
 
@@ -344,34 +345,67 @@ class ShapExplainer(ExplainerMixin):
 
         return
 
-    def summary_plot(self, name="summary_plot", show=False, **kwargs):
-        """Plots the summary plot of SHAP package."""
+    def summary_plot(
+            self,
+            name:str="summary_plot",
+            show:bool=True,
+            save:bool=False,
+            **kwargs
+    ):
+        """Plots the summary plot of SHAP package.
 
-        def _summary_plot(_shap_val, _data, _name):
+        Arguments:
+            name:
+                name of saved file
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
+            kwargs:
+                any keyword arguments to shap.summary_plot
+        """
+
+        def _summary_plot(_shap_val, _data, _features, _name):
             plt.close('all')
-            shap.summary_plot(_shap_val, _data, show=show, feature_names=self.features, **kwargs)
-            plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
+            shap.summary_plot(_shap_val, _data, show=False, feature_names=_features, **kwargs)
+            if save:
+                plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
 
-            shap.summary_plot(_shap_val, _data, show=show, plot_type="bar", feature_names=self.features,
+            shap.summary_plot(_shap_val, _data, show=False, plot_type="bar", feature_names=_features,
                               **kwargs)
-            plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300, bbox_inches="tight")
+            if save:
+                plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
 
             return
 
         shap_vals = self.shap_values
-        if isinstance(shap_vals, list):
+        if isinstance(shap_vals, list) and len(shap_vals) == 1:
             shap_vals = shap_vals[0]
 
         data = self.data
 
-        if data.ndim == 3:
-            assert shap_vals.ndim == 3
+        if self.single_source:
+            if data.ndim == 3:
+                assert shap_vals.ndim == 3
 
-            for lookback in range(data.shape[1]):
+                for lookback in range(data.shape[1]):
 
-                _summary_plot(shap_vals[:, lookback], data[:, lookback],  _name=f"{name}_{lookback}")
+                    _summary_plot(shap_vals[:, lookback], data[:, lookback], self.features,  _name=f"{name}_{lookback}")
+            else:
+                _summary_plot(shap_vals, data, self.features, name)
         else:
-            _summary_plot(shap_vals, data, name)
+            # data is a list of data sources
+            for idx, _data in enumerate(data):
+                if _data.ndim == 3:
+                    for lb in range(_data.shape[1]):
+                        _summary_plot(shap_vals[idx][:, lb], _data[:, lb], self.features[idx],
+                                      _name=f"{name}_{idx}_{lb}")
+                else:
+                    _summary_plot(shap_vals[idx], _data, self.features[idx], _name=f"{name}_{idx}")
 
         return
 
@@ -447,7 +481,11 @@ class ShapExplainer(ExplainerMixin):
         if len(name) > 150:  # matplotlib raises error if the length of filename is too large
             name = name[0:150]
 
-        shap.dependence_plot(feature, self.shap_values, self.data, show=False, **kwargs)
+        shap_values = self.shap_values
+        if isinstance(shap_values, list) and len(shap_values) == 1:
+            shap_values = shap_values[0]
+
+        shap.dependence_plot(feature, shap_values, self.data, show=False, **kwargs)
         if save:
             plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
         if show:
@@ -461,8 +499,12 @@ class ShapExplainer(ExplainerMixin):
         if sp.__version__ in ["1.4.1", "1.5.2", "1.7.1"]:
             print(f"force plot can not be plotted for scipy version {sp.__version__}. Please change your scipy")
             return
+
+        shap_values = self.shap_values
+        if isinstance(shap_values, list) and len(shap_values) == 1:
+            shap_values = shap_values[0]
         plt.close('all')
-        plot = shap.force_plot(self.explainer.expected_value, self.shap_values, self.data, **force_kws)
+        plot = shap.force_plot(self.explainer.expected_value, shap_values, self.data, **force_kws)
         if save:
             shap.save_html(os.path.join(self.path, name), plot)
 
@@ -584,7 +626,7 @@ class ShapExplainer(ExplainerMixin):
 
     def _get_shap_values_locally(self):
         data = self.data
-        if not isinstance(self.data, pd.DataFrame):
+        if not isinstance(self.data, pd.DataFrame) and data.ndim == 2:
             data = pd.DataFrame(self.data, columns=self.features)
 
         # not using global explainer because, this explainer should data as well
@@ -665,36 +707,66 @@ class ShapExplainer(ExplainerMixin):
 
     def plot_shap_values(
             self,
-            name: str = "shap_values",
-            show: bool = False,
             interpolation=None,
-            cmap="coolwarm"
+            cmap="coolwarm",
+            name: str="shap_values",
+            show: bool=True,
+            save: bool=False
     ):
-        """Plots the SHAP values."""
+        """Plots the SHAP values.
+
+        Arguments:
+            name:
+                name of saved file
+            show:
+                whether to show the plot or not
+            interpolation:
+                interpolation argument to axis.imshow
+            cmap:
+                color map
+            save:
+                whether to save the plot or not
+
+        """
         shap_values = self.shap_values
 
-        if isinstance(shap_values, list):
+        if isinstance(shap_values, list) and len(shap_values)==1:
             shap_values: np.ndarray = shap_values[0]
 
-        if self.data.ndim == 3: # input is 3d
-            assert shap_values.ndim == 3
-            return imshow_3d(shap_values, self.data, self.features, self.path, show=show,
-                             cmap=cmap)
+        def plot_shap_values_single_source(_data, _shap_vals, _features, _name):
+            if _data.ndim == 3: # input is 3d
+                assert _shap_vals.ndim == 3
+                return imshow_3d(_shap_vals,
+                                 _data,
+                                 _features,
+                                 name=_name,
+                                 path=self.path,
+                                 show=show,
+                                 cmap=cmap)
 
-        plt.close('all')
-        fig, axis = plt.subplots()
-        im = axis.imshow(shap_values.T, aspect='auto', interpolation=interpolation, cmap=cmap)
-        axis.set_yticks(np.arange(len(self.features)))
-        axis.set_yticklabels(self.features)
-        axis.set_ylabel("Features")
-        axis.set_xlabel("Examples")
+            plt.close('all')
+            fig, axis = plt.subplots()
+            im = axis.imshow(_shap_vals.T, aspect='auto', interpolation=interpolation, cmap=cmap)
+            axis.set_yticks(np.arange(len(_features)))
+            axis.set_yticklabels(_features)
+            axis.set_ylabel("Features")
+            axis.set_xlabel("Examples")
 
-        fig.colorbar(im)
+            fig.colorbar(im)
+            if save:
+                plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
 
-        plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
 
-        if show:
-            plt.show()
+        if self.single_source:
+            plot_shap_values_single_source(self.data, shap_values, self.features, name)
+        else:
+            for idx, d in enumerate(self.data):
+                plot_shap_values_single_source(d,
+                                               shap_values[idx],
+                                               self.features[idx],
+                                               f"{idx}_{name}")
 
         return
 
@@ -705,9 +777,12 @@ class ShapExplainer(ExplainerMixin):
             **pdp_kws
     ):
         """partial dependence plot of all features.
+
         Arguments:
-            show :
-            save :
+            show:
+            save:
+            pdp_kws:
+                any keyword arguments
             """
         for feat in self.features:
             self.pdp_single_feature(feat, show=show, save=save, **pdp_kws)
@@ -752,9 +827,11 @@ class ShapExplainer(ExplainerMixin):
 def imshow_3d(values,
               data,
               feature_names:list,
-              path, vmin=None, vmax=None, name="shap_values",
+              path, vmin=None, vmax=None,
+              name="",
               show=False,
-              cmap=None):
+              cmap=None,
+              ):
 
     num_examples, lookback, input_features = values.shape
     assert data.shape == values.shape
@@ -772,7 +849,7 @@ def imshow_3d(values,
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        _name = f'{name}_{feat}'
+        _name = f'{name}_{feat}_shap_values'
         plt.savefig(os.path.join(path, _name), dpi=400, bbox_inches='tight')
 
         if show:

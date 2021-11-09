@@ -8,8 +8,15 @@ ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
 import pandas as pd
+import tensorflow as tf
 
 from ai4water import Model
+
+tf_version = int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))
+
+if 230 <= tf_version < 260:
+    from ai4water.functional import Model
+
 from ai4water.datasets import arg_beach
 from ai4water.datasets import MtropicsLaos
 from ai4water.postprocessing.explain import LimeExplainer, explain_model_with_lime

@@ -1,6 +1,8 @@
 import os
 from typing import Union
 
+import numpy as np
+
 from ._shap import ShapExplainer, shap
 from ._lime import LimeExplainer, lime
 from ..utils import choose_examples
@@ -42,7 +44,7 @@ def explain_model(
     ```python
     >>>from ai4water import Model
     >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.post_processing.explain import explain_model
+    >>>from ai4water.postprocessing.explain import explain_model
     >>>model = Model(model="RandForestRegressor", data=arg_beach())
     >>>model.fit()
     >>>explain_model(model)
@@ -86,7 +88,7 @@ def explain_model_with_lime(
     ```python
     >>>from ai4water import Model
     >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.post_processing.explain import explain_model_with_lime
+    >>>from ai4water.postprocessing.explain import explain_model_with_lime
     >>>model = Model(model="RandForestRegressor", data=arg_beach())
     >>>model.fit()
     >>>explain_model_with_lime(model)
@@ -108,9 +110,10 @@ def explain_model_with_lime(
     else:
         explainer = "LimeTabularExplainer"
 
-    if model.category == "ML" or model.api == "functional":
+    if model.category == "ML":  # or model.api == "functional":
         model = model._model
     else:
+        # even for functional api, we may want to change the output array to 2d
         model = make_model(model)
 
     if mode == "classification":
@@ -160,14 +163,13 @@ def explain_model_with_shap(
     ```python
     >>>from ai4water import Model
     >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.post_processing.explain import explain_model_with_shap
+    >>>from ai4water.postprocessing.explain import explain_model_with_shap
     >>>model = Model(model="RandForestRegressor", data=arg_beach())
     >>>model.fit()
     >>>explain_model_with_shap(model)
     ```
     """
     assert hasattr(model, 'path')
-
 
     train_x, _ = model.training_data()
     test_x, test_y = model.test_data()
@@ -186,9 +188,13 @@ def explain_model_with_shap(
 
     if framework == "ML":
         model = model._model
-        layer = None
     else:
         layer = layer or 2
+        if model.api == "functional":
+            model = make_model(model._model)
+        else:
+            model = make_model(model)
+
 
     test_x, index = choose_examples(test_x, examples_to_explain, test_y)
 
@@ -225,9 +231,14 @@ def maybe_make_path(path):
 def make_model(model):
 
     class MyModel:
+        def __getattr__(self, item):
+            return getattr(model, item)
+
         def predict(self, *args, **kwargs):
             p = model.predict(*args, **kwargs)
-            return p.reshape(-1,)
+            if isinstance(p, np.ndarray) and p.ndim == 3:
+                return p.reshape(-1,)
+            return p
 
     return MyModel()
 
