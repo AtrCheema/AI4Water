@@ -1143,27 +1143,37 @@ class BaseModel(NN, Plots):
             **kwargs
         )
 
-    def predict(self,
-                data: str = 'test',
-                x=None,
-                y=None,
-                prefix: str = None,
-                process_results: bool = True,
-                metrics:str = "minimal",
-                return_true:bool = False,
-                **kwargs
-                ):
+    def predict(
+            self,
+            data: str = 'test',
+            x=None,
+            y=None,
+            process_results: bool = True,
+            metrics:str = "minimal",
+            return_true:bool = False,
+            **kwargs
+    ):
         """
         Makes prediction from the trained model.
         Arguments:
-            data : which data to use. Possible values are `training`, `test` or `validation`.
+            data: str
+                which data to use. Possible values are
+
+                - `training`
+                - `test`
+                - `validation`.
                 By default, `test` data is used for predictions.
-            x : if given, it will override `data`
-            y : Used for pos-processing etc. if given it will overrite `data`
-            process_results : post processing of results
-            metrics : only valid if process_results is True. The metrics to calculate.
+            x:
+                if given, it will override `data`
+            y:
+                Used for pos-processing etc. if given it will overrite `data`
+            process_results: bool
+                post processing of results
+            metrics: str
+                only valid if process_results is True. The metrics to calculate.
                 Valid values are 'minimal', 'all', 'hydro_metrics'
-            return_true : whether to return the true values along with predicted values
+            return_true: bool
+                whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
             kwargs : any keyword argument for `fit` method.
         Returns:
@@ -1382,8 +1392,8 @@ class BaseModel(NN, Plots):
                                self.config['allow_nan_labels'])
 
     def view(self,
-             layer_name=None,
-             data='training',
+             layer_name:Any[list, str]=None,
+             data:str='training',
              x=None,
              y=None,
              examples_to_view=None,
@@ -1392,26 +1402,34 @@ class BaseModel(NN, Plots):
         """shows all activations, weights and gradients of the model.
 
         Arguments:
-            layer_name : the layer to view. If not given, all the layers will be viewed.
+            layer_name:
+                the layer to view. If not given, all the layers will be viewed.
                 This argument is only required when the model consists of layers of neural
                 networks.
-            data : the data to use when making calls to model for activation calculation
+            data:
+                the data to use when making calls to model for activation calculation
                 or for gradient calculation. It can either 'training', 'validation' or
                 'test'.
-            x : alternative to data.
-            y : alternative to data
-            examples_to_view : the examples to view.
-            show : whether to show the plot or not!
+            x:
+                alternative to data. If given it will override `data` argument.
+            y:
+                alternative to data. If given it will override `data` argument.
+            examples_to_view:
+                the examples to view.
+            show:
+                whether to show the plot or not!
 
         Returns:
-            An isntance of ai4water.post_processing.visualize.Visualize class.
+            An isntance of ai4water.postprocessing.visualize.Visualize class.
         """
         from ai4water.postprocessing.visualize import Visualize
 
         visualizer = Visualize(model=self)
 
         visualizer(layer_name,
-                   data=data, x=x, y=y,
+                   data=data,
+                   x=x,
+                   y=y,
                    examples_to_use=examples_to_view,
                    show=show)
 
@@ -1529,15 +1547,20 @@ class BaseModel(NN, Plots):
             cls,
             config:dict,
             data=None,
-            make_new_path=False,
+            make_new_path:bool=False,
             **kwargs
     ):
         """Loads the model from config dictionary i.e. model.config
+
         Arguments:
-            config : dictionary containing model's parameters i.e. model.config
-            data : the data
-            make_new_path : whether to make new path or not?
-            kwargs : any additional keyword arguments to Model class.
+            config: dict
+                dictionary containing model's parameters i.e. model.config
+            data:
+                the data
+            make_new_path:
+                whether to make new path or not?
+            kwargs:
+                any additional keyword arguments to Model class.
         Returns:
             an instalnce of Model
         """

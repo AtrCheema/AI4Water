@@ -1307,14 +1307,16 @@ class CAMELS_GB(Camels):
 
 class CAMELS_AUS(Camels):
     """
-    Inherits from Camels class. Reads [CAMELS-AUS](https://doi.org/10.5194/essd-13-3847-2021)
-     dataset.
+    Inherits from Camels class. Reads CAMELS-AUS dataset of
+    [Fowler et al., 2020](https://doi.org/10.5194/essd-13-3847-2021)
+    dataset.
 
     Examples
     --------
     ```python
     >>> dataset = CAMELS_AUS()
-    >>> df = dataset.fetch(stations=1, static_features=None, as_dataframe=True)
+    >>> df = dataset.fetch(stations=1, as_dataframe=True)
+    >>> df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
     ```
     """
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'

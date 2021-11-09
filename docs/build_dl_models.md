@@ -134,7 +134,6 @@ layers = {
     'Dense': 1
 }
 ```
-#<img src="imgs/cnn_lstm.png" width="800" height="900" />
 ![lstm autoenc](imgs/cnn_lstm.png)
 
 ### LSTM based auto-encoder

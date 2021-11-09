@@ -139,7 +139,7 @@ class NN(AttributeStore):
                 outputs = None
                 call_args = None
             else:
-                raise ValueError(f"No config found for layer {lyr_name}")
+                raise ValueError(f"No config found for layer '{lyr_name}'")
         else:
 
             config = lyr_args['config']

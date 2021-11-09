@@ -132,10 +132,11 @@ class DataHandler(AttributeContainer):
             allow_input_nans : don't know why it exists todo
             train_data : Determines sampling strategy of training data. Possible
                 values are
+
                     - `random`
                     - list of indices to be used
-                `None` means the trainign data is chosen based upon val_fraction
-                and `test_fraction`. In this case, the first x fraction of data is
+                    - `None` means the trainign data is chosen based upon val_fraction
+                    and `test_fraction`. In this case, the first x fraction of data is
                 is used for training where $x = 1 - (val_fraction + test_fraction)$.
 
             val_data :Data to be used for validation. If you want to use same data for
@@ -1015,7 +1016,11 @@ class DataHandler(AttributeContainer):
         return x, prev_y, y
 
     def training_data(self, key: str = None, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
-        """Renders the training data."""
+        """Renders the training data.
+        Returns:
+            a tuple of nd arrays containing x and y data. If teacher forcing is True, then the tuple
+            consists of three values i.e. x, prev_y and y.
+        """
         if self._from_h5:
 
             return load_data_from_hdf5('training_data', self.data)
