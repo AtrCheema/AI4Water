@@ -18,7 +18,7 @@ from ai4water import Model
 from ai4water.datasets import arg_beach, MtropicsLaos
 from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
-from .test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
+from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
 
 laos = MtropicsLaos()
 
@@ -46,13 +46,13 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
     interpreter = ShapExplainer(model._model, x_test, path=model.path,
                                   explainer="Explainer")
-    if heatmap: interpreter.heatmap()
-    if beeswarm_plot: interpreter.beeswarm_plot()
+    if heatmap: interpreter.heatmap(show=False)
+    if beeswarm_plot: interpreter.beeswarm_plot(show=False)
 
     interpreter = ShapExplainer(model._model, x_test.values, path=model.path,
                                   explainer="Explainer")
-    if heatmap: interpreter.heatmap()
-    if beeswarm_plot: interpreter.beeswarm_plot()
+    if heatmap: interpreter.heatmap(show=False)
+    if beeswarm_plot: interpreter.beeswarm_plot(show=False)
 
     return
 
@@ -73,17 +73,17 @@ def fit_and_interpret(model_name:str,
     interpreter = ShapExplainer(model._model, x_test,
                                   train_data=x_train,
                                   path=model.path)
-    interpreter()
+    interpreter(save=False)
 
     if draw_heatmap:
-        interpreter.heatmap()
+        interpreter.heatmap(show=False)
 
     explainer = ShapExplainer(model._model,
                               x_test.values,
                               train_data=x_train.values,
                               features=model.dh.input_features,
                               path=model.path)
-    explainer()
+    explainer(save=False)
 
     return
 
@@ -109,15 +109,15 @@ def fit_and_draw_plots(model_name, data, draw_heatmap=False):
     explainer = ShapExplainer(model._model, x_test, explainer="Explainer",
                                   path=model.path)
 
-    explainer.waterfall_plot_all_examples()
-    explainer.scatter_plot_all_features()
+    explainer.waterfall_plot_all_examples(show=False)
+    explainer.scatter_plot_all_features(show=False)
     if draw_heatmap:
-        explainer.heatmap()
+        explainer.heatmap(show=False)
 
     explainer = ShapExplainer(model._model, x_test.values, explainer="Explainer",
                            path=model.path)
-    explainer.waterfall_plot_all_examples()
-    explainer.scatter_plot_all_features()
+    explainer.waterfall_plot_all_examples(show=False)
+    explainer.scatter_plot_all_features(show=False)
     #explainer.heatmap()
 
     return
@@ -151,7 +151,7 @@ class TestShapExplainers(unittest.TestCase):
                                   path=os.path.join(os.getcwd(), "results"))
         explainer(plot_force_all=True)
 
-        explainer.heatmap()
+        explainer.heatmap(show=False)
         explainer.plot_shap_values(show=False)
 
         return
@@ -323,7 +323,7 @@ class TestShapExplainers(unittest.TestCase):
         #
         exp = ShapExplainer(model=m, data=train_x, layer=2, features=features, path=_path)
         exp.summary_plot(show=False)
-        exp.force_plot_single_example(0, lookback=0)
+        exp.force_plot_single_example(0, show=False)
         exp.plot_shap_values(show=False)
         return
 
@@ -334,7 +334,7 @@ class TestShapExplainers(unittest.TestCase):
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=features, path=_path)
         exp.plot_shap_values(show=False)
-        exp.force_plot_single_example(0, lookback=0)
+        exp.force_plot_single_example(0, show=False)
         return
 
     def test_lstm_model_ai4water(self):
@@ -342,7 +342,7 @@ class TestShapExplainers(unittest.TestCase):
         train_x, _ = m.training_data()
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=m.dh.input_features, path=m.path)
-        exp.force_plot_single_example(0, lookback=0)
+        exp.force_plot_single_example(0, show=False)
         return
 
     def test_ai4water_ml(self):
@@ -357,18 +357,36 @@ class TestShapExplainers(unittest.TestCase):
             exp = explain_model_with_shap(model, examples_to_explain=2)
             assert isinstance(exp, ShapExplainer)
 
+        return
 
     def test_ai4water_mlp(self):
         model = make_mlp_model()
 
         exp = explain_model_with_shap(model, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
+        return
 
     def test_ai4water_lstm(self):
         m = lstm_model()
         m.fit()
         exp = explain_model_with_shap(m, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
+        return
+
+    def test_plots_for_3d_input(self):
+        model = lstm_model()
+        test_x, _ = model.test_data()
+        p = model.predict(test_x)
+
+        exp = ShapExplainer(model, test_x, layer=2, path=model.path,
+                            features=model.dh.input_features
+                            )
+        exp.force_plot_single_example(np.argmin(p).item(), show=False)
+        exp.force_plot_single_example(np.argmax(p).item(), show=False)
+        exp.waterfall_plot_single_example(np.argmin(p).item(), show=False)
+        exp.waterfall_plot_single_example(np.argmax(p).item(), show=False)
+        exp.pdp_all_features(lookback=0, show=False)
+
         return
 
     def test_multiple_inputs(self):
@@ -388,6 +406,44 @@ class TestShapExplainers(unittest.TestCase):
         exp.summary_plot(show=False)
         exp.plot_shap_values(show=False)
         return
+
+
+#
+# from ai4water.datasets import CAMELS_AUS
+# np.set_printoptions(linewidth=200)
+#
+# dataset = CAMELS_AUS()
+#
+# inputs = ['et_morton_point_SILO',
+#            'precipitation_AWAP',
+#            'tmax_AWAP',
+#            'tmin_AWAP',
+#            'vprp_AWAP',
+#            'rh_tmax_SILO',
+#            'rh_tmin_SILO'
+#           ]
+#
+# outputs = ['streamflow_MLd']
+#
+# data = dataset.fetch('401203', dynamic_features=inputs+outputs, as_dataframe=True,
+#                      st="2000", en="2005")
+# data = data.unstack()
+# data.columns = [a[1] for a in data.columns.to_flat_index()]
+# m_config = {"layers":
+#                 {"LSTM_0": {"units": 128, "return_sequences": True},
+#                  "LSTM_1": 32,
+#                  "Dense": 1}}
+# model = Model(model=m_config,
+#               data=data,
+#               lookback=5)
+# test_x, _ = model.test_data()
+#
+# exp = ShapExplainer(model, test_x, layer=2, path=model.path,
+#                     #features=model.dh.input_features
+#                     )
+#
+# exp.pdp_single_feature('Feature 0')
+
 
 if __name__ == "__main__":
 

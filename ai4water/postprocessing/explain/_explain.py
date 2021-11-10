@@ -66,3 +66,18 @@ class ExplainerMixin(object):
 
         self._features = features
 
+    @property
+    def unrolled_features(self):
+        # returns the possible names of features if unrolled over time
+        if not self.data_is_2d and self.single_source:
+            features = self.features
+            if features is None:
+                features = [f"Feature_{i}" for i in range(self.data.shape[-1])]
+
+            lookback = self.data.shape[1]
+            features = [[f"{f}_{i}" for f in features] for i in range(lookback)]
+            features = [item for sublist in features for item in sublist]
+        else:
+            features = None
+        return features
+

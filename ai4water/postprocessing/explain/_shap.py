@@ -315,6 +315,8 @@ class ShapExplainer(ExplainerMixin):
                  dependence_plots=False,
                  beeswarm_plots=False,
                  heatmap=False,
+                 show=False,
+                 save=True
                  ):
         """Draws and saves all the plots for a given sklearn model in the path.
 
@@ -325,23 +327,23 @@ class ShapExplainer(ExplainerMixin):
 
         if dependence_plots:
             for feature in self.features:
-                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}", show=False)
+                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}", show=show, save=save)
 
         if force_plots:
             for i in range(self.data.shape[0]):
 
-                self.force_plot_single_example(i, f"force_plot_{i}", show=False)
+                self.force_plot_single_example(i, f"force_plot_{i}", show=show, save=save)
 
         if beeswarm_plots:
-            self.beeswarm_plot(show=False)
+            self.beeswarm_plot(show=show, save=save)
 
         if plot_force_all:
-            self.force_plot_all("force_plot_all", show=False)
+            self.force_plot_all("force_plot_all", show=show, save=save)
 
         if heatmap:
-            self.heatmap(show=False)
+            self.heatmap(show=show, save=save)
 
-        self.summary_plot("summary_plot")
+        self.summary_plot("summary_plot", show=show, save=save)
 
         return
 
@@ -409,20 +411,38 @@ class ShapExplainer(ExplainerMixin):
 
         return
 
-    def force_plot_single_example(self, idx:int, name=None, lookback=None, show=False, **force_kws):
-        """Draws force_plot for a single example/row/sample/instance/data point.
+    def force_plot_single_example(
+            self,
+            idx:int,
+            name=None,
+            show=True,
+            save=False,
+            **force_kws
+    ):
+        """Draws [force_plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.force.html)
+        for a single example/row/sample/instance/data point.
+
+        If the data is 3d and shap values are 3d then they are unrolled/flattened
+        before plotting
 
         Arguments:
-            idx : index of exmaple
-            name : name of saved file
-            show : whether to show the plot or not
-            lookback : only relevent if input data is 3d
+            idx:
+                index of exmaple to use. It can be any value >=0
+            name:
+                name of saved file
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
             force_kws : any keyword argument for force plot
+
+        Returns:
+            plotter object
         """
 
         shap_vals = self.shap_values
 
-        if isinstance(shap_vals, list):
+        if isinstance(shap_vals, list) and len(shap_vals)==1:
             shap_vals = shap_vals[0]
 
         shap_vals = shap_vals[idx]
@@ -437,12 +457,12 @@ class ShapExplainer(ExplainerMixin):
         else:
             expected_value = self.explainer.expected_value
 
-        if data.ndim == 2:  # input is 3d
-            assert lookback is not None, f"for 3d input data, lookback must not be None"
-            assert shap_vals.ndim == 2
+        features = self.features
+        if data.ndim == 2 and shap_vals.ndim==2:  # input was 3d i.e. ml model uses 3d input
+            features = self.unrolled_features
             expected_value =  expected_value[0] #todo
-            shap_vals = shap_vals[lookback]
-            data = None
+            shap_vals = shap_vals.reshape(-1,)
+            data = data.reshape(-1, )
 
         plt.close('all')
 
@@ -450,19 +470,20 @@ class ShapExplainer(ExplainerMixin):
             expected_value,
             shap_vals,
             data,
-            feature_names=self.features,
+            feature_names=features,
             show=False,
             matplotlib=True,
             **force_kws
         )
 
-        name = name or f"force_plot_{idx}_{lookback}"
-        plotter.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+        if save:
+            name = name or f"force_plot_{idx}"
+            plotter.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
 
         if show:
             plotter.show()
 
-        return
+        return plotter
 
     def dependence_plot_all_features(self, show=True, save=False, **dependence_kws):
         """dependence plot for all features"""
@@ -485,7 +506,11 @@ class ShapExplainer(ExplainerMixin):
         if isinstance(shap_values, list) and len(shap_values) == 1:
             shap_values = shap_values[0]
 
-        shap.dependence_plot(feature, shap_values, self.data, show=False, **kwargs)
+        shap.dependence_plot(feature,
+                             shap_values,
+                             self.data,
+                             show=False,
+                             **kwargs)
         if save:
             plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
         if show:
@@ -510,8 +535,15 @@ class ShapExplainer(ExplainerMixin):
 
         return
 
-    def waterfall_plot_all_examples(self, name: str = "waterfall", save=True, show=False, **waterfall_kws):
-        """Plots the waterfall plot of SHAP package
+    def waterfall_plot_all_examples(
+            self,
+            name: str = "waterfall",
+            save=True,
+            show=False,
+            **waterfall_kws
+    ):
+        """Plots the [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
+         of SHAP package
 
         It plots for all the examples/instances from test_data.
         """
@@ -526,26 +558,71 @@ class ShapExplainer(ExplainerMixin):
             name: str = "waterfall",
             show: bool = False,
             save=True,
-            **waterfall_kws
+            max_display: int=10,
     ):
-        """draws and saves waterfall plot for one prediction.
+        """draws and saves [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
+         for one example.
 
         The waterfall plots are based upon SHAP values and show the
         contribution by each feature in model's prediction. It shows which
         feature pushed the prediction in which direction. Note that the
         annotated values in waterfall plot are not SHAP values.
         Currently only possible with xgboost, catboost, lgbm models
-        show : whether to show the plot or now
+
+        Arguments:
+            example_index : int
+                index of example to use
+            max_display : int
+                maximu features to display
+            name : str
+                name of plot
+            save : bool
+                whether to save the plot or not
+            show : bool
+                whether to show the plot or now
+
         """
-        shap_vals = self.explainer(self.data)
+        if self.explainer.__class__.__name__ in ["Deep"]:
+            shap_vals_as_exp = None
+        else:
+            shap_vals_as_exp = self.explainer(self.data)
+
+        shap_values = self.shap_values
+        if isinstance(shap_values, list) and len(shap_values) == 1:
+            shap_values = shap_values[0]
+
         plt.close('all')
-        shap.plots.waterfall(shap_vals[example_index], show=False, **waterfall_kws)
+
+        if shap_vals_as_exp is None:
+
+            features = self.features
+            if not self.data_is_2d:
+                features = self.unrolled_features
+
+            class Explanation:
+                # waterfall plot expects first argument as Explaination class
+                # which must have at least these attributes (values, data, feature_names, base_values)
+                # https://github.com/slundberg/shap/issues/1420#issuecomment-715190610
+                if not self.data_is_2d:  # if original data is 3d then we flat it into 1d array
+                    values = shap_values[example_index].reshape(-1, )
+                    data = self.data[example_index].reshape(-1, )
+                else:
+                    values = shap_values[example_index]
+                    data = self.data[example_index]
+
+                feature_names = features
+                base_values = self.explainer.expected_value[0]
+
+            shap.plots.waterfall(Explanation(), show=False, max_display=max_display)
+        else:
+            shap.plots.waterfall(shap_vals_as_exp[example_index], show=False, max_display=max_display)
 
         if save:
             plt.savefig(os.path.join(self.path, f"{name}_{example_index}"), dpi=300, bbox_inches="tight")
 
         if show:
             plt.show()
+
         return
 
     def scatter_plot_single_feature(
@@ -577,7 +654,7 @@ class ShapExplainer(ExplainerMixin):
 
         return
 
-    def heatmap(self, name: str = 'heatmap', show: bool = False, max_display=10):
+    def heatmap(self, name: str = 'heatmap', show: bool = False, save=False, max_display=10):
         """Plots the heat map and saves it
         https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
         This can be drawn for xgboost/lgbm as well as for randomforest type models
@@ -598,14 +675,22 @@ class ShapExplainer(ExplainerMixin):
 
         # by default examples are ordered in such a way that examples with similar
         # explanations are grouped together.
-        self._heatmap(shap_values, f"{name}_basic", show=show, max_display=max_display)
+        self._heatmap(shap_values, f"{name}_basic",
+                      show=show,
+                      save=save,
+                      max_display=max_display
+                      )
 
         # sort by the maximum absolute value of a feature over all the examples
-        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show, max_display=max_display,
+        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
+                      max_display=max_display,
+                      save=save,
                       feature_values=shap_values.abs.max(0))
 
         # sorting by the sum of the SHAP values over all features gives a complementary perspective on the data
-        self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show, max_display=max_display,
+        self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show,
+                      save=save,
+                      max_display=max_display,
                       instance_order=shap_values.sum(1))
         return
 
@@ -636,27 +721,43 @@ class ShapExplainer(ExplainerMixin):
         return shap_values
 
     def beeswarm_plot(
-            self, name: str = "beeswarm",
-            show=False,
+            self,
+            name: str = "beeswarm",
+            show:bool=False,
             max_display: int = 10,
-            save=True,
+            save:bool=True,
+            **kwargs
     ):
         """
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
+        Draws the [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
+        of shap.
+
+        Arguments:
+            name :
+            show :
+            save :
+            max_display :
+                maximum
+            kwargs :
+                any keyword arguments for shap.beeswarm plot
         """
 
         shap_values = self._get_shap_values_locally()
 
-        self._beeswarm_plot(shap_values, name=f"{name}_basic", show=show, max_display=max_display, save=save)
+        self._beeswarm_plot(shap_values,
+                            name=f"{name}_basic", show=show, max_display=max_display,
+                            save=save,
+                            **kwargs
+                            )
 
         # find features with high impacts
         self._beeswarm_plot(shap_values, name=f"{name}_sortby_maxabs", show=show, max_display=max_display,
-                            order=shap_values.abs.max(0), save=save)
+                            order=shap_values.abs.max(0), save=save, **kwargs)
 
         # plot the absolute value
-        self._beeswarm_plot(shap_values.abs, name=f"{name}_abs_shapvalues", show=show, max_display=max_display,
-                            save=save)
-
+        self._beeswarm_plot(shap_values.abs,
+                            name=f"{name}_abs_shapvalues", show=show, max_display=max_display,
+                            save=save, **kwargs)
         return
 
     def _beeswarm_plot(self, shap_values, name, show=False, max_display=10, save=True, **kwargs):
@@ -734,8 +835,8 @@ class ShapExplainer(ExplainerMixin):
             shap_values: np.ndarray = shap_values[0]
 
         def plot_shap_values_single_source(_data, _shap_vals, _features, _name):
-            if _data.ndim == 3: # input is 3d
-                assert _shap_vals.ndim == 3
+            if _data.ndim == 3 and _shap_vals.ndim==3: # input is 3d
+                #assert _shap_vals.ndim == 3
                 return imshow_3d(_shap_vals,
                                  _data,
                                  _features,
@@ -747,8 +848,9 @@ class ShapExplainer(ExplainerMixin):
             plt.close('all')
             fig, axis = plt.subplots()
             im = axis.imshow(_shap_vals.T, aspect='auto', interpolation=interpolation, cmap=cmap)
-            axis.set_yticks(np.arange(len(_features)))
-            axis.set_yticklabels(_features)
+            if _features is not None: # if imshow is successful then don't worry if features are None
+                axis.set_yticks(np.arange(len(_features)))
+                axis.set_yticklabels(_features)
             axis.set_ylabel("Features")
             axis.set_xlabel("Examples")
 
@@ -812,6 +914,7 @@ class ShapExplainer(ExplainerMixin):
             model_expected_value=True,
             feature_expected_value=True,
             shap_values=shap_values,
+            feature_names=self.features,
             **pdp_kws
         )
 
