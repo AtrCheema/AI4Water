@@ -222,7 +222,10 @@ class BaseModel(NN, Plots):
                 # file, they may share same graph.
                 tf.keras.backend.clear_session()
 
-            self.dh = DataHandler(data=data, **maker.data_config)
+            if data.__class__.__name__ in ["DataHanlder", "SiteDistributedDataHandler"]:
+                self.dh = data
+            else:
+                self.dh = DataHandler(data=data, **maker.data_config)
 
             self.opt_paras = maker.opt_paras
             self._original_model_config = maker.orig_model
