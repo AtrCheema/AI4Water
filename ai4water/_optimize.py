@@ -13,15 +13,17 @@ class ModelOptimizerMixIn(object):
             algorithm,
             num_iterations,
             process_results,
+            prefix="hpo"
     ):
         self.model = model
         self.algorithm = algorithm
         self.num_iterations = num_iterations
         self.process_results = process_results
+        self.prefix=prefix
 
     def fit(self):
 
-        PREFIX = f"hpo_{dateandtime_now()}"
+        PREFIX = f"{self.prefix}_{dateandtime_now()}"
 
         hpo = importlib.import_module("ai4water.hyperopt")
 
@@ -92,7 +94,11 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
     ):
         super().__init__(
             model = model,
-            algorithm=algorithm, num_iterations=num_iterations, process_results=process_results)
+            algorithm=algorithm,
+            num_iterations=num_iterations,
+            process_results=process_results,
+            prefix="hpo"
+        )
 
         self.space = space
         config = jsonize(model.config)
@@ -119,9 +125,16 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             algorithm="bayes",
             include=None,
             exclude=None,
-            append=None
+            append=None,
+            process_results=False
     ):
-        super().__init__(model=model, num_iterations=num_iterations, algorithm=algorithm, process_results=False)
+        super().__init__(
+            model=model,
+            num_iterations=num_iterations,
+            algorithm=algorithm,
+            process_results=process_results,
+            prefix="trans_hpo"
+        )
 
         self.space = make_space(self.model.data.columns.to_list(), include=include, exclude=exclude, append=append,
                            categories=categories)

@@ -408,43 +408,6 @@ class TestShapExplainers(unittest.TestCase):
         return
 
 
-#
-# from ai4water.datasets import CAMELS_AUS
-# np.set_printoptions(linewidth=200)
-#
-# dataset = CAMELS_AUS()
-#
-# inputs = ['et_morton_point_SILO',
-#            'precipitation_AWAP',
-#            'tmax_AWAP',
-#            'tmin_AWAP',
-#            'vprp_AWAP',
-#            'rh_tmax_SILO',
-#            'rh_tmin_SILO'
-#           ]
-#
-# outputs = ['streamflow_MLd']
-#
-# data = dataset.fetch('401203', dynamic_features=inputs+outputs, as_dataframe=True,
-#                      st="2000", en="2005")
-# data = data.unstack()
-# data.columns = [a[1] for a in data.columns.to_flat_index()]
-# m_config = {"layers":
-#                 {"LSTM_0": {"units": 128, "return_sequences": True},
-#                  "LSTM_1": 32,
-#                  "Dense": 1}}
-# model = Model(model=m_config,
-#               data=data,
-#               lookback=5)
-# test_x, _ = model.test_data()
-#
-# exp = ShapExplainer(model, test_x, layer=2, path=model.path,
-#                     #features=model.dh.input_features
-#                     )
-#
-# exp.pdp_single_feature('Feature 0')
-
-
 if __name__ == "__main__":
 
     unittest.main()

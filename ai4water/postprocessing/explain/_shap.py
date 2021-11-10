@@ -100,11 +100,13 @@ class ShapExplainer(ExplainerMixin):
                 working directory
             features: Names of features. Should only be given if train/test data is numpy
                 array.
-            framework : either "DL" or "ML", where "DL" represents deep learning or neural
+            framework : str
+                either "DL" or "ML", where "DL" represents deep learning or neural
                 network based models and "ML" represents other models. For "DL" the explainer
                 will be eihter "DeepExplainer" or "GradientExplainer". If not given, it will
                 be inferred but "DeepExplainer" will be prioritized over "GradientExplainer".
-            layer : only relevant when framework is "DL" i.e when the model consits of layers
+            layer : Union[int, str]
+                only relevant when framework is "DL" i.e when the model consits of layers
                 of neural networks.
 
         """
@@ -678,8 +680,7 @@ class ShapExplainer(ExplainerMixin):
         self._heatmap(shap_values, f"{name}_basic",
                       show=show,
                       save=save,
-                      max_display=max_display
-                      )
+                      max_display=max_display)
 
         # sort by the maximum absolute value of a feature over all the examples
         self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
@@ -706,7 +707,6 @@ class ShapExplainer(ExplainerMixin):
 
         if show:
             plt.show()
-
         return
 
     def _get_shap_values_locally(self):
@@ -733,9 +733,12 @@ class ShapExplainer(ExplainerMixin):
         of shap.
 
         Arguments:
-            name :
-            show :
+            name : str
+                name of saved file
+            show : bool
+                whether to show the plot or not
             save :
+                whether to save the plot or not
             max_display :
                 maximum
             kwargs :
@@ -747,8 +750,7 @@ class ShapExplainer(ExplainerMixin):
         self._beeswarm_plot(shap_values,
                             name=f"{name}_basic", show=show, max_display=max_display,
                             save=save,
-                            **kwargs
-                            )
+                            **kwargs)
 
         # find features with high impacts
         self._beeswarm_plot(shap_values, name=f"{name}_sortby_maxabs", show=show, max_display=max_display,
@@ -860,6 +862,7 @@ class ShapExplainer(ExplainerMixin):
 
             if show:
                 plt.show()
+            return
 
         if self.single_source:
             plot_shap_values_single_source(self.data, shap_values, self.features, name)
@@ -869,13 +872,12 @@ class ShapExplainer(ExplainerMixin):
                                                shap_values[idx],
                                                self.features[idx],
                                                f"{idx}_{name}")
-
         return
 
     def pdp_all_features(
             self,
-            show=False,
-            save=True,
+            show:bool=False,
+            save:bool=True,
             **pdp_kws
     ):
         """partial dependence plot of all features.
@@ -894,8 +896,8 @@ class ShapExplainer(ExplainerMixin):
     def pdp_single_feature(
             self,
             feature_name:str,
-            show=False,
-            save=True,
+            show=True,
+            save=False,
             **pdp_kws
     ):
         """partial depence plot using SHAP package for a single feature."""
@@ -915,6 +917,7 @@ class ShapExplainer(ExplainerMixin):
             feature_expected_value=True,
             shap_values=shap_values,
             feature_names=self.features,
+            show=False,
             **pdp_kws
         )
 
@@ -957,7 +960,6 @@ def imshow_3d(values,
 
         if show:
             plt.show()
-
     return
 
 

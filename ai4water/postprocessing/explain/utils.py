@@ -184,8 +184,6 @@ def explain_model_with_shap(
 
     framework = model.category
 
-    lookback = model.lookback
-
     if framework == "ML":
         model = model._model
     else:
@@ -208,13 +206,8 @@ def explain_model_with_shap(
                               layer=layer
                               )
 
-    if lookback >1:
-        for i in range(explainer.data.shape[0]):
-            for lb in range(lookback):
-                explainer.force_plot_single_example(i, lookback=lb, name=f"force_plot_{index[i]}_{lb}", show=False)
-    else:
-        for i in range(explainer.data.shape[0]):
-            explainer.force_plot_single_example(i, f"force_plot_{index[i]}", show=False)
+    for i in range(explainer.data.shape[0]):
+        explainer.force_plot_single_example(i, f"force_plot_{index[i]}", show=False)
 
     explainer.summary_plot(show=False)
     explainer.plot_shap_values(show=False)
