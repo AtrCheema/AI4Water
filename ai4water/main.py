@@ -801,7 +801,8 @@ class Model(MODEL, BaseModel):
                 else:
                     self.summary()
 
-            self.plot_model(self)
+            if self.verbosity>=0: # if verbosity is -ve then don't plot this
+                self.plot_model(self)
 
         elif self.category == "ML":
             self.build_ml_model()

@@ -551,7 +551,7 @@ class BaseModel(NN, Plots):
                     callbacks=callbacks,
                     shuffle=self.config['shuffle'],
                     steps_per_epoch=self.config['steps_per_epoch'],
-                    verbose=self.verbosity,
+                    verbose=max(self.verbosity, 0),
                     nans_in_y_exist=nans_in_y_exist,
                     validation_steps=validation_steps,
                     **kwargs,
@@ -618,9 +618,10 @@ class BaseModel(NN, Plots):
 
         self.save_config(history.history)
 
-        # save all the losses or performance metrics
-        df = pd.DataFrame.from_dict(history.history)
-        df.to_csv(os.path.join(self.path, "losses.csv"))
+        if self.verbosity>=0:
+            # save all the losses or performance metrics
+            df = pd.DataFrame.from_dict(history.history)
+            df.to_csv(os.path.join(self.path, "losses.csv"))
 
         return history
 
@@ -916,7 +917,8 @@ class BaseModel(NN, Plots):
                 kwargs['validation_data'] = val_data
             history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
 
-            visualizer.plot_loss(history.history, show=self.verbosity)
+            if self.verbosity>=0:
+                visualizer.plot_loss(history.history, show=self.verbosity)
 
             self.load_best_weights()
         else:
@@ -924,7 +926,9 @@ class BaseModel(NN, Plots):
 
         self.info['training_end'] = dateandtime_now()
         self.save_config()
-        dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
+
+        if self.verbosity>=0:
+            dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         self.is_training = False
         return history
@@ -1869,7 +1873,13 @@ class BaseModel(NN, Plots):
                 The number of iterations for optimizatino algorithm.
             include: the names of features to include
             exclude: the name/names of features to exclude
-            append: the features with custom candidate transformations
+            append:
+                the features with custom candidate transformations. For example
+                if we want to try only `minmax` and `zscore` on feature `tide_cm`, then
+                it can be done as following
+                ```python
+                >>> append={"tide_cm": ["minmax", "zscore"]}
+                ```
             update_config: whether to update the config of model or not.
 
         Returns:

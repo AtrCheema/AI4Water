@@ -37,7 +37,7 @@ class ModelOptimizerMixIn(object):
                 **suggestions,
         ):
             config['seed'] = seed
-            config['verbosity'] = 0
+            config['verbosity'] = -1
             config['prefix'] = PREFIX
 
             getattr(self, f'update')(config, suggestions)

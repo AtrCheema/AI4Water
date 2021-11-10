@@ -86,7 +86,7 @@ def maybe_create_path(prefix=None, path=None):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    for _dir in ['activations', 'weights', 'data']:
+    for _dir in ['weights']:
         if not os.path.exists(os.path.join(save_dir, _dir)):
             os.makedirs(os.path.join(save_dir, _dir))
 
