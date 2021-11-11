@@ -1665,11 +1665,16 @@ class DataHandler(AttributeContainer):
                 save_in_a_group(x, prev_y, y, model_weights_group)
         return
 
-    def check_for_batch_size(self, x, prev_y, y):
+    def check_for_batch_size(self, x, prev_y=None, y=None):
 
         if self.config['drop_remainder']:
 
-            remainder = len(x) % self.config['batch_size']
+            if isinstance(x, list):
+                _x = x[0]
+            else:
+                _x = x
+            assert isinstance(_x, np.ndarray)
+            remainder = len(_x) % self.config['batch_size']
 
             if remainder:
                 if isinstance(x, list):
@@ -1680,8 +1685,10 @@ class DataHandler(AttributeContainer):
                 else:
                     x = x[0:-remainder]
 
-                prev_y = prev_y[0:-remainder]
-                y = y[0:-remainder]
+                if prev_y is not None:
+                    prev_y = prev_y[0:-remainder]
+                if y is not None:
+                    y = y[0:-remainder]
 
         return x, prev_y, y
 
