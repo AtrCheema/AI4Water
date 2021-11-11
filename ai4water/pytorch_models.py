@@ -8,10 +8,15 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from ai4water import Model
-from ai4water.HARHN import HARHN
-from ai4water.backend import torch
-from ai4water.imv_networks import IMVTensorLSTM
 from ai4water.utils.utils import dateandtime_now, plot_activations_along_inputs
+from ai4water.backend import torch
+
+if torch is not None:
+    from ai4water.imv_networks import IMVTensorLSTM
+    from ai4water.HARHN import HARHN
+else:
+    HARHN, IMVTensorLSTM = None, None
+
 
 
 class HARHNModel(Model):

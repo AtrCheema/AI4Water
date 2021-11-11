@@ -335,13 +335,15 @@ class DualAttentionModel(FModel):
                                    **kwargs)
         return
 
-    def plot_act_along_inputs(self,
-                              layer_name: str,
-                              name: str = None,
-                              vmin=None,
-                              vmax=None,
-                              data='training',
-                              show=False):
+    def plot_act_along_inputs(
+            self,
+            layer_name: str,
+            name: str = None,
+            vmin=None,
+            vmax=None,
+            data='training',
+            show=False
+    ):
 
         data_name = name or data
 

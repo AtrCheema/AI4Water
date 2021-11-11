@@ -11,6 +11,23 @@ class NBeats(keras.layers.Layer):
     This implementation is same as that of https://github.com/philipperemy/n-beats/tree/master/nbeats_keras
     except that here NBeats can be used as a layer.
     The output shape will be (batch_size, self.forecast_length, self.input_dim)
+    Some other changes have also been done to make this layer compatable with ai4water.
+
+    Example
+    ------
+    ```python
+    >>> x = np.random.random((100, 10, 3))
+    >>> y = np.random.random((100, 1))
+
+    >>> model = Model(model={"layers":
+    >>>                              {"Input": {"shape": (10, 3)},
+    >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
+    >>>                               "Flatten": {},
+    >>>                               "Reshape": {"target_shape": (1,1)}}},
+    >>>               lookback=10)
+
+    >>> model.fit(x=x, y=y.reshape(-1,1,1))
+    ```
     """
     GENERIC_BLOCK = 'generic'
     TREND_BLOCK = 'trend'
@@ -39,11 +56,11 @@ class NBeats(keras.layers.Layer):
         self.thetas_dim = thetas_dim
         self.units = units
         self.share_weights_in_stack = share_weights_in_stack
-        self.backcast_length = lookback
+        self.lookback = lookback
         self.forecast_length = forecast_length
         self.input_dim = num_inputs
         self.exo_dim = num_exo_inputs
-        self.exo_shape = (self.backcast_length, self.exo_dim)
+        self.exo_shape = (self.lookback, self.exo_dim)
         self._weights = {}
         self.nb_harmonics = nb_harmonics
         assert len(self.stack_types) == len(self.thetas_dim)
@@ -134,13 +151,13 @@ class NBeats(keras.layers.Layer):
         if stack_type == 'generic':
             theta_b = reg(Dense(nb_poly, activation='linear', use_bias=False, name=n('theta_b')))
             theta_f = reg(Dense(nb_poly, activation='linear', use_bias=False, name=n('theta_f')))
-            backcast = reg(Dense(self.backcast_length, activation='linear', name=n('backcast')))
+            backcast = reg(Dense(self.lookback, activation='linear', name=n('backcast')))
             forecast = reg(Dense(self.forecast_length, activation='linear', name=n('forecast')))
         elif stack_type == 'trend':
             theta_f = theta_b = reg(Dense(nb_poly, activation='linear', use_bias=False, name=n('theta_f_b')))
-            backcast = Lambda(trend_model, arguments={"is_forecast": False, "backcast_length": self.backcast_length,
+            backcast = Lambda(trend_model, arguments={"is_forecast": False, "backcast_length": self.lookback,
                                                       "forecast_length": self.forecast_length})
-            forecast = Lambda(trend_model, arguments={"is_forecast": True, "backcast_length": self.backcast_length,
+            forecast = Lambda(trend_model, arguments={"is_forecast": True, "backcast_length": self.lookback,
                                                       "forecast_length": self.forecast_length})
         else:  # 'seasonality'
             if self.nb_harmonics:
@@ -149,10 +166,10 @@ class NBeats(keras.layers.Layer):
                 theta_b = reg(Dense(self.forecast_length, activation='linear', use_bias=False, name=n('theta_b')))
             theta_f = reg(Dense(self.forecast_length, activation='linear', use_bias=False, name=n('theta_f')))
             backcast = Lambda(seasonality_model,
-                              arguments={"is_forecast": False, "backcast_length": self.backcast_length,
+                              arguments={"is_forecast": False, "backcast_length": self.lookback,
                                          "forecast_length": self.forecast_length})
             forecast = Lambda(seasonality_model,
-                              arguments={"is_forecast": True, "backcast_length": self.backcast_length,
+                              arguments={"is_forecast": True, "backcast_length": self.lookback,
                                          "forecast_length": self.forecast_length})
         for k in range(self.input_dim):
             if self.has_exog():

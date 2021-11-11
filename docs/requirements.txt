@@ -8,3 +8,4 @@ scikit-learn>=0.22, <=0.24.2
 pandas
 scikit-optimize
 plotly
+tensorflow

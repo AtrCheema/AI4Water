@@ -54,7 +54,19 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                           and decoder_length/forecast_len. Otherwise predictions for only decoder_length will be
                           returned.
 
-
+    Example
+    -------
+    ```python
+    >>> params = {'num_inputs': 3, 'total_time_steps': 192, 'known_regular_inputs': [0, 1, 2]}
+    >>> output_size = 1
+    >>> quantiles = [0.25, 0.5, 0.75]
+    >>> layers = {
+    >>>        "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs']), 'name': "Model_Input"}},
+    >>>        "TemporalFusionTransformer": {"config": params},
+    >>>        "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
+    >>>        "Dense": {"config": {"units": output_size * len(quantiles)}},
+    >>>       'Reshape': {'target_shape': (3, 1)}}
+    ```
     """
     def __init__(self,
                  hidden_units:int,
