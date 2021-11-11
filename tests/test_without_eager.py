@@ -60,7 +60,7 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(
             DualAttentionModel,
             data=arg_beach(),
-            use_true_prev_y=False,
+            teacher_forcing=False,
             batch_size=8,
             drop_remainder=True
         )

@@ -43,7 +43,7 @@ class DualAttentionModel(FModel):
                 - n_hde0: None
                 - n_sde0: None
 
-        use_true_prev_y : bool
+        teacher_forcing : bool
             Whether to use the prvious target/observation as input or not. If
             yes, then the model will require 2 inputs. The first input will be
             of shape (num_examples, lookback, num_inputs) while the second input
@@ -80,7 +80,7 @@ class DualAttentionModel(FModel):
             self,
             enc_config:dict=None,
             dec_config:dict=None,
-            use_true_prev_y:bool=True,
+            teacher_forcing:bool=True,
             **kwargs
     ):
 
@@ -96,9 +96,9 @@ class DualAttentionModel(FModel):
             assert isinstance(dec_config, dict)
         self.enc_config = enc_config
         self.dec_config = dec_config
-        self.use_true_prev_y = use_true_prev_y
+        #self.use_true_prev_y = use_true_prev_y
 
-        super(DualAttentionModel, self).__init__(**kwargs)
+        super(DualAttentionModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
         setattr(self, 'category', "DL")
 
@@ -106,7 +106,6 @@ class DualAttentionModel(FModel):
 
         self.config['dec_config'] = self.dec_config
         self.config['enc_config'] = self.enc_config
-        self.config['use_true_prev_y'] = self.use_true_prev_y
 
         self.de_LSTM_cell = layers.LSTM(self.dec_config['p'], return_state=True, name='decoder_LSTM')
         self.de_densor_We = layers.Dense(self.enc_config['m'])
@@ -119,7 +118,7 @@ class DualAttentionModel(FModel):
             s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
 
         input_y = None
-        if self.use_true_prev_y and self.config['drop_remainder']:
+        if self.config['teacher_forcing'] and self.config['drop_remainder']:
             input_y = layers.Input(batch_shape=(self.config['batch_size'], self.lookback - 1, self.num_outs), name='input_y')
         elif not self.config['drop_remainder']:
             input_y = layers.Input(shape=(self.lookback - 1, self.num_outs), name='input_y')
@@ -275,7 +274,7 @@ class DualAttentionModel(FModel):
             _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (batch_size, 1, 20)
 
             # if we want to use the true value of target of previous timestep as input then we will use _y
-            if self.use_true_prev_y:
+            if self.config['teacher_forcing']:
                 y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)  # (batch_size, lookback, 1) -> (batch_size, 1)
                 y_prev = layers.Reshape((1, self.num_outs))(y_prev)   # -> (batch_size, 1, 1)
 
@@ -293,7 +292,7 @@ class DualAttentionModel(FModel):
 
     def fetch_data(self, source, **kwargs):
 
-        if self.use_true_prev_y:
+        if self.config['teacher_forcing']:
             self.dh.teacher_forcing = True
             x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
             self.dh.teacher_forcing = False
@@ -322,7 +321,7 @@ class DualAttentionModel(FModel):
             h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
             other_inputs = [s0, h0, s_de0, h_de0]
 
-        if self.use_true_prev_y:
+        if self.config['teacher_forcing']:
             return [x, prev_y] + other_inputs, prev_y, labels
         else:
             return [x] + other_inputs, labels

@@ -836,7 +836,8 @@ class BaseModel(NN, Plots):
 
         return
 
-    def fit(self,
+    def fit(
+            self,
             data: str = 'training',
             callbacks: dict = None,
             **kwargs
@@ -845,14 +846,17 @@ class BaseModel(NN, Plots):
         Trains the model with data which is taken from data accoring to `data` arguments.
 
         Arguments:
-            data : data to use for model training. Default is 'training`.
-            callbacks : Any callback compatible with keras. If you want to log the output
+            data :
+                data to use for model training. Default is 'training`.
+            callbacks dict:
+                Any callback compatible with keras. If you want to log the output
                 to tensorboard, then just use `callbacks={'tensorboard':{}}` or
                 to provide additional arguments
                 ```python
                 callbacks={'tensorboard': {'histogram_freq': 1}}
                 ```
-            kwargs : Any keyword argument for the `fit` method of the underlying algorithm.
+            kwargs :
+                Any keyword argument for the `fit` method of the underlying algorithm.
                 if 'x' is present in kwargs, that will take precedent over `data`.
         Returns:
             A keras history object in case of deep learning model with tensorflow
@@ -984,7 +988,7 @@ class BaseModel(NN, Plots):
         """computes cross validation score
 
         Arguments:
-            scoring : str
+            scoring str:
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
 
@@ -1596,12 +1600,16 @@ class BaseModel(NN, Plots):
         Loads the model from a config file.
 
         Arguments:
-            config_path : complete path of config file
-            data : data for Model
-            make_new_path : If true, then it means we want to use the config
+            config_path str:
+                complete path of config file
+            data :
+                data for Model
+            make_new_path bool:
+                If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
                 would not normally update the weights in such a case.
-            kwargs : any additional keyword arguments for the `Model`
+            kwargs :
+                any additional keyword arguments for the `Model`
         return:
             a `Model` instance
         """

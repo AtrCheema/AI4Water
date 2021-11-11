@@ -106,7 +106,9 @@ class MLRegressionExperiments(Experiments):
         if xgboost is None:
             self.models.remove('model_XGBRFRegressor')
 
-        if int(VERSION_INFO['sklearn'].split('.')[1]) < 23:
+        sk_maj_ver = int(sklearn.__version__.split('.')[0])
+        sk_min_ver = int(sklearn.__version__.split('.')[1])
+        if sk_maj_ver==0 and sk_min_ver < 23:
             for m in ['model_PoissonRegressor', 'model_TweedieRegressor']:
                 self.models.remove(m)
 

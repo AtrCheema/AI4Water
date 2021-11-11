@@ -31,42 +31,43 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
     4, 14, 24, 34, d
 
     Arguments:
-        hidden_units : int
+        hidden_units int:
             determines the depth/weight matrices size in TemporalFusionTransformer.
-        num_encoder_steps : int
+        num_encoder_steps int:
             lookback steps used in the model.
-        num_heads : int
-            >=1, number of attention heads to be used in MultiheadAttention layer.
-        num_inputs: int, number of input features
-        total_time_steps: int,
-            > num_encoder_steps, This is sum of lookback steps + forecast length.
+        num_heads int:
+            must be>=1, number of attention heads to be used in MultiheadAttention layer.
+        num_inputs int:
+            number of input features
+        total_time_steps int:
+            greater than num_encoder_steps, This is sum of lookback steps + forecast length.
             Forecast length is the number of horizons to be predicted.
-        known_categorical_inputs: list
+        known_categorical_inputs list:
             a,b,c
         input_obs_loc :
         unknown_inputs :
         static_inputs :
-        static_input_loc : None/list
+        static_input_loc None/list:
             location of static inputs
-        category_counts: list
+        category_counts list:
             Number of categories per categorical variable
         use_cnn bool:
             whether to use cnn or not. If not, then lstm will be used otherwise
             1D CNN will be used with "causal" padding.
         kernel_size int:
             kernel size for 1D CNN. Only valid if use_cnn is True.
-        use_cudnn : bool
+        use_cudnn bool:
             default False, Whether to use Keras CuDNNLSTM or standard LSTM layers
-        dropout_rate :  float
+        dropout_rate float:
             default 0.1, >=0 and <=1 amount of dropout to be used at GRNs.
-        future_inputs : bool
+        future_inputs bool:
             whether the given data contains futre known observations or not.
-        return_attention_components: bool,
+        return_attention_components bool:
             If True, then this layer (upon its call) will return outputs + attention
             componnets. Attention components are dictionary consisting of following keys
             and their values as numpy arrays.
 
-        return_sequences: bool,
+        return_sequences bool:
             if True, then output and attention weights will consist of encoder_lengths/lookback
                           and decoder_length/forecast_len. Otherwise predictions for only decoder_length will be
                           returned.
@@ -85,26 +86,28 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
     >>>       'Reshape': {'target_shape': (3, 1)}}
     ```
     """
-    def __init__(self,
-                 hidden_units:int,
-                 num_encoder_steps:int,
-                 num_heads:int,
-                 num_inputs:int,
-                 total_time_steps:int,
-                 known_categorical_inputs,
-                 static_input_loc,
-                 category_counts,
-                 known_regular_inputs,
-                 input_obs_loc,
-                 use_cnn:bool = False,
-                 kernel_size:int=None,
-                 # stack_size:int = 1,
-                 use_cudnn:bool = False,
-                 dropout_rate:float = 0.1,
-                 future_inputs:bool = False,
-                 return_attention_components:bool = False,
-                 return_sequences:bool=False,
-                 **kwargs):
+    def __init__(
+            self,
+            hidden_units:int,
+            num_encoder_steps:int,
+            num_heads:int,
+            num_inputs:int,
+            total_time_steps:int,
+            known_categorical_inputs,
+            static_input_loc,
+            category_counts,
+            known_regular_inputs,
+            input_obs_loc,
+            use_cnn:bool = False,
+            kernel_size:int=None,
+            # stack_size:int = 1,
+            use_cudnn:bool = False,
+            dropout_rate:float = 0.1,
+            future_inputs:bool = False,
+            return_attention_components:bool = False,
+            return_sequences:bool=False,
+            **kwargs
+    ):
 
         if use_cudnn:
             assert kernel_size is not None
