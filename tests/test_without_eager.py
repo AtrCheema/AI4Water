@@ -13,11 +13,11 @@ from ai4water.datasets import arg_beach, load_nasdaq
 from ai4water import InputAttentionModel, DualAttentionModel
 
 
-def make_and_run(input_model, _layers=None, lookback=12, epochs=3, **kwargs):
+def make_and_run(input_model, _layers=None, lookback=12, batch_size=64, epochs=3, **kwargs):
 
     model = input_model(
         verbosity=0,
-        batch_size=64,
+        batch_size=batch_size,
         lookback=lookback,
         lr=0.001,
         epochs=epochs,
@@ -39,6 +39,7 @@ class TestModels(unittest.TestCase):
 
         prediction = make_and_run(InputAttentionModel, data=arg_beach())
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
 
     # def test_InputAttentionModel_with_drop_remainder(self):
     #
@@ -53,6 +54,18 @@ class TestModels(unittest.TestCase):
             data=load_nasdaq(inputs=['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK'])
         )
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
+
+    def test_da_without_prev_y(self):
+        prediction = make_and_run(
+            DualAttentionModel,
+            data=arg_beach(),
+            use_true_prev_y=False,
+            batch_size=8,
+            drop_remainder=True
+        )
+        return
+
 
 
 if __name__ == "__main__":
