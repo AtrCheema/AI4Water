@@ -41,7 +41,7 @@ params = {
     'hidden_units': 8,
     'dropout_rate': 0.1,
     'num_heads': 4,
-    'stack_size': 1,
+    #'stack_size': 1,
     'use_cudnn': False,
     'future_inputs': True,
     'return_sequences': True,
@@ -153,6 +153,41 @@ class Test_TFT(unittest.TestCase):
         #assert model.forecast_step == 0
         #assert model.num_outs == len(quantiles)
         self.assertEqual(num_paras, 5484)
+        return
+
+    def test_use_cnn(self):
+        updated_params = {'category_counts': [],
+                          'total_time_steps': num_encoder_steps,
+                          'input_obs_loc': [],
+                          'static_input_loc': [],
+                          'known_categorical_inputs': [],
+                          'known_regular_inputs': [0,1,2,3,4],
+                          'future_inputs': False,
+                          'use_cnn': True,
+                          'use_cudnn': False,
+                          'kernel_size': 3
+                          }
+        params.update(updated_params)
+
+        layers = {
+            "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs']), 'name': "Model_Input"}},
+            "TemporalFusionTransformer": {"config": params},
+            "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
+            "Dense": {"config": {"units": output_size * len(quantiles)}},
+            'Reshape': {'target_shape': (3, 1)},
+        }
+
+        model = Model(model={'layers':layers},
+                      input_features=['inp1', 'inp2', 'inp3', 'inp4', 'inp5'],
+                      output_features=['out1', 'out2', 'out3'],
+                      verbosity=0)
+        xx = np.random.random((200,  int(params['total_time_steps']), int(params['num_inputs'])))
+        yy = np.random.random((200, len(quantiles), 1))
+
+        if model.api == 'functional':
+            model._model.fit(x=xx,y=yy, validation_split=0.3, verbose=0)
+        else:
+            model.fit_fn(x=xx,y=yy, validation_split=0.3, verbose=0,  **kwargs)
         return
 
 if __name__ == "__main__":

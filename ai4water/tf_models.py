@@ -29,19 +29,19 @@ class DualAttentionModel(FModel):
             dictionary defining configuration of encoder/input attention. It must
             have following three keys
 
-                - n_h
-                - n_s
-                - m
-                - enc_lstm1_act
-                - enc_lstm2_act
+                - n_h: 20
+                - n_s: 20
+                - m: 20
+                - enc_lstm1_act: None
+                - enc_lstm2_act: None
 
         dec_config : dict
             dictionary defining configuration of decoder/output attention. It must have
             following three keys
 
-                - p
-                - n_hde0
-                - n_sde0
+                - p: 30
+                - n_hde0: None
+                - n_sde0: None
 
         use_true_prev_y : bool
             Whether to use the prvious target/observation as input or not. If
@@ -49,8 +49,19 @@ class DualAttentionModel(FModel):
             of shape (num_examples, lookback, num_inputs) while the second input
             will be of shape (num_examples, lookback-1, 1). This second input is
             supposed to be the target variable observed at previous time step.
+
         kwargs :
             The keyword arguments for the ai4water.Model class
+
+    Example
+    -------
+    ```python
+    >>> from ai4water import DualAttentionModel
+    >>> from ai4water.datasets import arg_beach
+    >>> model = DualAttentionModel(data=arg_beach(),
+    >>>                            use_true_prev_y=False, batch_size=4, drop_remainder=True, lookback=5)
+    >>> model.fit()
+    ```
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m

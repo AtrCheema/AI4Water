@@ -15,7 +15,7 @@ plugins:
 - mkdocstrings
 
 pages:
-- Model: 'modelbuilding.md'
+- models: 'modelbuilding.md'
 - Experiments: 'experiments.md'
 - Hyperparameter optimization: 'hpo.md'
 - preprocessing: 'preprocessing.md'

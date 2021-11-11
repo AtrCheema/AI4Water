@@ -1894,7 +1894,8 @@ class BaseModel(NN, Plots):
         >>> from ai4water.datasets import arg_beach
         >>> from ai4water import Model
         >>> model = Model(model="xgboostregressor", data=arg_beach())
-        >>> best_transformations = model.optimize_transformations(exclude="tide_cm")
+        >>> optimizer = model.optimize_transformations(exclude="tide_cm")
+        >>> print(optimizer.best_paras())  # find the best/optimized transformations
         >>> model.fit()
         >>> model.predict()
         ```

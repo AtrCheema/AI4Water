@@ -8,7 +8,7 @@ __all__ = ['TemporalFusionTransformer']
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.keras.layers import TimeDistributed, Dense, InputLayer, Embedding
+from tensorflow.keras.layers import TimeDistributed, Dense, InputLayer, Embedding, Conv1D, Flatten
 
 from ai4water.models.utils import concatenate, gated_residual_network, add_and_norm, apply_gating_layer, get_decoder_mask
 from ai4water.models.utils import InterpretableMultiHeadAttention
@@ -21,9 +21,9 @@ stack = tf.keras.backend.stack
 class TemporalFusionTransformer(tf.keras.layers.Layer):
     """
     Implements the model of https://arxiv.org/pdf/1912.09363.pdf
-    This layer applies variable selection three times. First on static inputs, then on encoder inputs and then
-    on decoder inputs. The corresponding weights are called `static_weights`, `historical_weights` and `future_weights`
-    respectively.
+    This layer applies variable selection three times. First on static inputs,
+    then on encoder inputs and then on decoder inputs. The corresponding weights
+    are called `static_weights`, `historical_weights` and `future_weights` respectively.
 
     1, 11, 21, 31, a
     2, 12, 22, 32, b
@@ -31,26 +31,43 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
     4, 14, 24, 34, d
 
     Arguments:
-        hidden_units: int, determines the depth/weight matrices size in TemporalFusionTransformer.
-        num_encoder_steps: int, lookback steps used in the model.
-        num_heads: int, >=1, number of attention heads to be used in MultiheadAttention layer.
+        hidden_units : int
+            determines the depth/weight matrices size in TemporalFusionTransformer.
+        num_encoder_steps : int
+            lookback steps used in the model.
+        num_heads : int
+            >=1, number of attention heads to be used in MultiheadAttention layer.
         num_inputs: int, number of input features
-        total_time_steps: int, > num_encoder_steps, This is sum of lookback steps + forecast length. Forecast length
-                          is the number of horizons to be predicted.
-        known_categorical_inputs: list, a,b,c
-        obs_inputs
-        unknown_inputs
-        static_inputs
-        static_input_loc: None/list, location of static inputs
-        category_counts: list, Number of categories per categorical variable
-        use_cudnn: bool, default False, Whether to use Keras CuDNNLSTM or standard LSTM layers
-        dropout_rate: float, default 0.1, >=0 and <=1 amount of dropout to be used at GRNs.
-        future_inputs: bool, whether the given data contains futre known observations or not.
-        return_attention_components: bool, If True, then this layer (upon its call) will return outputs + attention
-                                     componnets. Attention components are dictionary consisting of following keys
-                                     and their values as numpy arrays.
+        total_time_steps: int,
+            > num_encoder_steps, This is sum of lookback steps + forecast length.
+            Forecast length is the number of horizons to be predicted.
+        known_categorical_inputs: list
+            a,b,c
+        input_obs_loc :
+        unknown_inputs :
+        static_inputs :
+        static_input_loc : None/list
+            location of static inputs
+        category_counts: list
+            Number of categories per categorical variable
+        use_cnn bool:
+            whether to use cnn or not. If not, then lstm will be used otherwise
+            1D CNN will be used with "causal" padding.
+        kernel_size int:
+            kernel size for 1D CNN. Only valid if use_cnn is True.
+        use_cudnn : bool
+            default False, Whether to use Keras CuDNNLSTM or standard LSTM layers
+        dropout_rate :  float
+            default 0.1, >=0 and <=1 amount of dropout to be used at GRNs.
+        future_inputs : bool
+            whether the given data contains futre known observations or not.
+        return_attention_components: bool,
+            If True, then this layer (upon its call) will return outputs + attention
+            componnets. Attention components are dictionary consisting of following keys
+            and their values as numpy arrays.
 
-        return_sequences: bool, if True, then output and attention weights will consist of encoder_lengths/lookback
+        return_sequences: bool,
+            if True, then output and attention weights will consist of encoder_lengths/lookback
                           and decoder_length/forecast_len. Otherwise predictions for only decoder_length will be
                           returned.
 
@@ -74,12 +91,14 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                  num_heads:int,
                  num_inputs:int,
                  total_time_steps:int,
-                 known_regular_inputs,
-                 input_obs_loc,
+                 known_categorical_inputs,
                  static_input_loc,
                  category_counts,
-                 known_categorical_inputs,
-                 stack_size:int = 1,
+                 known_regular_inputs,
+                 input_obs_loc,
+                 use_cnn:bool = False,
+                 kernel_size:int=None,
+                 # stack_size:int = 1,
                  use_cudnn:bool = False,
                  dropout_rate:float = 0.1,
                  future_inputs:bool = False,
@@ -87,8 +106,13 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
                  return_sequences:bool=False,
                  **kwargs):
 
+        if use_cudnn:
+            assert kernel_size is not None
+
         self.time_steps = total_time_steps
         self.input_size = num_inputs
+        self.use_cnn = use_cnn
+        self.kernel_size=kernel_size
         self._known_regular_input_idx = known_regular_inputs  # [1,2,3]
         self._input_obs_loc = input_obs_loc # [0]
         self._static_input_loc = static_input_loc  #[3,4]
@@ -101,7 +125,7 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         self.dropout_rate = float(dropout_rate)
         self.encoder_steps = num_encoder_steps  # historical steps/lookback steps
         self.num_heads = int(num_heads)
-        self.num_stacks= int(stack_size)
+        # self.num_stacks= int(stack_size) # todo
 
         self.future_inputs = future_inputs
         self.return_attention_components = return_attention_components
@@ -304,61 +328,58 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
 
             return temporal_ctx, sparse_weights, static_gate
 
-        historical_features, historical_weights, historical_gate = lstm_combine_and_mask(historical_inputs,
-                                                                         static_context_variable_selection,
-                                                                         _name='history')
+        historical_features, historical_weights, historical_gate = lstm_combine_and_mask(
+            historical_inputs,
+            static_context_variable_selection,
+            _name='history'
+        )
         # historical_features.shape = (num_examples, encoder_steps, hidden_units)
         # historical_flags (num_examples, encoder_steps, 1, 4)
         future_features = None
         future_weights = None
         if future_inputs is not None:
-            future_features, future_weights, future_gate = lstm_combine_and_mask(future_inputs,
-                                                                     static_context_variable_selection,
-                                                                     _name='future')
+            future_features, future_weights, future_gate = lstm_combine_and_mask(
+                future_inputs,
+                static_context_variable_selection,
+                _name='future')
 
         # future_features = (num_examples, decoder_length, hidden_units)
         # future_flags = (num_examples, decoder_length, 1, num_outputs)
 
-        # LSTM layer
-        def get_lstm(return_state, _name=None):
-            """Returns LSTM cell initialized with default parameters."""
-            if self.use_cudnn:
-                lstm = tf.keras.layers.CuDNNLSTM(
-                    self.hidden_units,
-                    return_sequences=True,
-                    return_state=return_state,
-                    stateful=False,
-                    name=_name
-                )
-            else:
-                lstm = tf.keras.layers.LSTM(
-                    self.hidden_units,
-                    return_sequences=True,
-                    return_state=return_state,
-                    stateful=False,
-                    # Additional params to ensure LSTM matches CuDNN, See TF 2.0 :
-                    # (https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM)
-                    activation='tanh',
-                    recurrent_activation='sigmoid',
-                    recurrent_dropout=0,
-                    unroll=False,
-                    use_bias=True,
-                    name=_name
-                )
-            return lstm
+        initial_states=None
+        if static_context_state_h is not None:
+            initial_states = [static_context_state_h, static_context_state_c]
 
-        initial_states = [static_context_state_h, static_context_state_c] if static_context_state_h is not None else None
-        history_lstm, state_h, state_c = get_lstm(return_state=True, _name='history')(historical_features,
-                                                                     initial_state=initial_states)
+        if self.use_cnn:
+            history_lstm = build_cnn(historical_features,
+                                     self.hidden_units,
+                                     self.kernel_size,
+                                     return_state=True,
+                                     _name="history",
+                                     use_cudnn=self.use_cudnn)
+        else:
+            lstm = get_lstm(self.hidden_units, return_state=True, _name="history", use_cudnn=self.use_cudnn)
+            history_lstm, state_h, state_c = lstm(historical_features, initial_state=initial_states)
         # history_lstm = (num_examples, encoder_steps, hidden_units)
 
         if future_features is not None:
-            future_lstm = get_lstm(return_state=False, _name='future')(
-                future_features, initial_state=[state_h, state_c])
+            if self.use_cnn:
+                future_lstm = build_cnn(future_features, self.hidden_units, self.kernel_size,
+                                        return_state=False, _name="Future", use_cudnn=self.use_cudnn)
+
+            else:
+                lstm = get_lstm(self.hidden_units, return_state=False, _name="Future", use_cudnn=self.use_cudnn)
+                future_lstm = lstm(future_features, initial_state=[state_h, state_c])
+
             # future_lstm = (num_examples, decoder_length, hidden_units)
-            lstm_output = concatenate([history_lstm, future_lstm], axis=1, name='history_plus_future_lstm')  # (num_examples, time_steps, hidden_units)
+
+            lstm_output = concatenate([history_lstm, future_lstm],
+                                      axis=1,
+                                      name='history_plus_future_lstm')  # (num_examples, time_steps, hidden_units)
             # Apply gated skip connection
-            input_embeddings = concatenate([historical_features, future_features], axis=1, name="history_plus_future_embeddings"
+            input_embeddings = concatenate([historical_features, future_features],
+                                           axis=1,
+                                           name="history_plus_future_embeddings"
                                            )  # (num_examples, time_steps, hidden_units)
         else:
             lstm_output = history_lstm
@@ -588,3 +609,40 @@ class TemporalFusionTransformer(tf.keras.layers.Layer):
         known_combined_layer = stack(known_regular_inputs + known_categorical_inputs, axis=-1)
 
         return unknown_inputs, known_combined_layer, obs_inputs, static_inputs
+
+
+def build_cnn(inputs, filters, kernel_size, return_state, _name, use_cudnn=True):
+
+    cnn = Conv1D(filters=filters, kernel_size=kernel_size, padding="causal", name=_name)
+    cnn_output = cnn(inputs)
+
+    return cnn_output
+
+
+# LSTM layer
+def get_lstm(hidden_units, return_state, _name=None, use_cudnn=True):
+    """Returns LSTM cell initialized with default parameters."""
+    if use_cudnn:
+        lstm = tf.keras.layers.CuDNNLSTM(
+            hidden_units,
+            return_sequences=True,
+            return_state=return_state,
+            stateful=False,
+            name=_name
+        )
+    else:
+        lstm = tf.keras.layers.LSTM(
+            hidden_units,
+            return_sequences=True,
+            return_state=return_state,
+            stateful=False,
+            # Additional params to ensure LSTM matches CuDNN, See TF 2.0 :
+            # (https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM)
+            activation='tanh',
+            recurrent_activation='sigmoid',
+            recurrent_dropout=0,
+            unroll=False,
+            use_bias=True,
+            name=_name
+        )
+    return lstm
