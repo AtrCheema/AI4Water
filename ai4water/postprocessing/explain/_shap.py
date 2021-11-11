@@ -71,7 +71,10 @@ class ShapExplainer(ExplainerMixin):
         "LinearExplainer",
         "AdditiveExplainer",
         "GPUTreeExplainer",
-        "GradientExplainer"
+        "GradientExplainer",
+        "PermutationExplainer",
+        "SamplingExplainer",
+        "PartitionExplainer"
     ]
 
     def __init__(
@@ -199,7 +202,9 @@ class ShapExplainer(ExplainerMixin):
             assert layer is None
 
         if inf_framework == "DL" and isinstance(explainer, str):
-            assert explainer in ("DeepExplainer", "GradientExplainer"), f"invalid explainer {inf_framework}"
+            assert explainer in ("DeepExplainer",
+                                 "GradientExplainer",
+                                 "PermutationExplainer"), f"invalid explainer {inf_framework}"
 
         return inf_framework
 
@@ -225,6 +230,9 @@ class ShapExplainer(ExplainerMixin):
 
             elif explainer == "GradientExplainer":
                 explainer = self._get_gradient_explainer()
+
+            elif explainer == "PermutationExplainer":
+                explainer = shap.PermutationExplainer(self.model, self.data)
 
             else:
                 explainer = getattr(shap, explainer)(self.model)
@@ -293,8 +301,13 @@ class ShapExplainer(ExplainerMixin):
         return
 
     def get_shap_values(self, data, **kwargs):
-        if self._framework == "DL":
+
+        if self.explainer.__class__.__name__ in ["Permutation"]:
+            return self.explainer(data)
+
+        elif self._framework == "DL":
             return self._shap_values_dl(data, **kwargs)
+
         return self.explainer.shap_values(data)
 
     def _shap_values_dl(self, data, ranked_outputs=None, **kwargs):
