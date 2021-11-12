@@ -62,7 +62,7 @@ from .utils import get_one_tpe_x_iter
 from ai4water.utils.utils import Jsonize, dateandtime_now
 from .utils import skopt_space_from_hp_space
 from .utils import post_process_skopt_results
-from .utils import Categorical, Real, Integer
+from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters
 
