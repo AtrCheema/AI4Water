@@ -1,13 +1,11 @@
-__all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel"]
+__all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel"]
 
 import os
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
 from ai4water.backend import tf
-from ai4water.main import Model
 from ai4water.functional import Model as FModel
 from ai4water.backend import keras
 from ai4water.utils.utils import print_something
@@ -19,10 +17,30 @@ layers = keras.layers
 KModel = keras.models.Model
 
 
+class DALSTM(keras.layers.Layer):
+
+    def __init__(
+            self,
+            enc_config:dict = None,
+            dec_config:dict = None,
+            drop_remainder:bool = True,
+            teacher_forcing:bool = False,
+            **kwargs
+    ):
+        self.enc_config = enc_config
+        self.dec_config = dec_config
+        self.drop_remainder = drop_remainder
+        self.teacher_forcing = teacher_forcing
+
+        super().__init__(**kwargs)
+        raise NotImplementedError
+
+
 class DualAttentionModel(FModel):
     """
     This is Dual-Attention LSTM model of [Qin et al., 2017](https://arxiv.org/abs/1704.02971).
-    The code is adopted from [this](https://github.com/chensvm/A-Dual-Stage-Attention-Based-Recurrent-Neural-Network-for-Time-Series-Prediction) repository
+    The code is adopted from [this](https://github.com/chensvm/A-Dual-Stage-Attention-Based-Recurrent-Neural-Network-for-Time-Series-Prediction)
+    repository
 
     Arguments:
         enc_config : dict
@@ -96,7 +114,6 @@ class DualAttentionModel(FModel):
             assert isinstance(dec_config, dict)
         self.enc_config = enc_config
         self.dec_config = dec_config
-        #self.use_true_prev_y = use_true_prev_y
 
         super(DualAttentionModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
@@ -106,25 +123,28 @@ class DualAttentionModel(FModel):
 
         self.config['dec_config'] = self.dec_config
         self.config['enc_config'] = self.enc_config
+        setattr(self, 'batch_size', self.config['batch_size'])
+        setattr(self, 'drop_remainder', self.config['drop_remainder'])
+        setattr(self, 'teacher_forcing', self.config['teacher_forcing'])
 
         self.de_LSTM_cell = layers.LSTM(self.dec_config['p'], return_state=True, name='decoder_LSTM')
         self.de_densor_We = layers.Dense(self.enc_config['m'])
 
         if self.config['drop_remainder']:
-            h_de0 = tf.zeros((self.config['batch_size'], self.dec_config['n_hde0']), name='dec_1st_hidden_state')
-            s_de0 = tf.zeros((self.config['batch_size'], self.dec_config['n_sde0']), name='dec_1st_cell_state')
+            h_de0 = tf.zeros((self.batch_size, self.dec_config['n_hde0']), name='dec_1st_hidden_state')
+            s_de0 = tf.zeros((self.batch_size, self.dec_config['n_sde0']), name='dec_1st_cell_state')
         else:
             h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
             s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
 
         input_y = None
-        if self.config['teacher_forcing'] and self.config['drop_remainder']:
-            input_y = layers.Input(batch_shape=(self.config['batch_size'], self.lookback - 1, self.num_outs), name='input_y')
-        elif not self.config['drop_remainder']:
+        if self.teacher_forcing and self.drop_remainder:
+            input_y = layers.Input(batch_shape=(self.batch_size, self.lookback - 1, self.num_outs), name='input_y')
+        elif not self.drop_remainder:
             input_y = layers.Input(shape=(self.lookback - 1, self.num_outs), name='input_y')
 
-        if self.config['drop_remainder']:
-            enc_input = keras.layers.Input(batch_shape=(self.config['batch_size'], self.lookback, self.num_ins), name='enc_input')
+        if self.drop_remainder:
+            enc_input = keras.layers.Input(batch_shape=(self.batch_size, self.lookback, self.num_ins), name='enc_input')
         else:
             enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input')
 
@@ -172,14 +192,14 @@ class DualAttentionModel(FModel):
 
         # initialize the first cell state
         if s0 is None:
-            if self.config['drop_remainder']:
-                s0 =  tf.zeros((self.config['batch_size'], config['n_s']), name=f'enc_first_cell_state_{suf}')
+            if self.drop_remainder:
+                s0 =  tf.zeros((self.batch_size, config['n_s']), name=f'enc_first_cell_state_{suf}')
             else:
                 s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_' + suf)
         # initialize the first hidden state
         if h0 is None:
-            if self.config['drop_remainder']:
-                h0 = tf.zeros((self.config['batch_size'], config['n_h']), name=f'enc_first_hidden_state_{suf}')
+            if self.drop_remainder:
+                h0 = tf.zeros((self.batch_size, config['n_h']), name=f'enc_first_hidden_state_{suf}')
             else:
                 h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_' + suf)
 
@@ -256,7 +276,7 @@ class DualAttentionModel(FModel):
         _concat = layers.Concatenate(name='eq_12_'+str(t))([_h_de_prev, _s_de_prev])  # (None,1,2p)
         result1 = self.de_densor_We(_concat)   # (None,1,m)
         result1 = layers.RepeatVector(self.lookback)(result1)  # (None,T,m)
-        result2 = MyDot(self.config['enc_config']['m'])(_h_en_all)
+        result2 = MyDot(self.enc_config['m'])(_h_en_all)
 
         result3 = layers.Add()([result1, result2])  # (None,T,m)
         result4 = layers.Activation(activation='tanh')(result3)  # (None,T,m)
@@ -274,7 +294,7 @@ class DualAttentionModel(FModel):
             _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (batch_size, 1, 20)
 
             # if we want to use the true value of target of previous timestep as input then we will use _y
-            if self.config['teacher_forcing']:
+            if self.teacher_forcing:
                 y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)  # (batch_size, lookback, 1) -> (batch_size, 1)
                 y_prev = layers.Reshape((1, self.num_outs))(y_prev)   # -> (batch_size, 1, 1)
 
@@ -292,7 +312,7 @@ class DualAttentionModel(FModel):
 
     def fetch_data(self, source, **kwargs):
 
-        if self.config['teacher_forcing']:
+        if self.teacher_forcing:
             self.dh.teacher_forcing = True
             x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
             self.dh.teacher_forcing = False
@@ -300,9 +320,9 @@ class DualAttentionModel(FModel):
             x, labels = getattr(self.dh, f'{source}_data')(**kwargs)
             prev_y = None
 
-        n_s_feature_dim = self.config['enc_config']['n_s']
-        n_h_feature_dim = self.config['enc_config']['n_h']
-        p_feature_dim = self.config['dec_config']['p']
+        n_s_feature_dim = self.enc_config['n_s']
+        n_h_feature_dim = self.enc_config['n_h']
+        p_feature_dim = self.dec_config['p']
 
         if kwargs.get('use_datetime_index', False):  # during deindexification, first feature will be removed.
             n_s_feature_dim += 1
@@ -314,14 +334,14 @@ class DualAttentionModel(FModel):
                 prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
 
         other_inputs = []
-        if not self.config['drop_remainder']:
+        if not self.drop_remainder:
             s0 = np.zeros((x.shape[0], n_s_feature_dim))
             h0 = np.zeros((x.shape[0], n_h_feature_dim))
 
             h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
             other_inputs = [s0, h0, s_de0, h_de0]
 
-        if self.config['teacher_forcing']:
+        if self.teacher_forcing:
             return [x, prev_y] + other_inputs, prev_y, labels
         else:
             return [x] + other_inputs, labels
@@ -440,6 +460,8 @@ class InputAttentionModel(DualAttentionModel):
     def build(self, input_shape=None):
 
         self.config['enc_config'] = self.enc_config
+        setattr(self, 'batch_size', self.config['batch_size'])
+        setattr(self, 'drop_remainder', self.config['drop_remainder'])
 
         setattr(self, 'method', 'input_attention')
         print('building input attention model')
@@ -454,7 +476,7 @@ class InputAttentionModel(DualAttentionModel):
             print('predictions: ', predictions)
 
         inputs = [enc_input]
-        if not self.config['drop_remainder']:
+        if not self.drop_remainder:
             inputs = inputs + [s0, h0]
         self._model = self.compile(model_inputs=inputs, outputs=predictions)
 
@@ -575,36 +597,3 @@ class OutputAttentionModel(DualAttentionModel):
         self.process_results(test_label, predicted, pref, **plot_args)
 
         return predicted, test_label
-
-
-class NBeatsModel(Model):
-    """
-    original paper https://arxiv.org/pdf/1905.10437.pdf which is implemented by https://github.com/philipperemy/n-beats
-    must be used with normalization
-    """
-
-    def training_data(self, data=None, data_keys=None, **kwargs):
-
-        exo_x, x, label = self.fetch_data(data=self.data,
-                                          inps=self.in_cols,
-                                          outs=self.out_cols,
-                                          transformation=self.config['transformation'],
-                                          **kwargs)
-
-        return [x, exo_x[:, :, 0:-1]], exo_x[:, :, 0:-1], label   # TODO  .reshape(-1, 1, 1) ?
-
-    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
-        return self.training_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
-
-    def get_batches(self, df, ins, outs):
-        df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
-        return self.prepare_batches(df, ins, outs)
-
-    def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
-
-        _, inputs, dt_index = Model.deindexify_input_data(self,
-                                                          inputs,
-                                                          sort=sort,
-                                                          use_datetime_index=use_datetime_index)
-
-        return inputs[0], inputs, dt_index

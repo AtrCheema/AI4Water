@@ -6,12 +6,26 @@ Concatenate, Add, Reshape = keras.layers.Concatenate, keras.layers.Add, keras.la
 Input, Dense, Lambda, Subtract = keras.layers.Input, keras.layers.Dense, keras.layers.Lambda, keras.layers.Subtract
 Model = keras.models.Model
 
+
 class NBeats(keras.layers.Layer):
     """
     This implementation is same as that of https://github.com/philipperemy/n-beats/tree/master/nbeats_keras
     except that here NBeats can be used as a layer.
     The output shape will be (batch_size, self.forecast_length, self.input_dim)
     Some other changes have also been done to make this layer compatable with ai4water.
+
+    Arguments:
+        units int:
+        lookback int:
+        forecast_length int:
+        stack_types :
+        nb_blocks_per_stack int:
+        theta_dim :
+        share_weights_in_stack bool:
+        nb_harmonics :
+        num_inputs int:
+        num_exo_inputs int:
+        kwargs :
 
     Example
     ------

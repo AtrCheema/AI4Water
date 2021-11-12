@@ -13,7 +13,6 @@ except AttributeError:
 try:
     from ai4water.tf_models import InputAttentionModel
     from ai4water.tf_models import DualAttentionModel
-    from ai4water.tf_models import NBeatsModel
 except AttributeError:
     print("\n{}Tensorflow models could not be imported {}\n".format(10 * '*', 10 * '*'))
 

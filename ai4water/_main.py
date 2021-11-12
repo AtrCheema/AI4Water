@@ -3,7 +3,7 @@ import json
 import time
 import random
 import warnings
-from typing import Union, Callable, Tuple, Any
+from typing import Union, Callable, Tuple
 from types import MethodType
 
 try:
@@ -597,9 +597,7 @@ class BaseModel(NN, Plots):
                     callback['wandb_callback'] = WandbCallback(monitor=monitor,
                                                                training_data=train_data if add_train_data else None,
                                                                validation_data=validation_data if add_val_data else None,
-                                                               **wandb_config
-                                                               )
-
+                                                               **wandb_config)
         return callback
 
     def post_fit_wandb(self):
@@ -662,9 +660,8 @@ class BaseModel(NN, Plots):
             metrics = ClassificationMetrics(true, predicted, categorical=True)
 
             dict_to_file(self.path,
-                             errors=metrics.calculate_all(),
-                             name=f"{prefix}_{dateandtime_now()}.json"
-                             )
+                         errors=metrics.calculate_all(),
+                         name=f"{prefix}_{dateandtime_now()}.json")
         else:
             if predicted.ndim == 1:
                 predicted = predicted.reshape(-1, 1)
@@ -750,7 +747,10 @@ class BaseModel(NN, Plots):
                 df.to_csv(os.path.join(fpath, fname), index_label='index')
 
                 annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
-                visualizer.plot_results(t, p, name=prefix + out + '_' + str(h), where=out,
+                visualizer.plot_results(t,
+                                        p,
+                                        name=prefix + out + '_' + str(h),
+                                        where=out,
                                         annotation_key=metric_names.get(annotate_with, annotate_with),
                                         annotation_val=annotation_val,
                                         show=self.verbosity)
@@ -1389,21 +1389,6 @@ class BaseModel(NN, Plots):
                     metrics.append(m)
         return metrics
 
-    def get_2d_batches(self, data, ins, outs):
-        if not isinstance(data, np.ndarray):
-            if isinstance(data, pd.DataFrame):
-                data = data.values
-            else:
-                raise TypeError(f"unknown data type {data.__class__.__name__} for data ")
-
-        # for case when there is not lookback, i.e first layer is dense layer and takes 2D input
-        input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
-
-        assert self.lookback == 1, """lookback should be one for MLP/Dense layer based model, but it is {}
-            """.format(self.lookback)
-        return self.check_nans(data, input_x, input_y, np.expand_dims(label_y, axis=2), outs, self.lookback,
-                               self.config['allow_nan_labels'])
-
     def view(
             self,
             layer_name:Union[list, str]=None,
@@ -1491,32 +1476,6 @@ class BaseModel(NN, Plots):
          """
         from ai4water.postprocessing.explain import explain_model
         return explain_model(self, *args, **kwargs)
-
-    def prepare_batches(self, df: pd.DataFrame, ins, outs):
-
-        assert self.num_outs == 1
-        target = self.config['output_features'][0]
-
-        x = np.zeros((len(df), self.lookback, df.shape[1] - 1))
-        prev_y = np.zeros((len(df), self.lookback, 1))
-
-        for i, name in enumerate(list(df.columns[:-1])):
-            for j in range(self.lookback):
-                x[:, j, i] = df[name].shift(self.lookback - j - 1).fillna(method="bfill")
-
-        for j in range(self.lookback):
-            prev_y[:, j, 0] = df[target].shift(self.lookback - j - 1).fillna(method="bfill")
-
-        fl = self.config['forecast_len']
-        _y = np.zeros((df.shape[0], fl))
-        for i in range(df.shape[0] - fl):
-            _y[i - 1, :] = df[target].values[i:i + fl]
-
-        input_x = x[self.lookback:-fl, :]
-        prev_y = prev_y[self.lookback:-fl, :]
-        y = _y[self.lookback:-fl, :].reshape(-1, outs, self.forecast_len)
-
-        return self.check_nans(df, input_x, prev_y, y, outs, self.lookback, self.config['allow_nan_labels'])
 
     def save_indices(self):
         indices = {}
