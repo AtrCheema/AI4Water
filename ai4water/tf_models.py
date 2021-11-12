@@ -77,7 +77,7 @@ class DualAttentionModel(FModel):
     >>> from ai4water import DualAttentionModel
     >>> from ai4water.datasets import arg_beach
     >>> model = DualAttentionModel(data=arg_beach(),
-    >>>                            use_true_prev_y=False, batch_size=4, drop_remainder=True, lookback=5)
+    >>>                            teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
     >>> model.fit()
     ```
     """
