@@ -373,13 +373,21 @@ def _make_model(**kwargs):
     config = {key:val['default'] for key,val in data_args.items()}
 
     opt_paras = {}
+    # because there are two kinds of hpos which can be optimized
+    # some can be in model config and others are in main config
+    original_other_conf = {}
+    original_mod_conf = {}
 
     for key, val in kwargs.items():
         arg_name = key.lower()  # todo, why this?
 
         if val.__class__.__name__ in ['Integer', "Real", "Categorical"]:
             opt_paras[key] = val
-            val = val.rvs(1).items()[0]
+            val2 = val
+            val = jsonize(val.rvs(1)[0])
+
+            val2.name = key
+            original_other_conf[key] = val2
 
         if key == 'model':
             val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
@@ -417,7 +425,7 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
         if key in data_args:
             _data_config[key] = val
 
-    return config, _data_config, opt_paras, original_mod_conf
+    return config, _data_config, opt_paras, {'model': original_mod_conf, 'other': original_other_conf}
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):

@@ -108,10 +108,13 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
         self.original_model = model._original_model_config
 
     def update(self, config, suggestions):
-
-        new_model_config = update_model_config(self.original_model.copy(), suggestions)
-
+        # first update the model config parameters
+        new_model_config = update_model_config(self.original_model['model'].copy(), suggestions)
         config['model'] = {self.algo_type: new_model_config}
+
+        # now update hyperparameters which are not part of model config
+        new_other_config = update_model_config(self.original_model['other'].copy(), suggestions)
+        config.update(new_other_config)
 
         return config
 

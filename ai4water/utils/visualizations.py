@@ -330,7 +330,6 @@ def regplot(
                      xy=(0.3, 0.95),
                      xycoords='axes fraction',
                      horizontalalignment='right', verticalalignment='top', fontsize=16)
-
     _regplot(x,
              y,
              ax=axis,
@@ -429,7 +428,6 @@ def linear_model(
     return reg.predict(inputs)
 
 
-
 def murphy_diagram(
         observed,
         predicted,
@@ -477,7 +475,8 @@ def murphy_diagram(
         matplotlib axis
 
     Example
-    ------
+    -------
+    ```python
     >>> import numpy as np
     >>> from ai4water.utils.visualizations import murphy_diagram
     >>> yy = np.random.randint(1, 1000, 100)
@@ -486,6 +485,7 @@ def murphy_diagram(
     >>> murphy_diagram(yy, ff1, ff2)
     ...
     >>> murphy_diagram(yy, ff1, ff2, plot_type="diff")
+    ```
     """
     assert plot_type in ("scores", "diff")
     assert xaxis in ("theta", "time")
@@ -580,13 +580,13 @@ def _plot_diff(theta, s1, s2, n, ax, line_color="black", fill_color="lightgray")
 
 
 def fdc_plot(
-        sim,
-        obs,
+        sim:Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        obs:Union[list, np.ndarray, pd.Series, pd.DataFrame],
         ax=None,
         legend=True,
         xlabel:str = "Exceedence [%]",
-        ylabel:str = "Flow"
-
+        ylabel:str = "Flow",
+        show:bool = True
 ):
     """Plots flow duration curve
     Arguments:
@@ -602,6 +602,8 @@ def fdc_plot(
             label to set on x-axis. set to None for no x-label
         ylabel :
             label to set on y-axis
+        show :
+            whether to show the plot or not
 
     Example
     -------
@@ -613,6 +615,7 @@ def fdc_plot(
     >>> observed = np.random.random(100)
     >>> fdc_plot(simulated, observed)
     >>> plt.show()
+    ```
     """
 
     sim = to_1d_array(sim)
@@ -636,6 +639,9 @@ def fdc_plot(
         ax.set_xlabel(xlabel)
     if ylabel is not None:
         ax.set_ylabel(ylabel)
+
+    if show:
+        plt.show()
 
     return ax
 

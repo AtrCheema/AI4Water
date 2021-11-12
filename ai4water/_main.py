@@ -1802,9 +1802,13 @@ class BaseModel(NN, Plots):
         algo_type = list(self.config['model'].keys())[0]
 
         if update_config:
-            new_model_config = update_model_config(self._original_model_config,
+            new_model_config = update_model_config(self._original_model_config['model'],
                                              _optimizer.best_paras())
             self.config['model'][algo_type] = new_model_config
+
+            new_other_config = update_model_config(self._original_model_config['other'],
+                                             _optimizer.best_paras())
+            self.config.update(new_other_config)
 
         return _optimizer
 

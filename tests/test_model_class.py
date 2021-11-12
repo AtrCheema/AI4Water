@@ -27,6 +27,15 @@ x, y = dh.training_data()
 mlp_model = {"layers": {"Dense": 8, "Dense_1": 1}}
 
 
+def get_lstm():
+
+    m_conf = {"layers": {"LSTM": {"config": {"units": Integer(2, 5, num_samples=10)}},
+                         "relu": {},
+                         "Dense_0": {"units": Integer(2, 5, name="dense1_units", num_samples=10),
+                                     "activation": Categorical(["relu", "tanh"], name="dense1_act")},
+                         "Dense_1": {"config": {"units": 1, "activation": "relu"}}}}
+    return m_conf
+
 def test_user_defined_data(_model):
     # using user defined x
     t,p = _model.predict(x=x, return_true=True)
@@ -450,11 +459,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
     def test_nn_optimize(self):
 
-        m_conf = {"layers": {"LSTM":  {"config": {"units": Integer(2, 5, num_samples=10)}},
-                              "relu": {},
-                              "Dense_0": {"units": Integer(2, 5, name="dense1_units", num_samples=10),
-                                         "activation": Categorical(["relu", "tanh"], name="dense1_act")},
-                              "Dense_1": {"config": {"units": 1, "activation": "relu"}}}}
+        m_conf = get_lstm()
 
         setattr(Model, 'from_check_point', False)
 
@@ -473,6 +478,23 @@ class TestOptimizeHyperparas(unittest.TestCase):
         assert model.config['model']['layers']['Dense_0']['activation'] == optimizer.best_paras()['dense1_act']
         assert model.config['model']['layers']['Dense_0']['units'] == optimizer.best_paras()['dense1_units']
 
+        return
+
+    def test_optimize_with_model_and_other_paras(self):
+        # test that model_config and other in config such as lookback can also be optimzied
+        m_conf = get_lstm()
+
+        setattr(Model, 'from_check_point', False)
+
+        model = Model(model=m_conf,
+                       data=arg_beach(),
+                      lookback=Integer(3, 10, num_samples=10),
+                       verbosity=0,
+                       epochs=5)
+
+        optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=5, process_results=False)
+        assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
+        assert model.config['lookback'] == optimizer.best_paras()['lookback']
         return
 
 
