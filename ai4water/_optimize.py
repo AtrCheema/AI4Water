@@ -114,7 +114,7 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
 
         # now update hyperparameters which are not part of model config
         new_other_config = update_model_config(self.original_model['other'].copy(), suggestions)
-        config.update(new_other_config)
+        config.update(jsonize(new_other_config))
 
         return config
 
