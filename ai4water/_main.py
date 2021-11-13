@@ -154,11 +154,16 @@ class BaseModel(NN, Plots):
                 either `2d` or 3d`.
             wandb_config dict:
                 Only valid if wandb package is installed.  Default value is None,
-                which means, wandb will not be utilized. For simplest case, just pass
-                an empty dictionary. Otherwise use a dictionary of all the
+                which means, wandb will not be utilized. For simplest case, pass
+                a dictionary with at least two keys namely `project` and `entity`.
+                Otherwise use a dictionary of all the
                 arugments for wandb.init, wandb.log and WandbCallback. For
                 `training_data` and `validation_data` in `WandbCallback`, pass
-                `True` instead of providing a tuple.
+                `True` instead of providing a tuple as shown below
+                ```python
+                wandb_config = {'entity': 'entity_name', 'project': 'project_name',
+                                'training_data':True, 'validation_data': True}
+                ```
             seed int:
                 random seed for reproducibility. This can be set to None. The seed
                 is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
@@ -574,11 +579,13 @@ class BaseModel(NN, Plots):
             wandb_config: dict = self.config['wandb_config']
             if wandb_config is not None:
                 self.use_wandb = True
+                for key in ['project', 'entity']:
+                    assert key in wandb_config, f"wandb_config must have {key} key in it"
                 wandb.init(name=os.path.basename(self.path),
-                           project=wandb_config.get('project', 'keras_with_ai4water'),
+                           project=wandb_config.pop('project'),
                            notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
-                           tags=['ai4water', 'keras'],
-                           entity=wandb_config.get('entity', 'atherabbas'))
+                           tags=['ai4water', self.api, self.category, self.problem],
+                           entity=wandb_config.pop('entity'))
 
                 monitor = self.config.get('monitor', 'val_loss')
                 if 'monitor' in wandb_config:
@@ -592,12 +599,12 @@ class BaseModel(NN, Plots):
                 if 'validation_data' in wandb_config:
                     add_val_data = wandb_config.pop('validation_data')
 
-                    assert callable(WandbCallback)
+                assert callable(WandbCallback)
 
-                    callback['wandb_callback'] = WandbCallback(monitor=monitor,
-                                                               training_data=train_data if add_train_data else None,
-                                                               validation_data=validation_data if add_val_data else None,
-                                                               **wandb_config)
+                callback['wandb_callback'] = WandbCallback(monitor=monitor,
+                                                           training_data=train_data if add_train_data else None,
+                                                           validation_data=validation_data if add_val_data else None,
+                                                           **wandb_config)
         return callback
 
     def post_fit_wandb(self):
