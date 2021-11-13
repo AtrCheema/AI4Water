@@ -18,19 +18,16 @@ class LimeExplainer(ExplainerMixin):
     """
     Wrapper around LIME module.
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>model = Model(model="GradientBoostingRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>lime_exp = LimeExplainer(model=model._model,
-    ...                       train_data=model.training_data()[0],
-    ...                       test_data=model.test_data()[0],
-    ...                       mode="regression")
-    >>>lime_exp()
-    ```
+    Example:
+        >>>from ai4water import Model
+        >>>from ai4water.datasets import arg_beach
+        >>>model = Model(model="GradientBoostingRegressor", data=arg_beach())
+        >>>model.fit()
+        >>>lime_exp = LimeExplainer(model=model._model,
+        ...                       train_data=model.training_data()[0],
+        ...                       test_data=model.test_data()[0],
+        ...                       mode="regression")
+        >>>lime_exp()
 
     Attributes:
         explaination_objects : location explaination objects for each individual example/instance

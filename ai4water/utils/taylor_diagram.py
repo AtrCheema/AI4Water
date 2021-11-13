@@ -214,25 +214,26 @@ class TaylorDiagram(object):
         return contours
 
 
-def taylor_plot(trues:dict,
-                simulations:dict,
-                axis_locs:dict=None,
-                cont_kws:dict=None,
-                grid_kws:dict=None,
-                leg_kws:dict=None,
-                axis_fontdict=None,
-                axis_kws:dict=None,
-                **kwargs
-                )->None:
+def taylor_plot(
+        trues:dict,
+        simulations:dict,
+        axis_locs:dict=None,
+        cont_kws:dict=None,
+        grid_kws:dict=None,
+        leg_kws:dict=None,
+        axis_fontdict=None,
+        axis_kws:dict=None,
+        **kwargs
+)->None:
     """
     Helper function to plot [Taylor's](https://doi.org/10.1029/2000JD900719) plot.
 
     Arguments:
-        trues dict :
+        trues:
             a dictionary of length > 1, whose keys are scenarios and values
             represent true/observations at that scenarios. The values can also
             be a dictionary containing `std`, which stands for standard deviation.
-        simulations dict :
+        simulations:
             A dictionary of length > 1 whose keys are scenarios and whose values
             are also dictionary. Each sub-dictionary i.e. dictionary of scenario
             consist of models/simulations.
@@ -313,52 +314,49 @@ def taylor_plot(trues:dict,
             - figsize : tuple defining figsize, default is (11,8).
 
             - show : bool whether to show the plot or not
-    return:
+    Returns:
         None
 
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.utils import taylor_plot
-    >>>np.random.seed(92)
-    >>>taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
-    ...            simulations={
-    ...             "site1":
-    ...                    {"LSTM": np.random.normal(20, 40, 10),
-    ...                     "CNN": np.random.normal(20, 40, 10),
-    ...                     "TCN": np.random.normal(20, 40, 10),
-    ...                     "CNN-LSTM": np.random.normal(20, 40, 10)}
-    ...            },
-    ...    cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
-    ...    grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
-    ...    axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-    ...             'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-    ...             'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
-    ...    leg_kws={'fontsize': 16, 'markerscale': 2}
-    ...            )
-    ```
-    Sometimes we don't have actual true and simulation values as arrays. We can
-    still make Taylor plot using by providing only standard deviation and coefficient
-    of correlation (R) values.
-    ```python
-    >>>trues = {
-    >>>'Scenario 1': {'std': 4.916}}
-    >>>predictions = {
-    ...     'Scenario 1': {
-    ...    'Model 1': {'std': 2.80068, 'corr_coeff': 0.49172, 'pbias': -8.85},
-    ...    'Model 2': {'std': 3.47, 'corr_coeff': 0.67, 'pbias': -19.76},
-    ...    'Model 3': {'std': 3.53, 'corr_coeff': 0.596, 'pbias': 7.81},
-    ...    'Model 4': {'std': 2.36, 'corr_coeff': 0.27, 'pbias': -22.78},
-    ...    'Model 5': {'std': 2.97, 'corr_coeff': 0.452, 'pbias': -7.99}}}
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils import taylor_plot
+        >>> np.random.seed(92)
+        >>> taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
+        ...            simulations={
+        ...             "site1":
+        ...                    {"LSTM": np.random.normal(20, 40, 10),
+        ...                     "CNN": np.random.normal(20, 40, 10),
+        ...                     "TCN": np.random.normal(20, 40, 10),
+        ...                     "CNN-LSTM": np.random.normal(20, 40, 10)}
+        ...            },
+        ...    cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
+        ...    grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
+        ...    axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+        ...             'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+        ...             'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
+        ...    leg_kws={'fontsize': 16, 'markerscale': 2}
+        ...            )
 
-    >>>taylor_plot(trues,
-    ...        predictions,
-    ...        add_grid=True,
-    ...        plot_bias=True,
-    ...        grid_kws={},
-    ...        )
-    ```
+        Sometimes we don't have actual true and simulation values as arrays. We can
+        still make Taylor plot using by providing only standard deviation and coefficient
+        of correlation (R) values.
+
+        >>> trues = {
+        >>> 'Scenario 1': {'std': 4.916}}
+        >>> predictions = {
+        ...     'Scenario 1': {
+        ...    'Model 1': {'std': 2.80068, 'corr_coeff': 0.49172, 'pbias': -8.85},
+        ...    'Model 2': {'std': 3.47, 'corr_coeff': 0.67, 'pbias': -19.76},
+        ...    'Model 3': {'std': 3.53, 'corr_coeff': 0.596, 'pbias': 7.81},
+        ...    'Model 4': {'std': 2.36, 'corr_coeff': 0.27, 'pbias': -22.78},
+        ...    'Model 5': {'std': 2.97, 'corr_coeff': 0.452, 'pbias': -7.99}}}
+
+        >>> taylor_plot(trues,
+        ...        predictions,
+        ...        add_grid=True,
+        ...        plot_bias=True,
+        ...        grid_kws={},
+        ...        )
     """
     # todo replicate https://bookdown.org/david_carslaw/openair/sec-TaylorDiagram.html
     values = False

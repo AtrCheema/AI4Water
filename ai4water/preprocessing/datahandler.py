@@ -93,6 +93,7 @@ class DataHandler(AttributeContainer):
             category=None,
     ):
         """
+
         Arguments:
             data :
                 source from which to make the data. It can be one of the following:
@@ -258,16 +259,13 @@ class DataHandler(AttributeContainer):
             indices of 'available examples'. For example if lookback is 10, indices
             will shift backwards by 10, because we have to ignore first 9 rows.
 
-        Example
-        -------
-        ```python
-        import pandas as pd
-        import numpy as np
-        from ai4water.pre_processing import DataHandler
-        data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
-        data_handler = DataHandler(data=data, lookback=5)
-        x,y = data_handler.training_data()
-        ```
+        Example:
+            >>> import pandas as pd
+            >>> import numpy as np
+            >>> from ai4water.preprocessing import DataHandler
+            >>> data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
+            >>> data_handler = DataHandler(data=data, lookback=5)
+            >>> x,y = data_handler.training_data()
 
         # Note
         The word 'index' is not allowed as column name, input_features or output_features
@@ -782,20 +780,19 @@ class DataHandler(AttributeContainer):
 
     def KFold_splits(self, n_splits=5):
         """returns an iterator for kfold cross validation.
+
         The iterator yields two tuples of training and test x,y pairs.
         The iterator on every iteration returns following
         `(train_x, train_y), (test_x, test_y)`
         Note: only `training_data` and `validation_data` are used to make kfolds.
 
-        Example
-        -------
-        ```python
-        >>>data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
-        >>>data_handler = DataHandler(data=data, config={'lookback': 1})
-        >>>kfold_splits = data_handler.KFold_splits()
-        >>>for (train_x, train_y), (test_x, test_y) in kfold_splits:
-        ...    print(train_x, train_y, test_x, test_y)
-        ```
+        Example:
+            >>> data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
+            >>> data_handler = DataHandler(data=data, config={'lookback': 1})
+            >>> kfold_splits = data_handler.KFold_splits()
+            >>> for (train_x, train_y), (test_x, test_y) in kfold_splits:
+            ...     print(train_x, train_y, test_x, test_y)
+
         """
         x, y = self._get_xy()
 
@@ -2017,6 +2014,57 @@ class SiteDistributedDataHandler(object):
     - validation_data
     - test_data
 
+
+    Examples:
+        >>> examples = 50
+        >>> data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
+        >>> df = pd.DataFrame(data, columns=['a', 'b', 'c'],
+        ...                index=pd.date_range('20110101', periods=examples, freq='D'))
+        >>> config = {'input_features': ['a', 'b'],
+        ...      'output_features': ['c'],
+        ...      'lookback': 4}
+        >>> data = {'0': df, '1': df, '2': df, '3': df}
+        >>> configs = {'0': config, '1': config, '2': config, '3': config}
+
+        >>> dh = SiteDistributedDataHandler(data, configs)
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
+
+        >>> dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
+
+        A slightly more complicated example where data of each site consits of 2
+        sources
+
+        >>> examples = 40
+        >>> data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
+        >>> cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
+        ...                            index=pd.date_range('20110101', periods=examples, freq='D'))
+        >>> static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(),
+        ...                   columns=['len', 'dep', 'width'],
+        ...                   index=pd.date_range('20110101', periods=examples, freq='D'))
+
+        >>> config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
+        ...          'output_features': {'cont_data': ['d']},
+        ...          'lookback': {'cont_data': 4, 'static_data':1}}
+
+        >>> data = {'cont_data': cont_df, 'static_data': static_df}
+        >>> datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
+        >>> configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
+
+        >>> dh = SiteDistributedDataHandler(datas, configs)
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
+
+        >>> dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
+        ...                                validation_sites=['3', '4'], test_sites=['5', '6'])
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
     """
     def __init__(
             self,
@@ -2061,61 +2109,6 @@ class SiteDistributedDataHandler(object):
                 `site`. Note that setting this argument to `True` will render
                 `swap_axes` redundent.
 
-        Example
-        -------
-        ```python
-        examples = 50
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        df = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=examples, freq='D'))
-        config = {'input_features': ['a', 'b'],
-                  'output_features': ['c'],
-                  'lookback': 4}
-        data = {'0': df, '1': df, '2': df, '3': df}
-        configs = {'0': config, '1': config, '2': config, '3': config}
-
-        dh = SiteDistributedDataHandler(data, configs)
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-
-        dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-        ```
-
-        A slightly more complicated example where data of each site consits of 2
-        sources
-        ```python
-        examples = 40
-        data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
-        cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                    index=pd.date_range('20110101', periods=examples, freq='D'))
-        static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(),
-                           columns=['len', 'dep', 'width'],
-                           index=pd.date_range('20110101', periods=examples, freq='D'))
-
-        config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
-                  'output_features': {'cont_data': ['d']},
-                  'lookback': {'cont_data': 4, 'static_data':1}
-                  }
-
-        data = {'cont_data': cont_df, 'static_data': static_df}
-        datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
-        configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
-
-        dh = SiteDistributedDataHandler(datas, configs)
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-
-        dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
-                                        validation_sites=['3', '4'], test_sites=['5', '6'])
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-        ```
         """
         assert isinstance(data, dict), f'data must be of type dict but it is of type {data.__class__.__name__}'
         self.data = data

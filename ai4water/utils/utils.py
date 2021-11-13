@@ -1025,10 +1025,10 @@ def prepare_data(
             None, which indicates all the generated examples will be returned.
 
     Returns:
-      x : numpy array of shape (examples, lookback, ins) consisting of
+        x : numpy array of shape (examples, lookback, ins) consisting of
         input examples
-      prev_y : numpy array consisting of previous outputs
-      y : numpy array consisting of target values
+        prev_y : numpy array consisting of previous outputs
+        y : numpy array consisting of target values
 
     Given following data consisting of input/output pairs
 
@@ -1160,14 +1160,12 @@ def prepare_data(
     (examples, lookback_steps+forecast_len-1, ....num_inputs)
 
     ----------
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.utils.utils import prepare_data
-    >>>num_examples = 50
-    >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
-    >>>dataframe[0:10]
+    Example:
+        >>>import numpy as np
+        >>>from ai4water.utils.utils import prepare_data
+        >>>num_examples = 50
+        >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
+        >>>dataframe[0:10]
         array([[  0,  50, 100, 150, 200],
                [  1,  51, 101, 151, 201],
                [  2,  52, 102, 152, 202],
@@ -1178,20 +1176,20 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
-    ...    input_steps=2, forecast_step=2, forecast_len=4)
-    >>>x[0]
-       array([[  0.,  50., 100.],
+        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        ...    input_steps=2, forecast_step=2, forecast_len=4)
+        >>>x[0]
+        array([[  0.,  50., 100.],
               [  2.,  52., 102.],
               [  4.,  54., 104.],
               [  6.,  56., 106.]], dtype=float32)
-    >>>y[0]
-       array([[158., 159., 160., 161.],
+        >>>y[0]
+        array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
-    ...    forecast_len=3, known_future_inputs=True)
-    >>>x[0]
+        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        ...    forecast_len=3, known_future_inputs=True)
+        >>>x[0]
         array([[  0,  50, 100],
                [  1,  51, 101],
                [  2,  52, 102],
@@ -1199,12 +1197,11 @@ def prepare_data(
                [  4,  54, 104],
                [  5,  55, 105],
                [  6,  56, 106]])       # (7, 3)
-    >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
-    >>>y[0]
+        >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
+        >>>y[0]
 
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)
-    ```
     """
     if not isinstance(data, np.ndarray):
         if isinstance(data, pd.DataFrame):

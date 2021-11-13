@@ -932,6 +932,7 @@ class MtropicsLaos(Datasets):
         ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
          NaNs represent missing values. The data is randomly sampled between 2011
          to 2021 during rainfall events. Total 368 E. coli observation points are available now.
+
         Arguments:
             st : start of data. By default the data is fetched from the point it
                 is available.
@@ -1176,13 +1177,10 @@ class MtropicsLaos(Datasets):
         returns:
             a dataframe of shape `(inputs+target, st:en)`
 
-        Example
-        -------
-        ```python
-        >>>from ai4water.datasets import MtropicsLaos
-        >>>laos = MtropicsLaos()
-        >>>df = laos.make_classification()
-        ```
+        Example:
+            >>> from ai4water.datasets import MtropicsLaos
+            >>> laos = MtropicsLaos()
+            >>> df = laos.make_classification()
         """
         thresholds = {
             'Ecoli_mpn100': 400
@@ -1227,14 +1225,11 @@ class MtropicsLaos(Datasets):
             a dataframe of shape `(inputs+target, st:en)`
 
         Example:
-        --------
-        ```python
-        >>>from ai4water.datasets import MtropicsLaos
-        >>>laos = MtropicsLaos()
-        >>>ins = ['pcp', 'temp']
-        >>>out = ['Ecoli_mpn100']
-        >>>reg_data = laos.make_regression(ins, out, '20110101', '20181231')
-        ```
+            >>> from ai4water.datasets import MtropicsLaos
+            >>> laos = MtropicsLaos()
+            >>> ins = ['pcp', 'temp']
+            >>> out = ['Ecoli_mpn100']
+            >>> reg_data = laos.make_regression(ins, out, '20110101', '20181231')
 
         todo add HRU definition
         """

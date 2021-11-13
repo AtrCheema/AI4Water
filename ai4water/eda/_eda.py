@@ -48,13 +48,10 @@ class EDA(Plot):
     - lag_plot
     - plot_ecdf
 
-    Example
-    --------
-    ```python
-    >>> from ai4water.datasets import arg_beach
-    >>> eda = EDA(data=arg_beach())
-    >>> eda()
-    ```
+    Example:
+        >>> from ai4water.datasets import arg_beach
+        >>> eda = EDA(data=arg_beach())
+        >>> eda()
     """
 
     def __init__(
@@ -68,6 +65,7 @@ class EDA(Plot):
             show=True,
     ):
         """
+
         Arguments:
             data : either a dataframe, or list of dataframes or a dictionary whose
                 values are dataframes or a numpy array
@@ -171,12 +169,11 @@ class EDA(Plot):
         Return:
             None
 
-        Example
-        ---------
-        ```python
-        >>>vis = EDA(data)
-        >>>vis.heatmap()
-        ```
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> data = arg_beach()
+            >>> vis = EDA(data)
+            >>> vis.heatmap()
         """
         return self._call_method('_heatmap_df', cols=cols, st=st, en=en, **kwargs)
 
@@ -272,12 +269,11 @@ class EDA(Plot):
             st :
             en :
 
-        Example
-        --------
-        ```python
-        >>>vis = EDA(data)
-        >>>vis.plot_missing()
-        ```
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> data = arg_beach()
+            >>>vis = EDA(data)
+            >>>vis.plot_missing()
         """
         return self._call_method('_plot_missing_df', cols=cols, st=st, en=en, **kwargs)
 
@@ -384,12 +380,11 @@ class EDA(Plot):
 
         Rreturn:
 
-        Example
-        --------
-        ```python
-        >>>eda = EDA()
-        >>>eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
-        >>>eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> eda = EDA(arg_beach())
+            >>> eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
+            >>> eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         ```
         """
         # TODO, this method should be available from `model` as well
@@ -528,13 +523,11 @@ class EDA(Plot):
             en :
             kwargs :
 
-        Example
-        --------
-        ```python
-        >>>from ai4water.eda import EDA
-        >>>vis = EDA(data)
-        >>>vis.correlation()
-        ```
+        Example:
+            >>> from ai4water.eda import EDA
+            >>> from ai4water.datasets import arg_beach
+            >>> vis = EDA(arg_beach())
+            >>> vis.correlation()
         """
         # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman rank correlation etc
         if cols is None:
@@ -716,6 +709,7 @@ class EDA(Plot):
             **kwargs
     ):
         """Makes scatter plot for each of feature in data.
+
         Arguments:
             inputs :
             outputs :

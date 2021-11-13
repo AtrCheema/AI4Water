@@ -254,7 +254,7 @@ class Interpret(Plot):
             model : a ai4water's Model instance.
             data : the data to use to calculate attention components
 
-        returns:
+        Returns:
             dictionary containing attention components of tft as numpy arrays.
             Following four attention components are present in the dictionary
                 - decoder_self_attn: (attention_heads, ?, total_time_steps, 22)

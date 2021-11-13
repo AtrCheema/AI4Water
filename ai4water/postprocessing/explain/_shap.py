@@ -28,15 +28,11 @@ class ShapExplainer(ExplainerMixin):
     Wrapper around SHAP `explainers` and `plots` to draw and save all the plots
     for a given model.
 
-    Attributes
-    ---------
-    features
-
-    train_summary : only for KernelExplainer
-
-    explainer
-
-    shap_values
+    Attributes:
+        features :
+        train_summary : only for KernelExplainer
+        explainer :
+        shap_values :
 
 
     Methods
@@ -46,20 +42,18 @@ class ShapExplainer(ExplainerMixin):
     - dependence_plot_single_feature
     - force_plot_all
 
-    Example
-    --------
-    ```python
-    >>>from ai4water.postprocessing.explain import ShapExplainer
-    >>>from sklearn.model_selection import train_test_split
-    >>>from sklearn import linear_model
-    >>>import shap
+    Examples:
+        >>>from ai4water.postprocessing.explain import ShapExplainer
+        >>>from sklearn.model_selection import train_test_split
+        >>>from sklearn import linear_model
+        >>>import shap
 
-    >>>X,y = shap.datasets.diabetes()
-    >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-    >>>lin_regr = linear_model.LinearRegression()
-    >>>lin_regr.fit(X_train, y_train)
-    >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
-    >>>explainer()
+        >>>X,y = shap.datasets.diabetes()
+        >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+        >>>lin_regr = linear_model.LinearRegression()
+        >>>lin_regr.fit(X_train, y_train)
+        >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
+        >>>explainer()
     ```
     """
 

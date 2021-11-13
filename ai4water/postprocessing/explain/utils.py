@@ -35,20 +35,18 @@ def explain_model(
             to explain. If string, it will be name of layer of to explain.
         method : either 'both', 'shap' or 'lime'. If both, then the model will
             be explained using both lime and shap methods.
+
     Returns:
         if `method`==both, it will return a tuple of LimeExplainer and ShapExplainer
         otherwise it will return the instance of either LimeExplainer or ShapExplainer.
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.postprocessing.explain import explain_model
-    >>>model = Model(model="RandForestRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>explain_model(model)
-    ```
+    Example:
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.postprocessing.explain import explain_model
+        >>> model = Model(model="RandForestRegressor", data=arg_beach())
+        >>> model.fit()
+        >>> explain_model(model)
     """
     if method == 'both':
 
@@ -80,18 +78,17 @@ def explain_model_with_lime(
     Arguments:
         model : the AI4Water's model to explain
         examples_to_explain : the examples to explain
-    Returns:
-        an instance of LimeExplainer
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.postprocessing.explain import explain_model_with_lime
-    >>>model = Model(model="RandForestRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>explain_model_with_lime(model)
+    Returns:
+        an instance of [LimeExplainer][ai4water.postprocessing.explain.LimeExplainer]
+
+    Example:
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.postprocessing.explain import explain_model_with_lime
+        >>> model = Model(model="RandForestRegressor", data=arg_beach())
+        >>> model.fit()
+        >>> explain_model_with_lime(model)
     ```
     """
 
@@ -158,16 +155,13 @@ def explain_model_with_shap(
     Returns:
         an instance of ShapExplainer
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.postprocessing.explain import explain_model_with_shap
-    >>>model = Model(model="RandForestRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>explain_model_with_shap(model)
-    ```
+    Example:
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.postprocessing.explain import explain_model_with_shap
+        >>> model = Model(model="RandForestRegressor", data=arg_beach())
+        >>> model.fit()
+        >>> explain_model_with_shap(model)
     """
     assert hasattr(model, 'path')
 

@@ -14,7 +14,9 @@ class Imputation(object):
     """
     Implements imputation of missing values using a range of methods.
 
-    Imputation Methods:
+    Imputation Methods
+    -----------------
+
         - pandas:
             Pandas library provides two methods for filling input data.
             `interpolate`: filling by interpolation
@@ -38,7 +40,6 @@ class Imputation(object):
               All the args accepted by KNNImputer of sklearn can be passed as in imputer_args.
               imputer_args example: {'n_neighbors': 3}.
               For details see https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html
-
         - fancyimpute:
             knn:
             NuclearnNormMinimization
@@ -48,8 +49,9 @@ class Imputation(object):
 
     Methods
     --------
-        - plot: plots the imputed values.
-        - missing_intervals: intervals of missing data.
+    - [plot][ai4water.preprocessing.imputation.Imputation.plot] plots the imputed values.
+
+    - [missing_indices][ai4water.preprocessing.imputation.Imputation.missing_indices] indices of missing data.
 
     --------
     Examples:
@@ -63,12 +65,24 @@ class Imputation(object):
         >>>imputer.method = 'KNNImputer'
         >>>imputer(n_neighbors=3)
     """
-    def __init__(self,
-                 data: Union[pd.DataFrame, np.ndarray, list],
-                 method: str = 'KNNImputer',
-                 features=None,
-                 imputer_args: dict = None
-                 ):
+    def __init__(
+            self,
+            data: Union[pd.DataFrame, np.ndarray, list],
+            method: str = 'KNNImputer',
+            features=None,
+            imputer_args: dict = None
+    ):
+        """
+        Arguments:
+            data:
+                the data which contains missing values
+            method:
+                the method to apply for missing
+            features:
+                the features on which imputation is to be applied
+            imputer_args:
+                arguments for underlying imputer function
+        """
         self.data = self.maybe_make_df(data)
         self.method = method
         self.features = features or self.data.columns
@@ -130,7 +144,9 @@ class Imputation(object):
         cols: columns to plot from data
         st: int
         en: int
-        >>>imputer.plot(cols=['in1', 'in2'], st=0, en=25)
+
+        Example
+            >>>imputer.plot(cols=['in1', 'in2'], st=0, en=25)
         """
 
         if cols is not None:

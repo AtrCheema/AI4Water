@@ -181,21 +181,18 @@ class BaseModel(NN, Plots):
             accept_additional_args bool:  Default is False
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
-            kwargs : keyword arguments for `DataHandler` class
+            kwargs : keyword arguments for [`DataHandler`][ai4water.preprocessing.datahandler.DataHandler.__init__] class
 
-        Example
-        ---------
-        ```python
-        >>>from ai4water import Model
-        >>>from ai4water.datasets import arg_beach
-        >>>df = arg_beach()
-        >>>model = Model(data=df,
-        ...              batch_size=16,
-        ...           model={'layers': {'LSTM': 64}},
-        ...)
-        >>>history = model.fit()
-        >>>y, obs = model.predict()
-        ```
+        Example:
+            >>>from ai4water import Model
+            >>>from ai4water.datasets import arg_beach
+            >>>df = arg_beach()
+            >>>model = Model(data=df,
+            ...              batch_size=16,
+            ...           model={'layers': {'LSTM': 64}},
+            ...)
+            >>>history = model.fit()
+            >>>y, obs = model.predict()
         """
         if self._go_up:
             maker = make_model(
@@ -855,7 +852,7 @@ class BaseModel(NN, Plots):
         Arguments:
             data :
                 data to use for model training. Default is 'training`.
-            callbacks dict:
+            callbacks:
                 Any callback compatible with keras. If you want to log the output
                 to tensorboard, then just use `callbacks={'tensorboard':{}}` or
                 to provide additional arguments
@@ -995,7 +992,7 @@ class BaseModel(NN, Plots):
         """computes cross validation score
 
         Arguments:
-            scoring str:
+            scoring:
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
 
@@ -1175,6 +1172,7 @@ class BaseModel(NN, Plots):
     ):
         """
         Makes prediction from the trained model.
+
         Arguments:
             data: str
                 which data to use. Possible values are
@@ -1427,7 +1425,7 @@ class BaseModel(NN, Plots):
                 whether to show the plot or not!
 
         Returns:
-            An isntance of ai4water.postprocessing.visualize.Visualize class.
+            An isntance of [Visualize][ai4water.postprocessing.visualize.Visualize] class.
         """
         from ai4water.postprocessing.visualize import Visualize
 
@@ -1450,13 +1448,11 @@ class BaseModel(NN, Plots):
         Interprets the underlying model. Call it after training.
 
         Returns:
-            An instance of ai4water.post_processing.interpret.Interpret class
+            An instance of [Interpret][ai4water.post_processing.interpret.Interpret] class
 
-        Example
-        -------
-        ```python
-        model.fit()
-        model.interpret()
+        Example:
+            >>> model.fit()
+            >>> model.interpret()
         ```
         """
         # importing ealier will try to import np types as well again
@@ -1478,7 +1474,7 @@ class BaseModel(NN, Plots):
         return Interpret(self)
 
     def explain(self, *args, **kwargs):
-        """Calls the ai4water.postprocessing.explain.explain_model
+        """Calls the [explain_model][ai4water.postprocessing.explain.explain_model] function
          to explain the model.
          """
         from ai4water.postprocessing.explain import explain_model
@@ -1566,18 +1562,18 @@ class BaseModel(NN, Plots):
         Loads the model from a config file.
 
         Arguments:
-            config_path str:
+            config_path:
                 complete path of config file
             data :
                 data for Model
-            make_new_path bool:
+            make_new_path:
                 If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
                 would not normally update the weights in such a case.
             kwargs :
                 any additional keyword arguments for the `Model`
-        return:
-            a `Model` instance
+        Return:
+            an instance of `Model` class
         """
         config, path = cls._get_config_and_path(cls, config_path=config_path, make_new_path=make_new_path)
 
@@ -1631,6 +1627,7 @@ class BaseModel(NN, Plots):
     def update_weights(self, weight_file: str=None):
         """
         Updates the weights of the underlying model.
+
         Arguments:
             weight_file:
                 complete path of weight file. If not given, the
@@ -1772,28 +1769,24 @@ class BaseModel(NN, Plots):
             update_config:
                 whether to update the config of model or not.
         Returns:
-            an instance of ai4water.hyperopt.HyperOpt which is used for optimization
+            an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] which is used for optimization
 
-        Examples
-        --------
-        ```python
-        >>> from ai4water import Model
-        >>> from ai4water.datasets import arg_beach
-        >>> from ai4water.hyperopt import Integer, Categorical, Real
-        >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
-        >>>                 "max_depth": Categorical([10, 20, 30]),
-        >>>                 "learning_rate": Real(0.00001, 0.1)}}
-        >>> model = Model(model=model_config, data=arg_beach())
-        >>> optimizer = model.optimize_hyperparameters()
-        ```
-        Same can be done if a model is defined using neural networks
-        ```python
-        >>> model_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-        ...                          "Dense1": {"units": 1,
-        ...                                     "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
-        >>> model = Model(model=model_config, data=arg_beach())
-        >>> optimizer = model.optimize_hyperparameters()
-        ```
+        Examples:
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.hyperopt import Integer, Categorical, Real
+            >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
+            >>>                 "max_depth": Categorical([10, 20, 30]),
+            >>>                 "learning_rate": Real(0.00001, 0.1)}}
+            >>> model = Model(model=model_config, data=arg_beach())
+            >>> optimizer = model.optimize_hyperparameters()
+
+            Same can be done if a model is defined using neural networks
+            >>> model_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
+            ...                          "Dense1": {"units": 1,
+            ...                                     "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
+            >>> model = Model(model=model_config, data=arg_beach())
+            >>> optimizer = model.optimize_hyperparameters()
         """
         from ._optimize import OptimizeHyperparameters #optimize_hyperparameters
 
@@ -1864,19 +1857,16 @@ class BaseModel(NN, Plots):
             update_config: whether to update the config of model or not.
 
         Returns:
-            an instance of ai4water.hyperopt.HyperOpt which is used for optimization
+            an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] class which is used for optimization
 
-        Example
-        -------
-        ```python
-        >>> from ai4water.datasets import arg_beach
-        >>> from ai4water import Model
-        >>> model = Model(model="xgboostregressor", data=arg_beach())
-        >>> optimizer = model.optimize_transformations(exclude="tide_cm")
-        >>> print(optimizer.best_paras())  # find the best/optimized transformations
-        >>> model.fit()
-        >>> model.predict()
-        ```
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water import Model
+            >>> model = Model(model="xgboostregressor", data=arg_beach())
+            >>> optimizer = model.optimize_transformations(exclude="tide_cm")
+            >>> print(optimizer.best_paras())  # find the best/optimized transformations
+            >>> model.fit()
+            >>> model.predict()
         """
         from ._optimize import OptimizeTransformations #optimize_transformations
 

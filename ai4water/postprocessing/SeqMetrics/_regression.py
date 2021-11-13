@@ -14,15 +14,13 @@ class RegressionMetrics(Metrics):
     """
     Calculates more than 100 regression performance metrics related to sequence data.
 
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>t = np.random.random(10)
-    >>>p = np.random.random(10)
-    >>>errors = RegressionMetrics(t,p)
-    >>>all_errors = errors.calculate_all()
+    Example:
+        >>>import numpy as np
+        >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+        >>>t = np.random.random(10)
+        >>>p = np.random.random(10)
+        >>>errors = RegressionMetrics(t,p)
+        >>>all_errors = errors.calculate_all()
     ```
     """
 
@@ -30,7 +28,7 @@ class RegressionMetrics(Metrics):
         """
         Initializes `Metrics`.
 
-        args and kwargs go to parent class 'Metrics'.
+        args and kwargs go to parent class ['Metrics'][ai4water.postprocessing.SeqMetrics.Metrics].
         """
         super().__init__(*args, **kwargs)
         self.all_methods = list_subclass_methods(RegressionMetrics, True,

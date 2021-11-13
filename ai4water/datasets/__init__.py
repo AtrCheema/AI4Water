@@ -92,11 +92,9 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
         a pandas dataframe with inputs and target and indexed
             with pandas.DateTimeIndex
 
-    Examples
-    --------
-    ```python
-    >>>from ai4water.datasets import arg_beach
-    >>>dataframe = arg_beach()
+    Example:
+        >>> from ai4water.datasets import arg_beach
+        >>> dataframe = arg_beach()
     ```
     """
     fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")

@@ -52,19 +52,17 @@ def plot_metrics(
         kwargs dict:
             keyword arguments for plotting
 
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>from ai4water.postprocessing.SeqMetrics import plot_metrics
-    >>>t = np.random.random((20, 1))
-    >>>p = np.random.random((20, 1))
-    >>>er = RegressionMetrics(t, p)
-    >>>all_errors = er.calculate_all()
-    >>>plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
-    >>># or draw the radial plot
-    >>>plot_metrics(all_errors, plot_type='radial', max_metrics_per_fig=50)
+    Examples:
+        >>> import numpy as np
+        >>> from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+        >>> from ai4water.postprocessing.SeqMetrics import plot_metrics
+        >>> t = np.random.random((20, 1))
+        >>> p = np.random.random((20, 1))
+        >>> er = RegressionMetrics(t, p)
+        >>> all_errors = er.calculate_all()
+        >>> plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
+        >>># or draw the radial plot
+        >>> plot_metrics(all_errors, plot_type='radial', max_metrics_per_fig=50)
     ```
     """
     for idx, rng in enumerate(ranges):

@@ -476,6 +476,7 @@ Available cases are {self.models} and you wanted to include
         """Shows how much improvement was observed after hyperparameter
         optimization. This plot is only available if `run_type` was set to
         `optimize` in `fit`.
+
         Arguments:
             matric_name : the peformance metric to compare
             save : whether to save the plot or not
@@ -591,18 +592,16 @@ Available cases are {self.models} and you wanted to include
         returns:
             dictionary whose keys are models and values are performance metrics.
 
-        Example
-        -----------
-        ```python
-        >>>from ai4water.experiments import MLRegressionExperiments
-        >>>from ai4water.datasets import arg_beach
-        >>>data = arg_beach()
-        >>>inputs = list(data.columns)[0:-1]
-        >>>outputs = list(data.columns)[-1]
-        >>>experiment = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs)
-        >>>experiment.fit()
-        >>>experiment.compare_errors('mse')
-        >>>experiment.compare_errors('r2', 0.2, 'greater')
+        Example:
+            >>> from ai4water.experiments import MLRegressionExperiments
+            >>> from ai4water.datasets import arg_beach
+            >>> data = arg_beach()
+            >>> inputs = list(data.columns)[0:-1]
+            >>> outputs = list(data.columns)[-1]
+            >>> experiment = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs)
+            >>> experiment.fit()
+            >>> experiment.compare_errors('mse')
+            >>> experiment.compare_errors('r2', 0.2, 'greater')
         ```
         """
 
@@ -651,6 +650,7 @@ Available cases are {self.models} and you wanted to include
                     name: str = 'loss_comparison',
                     **kwargs):
         """Plots the loss curves of the evaluated models.
+
         Arguments:
             loss_name : the name of loss value, must be recorded during training
             save : whether to save the plot or not
@@ -956,14 +956,12 @@ Available cases are {self.models} and you wanted to include
         Returns:
             the tpot object
 
-        Example
-        -------
-        ```python
-        >>> from ai4water.experiments import MLRegressionExperiments
-        >>> from ai4water.datasets import arg_beach
-        >>> exp = MLRegressionExperiments(data=arg_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
-        >>> exp.fit()
-        >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
+        Example:
+            >>> from ai4water.experiments import MLRegressionExperiments
+            >>> from ai4water.datasets import arg_beach
+            >>> exp = MLRegressionExperiments(data=arg_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
+            >>> exp.fit()
+            >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
         ```
         """
         tpot_caller = self.tpot_estimator
@@ -1063,40 +1061,40 @@ Available cases are {self.models} and you wanted to include
 
 class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
-    Examples
-    --------
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.experiments import TransformationExperiments
-    ...# Define your experiment
-    >>>class MyTransformationExperiments(TransformationExperiments):
-    ...
-    ...    def update_paras(self, **kwargs):
-    ...        _layers = {
-    ...            "LSTM": {"config": {"units": int(kwargs['lstm_units']}},
-    ...            "Dense": {"config": {"units": 1, "activation": kwargs['dense_actfn']}},
-    ...            "reshape": {"config": {"target_shape": (1, 1)}}
-    ...        }
-    ...        return {'model': {'layers': _layers},
-    ...                'lookback': int(kwargs['lookback']),
-    ...                'batch_size': int(kwargs['batch_size']),
-    ...                'lr': float(kwargs['lr']),
-    ...                'transformation': kwargs['transformation']}
-    >>>data = arg_beach()
-    >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
-    >>>outputs = ['tetx_coppml']
-    >>>cases = {'model_minmax': {'transformation': 'minmax'},
-    ...         'model_zscore': {'transformation': 'zscore'}}
-    >>>search_space = [
-    ...            Integer(low=16, high=64, name='lstm_units', num_samples=2),
-    ...            Integer(low=3, high=15, name="lookback", num_samples=2),
-    ...            Categorical(categories=[4, 8, 12, 16, 24, 32], name='batch_size'),
-    ...            Real(low=1e-6, high=1.0e-3, name='lr', prior='log', num_samples=2),
-    ...            Categorical(categories=['relu', 'elu'], name='dense_actfn'),
-    ...        ]
-    >>>x0 = [20, 14, 12, 0.00029613, 'relu']
-    >>>experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
-    ...                output_features=outputs, data=data, exp_name="testing"
-    ...                 param_space=search_space, x0=x0)
+
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>>from ai4water.experiments import TransformationExperiments
+            ...# Define your experiment
+            >>>class MyTransformationExperiments(TransformationExperiments):
+            ...
+            ...    def update_paras(self, **kwargs):
+            ...        _layers = {
+            ...            "LSTM": {"config": {"units": int(kwargs['lstm_units']}},
+            ...            "Dense": {"config": {"units": 1, "activation": kwargs['dense_actfn']}},
+            ...            "reshape": {"config": {"target_shape": (1, 1)}}
+            ...        }
+            ...        return {'model': {'layers': _layers},
+            ...                'lookback': int(kwargs['lookback']),
+            ...                'batch_size': int(kwargs['batch_size']),
+            ...                'lr': float(kwargs['lr']),
+            ...                'transformation': kwargs['transformation']}
+            >>>data = arg_beach()
+            >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+            >>>outputs = ['tetx_coppml']
+            >>>cases = {'model_minmax': {'transformation': 'minmax'},
+            ...         'model_zscore': {'transformation': 'zscore'}}
+            >>>search_space = [
+            ...            Integer(low=16, high=64, name='lstm_units', num_samples=2),
+            ...            Integer(low=3, high=15, name="lookback", num_samples=2),
+            ...            Categorical(categories=[4, 8, 12, 16, 24, 32], name='batch_size'),
+            ...            Real(low=1e-6, high=1.0e-3, name='lr', prior='log', num_samples=2),
+            ...            Categorical(categories=['relu', 'elu'], name='dense_actfn'),
+            ...        ]
+            >>>x0 = [20, 14, 12, 0.00029613, 'relu']
+            >>>experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
+            ...                output_features=outputs, data=data, exp_name="testing"
+            ...                 param_space=search_space, x0=x0)
     """
 
     def __init__(self,

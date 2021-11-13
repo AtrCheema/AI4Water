@@ -42,44 +42,12 @@ class DualAttentionModel(FModel):
     The code is adopted from [this](https://github.com/chensvm/A-Dual-Stage-Attention-Based-Recurrent-Neural-Network-for-Time-Series-Prediction)
     repository
 
-    Arguments:
-        enc_config : dict
-            dictionary defining configuration of encoder/input attention. It must
-            have following three keys
-
-                - n_h: 20
-                - n_s: 20
-                - m: 20
-                - enc_lstm1_act: None
-                - enc_lstm2_act: None
-
-        dec_config : dict
-            dictionary defining configuration of decoder/output attention. It must have
-            following three keys
-
-                - p: 30
-                - n_hde0: None
-                - n_sde0: None
-
-        teacher_forcing : bool
-            Whether to use the prvious target/observation as input or not. If
-            yes, then the model will require 2 inputs. The first input will be
-            of shape (num_examples, lookback, num_inputs) while the second input
-            will be of shape (num_examples, lookback-1, 1). This second input is
-            supposed to be the target variable observed at previous time step.
-
-        kwargs :
-            The keyword arguments for the ai4water.Model class
-
-    Example
-    -------
-    ```python
-    >>> from ai4water import DualAttentionModel
-    >>> from ai4water.datasets import arg_beach
-    >>> model = DualAttentionModel(data=arg_beach(),
-    >>>                            teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
-    >>> model.fit()
-    ```
+    Example:
+        >>> from ai4water import DualAttentionModel
+        >>> from ai4water.datasets import arg_beach
+        >>> model = DualAttentionModel(data=arg_beach(),
+        >>>                            teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
+        >>> model.fit()
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m
@@ -101,7 +69,37 @@ class DualAttentionModel(FModel):
             teacher_forcing:bool=True,
             **kwargs
     ):
+        """
 
+        Arguments:
+            enc_config:
+                dictionary defining configuration of encoder/input attention. It must
+                have following three keys
+
+                    - n_h: 20
+                    - n_s: 20
+                    - m: 20
+                    - enc_lstm1_act: None
+                    - enc_lstm2_act: None
+
+            dec_config:
+                dictionary defining configuration of decoder/output attention. It must have
+                following three keys
+
+                    - p: 30
+                    - n_hde0: None
+                    - n_sde0: None
+
+            teacher_forcing:
+                Whether to use the prvious target/observation as input or not. If
+                yes, then the model will require 2 inputs. The first input will be
+                of shape (num_examples, lookback, num_inputs) while the second input
+                will be of shape (num_examples, lookback-1, 1). This second input is
+                supposed to be the target variable observed at previous time step.
+
+            kwargs :
+                The keyword arguments for the [ai4water's Model][ai4water.Model] class
+        """
         self.method = 'dual_attention'
         if enc_config is None:
             enc_config = DualAttentionModel._enc_config

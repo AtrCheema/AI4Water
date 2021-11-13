@@ -302,14 +302,11 @@ def regplot(
         xlabel :
         ylabel :
 
-    Example
-    --------
-    ```python
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.utils.visualizations import regplot
-    >>>data = arg_beach()
-    >>>regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
-    ```
+    Example:
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.utils.visualizations import regplot
+        >>> data = arg_beach()
+        >>> regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
     """
     x = to_1d_array(x)
     y = to_1d_array(y)
@@ -429,9 +426,9 @@ def linear_model(
 
 
 def murphy_diagram(
-        observed,
-        predicted,
-        reference=None,
+        observed:Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        predicted:Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        reference:Union[list, np.ndarray, pd.Series, pd.DataFrame]=None,
         reference_model:Union[str, Callable]=None,
         inputs=None,
         plot_type:str="scores",
@@ -439,53 +436,50 @@ def murphy_diagram(
         ax:plt.Axes=None,
         line_colors:tuple=None,
         fill_color:str="lightgray",
-        show=True
+        show:bool=True
 )->plt.Axes:
     """Murphy diagram as introducted by [Ehm et al., 2015](https://arxiv.org/pdf/1503.08195.pdf)
      and illustrated by [Rob Hyndman](https://robjhyndman.com/hyndsight/murphy-diagrams/)
 
-     Arguments:
-         observed Union[list, np.ndarray, pd.Series, pd.DataFrame]:
+    Arguments:
+        observed:
             observed or true values
-         predicted Union[list, np.ndarray, pd.Series, pd.DataFrame]:
-            model's prediction
-         reference Union[list, np.ndarray, pd.Series, pd.DataFrame[:
-            reference prediction
-        reference_model Union[str, Callable]:
-            The model for reference prediction. Only relevent if `reference` is
-            None and `plot_type` is `diff`. It can be callable or a string. If it is a
-            string, then it can be any model name from [sklearn.linear_model](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model)
-        inputs :
-            inputs for reference model. Only relevent if `reference_model` is not
-            None and `plot_type` is `diff`
-        plot_type str:
-            either of `scores` or `diff`
-        xaxis str:
-            either of `theta` or `time`
-        ax plt.Axes:
-            the axis to use for plotting
-        line_colors tuple:
-            colors of line
-        fill_color :
-            color to fill confidence interval
-        show bool:
-            whether to show the plot or not
+        predicted:
+             model's prediction
+        reference:
+             reference prediction
+        reference_model:
+             The model for reference prediction. Only relevent if `reference` is
+             None and `plot_type` is `diff`. It can be callable or a string. If it is a
+             string, then it can be any model name from [sklearn.linear_model](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model)
+        inputs:
+             inputs for reference model. Only relevent if `reference_model` is not
+             None and `plot_type` is `diff`
+        plot_type:
+             either of `scores` or `diff`
+        xaxis:
+             either of `theta` or `time`
+        ax:
+             the axis to use for plotting
+        line_colors:
+             colors of line
+        fill_color:
+             color to fill confidence interval
+        show:
+             whether to show the plot or not
 
     Returns:
-        matplotlib axes
+         matplotlib axes
 
-    Example
-    -------
-    ```python
-    >>> import numpy as np
-    >>> from ai4water.utils.visualizations import murphy_diagram
-    >>> yy = np.random.randint(1, 1000, 100)
-    >>> ff1 = np.random.randint(1, 1000, 100)
-    >>> ff2 = np.random.randint(1, 1000, 100)
-    >>> murphy_diagram(yy, ff1, ff2)
-    ...
-    >>> murphy_diagram(yy, ff1, ff2, plot_type="diff")
-    ```
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils.visualizations import murphy_diagram
+        >>> yy = np.random.randint(1, 1000, 100)
+        >>> ff1 = np.random.randint(1, 1000, 100)
+        >>> ff2 = np.random.randint(1, 1000, 100)
+        >>> murphy_diagram(yy, ff1, ff2)
+        ...
+        >>> murphy_diagram(yy, ff1, ff2, plot_type="diff")
     """
     assert plot_type in ("scores", "diff")
     assert xaxis in ("theta", "time")
@@ -578,44 +572,44 @@ def _plot_diff(theta, s1, s2, n, ax, line_color="black", fill_color="lightgray")
     return ax
 
 
-
 def fdc_plot(
         sim:Union[list, np.ndarray, pd.Series, pd.DataFrame],
         obs:Union[list, np.ndarray, pd.Series, pd.DataFrame],
         ax:plt.Axes=None,
-        legend=True,
+        legend:bool=True,
         xlabel:str = "Exceedence [%]",
         ylabel:str = "Flow",
         show:bool = True
-):
+)->plt.Axes:
     """Plots flow duration curve
+
     Arguments:
-        sim :
+        sim:
             simulated flow
-        obs :
+        obs:
             observed flow
-        ax :
+        ax:
             axis on which to plot
-        legend :
+        legend:
             whether to apply legend or not
-        xlabel :
+        xlabel:
             label to set on x-axis. set to None for no x-label
-        ylabel :
+        ylabel:
             label to set on y-axis
-        show :
+        show:
             whether to show the plot or not
 
-    Example
-    -------
-    ```python
-    >>> import numpy as np
-    >>> import matplotlib.pyplot as plt
-    >>> from ai4water.utils.visualizations import fdc_plot
-    >>> simulated = np.random.random(100)
-    >>> observed = np.random.random(100)
-    >>> fdc_plot(simulated, observed)
-    >>> plt.show()
-    ```
+    Returns:
+        matplotlib axes
+
+    Example:
+        >>> import numpy as np
+        >>> import matplotlib.pyplot as plt
+        >>> from ai4water.utils.visualizations import fdc_plot
+        >>> simulated = np.random.random(100)
+        >>> observed = np.random.random(100)
+        >>> fdc_plot(simulated, observed)
+        >>> plt.show()
     """
 
     sim = to_1d_array(sim)

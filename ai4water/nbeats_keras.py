@@ -27,20 +27,18 @@ class NBeats(keras.layers.Layer):
         num_exo_inputs int:
         kwargs :
 
-    Example
-    ------
-    ```python
-    >>> x = np.random.random((100, 10, 3))
-    >>> y = np.random.random((100, 1))
+    Example:
+        >>> x = np.random.random((100, 10, 3))
+        >>> y = np.random.random((100, 1))
 
-    >>> model = Model(model={"layers":
-    >>>                              {"Input": {"shape": (10, 3)},
-    >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
-    >>>                               "Flatten": {},
-    >>>                               "Reshape": {"target_shape": (1,1)}}},
-    >>>               lookback=10)
+        >>> model = Model(model={"layers":
+        >>>                              {"Input": {"shape": (10, 3)},
+        >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
+        >>>                               "Flatten": {},
+        >>>                               "Reshape": {"target_shape": (1,1)}}},
+        >>>               lookback=10)
 
-    >>> model.fit(x=x, y=y.reshape(-1,1,1))
+        >>> model.fit(x=x, y=y.reshape(-1,1,1))
     ```
     """
     GENERIC_BLOCK = 'generic'

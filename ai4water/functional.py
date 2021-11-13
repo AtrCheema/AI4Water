@@ -20,11 +20,8 @@ class Model(BaseModel):
     In such a case this class can be used. Otherwise all the features of ai4water
     are available in this class as well.
 
-    Example
-    --------
-    ```python
-    >>>from ai4water.functional import Model
-    ```
+    Example:
+        >>>from ai4water.functional import Model
     """
 
     def __init__(self, *args, **kwargs):
@@ -141,6 +138,7 @@ class Model(BaseModel):
     def add_layers(self, layers_config: dict, inputs=None):
         """
         Builds the NN from dictionary.
+
         Arguments:
             layers_config : wholse keys can be one of the following:
                 `config`: `dict`/lambda, Every layer must contain initializing

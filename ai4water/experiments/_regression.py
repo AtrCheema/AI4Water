@@ -68,27 +68,25 @@ class MLRegressionExperiments(Experiments):
                 and are not optimized.
 
         Examples:
-        --------
-        ```python
-        >>>from ai4water.datasets import arg_beach
-        >>>from ai4water.experiments import MLRegressionExperiments
-        >>> # first compare the performance of all available models without optimizing their parameters
-        >>>data = arg_beach()  # read data file, in this case load the default data
-        >>>inputs = list(data.columns)[0:-1]  # define input and output columns in data
-        >>>outputs = list(data.columns)[-1]
-        >>>comparisons = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs,
-        ...                                      nan_filler= {'method': 'KNNImputer', 'features': inputs} )
-        >>>comparisons.fit(run_type="dry_run")
-        >>>comparisons.compare_errors('r2')
-        >>> # find out the models which resulted in r2> 0.5
-        >>>best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
-        >>>best_models = [m[1] for m in best_models.values()]
-        >>> # now build a new experiment for best models and otpimize them
-        >>>comparisons = MLRegressionExperiments(data=data, inputs_features=inputs, output_features=outputs,
-        ...                                   nan_filler= {'method': 'KNNImputer', 'features': inputs}, exp_name="BestMLModels")
-        >>>comparisons.fit(run_type="optimize", include=best_models)
-        >>>comparisons.compare_errors('r2')
-        >>>comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
+            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.experiments import MLRegressionExperiments
+            >>> # first compare the performance of all available models without optimizing their parameters
+            >>> data = arg_beach()  # read data file, in this case load the default data
+            >>> inputs = list(data.columns)[0:-1]  # define input and output columns in data
+            >>> outputs = list(data.columns)[-1]
+            >>> comparisons = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs,
+            ...                                      nan_filler= {'method': 'KNNImputer', 'features': inputs} )
+            >>> comparisons.fit(run_type="dry_run")
+            >>> comparisons.compare_errors('r2')
+            >>> # find out the models which resulted in r2> 0.5
+            >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
+            >>> best_models = [m[1] for m in best_models.values()]
+            >>> # now build a new experiment for best models and otpimize them
+            >>> comparisons = MLRegressionExperiments(data=data, inputs_features=inputs, output_features=outputs,
+            ...                                   nan_filler= {'method': 'KNNImputer', 'features': inputs}, exp_name="BestMLModels")
+            >>> comparisons.fit(run_type="optimize", include=best_models)
+            >>> comparisons.compare_errors('r2')
+            >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
         ```
         """
         self.param_space = param_space

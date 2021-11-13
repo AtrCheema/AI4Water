@@ -167,11 +167,9 @@ class Integer(_Integer, Counter):
     - to_optuna
     - serialize
 
-    Example
-    ----------
-    ```python
-    >>>from ai4water.hyperopt import Integer
-    >>>units = Integer(low=16, high=128, name='units')
+    Example:
+        >>> from ai4water.hyperopt import Integer
+        >>> units = Integer(low=16, high=128, name='units')
     ```
     """
     def __init__(self,
@@ -281,11 +279,9 @@ class Categorical(_Categorical):
     - to_optuna
     - serialize
 
-    Example
-    ----------
-    ```python
-    >>> from ai4water.hyperopt import Categorical
-    >>> activations = Categorical(categories=['relu', 'tanh', 'sigmoid'], name='activations')
+    Example:
+        >>> from ai4water.hyperopt import Categorical
+        >>> activations = Categorical(categories=['relu', 'tanh', 'sigmoid'], name='activations')
     ```
     """
     @property
