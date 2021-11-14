@@ -9,35 +9,22 @@ Model = keras.models.Model
 
 class NBeats(keras.layers.Layer):
     """
-    This implementation is same as that of https://github.com/philipperemy/n-beats/tree/master/nbeats_keras
+    This implementation is same as that of [Philip pemy](https://github.com/philipperemy/n-beats/tree/master/nbeats_keras)
     except that here NBeats can be used as a layer.
     The output shape will be (batch_size, self.forecast_length, self.input_dim)
     Some other changes have also been done to make this layer compatable with ai4water.
 
-    Arguments:
-        units int:
-        lookback int:
-        forecast_length int:
-        stack_types :
-        nb_blocks_per_stack int:
-        theta_dim :
-        share_weights_in_stack bool:
-        nb_harmonics :
-        num_inputs int:
-        num_exo_inputs int:
-        kwargs :
-
     Example:
         >>> x = np.random.random((100, 10, 3))
         >>> y = np.random.random((100, 1))
-
+        ...
         >>> model = Model(model={"layers":
         >>>                              {"Input": {"shape": (10, 3)},
         >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
         >>>                               "Flatten": {},
         >>>                               "Reshape": {"target_shape": (1,1)}}},
         >>>               lookback=10)
-
+        ...
         >>> model.fit(x=x, y=y.reshape(-1,1,1))
     ```
     """
@@ -59,6 +46,24 @@ class NBeats(keras.layers.Layer):
             num_exo_inputs=0,
             **kwargs
     ):
+        """
+        Initiates the Nbeats layer
+
+        Arguments:
+            units:
+                Number of units in NBeats layer. It determines the size of NBeats.
+            lookback:
+                Number of historical time-steps used to predict next value
+            forecast_length:
+            stack_types :
+            nb_blocks_per_stack:
+            theta_dim :
+            share_weights_in_stack:
+            nb_harmonics :
+            num_inputs:
+            num_exo_inputs:
+            kwargs :
+        """
 
         if num_inputs != 1:
             raise NotImplementedError

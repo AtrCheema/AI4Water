@@ -56,6 +56,7 @@ class MLRegressionExperiments(Experiments):
                  verbosity=1,
                  **model_kwargs):
         """
+        Initializes the class
 
         Arguments:
             param_space: dimensions of parameters which are to be optimized. These
@@ -74,16 +75,20 @@ class MLRegressionExperiments(Experiments):
             >>> data = arg_beach()  # read data file, in this case load the default data
             >>> inputs = list(data.columns)[0:-1]  # define input and output columns in data
             >>> outputs = list(data.columns)[-1]
-            >>> comparisons = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs,
-            ...                                      nan_filler= {'method': 'KNNImputer', 'features': inputs} )
+            >>> comparisons = MLRegressionExperiments(data=data,
+            ...       input_features=inputs, output_features=outputs,
+            ...       nan_filler= {'method': 'KNNImputer', 'features': inputs} )
             >>> comparisons.fit(run_type="dry_run")
             >>> comparisons.compare_errors('r2')
             >>> # find out the models which resulted in r2> 0.5
-            >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.3)
+            >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater',
+            ...                                                cutoff_val=0.3)
             >>> best_models = [m[1] for m in best_models.values()]
             >>> # now build a new experiment for best models and otpimize them
-            >>> comparisons = MLRegressionExperiments(data=data, inputs_features=inputs, output_features=outputs,
-            ...                                   nan_filler= {'method': 'KNNImputer', 'features': inputs}, exp_name="BestMLModels")
+            >>> comparisons = MLRegressionExperiments(data=data,
+            ...     inputs_features=inputs, output_features=outputs,
+            ...     nan_filler= {'method': 'KNNImputer', 'features': inputs},
+            ...     exp_name="BestMLModels")
             >>> comparisons.fit(run_type="optimize", include=best_models)
             >>> comparisons.compare_errors('r2')
             >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot

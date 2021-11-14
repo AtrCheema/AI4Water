@@ -221,10 +221,10 @@ def taylor_plot(
         cont_kws:dict=None,
         grid_kws:dict=None,
         leg_kws:dict=None,
-        axis_fontdict=None,
+        axis_fontdict:dict=None,
         axis_kws:dict=None,
         **kwargs
-)->None:
+)->plt.Figure:
     """
     Helper function to plot [Taylor's](https://doi.org/10.1029/2000JD900719) plot.
 
@@ -237,14 +237,14 @@ def taylor_plot(
             A dictionary of length > 1 whose keys are scenarios and whose values
             are also dictionary. Each sub-dictionary i.e. dictionary of scenario
             consist of models/simulations.
-        axis_locs dict :
+        axis_locs:
             dictionary defining axis orientation of figure. For example with two
             scenarios named 'scenario1' and 'scenario2', if we want to plot two
             plots in one column, then this argument will be
-                      {'scenario1': 211,
-                       'scenario2': 212}.
+                >>>          {'scenario1': 211,
+                >>>           'scenario2': 212}.
             Default is None.
-        cont_kws dict :
+        cont_kws:
             keyword arguments related to contours. Following args can be used:
                 - levels level of contours
                 - colors color of contours
@@ -254,7 +254,7 @@ def taylor_plot(
                 - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
             https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
 
-        grid_kws dict :
+        grid_kws:
             keyword arguments related to grid. Following args can be used.
             Following keyword arguments are allowed
                 - title_fontsize: int, fontsize of the axis title
@@ -262,7 +262,7 @@ def taylor_plot(
                 - axis {'both', 'x', 'y'},
             any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
 
-        leg_kws dict :
+        leg_kws:
             keyword arguments related to legends:
                 - position defaults to `center`
                 - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
@@ -271,7 +271,7 @@ def taylor_plot(
             https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
-        axis_fontdict dict :
+        axis_fontdict:
             dictionary defining propertiies of left, bottom and top axis labels
             ```python
             axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
@@ -280,7 +280,7 @@ def taylor_plot(
             ```
             The user can define properties of either one or all axis.
 
-        axis_kws dict :
+        axis_kws:
             dictionary containing general parameters related to axis such as title.
 
         kwargs dict : Following keyword arguments are optional:
@@ -315,7 +315,7 @@ def taylor_plot(
 
             - show : bool whether to show the plot or not
     Returns:
-        None
+        matplotlib figure
 
     Example:
         >>> import numpy as np
@@ -350,7 +350,7 @@ def taylor_plot(
         ...    'Model 3': {'std': 3.53, 'corr_coeff': 0.596, 'pbias': 7.81},
         ...    'Model 4': {'std': 2.36, 'corr_coeff': 0.27, 'pbias': -22.78},
         ...    'Model 5': {'std': 2.97, 'corr_coeff': 0.452, 'pbias': -7.99}}}
-
+        ...
         >>> taylor_plot(trues,
         ...        predictions,
         ...        add_grid=True,
@@ -546,8 +546,8 @@ def taylor_plot(
 
     if show:
         plt.show()
-    plt.close('all')
-    return
+
+    return fig
 
 
 if __name__ == "__main__":

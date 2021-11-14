@@ -107,20 +107,23 @@ class AttributeContainer(object):
 class Learner(AttributeContainer):
     """Trains the pytorch model. Motivated from fastai"""
 
-    def __init__(self,
-                 model,  # torch.nn.Module,
-                 batch_size: int = 32,
-                 num_epochs: int = 14,
-                 patience: int = 100,
-                 shuffle: bool = True,
-                 to_monitor: list = None,
-                 use_cuda:bool = False,
-                 path: str = None,
-                 wandb_config:dict = None,
-                 verbosity=1,
-                 **kwargs
-                 ):
+    def __init__(
+            self,
+            model,  # torch.nn.Module,
+            batch_size: int = 32,
+            num_epochs: int = 14,
+            patience: int = 100,
+            shuffle: bool = True,
+            to_monitor: list = None,
+            use_cuda:bool = False,
+            path: str = None,
+            wandb_config:dict = None,
+            verbosity=1,
+            **kwargs
+    ):
         """
+        Initializes the Learner class
+
         Arguments:
             model : a pytorch model having following attributes and methods
 
@@ -138,41 +141,39 @@ class Learner(AttributeContainer):
             path : path to save results/weights
             wandb_config : config for wandb
 
-        Example
-        --------
-        ```python
-        >>>from torch import nn
-        >>>class Net(nn.Module):
-        >>>    def __init__(self, D_in, H, D_out):
-        ...        super(Net, self).__init__()
-        ...        # hidden layer
-        ...        self.linear1 = nn.Linear(D_in, H)
-        ...        self.linear2 = nn.Linear(H, D_out)
-        >>>    def forward(self, x):
-        ...        l1 = self.linear1(x)
-        ...        a1 = sigmoid(l1)
-        ...        yhat = sigmoid(self.linear2(a1))
-        ...        return yhat
-        ...
-        >>>learner = Learner(model=Net(1, 2, 1),
-        ...                      num_epochs=501,
-        ...                      patience=50,
-        ...                      batch_size=1,
-        ...                      shuffle=False)
-        ...
-        >>>learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-        >>>def criterion_cross(labels, outputs):
-        ...    out = -1 * torch.mean(labels * torch.log(outputs) + (1 - labels) * torch.log(1 - outputs))
-        ...    return out
-        >>>learner.loss = criterion_cross
-        ...
-        >>>X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
-        >>>Y = torch.zeros(X.shape[0])
-        >>>Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
-        ...
-        >>>learner.fit(X, Y)
-        >>>metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
-        >>>t = learner.predict(X, y=Y, name='training')
+        Example:
+            >>>from torch import nn
+            >>>class Net(nn.Module):
+            >>>    def __init__(self, D_in, H, D_out):
+            ...        super(Net, self).__init__()
+            ...        # hidden layer
+            ...        self.linear1 = nn.Linear(D_in, H)
+            ...        self.linear2 = nn.Linear(H, D_out)
+            >>>    def forward(self, x):
+            ...        l1 = self.linear1(x)
+            ...        a1 = sigmoid(l1)
+            ...        yhat = sigmoid(self.linear2(a1))
+            ...        return yhat
+            ...
+            >>>learner = Learner(model=Net(1, 2, 1),
+            ...                      num_epochs=501,
+            ...                      patience=50,
+            ...                      batch_size=1,
+            ...                      shuffle=False)
+            ...
+            >>>learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+            >>>def criterion_cross(labels, outputs):
+            ...    out = -1 * torch.mean(labels * torch.log(outputs) + (1 - labels) * torch.log(1 - outputs))
+            ...    return out
+            >>>learner.loss = criterion_cross
+            ...
+            >>>X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
+            >>>Y = torch.zeros(X.shape[0])
+            >>>Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
+            ...
+            >>>learner.fit(X, Y)
+            >>>metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
+            >>>t = learner.predict(X, y=Y, name='training')
         ```
         """
         super().__init__(num_epochs, to_monitor, path=path, use_cuda=use_cuda)
@@ -187,7 +188,13 @@ class Learner(AttributeContainer):
         self.wandb_config = wandb_config
         self.verbosity = verbosity
 
-    def fit(self, x, y=None, validation_data=None, **kwargs):
+    def fit(
+            self,
+            x,
+            y=None,
+            validation_data=None,
+            **kwargs
+    ):
         """Runs the training loop for pytorch model.
 
         Arguments:
@@ -236,14 +243,17 @@ class Learner(AttributeContainer):
 
         return self.on_train_end()
 
-    def predict(self,
-                x,
-                y=None,
-                batch_size: int = None,
-                reg_plot: bool = True,
-                name: str = None,
-                **kwargs) -> np.ndarray:
+    def predict(
+            self,
+            x,
+            y=None,
+            batch_size: int = None,
+            reg_plot: bool = True,
+            name: str = None,
+            **kwargs
+    ) -> np.ndarray:
         """Makes prediction on the given data
+
         Arguments:
             x : data on which to evalute. It can be
 
@@ -257,6 +267,7 @@ class Learner(AttributeContainer):
             batch_size : None means make prediction on whole data in one go
             reg_plot : whether to plot regression line or not
             name : string to be used for title and name of saved plot
+
         Returns:
             predicted output as numpy array
         """
@@ -299,14 +310,16 @@ class Learner(AttributeContainer):
 
         return batch_y, pred_y
 
-    def evaluate(self,
-                 x,
-                 y=None,
-                 batch_size: int = None,
-                 metrics: Union[str, list] = 'r2',
-                 **kwargs
-                 ):
-        """Evaluates the `model` on the given data.
+    def evaluate(
+            self,
+            x,
+            y=None,
+            batch_size: int = None,
+            metrics: Union[str, list] = 'r2',
+            **kwargs
+    ):
+        """
+        Evaluates the `model` on the given data.
 
         Arguments:
             x : data on which to evalute. It can be
@@ -323,7 +336,7 @@ class Learner(AttributeContainer):
                 or a list of metrics. Allowed metrics are anyone from
                 `ai4water.post_processing.SeqMetrics.RegressionMetrics`
             kwargs :
-            """
+        """
         if isinstance(metrics, str):
             metrics = [metrics]
 
@@ -615,10 +628,11 @@ class Learner(AttributeContainer):
 
         return data_loader, num_outs
 
-    def plot_model_using_tensorboard(self,
-                                     x=None,
-                                     path='tensorboard/tensorboard'
-                                     ):
+    def plot_model_using_tensorboard(
+            self,
+            x=None,
+            path='tensorboard/tensorboard'
+    ):
         """Plots the neural network on tensorboard
         Arguments:
             x : torch.Tensor

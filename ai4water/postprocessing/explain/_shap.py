@@ -47,7 +47,7 @@ class ShapExplainer(ExplainerMixin):
         >>>from sklearn.model_selection import train_test_split
         >>>from sklearn import linear_model
         >>>import shap
-
+        ...
         >>>X,y = shap.datasets.diabetes()
         >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
         >>>lin_regr = linear_model.LinearRegression()

@@ -21,7 +21,6 @@ class RegressionMetrics(Metrics):
         >>>p = np.random.random(10)
         >>>errors = RegressionMetrics(t,p)
         >>>all_errors = errors.calculate_all()
-    ```
     """
 
     def __init__(self, *args, **kwargs):

@@ -76,54 +76,42 @@ class Transformations(scaler_container):
     """
     Applies transformation to tabular data.
     Any new transforming methods should define two methods one starting with
-   `transform_with_` and `inverse_transofrm_with_`
+    `transform_with_` and `inverse_transofrm_with_`
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
     Currently following methods are available for transformation and inverse transformation
 
-        - minmax :
-        - maxabs :
-        - robust :
-        - power :
-        - zscore :   also known as standard scalers
-        - quantile :
-        - log :     natural logrithmic
-        - log10 :   log with base 10
-        - log2 : log with base 2
-        - tan :     tangent
-        - cumsum :  cummulative sum
-        - pca :     principle component analysis
-        - kpca :    kernel component analysis
-        - ipca :    incremental principle component analysis
-        - fastica : fast incremental component analysis
+    Methods
+    -------
+    - minmax
+    - maxabs
+    - robust
+    - power
+    - zscore    also known as standard scalers
+    - quantile
+    - log      natural logrithmic
+    - log10    log with base 10
+    - log2  log with base 2
+    - tan      tangent
+    - cumsum   cummulative sum
 
     To transform a datafrmae using any of the above methods use
 
-    ```python
-    >>>scaler = Transformations(data=[1,2,3,5], method='zscore')
-    >>>scaler.transform()
-    ```
+    Examples:
+        >>> scaler = Transformations(data=[1,2,3,5], method='zscore')
+        >>> scaler.transform()
 
-    or
+        or
+        >>> scaler = Transformations(data=pd.DataFrame([1,2,3]))
+        >>> normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
 
-    ```python
-    >>>scaler = Transformations(data=pd.DataFrame([1,2,3]))
-    >>>normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
-    ```
+        >>> scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
+        >>> normalized_df, scaler_dict = scaler()
 
-    or
-
-    ```python
-    >>>scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
-    >>>normalized_df, scaler_dict = scaler()
-    ```
-
-    or using one liner
-
-    ```python
-    >>>normalized_df, scaler = Transformations(data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
-    ...                                      method='log', features=['a'])('transform')
-    ```
+        or using one liner
+        >>> normalized_df, scaler = Transformations(
+        ...     data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
+        ...     method='log', features=['a'])('transform')
 
     where `method` can be any of the above mentioned methods.
 
@@ -190,28 +178,22 @@ class Transformations(scaler_container):
                 INTIALIZATION and not during transform or inverse transform e.g.
                 `n_components` for pca.
 
-        Example
-        ---------
-        ```python
-        >>>from ai4water.preprocessing.transformations import Transformations
-        >>>from ai4water.datasets import arg_beach
-        >>>df = arg_beach()
-        >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
-        >>>transformer = Transformations(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
-        >>>new_data = transformer.transform()
-        ```
+        Example:
+            >>> from ai4water.preprocessing.transformations import Transformations
+            >>> from ai4water.datasets import arg_beach
+            >>> df = arg_beach()
+            >>> inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+            >>> transformer = Transformations(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
+            >>> new_data = transformer.transform()
 
-        Following shows how to apply log transformation on an array containing zeros
-        by making use of the argument `replace_zeros`. The zeros in the input array
-        will be replaced internally but will be inserted back afterwards.
-
-        ```python
-        >>>from ai4water.preprocessing.transformations import Transformations
-        >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
-        >>>transformed_data = transformer.transform()
-        ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
-        >>>original_data = transformer.inverse_transform(data=transformed_data)
-        ```
+            Following shows how to apply log transformation on an array containing zeros
+            by making use of the argument `replace_zeros`. The zeros in the input array
+            will be replaced internally but will be inserted back afterwards.
+            >>> from ai4water.preprocessing.transformations import Transformations
+            >>> transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
+            >>> transformed_data = transformer.transform()
+            ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
+            >>> original_data = transformer.inverse_transform(data=transformed_data)
 
         """
         super().__init__()

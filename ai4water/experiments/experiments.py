@@ -53,7 +53,7 @@ class Experiments(object):
     All the expriments must be subclasses of this class.
     The core idea of of `Experiments` is `model`. An experiment consists of one
     or more models. The models differ from each other in their structure/idea/concept.
-    When fit() is called, each model is trained.
+    When [fit][ai4water.experiments.Experiments.fit] is called, each model is trained.
 
     Attributes
     ------------
@@ -72,19 +72,25 @@ class Experiments(object):
     - from_config
 
     """
-    def __init__(self,
-                 cases: dict = None,
-                 exp_name: str = None,
-                 num_samples: int = 5,
-                 verbosity: int = 1,
-                 ):
+    def __init__(
+            self,
+            cases: dict = None,
+            exp_name: str = None,
+            num_samples: int = 5,
+            verbosity: int = 1,
+    ):
         """
+
         Arguments:
-            cases : python dictionary defining different cases/scenarios
-            exp_name : name of experiment, used to define path in which results are saved
-            num_samples : only relevent when you wan to optimize hyperparameters of models
+            cases:
+                python dictionary defining different cases/scenarios
+            exp_name:
+                name of experiment, used to define path in which results are saved
+            num_samples:
+                only relevent when you wan to optimize hyperparameters of models
                 using `grid` method
-            verbosity : determines the amount of information
+            verbosity:
+                determines the amount of information
         """
         self.opt_results = None
         self.optimizer = None
@@ -136,7 +142,8 @@ class Experiments(object):
     def num_samples(self, x):
         self._num_samples = x
 
-    def fit(self,
+    def fit(
+            self,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -146,31 +153,39 @@ class Experiments(object):
             post_optimize: str = 'eval_best',
             fit_kws: dict = None,
             hpo_kws: dict = None
-            ):
+    ):
         """
         Runs the fit loop for the specified models.
         todo, post_optimize not working for 'eval_best' with ML methods.
 
         Arguments:
-            run_type : One of `dry_run` or `optimize`. If `dry_run`, the all
+            run_type :
+                One of `dry_run` or `optimize`. If `dry_run`, the all
                 the `models` will be trained only once. if `optimize`, then
                 hyperparameters of all the models will be optimized.
-            opt_method : which optimization method to use. options are `bayes`,
+            opt_method :
+                which optimization method to use. options are `bayes`,
                 `random`, `grid`. ONly valid if `run_type` is `optimize`
             num_iterations : number of iterations for optimization. Only valid
                 if `run_type` is `optimize`.
-            include : name of models to included. If None, all the models found
+            include :
+                name of models to included. If None, all the models found
                 will be trained and or optimized.
-            exclude : name of `models` to be excluded
-            cross_validate : whether to cross validate the model or not. This
+            exclude :
+                name of `models` to be excluded
+            cross_validate :
+                whether to cross validate the model or not. This
                 depends upon `cross_validator` agrument to the `Model`.
-            post_optimize : one of `eval_best` or `train_best`. If eval_best,
+            post_optimize :
+                one of `eval_best` or `train_best`. If eval_best,
                 the weights from the best models will be uploaded again and the model
                 will be evaluated on train, test and all the data. If `train_best`,
                 then a new model will be built and trained using the parameters of
                 the best model.
-            fit_kws :  key word arguments that will be passed to ai4water's model.fit
-            hpo_kws : keyword arguments for `HyperOpt` class.
+            fit_kws :
+                key word arguments that will be passed to ai4water's [fit][ai4water.Model.fit] function
+            hpo_kws :
+                keyword arguments for [`HyperOpt`][ai4water.hyperopt.HyperOpt.__init__] class.
         """
         assert run_type in ['optimize', 'dry_run']
 
@@ -325,14 +340,15 @@ class Experiments(object):
         self.simulations['test'][model_type] = test_results[1]
         return
 
-    def taylor_plot(self,
-                    include: Union[None, list] = None,
-                    exclude: Union[None, list] = None,
-                    figsize: tuple = (9, 7),
-                    **kwargs
-                    ):
+    def taylor_plot(
+            self,
+            include: Union[None, list] = None,
+            exclude: Union[None, list] = None,
+            figsize: tuple = (9, 7),
+            **kwargs
+    ):
         """
-        Compares the models using taylor plot.
+        Compares the models using [taylor plot][ai4water.utils.taylor_plot].
 
         Arguments:
             include :
@@ -342,7 +358,7 @@ class Experiments(object):
                 if not None, must be a list of models which will excluded.
                 None will result in no exclusion
             figsize :
-            kwargs :  all the keyword arguments from taylor_plot().
+            kwargs :  all the keyword arguments for [taylor_plot][ai4water.utils.taylor_plot] function.
         """
 
         include = self._check_include_arg(include)
@@ -475,7 +491,7 @@ Available cases are {self.models} and you wanted to include
     ) -> dict:
         """Shows how much improvement was observed after hyperparameter
         optimization. This plot is only available if `run_type` was set to
-        `optimize` in `fit`.
+        `optimize` in [`fit`][ai4water.experiments.Experiments.fit].
 
         Arguments:
             matric_name : the peformance metric to compare
@@ -484,9 +500,9 @@ Available cases are {self.models} and you wanted to include
             orient : valid values are `horizontal` or `vertical`
             kwargs : any of the following keyword arguments
 
-                rotation :
-                name :
-                dpi :
+                - rotation :
+                - name :
+                - dpi :
         """
         rotation = kwargs.get('rotation', 0)
         name = kwargs.get('name', '')
@@ -556,28 +572,28 @@ Available cases are {self.models} and you wanted to include
     ) -> dict:
         """
         Plots a specific performance matric for all the models which were
-        run during `experiment.fit()`.
+        run during [fit][ai4water.experiments.Experiments.fit] call.
 
         Arguments:
-            matric_name str:
+            matric_name:
                  performance matric whose value to plot for all the models
-            cutoff_val float:
+            cutoff_val:
                  if provided, only those models will be plotted for whome the matric is greater/smaller
                  than this value. This works in conjuction with `cutoff_type`.
-            cutoff_type str:
+            cutoff_type:
                  one of `greater`, `greater_equal`, `less` or `less_equal`.
                  Criteria to determine cutoff_val. For example if we want to
                  show only those models whose r2 is > 0.5, it will be 'max'.
-            save bool:
+            save:
                 whether to save the plot or not
-            sort_by str:
+            sort_by:
                 either 'test' or 'train'. How to sort the results for plotting. If 'test', then test
                 performance matrics will be sorted otherwise train performance matrics will be sorted.
-            ignore_nans bool:
+            ignore_nans:
                 default True, if True, then performance matrics with nans are ignored otherwise
                 nans/empty bars will be shown to depict which models have resulted in nans for the given
                 performance matric.
-            name str:
+            name:
                 name of the saved file.
             show : whether to show the plot at the end or not?
 
@@ -602,7 +618,6 @@ Available cases are {self.models} and you wanted to include
             >>> experiment.fit()
             >>> experiment.compare_errors('mse')
             >>> experiment.compare_errors('r2', 0.2, 'greater')
-        ```
         """
 
         models = self.sort_models_by_metric(matric_name, cutoff_val, cutoff_type,
@@ -644,21 +659,33 @@ Available cases are {self.models} and you wanted to include
             plt.show()
         return models
 
-    def plot_losses(self,
-                    loss_name: Union[str, list] = 'loss',
-                    save: bool = True,
-                    name: str = 'loss_comparison',
-                    **kwargs):
-        """Plots the loss curves of the evaluated models.
+    def plot_losses(
+            self,
+            loss_name: Union[str, list] = 'loss',
+            save: bool = True,
+            name: str = 'loss_comparison',
+            show: bool = True,
+            **kwargs
+    )->plt.Axes:
+        """
+        Plots the loss curves of the evaluated models.
 
         Arguments:
-            loss_name : the name of loss value, must be recorded during training
-            save : whether to save the plot or not
-            name : name of saved file
+            loss_name:
+                the name of loss value, must be recorded during training
+            save:
+                whether to save the plot or not
+            name:
+                name of saved file
+            show:
+                whether to show the plot or now
             kwargs : following keyword arguments can be used
-                width:
-                height:
-                bbox_inches:
+
+                - width:
+                - height:
+                - bbox_inches:
+        Returns:
+            matplotlib axes
         """
 
         if not isinstance(loss_name, list):
@@ -686,22 +713,34 @@ Available cases are {self.models} and you wanted to include
         if save:
             fname = os.path.join(self.exp_path, f'{name}_{loss_name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
-        plt.show()
-        return
 
-    def plot_convergence(self,
-                         save: bool = False,
-                         name='convergence_comparison',
-                         **kwargs):
+        if show:
+            plt.show()
+
+        return axis
+
+    def plot_convergence(
+            self,
+            show:bool=True,
+            save: bool = False,
+            name:str='convergence_comparison',
+            **kwargs
+    )->Union[plt.Axes, None]:
         """
         Plots the convergence plots of hyperparameter optimization runs.
-        Only valid if `fit` was run with `run_type=optimize`.
+        Only valid if `run_type=optimize` during [`fit`][ai4water.experiments.experiments.Experiments.fit]
+        call.
 
         Arguments:
+            show:
+                whether to show the plot or now
             save : whether to save the plot or not
             name : name of file to save the plot
             kwargs : keyword arguments like:
                 bbox_inches :
+        Returns:
+            if the optimized models are >1 then it returns the maplotlib axes
+            on which the figure is drawn otherwise it returns None.
         """
         if len(self.config['optimized_models']) < 1:
             print('No model was optimized')
@@ -721,17 +760,25 @@ Available cases are {self.models} and you wanted to include
         if save:
             fname = os.path.join(self.exp_path, f'{name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
-        plt.show()
-        return
+
+        if show:
+            plt.show()
+        return axis
 
     @classmethod
-    def from_config(cls, config_path: str, **kwargs) -> "Experiments":
-        """Loads the experiment from the config file.
+    def from_config(
+            cls,
+            config_path: str,
+            **kwargs
+    ) -> "Experiments":
+        """
+        Loads the experiment from the config file.
+
         Arguments:
             config_path : complete path of experiment
             kwargs : keyword arguments to experiment
         Returns:
-            an instance of Experiments class
+            an instance of `Experiments` class
         """
         if not config_path.endswith('.json'):
             raise ValueError(f"""
@@ -796,13 +843,19 @@ Available cases are {self.models} and you wanted to include
 
         return cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
 
-    def plot_cv_scores(self,
-                       show=False,
-                       name="cv_scores",
-                       exclude: Union[str, list] = None,
-                       include: Union[str, list] = None,
-                       **kwargs):
-        """Plots the box whisker plots of the cross validation scores.
+    def plot_cv_scores(
+            self,
+            show:bool=False,
+            name:str="cv_scores",
+            exclude: Union[str, list] = None,
+            include: Union[str, list] = None,
+            **kwargs
+    )->Union[plt.Axes, None]:
+        """
+        Plots the box whisker plots of the cross validation scores.
+
+        This plot is only available if cross_validation was set to True during
+        [fit()][ai4water.experiments.experiments.Experiments.fit].
 
         Arguments:
             show : whether to show the plot or not
@@ -816,8 +869,9 @@ Available cases are {self.models} and you wanted to include
                 - figsize
                 - bbox_inches
 
-        This plot is only available if cross_validation was set to True during
-        fit().
+        Returns:
+            matplotlib axes if the figure is drawn otherwise None
+
         """
         if len(self.cv_scores) == 0:
             return
@@ -860,7 +914,7 @@ Available cases are {self.models} and you wanted to include
         if show:
             plt.show()
 
-        return
+        return axis
 
     def sort_models_by_metric(
             self,

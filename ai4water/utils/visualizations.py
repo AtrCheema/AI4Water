@@ -273,7 +273,7 @@ def regplot(
         title:str = None,
         show:bool = False,
         annotation_key:str=None,
-        annotation_val=None,
+        annotation_val:float=None,
         line_color = None,
         marker_color = None,
         fill_color = None,

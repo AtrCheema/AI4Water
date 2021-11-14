@@ -33,11 +33,10 @@ def get_attributes(
             kept object.
         case_sensitive : whether to consider what as case-sensitive or not. In such
             a case, fastica and FastICA will both be saved as separate objects.
-    Example
-    ---------
-    ```python
-    >>> get_attributes(tf.keras, 'layers')  # will get all layers from tf.keras.layers
-    ```
+
+    Example:
+        >>> get_attributes(tf.keras, 'layers')  # will get all layers from tf.keras.layers
+
     """
 
     if retain:

@@ -1,3 +1,4 @@
+from typing import Union
 
 import numpy as np
 
@@ -51,11 +52,9 @@ class Real(_Real, Counter):
     - to_optuna
     - serialize
 
-    Example
-    ----------
-    ```python
-    >>>from ai4water.hyperopt import Real
-    >>>lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
+    Example:
+        >>>from ai4water.hyperopt import Real
+        >>>lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
     ```
     """
     def __init__(self,
@@ -63,7 +62,7 @@ class Real(_Real, Counter):
                  high: float = None,
                  num_samples: int = None,
                  step: int = None,
-                 grid=None,
+                 grid:Union[list, np.ndarray]=None,
                  *args,
                  **kwargs
                  ):

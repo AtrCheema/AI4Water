@@ -996,7 +996,11 @@ class BaseModel(NN, Plots):
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
 
-        Note:
+        Returns:
+            cross validation score
+
+        Note
+        ----
             Currently not working for deep learning models.
 
         """
@@ -1074,6 +1078,7 @@ class BaseModel(NN, Plots):
         Evalutes the performance of the model on a given data.
         calls the `evaluate` method of underlying `model`. If the `evaluate`
         method is not available in underlying `model`, then `predict` is called.
+
         Arguments:
             data : which data type to use, valid values are `training`, `test`
                 and `validation`. You can also provide your own x,y values as keyword
@@ -1448,7 +1453,7 @@ class BaseModel(NN, Plots):
         Interprets the underlying model. Call it after training.
 
         Returns:
-            An instance of [Interpret][ai4water.post_processing.interpret.Interpret] class
+            An instance of [Interpret][ai4water.postprocessing.interpret.Interpret] class
 
         Example:
             >>> model.fit()
@@ -1675,11 +1680,15 @@ class BaseModel(NN, Plots):
         """Performs comprehensive Exploratory Data Analysis.
 
         Arguments:
-            freq : if specified, small chunks of data will be plotted instead of
+            freq:
+                if specified, small chunks of data will be plotted instead of
                 whole data at once. The data will NOT be resampled. This is valid
-                only `plot_data` and `box_plot`. Possible values are `yearly`, weekly`, and
-            cols :
-        `monthly`.
+                only `plot_data` and `box_plot`. Possible values are `yearly`,
+                    weekly`, and  `monthly`.
+            cols:
+
+        Returns:
+            an instance of [EDA][ai4water.eda.EDA] class
         """
         # importing EDA earlier will import numpy etc as well
         from ai4water.eda import EDA
@@ -1782,9 +1791,10 @@ class BaseModel(NN, Plots):
             >>> optimizer = model.optimize_hyperparameters()
 
             Same can be done if a model is defined using neural networks
-            >>> model_conf = {"layers": {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
-            ...                          "Dense1": {"units": 1,
-            ...                                     "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
+            >>> model_conf = {"layers":
+            ...     {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
+            ...      "Dense1": {"units": 1,
+            ...            "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
             >>> model = Model(model=model_config, data=arg_beach())
             >>> optimizer = model.optimize_hyperparameters()
         """
@@ -1815,7 +1825,7 @@ class BaseModel(NN, Plots):
     def optimize_transformations(
             self,
             transformations:Union[list, str] = None,
-            algorithm="bayes",
+            algorithm:str="bayes",
             num_iterations:int=12,
             include: Union[str, list, dict] = None,
             exclude: Union[str, list] = None,
