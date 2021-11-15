@@ -55,14 +55,13 @@ class Real(_Real, Counter):
     Example:
         >>>from ai4water.hyperopt import Real
         >>>lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
-    ```
     """
     def __init__(self,
                  low: float = None,
                  high: float = None,
                  num_samples: int = None,
                  step: int = None,
-                 grid:Union[list, np.ndarray]=None,
+                 grid: Union[list, np.ndarray] = None,
                  *args,
                  **kwargs
                  ):
@@ -307,7 +306,7 @@ class Categorical(_Categorical):
         return _raum
 
 
-def check_prior(kwargs:dict):
+def check_prior(kwargs: dict):
     prior = kwargs.get('prior', 'uniform')
     if prior in ["log"] and skopt.__version__ in ["0.9.0"]:
         print(f"chaning prior from {prior} to log-uniform for {kwargs['name']}")

@@ -275,7 +275,7 @@ class Experiments(object):
 
                     if post_optimize == 'eval_best':
                         self.eval_best(model_name, opt_dir, fit_kws)
-                    elif post_optimize=='train_best':
+                    elif post_optimize == 'train_best':
                         self.train_best(model_name)
 
                 if not hasattr(self, '_model'):  # todo asking user to define this parameter is not good
@@ -621,7 +621,7 @@ Available cases are {self.models} and you wanted to include
         """
 
         models = self.sort_models_by_metric(matric_name, cutoff_val, cutoff_type,
-                                       ignore_nans, sort_by)
+                                            ignore_nans, sort_by)
 
         names = [i[1] for i in models.values()]
         test_matrics = list(models.keys())
@@ -634,7 +634,7 @@ Available cases are {self.models} and you wanted to include
 
         bar_chart(axis=axis[0],
                   labels=names, values=train_matrics,
-                  color = kwargs.get('color', None),
+                  color=kwargs.get('color', None),
                   title="Train",
                   xlabel=LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
@@ -642,13 +642,13 @@ Available cases are {self.models} and you wanted to include
                      )
 
         bar_chart(axis=axis[1], labels=names, values=test_matrics,
-                     title="Test",
-                     color=kwargs.get('color', None),
-                     xlabel=LABELS.get(matric_name, matric_name),
-                     xlabel_fs=kwargs.get('xlabel_fs', 16),
-                     title_fs=kwargs.get('title_fs', 20),
-                     show_yaxis=False
-                     )
+                  title="Test",
+                  color=kwargs.get('color', None),
+                  xlabel=LABELS.get(matric_name, matric_name),
+                  xlabel_fs=kwargs.get('xlabel_fs', 16),
+                  title_fs=kwargs.get('title_fs', 20),
+                  show_yaxis=False
+                  )
 
         appendix = f"{cutoff_val or ''}{cutoff_type or ''}{len(models)}"
         if save:
@@ -666,7 +666,7 @@ Available cases are {self.models} and you wanted to include
             name: str = 'loss_comparison',
             show: bool = True,
             **kwargs
-    )->plt.Axes:
+    ) -> plt.Axes:
         """
         Plots the loss curves of the evaluated models.
 
@@ -721,11 +721,11 @@ Available cases are {self.models} and you wanted to include
 
     def plot_convergence(
             self,
-            show:bool=True,
+            show: bool = True,
             save: bool = False,
-            name:str='convergence_comparison',
+            name: str = 'convergence_comparison',
             **kwargs
-    )->Union[plt.Axes, None]:
+    ) -> Union[plt.Axes, None]:
         """
         Plots the convergence plots of hyperparameter optimization runs.
         Only valid if `run_type=optimize` during [`fit`][ai4water.experiments.experiments.Experiments.fit]
@@ -845,12 +845,12 @@ Available cases are {self.models} and you wanted to include
 
     def plot_cv_scores(
             self,
-            show:bool=False,
-            name:str="cv_scores",
+            show: bool = False,
+            name: str = "cv_scores",
             exclude: Union[str, list] = None,
             include: Union[str, list] = None,
             **kwargs
-    )->Union[plt.Axes, None]:
+    ) -> Union[plt.Axes, None]:
         """
         Plots the box whisker plots of the cross validation scores.
 
@@ -921,9 +921,9 @@ Available cases are {self.models} and you wanted to include
             matric_name,
             cutoff_val=None,
             cutoff_type=None,
-            ignore_nans:bool = True,
+            ignore_nans: bool = True,
             sort_by="test"
-    )->dict:
+    ) -> dict:
         """returns the models sorted according to their performance"""
         def find_matric_array(true, sim):
             errors = RegressionMetrics(true, sim)
@@ -975,8 +975,8 @@ Available cases are {self.models} and you wanted to include
     def fit_with_tpot(
             self,
             models: Union[int, List[str], dict],
-            selection_criteria:str = 'mse',
-            scoring : str = None,
+            selection_criteria: str = 'mse',
+            scoring: str = None,
             **tpot_args
     ):
         """
@@ -1041,14 +1041,14 @@ Available cases are {self.models} and you wanted to include
 
             tpot_config = {}
             for m in models:
-                c:dict = param_space[f"model_{m}"]
+                c: dict = param_space[f"model_{m}"]
                 tpot_config.update(c)
 
         elif isinstance(models, list):
 
             tpot_config = {}
             for m in models:
-                c:dict = param_space[f"model_{m}"]
+                c: dict = param_space[f"model_{m}"]
                 tpot_config.update(c)
 
         elif isinstance(models, dict):
@@ -1059,7 +1059,7 @@ Available cases are {self.models} and you wanted to include
                 if "." in mod_name:
                     mod_path = mod_name
                 else:
-                    c:dict = param_space[f"model_{mod_name}"]
+                    c: dict = param_space[f"model_{mod_name}"]
                     mod_path = list(c.keys())[0]
                 d = {mod_path: mod_paras}
                 tpot_config.update(d)
@@ -1159,7 +1159,7 @@ class TransformationExperiments(Experiments):
                  exp_name: str = None,
                  num_samples: int = 5,
                  ai4water_model=None,
-                 verbosity:int = 1,
+                 verbosity: int = 1,
                  **model_kws):
         self.data = data
         self.param_space = param_space

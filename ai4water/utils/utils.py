@@ -35,6 +35,7 @@ MATRIC_TYPES = {
     "nrmse": "min",
 }
 
+
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
     """
     Sets the random seed for a given module if the module is not None
@@ -182,7 +183,7 @@ def check_kwargs(**kwargs):
                 model = {model: {}}
                 kwargs['model'] = model
 
-            #if list(model.keys())[0].startswith("XGB"):
+            # if list(model.keys())[0].startswith("XGB"):
             #    if "learning_rate" not in model:
             #        kwargs["model"]["learning_rate"] = lr
 
@@ -317,7 +318,7 @@ def _make_model(**kwargs):
         'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'mode': {'type': str, 'default': def_mode, 'lower': None, 'upper': None,
-                    'between': ["regression", "classification"]},
+                 'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
         # can be None or any of the method defined in ai4water.utils.transformatinos.py
@@ -365,12 +366,12 @@ def _make_model(**kwargs):
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
         'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
-        'dataset_args' : {'type': dict, 'default': {}}
+        'dataset_args': {'type': dict, 'default': {}}
     }
 
-    model_config=  {key:val['default'] for key,val in model_args.items()}
+    model_config = {key: val['default'] for key, val in model_args.items()}
 
-    config = {key:val['default'] for key,val in data_args.items()}
+    config = {key: val['default'] for key, val in data_args.items()}
 
     opt_paras = {}
     # because there are two kinds of hpos which can be optimized
@@ -446,7 +447,8 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
                 raise TypeError("{} must be any of the type {} but it is of type {}"
                                 .format(key, dtype, val.__class__.__name__))
         elif not isinstance(val, dtype):
-            if val != dict_to_lookup[key]['default']: # the default value may be None which will be different than dtype
+            # the default value may be None which will be different than dtype
+            if val != dict_to_lookup[key]['default']:
                 raise TypeError(f"{key} must be of type {dtype} but it is of type {val.__class__.__name__}")
 
     if isinstance(val, int) or isinstance(val, float):
@@ -466,12 +468,12 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     return
 
 
-def deepcopy_dict_without_clone(d:dict)->dict:
+def deepcopy_dict_without_clone(d: dict) -> dict:
     """makes deepcopy of a dictionary without cloning it"""
     assert isinstance(d, dict)
 
     new_d = {}
-    for k,v in d.items():
+    for k, v in d.items():
         if isinstance(v, dict):
             new_d[k] = deepcopy_dict_without_clone(v)
         elif hasattr(v, '__len__'):
@@ -482,8 +484,8 @@ def deepcopy_dict_without_clone(d:dict)->dict:
 
 
 def find_opt_paras_from_model_config(
-        config:Union[dict, str, None]
-)->Tuple[Union[dict, None, str], dict, Union[dict, str, None]]:
+        config: Union[dict, str, None]
+) -> Tuple[Union[dict, None, str], dict, Union[dict, str, None]]:
 
     opt_paras = {}
 
@@ -502,7 +504,7 @@ def find_opt_paras_from_model_config(
     else:
         # it is a classical ml model
         _ml_config = {}
-        ml_config:dict = list(config.values())[0]
+        ml_config: dict = list(config.values())[0]
         model_name = list(config.keys())[0]
 
         original_model_config, _ = process_config_dict(copy.deepcopy(config[model_name]), False)
@@ -533,7 +535,7 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
 
     def pd(d):
         for k, v in d.items():
-            if isinstance(v, dict) and len(v)>0:
+            if isinstance(v, dict) and len(v) > 0:
                 pd(v)
             elif v.__class__.__name__ in ["Integer", "Real", "Categorical"]:
                 if v.name is None or v.name.startswith("integer_") or v.name.startswith("real_"):
@@ -546,7 +548,7 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
                 if update_initial_guess:
                     x0 = jsonize(v.rvs(1)[0])  # get initial guess
                     d[k] = x0  # inplace change of dictionary
-                else: # we most probably have updated the name, so doing inplace change
+                else:  # we most probably have updated the name, so doing inplace change
                     d[k] = v
         return
 
@@ -557,8 +559,9 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
 def update_model_config(config:dict, suggestions):
     """returns the updated config if config contains any parameter from suggestions."""
     cc = copy.deepcopy(config)
+
     def update(c):
-        for k,v in c.items():
+        for k, v in c.items():
             if isinstance(v, dict):
                 update(v)
             elif v.__class__.__name__ in ["Integer", "Real", "Categorical"]:
@@ -705,7 +708,7 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_i
     assert best in ['min', 'max']
     all_weights = os.listdir(w_path)
 
-    if len(all_weights)==1:
+    if len(all_weights) == 1:
         return all_weights[0]
 
     losses = {}
@@ -714,7 +717,8 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_i
         try:
             val_loss = str(float(wname.split('_')[2]))  # converting to float so that trailing 0 is removed
         except ValueError as e:
-            raise ValueError(f"while trying to find best weight in {w_path} with {best} and {ext} and {epoch_identifier}"
+            raise ValueError(f"while trying to find best weight in {w_path} with {best} and"
+                             f" {ext} and {epoch_identifier}"
                              f" encountered following error \n{e}")
         losses[val_loss] = {'loss': wname.split('_')[2], 'epoch': wname.split('_')[1]}
 
@@ -1549,6 +1553,7 @@ def plot_activations_along_inputs(
 
     return
 
+
 def axis_imshow(axis, values, lookback, vmin, vmax, xlabel=None, title=None, cmap=None):
 
     im = axis.imshow(values, aspect='auto', vmin=vmin, vmax=vmax, cmap=cmap)
@@ -1599,7 +1604,7 @@ def maybe_three_outputs(data, teacher_forcing=False):
 
 def get_version_info(
         **kwargs
-)->dict:
+) -> dict:
     # todo, chekc which attributes are not available in different versions
     import sys
     info = {'python': sys.version, 'os': os.name}
@@ -1610,7 +1615,7 @@ def get_version_info(
         info['tf_is_gpu_available'] = tf.test.is_gpu_available()
         info['eager_execution'] = tf.executing_eagerly()
 
-    for k,v in kwargs.items():
+    for k, v in kwargs.items():
         if v is not None:
             info[k] = getattr(v, '__version__', 'NotDefined')
 

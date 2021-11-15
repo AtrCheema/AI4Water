@@ -7,7 +7,6 @@ import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
 
-
 COLORS = {
     0: np.array([0.89411765, 0.10196078, 0.10980392, 1.]),
     1: np.array([0.21568627, 0.49411765, 0.72156863, 1.]),
@@ -26,10 +25,10 @@ COLORS = {
     14: np.array([0.13684922, 0.98802401, 0.34518303, 1.]),
     15: np.array(np.random.random(3).tolist() + [1.]),
     16: np.array([0.54829269, 0.15069842, 0.06147751, 1.]),
-    17: np.array([0.61       , 0.59       , 0.51    , 1.]),
+    17: np.array([0.61, 0.59, 0.51, 1.]),
     18: np.array([0.54829269, 0.15069842, 0.06147751, 1.]),
     19: np.array([0.06802773, 0.46382623, 0.49007703, 1.]),
-    20: np.array([0.80       , 0.50       , 0.59    , 1.]),
+    20: np.array([0.80, 0.50, 0.59, 1.]),
     21: np.array(np.random.random(3).tolist() + [1.]),
     22: np.array(np.random.random(3).tolist() + [1.]),
     23: np.array(np.random.random(3).tolist() + [1.]),
@@ -69,6 +68,7 @@ RECTS = {1: (111,),
          3: (311, 312, 313),
          4: (221, 222, 223, 224)}
 
+
 class TaylorDiagram(object):
     """
     Taylor diagram.
@@ -85,7 +85,7 @@ class TaylorDiagram(object):
                  label='_',
                  srange=(0, 1.5),
                  extend=False,
-                 axis_fontdict:dict=None):
+                 axis_fontdict: dict = None):
         """
         Set up Taylor diagram axes, i.e. single quadrant polar
         plot, using `mpl_toolkits.axisartist.floating_axes`.
@@ -215,16 +215,16 @@ class TaylorDiagram(object):
 
 
 def taylor_plot(
-        trues:dict,
-        simulations:dict,
-        axis_locs:dict=None,
-        cont_kws:dict=None,
-        grid_kws:dict=None,
-        leg_kws:dict=None,
-        axis_fontdict:dict=None,
-        axis_kws:dict=None,
+        trues: dict,
+        simulations: dict,
+        axis_locs: dict = None,
+        cont_kws: dict = None,
+        grid_kws: dict = None,
+        leg_kws: dict = None,
+        axis_fontdict: dict = None,
+        axis_kws: dict = None,
         **kwargs
-)->plt.Figure:
+) -> plt.Figure:
     """
     Helper function to plot [Taylor's](https://doi.org/10.1029/2000JD900719) plot.
 
@@ -371,8 +371,8 @@ def taylor_plot(
     scenarios = trues.keys()
 
     figsizes = {
-        1 : (8,6),
-        2 : (11, 9),
+        1: (8, 6),
+        2: (11, 9),
         3: (11, 9),
         4: (12, 10)
     }
@@ -396,7 +396,7 @@ def taylor_plot(
     show = kwargs.get("show", True)
 
     if axis_locs is None:
-        axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
+        axis_locs = {k: v for k, v in zip(scenarios, RECTS[len(scenarios)])}
 
     # importing it at the start will be too early, because every sub-module imports from utils
     # so utils must not import something from other sub-modules at the start
@@ -480,7 +480,7 @@ def taylor_plot(
                 corrcoef = model['corr_coeff']
                 third_val = None
 
-                if len(model)>2:
+                if len(model) > 2:
                     _ = list(model.keys())[2]
                     third_val = list(model.values())[2]
             else:
@@ -523,7 +523,7 @@ def taylor_plot(
         # Tricky: ax is the polar ax (used for plots), _ax is the
         # container (used for layout)
         if len(scenarios) > 1:
-            dia._ax.set_title(season.capitalize(), fontdict={'fontsize':title_fontsize})
+            dia._ax.set_title(season.capitalize(), fontdict={'fontsize': title_fontsize})
 
     # Add a figure legend and title. For loc option, place x,y tuple inside [ ].
     # Can also use special options here:
@@ -532,8 +532,6 @@ def taylor_plot(
     if leg_kws is None:
         position = "center" if len(scenarios) == 4 else "upper right"
         leg_kws = {'loc': position}
-
-
 
     fig.legend(dia.samplePoints,
                [p.get_label() for p in dia.samplePoints],

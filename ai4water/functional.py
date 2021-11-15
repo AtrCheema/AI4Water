@@ -302,10 +302,11 @@ class Model(BaseModel):
         layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
 
         inputs = []
-        for k,v in lyr_cache.items():
+        for k, v in lyr_cache.items():
             # since the model is not build yet and we have access to only output tensors of each list, this is probably
             # the only way to know that how many `Input` layers were encountered during the run of this method. Each
-            # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
+            # tensor (except TimeDistributed) has .op.inputs attribute,
+            # which is empty if a tensor represents output of Input layer.
             if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
                 if k != "TimeDistributed" and hasattr(v, 'op'):
                     if hasattr(v.op, 'inputs'):
@@ -313,7 +314,7 @@ class Model(BaseModel):
                         if len(_ins) == 0:
                             inputs.append(v)
             # not sure if this is the proper way of checking if a layer receives an input or not!
-            else: #
+            else:
                 if hasattr(v, '__dummy_name'):
                     inputs.append(v)
 
@@ -395,7 +396,7 @@ class Model(BaseModel):
 
 def update_layers_config(layers_config, lyr):
     new_config = {}
-    for k,v in layers_config.items():
+    for k, v in layers_config.items():
         if k == lyr:
             new_config[lyr.__name__] = v
         else:

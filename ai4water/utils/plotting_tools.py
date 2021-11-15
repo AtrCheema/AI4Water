@@ -19,7 +19,6 @@ BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
 # rank histogram, reliability diagram, ROC curve
 
 
-
 class Plots(object):
     # TODO initialte this class with at least path
 

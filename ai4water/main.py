@@ -13,12 +13,13 @@ import ai4water.backend as K
 from .models.torch import LAYERS as TORCH_LAYERS
 from .tf_attributes import LAYERS
 
-if K.BACKEND =='tensorflow' and tf is not None:
+if K.BACKEND == 'tensorflow' and tf is not None:
     MODEL = tf.keras.Model
 elif K.BACKEND == 'pytorch' and torch is not None:
     MODEL = torch.nn.Module
 else:
-    class MODEL(object): pass
+    class MODEL(object):
+        pass
 
 
 class Model(MODEL, BaseModel):
@@ -47,7 +48,7 @@ class Model(MODEL, BaseModel):
 
         """
         if K.BACKEND == 'tensorflow' and tf is not None:
-            if tf.__version__ in  ["2.3.0", "2.4.0"]:
+            if tf.__version__ in ["2.3.0", "2.4.0"]:
                 raise NotImplementedError(f"""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
             You can use functional API instead by using
@@ -68,7 +69,7 @@ class Model(MODEL, BaseModel):
 
         self._go_up = True
         BaseModel.__init__(self, data=data, prefix=prefix, path=path, verbosity=verbosity, model=model,
-                           #outputs=outputs, inputs=inputs,
+                           # outputs=outputs, inputs=inputs,
                            **kwargs)
 
         self.config['backend'] = K.BACKEND
@@ -115,7 +116,7 @@ class Model(MODEL, BaseModel):
             _input_lyrs = self.input_lyrs
             if isinstance(_input_lyrs, list) and len(_input_lyrs) == 1:
                 input_lyrs = _input_lyrs[0]
-            elif _input_lyrs.__class__.__name__  == "ListWrapper" and len(_input_lyrs) == 1:
+            elif _input_lyrs.__class__.__name__ == "ListWrapper" and len(_input_lyrs) == 1:
                 input_lyrs = _input_lyrs[0]
             else:
                 input_lyrs = _input_lyrs
@@ -132,7 +133,7 @@ class Model(MODEL, BaseModel):
         self._torch_learner = x
 
     @property
-    def layer_names(self)->List[str]:
+    def layer_names(self) -> List[str]:
         """Returns a list of names of layers/nn.modules
         for deep learning model. For ML models, returns empty list"""
         _all_layers = []
@@ -232,7 +233,7 @@ class Model(MODEL, BaseModel):
                 return self.torch_learner.predict
         return self._model.predict
 
-    def initialize_layers(self, layers_config:dict, inputs=None):
+    def initialize_layers(self, layers_config: dict, inputs=None):
         """
         Initializes the layers/weights/variables which are to be used in `forward`
         or `call` method.
@@ -276,9 +277,10 @@ class Model(MODEL, BaseModel):
             else:
                 # may be user has defined layers without input layer, in this case add Input layer as first layer
                 if first_layer:
-                    if inputs is not None: # This method was called by providing it inputs.
+                    if inputs is not None:  # This method was called by providing it inputs.
                         assert isinstance(inputs, tf.Tensor)
-                        first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
+                        # since inputs have been defined, all the layers that will be added will be next to first layer
+                        first_layer = False
                         layer_outputs = inputs
                         initiated_layers[layer_outputs.name] = {'layer': layer_outputs, 'tf_name': lyr_name}
 
@@ -298,7 +300,8 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                         input_lyrs.append(initialized_layer)
 
-                if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
+                # The inputs to the layer have not been specified, so either it is an Input layer
+                if lyr_inputs is None:
                     # or it uses the previous outputs as inputs
                     if lyr_name == "Input":
                         # it is an Input layer, hence should not be called
@@ -317,8 +320,9 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                         elif lyr_name in ['TimeDistributed', 'Bidirectional']:
                             wrp_layer = LAYERS[lyr_name]
+                            # because wrapper layer name is property
                             initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
-                                                                    'tf_name': lyr_name}  # because wrapper layer name is property
+                                                                    'tf_name': lyr_name}
                             continue
                         elif  "LAMBDA" in lyr_name.upper():
                             # lyr_config is serialized lambda layer, which needs to be deserialized
@@ -362,8 +366,9 @@ class Model(MODEL, BaseModel):
                                                                 'tf_name': lyr_name}
                     elif lyr_name in ['TimeDistributed', 'Bidirectional']:
                         wrp_layer = LAYERS[lyr_name]
+                        # because wrapper layer name is property
                         initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
-                                                                'tf_name': lyr_name}  # because wrapper layer name is property
+                                                                'tf_name': lyr_name}
                         continue
                     elif "LAMBDA" in lyr_name.upper():
                         initialized_layer = tf.keras.layers.deserialize(lyr_config)
@@ -435,7 +440,7 @@ class Model(MODEL, BaseModel):
             #         outputs=outs)
                 #MODEL.__init__(self, inputs=inputs, outputs=outs)
 
-        return input_lyrs#, outs
+        return input_lyrs  # , outs
 
     def call(self, inputs, training=None, mask=None, run_call=True):
 
@@ -482,7 +487,7 @@ class Model(MODEL, BaseModel):
 
             if isinstance(lyr_args['layer'], tf.Tensor) or idx == 0 or is_input(lyr_args['layer']):
                 # this must be an input layer
-                #assert is_input(lyr_args['layer'])
+                # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
                     assert all([is_input(_input) for _input in inputs])
                 if isinstance(inputs, tuple):
@@ -492,7 +497,7 @@ class Model(MODEL, BaseModel):
                 #     assert is_input(inputs)
                 input_tensor = True
                 # don't use the tf.keras.Input from self.initiated_layers
-                #outs = lyr_args['layer']
+                # outs = lyr_args['layer']
 
             elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
@@ -538,7 +543,7 @@ class Model(MODEL, BaseModel):
 
     def call_210(self, inputs, training=True, mask=None, run_call=True):
 
-        if int(''.join(np.__version__.split('.')[0:2]).ljust(3, '0'))>=120:
+        if int(''.join(np.__version__.split('.')[0:2]).ljust(3, '0')) >= 120:
             raise NumpyVersionException("Decrease")
 
         self.treat_casted_inputs(inputs)
@@ -566,12 +571,12 @@ class Model(MODEL, BaseModel):
             if isinstance(lyr_args['layer'], tf.Tensor) or idx == 0 or is_input(lyr_args['layer']):
                 is_input_tensor = True
                 # this must be an input layer
-                #assert is_input(lyr_args['layer'])
+                # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
                     if not run_call:
                         assert all([is_input(_input) for _input in inputs])
                 if isinstance(inputs, tuple):
-                     assert all([is_input(_input) for _input in inputs])
+                    assert all([is_input(_input) for _input in inputs])
 
             elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
@@ -589,7 +594,6 @@ class Model(MODEL, BaseModel):
                     call_args, add_args = get_call_args(_inputs, cache, lyr_args['call_args'], lyr)
 
                 # call the initiated layer
-                #print(f"fetching {_inputs} for layer {lyr} call_args are \n{call_args} \n while cache has {cache.keys()}")
                 outs = lyr_args['layer'](call_args, **add_args)
 
                 # if the layer is TFT, we need to extract the attention components
@@ -666,7 +670,7 @@ class Model(MODEL, BaseModel):
 
             if isinstance(lyr_args['layer'], tf.Tensor) or idx == 0 or is_input(lyr_args['layer']):
                 # this must be an input layer
-                #assert is_input(lyr_args['layer'])
+                # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
                     assert all([is_input(_input) for _input in inputs])
                 if isinstance(inputs, tuple):
@@ -705,7 +709,7 @@ class Model(MODEL, BaseModel):
                         cache[lyr_args['named_outs']] = outs
 
             if input_tensor:
-                input_tensor = False #    cache[_tensor.name] = _tensor
+                input_tensor = False  # cache[_tensor.name] = _tensor
             else:
                 cache[lyr] = outs
             prev_output_name = lyr
@@ -742,7 +746,7 @@ class Model(MODEL, BaseModel):
             call_args = lyr_args['call_args']
             _inputs = lyr_args['inputs']
 
-            if idx==0:
+            if idx == 0:
                 assert isinstance(inputs, tuple) and len(inputs) == 1
                 _inputs = 'input_0'
 
@@ -801,7 +805,7 @@ class Model(MODEL, BaseModel):
                 else:
                     self.summary()
 
-            if self.verbosity>=0: # if verbosity is -ve then don't plot this
+            if self.verbosity >= 0:  # if verbosity is -ve then don't plot this
                 self.plot_model(self)
 
         elif self.category == "ML":
@@ -865,9 +869,9 @@ class Model(MODEL, BaseModel):
         data = None
 
         if isinstance(args, tuple):  # multiple non-keyword arguments were provided
-            if len(args)>0:
+            if len(args) > 0:
                 _config = args[0]
-                if len(args)>1:
+                if len(args) > 1:
                     data=args[1]
                 else:
                     data = kwargs.get('data', None)
@@ -900,7 +904,7 @@ class Model(MODEL, BaseModel):
             else:
                 config_path = _config
             config, path = BaseModel._get_config_and_path(cls,
-                                                          config = config,
+                                                          config=config,
                                                           config_path=config_path,
                                                           make_new_path=kwargs.get('make_new_path', False))
             if 'make_new_path' in kwargs:
@@ -910,9 +914,9 @@ class Model(MODEL, BaseModel):
                 config['verbosity'] = kwargs.pop('verbosity')
 
             return cls(**config,
-                   data=data,
-                   path=path,
-                   **kwargs)
+                       data=data,
+                       path=path,
+                       **kwargs)
 
         # tf1.15 has from_config so call it
         return super().from_config(*args, **kwargs)
@@ -933,7 +937,7 @@ class Model(MODEL, BaseModel):
             dataset = x
         elif isinstance(x, np.ndarray):
             dataset = to_torch_dataset(x=x)
-        elif isinstance(x, list) and len(x)==1:
+        elif isinstance(x, list) and len(x) == 1:
             dataset = to_torch_dataset(x[0])
         else:
             raise ValueError
@@ -945,7 +949,6 @@ class Model(MODEL, BaseModel):
 
             y_pred_ = self(batch_x.float())
             predictions.append(y_pred_.detach().numpy())
-
 
         return np.concatenate(predictions, axis=0)
 
@@ -964,7 +967,6 @@ def is_input(tensor, name=''):
     # # not sure if this is the proper way of checking if a layer receives an input or not!
     elif hasattr(tensor, '_keras_mask'):
         _is_input = True
-
 
     return _is_input
 

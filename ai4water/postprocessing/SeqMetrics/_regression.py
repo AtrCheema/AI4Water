@@ -32,8 +32,8 @@ class RegressionMetrics(Metrics):
         super().__init__(*args, **kwargs)
         self.all_methods = list_subclass_methods(RegressionMetrics, True,
                                                  additional_ignores=['calculate_hydro_metrics',
-                                                                     #'calculate_scale_dependent_metrics',
-                                                                     #'calculate_scale_independent_metrics'
+                                                                     # 'calculate_scale_dependent_metrics',
+                                                                     # 'calculate_scale_independent_metrics'
                                                                      ])
 
         # if arrays contain negative values, following three errors can not be computed
@@ -155,7 +155,7 @@ class RegressionMetrics(Metrics):
         """Amemiya’s Prediction Criterion"""
         k = 1
         n = len(self.predicted)
-        return float(((n + k) / (n - k)) * ( 1 /n) * self.sse())
+        return float(((n + k) / (n - k)) * (1 / n) * self.sse())
 
     def bias(self) -> float:
         """

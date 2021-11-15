@@ -19,7 +19,7 @@ class ModelOptimizerMixIn(object):
         self.algorithm = algorithm
         self.num_iterations = num_iterations
         self.process_results = process_results
-        self.prefix=prefix
+        self.prefix = prefix
 
     def fit(self):
 
@@ -32,7 +32,6 @@ class ModelOptimizerMixIn(object):
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
         config = jsonize(self.model.config)
-
 
         def objective_fn(
                 seed=None,
@@ -93,7 +92,7 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
             **kwargs
     ):
         super().__init__(
-            model = model,
+            model=model,
             algorithm=algorithm,
             num_iterations=num_iterations,
             process_results=process_results,
@@ -118,6 +117,7 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
 
         return config
 
+
 class OptimizeTransformations(ModelOptimizerMixIn):
 
     def __init__(
@@ -139,8 +139,9 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             prefix="trans_hpo"
         )
 
-        self.space = make_space(self.model.data.columns.to_list(), include=include, exclude=exclude, append=append,
-                           categories=categories)
+        self.space = make_space(self.model.data.columns.to_list(),
+                                include=include, exclude=exclude, append=append,
+                                categories=categories)
 
     def update(self, config, suggestions):
 
@@ -165,12 +166,12 @@ class OptimizeTransformations(ModelOptimizerMixIn):
 
 
 def make_space(
-        features:list,
-        categories:list,
-        include:Union[str, list, dict]=None,
-        exclude:Union[str, list]=None,
-        append:dict=None,
-)->list:
+        features: list,
+        categories: list,
+        include: Union[str, list, dict] = None,
+        exclude: Union[str, list] = None,
+        append: dict = None,
+) -> list:
     """
     Arguments:
         features :
@@ -205,7 +206,7 @@ def make_space(
 
         # since include is given, we will ignore default case when all features are considered
         space = {}
-        for k,v in include.items():
+        for k, v in include.items():
             if not isinstance(v, Categorical):
                 assert isinstance(v, list), f"space for {k} must be list but it is {v.__class__.__name__}"
                 v = Categorical(v, name=k)

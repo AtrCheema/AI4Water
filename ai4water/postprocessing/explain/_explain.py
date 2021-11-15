@@ -30,7 +30,7 @@ class ExplainerMixin(object):
 
     @property
     def single_source(self):
-        if isinstance(self.data, list) and len(self.data)>1:
+        if isinstance(self.data, list) and len(self.data) > 1:
             return False
         else:
             return True
@@ -80,4 +80,3 @@ class ExplainerMixin(object):
         else:
             features = None
         return features
-

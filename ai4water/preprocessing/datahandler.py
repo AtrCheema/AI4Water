@@ -1195,7 +1195,7 @@ class DataHandler(AttributeContainer):
         elif split2:
 
             if indices is None:
-                train_frac = 1.0 -  self.config['test_fraction']
+                train_frac = 1.0 - self.config['test_fraction']
                 train_idx_en = int(round(train_frac * len(x)))
                 x = x[0: train_idx_en, ...]
                 prev_y = prev_y[0: train_idx_en, ...]
@@ -1203,7 +1203,7 @@ class DataHandler(AttributeContainer):
             else:
                 train_idx_en = len(x)
 
-            if self.config['val_fraction']>0.0:
+            if self.config['val_fraction'] > 0.0:
                 train_frac = 1.0 - self.config['val_fraction']
                 train_idx_st = int(round(train_frac * len(x)))
 
@@ -1394,7 +1394,7 @@ class DataHandler(AttributeContainer):
 
         if test_indices is None:
             # we need to divide the data into train/val/test based upon given fractions.
-            train_frac = 1.0 -  self.config['test_fraction']
+            train_frac = 1.0 - self.config['test_fraction']
             # val_frac = self.config['val_fraction']
             train_idx_en = int(round(train_frac * len(x)))
             # val_idx = train_idx + int(round(train_frac + val_frac * tot_obs))
@@ -1601,17 +1601,17 @@ class DataHandler(AttributeContainer):
             data = np.load(data)
             assert len(data) == 1
             d = []
-            for k,v in data.items():
+            for k, v in data.items():
                 d.append(v)
 
-            data:np.ndarray = d[0]
+            data: np.ndarray = d[0]
             _source = pd.DataFrame(data, columns=input_features + output_features)
 
         # matlab's mat file
         elif data.endswith('.mat'):
             import scipy
             mat = scipy.io.loadmat(data)
-            data:np.ndarray = mat['data']
+            data: np.ndarray = mat['data']
             _source = pd.DataFrame(data, columns=input_features + output_features)
 
         elif os.path.isfile(data):
@@ -1883,7 +1883,7 @@ class MakeData(object):
             else:
                 raise TypeError(f"unknown data type {data.__class__.__name__} for data ")
 
-        if outs>0:
+        if outs > 0:
             input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
         else:
             input_x, input_y, label_y = data[:, 0:ins], np.random.random((len(data), outs)), np.random.random((len(data), outs))

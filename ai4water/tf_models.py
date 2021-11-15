@@ -21,10 +21,10 @@ class DALSTM(keras.layers.Layer):
 
     def __init__(
             self,
-            enc_config:dict = None,
-            dec_config:dict = None,
-            drop_remainder:bool = True,
-            teacher_forcing:bool = False,
+            enc_config: dict = None,
+            dec_config: dict = None,
+            drop_remainder: bool = True,
+            teacher_forcing: bool = False,
             **kwargs
     ):
         self.enc_config = enc_config
@@ -64,9 +64,9 @@ class DualAttentionModel(FModel):
 
     def __init__(
             self,
-            enc_config:dict=None,
-            dec_config:dict=None,
-            teacher_forcing:bool=True,
+            enc_config: dict = None,
+            dec_config: dict = None,
+            teacher_forcing: bool = True,
             **kwargs
     ):
         """
@@ -157,7 +157,8 @@ class DualAttentionModel(FModel):
         # concatenation of decoder hidden state and the context vector.
         last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
 
-        sec_dim = self.enc_config['m'] + self.dec_config['p']  # original it was not defined but in tf-keras we need to define it
+        # original it was not defined but in tf-keras we need to define it
+        sec_dim = self.enc_config['m'] + self.dec_config['p']
         last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
 
         result = layers.Dense(self.dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
@@ -191,7 +192,7 @@ class DualAttentionModel(FModel):
         # initialize the first cell state
         if s0 is None:
             if self.drop_remainder:
-                s0 =  tf.zeros((self.batch_size, config['n_s']), name=f'enc_first_cell_state_{suf}')
+                s0 = tf.zeros((self.batch_size, config['n_s']), name=f'enc_first_cell_state_{suf}')
             else:
                 s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_' + suf)
         # initialize the first hidden state
@@ -225,7 +226,8 @@ class DualAttentionModel(FModel):
         result1 = self.en_densor_We(_concat)   # (none,1,T)
         result1 = layers.RepeatVector(x.shape[2],)(result1)  # (none,n,T)
         x_temp = MyTranspose(axis=(0, 2, 1))(x)  # X_temp(None,n,T)
-        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t)+'_'+suf)(x_temp)  # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
+        # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
+        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t)+'_'+suf)(x_temp)
         result3 = layers.Add()([result1, result2])  # (none,n,T)
         result4 = layers.Activation(activation='tanh')(result3)  # (none,n,T)
         result5 = MyDot(1)(result4)
@@ -301,7 +303,7 @@ class DualAttentionModel(FModel):
             else:
                 y_prev = _context
 
-            y_prev = layers.Dense(self.num_outs, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
+            y_prev = layers.Dense(self.num_outs, name='eq_15_'+str(t))(y_prev)  # (None,1,1),  Eq 15  in paper
 
             _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??
 
@@ -343,7 +345,6 @@ class DualAttentionModel(FModel):
             return [x, prev_y] + other_inputs, prev_y, labels
         else:
             return [x] + other_inputs, labels
-
 
     def training_data(self, **kwargs):
         return self.fetch_data('training', **kwargs)
@@ -401,7 +402,7 @@ class DualAttentionModel(FModel):
         axis.set_xticks(np.arange(len(self.in_cols)))
         axis.set_xticklabels(self.in_cols, rotation=90)
         fig.colorbar(im, orientation='horizontal', pad=0.3)
-        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}') ,
+        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}'),
                     dpi=400, bbox_inches='tight')
 
         data = self.inputs_for_attention(data)
@@ -485,9 +486,9 @@ class InputAttentionModel(DualAttentionModel):
 
         x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
         self.dh.teacher_forcing = False
-        #if self.config['drop_remainder']:
+        # if self.config['drop_remainder']:
 
-        #x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
+        # x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
         #                                  transformation=self.config['transformation'], **kwargs)
 
         n_s_feature_dim = self.config['enc_config']['n_s']
@@ -499,7 +500,7 @@ class InputAttentionModel(DualAttentionModel):
             idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
             prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
 
-        #x, prev_y, labels = self.check_batches(x, prev_y, labels)
+        # x, prev_y, labels = self.check_batches(x, prev_y, labels)
 
         if not self.config['drop_remainder']:
             s0 = np.zeros((x.shape[0], n_s_feature_dim))

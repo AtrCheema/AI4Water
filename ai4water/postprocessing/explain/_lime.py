@@ -139,7 +139,7 @@ class LimeExplainer(ExplainerMixin):
             plot_type: str = "pyplot",
             name: str = "lime_explaination",
             num_features: int = None,
-            colors = None,
+            colors=None,
             annotate=False,
             show=False,
             save=True,
@@ -195,11 +195,12 @@ def to_np(x) -> np.ndarray:
 
     return x
 
+
 def as_pyplot_figure(
         inst_explainer,
         label=1,
         example_index=None,
-        colors:[str, tuple, list]=None,
+        colors: [str, tuple, list] = None,
         annotate=False,
         **kwargs):
     """Returns the explanation as a pyplot figure.
@@ -222,7 +223,7 @@ def as_pyplot_figure(
 Local prediction: {round(inst_explainer.local_pred.item(), 2)}"""
 
     if colors is None:
-        colors = ([0.9375    , 0.01171875, 0.33203125], [0.23828125, 0.53515625, 0.92578125])
+        colors = ([0.9375, 0.01171875, 0.33203125], [0.23828125, 0.53515625, 0.92578125])
     elif isinstance(colors, str):
         colors = (colors, colors)
 

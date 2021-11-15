@@ -41,6 +41,7 @@ regplot_combs = [
     ['cadetblue', 'deepskyblue', 'cadetblue']
 ]
 
+
 class Plot(object):
 
     def __init__(self, path=None, backend='plotly', save=True, dpi=300):
@@ -181,7 +182,7 @@ class PlotResults(Plot):
 
         ms = 4 if style == '.' else 2
 
-        if len(true)>1000: # because the data is very large, so better to use small marker size
+        if len(true) > 1000:  # because the data is very large, so better to use small marker size
             ms = 2
 
         axis.plot(predicted, style, color='r',  label='Prediction')
@@ -191,10 +192,10 @@ class PlotResults(Plot):
         axis.legend(loc="best", fontsize=22, markerscale=4)
 
         if datetime_axis:
-                loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
-                axis.xaxis.set_major_locator(loc)
-                fmt = mdates.AutoDateFormatter(loc)
-                axis.xaxis.set_major_formatter(fmt)
+            loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
+            axis.xaxis.set_major_locator(loc)
+            fmt = mdates.AutoDateFormatter(loc)
+            axis.xaxis.set_major_formatter(fmt)
 
         plt.xticks(fontsize=18)
         plt.yticks(fontsize=18)
@@ -268,20 +269,20 @@ class PlotResults(Plot):
 
 
 def regplot(
-        x:Union[np.ndarray, pd.DataFrame, pd.Series, list],
-        y:Union[np.ndarray, pd.DataFrame, pd.Series, list],
-        title:str = None,
-        show:bool = False,
-        annotation_key:str=None,
-        annotation_val:float=None,
-        line_color = None,
-        marker_color = None,
-        fill_color = None,
-        marker_size:int = 20,
-        ci:Union[int, None] = 95,
-        figsize:tuple = None,
-        xlabel:str = 'Observed',
-        ylabel:str = 'Predicted'
+        x: Union[np.ndarray, pd.DataFrame, pd.Series, list],
+        y: Union[np.ndarray, pd.DataFrame, pd.Series, list],
+        title: str = None,
+        show: bool = False,
+        annotation_key: str = None,
+        annotation_val: float = None,
+        line_color=None,
+        marker_color=None,
+        fill_color=None,
+        marker_size: int = 20,
+        ci: Union[int, None] = 95,
+        figsize: tuple = None,
+        xlabel: str = 'Observed',
+        ylabel: str = 'Predicted'
 ):
     """
     Regpression plot with regression line and confidence interval
@@ -318,7 +319,7 @@ def regplot(
     _, axis = plt.subplots(figsize=figsize or (6, 5))
 
     axis.scatter(x, y, c=marker_color or mc,
-                         s=marker_size)  # set style options
+                 s=marker_size)  # set style options
 
     if annotation_key is not None:
         assert annotation_val is not None
@@ -389,7 +390,7 @@ def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
     return ax
 
 
-def to_1d_array(array_like)->np.ndarray:
+def to_1d_array(array_like) -> np.ndarray:
 
     if array_like.__class__.__name__ in ['list', 'tuple', 'Series']:
         return np.array(array_like)
@@ -409,7 +410,7 @@ def to_1d_array(array_like)->np.ndarray:
 
 
 def linear_model(
-        model_name:str,
+        model_name: str,
         inputs,
         target
 ):
@@ -426,18 +427,18 @@ def linear_model(
 
 
 def murphy_diagram(
-        observed:Union[list, np.ndarray, pd.Series, pd.DataFrame],
-        predicted:Union[list, np.ndarray, pd.Series, pd.DataFrame],
-        reference:Union[list, np.ndarray, pd.Series, pd.DataFrame]=None,
-        reference_model:Union[str, Callable]=None,
+        observed: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        predicted: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        reference: Union[list, np.ndarray, pd.Series, pd.DataFrame] = None,
+        reference_model: Union[str, Callable] = None,
         inputs=None,
-        plot_type:str="scores",
-        xaxis:str = "theta",
-        ax:plt.Axes=None,
-        line_colors:tuple=None,
-        fill_color:str="lightgray",
-        show:bool=True
-)->plt.Axes:
+        plot_type: str = "scores",
+        xaxis: str = "theta",
+        ax: plt.Axes = None,
+        line_colors: tuple = None,
+        fill_color: str = "lightgray",
+        show: bool = True
+) -> plt.Axes:
     """Murphy diagram as introducted by [Ehm et al., 2015](https://arxiv.org/pdf/1503.08195.pdf)
      and illustrated by [Rob Hyndman](https://robjhyndman.com/hyndsight/murphy-diagrams/)
 
@@ -546,10 +547,12 @@ def murphy_diagram(
 
     return ax
 
+
 def last_nonzero(arr, axis, invalid_val=-1):
-    mask = arr!=0
+    mask = arr != 0
     val = arr.shape[axis] - np.flip(mask, axis=axis).argmax(axis=axis) - 1
     return np.where(mask.any(axis=axis), val, invalid_val)
+
 
 def _plot_diff(theta, s1, s2, n, ax, line_color="black", fill_color="lightgray"):
 
@@ -563,24 +566,24 @@ def _plot_diff(theta, s1, s2, n, ax, line_color="black", fill_color="lightgray")
     ax.plot(theta, diff, color=line_color)
 
     # first_nonzero occurence
-    st = (diff!=0).argmax(axis=0)
+    st = (diff != 0).argmax(axis=0)
     en = last_nonzero(diff, axis=0).item()
 
-    ax.fill_between(theta[st:en], upper[st:en], lower[st:en], #alpha=0.2,
+    ax.fill_between(theta[st:en], upper[st:en], lower[st:en],  # alpha=0.2,
                     color=fill_color)
 
     return ax
 
 
 def fdc_plot(
-        sim:Union[list, np.ndarray, pd.Series, pd.DataFrame],
-        obs:Union[list, np.ndarray, pd.Series, pd.DataFrame],
-        ax:plt.Axes=None,
-        legend:bool=True,
-        xlabel:str = "Exceedence [%]",
-        ylabel:str = "Flow",
-        show:bool = True
-)->plt.Axes:
+        sim: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        obs: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        ax: plt.Axes = None,
+        legend: bool = True,
+        xlabel: str = "Exceedence [%]",
+        ylabel: str = "Flow",
+        show: bool = True
+) -> plt.Axes:
     """Plots flow duration curve
 
     Arguments:
@@ -647,10 +650,12 @@ def _plot_scores(theta, s1ave, s2ave, ax, line_colors):
 
     return ax
 
+
 def _data_for_time(s1, s2):
     s1ave, s2ave = np.mean(s1, axis=0), np.mean(s2, axis=0)
 
     return s1ave, s2ave
+
 
 def _data_for_theta(s1, s2):
     return np.mean(s1, axis=1), np.mean(s2, axis=1)

@@ -9,12 +9,13 @@ try:
 except ModuleNotFoundError:
     sklearn = None
 
+
 def get_attributes(
         aus,
-        what:str,
-        retain:str=None,
-        case_sensitive:bool=False
-) ->dict:
+        what: str,
+        retain: str = None,
+        case_sensitive: bool = False
+) -> dict:
     """gets all callable attributes of aus from what and saves them in dictionary
     with their names as keys. If case_sensitive is True, then the all keys are
     capitalized so that calling them becomes case insensitive. It is possible
@@ -42,23 +43,24 @@ def get_attributes(
     if retain:
         assert retain in ("class", "function")
     all_attrs = {}
-    for l in dir(getattr(aus, what)):
-        attr = getattr(getattr(aus, what), l)
-        if callable(attr) and not l.startswith('_'):
+    for obj in dir(getattr(aus, what)):
+        attr = getattr(getattr(aus, what), obj)
+        if callable(attr) and not obj.startswith('_'):
 
             if not case_sensitive:
-                l = l.upper()
+                obj = obj.upper()
 
-            if l in all_attrs and retain == 'function':
+            if obj in all_attrs and retain == 'function':
                 if isinstance(attr, FunctionType):
-                    all_attrs[l] = attr
-            elif l in all_attrs and retain == 'class':
+                    all_attrs[obj] = attr
+            elif obj in all_attrs and retain == 'class':
                 if not isinstance(attr, FunctionType):
-                    all_attrs[l] = attr
+                    all_attrs[obj] = attr
             else:
-                all_attrs[l] = attr
+                all_attrs[obj] = attr
 
     return all_attrs
+
 
 def get_sklearn_models():
 
@@ -67,7 +69,7 @@ def get_sklearn_models():
         from sklearn.ensemble import RandomForestRegressor
         sk_maj_ver = int(sklearn.__version__.split('.')[0])
         sk_min_ver = int(sklearn.__version__.split('.')[1])
-        if sk_maj_ver==0 and sk_min_ver < 24:
+        if sk_maj_ver == 0 and sk_min_ver < 24:
             from sklearn.neural_network import multilayer_perceptron
         else:
             from sklearn.neural_network import MLPClassifier
@@ -97,11 +99,12 @@ def get_sklearn_models():
         skl_models.update(get_attributes(sklearn, "isotonic", case_sensitive=True))
 
         skl_models.update({"HistGradientBoostingRegressor": HistGradientBoostingRegressor,
-            "HistGradientBoostingClassifier": HistGradientBoostingClassifier})
+                           "HistGradientBoostingClassifier": HistGradientBoostingClassifier})
     else:
         skl_models = {}
 
     return skl_models
+
 
 maj_version = 0
 min_version = 0

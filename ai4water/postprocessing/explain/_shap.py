@@ -165,7 +165,7 @@ class ShapExplainer(ExplainerMixin):
     def map2layer(self, x, layer):
         feed_dict = dict(zip([self.model.layers[0].input], [x.copy()]))
         import tensorflow as tf
-        if int(tf.__version__[0])<2:
+        if int(tf.__version__[0]) < 2:
             sess = K.get_session()
         else:
             sess = tf.compat.v1.keras.backend.get_session()
@@ -358,9 +358,9 @@ class ShapExplainer(ExplainerMixin):
 
     def summary_plot(
             self,
-            name:str="summary_plot",
-            show:bool=True,
-            save:bool=False,
+            name: str = "summary_plot",
+            show: bool = True,
+            save: bool = False,
             **kwargs
     ):
         """Plots the summary plot of SHAP package.
@@ -451,7 +451,7 @@ class ShapExplainer(ExplainerMixin):
 
         shap_vals = self.shap_values
 
-        if isinstance(shap_vals, list) and len(shap_vals)==1:
+        if isinstance(shap_vals, list) and len(shap_vals) == 1:
             shap_vals = shap_vals[0]
 
         shap_vals = shap_vals[idx]
@@ -467,9 +467,9 @@ class ShapExplainer(ExplainerMixin):
             expected_value = self.explainer.expected_value
 
         features = self.features
-        if data.ndim == 2 and shap_vals.ndim==2:  # input was 3d i.e. ml model uses 3d input
+        if data.ndim == 2 and shap_vals.ndim == 2:  # input was 3d i.e. ml model uses 3d input
             features = self.unrolled_features
-            expected_value =  expected_value[0] #todo
+            expected_value = expected_value[0]  # todo
             shap_vals = shap_vals.reshape(-1,)
             data = data.reshape(-1, )
 
@@ -567,7 +567,7 @@ class ShapExplainer(ExplainerMixin):
             name: str = "waterfall",
             show: bool = False,
             save=True,
-            max_display: int=10,
+            max_display: int = 10,
     ):
         """draws and saves [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
          for one example.
@@ -730,9 +730,9 @@ class ShapExplainer(ExplainerMixin):
     def beeswarm_plot(
             self,
             name: str = "beeswarm",
-            show:bool=False,
+            show: bool = False,
             max_display: int = 10,
-            save:bool=True,
+            save: bool = True,
             **kwargs
     ):
         """
@@ -797,8 +797,8 @@ class ShapExplainer(ExplainerMixin):
         legend_labels = None
         if indices is not None:
             shap_values = shap_values[(indices), :]
-            if len(shap_values)<=10:
-                legend_labels=indices
+            if len(shap_values) <= 10:
+                legend_labels = indices
                 legend_location = "lower right"
 
         if self.explainer.__class__.__name__ in ["Tree"]:
@@ -819,9 +819,9 @@ class ShapExplainer(ExplainerMixin):
             self,
             interpolation=None,
             cmap="coolwarm",
-            name: str="shap_values",
-            show: bool=True,
-            save: bool=False
+            name: str = "shap_values",
+            show: bool = True,
+            save: bool = False
     ):
         """Plots the SHAP values.
 
@@ -840,12 +840,12 @@ class ShapExplainer(ExplainerMixin):
         """
         shap_values = self.shap_values
 
-        if isinstance(shap_values, list) and len(shap_values)==1:
+        if isinstance(shap_values, list) and len(shap_values) == 1:
             shap_values: np.ndarray = shap_values[0]
 
         def plot_shap_values_single_source(_data, _shap_vals, _features, _name):
-            if _data.ndim == 3 and _shap_vals.ndim==3: # input is 3d
-                #assert _shap_vals.ndim == 3
+            if _data.ndim == 3 and _shap_vals.ndim == 3:  # input is 3d
+                # assert _shap_vals.ndim == 3
                 return imshow_3d(_shap_vals,
                                  _data,
                                  _features,
@@ -857,7 +857,7 @@ class ShapExplainer(ExplainerMixin):
             plt.close('all')
             fig, axis = plt.subplots()
             im = axis.imshow(_shap_vals.T, aspect='auto', interpolation=interpolation, cmap=cmap)
-            if _features is not None: # if imshow is successful then don't worry if features are None
+            if _features is not None:  # if imshow is successful then don't worry if features are None
                 axis.set_yticks(np.arange(len(_features)))
                 axis.set_yticklabels(_features)
             axis.set_ylabel("Features")
@@ -883,8 +883,8 @@ class ShapExplainer(ExplainerMixin):
 
     def pdp_all_features(
             self,
-            show:bool=False,
-            save:bool=True,
+            show: bool = False,
+            save: bool = True,
             **pdp_kws
     ):
         """partial dependence plot of all features.
@@ -902,7 +902,7 @@ class ShapExplainer(ExplainerMixin):
 
     def pdp_single_feature(
             self,
-            feature_name:str,
+            feature_name: str,
             show=True,
             save=False,
             **pdp_kws
