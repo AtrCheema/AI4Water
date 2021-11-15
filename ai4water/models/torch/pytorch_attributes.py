@@ -1,5 +1,5 @@
 
-from .backend import get_attributes
+from ai4water.backend import get_attributes
 
 try:
     import torch

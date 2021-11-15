@@ -23,9 +23,9 @@ if tcn is not None:
 
 if tf is not None:
     import ai4water.utils.tf_losses as tf_losses
-    from ai4water.nbeats_keras import NBeats
-    import ai4water.models.attention_layers as attns
-    from ai4water.models.tft_layer import TemporalFusionTransformer
+    from ai4water.models.tensorflow import NBeats
+    import ai4water.models.tensorflow.attention_layers as attns
+    from ai4water.models.tensorflow import TemporalFusionTransformer
     keras = tf.keras
     LOSSES.update({
         'nse': tf_losses.tf_nse,
@@ -58,7 +58,7 @@ if attns is not None:
     LAYERS.update(get_attributes(aus=attns, what='attn_layers', case_sensitive=True))
 
 try:
-    from .private_layers import PrivateLayers
+    from .models.tensorflow.private_layers import PrivateLayers
 except (ModuleNotFoundError, ImportError):
     PrivateLayers = None
 

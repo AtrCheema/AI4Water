@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
-from ai4water.models.attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
+from .attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
 
 def _get_tensor_shape(t):
@@ -378,7 +378,7 @@ class Conditionalize(tf.keras.layers.Layer):
 
     Example
     --------
-    >>> from ai4water.private_layers import Conditionalize
+    >>> from ai4water.models._tensorflow import Conditionalize
     >>> from tensorflow.keras.layers import Input, LSTM
     >>> i = Input(shape=(10, 3))
     >>> raw_conditions = Input(shape=(14,))

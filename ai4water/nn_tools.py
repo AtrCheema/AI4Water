@@ -12,7 +12,7 @@ from . import backend as K
 if K.BACKEND == 'tensorflow':
     from ai4water.tf_attributes import LAYERS, tf
 else:
-    from .pytorch_attributes import LAYERS
+    from .models.torch import LAYERS
 
 
 class AttributeNotSetYet:

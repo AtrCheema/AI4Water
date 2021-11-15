@@ -29,7 +29,7 @@ This module performs building, training and prediction of model.
         show_root_heading: true
 
 **`TemporalFusionTransformer`**
-::: ai4water.models.tft_layer.TemporalFusionTransformer
+::: ai4water.models.tensorflow.TemporalFusionTransformer
     handler: python
     selection:
         members:
@@ -39,7 +39,7 @@ This module performs building, training and prediction of model.
         show_root_heading: true
 
 **`NBeats`**
-::: ai4water.nbeats_keras.NBeats
+::: ai4water.models.tensorflow.NBeats
     handler: python
     selection:
         members:

@@ -10,7 +10,7 @@ site.addsitedir(ai4_dir)
 import tensorflow as tf
 import numpy as np
 
-from ai4water.models.tft_layer import TemporalFusionTransformer
+from ai4water.models.tensorflow import TemporalFusionTransformer
 from ai4water.utils.utils import reset_seed
 
 tf_version = int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))
@@ -56,8 +56,8 @@ y = np.random.random((n, tot_steps - num_encoder_steps, len(quantiles)))
 
 # in tf version 2.1, callbacks must be [] if not defined!
 kwargs = {}
-if tf_version == 210:
-    kwargs['callbacks'] = []  # todo
+if tf_version in [210, 115]:
+    kwargs['callbacks'] = []
 
 class Test_TFT(unittest.TestCase):
 

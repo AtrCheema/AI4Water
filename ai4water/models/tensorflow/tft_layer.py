@@ -10,8 +10,8 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import TimeDistributed, Dense, InputLayer, Embedding, Conv1D, Flatten
 
-from ai4water.models.utils import concatenate, gated_residual_network, add_and_norm, apply_gating_layer, get_decoder_mask
-from ai4water.models.utils import InterpretableMultiHeadAttention
+from .utils import concatenate, gated_residual_network, add_and_norm, apply_gating_layer, get_decoder_mask
+from .utils import InterpretableMultiHeadAttention
 
 
 # Layer definitions.

@@ -10,7 +10,7 @@ from .nn_tools import get_call_args
 from .backend import tf, torch
 import ai4water.backend as K
 
-from .pytorch_attributes import LAYERS as TORCH_LAYERS
+from .models.torch import LAYERS as TORCH_LAYERS
 from .tf_attributes import LAYERS
 
 if K.BACKEND =='tensorflow' and tf is not None:
@@ -74,7 +74,7 @@ class Model(MODEL, BaseModel):
         self.config['backend'] = K.BACKEND
 
         if torch is not None:
-            from .pytorch_training import Learner
+            from .models.torch import Learner
             self.torch_learner = Learner(
                 model=self,
                 batch_size=self.config['batch_size'],

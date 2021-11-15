@@ -12,8 +12,8 @@ from ai4water.utils.utils import dateandtime_now, plot_activations_along_inputs
 from ai4water.backend import torch
 
 if torch is not None:
-    from ai4water.imv_networks import IMVTensorLSTM
-    from ai4water.HARHN import HARHN
+    from ai4water.models.torch import IMVTensorLSTM
+    from ai4water.models.torch import HARHN
 else:
     HARHN, IMVTensorLSTM = None, None
 
@@ -95,6 +95,10 @@ class IMVModel(HARHNModel):
 
         x, _ = getattr(self, f'{data}_data')()
 
+        path = os.path.join(self.path, "interpret")
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         plot_activations_along_inputs(data=x[:, -1, :],  # todo, is -1 correct?
                                       activations=alphas.reshape(-1, self.lookback, self.num_ins),
                                       observations=true,
@@ -103,7 +107,7 @@ class IMVModel(HARHNModel):
                                       out_cols=self.out_cols,
                                       lookback=self.lookback,
                                       name=name,
-                                      path=self.act_path,
+                                      path=path,
                                       vmin=vmin,
                                       vmax=vmax
                                       )
@@ -128,10 +132,10 @@ class IMVModel(HARHNModel):
                     _ = ax.text(j, i, round(alphas[i, j], 3),
                                 ha="center", va="center", color="w")
         ax.set_title("Importance of features and timesteps")
-        plt.savefig(os.path.join(self.act_path, f'acts_{name}'), dpi=400, bbox_inches='tight')
+        plt.savefig(os.path.join(path, f'acts_{name}'), dpi=400, bbox_inches='tight')
 
         plt.close('all')
         plt.bar(range(self.num_ins), betas, **bar_kws)
         plt.xticks(ticks=range(len(all_cols)), labels=list(all_cols), rotation=90, fontsize=12)
-        plt.savefig(os.path.join(self.act_path, f'feature_importance_{name}'), dpi=400, bbox_inches='tight')
+        plt.savefig(os.path.join(path, f'feature_importance_{name}'), dpi=400, bbox_inches='tight')
         return

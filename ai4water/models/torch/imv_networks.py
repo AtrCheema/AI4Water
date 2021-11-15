@@ -1,5 +1,9 @@
-from ai4water.backend import torch
-nn = torch.nn
+
+try:
+    import torch
+    nn = torch.nn
+except (ImportError, ModuleNotFoundError):
+    torch, nn = None, None
 
 
 class IMVTensorLSTM(torch.jit.ScriptModule):

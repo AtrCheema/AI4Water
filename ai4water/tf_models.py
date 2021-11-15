@@ -10,7 +10,7 @@ from ai4water.functional import Model as FModel
 from ai4water.backend import keras
 from ai4water.utils.utils import print_something
 from ai4water.nn_tools import check_act_fn
-from ai4water.layer_definition import MyTranspose, MyDot
+from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs
 
 layers = keras.layers

@@ -9,11 +9,14 @@ try:
 except ModuleNotFoundError:
     wandb = None
 
-from .backend import torch
+try:
+    import torch
+except (ImportError, ModuleNotFoundError):
+    torch = None
 
 # only so that docs can be built without having torch to be installed
 try:
-    from .utils.torch_utils import to_torch_dataset, TorchMetrics
+    from .utils import to_torch_dataset, TorchMetrics
 except ModuleNotFoundError:
     to_torch_dataset, TorchMetrics = None, None
 
@@ -22,9 +25,9 @@ if torch is not None:
 else:
     LOSSES = {}
 
-from .utils.utils import dateandtime_now, find_best_weight
+from ai4water.utils.utils import dateandtime_now, find_best_weight
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from .utils.visualizations import regplot
+from ai4water.utils.visualizations import regplot
 
 F = {
     'mse': [np.nanmin, np.less],

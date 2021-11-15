@@ -27,7 +27,7 @@ from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import ts_features, make_model
 from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
-from ai4water.models.custom_training import train_step, test_step
+from ai4water.models.tensorflow.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
 from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
@@ -38,7 +38,7 @@ if K.BACKEND == 'tensorflow' and tf is not None:
     from ai4water.tf_attributes import LOSSES, OPTIMIZERS
 
 elif K.BACKEND == 'pytorch' and torch is not None:
-    from ai4water.pytorch_attributes import LOSSES, OPTIMIZERS
+    from ai4water.models.torch import LOSSES, OPTIMIZERS
 
 try:
     from wandb.keras import WandbCallback
