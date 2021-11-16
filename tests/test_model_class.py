@@ -36,14 +36,15 @@ def get_lstm():
                          "Dense_1": {"config": {"units": 1, "activation": "relu"}}}}
     return m_conf
 
+
 def test_user_defined_data(_model):
     # using user defined x
-    t,p = _model.predict(x=x, return_true=True)
+    t, p = _model.predict(x=x, return_true=True)
     assert t is None
     assert len(p) == len(x)
 
     # using user defined x and y, post_processing must happen
-    t,p = _model.predict(x=x, y=y, return_true=True)
+    t, p = _model.predict(x=x, y=y, return_true=True)
     assert len(t) == len(p) == len(y)
 
     return
@@ -51,15 +52,16 @@ def test_user_defined_data(_model):
 
 def _test_ml_inbuilt_data(_model):
     model = _model(model="RandomForestRegressor",
-                  data=arg_beach(),
-                  verbosity=0)
+                   data=arg_beach(),
+                   verbosity=0)
     model.fit()
 
     test_user_defined_data(model)
 
-    t,p = model.predict(return_true=True)
+    t, p = model.predict(return_true=True)
     assert len(t) == len(p)
     return
+
 
 def _test_ml_userdefined_data(_model):
     model = _model(model="RandomForestRegressor", verbosity=0)
@@ -69,9 +71,10 @@ def _test_ml_userdefined_data(_model):
 
     return model
 
+
 def _test_fit(_model):
     model = _model(model="RandomForestRegressor", verbosity=0)
-    model.fit(x,y)
+    model.fit(x, y)
 
     model.fit(x, y=y)
 
@@ -86,6 +89,7 @@ def _test_ml_userdefined_non_kw(_model):
 
     model.predict(x)
     return
+
 
 def _test_hydro_metrics(_model):
     model = _model(model="RandomForestRegressor", verbosity=0)
@@ -105,8 +109,8 @@ def _test_from_config_basic(_model, find_best=False, config_file=False):
               mlp_model
               ]:
         model = _model(model=m, data=arg_beach(), lookback=1, verbosity=0)
-        model.fit(x,y)
-        ini_y = model.predict(np.arange(13).reshape(-1,13)).item()
+        model.fit(x, y)
+        ini_y = model.predict(np.arange(13).reshape(-1, 13)).item()
 
         if config_file:
             m2 = Model.from_config_file(os.path.join(model.path, 'config.json'))
@@ -118,7 +122,7 @@ def _test_from_config_basic(_model, find_best=False, config_file=False):
             best_weight = os.path.join(model.w_path, find_best_weight(model.w_path))
 
         m2.update_weights(best_weight)
-        fin_y = m2.predict(np.arange(13).reshape(-1,13)).item()
+        fin_y = m2.predict(np.arange(13).reshape(-1, 13)).item()
         assert np.allclose(ini_y, fin_y)
         time.sleep(1)
 
@@ -251,12 +255,12 @@ class TestOptimize(unittest.TestCase):
 
 class TestOptimizeHyperparas(unittest.TestCase):
     config = {"XGBRegressor": {"n_estimators": Integer(low=10, high=20, num_samples=10),
-                                   "max_depth": Categorical([10, 20, 30]),
-                                   "learning_rate": Real(0.00001, 0.1, num_samples=10)}}
+                               "max_depth": Categorical([10, 20, 30]),
+                               "learning_rate": Real(0.00001, 0.1, num_samples=10)}}
 
     def test_no_opt_paras(self):
         conf = "XGBRegressor"
-        c,op, _ = find_opt_paras_from_model_config(conf)
+        c, op, _ = find_opt_paras_from_model_config(conf)
         assert len(op) == 0
         return
 
@@ -273,7 +277,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
                       data=arg_beach())
         optimizer = model.optimize_hyperparameters()
         s = set([v['n_estimators'] for v in optimizer.xy_of_iterations().values()])
-        assert len(s)>5  # assert that all suggestions are not same
+        assert len(s) > 5  # assert that all suggestions are not same
         op = os.path.join(os.getcwd(), optimizer.opt_path)
         fname = os.path.join(op, "convergence.png")
         assert os.path.exists(fname)
@@ -286,9 +290,9 @@ class TestOptimizeHyperparas(unittest.TestCase):
     def test_ml_without_procesisng_results(self):
         setattr(Model, 'from_check_point', False)
 
-        #without process results
+        # without process results
         model = Model(model=self.config,
-                       verbosity=0,
+                      verbosity=0,
                       data=arg_beach())
         optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=3,
                                                    process_results=False)
@@ -303,22 +307,22 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
     def test_without_model(self):
         m_conf = None
-        c,op, _ = find_opt_paras_from_model_config(m_conf)
+        c, op, _ = find_opt_paras_from_model_config(m_conf)
         assert c is None and len(op) == 0
 
         return
 
     def test_nn_without_space(self):
         m_conf = {"layers": {"LSTM": 64}}
-        c,op = process_config_dict(m_conf)
-        assert len(m_conf['layers'])==1
+        c, op = process_config_dict(m_conf)
+        assert len(m_conf['layers']) == 1
         assert len(op) == 0
 
         # with multi layers
         m_conf = {"layers":
                       {"LSTM": 64,
                        "Dense": 1}}
-        assert len(m_conf['layers'])==2
+        assert len(m_conf['layers']) == 2
         assert len(op) == 0
 
         # multi layers with empty config
@@ -326,8 +330,8 @@ class TestOptimizeHyperparas(unittest.TestCase):
                       {"LSTM": 64,
                        "ReLu": {},
                        "Dense": 1}}
-        c,op = process_config_dict(m_conf)
-        assert len(m_conf['layers'])==3
+        c, op = process_config_dict(m_conf)
+        assert len(m_conf['layers']) == 3
         assert len(op) == 0
 
         return
@@ -335,37 +339,37 @@ class TestOptimizeHyperparas(unittest.TestCase):
     def test_nn_with_space(self):
         # with space
         m_conf = {"layers": {"LSTM": Integer(32, 64)}}
-        c,op = process_config_dict(m_conf)
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM'], int)
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"units": Integer(32, 64)}}}
-        c,op = process_config_dict(m_conf)
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['units'], int)
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"units": Integer(32, 64)},
                              "Dense": 1}}
-        c,op = process_config_dict(m_conf)
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['units'], int)
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"units": Integer(32, 64)},
                              "Dense": {"units": 1}}}
-        c,op = process_config_dict(m_conf)
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['units'], int)
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"units": Integer(32, 64)},
                              "Dense": {"units": 1, "activation": "relu"}}}
-        c,op = process_config_dict(m_conf)
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['units'], int)
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"units": Integer(32, 64)},
                              "relu": {},
                              "Dense": {"units": 1, "activation": "relu"}}}
-        c,op = process_config_dict(m_conf)
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['units'], int)
         assert len(op) == 1
 
@@ -373,8 +377,8 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
     def test_nn_with_config_kw(self):
         # with config keyword argument
-        m_conf = {"layers": {"LSTM": {"config":{"units": Integer(32, 64)}}}}
-        c,op = process_config_dict(m_conf)
+        m_conf = {"layers": {"LSTM": {"config": {"units": Integer(32, 64)}}}}
+        c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['config']['units'], int)
         assert len(op) == 1
 
@@ -385,7 +389,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         assert len(op) == 1
 
         m_conf = {"layers": {"LSTM": {"config": {"units": Integer(32, 64)}},
-                             "Dense": {"config":{"units": 1}}}}
+                             "Dense": {"config": {"units": 1}}}}
         c, op = process_config_dict(m_conf)
         assert isinstance(c['layers']['LSTM']['config']['units'], int)
         assert len(op) == 1
@@ -435,12 +439,12 @@ class TestOptimizeHyperparas(unittest.TestCase):
                      'outputs': ['junk', 'h_state', 'c_state']},
 
             "Dense_0": {'config': {'units': 1, 'name': 'MyDense'},
-                      'inputs': 'h_state'},
+                        'inputs': 'h_state'},
 
             "Conv1D_1": {'config': {'filters': Integer(32, 64), 'kernel_size': 3, 'name': 'myconv'},
-                        'inputs': 'junk'},
+                         'inputs': 'junk'},
             "MaxPool1D": {'config': {'name': 'MyMaxPool'},
-                        'inputs': 'myconv'},
+                          'inputs': 'myconv'},
             "Flatten": {'config': {'name': 'MyFlatten'},
                         'inputs': 'MyMaxPool'},
 
@@ -449,12 +453,12 @@ class TestOptimizeHyperparas(unittest.TestCase):
                        'call_args': {'initial_state': ['h_state', 'c_state']}},
 
             "Concatenate": {'config': {'name': 'MyConcat'},
-                    'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
+                            'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
 
             "Dense": 1
         }
         c, op = process_config_dict(m_conf)
-        assert len(op)==3
+        assert len(op) == 3
         return
 
     def test_nn_optimize(self):
@@ -464,16 +468,16 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
 
         model = Model(model=m_conf,
-                       data=arg_beach(),
-                       verbosity=0,
-                       epochs=5)
+                      data=arg_beach(),
+                      verbosity=0,
+                      epochs=5)
 
         print(model.path, 'model.path')
         optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=5, process_results=False)
         s = set([v['units'] for v in optimizer.xy_of_iterations().values()])
         assert len(s) >= 3  # assert that all suggestions are not same
 
-         # make sure that model's config has been updated
+        # make sure that model's config has been updated
         assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
         assert model.config['model']['layers']['Dense_0']['activation'] == optimizer.best_paras()['dense1_act']
         assert model.config['model']['layers']['Dense_0']['units'] == optimizer.best_paras()['dense1_units']
@@ -487,14 +491,69 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
 
         model = Model(model=m_conf,
-                       data=arg_beach(),
+                      data=arg_beach(),
                       lookback=Integer(3, 10, num_samples=10),
-                       verbosity=0,
-                       epochs=5)
+                      verbosity=0,
+                      epochs=5)
 
         optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=5, process_results=False)
         assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
         assert model.config['lookback'] == optimizer.best_paras()['lookback']
+        return
+
+
+class TestEvaluate(unittest.TestCase):
+    model = Model(
+        model={"layers": {"Dense": 1}},
+        lookback=1,
+        data=arg_beach(),
+        verbosity=0,
+    )
+
+    def test_basic(self):
+        eval_scores = self.model.evaluate()
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
+    def test_basic_with_metrics(self):
+        # basic example with metrics
+        eval_scores = self.model.evaluate(metrics="kge")
+        assert isinstance(eval_scores, float)
+
+    def test_basic_with_metric_groups(self):
+        # basic example with metrics
+        eval_scores = self.model.evaluate(metrics="hydro_metrics")
+        assert isinstance(eval_scores, dict)
+        return
+
+    def test_custom_xy(self):
+        eval_scores = self.model.evaluate(np.random.random((10, 13)), np.random.random((10, 1, 1)))
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
+    def test_custom_xy0(self):
+        # only y as keyword
+        eval_scores = self.model.evaluate(np.random.random((10, 13)), y=np.random.random((10, 1, 1)))
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
+    def test_custom_xy_as_keyword_args(self):
+        eval_scores = self.model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1, 1)))
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
+    def test_custom_xy_with_metrics(self):
+        # custom data with metrics
+        pbias = self.model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1, 1)),
+                                    metrics='pbias')
+        assert isinstance(pbias, float)
+        return
+
+    def test_custom_xy_with_metric_groups(self):
+        # custom data with group of metrics
+        hydro = self.model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1, 1)),
+                                    metrics='hydro_metrics')
+        assert isinstance(hydro, dict)
         return
 
 

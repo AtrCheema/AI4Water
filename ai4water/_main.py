@@ -114,7 +114,8 @@ class BaseModel(NN, Plots):
                 can define any keyword arguments which is accepted by that layer in
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
-                on how to buld neural networks using such layered API [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
+                on how to buld neural networks using such layered API
+                [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -181,7 +182,8 @@ class BaseModel(NN, Plots):
             accept_additional_args bool:  Default is False
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
-            kwargs : keyword arguments for [`DataHandler`][ai4water.preprocessing.datahandler.DataHandler.__init__] class
+            kwargs :
+                keyword arguments for [`DataHandler`][ai4water.preprocessing.datahandler.DataHandler.__init__] class
 
         Example:
             >>>from ai4water import Model
@@ -202,18 +204,18 @@ class BaseModel(NN, Plots):
                 verbosity=verbosity,
                 lr=lr,
                 optimizer=optimizer,
-                loss = loss,
-                quantiles = quantiles,
-                epochs = epochs,
+                loss=loss,
+                quantiles=quantiles,
+                epochs=epochs,
                 min_val_loss=min_val_loss,
-                patience = patience,
-                save_model = save_model,
-                metrics = metrics or ['nse'],
-                val_metric = val_metric,
-                cross_validator = cross_validator,
-                accept_additional_args = accept_additional_args,
-                seed = seed,
-                wandb_config = wandb_config,
+                patience=patience,
+                save_model=save_model,
+                metrics=metrics or ['nse'],
+                val_metric=val_metric,
+                cross_validator=cross_validator,
+                accept_additional_args=accept_additional_args,
+                seed=seed,
+                wandb_config=wandb_config,
                 **kwargs
             )
 
@@ -623,7 +625,7 @@ class BaseModel(NN, Plots):
 
         self.save_config(history.history)
 
-        if self.verbosity>=0:
+        if self.verbosity >= 0:
             # save all the losses or performance metrics
             df = pd.DataFrame.from_dict(history.history)
             df.to_csv(os.path.join(self.path, "losses.csv"))
@@ -679,9 +681,9 @@ class BaseModel(NN, Plots):
 
                 metrics = ClassificationMetrics(_true, _pred, categorical=False)
                 dict_to_file(fpath,
-                                 errors=getattr(metrics, f"calculate_{metrics}")(),
-                                 name=f"{prefix}_{_class}_{dateandtime_now()}.json"
-                                 )
+                             errors=getattr(metrics, f"calculate_{metrics}")(),
+                             name=f"{prefix}_{_class}_{dateandtime_now()}.json"
+                             )
 
                 fname = os.path.join(fpath, f"{prefix}_{_class}.csv")
                 array = np.concatenate([_true.reshape(-1, 1), _pred.reshape(-1, 1)], axis=1)
@@ -828,7 +830,7 @@ class BaseModel(NN, Plots):
         else:
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
-                                             xgboost=xgboost)
+                                            xgboost=xgboost)
             if regr_name in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
                              'GammaRegressor']:
                 if int(version_info['sklearn'].split('.')[1]) < 23:
@@ -928,7 +930,7 @@ class BaseModel(NN, Plots):
                 kwargs['validation_data'] = val_data
             history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
 
-            if self.verbosity>=0:
+            if self.verbosity >= 0:
                 visualizer.plot_loss(history.history, show=self.verbosity)
 
             self.load_best_weights()
@@ -938,7 +940,7 @@ class BaseModel(NN, Plots):
         self.info['training_end'] = dateandtime_now()
         self.save_config()
 
-        if self.verbosity>=0:
+        if self.verbosity >= 0:
             dict_to_file(os.path.join(self.path, 'info.json'), others=self.info)
 
         self.is_training = False
@@ -1063,7 +1065,7 @@ class BaseModel(NN, Plots):
 
         return np.mean(scores).item()
 
-    def _maybe_change_residual_threshold(self, outputs)->None:
+    def _maybe_change_residual_threshold(self, outputs) -> None:
         # https://stackoverflow.com/a/64396757/5982232
         if self.residual_threshold_not_set:
             old_value = self._model.residual_threshold or mad(outputs.reshape(-1, ).tolist())
@@ -1073,97 +1075,132 @@ class BaseModel(NN, Plots):
                     print(f"changing residual_threshold from {old_value} to {self._model.residual_threshold}")
         return
 
-    def evaluate(self, data='training', **kwargs):
+    def evaluate(
+            self,
+            data='test',
+            metrics=None,
+            **kwargs
+    ):
         """
         Evalutes the performance of the model on a given data.
         calls the `evaluate` method of underlying `model`. If the `evaluate`
         method is not available in underlying `model`, then `predict` is called.
 
         Arguments:
-            data : which data type to use, valid values are `training`, `test`
+            data:
+                which data type to use, valid values are `training`, `test`
                 and `validation`. You can also provide your own x,y values as keyword
                 arguments. In such a case, this argument will have no meaning.
-            kwargs : any keyword argument for the `evaluate` method of the underlying
+            metrics:
+                the metrics to evaluate. It can a string indicating the metric to
+                evaluate. It can also be a list of metrics to evaluate. Any metric
+                name from [RegressionMetrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics]
+                or [ClassificationMetrics][ai4water.postprocessing.SeqMetrics.ClassificationMetrics]
+                can be given. It can also be name of group of metrics to evaluate.
+                Following groups are available
+
+                    - `minimal`
+                    - `all`
+                    - `hydro_metrics`
+                If this argument is given, the `evaluate` function of the underlying class
+                is not called. Rather the model is evaluated for given metrics.
+            kwargs:
+                any keyword argument for the `evaluate` method of the underlying
                 model.
         Returns:
-            whatever is returned by `evaluate` method of underlying model.
+            If `metrics` is not given then this method returns whatever is returned
+            by `evaluate` method of underlying model. Otherwise the model is evaluated
+            for given metric or group of metrics and the result is returned
+
+        Example:
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import arg_beach
+            >>> model = Model(model={"layers": {"Dense": 1}}, data=arg_beach())
+            >>> model.fit()
+
+            for evaluation on test data
+            >>> model.evaluate()
+
+            for evaluation on training data
+            >>> model.evaluate('training')
+
+            evaluate on any metric from [Metrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics] module
+            >>> model.evaluate(metrics='pbias')
+
+            to evaluate on custom data, the user can provide its own x and y
+            >>> x = np.random.random((10, 13))
+            >>> y = np.random.random((10, 1, 1))
+            >>> model.evaluate(x, y)
+
+            # backward compatability
+            Since the ai4water's Model is supposed to behave same as Keras' Model
+            the following expressions are equally valid.
+            >>> model.evaluate(x, y=y)
+            >>> model.evaluate(x=x, y=y)
         """
         return self.call_evaluate(data, **kwargs)
 
-    def call_evaluate(self, data=None, **kwargs):
+    def call_evaluate(self, data='test', metrics=None, **kwargs):
 
-        if data:
+        if data.__class__.__name__ in ["ndarray", "Dataset"]:  # .fit(x,y,...)
+            assert 'x' not in kwargs
+            x = data
+            if 'y' in kwargs:  # (.evaluate(x, y=y)
+                y = kwargs.pop('y')
+            else:
+                y = metrics  # (.evaluate(x, y,...)
+                metrics = None
+
+        elif 'x' in kwargs:  # .fit(x=x, y=y)
+            assert data in ['training', 'test', 'validation']
+            x = kwargs.pop('x')
+            y = kwargs.pop('y')
+
+        elif isinstance(data, str):
             assert data in ['training', 'test', 'validation']
 
             # get the relevant data
             data = getattr(self, f'{data}_data')()
-            data = maybe_three_outputs(data, self.dh.teacher_forcing)
-
-        if 'x' in kwargs:  # expecting it to be called by keras' fit loop
-            assert data is None
-
-            if self.category == 'ML':
-                if hasattr(self._model, 'evaluate'):
-                    return self._model.evaluate(kwargs['x'])
-                else:
-                    return self._model.predict(kwargs['x'])
-
-            return self.evaluate_fn(**kwargs)
-
-        # this will mostly be the validation data.
-        elif data is not None:
-            # if data.__class__.__name__ in ["Dataset"]:
-            #     if 'x' not in kwargs:
-            #         #if self.api == 'functional':
-            #         eval_output = self.evaluate_fn(self.val_dataset, **kwargs)
-            #
-            #     else:  # give priority to xy
-            #         eval_output = self._evaluate_with_xy(**kwargs)
-
-            # else:
-            eval_output = self._evaluate_with_xy(data, **kwargs)
+            x, y = maybe_three_outputs(data, self.dh.teacher_forcing)
 
         else:
             raise ValueError
 
-        acc, loss = None, None
+        # dont' make call to underlying evaluate function rather manually
+        # evaluate the given metrics
+        if metrics is not None:
+            p = self.predict(x=x, return_true=False, process_results=False)
 
-        if self.category == "DL":
-            if K.BACKEND == 'tensorflow':
-                loss, acc = eval_output
+            if self.problem == "regression":
+                from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+                errs = RegressionMetrics(y, p)
             else:
-                loss = eval_output
+                from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
+                errs = ClassificationMetrics(y, p)
 
-        eval_report = f"{'*' * 30}\n{dateandtime_now()}\n Accuracy: {acc}\n Loss: {loss}\n"
+            if isinstance(metrics, str):
 
-        fname = os.path.join(self.path, 'eval_report.txt')
-        with open(fname, 'a+') as fp:
-            fp.write(eval_report)
+                if metrics in ['minimal', 'all', 'hydro_metrics']:
+                    results = getattr(errs, f"calculate_{metrics}")()
+                else:
+                    results = getattr(errs, metrics)()
 
-        return eval_output
+            elif isinstance(metrics, list):
+                results = {}
+                for m in metrics:
+                    results[m] = getattr(errs, m)()
 
-    def _evaluate_with_xy(self, data, **kwargs):
-        x, y = data
+            elif callable(metrics):
+                results = metrics(x, y)
+            else:
+                raise ValueError(f"unknown metrics type {metrics}")
 
-        # the user provided x,y and batch_size values should have priority
-        if 'x' in kwargs:
-            x = kwargs.pop('x')
-        if 'y' in kwargs:
-            y = kwargs.pop('y')
-        if 'batch_size' in kwargs:
-            batch_size = kwargs.pop('batch_size')
-        else:
-            batch_size = self.config['batch_size']
+            return results
 
-        y = get_values(y)
+        if hasattr(self._model, 'evaluate'):
+            return self._model.evaluate(x, y, **kwargs)
 
-        return self.evaluate_fn(
-            x=x,
-            y=y,
-            batch_size=batch_size,
-            verbose=self.verbosity,
-            **kwargs
-        )
+        return self.evaluate_fn(x, y, **kwargs)
 
     def predict(
             self,
@@ -1171,8 +1208,8 @@ class BaseModel(NN, Plots):
             x=None,
             y=None,
             process_results: bool = True,
-            metrics:str = "minimal",
-            return_true:bool = False,
+            metrics: str = "minimal",
+            return_true: bool = False,
             **kwargs
     ):
         """
@@ -1221,7 +1258,7 @@ class BaseModel(NN, Plots):
                      y=None,
                      process_results=True,
                      metrics="minimal",
-                     return_true:bool = False,
+                     return_true: bool = False,
                      **kwargs):
 
         transformation_key = None
@@ -1401,8 +1438,8 @@ class BaseModel(NN, Plots):
 
     def view(
             self,
-            layer_name:Union[list, str]=None,
-            data:str='training',
+            layer_name: Union[list, str] = None,
+            data: str = 'training',
             x=None,
             y=None,
             examples_to_view=None,
@@ -1530,9 +1567,9 @@ class BaseModel(NN, Plots):
     @classmethod
     def from_config(
             cls,
-            config:dict,
+            config: dict,
             data=None,
-            make_new_path:bool=False,
+            make_new_path: bool = False,
             **kwargs
     ):
         """Loads the model from config dictionary i.e. model.config
@@ -1588,7 +1625,7 @@ class BaseModel(NN, Plots):
                    **kwargs)
 
     @staticmethod
-    def _get_config_and_path(cls, config_path:str=None, config=None, make_new_path=False):
+    def _get_config_and_path(cls, config_path: str = None, config=None, make_new_path=False):
         """Sets some attributes of the cls so that it can be built from config.
 
         Also fetches config and path which are used to initiate cls."""
@@ -1629,7 +1666,7 @@ class BaseModel(NN, Plots):
 
         return config, path
 
-    def update_weights(self, weight_file: str=None):
+    def update_weights(self, weight_file: str = None):
         """
         Updates the weights of the underlying model.
 
@@ -1757,10 +1794,10 @@ class BaseModel(NN, Plots):
 
     def optimize_hyperparameters(
             self,
-            algorithm:str="bayes",
-            num_iterations:int = 14,
-            process_results:bool=True,
-            update_config:bool=True,
+            algorithm: str = "bayes",
+            num_iterations: int = 14,
+            process_results: bool = True,
+            update_config: bool = True,
             **kwargs
     ):
         """
@@ -1798,7 +1835,7 @@ class BaseModel(NN, Plots):
             >>> model = Model(model=model_config, data=arg_beach())
             >>> optimizer = model.optimize_hyperparameters()
         """
-        from ._optimize import OptimizeHyperparameters #optimize_hyperparameters
+        from ._optimize import OptimizeHyperparameters  # optimize_hyperparameters
 
         _optimizer = OptimizeHyperparameters(
             self,
@@ -1813,24 +1850,24 @@ class BaseModel(NN, Plots):
 
         if update_config:
             new_model_config = update_model_config(self._original_model_config['model'],
-                                             _optimizer.best_paras())
+                                                   _optimizer.best_paras())
             self.config['model'][algo_type] = new_model_config
 
             new_other_config = update_model_config(self._original_model_config['other'],
-                                             _optimizer.best_paras())
+                                                   _optimizer.best_paras())
             self.config.update(new_other_config)
 
         return _optimizer
 
     def optimize_transformations(
             self,
-            transformations:Union[list, str] = None,
-            algorithm:str="bayes",
-            num_iterations:int=12,
+            transformations: Union[list, str] = None,
+            algorithm: str = "bayes",
+            num_iterations: int = 12,
             include: Union[str, list, dict] = None,
             exclude: Union[str, list] = None,
             append: dict = None,
-            update_config:bool=True
+            update_config: bool = True
     ):
         """optimizes the transformations for the input/output features
 
@@ -1878,7 +1915,7 @@ class BaseModel(NN, Plots):
             >>> model.fit()
             >>> model.predict()
         """
-        from ._optimize import OptimizeTransformations #optimize_transformations
+        from ._optimize import OptimizeTransformations  # optimize_transformations
 
         categories = ["minmax", "zscore", "log", "robust", "quantile", "log2", "log10", "power", "none"]
 
