@@ -21,7 +21,7 @@ def choose_examples(x, examples_to_use, y=None):
     return x, index
 
 
-def choose_n_imp_exs(x:np.ndarray, n:int, y=None):
+def choose_n_imp_exs(x: np.ndarray, n: int, y=None):
     """Chooses the n important examples from x and y"""
 
     n = min(len(x), n)

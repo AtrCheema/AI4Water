@@ -34,9 +34,9 @@ class NBeats(keras.layers.Layer):
 
     def __init__(
             self,
-            units:int=256,
-            lookback:int=10,
-            forecast_length:int=2,
+            units: int = 256,
+            lookback: int = 10,
+            forecast_length: int = 2,
             stack_types=(TREND_BLOCK, SEASONALITY_BLOCK),
             nb_blocks_per_stack=3,
             thetas_dim=(4, 8),

@@ -16,7 +16,6 @@ from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransforme
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
 
 
-
 # TODO add logistic, tanh and more scalers.
 # rpca
 # tSNE
@@ -62,7 +61,7 @@ class EmdTransformer(object):
         raise NotImplementedError
 
 
-class scaler_container(object):
+class TransformationsContainer(object):
 
     def __init__(self):
         self.scalers = {}
@@ -72,7 +71,7 @@ class scaler_container(object):
         self.index = None
 
 
-class Transformations(scaler_container):
+class Transformations(TransformationsContainer):
     """
     Applies transformation to tabular data.
     Any new transforming methods should define two methods one starting with
@@ -190,7 +189,8 @@ class Transformations(scaler_container):
             by making use of the argument `replace_zeros`. The zeros in the input array
             will be replaced internally but will be inserted back afterwards.
             >>> from ai4water.preprocessing.transformations import Transformations
-            >>> transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
+            >>> transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True,
+            ...                               replace_zeros=True)
             >>> transformed_data = transformer.transform()
             ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
             >>> original_data = transformer.inverse_transform(data=transformed_data)
@@ -551,7 +551,7 @@ class Transformations(scaler_container):
         return df
 
 
-def get_val(df:pd.DataFrame, method):
+def get_val(df: pd.DataFrame, method):
 
     if isinstance(method, str):
         if method.lower() == "mean":
@@ -564,7 +564,6 @@ def get_val(df:pd.DataFrame, method):
         return method
     else:
         raise ValueError(f"unknown method {method} to replace nan vlaues")
-
 
 
 class InvalidValueError(Exception):

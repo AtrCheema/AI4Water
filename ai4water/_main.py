@@ -550,19 +550,22 @@ class BaseModel(NN, Plots):
         if 'epochs' in kwargs:
             self.config['epochs'] = kwargs.pop('epochs')
 
-        self.DO_fit(x=inputs,
-                    y=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
-                    epochs=self.config['epochs'],
-                    batch_size=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else self.config['batch_size'],
-                    validation_data=validation_data,
-                    callbacks=callbacks,
-                    shuffle=self.config['shuffle'],
-                    steps_per_epoch=self.config['steps_per_epoch'],
-                    verbose=max(self.verbosity, 0),
-                    nans_in_y_exist=nans_in_y_exist,
-                    validation_steps=validation_steps,
-                    **kwargs,
-                    )
+        batch_siz = None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else self.config['batch_size']
+
+        self.DO_fit(
+            x=inputs,
+            y=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
+            epochs=self.config['epochs'],
+            batch_size=batch_siz,
+            validation_data=validation_data,
+            callbacks=callbacks,
+            shuffle=self.config['shuffle'],
+            steps_per_epoch=self.config['steps_per_epoch'],
+            verbose=max(self.verbosity, 0),
+            nans_in_y_exist=nans_in_y_exist,
+            validation_steps=validation_steps,
+            **kwargs,
+        )
 
         self.info['training_time_in_minutes'] = round(float(time.time() - st) / 60.0, 2)
 

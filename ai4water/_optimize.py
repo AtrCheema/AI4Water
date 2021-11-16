@@ -221,7 +221,7 @@ def make_space(
 
     if append is not None:
         assert isinstance(append, dict)
-        for k,v in append.items():
+        for k, v in append.items():
             if not isinstance(v, Categorical):
                 assert isinstance(v, list), f"space for {k} must be list but it is {v.__class__.__name__}"
                 v = Categorical(v, name=k)

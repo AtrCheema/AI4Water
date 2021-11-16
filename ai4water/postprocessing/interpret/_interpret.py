@@ -1,7 +1,6 @@
 
 import os
 import warnings
-from typing import Union
 
 import numpy as np
 import matplotlib as mpl
@@ -14,7 +13,6 @@ from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import plot_activations_along_inputs
-from ai4water.preprocessing import Transformations
 
 
 class Interpret(Plot):
@@ -118,7 +116,7 @@ class Interpret(Plot):
 
         use_prev = self.model.config['use_predicted_output']
         all_cols = self.model.config['input_features'] if use_prev else self.model.config['input_features'] + \
-                                                                                self.model.config['output_features']
+                                                                        self.model.config['output_features']
         imp_sort = np.sort(importance)[::-1]
         all_cols = np.array(all_cols)
         all_cols = all_cols[np.argsort(importance)[::-1]]

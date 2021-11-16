@@ -365,9 +365,9 @@ def taylor_plot(
         values = True
     else:  # we are given actual arrays
         assert all([isinstance(np.array(v), np.ndarray) for v in trues.values()])
-        assert all([len(array) > 1 for array in trues.values()]), f"""one or more array in true values has less than 2 values
-                                                        {pprint.pprint({key: len(array) for key, array in trues.items()},
-                                                                       width=20)}"""
+        assert all([len(array) > 1 for array in trues.values()]), f"""
+        one or more array in true values has less than 2 values
+        {pprint.pprint({key: len(array) for key, array in trues.items()}, width=20)}"""
     scenarios = trues.keys()
 
     figsizes = {
@@ -390,7 +390,7 @@ def taylor_plot(
     plot_bias = kwargs.get('plot_bias', False)
     title = kwargs.get('title', "")
     figsize = kwargs.get("figsize", figsizes[n_plots])  # widht and heigt respectively
-    bbox_inches=kwargs.get("bbox_inches", None)
+    bbox_inches = kwargs.get("bbox_inches", None)
     sim_marker = kwargs.get("sim_marker", None)
     true_label = kwargs.get("true_label", "Reference")
     show = kwargs.get("show", True)

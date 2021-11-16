@@ -371,14 +371,14 @@ def bootdist(f, args, n_boot=1000, **func_kwargs):
 def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
 
     grid = np.linspace(np.min(x), np.max(x), 100)
-    X = np.c_[np.ones(len(x)), x]
+    x = np.c_[np.ones(len(x)), x]
     grid = np.c_[np.ones(len(grid)), grid]
-    yhat = grid.dot(reg_func(X, y))
+    yhat = grid.dot(reg_func(x, y))
 
     ax.plot(grid[:, 1], yhat, color=line_color)
 
     if ci:
-        boots = bootdist(reg_func, args=[X, y], n_boot=1000).T
+        boots = bootdist(reg_func, args=[x, y], n_boot=1000).T
 
         yhat_boots = grid.dot(boots).T
 
@@ -452,7 +452,8 @@ def murphy_diagram(
         reference_model:
              The model for reference prediction. Only relevent if `reference` is
              None and `plot_type` is `diff`. It can be callable or a string. If it is a
-             string, then it can be any model name from [sklearn.linear_model](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model)
+             string, then it can be any model name from
+             [sklearn.linear_model](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model)
         inputs:
              inputs for reference model. Only relevent if `reference_model` is not
              None and `plot_type` is `diff`

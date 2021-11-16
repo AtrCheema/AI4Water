@@ -127,7 +127,8 @@ class HyperOpt(object):
     The class is expected to pass all the tests written in sklearn or skopt for
     corresponding classes.
 
-    For detailed use of this class see [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
+    For detailed use of this class see
+    [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
 
     Attributes
     --------------
@@ -346,7 +347,7 @@ class HyperOpt(object):
         self.data = None
         self.eval_on_best = eval_on_best
         self.opt_path = opt_path
-        self.process_results=process_results
+        self.process_results = process_results
         self.objective_fn_is_dl = False
         self.verbosity = verbosity
 
@@ -425,7 +426,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self.ai4water_args = kwargs.pop("ai4water_args")
             self.data = kwargs.pop("data")
             self._model = self.ai4water_args.pop("model")
-            #self._model = list(_model.keys())[0]
+            # self._model = list(_model.keys())[0]
             self.use_ai4water_model = True
 
         if 'n_initial_points' in kwargs:
@@ -460,7 +461,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.algorithm == "bayes":
             if isinstance(x, dict):
                 _param_space = []
-                for k,v in x.items():
+                for k, v in x.items():
                     assert isinstance(v, Dimension), f"""
                             space for parameter {k} is of invalid type {v.__class__.__name__}.
                             For {self.algorithm}, it must be of type {Dimension.__name__}
@@ -505,7 +506,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 else:
                     raise NotImplementedError
 
-            elif isinstance(x, Dimension): # for single hyper-parameter optimization ?
+            elif isinstance(x, Dimension):  # for single hyper-parameter optimization ?
                 _param_space = x.as_hp()
             else:
                 _param_space = x
@@ -567,7 +568,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             _space = Space(space_) if len(space_) > 0 else None
         elif 'rv_frozen' in x.__class__.__name__ or isinstance(x, Apply):
-            _space =  Space([skopt_space_from_hp_space(x)])
+            _space = Space([skopt_space_from_hp_space(x)])
         else:
             raise NotImplementedError(f"unknown type {x}, {type(x)}")
         return _space
@@ -588,11 +589,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     else:
                         raise NotImplementedError
             elif isinstance(self.original_space, list):
-                if  all([isinstance(s, Dimension) for s in self.original_space]):
-                    _space = OrderedDict({s.name:s for s in self.original_space})
+                if all([isinstance(s, Dimension) for s in self.original_space]):
+                    _space = OrderedDict({s.name: s for s in self.original_space})
                 elif all([isinstance(s, Apply) for s in self.original_space]):
                     d = [skopt_space_from_hp_space(v) for v in self.original_space]
-                    _space = OrderedDict({s.name:s for s in d})
+                    _space = OrderedDict({s.name: s for s in d})
                 else:
                     raise NotImplementedError
             else:
@@ -1099,7 +1100,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # todo, not in original order
         if self.backend == "optuna":
             num_iters = range(self.num_iterations)
-            return {float(f'{round(trial.value, 5)}_{idx}'):trial.params for idx, trial in zip(num_iters, self.study.trials)}
+            return {float(f'{round(trial.value, 5)}_{idx}'): trial.params for idx, trial in zip(num_iters, self.study.trials)}
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
         elif self.backend == 'skopt':
@@ -1107,7 +1108,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             # adding idx because sometimes the difference between two func_vals is negligible
             fv = self.gpmin_results['func_vals']
             xiters = self.gpmin_results['x_iters']
-            return {f'{round(k, 5)}_{idx}':self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
+            return {f'{round(k, 5)}_{idx}': self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
         else:
             # for sklearn based
             return self.results
@@ -1157,7 +1158,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         sr = self.skopt_results()
         plt.close('all')
         if sr.x_iters is not None and self.backend != "skopt":
-            plot_convergence([sr])  #todo, should include an option to plot original evaluations instead of only minimum
+            # todo, should include an option to plot original evaluations instead of only minimum
+            plot_convergence([sr])
 
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
@@ -1278,7 +1280,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         raise NotImplementedError
 
     @classmethod
-    def from_gp_parameters(cls, fpath:str, objective_fn):
+    def from_gp_parameters(cls, fpath: str, objective_fn):
         """loads results saved from bayesian optimization"""
         opt_path = os.path.dirname(fpath)
         with open(fpath, 'r') as fp:

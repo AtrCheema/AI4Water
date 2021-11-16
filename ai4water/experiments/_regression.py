@@ -111,7 +111,7 @@ class MLRegressionExperiments(Experiments):
 
         sk_maj_ver = int(sklearn.__version__.split('.')[0])
         sk_min_ver = int(sklearn.__version__.split('.')[1])
-        if sk_maj_ver==0 and sk_min_ver < 23:
+        if sk_maj_ver == 0 and sk_min_ver < 23:
             for m in ['model_PoissonRegressor', 'model_TweedieRegressor']:
                 self.models.remove(m)
 
@@ -159,7 +159,7 @@ class MLRegressionExperiments(Experiments):
         else:
             model.fit(**fit_kws)
             vt, vp = model.predict('validation', return_true=True)
-            val_score =  getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
+            val_score = getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
 
         tt, tp = model.predict('test', return_true=True)
 
@@ -169,7 +169,7 @@ class MLRegressionExperiments(Experiments):
         if predict:
             t, p = model.predict('training', return_true=True)
 
-            return (t,p), (tt, tp)
+            return (t, p), (tt, tp)
 
         if model.config['val_metric'] in ['r2', 'nse', 'kge', 'r2_mod']:
             val_score = 1.0 - val_score
@@ -177,7 +177,7 @@ class MLRegressionExperiments(Experiments):
         return val_score
 
     def model_AdaBoostRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
         self.path = "sklearn.ensemble.AdaBoostRegressor"
 
         self.param_space = [
@@ -188,7 +188,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'AdaBoostRegressor': kwargs}}
 
     def model_ARDRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html
         self.path = "sklearn.linear_model.ARDRegression"
 
         self.param_space = [
@@ -211,14 +211,14 @@ class MLRegressionExperiments(Experiments):
             Real(low=0.1, high=1.0, name='max_features', num_samples=self.num_samples),
             Categorical(categories=[True, False], name='bootstrap'),
             Categorical(categories=[True, False], name='bootstrap_features'),
-            #Categorical(categories=[True, False], name='oob_score'),  # linked with bootstrap
+            # Categorical(categories=[True, False], name='oob_score'),  # linked with bootstrap
         ]
         self.x0 = [10, 1.0, 1.0, True, False]
 
         return {'model': {'BaggingRegressor': kwargs}}
 
     def model_BayesianRidge(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.BayesianRidge.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.BayesianRidge.html
         self.path = "sklearn.linear_model.BayesianRidge"
 
         self.param_space = [
@@ -237,14 +237,21 @@ class MLRegressionExperiments(Experiments):
         self.path = "catboost.CatBoostRegressor"
 
         self.param_space = [
-            Integer(low=500, high=5000, name='iterations', num_samples=self.num_samples),  # maximum number of trees that can be built
-            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples), # Used for reducing the gradient step.
-            Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=self.num_samples),   # Coefficient at the L2 regularization term of the cost function.
-            Real(low=0.1, high=10, name='model_size_reg', num_samples=self.num_samples),  # arger the value, the smaller the model size.
-            Real(low=0.1, high=0.95, name='rsm', num_samples=self.num_samples),  # percentage of features to use at each split selection, when features are selected over again at random.
-            Integer(low=32, high=1032, name='border_count', num_samples=self.num_samples),  # number of splits for numerical features
-            Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles', # The quantization mode for numerical features.
-                                    'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')  # The quantization mode for numerical features.
+            # maximum number of trees that can be built
+            Integer(low=500, high=5000, name='iterations', num_samples=self.num_samples),
+            # Used for reducing the gradient step.
+            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples),
+            # Coefficient at the L2 regularization term of the cost function.
+            Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=self.num_samples),
+            # arger the value, the smaller the model size.
+            Real(low=0.1, high=10, name='model_size_reg', num_samples=self.num_samples),
+            # percentage of features to use at each split selection, when features are selected over again at random.
+            Real(low=0.1, high=0.95, name='rsm', num_samples=self.num_samples),
+            # number of splits for numerical features
+            Integer(low=32, high=1032, name='border_count', num_samples=self.num_samples),
+            # The quantization mode for numerical features.  The quantization mode for numerical features.
+            Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
+                                    'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')
         ]
         self.x0 = [1000, 0.01, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']
         return {'model': {'CatBoostRegressor': kwargs}}
@@ -257,7 +264,7 @@ class MLRegressionExperiments(Experiments):
         self.param_space = [
             Categorical(["best", "random"], name='splitter'),
             Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
-            #Real(low=1, high=5, name='min_samples_leaf'),
+            # Real(low=1, high=5, name='min_samples_leaf'),
             Real(low=0.0, high=0.5, name="min_weight_fraction_leaf", num_samples=self.num_samples),
             Categorical(categories=['auto', 'sqrt', 'log2'], name="max_features"),
         ]
@@ -266,20 +273,20 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'DecisionTreeRegressor': kwargs}}
 
     def model_DummyRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyRegressor.html
         self.path = "sklearn.dummy.DummyRegressor"
         self.param_space = [
             Categorical(categories=['mean', 'median', 'quantile'], name='strategy')
         ]
 
         kwargs.update({'constant': 0.2,
-                'quantile': 0.2})
+                       'quantile': 0.2})
 
         self.x0 = ['quantile']
         return {'model': {'DummyRegressor': kwargs}}
 
     def model_ElasticNet(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html
         self.path = "sklearn.linear_model.ElasticNet"
         self.param_space = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
@@ -292,7 +299,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'ElasticNet': kwargs}}
 
     def model_ElasticNetCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNetCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNetCV.html
         self.path = "sklearn.linear_model.ElasticNetCV"
         self.param_space = [
             Real(low=0.1, high=1.0, name='l1_ratio', num_samples=self.num_samples),
@@ -331,9 +338,8 @@ class MLRegressionExperiments(Experiments):
                    0.0, 'auto']
         return {'model': {'ExtraTreesRegressor': kwargs}}
 
-
     # def model_GammaRegressor(self, **kwargs):
-    #     ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.GammaRegressor.html?highlight=gammaregressor
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.GammaRegressor.html?highlight=gammaregressor
     #     self.param_space = [
     #         Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
     #         Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
@@ -344,9 +350,8 @@ class MLRegressionExperiments(Experiments):
     #     self.x0 = [0.5, 100,1e-6, True, True]
     #     return {'model': {'GammaRegressor': kwargs}}
 
-
     def model_GaussianProcessRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.gaussian_process.GaussianProcessRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.gaussian_process.GaussianProcessRegressor.html
         self.path = "sklearn.gaussian_process.GaussianProcessRegressor"
         self.param_space = [
             Real(low=1e-10, high=1e-7, name='alpha', num_samples=self.num_samples),
@@ -356,12 +361,15 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'GaussianProcessRegressor': kwargs}}
 
     def model_GradientBoostingRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
         self.path = "sklearn.ensemble.GradientBoostingRegressor"
         self.param_space = [
-            Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),  # number of boosting stages to perform
-            Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=self.num_samples),   #  shrinks the contribution of each tree
-            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples),  # fraction of samples to be used for fitting the individual base learners
+            # number of boosting stages to perform
+            Integer(low=5, high=500, name='n_estimators', num_samples=self.num_samples),
+            #  shrinks the contribution of each tree
+            Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=self.num_samples),
+            # fraction of samples to be used for fitting the individual base learners
+            Real(low=0.1, high=1.0, name='subsample', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='min_samples_split', num_samples=self.num_samples),
             Integer(low=2, high=30, name='max_depth', num_samples=self.num_samples),
         ]
@@ -369,22 +377,26 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'GradientBoostingRegressor': kwargs}}
 
     def model_HistGradientBoostingRegressor(self, **kwargs):
-        ### https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html
         # TODO not hpo not converging
         self.path = "sklearn.ensemble.HistGradientBoostingRegressor"
         self.param_space = [
-            Real(low=0.0001, high=0.9, prior='log', name='learning_rate', num_samples=self.num_samples),  # Used for reducing the gradient step.
+            # Used for reducing the gradient step.
+            Real(low=0.0001, high=0.9, prior='log', name='learning_rate', num_samples=self.num_samples),
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),  # maximum number of trees.
             Integer(low=2, high=100, name='max_depth', num_samples=self.num_samples),  # maximum number of trees.
-            Integer(low=10, high=100, name='max_leaf_nodes', num_samples=self.num_samples),  # maximum number of leaves for each tree
-            Integer(low=10, high=100, name='min_samples_leaf', num_samples=self.num_samples),  # minimum number of samples per leaf
-            Real(low=00, high=0.5, name='l2_regularization', num_samples=self.num_samples),  # Used for reducing the gradient step.
+            # maximum number of leaves for each tree
+            Integer(low=10, high=100, name='max_leaf_nodes', num_samples=self.num_samples),
+            # minimum number of samples per leaf
+            Integer(low=10, high=100, name='min_samples_leaf', num_samples=self.num_samples),
+            # Used for reducing the gradient step.
+            Real(low=00, high=0.5, name='l2_regularization', num_samples=self.num_samples),
         ]
         self.x0 = [0.1, 100, 10, 31, 20, 0.0]
         return {'model': {'HistGradientBoostingRegressor':kwargs}}
 
     def model_HuberRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
         self.path = "sklearn.linear_model.HuberRegressor"
         self.param_space = [
             Real(low=1.0, high=5.0, name='epsilon', num_samples=self.num_samples),
@@ -400,9 +412,9 @@ class MLRegressionExperiments(Experiments):
         self.path = "sklearn.kernel_ridge.KernelRidge"
         self.param_space = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples)
- #           Categorical(categories=['poly', 'linear', name='kernel'])
+            # Categorical(categories=['poly', 'linear', name='kernel'])
         ]
-        self.x0 = [1.0] #, 'linear']
+        self.x0 = [1.0]  # 'linear']
         return {'model': {'KernelRidge': kwargs}}
 
     def model_KNeighborsRegressor(self, **kwargs):
@@ -425,7 +437,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'KNeighborsRegressor': kwargs}}
 
     def model_LassoLars(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLars.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLars.html
         self.path = "sklearn.linear_model.LassoLars"
         self.param_space = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
@@ -435,7 +447,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LassoLars': kwargs}}
 
     def model_Lars(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lars.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lars.html
         self.path = "sklearn.linear_model.Lars"
         self.param_space = [
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -456,7 +468,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LarsCV': kwargs}}
 
     def model_LinearSVR(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVR.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVR.html
         self.path = "sklearn.svm.LinearSVR"
         self.param_space = [
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
@@ -468,7 +480,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LinearSVR': kwargs}}
 
     def model_Lasso(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
         self.path = "sklearn.linear_model.Lasso"
         self.param_space = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
@@ -479,7 +491,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'Lasso': kwargs}}
 
     def model_LassoCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoCV.html
         self.path = "sklearn.linear_model.LassoCV"
         self.param_space = [
             Real(low=1e-5, high=1e-2, name='eps', num_samples=self.num_samples),
@@ -491,7 +503,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LassoCV': kwargs}}
 
     def model_LassoLarsCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsCV.html
         self.path = "sklearn.linear_model.LassoLarsCV"
         self.param_space = [
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -501,7 +513,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LassoLarsCV': kwargs}}
 
     def model_LassoLarsIC(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsIC.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsIC.html
         self.path = "sklearn.linear_model.LassoLarsIC"
         self.param_space = [
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -511,11 +523,12 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LassoLarsIC': kwargs}}
 
     def model_LGBMRegressor(self, **kwargs):
-     ## https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html
+        # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html
         self.path = "lightgbm.LGBMRegressor"
 
         self.param_space = [
-            Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),  # todo, during optimization not working with 'rf'
+            # todo, during optimization not working with 'rf'
+            Categorical(categories=['gbdt', 'dart', 'goss'], name='boosting_type'),
             Integer(low=10, high=200, name='num_leaves', num_samples=self.num_samples),
             Real(low=0.0001, high=0.1,  name='learning_rate', prior='log', num_samples=self.num_samples),
             Integer(low=20, high=500, name='n_estimators', num_samples=self.num_samples)
@@ -533,7 +546,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'LinearRegression': kwargs}}
 
     def model_MLPRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html
         self.path = "sklearn.neural_network.MLPRegressor"
         self.param_space = [
             Integer(low=10, high=500, name='hidden_layer_sizes', num_samples=self.num_samples),
@@ -547,7 +560,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'MLPRegressor': kwargs}}
 
     def model_NuSVR(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVR.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVR.html
         self.path = "sklearn.svm.NuSVR"
         self.param_space = [
             Real(low=0.5,high=0.9, name='nu', num_samples=self.num_samples),
@@ -558,7 +571,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'NuSVR': kwargs}}
 
     def model_OrthogonalMatchingPursuit(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuit.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuit.html
         self.path = "sklearn.linear_model.OrthogonalMatchingPursuit"
         self.param_space = [
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -568,7 +581,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'OrthogonalMatchingPursuit': kwargs}}
 
     def model_OrthogonalMatchingPursuitCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuitCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuitCV.html
         self.path = "sklearn.linear_model.OrthogonalMatchingPursuitCV"
         self.param_space = [
             # Integer(low=10, high=100, name='max_iter'),
@@ -579,7 +592,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'OrthogonalMatchingPursuitCV': kwargs}}
 
     def model_OneClassSVM(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html
         self.path = "sklearn.svm.OneClassSVM"
         self.param_space = [
             Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'], name='kernel'),
@@ -590,18 +603,18 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'OneClassSVM': kwargs}}
 
     def model_PoissonRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html
         self.path = "sklearn.linear_model.PoissonRegressor"
         self.param_space = [
             Real(low=0.0, high=1.0, name='alpha', num_samples=self.num_samples),
-            #Categorical(categories=[True, False], name='fit_intercept'),
+            # Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=50, high=500, name='max_iter', num_samples=self.num_samples),
         ]
         self.x0 = [0.5, 100]
         return {'model': {'PoissonRegressor': kwargs}}
 
     def model_Ridge(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
         self.path = "sklearn.linear_model.Ridge"
         self.param_space = [
             Real(low=0.0, high=3.0, name='alpha', num_samples=self.num_samples),
@@ -612,7 +625,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'Ridge': kwargs}}
 
     def model_RidgeCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeCV.html
         self.path = "sklearn.linear_model.RidgeCV"
         self.param_space = [
             Categorical(categories=[True, False], name='fit_intercept'),
@@ -622,7 +635,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'RidgeCV': kwargs}}
 
     def model_RadiusNeighborsRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.RadiusNeighborsRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.RadiusNeighborsRegressor.html
         self.path = "sklearn.neighbors.RadiusNeighborsRegressor"
 
         self.param_space = [
@@ -645,7 +658,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'RANSACRegressor': kwargs}}
 
     def model_RandomForestRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
         self.path = "sklearn.ensemble.RandomForestRegressor"
 
         self.param_space = [
@@ -657,15 +670,16 @@ class MLRegressionExperiments(Experiments):
             Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')
         ]
         self.x0 = [10, 5, 0.4,  # 0.2,
-                       0.1, 'auto']
+                   0.1, 'auto']
         return {'model': {'RandomForestRegressor': kwargs}}
 
     def model_SVR(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
         self.path = "sklearn.svm.SVR"
         self.param_space = [
             # https://stackoverflow.com/questions/60015497/valueerror-precomputed-matrix-must-be-a-square-matrix-input-is-a-500x29243-mat
-            Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid'], name='kernel'), # todo, optimization not working with 'precomputed'
+            # todo, optimization not working with 'precomputed'
+            Categorical(categories=['linear', 'poly', 'rbf', 'sigmoid'], name='kernel'),
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
             Real(low=0.01, high=0.9, name='epsilon', num_samples=self.num_samples)
         ]
@@ -673,7 +687,7 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'SVR': kwargs}}
 
     def model_SGDRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html
         self.path = "sklearn.linear_model.SGDRegressor"
         self.param_space = [
             Categorical(categories=['l1', 'l2', 'elasticnet'], name='penalty'),
@@ -707,13 +721,13 @@ class MLRegressionExperiments(Experiments):
         return {'model': {'TweedieRegressor': kwargs}}
 
     def model_TheilsenRegressor(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
         self.path = "sklearn.linear_model.TheilSenRegressor"
         self.param_space = [
             Categorical(categories=[True, False], name='fit_intercept'),
             Integer(low=30, high=1000, name='max_iter', num_samples=self.num_samples),
             Real(low=1e-5, high=1e-1, name='tol', num_samples=self.num_samples),
-            ## Integer(low=self.data.shape[1]+1, high=len(self.data), name='n_subsamples')
+            # Integer(low=self.data.shape[1]+1, high=len(self.data), name='n_subsamples')
         ]
         self.x0 = [True, 50, 0.001]
         return {'model': {'TheilSenRegressor': kwargs}}
@@ -724,17 +738,23 @@ class MLRegressionExperiments(Experiments):
     #     return {'GAMMAREGRESSOR': {}}
 
     def model_XGBRFRegressor(self, **kwargs):
-        ## https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFRegressor
+        # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFRegressor
         self.path = "xgboost.XGBRFRegressor"
         self.param_space = [
-            Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
-            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
-            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples),     #
-            #Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
-            Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
-            Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
-            Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
-            Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
+            #  Number of gradient boosted trees
+            Integer(low=5, high=100, name='n_estimators', num_samples=self.num_samples),
+            # Maximum tree depth for base learners
+            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),
+            Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples),
+            # Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),  # todo solve error
+            # Minimum loss reduction required to make a further partition on a leaf node of the tree.
+            Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),
+            # Minimum sum of instance weight(hessian) needed in a child.
+            Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),
+            # Maximum delta step we allow each tree’s weight estimation to be.
+            Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),
+            #  Subsample ratio of the training instance.
+            Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
@@ -750,21 +770,27 @@ class MLRegressionExperiments(Experiments):
         # ##https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor
         self.path = "xgboost.XGBRegressor"
         self.param_space = [
-            Integer(low=5, high=200, name='n_estimators', num_samples=self.num_samples),  #  Number of gradient boosted trees
-            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),     # Maximum tree depth for base learners
-            Real(low=0.0001, high=0.5, name='learning_rate', prior='log', num_samples=self.num_samples),     #
+            #  Number of gradient boosted trees
+            Integer(low=5, high=200, name='n_estimators', num_samples=self.num_samples),
+            # Maximum tree depth for base learners
+            Integer(low=3, high=50, name='max_depth', num_samples=self.num_samples),
+            Real(low=0.0001, high=0.5, name='learning_rate', prior='log', num_samples=self.num_samples),
             Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
-            #Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),  # Minimum loss reduction required to make a further partition on a leaf node of the tree.
-            #Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),  # Minimum sum of instance weight(hessian) needed in a child.
-            #Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),  # Maximum delta step we allow each tree’s weight estimation to be.
-            #Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  #  Subsample ratio of the training instance.
-            #Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
-            #Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
-            #Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
-            #Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
-            #Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
+            # Minimum loss reduction required to make a further partition on a leaf node of the tree.
+            # Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),
+            # Minimum sum of instance weight(hessian) needed in a child.
+            # Real(low=0.1, high=0.9, name='min_child_weight', num_samples=self.num_samples),
+            # Maximum delta step we allow each tree’s weight estimation to be.
+            # Real(low=0.1, high=0.9, name='max_delta_step', num_samples=self.num_samples),
+            #  Subsample ratio of the training instance.
+            # Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),
+            # Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
+            # Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
+            # Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),
+            # Real(low=0.1, high=0.9, name='reg_alpha', num_samples=self.num_samples),
+            # Real(low=0.1, high=0.9, name='reg_lambda', num_samples=self.num_samples)
         ]
-        self.x0 = None #[100, 6, 0.3, 'gbtree', 0.2, 0.2, 0.2,
-                   #0.2, 0.2, 0.2, 0.2, 0.2, 0.2
-                   #]
+        self.x0 = None  # [100, 6, 0.3, 'gbtree', 0.2, 0.2, 0.2,
+                  #  0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+                  # ]
         return {'model': {'XGBRegressor': kwargs}}

@@ -418,7 +418,7 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
 
     if isinstance(config['input_features'], dict):
         for data in [config['input_features'], config['output_features']]:
-            for k,v in data.items():
+            for k, v in data.items():
                 assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
 
     _data_config = {}
@@ -509,7 +509,7 @@ def find_opt_paras_from_model_config(
 
         original_model_config, _ = process_config_dict(copy.deepcopy(config[model_name]), False)
 
-        for k,v in ml_config.items():
+        for k, v in ml_config.items():
 
             if v.__class__.__name__ in ['Integer', 'Real', 'Categorical']:
 
@@ -525,7 +525,7 @@ def find_opt_paras_from_model_config(
     return new_model_config, opt_paras, original_model_config
 
 
-def process_config_dict(config_dict:dict, update_initial_guess=True):
+def process_config_dict(config_dict: dict, update_initial_guess=True):
     """From a dicitonary defining structure of neural networks, this function
     finds out which are hyperparameters from them"""
 
@@ -556,7 +556,7 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
     return config_dict, opt_paras
 
 
-def update_model_config(config:dict, suggestions):
+def update_model_config(config: dict, suggestions):
     """returns the updated config if config contains any parameter from suggestions."""
     cc = copy.deepcopy(config)
 
@@ -627,7 +627,7 @@ class Jsonize(object):
         if self.obj is Ellipsis:
             return {'class_name': '__ellipsis__'}
 
-        if wrapt and  isinstance(self.obj, wrapt.ObjectProxy):
+        if wrapt and isinstance(self.obj, wrapt.ObjectProxy):
             return self.obj.__wrapped__
 
         return str(self.obj)
@@ -659,7 +659,7 @@ class Jsonize(object):
                 if isinstance(obj, list) or isinstance(obj, tuple):
                     return obj  # for cases like (1, ) or [1,]
                 return self.stage2(obj[0])
-            else: # when object is []
+            else:  # when object is []
                 return obj
 
         # if obj is a python 'type'

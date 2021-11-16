@@ -588,7 +588,7 @@ class RegressionMetrics(Metrics):
 
         return float(kgenp_c2m_)
 
-    def KLsym(self) -> Union[float, None]:
+    def kl_sym(self) -> Union[float, None]:
         """Symmetric kullback-leibler divergence"""
         if not all((self.true == 0) == (self.predicted == 0)):
             return None  # ('KL divergence not defined when only one distribution is 0.')

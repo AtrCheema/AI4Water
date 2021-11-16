@@ -14,7 +14,7 @@ def explain_model(
         examples_to_explain: Union[int, float, list] = 20,
         explainer=None,
         layer: Union[str, int] = None,
-        method:str = "both"
+        method: str = "both"
 ):
     """
     Explains the ai4water's Model class.
@@ -54,14 +54,14 @@ def explain_model(
 
         exp2 = _explain_with_shap(model, features_to_explain,
                                   examples_to_explain,  explainer, layer)
-        explainer =  (exp1, exp2)
+        explainer = (exp1, exp2)
 
     elif method == 'shap' and shap:
-        explainer =  _explain_with_shap(model, features_to_explain, examples_to_explain,
+        explainer = _explain_with_shap(model, features_to_explain, examples_to_explain,
                                        explainer, layer)
 
     elif method == 'lime' and lime:
-        explainer =  _explain_with_lime(model, examples_to_explain)
+        explainer = _explain_with_lime(model, examples_to_explain)
 
     else:
         ValueError(f"unrecognized method {method}")
@@ -71,8 +71,8 @@ def explain_model(
 
 def explain_model_with_lime(
         model,
-        examples_to_explain:Union[int, float, list] = 20,
-)->"LimeExplainer":
+        examples_to_explain: Union[int, float, list] = 20,
+) -> "LimeExplainer":
     """Explains the model with LimeExplainer
 
     Arguments:
@@ -134,11 +134,11 @@ def explain_model_with_lime(
 
 def explain_model_with_shap(
         model,
-        features_to_explain:Union[str, list] = None,
-        examples_to_explain:Union[int, float, list] = 20,
+        features_to_explain: Union[str, list] = None,
+        examples_to_explain: Union[int, float, list] = 20,
         explainer=None,
-        layer:Union[str, int] = None,
-)->"ShapExplainer":
+        layer: Union[str, int] = None,
+) -> "ShapExplainer":
     """Expalins the model which is built by AI4Water's Model class using SHAP.
 
     Arguments:
@@ -186,7 +186,6 @@ def explain_model_with_shap(
             model = make_model(model._model)
         else:
             model = make_model(model)
-
 
     test_x, index = choose_examples(test_x, examples_to_explain, test_y)
 

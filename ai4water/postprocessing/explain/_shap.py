@@ -284,9 +284,8 @@ class ShapExplainer(ExplainerMixin):
     def _check_data(self, *data):
         if self.single_source:
             for d in data:
-                assert type(d) == np.ndarray or type(d) == pd.DataFrame, f"" \
-                                                                         f"data must be numpy array or pandas dataframe " \
-                                                                         f"but it is of type {d.__class__.__name__}"
+                assert type(d) == np.ndarray or type(d) == pd.DataFrame, f"""
+                data must be numpy array or pandas dataframe but it is of type {d.__class__.__name__}"""
 
             assert len(set([d.ndim for d in data])) == 1, "train and test data should have same ndim"
             assert len(set([d.shape[-1] for d in data])) == 1, "train and test data should have same input features"
@@ -939,7 +938,7 @@ class ShapExplainer(ExplainerMixin):
 
 def imshow_3d(values,
               data,
-              feature_names:list,
+              feature_names: list,
               path, vmin=None, vmax=None,
               name="",
               show=False,

@@ -40,16 +40,6 @@ if tf is not None:
     LAYERS.update({"TFT": TemporalFusionTransformer})
     LAYERS.update(get_attributes(aus=tf.keras, what='layers', case_sensitive=True))
 
-#if keras is not None:
-    # Concatenate and concatenate act differently, so if we want to use Concatenate, then use Concat not Concatenate
-    # this is because we have made the layer names case insensitive and CONCATENATE is actually concatenate.
-    #LAYERS["CONCAT"] = keras.layers.Concatenate
-
-    # tf.layers.multiply is functional interface while tf.layers.Multiply is a proper layer in keras.
-    #LAYERS["MULTIPLY"] = keras.layers.Multiply
-
-    # replacing tf.keras.add with tf.keras.Add
-    #LAYERS["ADD"] = keras.layers.Add
 
 if NBeats is not None:
     LAYERS.update({"NBeats": NBeats})

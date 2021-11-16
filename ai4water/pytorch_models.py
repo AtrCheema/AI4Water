@@ -18,7 +18,6 @@ else:
     HARHN, IMVTensorLSTM = None, None
 
 
-
 class HARHNModel(Model):
 
     def __init__(self, use_gpu=True, **kwargs):
@@ -34,7 +33,7 @@ class HARHNModel(Model):
         # should be set after initiating upper classes so that torch_learner attribute is set
         self.torch_learner.use_cuda = use_gpu
 
-    def initialize_layers(self, layers_config:dict, inputs=None):
+    def initialize_layers(self, layers_config: dict, inputs=None):
 
         self.pt_model = HARHN(layers_config['n_conv_lyrs'],
                               self.lookback,
@@ -42,7 +41,7 @@ class HARHNModel(Model):
                               self.num_outs,
                               n_units_enc=layers_config['enc_units'],
                               n_units_dec=layers_config['dec_units'],
-                              use_predicted_output=True, #self.config['use_predicted_output']
+                              use_predicted_output=True,  # self.config['use_predicted_output']
                               ).to(self.dev)
 
         return

@@ -176,7 +176,7 @@ def bar(current_size, total_size, width):
     return
 
 
-def check_attributes(attributes, check_against:list)->list:
+def check_attributes(attributes, check_against: list) -> list:
     if attributes == 'all' or attributes is None:
         attributes = check_against
     elif not isinstance(attributes, list):

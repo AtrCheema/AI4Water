@@ -793,7 +793,8 @@ class MtropicsLaos(Datasets):
     [ird](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
     data servers.
 
-    For exploratory data analysis of this data see [here](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb)
+    For exploratory data analysis of this data see
+    [here](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb)
     Methods
     -------
     - fetch_lu

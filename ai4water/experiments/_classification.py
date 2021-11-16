@@ -70,7 +70,7 @@ class MLClassificationExperiments(Experiments):
         return ClassificationMetrics(t, t).mse()
 
     def model_AdaBoostClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
         self.path = "sklearn.ensemble.AdaBoostClassifier"
         self.param_space = [
             Integer(low=10, high=500, name='n_estimators', num_samples=self.num_samples),
@@ -81,7 +81,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'AdaBoostClassifier': kwargs}}
 
     def model_BaggingClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.BaggingClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.BaggingClassifier.html
         self.path = "sklearn.ensemble.BaggingClassifier"
         self.param_space = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
@@ -95,7 +95,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'BaggingClassifier': kwargs}}
 
     def model_BernoulliNB(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.BernoulliNB.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.BernoulliNB.html
         self.path = "sklearn.naive_bayes.BernoulliNB"
         self.param_space = [
             Real(low=0.1, high=1.0, name='alpha', num_samples=self.num_samples),
@@ -105,7 +105,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'BernoulliNB': kwargs}}
 
     def model_CalibratedClassifierCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
         self.path = "sklearn.calibration.CalibratedClassifierCV"
         self.param_space = [
             Categorical(categories=['sigmoid', 'isotonic'], name='method'),
@@ -118,12 +118,12 @@ class MLClassificationExperiments(Experiments):
         return
 
     def model_DecisionTreeClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
         self.path = "sklearn.tree.DecisionTreeClassifier.html"
         self.param_space = [
             Categorical(["best", "random"], name='splitter'),
             Integer(low=2, high=10, name='min_samples_split', num_samples=self.num_samples),
-            #Real(low=1, high=5, name='min_samples_leaf'),
+            # Real(low=1, high=5, name='min_samples_leaf'),
             Real(low=0.0, high=0.5, name="min_weight_fraction_leaf", num_samples=self.num_samples),
             Categorical(categories=['auto', 'sqrt', 'log2'], name="max_features"),
         ]
@@ -131,7 +131,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'DecisionTreeClassifier': kwargs}}
 
     def model_DummyClassifier(self, **kwargs):
-        ##  https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html
+        #  https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html
         self.path = "sklearn.dummy.DummyClassifier"
         self.param_space = [
             Categorical(categories=['stratified', 'most_frequent', 'prior', 'uniform', 'constant'], name='strategy')
@@ -140,7 +140,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'DummyClassifier': kwargs}}
 
     def model_ExtraTreeClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeClassifier.html
         self.path = "sklearn.tree.ExtraTreeClassifier"
         self.param_space = [
             Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
@@ -152,7 +152,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'ExtraTreeClassifier': kwargs}}
 
     def model_ExtraTreesClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html
         self.path = "sklearn.ensemble.ExtraTreesClassifier"
         self.param_space = [
             Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
@@ -165,7 +165,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'ExtraTreesClassifier': kwargs}}
 
     def model_KNeighborsClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
         self.path = "sklearn.neighbors.KNeighborsClassifier"
         self.param_space = [
             Integer(low=3, high=5, name='n_neighbors', num_samples=self.num_samples),
@@ -191,7 +191,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'LabelPropagation': kwargs}}
 
     def model_LabelSpreading(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelSpreading.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelSpreading.html
         self.path = "sklearn.semi_supervised.LabelSpreading"
         self.param_space = [
             Categorical(categories=['knn', 'rbf'], name='kernel'),
@@ -205,7 +205,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'LabelSpreading': kwargs}}
 
     def model_LGBMClassifier(self, **kwargs):
-        ## https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
+        # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
         self.path = "lightgbm.LGBMClassifier"
         self.param_space = [
             Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
@@ -218,7 +218,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'LGBMClassifier': kwargs}}
 
     def model_LinearDiscriminantAnalysis(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html
         self.path = "sklearn.discriminant_analysis.LinearDiscriminantAnalysis"
         self.param_space = [
             Categorical(categories=[False, True], name='store_covariance'),
@@ -229,7 +229,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'LinearDiscriminantAnalysis': kwargs}}
 
     def model_LinearSVC(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html
         self.path = "sklearn.svm.LinearSVC"
         self.param_space = [
             Categorical(categories=[True, False], name='dual'),
@@ -242,7 +242,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'LinearSVC': kwargs}}
 
     def model_LogisticRegression(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
         self.path = "sklearn.linear_model.LogisticRegression"
         self.param_space = [
             Categorical(categories=[True, False], name='dual'),
@@ -256,7 +256,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'LogisticRegression': kwargs}}
 
     def model_NearestCentroid(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestCentroid.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestCentroid.html
         self.path = "sklearn.neighbors.NearestCentroid"
         self.param_space = [
             Real(low=1, high=50, name='shrink_threshold', num_samples=self.num_samples)
@@ -265,7 +265,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'NearestCentroid': kwargs}}
 
     def model_NuSVC(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVC.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVC.html
         self.path = "sklearn.svm.NuSVC"
         self.param_space = [
             Real(low=0.5, high=0.9, name='nu', num_samples=self.num_samples),
@@ -277,7 +277,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'NuSVC': kwargs}}
 
     def model_PassiveAggressiveClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PassiveAggressiveClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PassiveAggressiveClassifier.html
         self.path = "sklearn.linear_model.PassiveAggressiveClassifier"
         self.param_space = [
             Real(low=1.0, high=5.0, name='C', num_samples=self.num_samples),
@@ -290,7 +290,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'PassiveAggressiveClassifier': kwargs}}
 
     def model_Perceptron(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Perceptron.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Perceptron.html
         self.path = "sklearn.linear_model.Perceptron"
         self.param_space = [
             Real(low=1e-6, high=1e-2, name='alpha', num_samples=self.num_samples),
@@ -303,7 +303,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'Perceptron': kwargs}}
 
     def model_QuadraticDiscriminantAnalysis(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
         self.path = "sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis"
         self.param_space = [
             Real(low=0.0, high=1.0, name='reg_param', num_samples=self.num_samples),
@@ -314,7 +314,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'QuadraticDiscriminantAnalysi': kwargs}}
 
     def model_RandomForestClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
         self.path = "sklearn.ensemble.RandomForestClassifier"
         self.param_space = [
             Integer(low=50, high=1000, name='n_estimators', num_samples=self.num_samples),
@@ -327,7 +327,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'RandomForestClassifier': kwargs}}
 
     def model_RidgeClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifier.html
         self.path = "sklearn.linear_model.RidgeClassifier"
         self.param_space = [
             Real(low=1.0, high=5.0, name='alpha', num_samples=self.num_samples),
@@ -339,7 +339,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'RidgeClassifier': kwargs}}
 
     def model_RidgeClassifierCV(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifierCV.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifierCV.html
         self.path = "sklearn.linear_model.RidgeClassifierCV"
         self.param_space = [
             Categorical(categories=[1e-3, 1e-2, 1e-1, 1], name='alphas'),
@@ -350,7 +350,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'RidgeClassifierCV': kwargs}}
 
     def model_SGDClassifier(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
         self.path = "sklearn.linear_model.SGDClassifier"
         self.param_space = [
             Categorical(categories=['l1', 'l2', 'elasticnet'], name='penalty'),
@@ -364,7 +364,7 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'SGDClassifier': kwargs}}
 
     def model_SVC(self, **kwargs):
-        ## https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
+        # https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
         self.path = "sklearn.svm.SVC"
 
         self.param_space = [
@@ -376,11 +376,13 @@ class MLClassificationExperiments(Experiments):
         return {'model': {'SVC': kwargs}}
 
     def model_XGBClassifier(self, **kwargs):
-        ## https://xgboost.readthedocs.io/en/latest/python/python_api.html
+        # https://xgboost.readthedocs.io/en/latest/python/python_api.html
         self.path = "xgboost.XGBClassifier"
         self.param_space = [
-            Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),  # Number of gradient boosted trees
-            Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),  # Maximum tree depth for base learners
+            # Number of gradient boosted trees
+            Integer(low=5, high=50, name='n_estimators', num_samples=self.num_samples),
+            # Maximum tree depth for base learners
+            Integer(low=3, high=30, name='max_depth', num_samples=self.num_samples),
             Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=self.num_samples),  #
             Categorical(categories=['gbtree', 'gblinear', 'dart'], name='booster'),
             Real(low=0.1, high=0.9, name='gamma', num_samples=self.num_samples),
@@ -389,7 +391,8 @@ class MLClassificationExperiments(Experiments):
             # Minimum sum of instance weight(hessian) needed in a child.
             Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=self.num_samples),
             # Maximum delta step we allow each tree’s weight estimation to be.
-            Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),  # Subsample ratio of the training instance.
+            # Subsample ratio of the training instance.
+            Real(low=0.1, high=0.9, name='subsample', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bytree', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bylevel', num_samples=self.num_samples),
             Real(low=0.1, high=0.9, name='colsample_bynode', num_samples=self.num_samples),

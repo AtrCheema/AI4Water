@@ -324,7 +324,7 @@ class Model(MODEL, BaseModel):
                             initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
                                                                     'tf_name': lyr_name}
                             continue
-                        elif  "LAMBDA" in lyr_name.upper():
+                        elif "LAMBDA" in lyr_name.upper():
                             # lyr_config is serialized lambda layer, which needs to be deserialized
                             initialized_layer = tf.keras.layers.deserialize(lyr_config)
                             # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
@@ -402,9 +402,9 @@ class Model(MODEL, BaseModel):
 
         # inputs = [] todo, indentify input layers
         # for k,v in lyr_cache.items():
-        #     # since the model is not build yet and we have access to only output tensors of each list, this is probably
+        #     since the model is not build yet and we have access to only output tensors of each list, this is probably
         #     # the only way to know that how many `Input` layers were encountered during the run of this method. Each
-        #     # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
+        # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
         #     if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
         #         if k.upper() != "TIMEDISTRIBUTED" and hasattr(v, 'op'):
         #             if hasattr(v.op, 'inputs'):
@@ -426,7 +426,7 @@ class Model(MODEL, BaseModel):
         #     if len(layer_outputs.op.inputs) < 1:
         #         print("Warning: the output is of Input tensor class type")
         # else:
-        #     if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
+        #    if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
         #         print("Warning: the output is of Input tensor class type")
 
         # outs = None
@@ -634,8 +634,10 @@ class Model(MODEL, BaseModel):
         else:
             name_to_assign = self.input_layer_names
             if isinstance(name_to_assign, list):
-                if len(name_to_assign) ==1: name_to_assign = name_to_assign[0]
-                else:  raise ValueError
+                if len(name_to_assign) == 1:
+                    name_to_assign = name_to_assign[0]
+                else:
+                    raise ValueError
             assign_dummy_name(casted_inputs, name_to_assign)
 
         return
@@ -872,7 +874,7 @@ class Model(MODEL, BaseModel):
             if len(args) > 0:
                 _config = args[0]
                 if len(args) > 1:
-                    data=args[1]
+                    data = args[1]
                 else:
                     data = kwargs.get('data', None)
             else:

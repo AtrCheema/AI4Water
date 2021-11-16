@@ -123,7 +123,7 @@ class Imputation(object):
             data_ = imputer.fit_transform(_data)
 
             if isinstance(data_, np.ndarray):
-                data_= pd.DataFrame(data_, columns=self.features, index=self.data.index)
+                data_ = pd.DataFrame(data_, columns=self.features, index=self.data.index)
 
             data[self.features] = data_
 

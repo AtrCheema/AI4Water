@@ -28,14 +28,14 @@ class ScalerWithConfig(object):
     """
 
     @property
-    def config_paras(self)->list:
+    def config_paras(self) -> list:
         raise NotImplementedError
 
     def get_params(self):
         raise NotImplementedError
 
     @classmethod
-    def from_config(cls, config:dict):
+    def from_config(cls, config: dict):
         """Build the scaler/transformer from config
 
         Arguments:
@@ -51,7 +51,7 @@ class ScalerWithConfig(object):
             setattr(scaler, attr, attr_val)
         return scaler
 
-    def config(self)->dict:
+    def config(self) -> dict:
         """Returns all the parameters in scaler/transformer in a dictionary"""
         if self.__class__.__name__ == 'MyFunctionTransformer':
             pass
@@ -165,7 +165,7 @@ class FunctionTransformer(SKFunctionTransformer):
         self._inverse_func_ser = self.serialize_func(func)
 
     @classmethod
-    def from_config(cls, config:dict):
+    def from_config(cls, config: dict):
         """Build the estimator from config file"""
 
         func = cls.deserialize_func(config.pop('func'))
@@ -194,7 +194,7 @@ class FunctionTransformer(SKFunctionTransformer):
 
         return func
 
-    def config(self)->dict:
+    def config(self) -> dict:
         """Returns all the parameters in scaler in a dictionary"""
 
         params = self.get_params()
@@ -204,16 +204,16 @@ class FunctionTransformer(SKFunctionTransformer):
         _config['kw_args'] = jsonize(self.kw_args)
         _config['inv_kw_args'] = jsonize(self.inv_kw_args)
 
-        for k,v in params.items():
+        for k, v in params.items():
             if k not in _config:
-                _config.update({k:v})
+                _config.update({k: v})
 
         return _config
 
     @staticmethod
     def deserialize(**kwargs):
         _kwargs = {}
-        for k,v in kwargs.items():
+        for k, v in kwargs.items():
             if v == "None":
                 v = None
             _kwargs[k] = v

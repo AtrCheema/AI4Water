@@ -376,7 +376,8 @@ class DualAttentionModel(FModel):
 
         data_name = name or data
 
-        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
+        assert isinstance(layer_name, str), "layer_name must be a string, not of " \
+                                            "{} type".format(layer_name.__class__.__name__)
 
         predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
@@ -590,8 +591,8 @@ class OutputAttentionModel(DualAttentionModel):
         h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.config['dec_config']['p']))
 
         predicted = self._model.predict([test_x, test_y, s_de0_test, h_de0_test],
-                                         batch_size=test_x.shape[0],
-                                         verbose=1)
+                                        batch_size=test_x.shape[0],
+                                        verbose=1)
 
         self.process_results(test_label, predicted, pref, **plot_args)
 

@@ -639,7 +639,7 @@ Available cases are {self.models} and you wanted to include
                   xlabel=LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
                   title_fs=kwargs.get('title_fs', 20)
-                     )
+                  )
 
         bar_chart(axis=axis[1], labels=names, values=test_matrics,
                   title="Test",

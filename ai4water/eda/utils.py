@@ -10,7 +10,7 @@ def auto_corr(x, nlags, demean=True):
     https://stackoverflow.com/a/51168178
     """
 
-    var=np.var(x)
+    var = np.var(x)
 
     if demean:
         x -= np.mean(x)
@@ -18,8 +18,8 @@ def auto_corr(x, nlags, demean=True):
     corr = np.full(nlags+1, np.nan, np.float64)
     corr[0] = 1.
 
-    for l in range(1, nlags+1):
-        corr[l] = np.sum(x[l:]*x[:-l])/len(x)/var
+    for lag in range(1, nlags+1):
+        corr[lag] = np.sum(x[lag:]*x[:-lag])/len(x)/var
 
     return corr
 
@@ -30,8 +30,8 @@ def pac_yw(x, nlags):
     pac = np.full(nlags+1, fill_value=np.nan, dtype=np.float64)
     pac[0] = 1.
 
-    for l in range(1, nlags+1):
-        pac[l] = ar_yw(x, l)[-1]
+    for lag in range(1, nlags+1):
+        pac[lag] = ar_yw(x, lag)[-1]
 
     return pac
 
@@ -56,7 +56,6 @@ def ar_yw(x, order=1, adj_needed=True, demean=True):
 
     rho = np.linalg.solve(R, r[1:])
     return rho
-
 
 
 def plot_autocorr(
@@ -92,6 +91,7 @@ def plot_autocorr(
         plt.show()
 
     return axis
+
 
 def ccovf_np(x, y, unbiased=True, demean=True):
     n = len(x)

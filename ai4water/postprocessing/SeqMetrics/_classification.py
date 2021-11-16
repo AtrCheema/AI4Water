@@ -22,7 +22,7 @@ class ClassificationMetrics(Metrics):
         self.pred_logits = self._pred_logits()
 
         self.all_methods = list_subclass_methods(ClassificationMetrics, True)
-        #self.all_methods = [m for m in all_methods if not m.startswith('_')]
+        # self.all_methods = [m for m in all_methods if not m.startswith('_')]
 
     @staticmethod
     def _minimal() -> list:
@@ -79,8 +79,8 @@ class ClassificationMetrics(Metrics):
         Returns: scalar
         """
         predictions = np.clip(self.predicted, epsilon, 1. - epsilon)
-        N = predictions.shape[0]
-        ce = -np.sum(self.true * np.log(predictions + 1e-9)) / N
+        n = predictions.shape[0]
+        ce = -np.sum(self.true * np.log(predictions + 1e-9)) / n
         return ce
 
     # def hinge_loss(self):
