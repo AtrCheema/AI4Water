@@ -19,7 +19,7 @@ else:
 
 from ai4water.functional import Model as FModel
 from ai4water.datasets import load_nasdaq, arg_beach
-from ai4water.utils.utils import split_by_indices, train_val_split, ts_features, prepare_data, Jsonize
+from ai4water.utils.utils import TrainTestSplit, ts_features, prepare_data, Jsonize
 
 
 seed = 313
@@ -419,24 +419,72 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_train_val_split(self):
-        # This should raise error
-        # This should raise error because all arrays are not of equal length
+
         n1 = 175
         n2 = 380
         x1 = np.random.random((n1, 10))
-        x2 = np.random.random((n1, 9))
         x3 = np.random.random((n1, 10, 9))
         x4 = np.random.random((n2, 10))
-        x5 = np.random.random((n2, 9))
-        x6 = np.random.random((n2, 10, 9))
-        x = [x1, x2, x3, x4, x5, x6]
+        x = [x1,  x3, x4]
 
         y1 = np.random.random((n1, 1))
         y2 = np.random.random((n2, 1))
         y = [y1, y2]
+        # should raise error
+        # train_test_split(x, y, 0.3)
 
-        tr_x, tr_y, val_x, val_y = train_val_split(x,y, 0.33)
+        x1 = np.random.random((n1, 10))
+        x2 = np.random.random((n1, 9))
+        x3 = np.random.random((n1, 10, 9))
+        x4 = np.random.random((n1, 10))
+        x = [x1, x2, x3, x4]
 
+        y1 = np.random.random((n1, 1))
+        y2 = np.random.random((n2, 1))
+        y = [y1, y2]
+        #
+        # train_test_split(x, y, 0.3)
+
+        x1 = np.arange(100).reshape(10, 10)
+        x2 = np.arange(90).reshape(10, 9)
+        x3 = np.arange(900).reshape(10, 10, 9)
+        x4 = np.arange(100).reshape(10, 10, 1)
+        xx = [x1, x2, x3, x4]
+
+        y1 = np.arange(1000, 1010).reshape(10, 1)
+        y2 = np.arange(1000, 1200).reshape(10, 10, 2)
+        yy = [y1, y2]
+
+        tr_x, testx, tr_y, testy = TrainTestSplit(xx, yy).split_by_slicing()
+
+        a = set([len(i) for i in tr_x])
+        assert a.pop() == 7
+
+        a = set([len(i) for i in testx])
+        assert a.pop() == 3
+
+        tr_y1, tr_y2 = tr_y
+        assert tr_y1[-1].item() == 1006
+        test_y1, test_y2 = testy
+        assert test_y2[-1][-1][-1].item() == 1199
+
+        tr_x, testx, tr_y, testy = TrainTestSplit(xx, yy).split_by_random(313)
+        tr_y1, tr_y2 = tr_y
+        assert tr_y1[-1].item() == 1001
+        test_y1, test_y2 = testy
+        assert test_y2[-1][-1][-1].item() == 1179
+
+        tr_x, testx, tr_y, testy = TrainTestSplit(x1, y1).split_by_slicing()
+        assert tr_y[0].item() == 1000
+
+        tr_x, testx, tr_y, testy = TrainTestSplit(x1, y2).split_by_slicing()
+        assert tr_y[0][0][0].item() == 1000
+
+        splitter = TrainTestSplit(x1, y1).KFold_splits(4)
+
+        for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
+        assert idx == 3
+        assert tr_x.shape[-1] == x1.shape[-1]
         return
 
     def test_stats(self):

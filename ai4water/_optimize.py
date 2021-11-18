@@ -2,7 +2,7 @@ import importlib
 from typing import Union
 
 from .postprocessing.SeqMetrics import RegressionMetrics
-from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config
+from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config, TrainTestSplit
 
 
 class ModelOptimizerMixIn(object):
@@ -13,13 +13,18 @@ class ModelOptimizerMixIn(object):
             algorithm,
             num_iterations,
             process_results,
-            prefix="hpo"
+            prefix="hpo",
+            data=None
     ):
         self.model = model
         self.algorithm = algorithm
         self.num_iterations = num_iterations
         self.process_results = process_results
         self.prefix = prefix
+        if data is not None:
+            if not isinstance(data, tuple):
+                assert isinstance(data, list) and len(data) == 2
+        self.data = data
 
     def fit(self):
 
@@ -49,15 +54,24 @@ class ModelOptimizerMixIn(object):
                 make_new_path=True,
             )
 
-            _model.fit()
+            if self.data is not None:  # todo, it is better to split data outside objective_fn
+                splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
+                train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+                _model.fit(x=train_x, y=train_y)
+            else:
+                _model.fit()
 
             if cross_validator is None:
 
-                t, p = _model.predict(return_true=True, process_results=False)
-                metrics = RegressionMetrics(t, p)
+                if self.data is not None:
+
+                    p = _model.predict(test_x)
+                else:
+                    test_y, p = _model.predict(return_true=True, process_results=False)
+                metrics = RegressionMetrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
-                val_score = self.model.cross_val_score()
+                val_score = self.model.cross_val_score(data=self.data)
 
             if metric_type != "min":
                 val_score = 1.0 - val_score
@@ -89,6 +103,7 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
             algorithm,
             num_iterations,
             process_results=False,
+            data=None,
             **kwargs
     ):
         super().__init__(
@@ -96,6 +111,7 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
             algorithm=algorithm,
             num_iterations=num_iterations,
             process_results=process_results,
+            data=data,
             prefix="hpo"
         )
 
@@ -129,14 +145,16 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             include=None,
             exclude=None,
             append=None,
-            process_results=False
+            process_results=False,
+            data=None,
     ):
         super().__init__(
             model=model,
             num_iterations=num_iterations,
             algorithm=algorithm,
             process_results=process_results,
-            prefix="trans_hpo"
+            prefix="trans_hpo",
+            data=data
         )
 
         self.space = make_space(self.model.data.columns.to_list(),
@@ -221,7 +239,7 @@ def make_space(
 
     if append is not None:
         assert isinstance(append, dict)
-        for k,v in append.items():
+        for k, v in append.items():
             if not isinstance(v, Categorical):
                 assert isinstance(v, list), f"space for {k} must be list but it is {v.__class__.__name__}"
                 v = Categorical(v, name=k)

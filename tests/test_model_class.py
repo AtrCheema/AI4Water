@@ -17,7 +17,7 @@ from ai4water.functional import Model as FModel
 from ai4water.preprocessing.datahandler import DataHandler
 from ai4water._optimize import make_space
 from ai4water.utils.utils import process_config_dict
-from ai4water.utils.utils import find_opt_paras_from_model_config
+from ai4water.utils.utils import find_opt_paras_from_model_config, prepare_data
 from ai4water.hyperopt import Categorical, Real, Integer
 
 data = arg_beach()
@@ -285,6 +285,35 @@ class TestOptimizeHyperparas(unittest.TestCase):
         # make sure that model's config has been updated
         for k, v in optimizer.best_paras().items():
             assert model.config['model']['XGBRegressor'][k] == v
+        return
+
+    def test_with_custom_data(self):
+        setattr(Model, 'from_check_point', False)
+        model = Model(model=self.config,
+                      verbosity=0)
+        x, y = DataHandler(arg_beach().values).training_data()
+        optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)), process_results=False)
+
+        # make sure that model's config has been updated
+        for k, v in optimizer.best_paras().items():
+            assert model.config['model']['XGBRegressor'][k] == v
+
+        return
+
+    def test_cv_with_custom_data(self):
+        setattr(Model, 'from_check_point', False)
+        model = Model(model=self.config,
+                      cross_validator={"KFold": {'n_splits': 5}},
+                      verbosity=0)
+        x, y = DataHandler(arg_beach().values).training_data()
+        optimizer = model.optimize_hyperparameters(
+            algorithm="random",
+            data=(x, y.reshape(-1, 1)), num_iterations=4)
+
+        # make sure that model's config has been updated
+        for k, v in optimizer.best_paras().items():
+            assert model.config['model']['XGBRegressor'][k] == v
+
         return
 
     def test_ml_without_procesisng_results(self):

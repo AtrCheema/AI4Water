@@ -639,7 +639,7 @@ Available cases are {self.models} and you wanted to include
                   xlabel=LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
                   title_fs=kwargs.get('title_fs', 20)
-                     )
+                  )
 
         bar_chart(axis=axis[1], labels=names, values=test_matrics,
                   title="Test",
@@ -974,7 +974,7 @@ Available cases are {self.models} and you wanted to include
 
     def fit_with_tpot(
             self,
-            models: Union[int, List[str], dict],
+            models: Union[int, List[str], dict, str] = None,
             selection_criteria: str = 'mse',
             scoring: str = None,
             **tpot_args
@@ -984,7 +984,9 @@ Available cases are {self.models} and you wanted to include
         finds out the best pipline for the given data.
 
         Arguments:
-            models: It can be of three types.
+            models:
+                It can be of three types.
+
                 - If list, it will be the names of machine learning models/
                 algorithms to consider.
                 - If integer, it will be the number of top
@@ -999,7 +1001,11 @@ Available cases are {self.models} and you wanted to include
                 - if dictionary, then the keys should be the names of algorithms/models
                 and values shoudl be the parameters for each model/algorithm to be
                 optimized.
-            selection_criteria : If `models` is integer, then according to which criteria
+                - You can also set it to `all` consider all models available in ai4water's
+                    Experiment module.
+                - default is None, which means, the `tpot_config` argument will be None
+            selection_criteria :
+                If `models` is integer, then according to which criteria
                 the models will be choosen. By default the models will be selected
                 based upon their mse values on test data.
             scoring : the performance metric to use for finding the pipeline.
@@ -1016,7 +1022,6 @@ Available cases are {self.models} and you wanted to include
             >>> exp = MLRegressionExperiments(data=arg_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
             >>> exp.fit()
             >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
-        ```
         """
         tpot_caller = self.tpot_estimator
         assert tpot_caller is not None, f"tpot must be installed"
@@ -1063,6 +1068,13 @@ Available cases are {self.models} and you wanted to include
                     mod_path = list(c.keys())[0]
                 d = {mod_path: mod_paras}
                 tpot_config.update(d)
+
+        elif isinstance(models, str) and models == "all":
+            tpot_config = {}
+            for mod_name, mod_config in param_space.items():
+                mod_path = list(mod_config.keys())[0]
+                mod_paras = list(mod_config.values())[0]
+                tpot_config.update({mod_path: mod_paras})
 
         fname = os.path.join(self.exp_path, "tpot_config.json")
         with open(fname, 'w') as fp:
