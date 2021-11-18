@@ -7,7 +7,7 @@ import warnings
 from typing import Union
 from shutil import rmtree
 from copy import deepcopy
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 from collections import OrderedDict
 import collections.abc as collections_abc
 
@@ -808,46 +808,157 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
     return best_results
 
 
-def train_val_split(x, y, validation_split):
-    if hasattr(x[0], 'shape'):
-        # x is list of arrays
-        # assert that all arrays are of equal length
-        split_at = int(x[0].shape[0] * (1. - validation_split))
-    else:
-        split_at = int(len(x[0]) * (1. - validation_split))
+class TrainTestSplit(object):
+    """train_test_split of sklearn can not be used for list of arrays so here we go"""
+    def __init__(
+            self,
+            x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            test_fraction: float = 0.3,
+    ):
+        """
+        Arguments:
+            x:
+                arrays to split
 
-    x, val_x = (slice_arrays(x, 0, split_at), slice_arrays(x, split_at))
-    y, val_y = (slice_arrays(y, 0, split_at), slice_arrays(y, split_at))
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+            y:
+                array like
 
-    return x, y, val_x, val_y
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+            test_fraction:
+                test fraction. Must be greater than 0. and less than 1.
+        """
+        self.x = x
+        self.y = y
+        self.test_fraction = test_fraction
 
+    @property
+    def x_is_list(self):
+        if isinstance(self.x, list):
+            return True
+        return False
 
-def slice_arrays(arrays, start, stop=None):
-    if isinstance(arrays, list):
-        return [array[start:stop] for array in arrays]
-    elif hasattr(arrays, 'shape'):
-        return arrays[start:stop]
+    @property
+    def y_is_list(self):
+        if isinstance(self.y, list):
+            return True
+        return False
 
+    def split_by_slicing(self):
+        """splits the x and y by slicing which is defined by `test_fraction`"""
+        def split_arrays(array):
 
-def split_by_indices(x, y, indices):
-    """Slices the x and y arrays or lists of arrays by the indices"""
+            if isinstance(array, list):
+                # x is list of arrays
+                # assert that all arrays are of equal length
+                assert len(set([len(_array) for _array in array])) == 1, f"arrays are of not same length"
+                split_at = int(array[0].shape[0] * (1. - self.test_fraction))
+            else:
+                split_at = int(len(array) * (1. - self.test_fraction))
 
-    def split_with_indices(data):
-        if isinstance(data, list):
+            train, test = (self.slice_arrays(array, 0, split_at), self.slice_arrays(array, split_at))
+
+            return train, test
+
+        train_x, test_x = split_arrays(self.x)
+        train_y, test_y = split_arrays(self.y)
+
+        return train_x, test_x, train_y, test_y
+
+    def split_by_random(
+            self,
+            seed: int = None
+    ):
+        """
+        splits the x and y by random splitting.
+
+        Arguments:
+            seed:
+                random seed for reproducibility
+        """
+
+        reset_seed(seed, np=np)
+
+        if isinstance(self.x, list):
+            indices = np.arange(len(self.x[0]))
+        else:
+            indices = np.arange(len(self.x))
+
+        indices = np.random.permutation(indices)
+
+        split_at = int(len(indices) * (1. - self.test_fraction))
+        train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
+
+        train_x = self.slice_with_indices(self.x, train_indices)
+        train_y = self.slice_with_indices(self.y, train_indices)
+
+        test_x = self.slice_with_indices(self.x, test_indices)
+        test_y = self.slice_with_indices(self.y, test_indices)
+
+        return train_x, test_x, train_y, test_y
+
+    def split_by_indices(
+            self,
+            train_indices: Union[list, np.ndarray],
+            test_indices: Union[list, np.ndarray]
+    ):
+        """splits the x and y by user defined `train_indices` and `test_indices`"""
+
+        return self.slice_with_indices(self.x, train_indices), \
+               self.slice_with_indices(self.y, train_indices), \
+               self.slice_with_indices(self.x, test_indices), \
+               self.slice_with_indices(self.y, test_indices)
+
+    @staticmethod
+    def slice_with_indices(array, indices):
+        if isinstance(array, list):
             _data = []
 
-            for d in data:
+            for d in array:
                 assert isinstance(d, np.ndarray)
                 _data.append(d[indices])
         else:
-            assert isinstance(data, np.ndarray)
-            _data = data[indices]
+            assert isinstance(array, np.ndarray)
+            _data = array[indices]
         return _data
 
-    x = split_with_indices(x)
-    y = split_with_indices(y)
+    @staticmethod
+    def slice_arrays(arrays, start, stop=None):
+        if isinstance(arrays, list):
+            return [array[start:stop] for array in arrays]
+        elif hasattr(arrays, 'shape'):
+            return arrays[start:stop]
 
-    return x, y
+    def KFold_splits(
+            self,
+            n_splits,
+            shuffle=True,
+            random_state=None
+    ):
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
+        spliter = kf.split(self.x[0] if self.x_is_list else self.x)
+
+        for tr_idx, test_idx in spliter:
+
+            if self.x_is_list:
+                train_x = [xarray[tr_idx] for xarray in self.x]
+                test_x = [xarray[test_idx] for xarray in self.x]
+            else:
+                train_x = self.x[tr_idx]
+                test_x = self.x[test_idx]
+
+            if self.y_is_list:
+                train_y = [yarray[tr_idx] for yarray in self.y]
+                test_y = [yarray[test_idx] for yarray in self.y]
+            else:
+                train_y = self.y[tr_idx]
+                test_y = self.y[test_idx]
+
+            yield (train_x, train_y), (test_x, test_y)
 
 
 def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
@@ -984,41 +1095,41 @@ def prepare_data(
         forecast_step: int = 0,
         forecast_len: int = 1,
         known_future_inputs: bool = False,
-        output_steps=1,
+        output_steps: int = 1,
         mask: Union[int, float, np.ndarray] = None
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     converts a numpy nd array into a supervised machine learning problem.
 
     Arguments:
-        data np.ndarray :
+        data:
             nd numpy array whose first dimension represents the number
             of examples and the second dimension represents the number of features.
             Some of those features will be used as inputs and some will be considered
             as outputs depending upon the values of `num_inputs` and `num_outputs`.
-        lookback_steps int :
+        lookback_steps:
             number of previous steps/values to be used at one step.
-        num_inputs int :
+        num_inputs:
             default None, number of input features in data. If None,
             it will be calculated as features-outputs. The input data will be all
             from start till num_outputs in second dimension.
-        num_outputs int :
+        num_outputs:
             number of columns (from last) in data to be used as output.
             If None, it will be caculated as features-inputs.
-        input_steps int :
+        input_steps:
             strides/number of steps in input data
-        forecast_step int :
+        forecast_step:
             must be greater than equal to 0, which t+ith value to
             use as target where i is the horizon. For time series prediction, we
             can say, which horizon to predict.
-        forecast_len int :
+        forecast_len:
             number of horizons/future values to predict.
-        known_future_inputs bool : Only useful if `forecast_len`>1. If True, this
+        known_future_inputs: Only useful if `forecast_len`>1. If True, this
             means, we know and use 'future inputs' while making predictions at t>0
-        output_steps int :
+        output_steps:
             step size in outputs. If =2, it means we want to predict
             every second value from the targets
-        mask int/np.nan/1darray :
+        mask:
             If int, then the examples with these values in
             the output will be skipped. If array then it must be a boolean mask
             indicating which examples to include/exclude. The length of mask should

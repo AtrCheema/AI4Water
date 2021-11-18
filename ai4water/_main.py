@@ -992,7 +992,8 @@ class BaseModel(NN, Plots):
 
     def cross_val_score(
             self,
-            scoring: str = None
+            scoring: str = None,
+            data=None,
     ) -> float:
         """computes cross validation score
 
@@ -1000,6 +1001,9 @@ class BaseModel(NN, Plots):
             scoring:
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
+            data:
+                a tuple of x,y parirs
+                If given, it will override the data prepared by Model class.
 
         Returns:
             cross validation score
@@ -1010,9 +1014,6 @@ class BaseModel(NN, Plots):
 
         """
         from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
-
-        if self.num_outs > 1:
-            raise ValueError
 
         if scoring is None:
             scoring = self.config['val_metric']
@@ -1025,10 +1026,19 @@ class BaseModel(NN, Plots):
         cross_validator = list(self.config['cross_validator'].keys())[0]
         cross_validator_args = self.config['cross_validator'][cross_validator]
 
-        if callable(cross_validator):
-            splits = cross_validator(**cross_validator_args)
+        if data is None:
+
+            if self.num_outs > 1:  # we may not be able to check num_outs with custom data
+                raise ValueError
+
+            if callable(cross_validator):
+                splits = cross_validator(**cross_validator_args)
+            else:
+                splits = getattr(self.dh, f'{cross_validator}_splits')(**cross_validator_args)
         else:
-            splits = getattr(self.dh, f'{cross_validator}_splits')(**cross_validator_args)
+            from .utils.utils import TrainTestSplit
+            splitter = TrainTestSplit(*data, test_fraction=self.config['test_fraction'])
+            splits = splitter.KFold_splits(**cross_validator_args)
 
         for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
 
@@ -1045,7 +1055,7 @@ class BaseModel(NN, Plots):
 
             pred = self._model.predict(test_x)
 
-            metrics = RegressionMetrics(test_y.reshape(-1, self.num_outs), pred)
+            metrics = RegressionMetrics(test_y.reshape(-1, 1), pred)
             val_score = getattr(metrics, scoring)()
 
             scores.append(val_score)
@@ -1426,15 +1436,15 @@ class BaseModel(NN, Plots):
 
             from ai4water.utils.tf_losses import nse, kge, pbias, tf_r2
 
-            METRICS = {'nse': nse,
-                       'kge': kge,
-                       "r2": tf_r2,
-                       'pbias': pbias}
+            metrics_with_names = {'nse': nse,
+                                  'kge': kge,
+                                  "r2": tf_r2,
+                                  'pbias': pbias}
 
             metrics = []
             for m in _metrics:
-                if m in METRICS.keys():
-                    metrics.append(METRICS[m])
+                if m in metrics_with_names.keys():
+                    metrics.append(metrics_with_names[m])
                 else:
                     metrics.append(m)
         return metrics
@@ -1650,7 +1660,8 @@ class BaseModel(NN, Plots):
         # todo
         # shouldn't we remove 'path' from Model's init? we just need prefix
         # path is needed in clsas methods only?
-        if 'path' in config: config.pop('path')
+        if 'path' in config:
+            config.pop('path')
 
         with open(idx_file, 'r') as fp:
             indices = json.load(fp)
@@ -1801,6 +1812,7 @@ class BaseModel(NN, Plots):
             num_iterations: int = 14,
             process_results: bool = True,
             update_config: bool = True,
+            data: Union[tuple, list] = None,
             **kwargs
     ):
         """
@@ -1817,6 +1829,10 @@ class BaseModel(NN, Plots):
                 whether to perform postprocessing of optimization results or not
             update_config:
                 whether to update the config of model or not.
+            data:
+                Only required if `data` argument to Model class was not provided
+                i.e. user has its own custom data to train on. It must be a tuple
+                of x,y pairs.
         Returns:
             an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] which is used for optimization
 
@@ -1846,6 +1862,7 @@ class BaseModel(NN, Plots):
             algorithm=algorithm,
             num_iterations=num_iterations,
             process_results=process_results,
+            data=data,
             **kwargs
         ).fit()
 
