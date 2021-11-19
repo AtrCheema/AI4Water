@@ -10,6 +10,12 @@
     rendering:
         show_root_heading: true
 
+**`PermutationImportance`**
+::: ai4water.postprocessing.explain.PermutationImportance
+    handler: python
+    rendering:
+        show_root_heading: true
+
 **`explain_model`**
 ::: ai4water.postprocessing.explain.explain_model
     handler: python
