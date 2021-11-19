@@ -11,7 +11,7 @@ from ai4water.hyperopt import HyperOpt
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.taylor_diagram import taylor_plot
 from ai4water.hyperopt import Real, Categorical, Integer
-from ai4water.utils.utils import init_subplots, process_axis, jsonize
+from ai4water.utils.utils import init_subplots, process_axis, jsonize, ERROR_LABELS
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 from ai4water.backend import tf
 from ai4water.utils.plotting_tools import bar_chart
@@ -35,15 +35,7 @@ SEP = os.sep
 # paired ttest 5x2cv
 
 
-LABELS = {
-    'r2': "$R^{2}$",
-    'nse': 'NSE',
-    'rmse': 'RMSE',
-    'mse': 'MSE',
-    'msle': 'MSLE',
-    'nrmse': 'Normalized RMSE',
-    'mape': 'MAPE'
-}
+
 
 
 class Experiments(object):
@@ -541,11 +533,11 @@ Available cases are {self.models} and you wanted to include
         for key in order:
             if orient == "horizontal":
                 axis.barh(range(len(exec_models)), data[key], color=colors[key], label=key)
-                plt.xlabel("{}".format(LABELS.get(matric_name, matric_name)))
+                plt.xlabel("{}".format(ERROR_LABELS.get(matric_name, matric_name)))
                 plt.yticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
             else:
                 axis.bar(range(len(exec_models)), data[key], color=colors[key], label=key)
-                plt.ylabel("{}".format(LABELS.get(matric_name, matric_name)))
+                plt.ylabel("{}".format(ERROR_LABELS.get(matric_name, matric_name)))
                 plt.xticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
 
         axis.legend()
@@ -636,7 +628,7 @@ Available cases are {self.models} and you wanted to include
                   labels=names, values=train_matrics,
                   color=kwargs.get('color', None),
                   title="Train",
-                  xlabel=LABELS.get(matric_name, matric_name),
+                  xlabel=ERROR_LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
                   title_fs=kwargs.get('title_fs', 20)
                   )
@@ -644,7 +636,7 @@ Available cases are {self.models} and you wanted to include
         bar_chart(axis=axis[1], labels=names, values=test_matrics,
                   title="Test",
                   color=kwargs.get('color', None),
-                  xlabel=LABELS.get(matric_name, matric_name),
+                  xlabel=ERROR_LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
                   title_fs=kwargs.get('title_fs', 20),
                   show_yaxis=False
@@ -906,7 +898,7 @@ Available cases are {self.models} and you wanted to include
 
         axis.set_xticklabels(model_names, rotation=rotation)
         axis.set_xlabel("Models", fontsize=16)
-        axis.set_ylabel(LABELS.get(scoring, scoring), fontsize=16)
+        axis.set_ylabel(ERROR_LABELS.get(scoring, scoring), fontsize=16)
 
         fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{name}_{len(model_names)}.png')
         plt.savefig(fname, dpi=300, bbox_inches=kwargs.get('bbox_inches', 'tight'))

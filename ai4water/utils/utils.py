@@ -35,6 +35,16 @@ MATRIC_TYPES = {
     "nrmse": "min",
 }
 
+ERROR_LABELS = {
+    'r2': "$R^{2}$",
+    'nse': 'NSE',
+    'rmse': 'RMSE',
+    'mse': 'MSE',
+    'msle': 'MSLE',
+    'nrmse': 'Normalized RMSE',
+    'mape': 'MAPE',
+    'r2_mod': "$R^{2}$ Score"
+}
 
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
     """
