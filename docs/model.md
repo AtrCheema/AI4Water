@@ -18,6 +18,7 @@
             - explain
             - optimize_transformations
             - optimize_hyperparameters
+            - permutation_importance
     rendering:
         show_root_heading: true
 

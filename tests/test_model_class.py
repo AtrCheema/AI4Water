@@ -585,6 +585,17 @@ class TestEvaluate(unittest.TestCase):
         assert isinstance(hydro, dict)
         return
 
+class TestPermImp(unittest.TestCase):
+
+    def test_basic0(self):
+        model = Model(model="XGBRegressor",
+                      verbosity=0,
+                      data=arg_beach())
+        model.fit()
+        imp = model.permutation_importance(data="validation")
+        assert imp.shape == (13, 5)
+        return
+
 
 if __name__ == "__main__":
 

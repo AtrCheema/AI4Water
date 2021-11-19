@@ -15,6 +15,7 @@ import joblib
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 try:
     from scipy.stats import median_abs_deviation as mad
@@ -1276,7 +1277,7 @@ class BaseModel(NN, Plots):
 
         transformation_key = None
 
-        if isinstance(data, np.ndarray):
+        if isinstance(data, np.ndarray) or isinstance(data, list):
             # the predict method is called like .predict(x)
             inputs = data
             user_defined_data = True
@@ -1972,6 +1973,72 @@ class BaseModel(NN, Plots):
             self.dh.config['transformation'] = transformations
 
         return optimizer
+
+    def permutation_importance(
+            self,
+            data="test",
+            x=None,
+            y=None,
+            scoring: Union[str, Callable] = "r2",
+            n_repeats: int = 5,
+            noise: Union[str, np.ndarray] = None,
+            use_noise_only: bool = False,
+            weights=None,
+            plot_type: str = None
+    ):
+        """Calculates the permutation importance on the given data
+
+        Arguments:
+            data:
+                one of `training`, `test` or `validation`. By default test data is
+                used based upon recommendations of [Christoph Molnar's book](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data)
+            x:
+                inputs for the model. alternative to data
+            y:
+                target/observation data for the model. alternative to data
+            scoring:
+                the scoring to use to calculate importance
+            n_repeats:
+                number of times the permutation for each feature is performed.
+            noise:
+                the noise to add when a feature is permutated. It can be a 1D
+                array of length equal to len(data) or string defining the
+                distribution
+            use_noise_only:
+                If True, then the feature being perturbed is replaced by the noise
+                instead of adding the noise into the feature. This argument is only
+                valid if `noise` is not None.
+            weights:
+            plot_type:
+                if not None, it must be either `heatmap` or `boxplot`
+
+        Examples:
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import arg_beach
+            >>> model = Model(model="XGBRegressor", data=arg_beach())
+            >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
+        """
+        assert data in ("training", "validation", "test")
+
+        if x is None:
+            data = getattr(self, f"{data}_data")()
+            x, y = data
+
+        from .postprocessing.explain import PermutationImportance
+        pm = PermutationImportance(
+            self.predict, x, y, scoring,
+            n_repeats, noise, use_noise_only,
+            path=os.path.join(self.path, "explain"),
+            features=self.dh.input_features,
+            weights=weights,
+            seed=self.config['seed']
+        )
+
+        if plot_type is None:
+            return pm.importances
+        else:
+            assert plot_type in ("boxplot", "heatmap")
+            return getattr(pm, f"plot_as_{plot_type}")()
 
 
 def get_values(outputs):
