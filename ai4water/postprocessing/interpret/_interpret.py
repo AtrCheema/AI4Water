@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
-from ai4water.utils.utils import plot_activations_along_inputs
+from ai4water.utils.utils import plot_activations_along_inputs, imshow
 
 
 class Interpret(Plot):
@@ -300,11 +300,12 @@ class Interpret(Plot):
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
 
         plt.close('all')
-        im = plt.imshow(encoder_variable_selection_weights[example_index], aspect='auto')
-        plt.ylabel('lookback steps')
+
+        axis, im = imshow(encoder_variable_selection_weights[example_index],
+                      aspect="auto", ylabel="lookback steps", title=example_index)
+
         plt.xticks(np.arange(model.ins), model.in_cols, rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
-        plt.title(example_index)
         plt.savefig(os.path.join(maybe_create_path(model.path), f'{data_name}_enc_var_selec_{example_index}.png'),
                     bbox_inches='tight', dpi=300)
         if show:

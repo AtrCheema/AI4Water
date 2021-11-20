@@ -12,7 +12,7 @@ from ai4water.backend import tf, keras
 
 import ai4water.keract_mod as keract
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import maybe_three_outputs
+from ai4water.utils.utils import maybe_three_outputs, imshow
 
 from ..utils import choose_examples
 
@@ -50,7 +50,7 @@ RNN_INFO = {"LSTM": {'rnn_type': 'LSTM',
 CMAPS = [
     'jet_r', 'ocean_r', 'viridis_r', 'BrBG',
     'GnBu', 'crest_r', 'Blues_r', 'bwr_r',
-    'flare', 'mako', 'YlGnBu'
+    'flare', 'YlGnBu'
 ]
 
 
@@ -791,9 +791,7 @@ def features_2D(data,
         title = np.arange(num_subplots)
 
     for idx, ax in enumerate(axis.flat):
-        im = ax.imshow(data[idx], cmap=cmap, vmin=vmin, vmax=vmax)
-        if title is not None:
-            ax.set_title(title[idx])
+        axis, im = imshow(data[idx], axis=ax, cmap=cmap, vmin=vmin, vmax=vmax, title=title[idx])
 
     if sup_xlabel:
         fig.text(0.5, 0.04, sup_xlabel, ha='center', fontsize=20)

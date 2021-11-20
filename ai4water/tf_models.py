@@ -11,7 +11,7 @@ from ai4water.backend import keras
 from ai4water.utils.utils import print_something
 from ai4water.nn_tools import check_act_fn
 from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
-from ai4water.utils.utils import plot_activations_along_inputs
+from ai4water.utils.utils import plot_activations_along_inputs, imshow
 
 layers = keras.layers
 KModel = keras.models.Model
@@ -395,11 +395,11 @@ class DualAttentionModel(FModel):
         plt.close('all')
 
         fig, axis = plt.subplots()
-        im = plt.imshow(act_avg_over_examples, aspect='auto')
+
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis.set_ylabel('lookback steps')
-        axis.set_yticks(np.arange(len(ytick_labels)))
-        axis.set_yticklabels(ytick_labels)
+        _, im = imshow(act_avg_over_examples, axis=axis, aspect="auto", yticklabels=ytick_labels,
+               ylabel='lookback steps')
+
         axis.set_xticks(np.arange(len(self.in_cols)))
         axis.set_xticklabels(self.in_cols, rotation=90)
         fig.colorbar(im, orientation='horizontal', pad=0.3)

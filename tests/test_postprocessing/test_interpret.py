@@ -101,7 +101,6 @@ def tft_model(**kwargs):
         'hidden_units': 8,
         'dropout_rate': 0.1,
         'num_heads': 4,
-        'stack_size': 1,
         'use_cudnn': False,
         'future_inputs': False,
         'return_sequences': True,

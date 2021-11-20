@@ -1659,9 +1659,12 @@ def plot_activations_along_inputs(
             ax2.plot(pred, label='Prediction')
             ax2.plot(obs, '.', label='Observed')
             ax2.legend()
-
-            axis, im = axis_imshow(ax3, activations[:, :, idx].transpose(), lookback, vmin, vmax,
-                                   xlabel="Examples")
+            ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+            axis, im = imshow(activations[:, :, idx].transpose(),
+                              vmin=vmin, vmax=vmax, aspect="auto",
+                              axis = ax3,
+                              xlabel="Examples", ylabel="lookback steps",
+                              yticklabels=ytick_labels)
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attention_weights_{out_name}_{name}'
@@ -1675,18 +1678,51 @@ def plot_activations_along_inputs(
     return
 
 
-def axis_imshow(axis, values, lookback, vmin, vmax, xlabel=None, title=None, cmap=None):
+def imshow(values, axis=None,
+           vmin=None, vmax=None, xlabel=None, aspect=None, interpolation=None,
+           title=None,
+           cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
+           show=False,
+           annotate=False,
+           annotate_kws=None
+           ):
+    """One stop shop for imshow
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils.utils import imshow
+        >>> x = np.random.random((10, 5))
+        >>> imshow(x, annotate=True)
+    """
 
-    im = axis.imshow(values, aspect='auto', vmin=vmin, vmax=vmax, cmap=cmap)
-    ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-    axis.set_ylabel('lookback steps')
-    axis.set_yticks(np.arange(len(ytick_labels)))
-    axis.set_yticklabels(ytick_labels)
+    if axis is None:
+        axis = plt.gca()
+
+    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=interpolation)
+
+    if annotate:
+        annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}
+        for i in range(values.shape[0]):
+            for j in range(values.shape[1]):
+                _ = axis.text(j, i, round(values[i, j], 2),
+                            **annotate_kws)
+
+    if yticklabels is not None:
+        axis.set_yticks(np.arange(len(yticklabels)))
+        axis.set_yticklabels(yticklabels)
+
+    if xticklabels is not None:
+        axis.set_xticks(np.arange(len(xticklabels)))
+        axis.set_xticklabels(xticklabels)
+
     if xlabel:
         axis.set_xlabel(xlabel)
-
+    if ylabel:
+        axis.set_ylabel(ylabel)
     if title:
         axis.set_title(title)
+
+    if show:
+        plt.show()
 
     return axis, im
 

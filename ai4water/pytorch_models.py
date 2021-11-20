@@ -17,6 +17,8 @@ if torch is not None:
 else:
     HARHN, IMVTensorLSTM = None, None
 
+from ai4water.utils.utils import imshow
+
 
 class HARHNModel(Model):
 
@@ -120,17 +122,11 @@ class IMVModel(HARHNModel):
         fig, ax = plt.subplots()
         fig.set_figwidth(16)
         fig.set_figheight(16)
-        _ = ax.imshow(alphas)
-        ax.set_xticks(np.arange(self.lookback))
-        ax.set_yticks(np.arange(len(all_cols)))
-        ax.set_xticklabels(["t-"+str(i) for i in np.arange(self.lookback, 0, -1)])
-        ax.set_yticklabels(list(all_cols))
-        if annotate:
-            for i in range(len(all_cols)):
-                for j in range(self.lookback):
-                    _ = ax.text(j, i, round(alphas[i, j], 3),
-                                ha="center", va="center", color="w")
-        ax.set_title("Importance of features and timesteps")
+        xticklabels=["t-"+str(i) for i in np.arange(self.lookback, 0, -1)]
+        imshow(alphas, axis=ax, xticklabels=xticklabels, yticklabels=list(all_cols),
+               title="Importance of features and timesteps", annotate=annotate)
+
+
         plt.savefig(os.path.join(path, f'acts_{name}'), dpi=400, bbox_inches='tight')
 
         plt.close('all')

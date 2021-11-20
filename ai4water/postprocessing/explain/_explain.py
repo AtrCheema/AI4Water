@@ -29,6 +29,12 @@ class ExplainerMixin(object):
             return False
 
     @property
+    def data_is_3d(self):
+        if isinstance(self.data, np.ndarray) and self.data.ndim == 3:
+            return True
+        return False
+
+    @property
     def single_source(self):
         if isinstance(self.data, list) and len(self.data) > 1:
             return False
@@ -63,6 +69,9 @@ class ExplainerMixin(object):
                     _features = [f"Feature {i}" for i in range(data.shape[-1])]
 
                 features.append(_features)
+
+        elif self.data_is_3d and features is None:
+            features = [f"Feature {i}" for i in range(self.data.shape[-1])]
 
         self._features = features
 
