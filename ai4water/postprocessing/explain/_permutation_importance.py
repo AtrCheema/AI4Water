@@ -1,6 +1,8 @@
 import os
+from typing import Union, Callable, List
 
 import numpy as np
+import scipy.stats as stats
 import matplotlib.pyplot as plt
 
 from ._explain import ExplainerMixin
@@ -8,11 +10,11 @@ from ai4water.utils.utils import reset_seed, ERROR_LABELS
 
 
 class PermutationImportance(ExplainerMixin):
-    """permutation importance answers the question, how much the model's prediction
+    """
+    permutation importance answers the question, how much the model's prediction
     performance is influenced by a feature? It defines the feature importance as
-    the decrease in model performance when one feature is
-    corrupted.[Molnar et al., 2021](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance)
-
+    the decrease in model performance when one feature is corrupted
+    [Molnar et al., 2021](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance)
 
     Attributes:
         importances
@@ -20,12 +22,12 @@ class PermutationImportance(ExplainerMixin):
     """
     def __init__(
             self,
-            model,
-            inputs,
-            target,
-            scoring="r2",
-            n_repeats=14,
-            noise=None,
+            model: Callable,
+            inputs: Union[np.ndarray, List[np.ndarray]],
+            target: np.ndarray,
+            scoring: Union[str, Callable] = "r2",
+            n_repeats: int = 14,
+            noise: Union[str, np.ndarray] = None,
             use_noise_only: bool = False,
             features: list = None,
             path: str = None,
@@ -47,25 +49,27 @@ class PermutationImportance(ExplainerMixin):
                 It must be a numpy array
             scoring:
                 the peformance metric to use. It can be any metric from
-                [RegressionMetrics][ai4water.postprocessing.RegressionMetrics],
-                [ClassificationMetrics][ai4water.postprocessing.ClassificationMetrics]
+                [RegressionMetrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics],
+                [ClassificationMetrics][ai4water.postprocessing.SeqMetrics.ClassificationMetrics]
                 or a callable. If callable, then this must take true and predicted
                 as input and sprout a float as output
             n_repeats:
-
+                number of times the permutation for each feature is performed. Number
+                of calls to the `model` will be `num_features * n_repeats`
             noise:
-
+                The noise to add in the feature. It should be either an array of noise
+                or a string of [scipy distribution name](https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions)
+                defining noise.
             use_noise_only:
-
+                If True, the original feature will be replaced by the noise.
             weights:
 
             seed:
                 random seed for reproducibility. Permutation importance is
                 strongly affected by random seed. Therfore, if you want to
                 reproduce your results, set this value to some integer value.
-
             path:
-
+                path to save the plots
             kwargs:
                 any additional keyword arguments for `model`
 
@@ -105,8 +109,8 @@ class PermutationImportance(ExplainerMixin):
     @noise.setter
     def noise(self, x):
         if x is not None:
-            if isinstance(x, str):  # todo get noise based upon distribution name
-                raise NotImplementedError
+            if isinstance(x, str):
+                x = getattr(stats, x)().rvs(len(self.y))
             else:
                 assert isinstance(x, np.ndarray) and len(x) == len(self.y)
 
@@ -142,7 +146,9 @@ class PermutationImportance(ExplainerMixin):
                 results = self._permute_importance_2d(self.x, **kwargs)
 
             else:
-                raise NotImplementedError
+                results = {}
+                for lb in range(self.x.shape[1]):
+                    results[lb] = self._permute_importance_2d(self.x, time_step=lb, **kwargs)
 
         else:
             results = {}
@@ -157,6 +163,14 @@ class PermutationImportance(ExplainerMixin):
                         **kwargs
                     )
 
+                elif self.x[idx].ndim == 3:  # current input is 3d
+
+                    _results = {}
+                    for lb in range(self.x[idx].shape[1]):
+                        _results[lb] = self._permute_importance_2d(self.x, inp_idx=idx, time_step=lb, **kwargs)
+
+                    results[idx] = _results
+
                 else:
                     raise NotImplementedError
 
@@ -164,46 +178,87 @@ class PermutationImportance(ExplainerMixin):
 
         return results
 
+    def plot_as_heatmap(
+            self,
+            annotate=True,
+            show: bool = True,
+            **kwargs
+    ):
+        """plots the permutation importance as heatmap.
+
+        The input data must be 3d.
+
+        Arguments:
+            annotate:
+                whether to annotate the heat map with
+            show:
+                whether to show the plot or not
+            kwargs:
+                any keyword arguments for [imshow][ai4water.utils.utils.imshow] function.
+        """
+        assert self.data_is_3d, f"data must be 3d but it is has {self.x.shape}"
+
+        imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
+
+        from ai4water.utils.utils import imshow
+
+        fig, axis = plt.subplots()
+
+        lookback = imp.shape[0]
+        ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+        axis, im = imshow(
+            imp, axis=axis,
+            yticklabels=ytick_labels,
+            xticklabels=self.features if len(self.features)<=10 else None,
+            ylabel="Looback steps", xlabel="Input Features",
+            annotate=annotate,
+            title=f"Base Score {round(self._base_score(), 3)} with {ERROR_LABELS[self.scoring]}",
+            **kwargs
+        )
+
+        fig.colorbar(im, orientation='vertical')
+
+        if show:
+            plt.show(
+
+            )
+        return axis
+
     def plot_as_boxplot(
             self,
-            show: bool = True
-    ) -> plt.Figure:
+            show: bool = True,
+            save: bool = False
+    ) -> plt.Axes:
         """Plots the permutation importance as box plots
 
         Arguments:
             show:
                 whether to show the plot or now
+            save:
+                whether to save the plot or not
 
         Returns:
-            matplotlib Figure
+            matplotlib AxesSubplot
         """
 
         if isinstance(self.importances, np.ndarray):
             fig, ax = plt.subplots()
-            self._plot_importance(self.importances, ax, self.features)
+            self._plot_importance(self.importances, self.features, ax, show=show, save=save)
         else:
-            fig, axes = plt.subplots(ncols=1, nrows=len(self.importances))
-            for (idx, ax), (time_step, importance) in zip(enumerate(axes.flat), self.importances.items()):
-                self._plot_importance(importance, ax, self.features[idx])
+            for idx,  importance in enumerate(self.importances.values()):
+                if self.data_is_3d:
+                    features = self.features
+                else:
+                    features = self.features[idx]
+                ax = self._plot_importance(importance, features, show=show, save=save, name=idx)
 
-        ax.set_xlabel(ERROR_LABELS[self.scoring])
-        ax.set_title(f"Base Score {round(self._base_score(), 3)}")
-        fig.tight_layout()
-
-        if show:
-            plt.show()
-
-        return fig
-
-    def plot_as_heatmap(
-            self
-    ):
-        return
+        return ax
 
     def _permute_importance_2d(
             self,
             inputs,
             inp_idx=None,
+            time_step=None,
             **kwargs
     ):
         """
@@ -219,10 +274,17 @@ class PermutationImportance(ExplainerMixin):
         # reset seed for reproducibility
         reset_seed(self.seed, np=np)
 
-        # empty container to keep results
-        results = np.full((permuted_x.shape[1], self.n_repeats), np.nan)
+        feat_dim = 1  # feature dimension (0, 1, 2)
+        if time_step is not None:
+            feat_dim = 2
 
-        for col_index in range(permuted_x.shape[1]):
+        # empty container to keep results
+        results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)  # (num_features, n_repeats)
+
+        # todo, instead of having two for loops, we can perturb the inputs at once and concatenate
+        # them as one input and thus call the `model` only once
+
+        for col_index in range(permuted_x.shape[feat_dim]):
 
             scores = np.full(self.n_repeats, np.nan)
 
@@ -232,14 +294,21 @@ class PermutationImportance(ExplainerMixin):
                 # also sklearn sets the RandomState insite a function therefore
                 # the results from this function will not be reproducible with
                 # sklearn and vice versa
-                perturbed_feature = np.random.permutation(permuted_x[:, col_index])
+                if time_step is None:
+                    perturbed_feature = np.random.permutation(permuted_x[:, col_index])
+                else:
+                    perturbed_feature = np.random.permutation(permuted_x[:, time_step, col_index])
 
                 if self.noise is not None:
                     if self.use_noise_only:
                         perturbed_feature = self.noise
                     else:
                         perturbed_feature += self.noise
-                permuted_x[:, col_index] = perturbed_feature
+
+                if time_step is None:
+                    permuted_x[:, col_index] = perturbed_feature
+                else:
+                    permuted_x[:, time_step, col_index] = perturbed_feature
 
                 # put the permuted input back in the list
                 inputs[inp_idx] = permuted_x
@@ -304,13 +373,27 @@ class PermutationImportance(ExplainerMixin):
 
         return results
 
-    @staticmethod
-    def _plot_importance(imp, axes, features):
+    def _plot_importance(self, imp,  features, axes=None, show=False, save=False, name=None):
+        if axes is None:
+            axes = plt.gca()
+
         importances_mean = np.mean(imp, axis=1)
         perm_sorted_idx = importances_mean.argsort()
         axes.boxplot(
-            imp[perm_sorted_idx].T,
+            imp[perm_sorted_idx].T,  # (num_features, n_repeats) -> (n_repeats, num_features)
             vert=False,
             labels=np.array(features)[perm_sorted_idx],
         )
-        return
+
+        axes.set_xlabel(ERROR_LABELS[self.scoring])
+
+        axes.set_title(f"Base Score {round(self._base_score(), 3)}")
+
+        if show:
+            plt.show()
+
+        if save:
+            fname = os.path.join(self.path, f"box_plot_{name}")
+            plt.savefig(fname, bbox_inches="tight")
+
+        return axes

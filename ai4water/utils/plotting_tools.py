@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 
-from ai4water.utils.utils import init_subplots
+from ai4water.utils.utils import init_subplots, imshow
 
 
 BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
@@ -99,8 +99,8 @@ class Plots(object):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        _, axis = plt.subplots()
-        im = axis.imshow(img, aspect='auto', interpolation=interpolation, cmap=cmap)
+        axis, im = imshow(img, aspect="auto", interpolation=interpolation, cmap=cmap,
+                          xlabel=kwargs.get('xlabel', 'inputs'), title=label)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
@@ -121,10 +121,7 @@ class Plots(object):
                 if len(xlabels) < 30:
                     axis.set_xticklabels(xlabels, rotation=90)
 
-        plt.xlabel(kwargs.get('xlabel', 'inputs'))
-
         plt.colorbar(im)
-        plt.title(label)
         self.save_or_show(save, fname, where=where, show=show)
 
         return

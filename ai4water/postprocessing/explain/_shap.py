@@ -18,7 +18,7 @@ try:
 except ModuleNotFoundError:
     Flatten, Model, K = None, None, None
 
-from ai4water.utils.utils import axis_imshow
+from ai4water.utils.utils import imshow
 from ai4water.backend import get_sklearn_models
 from ._explain import ExplainerMixin
 
@@ -952,12 +952,16 @@ def imshow_3d(values,
         plt.close('all')
         fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
 
-        axis, im = axis_imshow(ax1, data[:, :, idx].transpose(), lookback, vmin, vmax,
-                               title=feat, cmap=cmap)
+        yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+        axis, im = imshow(data[:, :, idx].transpose(), yticklabels=yticklabels,
+                          axis=ax1, vmin=vmin, vmax=vmax,
+                          title=feat, cmap=cmap)
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        axis, im = axis_imshow(ax2, values[:, :, idx].transpose(), lookback, vmin, vmax,
-                               xlabel="Examples", title=f"SHAP Values", cmap=cmap)
+        axis, im = imshow(values[:, :, idx].transpose(), yticklabels=yticklabels,
+                          vmin=vmin, vmax=vmax, xlabel="Examples",
+                          title=f"SHAP Values", cmap=cmap,
+                          axis=ax2)
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
