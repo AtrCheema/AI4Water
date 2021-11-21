@@ -17,12 +17,13 @@ from .plotting_tools import save_or_show
 from ai4water.utils.utils import init_subplots
 
 # TODO add Murphy's plot as shown in MLAir
-# https://robjhyndman.com/hyndsight/murphy-diagrams/
+# prediction_distribution aka actual_plot of PDPbox
+# average_target_value aka target_plot of PDPbox
 # competitive skill score plot/ bootstrap skill score plot as in MLAir
 # rank histogram and reliability diagram for probabilitic forecasting model.
 # show availability plot of data
 
-
+#
 regplot_combs = [
     ['cadetblue', 'slateblue', 'darkslateblue'],
     ['cadetblue', 'mediumblue', 'mediumblue'],

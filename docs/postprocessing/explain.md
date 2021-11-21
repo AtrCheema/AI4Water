@@ -16,6 +16,12 @@
     rendering:
         show_root_heading: true
 
+**`PartialDependencePlot`**
+::: ai4water.postprocessing.explain.PartialDependencePlot
+    handler: python
+    rendering:
+        show_root_heading: true
+
 **`explain_model`**
 ::: ai4water.postprocessing.explain.explain_model
     handler: python
