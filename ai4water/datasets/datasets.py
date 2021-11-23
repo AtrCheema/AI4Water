@@ -845,6 +845,9 @@ class MtropicsLaos(Datasets):
 
     def __init__(self, **kwargs):
 
+        if xr is None:
+            raise ModuleNotFoundError("xarray must be installed to use datasets sub-module")
+
         super().__init__(**kwargs)
         self._download()
 
