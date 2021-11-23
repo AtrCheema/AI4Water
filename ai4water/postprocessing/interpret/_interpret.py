@@ -6,8 +6,6 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
@@ -168,6 +166,9 @@ class Interpret(Plot):
     ):
         """compare various feature importance calculations methods that are built
         in in XGBoost"""
+
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
 
         inp_features = self.model.dh.input_features
         assert isinstance(inp_features, list)
