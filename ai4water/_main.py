@@ -837,7 +837,10 @@ class BaseModel(NN, Plots):
                                             xgboost=xgboost)
             if regr_name in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
                              'GammaRegressor']:
-                if int(version_info['sklearn'].split('.')[1]) < 23:
+                sk_maj_ver = int(sklearn.__version__.split('.')[0])
+                sk_min_ver = int(sklearn.__version__.split('.')[1])
+
+                if sk_maj_ver < 1 and sk_min_ver < 23:
                     raise ValueError(
                         f"{regr_name} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
             raise ValueError(f"model {regr_name} not found. {version_info}")
@@ -1183,38 +1186,47 @@ class BaseModel(NN, Plots):
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
         if metrics is not None:
-            p = self.predict(x=x, return_true=False, process_results=False)
-
-            if self.problem == "regression":
-                from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-                errs = RegressionMetrics(y, p)
-            else:
-                from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
-                errs = ClassificationMetrics(y, p)
-
-            if isinstance(metrics, str):
-
-                if metrics in ['minimal', 'all', 'hydro_metrics']:
-                    results = getattr(errs, f"calculate_{metrics}")()
-                else:
-                    results = getattr(errs, metrics)()
-
-            elif isinstance(metrics, list):
-                results = {}
-                for m in metrics:
-                    results[m] = getattr(errs, m)()
-
-            elif callable(metrics):
-                results = metrics(x, y)
-            else:
-                raise ValueError(f"unknown metrics type {metrics}")
-
-            return results
+            return self._custom_eval(x, y, metrics)
 
         if hasattr(self._model, 'evaluate'):
             return self._model.evaluate(x, y, **kwargs)
 
         return self.evaluate_fn(x, y, **kwargs)
+
+    def evalute_ml_models(self, x, y, metrics=None):
+        if metrics is None:
+            metrics = self.config['val_metric']
+        return self._custom_eval(x, y, metrics)
+
+    def _custom_eval(self, x, y, metrics):
+
+        p = self.predict(x=x, return_true=False, process_results=False)
+
+        if self.problem == "regression":
+            from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+            errs = RegressionMetrics(y, p)
+        else:
+            from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
+            errs = ClassificationMetrics(y, p)
+
+        if isinstance(metrics, str):
+
+            if metrics in ['minimal', 'all', 'hydro_metrics']:
+                results = getattr(errs, f"calculate_{metrics}")()
+            else:
+                results = getattr(errs, metrics)()
+
+        elif isinstance(metrics, list):
+            results = {}
+            for m in metrics:
+                results[m] = getattr(errs, m)()
+
+        elif callable(metrics):
+            results = metrics(x, y)
+        else:
+            raise ValueError(f"unknown metrics type {metrics}")
+
+        return results
 
     def predict(
             self,
@@ -1277,8 +1289,9 @@ class BaseModel(NN, Plots):
 
         transformation_key = None
 
-        if isinstance(data, np.ndarray) or isinstance(data, list):
+        if data.__class__.__name__ in ["ndarray", "Dataset", "list"]: # .predict(x,y,...)
             # the predict method is called like .predict(x)
+            assert 'x' not in kwargs
             inputs = data
             user_defined_data = True
             true_outputs = None

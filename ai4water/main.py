@@ -221,6 +221,8 @@ class Model(MODEL, BaseModel):
                 return self.torch_learner.evaluate
             else:
                 raise ValueError
+        elif self.category == "ML":
+            return self.evalute_ml_models
 
         return self._model.evaluate
 
@@ -932,7 +934,7 @@ class Model(MODEL, BaseModel):
         return history
 
     def predict_pytorch(self, x, **kwargs):
-        from .utils.torch_utils import to_torch_dataset
+        from .models.torch.utils import to_torch_dataset
         from torch.utils.data import DataLoader
 
         if isinstance(x, torch.utils.data.Dataset):
