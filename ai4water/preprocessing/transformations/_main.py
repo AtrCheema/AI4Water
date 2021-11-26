@@ -68,6 +68,7 @@ class TransformationsContainer(object):
         self.transforming_straight = True
         self.zero_indices = None
         self.nan_indices = None
+        self.negative_indices = None
         self.index = None
 
 
@@ -146,6 +147,7 @@ class Transformations(TransformationsContainer):
                  replace_with: Union[str, int, float] = 'mean',
                  replace_zeros: bool = False,
                  replace_zeros_with: Union[str, int, float] = 'mean',
+                 treat_negatives: bool = False,
                  **kwargs
                  ):
         """
@@ -173,9 +175,13 @@ class Transformations(TransformationsContainer):
                 'mean', 'max', 'man'.
             replace_zeros : same as replace_nans but for zeros in the data.
             replace_zeros_with : same as `replace_with` for for zeros in the data.
+            treat_negatives:
+                If true, and if data contains negative values, then the absolute
+                values of these negative values will be considered for transformation.
+                For inverse transformation, the -ve sign is removed, to return the
+                original data.
             kwargs : any arguments which are to be provided to transformer on
-                INTIALIZATION and not during transform or inverse transform e.g.
-                `n_components` for pca.
+                INTIALIZATION and not during transform or inverse transform
 
         Example:
             >>> from ai4water.preprocessing.transformations import Transformations
@@ -203,6 +209,7 @@ class Transformations(TransformationsContainer):
         self.replace_with = replace_with
         self.replace_zeros = replace_zeros
         self.replace_zeros_with = replace_zeros_with
+        self.treat_negatives = treat_negatives
         data = self.pre_process_data(data.copy())
         self.data = data
 
@@ -350,20 +357,17 @@ class Transformations(TransformationsContainer):
             if self.zero_indices is None:
                 self.zero_indices = indices
 
-        # if self.replace_negatives:
-        #     indices = {}
-        #     for col in data.columns:
-        #         # find index containing negatives in corrent column of dataframe
-        #         i = data.index[data[col] < 0.0]
-        #         if len(i) > 0:
-        #             indices[col] = i.values
-        #             if self.replace_negatives_with in ['mean', 'max', 'min']:
-        #                 replace_with = float(getattr(np, 'nan' + self.replace_negatives_with)(data[col]))
-        #             else:
-        #                 replace_with = self.replace_negatives_with
-        #             data[col][indices[col]] = get_val(data[col], replace_with)
-        #
-        #     if self.negative_indices is None: self.negative_indices = indices
+        if self.treat_negatives:
+            indices = {}
+            for col in data.columns:
+                # find index containing negatives in corrent column of dataframe
+                i = data.index[data[col] < 0.0]
+                if len(i) > 0:
+                    indices[col] = i.values
+                    # turn -ve values into positives
+                    data[col] = data[col].abs()
+
+            if self.negative_indices is None: self.negative_indices = indices
 
         return data
 
@@ -381,10 +385,11 @@ class Transformations(TransformationsContainer):
                     for col, idx in self.zero_indices.items():
                         data[col][idx] = 0.0
 
-            # if self.replace_negatives:
-            #     if hasattr(self, 'negative_indices'):
-            #         for col, idx in self.negative_indices.items():
-            #             data[col][idx] = 0.0
+            if self.treat_negatives:
+                if hasattr(self, 'negative_indices'):
+                    for col, idx in self.negative_indices.items():
+                        # invert the sign of those values which were originally -ve
+                        data[col][idx] = -data[col][idx]
         return data
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
@@ -491,6 +496,12 @@ class Transformations(TransformationsContainer):
             pass
         elif len(self.scalers) == 1:
             kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
+
+        if self.treat_negatives and self.negative_indices is not None:
+            data = kwargs['data']
+            for col, idx in self.negative_indices.items():
+                data[col][idx] = -data[col][idx]
+            kwargs['data'] = data
 
         return getattr(self, "inverse_transform_with_" + self.method.lower())(**kwargs)
 
