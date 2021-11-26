@@ -71,7 +71,7 @@ Activation functions can also be used as a separate layer.
 layers = {"Conv1D_9": {'filters': 64, 'kernel_size': 2},
           "Dropout": 0.3,
           "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-          "Maxpool1D": 2,
+          "MaxPool1D": 2,
           'Flatten': {}, # This layer does not receive any input arguments
           'LeakyReLU': {},  # activation function can also be used as a separate layer
           "Dense": 1
@@ -133,7 +133,7 @@ layers = {
     'Flatten': {},
     'LSTM_0':   {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
                'name': 'lstm_0'},
-    'Relu_1': {},
+    'relu_1': {},
     'LSTM_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
     'sigmoid_2': {},
     'Dense': 1

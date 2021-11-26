@@ -160,10 +160,10 @@ class DataHandler(AttributeContainer):
             intervals :
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means indices
-                from the input file/dataframe to be used when when preparing
-                data/batches for NN. This is handly when we want our input data
-                contains chunks of missing values or we don't want to consider several
-                rows in input data to be considered during data_preparation.
+                from the data. Only rows within those indices will be used when preparing
+                data/batches for NN. This is handy when our input data
+                contains chunks of missing values or when we don't want to consider several
+                rows in input data during data_preparation.
                 For further usage see `examples/using_intervals`
             transformation Union[str, list, dict]:
                 type of transformation to be applied.

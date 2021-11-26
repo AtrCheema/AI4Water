@@ -30,7 +30,10 @@ def compute_bounds(xmin, xmax, xv):
 
 
 class PartialDependencePlot(ExplainerMixin):
+    """
+    Partial dependence plots as introduced by [Friedman et al., 2001](https://doi.org/10.1214/aos/1013203451)
 
+    """
     def __init__(
             self,
             model:Callable,
@@ -281,19 +284,19 @@ class PartialDependencePlot(ExplainerMixin):
         """partial dependence plot in one dimension
 
         Arguments:
-             feature:
+            feature:
                 the feature name for which to plot the partial dependence
-             show_dist:
+            show_dist:
                 whether to show actual distribution of data or not
-             show_dist_as:
+            show_dist_as:
                 one of "hist" or "grid"
-             ice:
+            ice:
                 whether to show individual component elements on plot or not
-             feature_expected_value:
+            feature_expected_value:
                 whether to show the average value of feature on the plot or not
-             model_expected_value:
+            model_expected_value:
                 whether to show average prediction on plot or not
-             show_ci:
+            show_ci:
                 whether to show confidence interval of pdp or not
             show_minima:
                 whether to indicate the minima or not
