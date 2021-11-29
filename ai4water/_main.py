@@ -829,6 +829,11 @@ class BaseModel(NN, Plots):
         if regr_name == "RANSACRegressor" and 'residual_threshold' not in kwargs:
             self.residual_threshold_not_set = True
 
+        if regr_name in ["LGBMRegressor", 'LGBMClassifier']:
+            if 'random_state' not in kwargs:
+                kwargs['random_state'] = self.config['seed']
+
+        # initiate the estimator/model class
         if regr_name in ml_models:
             model = ml_models[regr_name](**kwargs)
         else:
