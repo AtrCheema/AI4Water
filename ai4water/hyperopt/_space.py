@@ -27,6 +27,10 @@ except ImportError:
 
 from ai4water.utils.utils import Jsonize
 
+# helper class to be able to print [1, ..., 4] instead of [1, '...', 4]
+class _Ellipsis:
+    def __repr__(self):
+        return '...'
 
 class Counter:
     counter = 0  # todo, not upto the mark
@@ -145,6 +149,10 @@ class Real(_Real, Counter):
         _raum.update({'type': 'Real'})
         return _raum
 
+    def __repr__(self):
+        return f"Real(low={self.low}, high={self.high}," \
+               f" prior='{self.prior}', transform='{self.transform_}' name='{self.name}')"
+
 
 class Integer(_Integer, Counter):
     """
@@ -260,6 +268,10 @@ class Integer(_Integer, Counter):
         _raum.update({'type': 'Integer'})
         return _raum
 
+    def __repr__(self):
+        return f"Integer(low={self.low}, high={self.high}," \
+               f" prior='{self.prior}', transform='{self.transform_}' name='{self.name}')"
+
 
 class Categorical(_Categorical):
     """
@@ -305,6 +317,18 @@ class Categorical(_Categorical):
         _raum.update({'type': 'Integer'})
         return _raum
 
+    def __repr__(self):
+        if len(self.categories) > 7:
+            cats = self.categories[:3] + (_Ellipsis(),) + self.categories[-3:]
+        else:
+            cats = self.categories
+
+        if self.prior is not None and len(self.prior) > 7:
+            prior = self.prior[:3] + [_Ellipsis()] + self.prior[-3:]
+        else:
+            prior = self.prior
+
+        return f"Categorical(categories={cats}, prior={prior} name='{self.name}')"
 
 def check_prior(kwargs: dict):
     prior = kwargs.get('prior', 'uniform')

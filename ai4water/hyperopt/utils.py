@@ -309,8 +309,9 @@ def post_process_skopt_results(skopt_results, results, opt_path):
         clear_weights(results=results, opt_dir=opt_path)
         clear_weights(opt_dir=opt_path)
 
-    try:
-        dump(skopt_results, os.path.join(opt_path, os.path.basename(opt_path)))
+    try:  # adding .hpo extension so that no other file/folder exists with same name
+        fname = os.path.join(opt_path, os.path.basename(opt_path) + ".hpo")
+        dump(skopt_results, fname)
     except PicklingError:
         print("could not pickle results")
 
