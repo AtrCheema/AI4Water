@@ -1398,11 +1398,72 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         fname = os.path.join(self.opt_path, "iterations.json")
         with open(fname, "w") as fp:
-            json.dump(jsonized_iterations, fp, sort_keys=True, indent=4, cls=JsonEncoder)
+            json.dump(jsonized_iterations, fp, sort_keys=False, indent=4, cls=JsonEncoder)
 
         fname = os.path.join(self.opt_path, "iterations_sorted.json")
         with open(fname, "w") as fp:
             json.dump(dict(sorted(jsonized_iterations.items())), fp, sort_keys=True, indent=4, cls=JsonEncoder)
+
+    def add_previous_results(
+            self,
+            iterations: Union[dict, str] = None,
+            x: list = None,
+            y :list = None
+    ):
+        """adds results from previous iterations.
+
+        If you have run the optimization priviously, you can make use
+        of those results by appending them.
+
+        Arguments:
+            iterations:
+                It can be either a dictionary whose keys are y values and values are x
+                or it can be a path to a file which contains these xy values as dictioary.
+            x:
+                a list of lists where each sub-list is the value of hyperparameter
+                at at one iteratio. The `x` and `y` arguments optional and will
+                only be used if `iterations` are not provided.
+            y:
+                a list of float values where each value in y is the output
+                of objective_fn with corresponding x. The length of `x` and `y`
+                must be equal.
+        """
+
+        assert self.algorithm == "bayes"
+
+        if iterations is None:
+            assert isinstance(x, list) and isinstance(y, list)
+            assert len(x) == len(y), f"x has {len(x)} values while y has {len(y)} values. They must be equal"
+            x0 = x
+            y0 = y
+
+        elif isinstance(iterations, str):
+            assert os.path.exists(iterations), f"the path {iterations} does not exist"
+            # it is a path
+            with open(iterations, 'r') as fp:
+                iter_dict = json.load(fp)
+
+            x0, y0 = self.dict_to_xy(iter_dict)
+        else:
+            if not isinstance(iterations, dict):
+                raise ValueError(f"iterations must be a dictionary but it is of type {iterations.__class__.__name__}")
+
+            x0, y0 = self.dict_to_xy(iterations)
+
+        # todo check for inf and nan in y0
+
+        self.gpmin_args['x0'] = x0
+        self.gpmin_args['y0'] = y0
+
+        return
+
+    @staticmethod
+    def dict_to_xy(iterations:dict):
+        x0, y0 = [], []
+        for y, x in iterations.items():
+            y0.append(float(y))
+            x0.append(list(x.values()))
+        return x0, y0
 
 
 def space_from_list(v: list, k: str) -> Dimension:

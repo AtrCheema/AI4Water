@@ -47,6 +47,38 @@ inputs = list(data.columns)[0:-1]
 outputs = [list(data.columns)[-1]]
 
 
+def objective_func(**suggestion):
+    model = Model(
+        model={"XGBRegressor": suggestion},
+        data=arg_beach(),
+        prefix=f'test_{"bayes"}_xgboost',
+        train_data='random',
+        verbosity=0)
+
+    model.fit()
+
+    t, p = model.predict(return_true=True, process_results=False)
+    mse = RegressionMetrics(t, p).mse()
+
+    return mse
+
+
+search_space = [
+    Categorical(['gbtree', 'dart'], name='booster'),
+    Integer(low=10, high=20, name='n_estimators', num_samples=10),
+    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=10)
+]
+
+prev_xy = {'213026901362135.5_0': {'booster': 'gbtree',
+                                   'n_estimators': 19,
+                                   'learning_rate': 0.0052790817104302595},
+           '212354344234773.53_1': {'booster': 'gbtree',
+                                    'n_estimators': 12,
+                                    'learning_rate': 0.009236769988485223},
+           '217301037967875.97_2': {'booster': 'gbtree',
+                                    'n_estimators': 17,
+                                    'learning_rate': 0.054629143096849984}}
+
 def check_attrs(optimizer, paras, ai4water_args=None):
     optimizer.eval_with_best(view_model=False)
     space = optimizer.space()
@@ -545,6 +577,49 @@ class TestHyperOpt(unittest.TestCase):
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
         return
 
+
+class TestAddPrevResult(unittest.TestCase):
+
+    def test_skopt_with_dict(self):
+
+        optimizer = HyperOpt("bayes",
+                             objective_fn=objective_func,
+                             param_space=search_space,
+                             num_iterations=12,
+                             verbosity=0,
+                             process_results=False,
+                             opt_path=os.path.join(os.getcwd(), f'results\\test_bayes_xgboost')
+                             )
+
+        optimizer.add_previous_results(prev_xy)
+
+        optimizer.fit()
+
+        assert len(optimizer.xy_of_iterations()) == 15
+        return
+
+    def test_skopt_with_xy(self):
+        x0, y0 = [], []
+        for y, x in prev_xy.items():
+            y0.append(float(y))
+            x0.append(list(x.values()))
+
+        optimizer = HyperOpt("bayes",
+                             objective_fn=objective_func,
+                             param_space=search_space,
+                             num_iterations=12,
+                             verbosity=0,
+                             process_results=False,
+                             opt_path=os.path.join(os.getcwd(), f'results\\test_bayes_xgboost')
+                             )
+
+        optimizer.add_previous_results(x=x0, y=y0)
+
+        optimizer.fit()
+
+        assert len(optimizer.xy_of_iterations()) == 15
+
+        return
 
 if __name__ == "__main__":
     unittest.main()
