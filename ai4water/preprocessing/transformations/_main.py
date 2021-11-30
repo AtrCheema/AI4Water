@@ -242,14 +242,15 @@ class Transformations(TransformationsContainer):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
             transformer = item.split('_')[2]
-            if transformer.lower() in list(self.available_transformers.keys()) + ["log",
-                                                                                  "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()) + [
+                "log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.transform_with_sklearn
+
         elif item.startswith("inverse_transform_with"):
             transformer = item.split('_')[3]
-            if transformer.lower() in list(self.available_transformers.keys()) + ["log",
-                                                                                  "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()) + [
+                "log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
         else:
@@ -498,7 +499,7 @@ class Transformations(TransformationsContainer):
             kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
 
         if self.treat_negatives and self.negative_indices is not None:
-            data = kwargs['data']
+            data = kwargs.get('data', self.data)
             for col, idx in self.negative_indices.items():
                 data[col][idx] = -data[col][idx]
             kwargs['data'] = data

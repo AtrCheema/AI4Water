@@ -176,6 +176,7 @@ class OptimizeTransformations(ModelOptimizerMixIn):
                 if method.startswith("log"):
                     t["replace_nans"] = True
                     t["replace_zeros"] = True
+                    t["treat_negatives"] = True
                 transformations.append(t)
 
         # following parameters must be overwritten even if they were provided by the user.
