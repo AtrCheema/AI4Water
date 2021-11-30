@@ -15,7 +15,6 @@ import joblib
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 try:
     from scipy.stats import median_abs_deviation as mad
@@ -221,7 +220,7 @@ class BaseModel(NN, Plots):
             )
 
             # data_config, model_config = config['data_config'], config['model_config']
-            reset_seed(maker.config['seed'], os, random, np, tf, torch)
+            reset_seed(maker.config['seed'], os=os, random=random, tf=tf, torch=torch)
             if tf is not None:
                 # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
                 # file, they may share same graph.
@@ -800,6 +799,8 @@ class BaseModel(NN, Plots):
         Models that follow sklearn api such as xgboost,
         catboost, lightgbm and obviously sklearn.
         """
+        from ai4water.backend import get_sklearn_models
+
         ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
         _model = list(self.config['model'].keys())[0]
         regr_name = _model
@@ -816,7 +817,8 @@ class BaseModel(NN, Plots):
         if regr_name in ['OneClassSVM']:
             kwargs.update({'verbose': True if self.verbosity > 1 else False})
 
-        if regr_name == "CatBoostRegressor":  # https://stackoverflow.com/a/52921608/5982232
+        if regr_name in ["CatBoostRegressor", "CatBoostClassifier"]:
+            # https://stackoverflow.com/a/52921608/5982232
             if not any([arg in kwargs for arg in ['verbose', 'silent', 'logging_level']]):
                 if self.verbosity == 0:
                     kwargs['logging_level'] = 'Silent'
@@ -824,6 +826,39 @@ class BaseModel(NN, Plots):
                     kwargs['logging_level'] = 'Verbose'
                 else:
                     kwargs['logging_level'] = 'Info'
+            if 'random_seed' not in kwargs:
+                kwargs['random_seed'] = self.config['seed']
+
+        if regr_name in ["XGBRegressor", "XGBClassifier"]:
+            if 'seed' not in kwargs:
+                kwargs['random_state'] = self.config['seed']
+
+        # following sklearn based models accept random_state argument
+        if regr_name in [
+            "AdaBoostRegressor",
+            "BaggingClassifier", "BaggingRegressor",
+            "DecisionTreeClassifier", "DecisionTreeRegressor",
+            "ExtraTreeClassifier", "ExtraTreeRegressor",
+            "ExtraTreesClassifier", "ExtraTreesRegressor",
+            "ElasticNet", "ElasticNetCV",
+            "GradientBoostingClassifier", "GradientBoostingRegressor",
+            "GaussianProcessRegressor",
+            "HistGradientBoostingClassifier", "HistGradientBoostingRegressor",
+            "LogisticRegression",
+            "Lars",
+            "Lasso",
+            "LassoCV",
+            "LassoLars",
+            "LinearSVR",
+            "MLPClassifier", "MLPRegressor",
+            "PassiveAggressiveClassifier", "PassiveAggressiveRegressor",
+            "RandomForestClassifier", "RandomForestRegressor",
+            "RANSACRegressor", "RidgeClassifier",
+            "SGDClassifier", "SGDRegressor",
+            "TheilSenRegressor",
+        ]:
+            if 'random_state' not in kwargs:
+                kwargs['random_state'] = self.config['seed']
 
         self.residual_threshold_not_set = False
         if regr_name == "RANSACRegressor" and 'residual_threshold' not in kwargs:

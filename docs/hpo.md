@@ -39,3 +39,4 @@ For tutorial on using this class, see
             - skopt_sapce
             - hp_space
             - optuna_study
+            - add_previous_results
