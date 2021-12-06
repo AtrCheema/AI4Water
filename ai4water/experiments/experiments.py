@@ -625,7 +625,8 @@ Available cases are {self.models} and you wanted to include
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
         bar_chart(axis=axis[0],
-                  labels=names, values=train_matrics,
+                  labels=names[::-1],
+                  values=train_matrics[::-1],
                   color=kwargs.get('color', None),
                   title="Train",
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
@@ -633,7 +634,9 @@ Available cases are {self.models} and you wanted to include
                   title_fs=kwargs.get('title_fs', 20)
                   )
 
-        bar_chart(axis=axis[1], labels=names, values=test_matrics,
+        bar_chart(axis=axis[1],
+                  labels=names[::-1],
+                  values=test_matrics[::-1],
                   title="Test",
                   color=kwargs.get('color', None),
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
