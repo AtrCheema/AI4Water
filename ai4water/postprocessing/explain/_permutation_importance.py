@@ -14,7 +14,7 @@ class PermutationImportance(ExplainerMixin):
     permutation importance answers the question, how much the model's prediction
     performance is influenced by a feature? It defines the feature importance as
     the decrease in model performance when one feature is corrupted
-    [Molnar et al., 2021](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance)
+    ([Molnar et al., 2021](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance))
 
     Attributes:
         importances
@@ -63,6 +63,8 @@ class PermutationImportance(ExplainerMixin):
             use_noise_only:
                 If True, the original feature will be replaced by the noise.
             weights:
+            features:
+                names of features
 
             seed:
                 random seed for reproducibility. Permutation importance is
@@ -209,7 +211,7 @@ class PermutationImportance(ExplainerMixin):
         axis, im = imshow(
             imp, axis=axis,
             yticklabels=ytick_labels,
-            xticklabels=self.features if len(self.features)<=10 else None,
+            xticklabels=self.features if len(self.features) <= 10 else None,
             ylabel="Looback steps", xlabel="Input Features",
             annotate=annotate,
             title=f"Base Score {round(self._base_score(), 3)} with {ERROR_LABELS[self.scoring]}",
@@ -313,7 +315,7 @@ class PermutationImportance(ExplainerMixin):
                 # put the permuted input back in the list
                 inputs[inp_idx] = permuted_x
 
-                if original_inp_idx is None: # inputs were not list so unpack the list
+                if original_inp_idx is None:  # inputs were not list so unpack the list
                     prediction = self.model(*inputs, **kwargs)
                 else:
                     prediction = self.model(inputs, **kwargs)

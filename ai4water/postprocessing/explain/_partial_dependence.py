@@ -36,13 +36,12 @@ class PartialDependencePlot(ExplainerMixin):
     """
     def __init__(
             self,
-            model:Callable,
+            model: Callable,
             data,
             feature_names=None,
             num_points: int = 100,
-            path = None,
+            path=None,
             **kwargs
-
     ):
         """Initiates the class
 
@@ -121,7 +120,7 @@ class PartialDependencePlot(ExplainerMixin):
                                         show_dist=show_dist, show_minima=show_minima,
                                         ice=ice, show=False, ax=ax_)
                     # resetting the label
-                    #ax_.set_xlabel(self.features[i])
+                    # ax_.set_xlabel(self.features[i])
                     ax_.set_ylabel(self.features[i])
                     process_axis(ax_, xlabel=self.features[i], top_spine=True, right_spine=True)
 
@@ -132,19 +131,19 @@ class PartialDependencePlot(ExplainerMixin):
                         show=False, ax=ax[i, j], colorbar=False
                     )
 
-                elif j>i:
-                    if not ax[i,j].lines:  # empty axes
-                        ax[i,j].axis("off")
+                elif j > i:
+                    if not ax[i, j].lines:  # empty axes
+                        ax[i, j].axis("off")
 
-                if j>0: # not the left most column
+                if j > 0:  # not the left most column
                     ax[i, j].yaxis.set_ticks([])
-                    ax[i,j].yaxis.set_visible(False)
+                    ax[i, j].yaxis.set_visible(False)
                     ax[i, j].yaxis.label.set_visible(False)
 
-                if i<n_dims-1:  # not the bottom most row
+                if i < n_dims-1:  # not the bottom most row
                     ax[i, j].xaxis.set_ticks([])
                     ax[i, j].xaxis.set_visible(False)
-                    ax[i,j].xaxis.label.set_visible(False)
+                    ax[i, j].xaxis.label.set_visible(False)
 
         if save:
             fname = os.path.join(self.path, f"pdp_interact_nd")
@@ -160,8 +159,8 @@ class PartialDependencePlot(ExplainerMixin):
             features: list,
             lookback: int = None,
             ax: plt.Axes = None,
-            plot_type:str = "2d",
-            cmap = None,
+            plot_type: str = "2d",
+            cmap=None,
             colorbar: bool = True,
             show: bool = True,
             save: bool = False,
@@ -278,7 +277,7 @@ class PartialDependencePlot(ExplainerMixin):
             model_expected_value: bool = False,
             show_ci: bool = False,
             show_minima: bool = False,
-            show:bool = True,
+            show: bool = True,
             save: bool = False
     ):
         """partial dependence plot in one dimension
@@ -335,7 +334,7 @@ class PartialDependencePlot(ExplainerMixin):
     def xv(self, data, feature, lookback):
 
         ind = self._feature_to_ind(feature)
-        if data.ndim==3:
+        if data.ndim == 3:
             xv = data[:, lookback, ind]
         else:
             xv = data[:, ind]
@@ -369,7 +368,7 @@ class PartialDependencePlot(ExplainerMixin):
 
         return pd_vals, ice_vals
 
-    def _feature_to_ind(self, feature) -> int :
+    def _feature_to_ind(self, feature) -> int:
         ind = feature
         if isinstance(feature, str):
             if self.single_source:
@@ -392,7 +391,7 @@ class PartialDependencePlot(ExplainerMixin):
 
         if ax is None:
             fig = plt.figure()
-            ax = fig.add_axes((0.1,0.3,0.8,0.6))
+            ax = fig.add_axes((0.1, 0.3, 0.8, 0.6))
 
         xs = self.xs(data, feature, lookback)
 
@@ -408,11 +407,10 @@ class PartialDependencePlot(ExplainerMixin):
             lower = pd_vals - std
             ax.fill_between(xs, upper, lower, alpha=0.14, color='#66C2D7')
 
-
         # the line plot
         ax.plot(xs, pd_vals, color='blue', linewidth=2, alpha=1)
 
-        title=None
+        title = None
         if lookback is not None:
             title = f"lookback: {lookback}"
         process_axis(ax, ylabel=ylabel, ylabel_kws=dict(fontsize=20), right_spine=False, top_spine=False,
@@ -424,7 +422,7 @@ class PartialDependencePlot(ExplainerMixin):
 
         if show_dist:
             xv = self.xv(data, feature, lookback)
-            if show_dist_as=="hist":
+            if show_dist_as == "hist":
 
                 ax2.hist(xv, 50, density=False, facecolor='black', alpha=0.1, range=(xmin, xmax))
             else:
@@ -481,15 +479,15 @@ class PartialDependencePlot(ExplainerMixin):
         ax3 = ax.twiny()
 
         process_axis(ax3,
-                     xlim = (xmin, xmax),
+                     xlim=(xmin, xmax),
                      xticks=[mval], xticklabels=["E[" + feature + "]"],
-                     tick_params={'length':0, 'labelsize':11}, top_spine=False, right_spine=False)
+                     tick_params={'length': 0, 'labelsize': 11}, top_spine=False, right_spine=False)
         original_axis.axvline(mval, color="#999999", zorder=-1, linestyle="--", linewidth=1)
         return
 
 
 def process_axis(
-        ax:plt.Axes,
+        ax: plt.Axes,
         title=None, title_kws=None,
         xlabel=None, xlabel_kws=None,
         ylabel=None, ylabel_kws=None,
@@ -551,11 +549,11 @@ def process_axis(
     return
 
 
-def _add_dist_as_grid(fig:plt.Figure, hist_data, other_axes:plt.Axes,
+def _add_dist_as_grid(fig: plt.Figure, hist_data, other_axes: plt.Axes,
                       xlabel=None, xlabel_kws=None,  **plot_params):
     """Data point distribution plot for numeric feature"""
 
-    ax = fig.add_axes((0.1,0.1,0.8,0.14), sharex=other_axes)
+    ax = fig.add_axes((0.1, 0.1, 0.8, 0.14), sharex=other_axes)
     process_axis(ax, top_spine=False, xlabel=xlabel, xlabel_kws=xlabel_kws, bottom_spine=False,
                  right_spine=False, left_spine=False)
     ax.yaxis.set_visible(False)  # hide the yaxis
