@@ -104,6 +104,25 @@ class TestMtropicsLaos(unittest.TestCase):
 
         return
 
+    def test_regression_with_lookback(self):
+
+        df = laos.make_regression(lookback_steps=30)
+        assert df.shape == (5948, 8)
+        assert int(df.isna().sum().sum()) == 5690
+
+        return
+
+    def test_classification_with_lookback(self):
+
+        df = laos.make_classification(lookback_steps=30)
+        assert df.shape == (5948, 8)
+        assert int(df.isna().sum().sum()) == 5690
+        s = df['Ecoli_mpn100']
+        assert (s == 0).sum() == 102
+        self.assertEqual((s == 1).sum(), 156)
+
+        return
+
     def test_classification(self):
 
         df = laos.make_classification()
