@@ -799,25 +799,23 @@ class BaseModel(NN, Plots):
         Models that follow sklearn api such as xgboost,
         catboost, lightgbm and obviously sklearn.
         """
-        from ai4water.backend import get_sklearn_models
 
         ml_models = {**sklearn_models, **xgboost_models, **catboost_models, **lightgbm_models}
-        _model = list(self.config['model'].keys())[0]
-        regr_name = _model
+        estimator = list(self.config['model'].keys())[0]
 
         kwargs = list(self.config['model'].values())[0]
 
-        if regr_name in ['HistGradientBoostingRegressor', 'SGDRegressor', 'MLPRegressor']:
+        if estimator in ['HistGradientBoostingRegressor', 'SGDRegressor', 'MLPRegressor']:
             if self.config['val_fraction'] > 0.0:
                 kwargs.update({'validation_fraction': self.config['val_fraction']})
             elif self.config['test_fraction'] > 0.0:
                 kwargs.update({'validation_fraction': self.config['test_fraction']})
 
         # some algorithms allow detailed output during training, this is allowed when self.verbosity is > 1
-        if regr_name in ['OneClassSVM']:
+        if estimator in ['OneClassSVM']:
             kwargs.update({'verbose': True if self.verbosity > 1 else False})
 
-        if regr_name in ["CatBoostRegressor", "CatBoostClassifier"]:
+        if estimator in ["CatBoostRegressor", "CatBoostClassifier"]:
             # https://stackoverflow.com/a/52921608/5982232
             if not any([arg in kwargs for arg in ['verbose', 'silent', 'logging_level']]):
                 if self.verbosity == 0:
@@ -829,12 +827,12 @@ class BaseModel(NN, Plots):
             if 'random_seed' not in kwargs:
                 kwargs['random_seed'] = self.config['seed']
 
-        if regr_name in ["XGBRegressor", "XGBClassifier"]:
+        if estimator in ["XGBRegressor", "XGBClassifier"]:
             if 'seed' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
 
         # following sklearn based models accept random_state argument
-        if regr_name in [
+        if estimator in [
             "AdaBoostRegressor",
             "BaggingClassifier", "BaggingRegressor",
             "DecisionTreeClassifier", "DecisionTreeRegressor",
@@ -860,17 +858,22 @@ class BaseModel(NN, Plots):
             if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
 
+        # in sklearn version >1.0 precompute automatically becomes to True
+        # which can raise error
+        if estimator in ["ElasticNetCV", "LassoCV"] and 'precompute' not in kwargs:
+            kwargs['precompute'] = False
+
         self.residual_threshold_not_set = False
-        if regr_name == "RANSACRegressor" and 'residual_threshold' not in kwargs:
+        if estimator == "RANSACRegressor" and 'residual_threshold' not in kwargs:
             self.residual_threshold_not_set = True
 
-        if regr_name in ["LGBMRegressor", 'LGBMClassifier']:
+        if estimator in ["LGBMRegressor", 'LGBMClassifier']:
             if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
 
         # initiate the estimator/model class
-        if regr_name in ml_models:
-            model = ml_models[regr_name](**kwargs)
+        if estimator in ml_models:
+            model = ml_models[estimator](**kwargs)
         else:
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
@@ -882,8 +885,8 @@ class BaseModel(NN, Plots):
 
                 if sk_maj_ver < 1 and sk_min_ver < 23:
                     raise ValueError(
-                        f"{regr_name} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
-            raise ValueError(f"model {regr_name} not found. {version_info}")
+                        f"{estimator} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
+            raise ValueError(f"model {estimator} not found. {version_info}")
 
         self._model = model
 
