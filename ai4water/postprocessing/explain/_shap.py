@@ -805,6 +805,7 @@ class ShapExplainer(ExplainerMixin):
                                shap_values,
                                self.features,
                                legend_labels=legend_labels,
+                               show=False,
                                legend_location=legend_location,
                                **decision_kwargs)
             if save:

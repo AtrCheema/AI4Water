@@ -41,7 +41,8 @@ class LimeExplainer(ExplainerMixin):
             explainer=None,
             path=None,
             features: list = None,
-            verbosity: Union[int, bool] = True
+            verbosity: Union[int, bool] = True,
+            **kwargs
     ):
         """
         Arguments:
@@ -62,7 +63,7 @@ class LimeExplainer(ExplainerMixin):
 
         self.mode = mode
         self.verbosity = verbosity
-        self.explainer = self._get_explainer(explainer)
+        self.explainer = self._get_explainer(explainer, **kwargs)
 
         self.explaination_objects = {}
 
@@ -76,31 +77,43 @@ class LimeExplainer(ExplainerMixin):
             assert x in ["regression", "classification"], f"mode must be either regression or classification not {x}"
         self._mode = x
 
-    def _get_explainer(self, proposed_explainer=None):
+    def _get_explainer(self, proposed_explainer=None, **kwargs):
 
         import lime.lime_tabular
 
         if proposed_explainer is None and self.data.ndim <= 2:
-            lime_explainer = lime.lime_tabular.LimeTabularExplainer(self.train_data,
-                                                                    feature_names=self.features,
-                                                                    # class_names=['price'],
-                                                                    # categorical_features=categorical_features,
-                                                                    verbose=self.verbosity,
-                                                                    mode=self.mode
-                                                                    )
+            lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+                self.train_data,
+                feature_names=self.features,
+                # class_names=['price'],
+                # categorical_features=categorical_features,
+                verbose=self.verbosity,
+                mode=self.mode,
+                **kwargs
+            )
         elif proposed_explainer in lime.lime_tabular.__dict__.keys():
-            lime_explainer = getattr(lime.lime_tabular, proposed_explainer)(self.train_data,
-                                                                            feature_names=self.features,
-                                                                            mode=self.mode,
-                                                                            verbose=self.verbosity)
+            lime_explainer = getattr(lime.lime_tabular, proposed_explainer)(
+                self.train_data,
+                feature_names=self.features,
+                mode=self.mode,
+                verbose=self.verbosity,
+                **kwargs
+            )
         elif self.data.ndim == 3:
-            lime_explainer = lime.lime_tabular.RecurrentTabularExplainer(self.train_data,
-                                                                         mode=self.mode,
-                                                                         feature_names=self.features,
-                                                                         verbose=self.verbosity)
+            lime_explainer = lime.lime_tabular.RecurrentTabularExplainer(
+                self.train_data,
+                mode=self.mode,
+                feature_names=self.features,
+                verbose=self.verbosity,
+                **kwargs
+            )
         elif proposed_explainer is not None:
-            lime_explainer = getattr(lime, proposed_explainer)(self.train_data,
-                                                               features=self.features, mode=self.mode)
+            lime_explainer = getattr(lime, proposed_explainer)(
+                self.train_data,
+                features=self.features,
+                mode=self.mode,
+                **kwargs
+            )
         else:
             raise ValueError(f"Can not infer explainer. Please specify explainer to use.")
         return lime_explainer
