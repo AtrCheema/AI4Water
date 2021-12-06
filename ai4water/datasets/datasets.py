@@ -163,6 +163,8 @@
 # https://essd.copernicus.org/articles/13/1307/2021/
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1786
 
+#DWD
+# https://opendata.dwd.de/climate_environment/CDC/observations_germany/
 
 # geologic
 # https://zenodo.org/record/4536561#.YExpQNyRWUk
@@ -1161,7 +1163,8 @@ class MtropicsLaos(Datasets):
                             st: Union[None, str] = "20110525 14:00:00",
                             en: Union[None, str] = "20181027 00:00:00",
                             freq: str = "6min",
-                            threshold: Union[int, dict] = 400
+                            threshold: Union[int, dict] = 400,
+                            lookback_steps: int = None,
                             ) -> pd.DataFrame:
         """
         Makes a classification problem.
@@ -1177,7 +1180,10 @@ class MtropicsLaos(Datasets):
                 are set to 0. The value of 400 is chosen for E. coli to make the
                 the number 0s and 1s balanced. It should be noted that US-EPA recommends
                 threshold value of 400 cfu/ml.
-
+            lookback_steps:
+                the number of previous steps to use. If this argument is used,
+                the resultant dataframe will have (ecoli_observations * lookback_steps)
+                rows. The resulting index will not be continuous.
         returns:
             a dataframe of shape `(inputs+target, st:en)`
 
@@ -1205,6 +1211,8 @@ class MtropicsLaos(Datasets):
 
         data[target[0]] = s
 
+        if lookback_steps:
+            return consider_lookback(data, lookback_steps, target)
         return data
 
     def make_regression(self,
@@ -1212,7 +1220,8 @@ class MtropicsLaos(Datasets):
                         output_features: Union[str, list] = "Ecoli_mpn100",
                         st: Union[None, str] = "20110525 14:00:00",
                         en: Union[None, str] = "20181027 00:00:00",
-                        freq: str = "6min"
+                        freq: str = "6min",
+                        lookback_steps: int = None
                         ) -> pd.DataFrame:
         """
         Makes a regression problem using hydrological, environmental,
@@ -1224,6 +1233,10 @@ class MtropicsLaos(Datasets):
             st : starting date of data
             en : end date of data
             freq : frequency of data
+            lookback_steps:
+                the number of previous steps to use. If this argument is used,
+                the resultant dataframe will have (ecoli_observations * lookback_steps)
+                rows. The resulting index will not be continuous.
 
         returns:
             a dataframe of shape `(inputs+target, st:en)`
@@ -1239,6 +1252,8 @@ class MtropicsLaos(Datasets):
         """
         data = self._make_ml_problem(input_features, output_features, st, en, freq)
 
+        if lookback_steps:
+            return consider_lookback(data, lookback_steps, output_features)
         return data
 
     def _make_ml_problem(self, input_features, output_features, st, en, freq):
@@ -1389,3 +1404,35 @@ def _process_laos_shpfiles(shape_file, out_path):
                                'NAME': lu,
                                'area': poly.area},
             })
+
+
+def consider_lookback(df:pd.DataFrame, lookback:int, col_name:str)->pd.DataFrame:
+    """selects rows from dataframe considering lookback based upon nan
+     values in col_name"""
+
+    if isinstance(col_name, list):
+        assert len(col_name) == 1
+        col_name = col_name[0]
+
+    if not isinstance(col_name, str):
+        raise NotImplementedError
+
+    start = False
+    steps = 0
+
+    masks = np.full(len(df), False)
+
+    for idx, ecoli in enumerate(df[col_name].values[::-1]):
+        if not ecoli != ecoli:
+            start = True
+            steps = 0
+
+        if start and steps < lookback:
+            masks[idx] = True
+            steps += 1
+
+        # if we have started counting but the limit has reached
+        if start and steps > lookback:
+            start = False
+
+    return df.iloc[masks[::-1]]
