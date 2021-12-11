@@ -878,7 +878,7 @@ class BaseModel(NN, Plots):
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
                                             xgboost=xgboost)
-            if regr_name in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
+            if estimator in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
                              'GammaRegressor']:
                 sk_maj_ver = int(sklearn.__version__.split('.')[0])
                 sk_min_ver = int(sklearn.__version__.split('.')[1])
@@ -1030,7 +1030,7 @@ class BaseModel(NN, Plots):
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
         model_name = list(self.config['model'].keys())[0]
-        fname = os.path.join(self.w_path, self.category + '_' + self.mode + '_' + model_name)
+        fname = os.path.join(self.w_path, model_name)
 
         if "tpot" not in model_name:
             joblib.dump(self._model, fname)
