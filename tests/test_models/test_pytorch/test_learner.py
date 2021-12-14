@@ -12,7 +12,7 @@ import torch.nn as nn
 from torch import sigmoid
 import matplotlib.pyplot as plt
 
-from ai4water.pytorch_training import Learner
+from ai4water.models.torch import Learner
 
 
 class Net(nn.Module):

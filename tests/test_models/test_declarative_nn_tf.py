@@ -15,7 +15,7 @@ else:
     from ai4water import Model
 
 from ai4water.datasets import arg_beach
-from ai4water.private_layers import ConditionalRNN
+from ai4water.models.tensorflow.private_layers import ConditionalRNN
 
 inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
 outputs = ['tetx_coppml']
