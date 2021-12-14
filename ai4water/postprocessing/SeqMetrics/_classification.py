@@ -2,7 +2,6 @@
 import numpy as np
 from sklearn import preprocessing
 # from sklearn.metrics import hinge_loss
-from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
 
 from .utils import list_subclass_methods
@@ -45,8 +44,9 @@ class ClassificationMetrics(Metrics):
         """retuned array is 1d"""
         if self.categorical:
             return np.argmax(self.true, axis=1)
-        assert self.true.ndim == 1
-        return self.true
+        # it should be 1 dimensional
+        assert self.true.size == len(self.true)
+        return self.true.reshape(-1,)
 
     def _true_logits(self):
         """returned array is 2d"""
@@ -92,5 +92,7 @@ class ClassificationMetrics(Metrics):
     def balanced_accuracy_score(self):
         return balanced_accuracy_score(self.true_labels, self.pred_labels)
 
-    def accuracy(self):
-        return accuracy_score(self.true_labels, self.pred_labels)
+    def accuracy(self, normalize=True):
+        if normalize:
+            return np.average(self.true_labels==self.pred_labels)
+        return (self.true_labels==self.pred_labels).sum()

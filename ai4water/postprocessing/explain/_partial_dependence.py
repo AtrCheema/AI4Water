@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 from ._explain import ExplainerMixin
 
 
+# todo, optionally show predicted value as dots on plots
+
 def compute_bounds(xmin, xmax, xv):
-    """ 
+    """
     from shap
     Handles any setting of xmax and xmin.
 

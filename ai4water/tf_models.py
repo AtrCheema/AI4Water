@@ -191,13 +191,13 @@ class DualAttentionModel(FModel):
 
         # initialize the first cell state
         if s0 is None:
-            if self.drop_remainder:
+            if self.config['drop_remainder']:
                 s0 = tf.zeros((self.batch_size, config['n_s']), name=f'enc_first_cell_state_{suf}')
             else:
                 s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_' + suf)
         # initialize the first hidden state
         if h0 is None:
-            if self.drop_remainder:
+            if self.config['drop_remainder']:
                 h0 = tf.zeros((self.batch_size, config['n_h']), name=f'enc_first_hidden_state_{suf}')
             else:
                 h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_' + suf)
@@ -373,6 +373,9 @@ class DualAttentionModel(FModel):
             data='training',
             show=False
     ):
+
+        if not os.path.exists(self.act_path):
+            os.makedirs(self.act_path)
 
         data_name = name or data
 

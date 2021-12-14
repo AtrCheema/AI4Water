@@ -298,6 +298,8 @@ class BaseModel(NN, Plots):
 
     @property
     def is_multilabel(self):
+        if self.dh.data is None:
+            return None
         return self.dh.is_multilabel
 
     @property
@@ -658,6 +660,9 @@ class BaseModel(NN, Plots):
                               user_defined_data: bool = False
                               ):
         """post-processes classification results."""
+        if user_defined_data:
+            return
+
         from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
 
         if self.is_multiclass:
@@ -666,10 +671,10 @@ class BaseModel(NN, Plots):
             fname = os.path.join(self.path, f"{prefix}_prediction.csv")
             pd.DataFrame(np.concatenate([true, predicted], axis=1),
                          columns=true_labels + pred_labels, index=index).to_csv(fname)
-            metrics = ClassificationMetrics(true, predicted, categorical=True)
+            class_metrics = ClassificationMetrics(true, predicted, categorical=True)
 
             dict_to_file(self.path,
-                         errors=metrics.calculate_all(),
+                         errors=class_metrics.calculate_all(),
                          name=f"{prefix}_{dateandtime_now()}.json")
         else:
             if predicted.ndim == 1:
@@ -682,9 +687,9 @@ class BaseModel(NN, Plots):
                 if not os.path.exists(fpath):
                     os.makedirs(fpath)
 
-                metrics = ClassificationMetrics(_true, _pred, categorical=False)
+                class_metrics = ClassificationMetrics(_true, _pred, categorical=False)
                 dict_to_file(fpath,
-                             errors=getattr(metrics, f"calculate_{metrics}")(),
+                             errors=getattr(class_metrics, f"calculate_{metrics}")(),
                              name=f"{prefix}_{_class}_{dateandtime_now()}.json"
                              )
 
@@ -878,7 +883,7 @@ class BaseModel(NN, Plots):
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
                                             xgboost=xgboost)
-            if estimator in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
+            if regr_name in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
                              'GammaRegressor']:
                 sk_maj_ver = int(sklearn.__version__.split('.')[0])
                 sk_min_ver = int(sklearn.__version__.split('.')[1])
@@ -1030,7 +1035,7 @@ class BaseModel(NN, Plots):
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
         model_name = list(self.config['model'].keys())[0]
-        fname = os.path.join(self.w_path, model_name)
+        fname = os.path.join(self.w_path, self.category + '_' + self.mode + '_' + model_name)
 
         if "tpot" not in model_name:
             joblib.dump(self._model, fname)
@@ -1574,8 +1579,6 @@ class BaseModel(NN, Plots):
         if 'layers' not in self.config['model']:
 
             if self.mode.lower().startswith("cl"):
-
-                self.decision_tree(which="sklearn", **kwargs)
 
                 data = self.test_data()
                 x, y = maybe_three_outputs(data)
