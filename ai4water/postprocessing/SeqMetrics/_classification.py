@@ -3,9 +3,14 @@ import numpy as np
 from sklearn import preprocessing
 # from sklearn.metrics import hinge_loss
 from sklearn.metrics import balanced_accuracy_score
+import sklearn
 
 from .utils import list_subclass_methods
 from ._SeqMetrics import Metrics
+
+from ai4water.backend import get_attributes
+
+CLS_METRICS = get_attributes(sklearn.metrics, '_classification', case_sensitive=True)
 
 
 class ClassificationMetrics(Metrics):
@@ -22,6 +27,9 @@ class ClassificationMetrics(Metrics):
 
         self.all_methods = list_subclass_methods(ClassificationMetrics, True)
         # self.all_methods = [m for m in all_methods if not m.startswith('_')]
+
+    def __getattr__(self, item):
+        CLS_METRICS[item](self.true_labels, self.pred_labels)
 
     @staticmethod
     def _minimal() -> list:
@@ -43,7 +51,7 @@ class ClassificationMetrics(Metrics):
     def _true_labels(self):
         """retuned array is 1d"""
         if self.categorical:
-            return np.argmax(self.true, axis=1)
+            return np.argmax(self.true.reshape(-1,1), axis=1)
         # it should be 1 dimensional
         assert self.true.size == len(self.true)
         return self.true.reshape(-1,)
@@ -58,7 +66,7 @@ class ClassificationMetrics(Metrics):
     def _pred_labels(self):
         """returns 1d"""
         if self.categorical:
-            return np.argmax(self.predicted, axis=1)
+            return np.argmax(self.predicted.reshape(-1,1), axis=1)
         lb = preprocessing.LabelBinarizer()
         lb.fit(self.true_labels)
         return lb.inverse_transform(self.predicted)
