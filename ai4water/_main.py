@@ -883,7 +883,7 @@ class BaseModel(NN, Plots):
             from .backend import sklearn, lightgbm, catboost, xgboost
             version_info = get_version_info(sklearn=sklearn, lightgbm=lightgbm, catboost=catboost,
                                             xgboost=xgboost)
-            if regr_name in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
+            if estimator in ['TweedieRegressor', 'PoissonRegressor', 'LGBMRegressor', 'LGBMClassifier',
                              'GammaRegressor']:
                 sk_maj_ver = int(sklearn.__version__.split('.')[0])
                 sk_min_ver = int(sklearn.__version__.split('.')[1])
