@@ -340,20 +340,23 @@ class Learner(AttributeContainer):
                 or a list of metrics. Allowed metrics are anyone from
                 `ai4water.post_processing.SeqMetrics.RegressionMetrics`
             kwargs :
+
+        Returns:
+            if metrics is string the returned value is float otherwise
+            it will be a dictionary
         """
-        if isinstance(metrics, str):
-            metrics = [metrics]
-
-        assert isinstance(metrics, list)
-
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
         evaluator = RegressionMetrics(true, pred)
 
         errors = {}
 
-        for m in metrics:
-            errors[m] = getattr(evaluator, m)()
+        if isinstance(metrics, str):
+            errors = getattr(evaluator, metrics)()
+        else:
+            assert isinstance(metrics, list)
+            for m in metrics:
+                errors[m] = getattr(evaluator, m)()
 
         return errors
 

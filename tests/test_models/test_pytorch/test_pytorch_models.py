@@ -1,7 +1,11 @@
 import os
-import site   # so that AI4Water directory is in path
 import sys
+import site   # so that AI4Water directory is in path
+import math
 import unittest
+
+import numpy as np
+
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
@@ -23,7 +27,9 @@ class TestPytorchModels(unittest.TestCase):
                            )
         model.fit()
         p = model.predict()
+        assert isinstance(p, np.ndarray)
         s = model.evaluate('training')
+        assert math.isfinite(s)
         return
 
     def test_imvmodel(self):
@@ -43,9 +49,12 @@ class TestPytorchModels(unittest.TestCase):
                          )
 
         model.fit()
-        model.predict()
-        model.evaluate('training')
+        p = model.predict()
+        assert isinstance(p, np.ndarray)
+        val_score = model.evaluate('training')
+        assert math.isfinite(val_score)
         model.interpret()
+        return
 
 if __name__ == "__main__":
     unittest.main()
