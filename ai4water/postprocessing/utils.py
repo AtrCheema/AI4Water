@@ -5,8 +5,12 @@ import numpy as np
 def choose_examples(x, examples_to_use, y=None):
     """Chooses exampels from x and y"""
     if isinstance(examples_to_use, int):
-        # randomly chose x values from test_x
-        x, index = choose_n_imp_exs(x, examples_to_use, y)
+        if len(x) == examples_to_use:
+            # since using all the examples, don't randomize them
+            x, index = x, np.arange(examples_to_use)
+        else:
+            # randomly chose x values from test_x
+            x, index = choose_n_imp_exs(x, examples_to_use, y)
     elif isinstance(examples_to_use, float):
         assert examples_to_use < 1.0
         # randomly choose x fraction from test_x
