@@ -12,8 +12,7 @@ with open('version.py') as fv:
 
 min_requirements = [
     'numpy<=1.19.2',
-    'h5py<2.11.0',
-    'scikit-learn<=0.24.2',
+    'scikit-learn',
     'pandas',
     'matplotlib',
     'scikit-optimize',
@@ -119,6 +118,6 @@ setup(
         'all': extra_requires,
         'hpo': hpo_requirements,
         'post_process': post_process_requirements,
-        'exp': exp_requirements
+        'exp': exp_requirements,
     }
 )
