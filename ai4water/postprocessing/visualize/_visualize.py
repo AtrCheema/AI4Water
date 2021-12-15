@@ -122,12 +122,15 @@ class Visualize(Plots):
                        model.category,
                        config=model.config)
 
-    def __call__(self, layer_name,
-                 data='training',
-                 x=None,
-                 y=None,
-                 examples_to_use=None,
-                 show=False):
+    def __call__(
+            self,
+            layer_name,
+            data='training',
+            x=None,
+            y=None,
+            examples_to_use=None,
+            show: bool = False,
+    ):
 
         if self.model.category == "DL":
             self.activations(layer_name, data, x, examples_to_use, show=show)
@@ -135,8 +138,8 @@ class Visualize(Plots):
             self.weights(layer_name, show=show)
             self.weight_gradients(layer_name, data=data, x=x, y=y, show=show)
         else:
-            self.decision_tree(show=show)
-            self.decision_tree_leaves(data=data)
+            self.decision_tree(show=show, save=save)
+            self.decision_tree_leaves(data=data, save=save)
 
         return
 
@@ -172,14 +175,15 @@ class Visualize(Plots):
 
         return activations
 
-    def activations(self,
-                    layer_names=None,
-                    data: str = 'training',
-                    x=None,
-                    examples_to_use: Union[int, list, np.ndarray, range] = None,
-                    show: bool = False
-                    ):
-        """Plots outputs of intermediate layers except input and output.
+    def activations(
+            self,
+            layer_names=None,
+            data: str = 'training',
+            x=None,
+            examples_to_use: Union[int, list, np.ndarray, range] = None,
+            show: bool = False
+    ):
+        """Plots outputs of any layer of neural network.
 
         Arguments:
             data : The data to be used for calculating outputs of layers.
@@ -189,6 +193,8 @@ class Visualize(Plots):
             examples_to_use : If integer, it will be the number of examples to use.
                 If array like, it will be the indices of examples to use.
             show :
+            save:
+                whether to save the plot or not
         """
         activations = self.get_activations(x=x, data=data)
 
@@ -278,10 +284,11 @@ class Visualize(Plots):
                 weights[weight.name] = keras.backend.eval(weight)
         return weights
 
-    def weights(self,
-                layer_names: Union[str, list] = None,
-                show=False
-                ):
+    def weights(
+            self,
+            layer_names: Union[str, list] = None,
+            show: bool = False
+    ):
         """Plots the weights of a specific layer or all layers.
 
         Arguments:
@@ -331,12 +338,13 @@ class Visualize(Plots):
                         print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
         return
 
-    def get_activation_gradients(self,
-                                 layer_names: Union[str, list] = None,
-                                 x=None,
-                                 y=None,
-                                 data: str = 'training'
-                                 ) -> dict:
+    def get_activation_gradients(
+            self,
+            layer_names: Union[str, list] = None,
+            x=None,
+            y=None,
+            data: str = 'training'
+    ) -> dict:
         """
         Finds gradients of outputs of a layer.
 
@@ -357,15 +365,16 @@ class Visualize(Plots):
 
         return keract.get_gradients_of_activations(self.model, x, y, layer_names=layer_names)
 
-    def activation_gradients(self,
-                             layer_names: Union[str, list],
-                             data='training',
-                             x=None,
-                             y=None,
-                             examples_to_use=None,
-                             plot_type="2D",
-                             show=False
-                             ):
+    def activation_gradients(
+            self,
+            layer_names: Union[str, list],
+            data='training',
+            x=None,
+            y=None,
+            examples_to_use=None,
+            plot_type="2D",
+            show: bool = False
+    ):
         """Plots the gradients o activations/outputs of layers
 
         Arguments:
@@ -518,13 +527,14 @@ class Visualize(Plots):
 
         return keract.get_gradients_of_trainable_weights(self.model, x, y)
 
-    def weight_gradients(self,
-                         layer_names: Union[str, list] = None,
-                         data='training',
-                         x=None,
-                         y=None,
-                         show: bool = False
-                         ):
+    def weight_gradients(
+            self,
+            layer_names: Union[str, list] = None,
+            data='training',
+            x=None,
+            y=None,
+            show: bool = False,
+    ):
         """Plots gradient of all trainable weights
 
         Arguments:
