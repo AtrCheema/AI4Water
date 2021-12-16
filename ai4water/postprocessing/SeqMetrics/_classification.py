@@ -17,8 +17,8 @@ class ClassificationMetrics(Metrics):
     """Calculates classification metrics."""
     # todo add very major erro and major error
 
-    def __init__(self, *args, categorical=False, **kwargs):
-        self.categorical = categorical
+    def __init__(self, *args, multiclass=False, **kwargs):
+        self.multiclass = multiclass
         super().__init__(*args, metric_type='classification', **kwargs)
         self.true_labels = self._true_labels()
         self.true_logits = self._true_logits()
@@ -29,7 +29,11 @@ class ClassificationMetrics(Metrics):
         # self.all_methods = [m for m in all_methods if not m.startswith('_')]
 
     def __getattr__(self, item):
-        CLS_METRICS[item](self.true_labels, self.pred_labels)
+        val = CLS_METRICS[item](self.true_labels, self.pred_labels)
+        def func():  # because we want .f1_score() and not .f1_score
+            return val
+        return func
+
 
     @staticmethod
     def _minimal() -> list:
@@ -50,7 +54,7 @@ class ClassificationMetrics(Metrics):
 
     def _true_labels(self):
         """retuned array is 1d"""
-        if self.categorical:
+        if self.multiclass:
             return np.argmax(self.true.reshape(-1,1), axis=1)
         # it should be 1 dimensional
         assert self.true.size == len(self.true)
@@ -58,14 +62,14 @@ class ClassificationMetrics(Metrics):
 
     def _true_logits(self):
         """returned array is 2d"""
-        if self.categorical:
+        if self.multiclass:
             return self.true
         lb = preprocessing.LabelBinarizer()
         return lb.fit_transform(self.true)
 
     def _pred_labels(self):
         """returns 1d"""
-        if self.categorical:
+        if self.multiclass:
             return np.argmax(self.predicted.reshape(-1,1), axis=1)
         lb = preprocessing.LabelBinarizer()
         lb.fit(self.true_labels)
@@ -73,7 +77,7 @@ class ClassificationMetrics(Metrics):
 
     def _pred_logits(self):
         """returned array is 2d"""
-        if self.categorical:
+        if self.multiclass:
             return self.true
         # we can't do it
         return None

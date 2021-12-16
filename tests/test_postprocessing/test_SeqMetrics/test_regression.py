@@ -10,7 +10,7 @@ import numpy as np
 
 from ai4water.postprocessing.SeqMetrics import plot_metrics
 from ai4water.postprocessing.SeqMetrics.utils import list_subclass_methods
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
 
 t = np.random.random((20, 1))
@@ -28,13 +28,6 @@ not_metrics = ['calculate_all',
                "composite_metrics",
                "relative_metrics",
                "percentage_metrics"]
-
-predictions = np.array([[0.25, 0.25, 0.25, 0.25],
-                        [0.01, 0.01, 0.01, 0.96]])
-targets = np.array([[0, 0, 0, 1],
-                   [0, 0, 0, 1]])
-
-class_metrics = ClassificationMetrics(targets, predictions, categorical=True)
 
 
 class test_errors(unittest.TestCase):
@@ -132,19 +125,6 @@ class test_errors(unittest.TestCase):
         self.assertEqual(len(list_subclass_methods(D, True)), 2)
         self.assertEqual(len(list_subclass_methods(D, True, False)), 3)
         self.assertEqual(len(list_subclass_methods(D, True, False, ['b'])), 2)
-        return
-
-
-class TestClassificationMetrics(unittest.TestCase):
-
-    def test_ce(self):
-        # https://stackoverflow.com/a/47398312/5982232
-        self.assertAlmostEqual(class_metrics.cross_entropy(), 0.71355817782)
-        return
-
-    def test_class_all(self):
-        all_metrics = class_metrics.calculate_all()
-        assert len(all_metrics) > 1
         return
 
 if __name__ == "__main__":
