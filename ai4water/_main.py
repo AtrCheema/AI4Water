@@ -671,7 +671,7 @@ class BaseModel(NN, Plots):
             fname = os.path.join(self.path, f"{prefix}_prediction.csv")
             pd.DataFrame(np.concatenate([true, predicted], axis=1),
                          columns=true_labels + pred_labels, index=index).to_csv(fname)
-            class_metrics = ClassificationMetrics(true, predicted, categorical=True)
+            class_metrics = ClassificationMetrics(true, predicted, multiclass=True)
 
             dict_to_file(self.path,
                          errors=class_metrics.calculate_all(),
@@ -687,7 +687,7 @@ class BaseModel(NN, Plots):
                 if not os.path.exists(fpath):
                     os.makedirs(fpath)
 
-                class_metrics = ClassificationMetrics(_true, _pred, categorical=False)
+                class_metrics = ClassificationMetrics(_true, _pred, multiclass=False)
                 dict_to_file(fpath,
                              errors=getattr(class_metrics, f"calculate_{metrics}")(),
                              name=f"{prefix}_{_class}_{dateandtime_now()}.json"

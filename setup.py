@@ -28,7 +28,6 @@ extra_requires = [
 'h5py<2.11.0', # only if you want to save batches
 'xgboost',
 'EMD-signal',  # for emd transformation
-'see-rnn',   # for rnn visualizations
 'lightgbm',
 'catboost',
 'tpot',

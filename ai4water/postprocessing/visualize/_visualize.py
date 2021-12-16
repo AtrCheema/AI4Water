@@ -138,8 +138,8 @@ class Visualize(Plots):
             self.weights(layer_name, show=show)
             self.weight_gradients(layer_name, data=data, x=x, y=y, show=show)
         else:
-            self.decision_tree(show=show, save=save)
-            self.decision_tree_leaves(data=data, save=save)
+            self.decision_tree(show=show)
+            self.decision_tree_leaves(data=data)
 
         return
 

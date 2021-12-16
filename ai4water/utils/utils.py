@@ -1678,8 +1678,13 @@ def plot_activations_along_inputs(
     return
 
 
-def imshow(values, axis=None,
-           vmin=None, vmax=None, xlabel=None, aspect=None, interpolation=None,
+def imshow(values,
+           axis=None,
+           vmin=None,
+           vmax=None,
+           xlabel=None,
+           aspect=None,
+           interpolation=None,
            title=None,
            cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
            show=False,
