@@ -29,6 +29,5 @@ jobs:
         pip install codecov
         pip install python-coveralls
 
-        coverage run -m unittest tests.test_model_class
-        coverage run -m unittest tests.test_utils
-        coverage run -m unittest tests.test_models
+        coverage run -m unittest tests.test_models.test_model_class
+        coverage run -m unittest tests.test_utils.test_utils
