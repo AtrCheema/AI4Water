@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ai4water.utils.visualizations import murphy_diagram, fdc_plot
+from ai4water.utils.utils import imshow
 
 
 class TestMurphyDiagrams(unittest.TestCase):
@@ -51,6 +52,12 @@ class TestFDC(unittest.TestCase):
         ax = fdc_plot(simulated, observed,
                        show=False)
         assert isinstance(ax, plt.Axes)
+        return
+
+class TestImshow(unittest.TestCase):
+
+    def test_imshow(self):
+        imshow(np.random.random((10, 10)), colorbar=True)
         return
 
 

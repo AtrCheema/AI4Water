@@ -1689,7 +1689,9 @@ def imshow(values,
            cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
            show=False,
            annotate=False,
-           annotate_kws=None
+           annotate_kws=None,
+           colorbar:bool=False,
+           colorbar_orientation:str = 'vertical'
            ):
     """One stop shop for imshow
     Example:
@@ -1725,6 +1727,10 @@ def imshow(values,
         axis.set_ylabel(ylabel)
     if title:
         axis.set_title(title)
+
+    if colorbar:
+        fig: plt.Figure = plt.gcf()
+        fig.colorbar(im, cax=axis, orientation=colorbar_orientation, pad=0.3)
 
     if show:
         plt.show()
