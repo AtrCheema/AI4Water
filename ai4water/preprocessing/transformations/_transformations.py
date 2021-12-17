@@ -16,6 +16,8 @@ from ai4water.utils.utils import jsonize
 
 # todo
 # inverse hyperbolic transformation: effective with many zeros
+# percent_normalization https://github.com/ysn2233/attentioned-dual-stage-stock-prediction/blob/master/dataset.py#L57
+# mean and max normalizations as in transformer
 
 class ScalerWithConfig(object):
     """Extends the sklearn's scalers in such a way that they can be

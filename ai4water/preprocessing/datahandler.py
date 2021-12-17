@@ -14,7 +14,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index
 from ai4water.datasets import all_datasets
-from ai4water.preprocessing.transformations import Transformations
+from ai4water.preprocessing.transformations import Transformation
 from ai4water.preprocessing.imputation import Imputation
 import ai4water.datasets as datasets
 from ai4water.utils.utils import print_something
@@ -1506,7 +1506,7 @@ class DataHandler(AttributeContainer):
                             scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
                             data, dummy_features = conform_shape(data, shape, features)  # get data to transform
 
-                            transformed_data = Transformations(data=data, **trans)(what='inverse', scaler=scaler)
+                            transformed_data = Transformation(data=data, **trans)(what='inverse', scaler=scaler)
                             data = transformed_data[orig_cols]  # remove the dummy data
 
             elif isinstance(transformation, dict):
@@ -1516,7 +1516,7 @@ class DataHandler(AttributeContainer):
                     scaler = self.scalers[key]
                     scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
                     data, dummy_features = conform_shape(data, shape, features=transformation['features'])
-                    transformed_data = Transformations(data=data, **transformation)(what='inverse', scaler=scaler)
+                    transformed_data = Transformation(data=data, **transformation)(what='inverse', scaler=scaler)
                     data = transformed_data[orig_cols]  # remove the dummy data
 
         return data
@@ -1796,18 +1796,18 @@ class MakeData(object):
         if transformation:
 
             if isinstance(transformation, dict):
-                data, scaler = Transformations(data=data, **transformation)('transformation', return_key=True)
+                data, scaler = Transformation(data=data, **transformation)('transformation', return_key=True)
                 scalers[key] = scaler
 
             # we want to apply multiple transformations
             elif isinstance(transformation, list):
                 for idx, trans in enumerate(transformation):
                     if trans['method'] is not None:
-                        data, scaler = Transformations(data=data, **trans)('transformation', return_key=True)
+                        data, scaler = Transformation(data=data, **trans)('transformation', return_key=True)
                         scalers[f'{key}_{trans["method"]}_{idx}'] = scaler
             else:
                 assert isinstance(transformation, str)
-                data, scaler = Transformations(data=data, method=transformation)('transformation', return_key=True)
+                data, scaler = Transformation(data=data, method=transformation)('transformation', return_key=True)
                 scalers[key] = scaler
 
         self.scalers.update(scalers)

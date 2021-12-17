@@ -9,7 +9,7 @@ site.addsitedir(ai4_dir)
 import numpy as np
 import pandas as pd
 
-from ai4water.preprocessing.transformations import Transformations
+from ai4water.preprocessing.transformations import Transformation
 from ai4water.preprocessing.transformations import StandardScaler
 from ai4water.preprocessing.transformations import MinMaxScaler
 from ai4water.preprocessing.transformations import RobustScaler
@@ -57,13 +57,13 @@ def run_method1(method,
 
     #print(f"testing: {method} with {cols} features")
 
-    normalized_df1, scaler = Transformations(data=df if data is None else data,
+    normalized_df1, scaler = Transformation(data=df if data is None else data,
                                              method=method,
                                              features=cols,
                                              replace_nans=replace_nans,
                                              **kwargs)('Transform', return_key=True)
 
-    denormalized_df1 = Transformations(data=normalized_df1,
+    denormalized_df1 = Transformation(data=normalized_df1,
                                        features=cols,
                                        replace_nans=replace_nans)('inverse', scaler=scaler['scaler'])
     return normalized_df1, denormalized_df1
@@ -80,7 +80,7 @@ def run_method2(method,
     if index:
         data.index = pd.date_range("20110101", periods=len(data), freq="D")
 
-    scaler = Transformations(data,
+    scaler = Transformation(data,
                              replace_nans=replace_nans,
                              method=method,
                              **kwargs)
@@ -102,7 +102,7 @@ def run_method3(method,
     if index:
         data.index = pd.date_range("20110101", periods=len(data), freq="D")
 
-    scaler = Transformations(data,
+    scaler = Transformation(data,
                              replace_nans=replace_nans,
                              method=method,
                              **kwargs)
@@ -118,7 +118,7 @@ def run_method4(method,
                 index=None,
                 data=None, **kwargs):
 
-    scaler = Transformations(data=df if data is None else data,
+    scaler = Transformation(data=df if data is None else data,
                              replace_nans=replace_nans, **kwargs)
 
     normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)(return_key=True)
@@ -247,8 +247,8 @@ class test_Scalers(unittest.TestCase):
     #     self.assertRaises(ValueError, Transformations(data=df), 'transform')
 
     def test_get_scaler_from_dict_error(self):
-        normalized_df1, _ = Transformations(data=df)('transform', return_key=True)
-        self.assertRaises(ValueError, Transformations(data=normalized_df1), 'inverse')
+        normalized_df1, _ = Transformation(data=df)('transform', return_key=True)
+        self.assertRaises(ValueError, Transformation(data=normalized_df1), 'inverse')
 
     def test_log_scaler_with_feat(self):
         self.run_method("log", cols=["data1"])
@@ -358,7 +358,7 @@ class test_Scalers(unittest.TestCase):
 
     def run_decomposition1(self, data, args, method):
 
-        scaler = Transformations(data=data, method=method, **args)
+        scaler = Transformation(data=data, method=method, **args)
         normalized_df, scaler_dict = scaler.transform(return_key=True)
         denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
 
@@ -488,7 +488,7 @@ class test_Scalers(unittest.TestCase):
     def test_example(self):
         data = arg_beach()
         inputs = ['pcp6_mm', 'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa']
-        transformer = Transformations(data=data[inputs], method='minmax', features=['pcp6_mm', 'pcp12_mm'])
+        transformer = Transformation(data=data[inputs], method='minmax', features=['pcp6_mm', 'pcp12_mm'])
         new_data = transformer.transform()
         orig_data = transformer.inverse_transform(data=new_data)
         np.allclose(data[inputs].values, orig_data.values)
@@ -534,7 +534,7 @@ class test_Scalers(unittest.TestCase):
     def test_negative(self):
         for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
             x = [1.0, 2.0, -3.0, 4.0]
-            tr = Transformations(x, method=m, treat_negatives=True)
+            tr = Transformation(x, method=m, treat_negatives=True)
             xtr = tr.transform()
             _x = tr.inverse_transform(data=xtr)
             np.testing.assert_array_almost_equal(x, _x.values.reshape(-1,))
@@ -542,7 +542,7 @@ class test_Scalers(unittest.TestCase):
         for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
             x1 = [1.0, -2.0, 0.0, 4.0]
             df1 = pd.DataFrame(np.column_stack([x, x1]))
-            tr = Transformations(df1, method=m, treat_negatives=True, replace_zeros=True)
+            tr = Transformation(df1, method=m, treat_negatives=True, replace_zeros=True)
             dft = tr.transform()
             _df = tr.inverse_transform(data=dft)
             np.testing.assert_array_almost_equal(df1.values, _df.values)

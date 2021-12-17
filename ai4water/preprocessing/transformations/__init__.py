@@ -3,7 +3,7 @@ inverse transform data. The enhancement is that these transformations have a
 config and from_config methods. Therefore we can save the transformation
 objects in a json file and load from a json file"""
 
-from ._main import Transformations
+from ._main import Transformation
 
 from ._transformations import ScalerWithConfig
 from ._transformations import MinMaxScaler

@@ -1,7 +1,7 @@
 
 
 **`Transformations`**
-::: ai4water.preprocessing.transformations.Transformations
+::: ai4water.preprocessing.transformations.Transformation
     handler: python
     selection:
         members:

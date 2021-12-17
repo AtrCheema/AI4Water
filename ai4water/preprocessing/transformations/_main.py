@@ -72,7 +72,7 @@ class TransformationsContainer(object):
         self.index = None
 
 
-class Transformations(TransformationsContainer):
+class Transformation(TransformationsContainer):
     """
     Applies transformation to tabular data.
     Any new transforming methods should define two methods one starting with
@@ -98,18 +98,18 @@ class Transformations(TransformationsContainer):
     To transform a datafrmae using any of the above methods use
 
     Examples:
-        >>> scaler = Transformations(data=[1,2,3,5], method='zscore')
+        >>> scaler = Transformation(data=[1,2,3,5], method='zscore')
         >>> scaler.transform()
 
         or
-        >>> scaler = Transformations(data=pd.DataFrame([1,2,3]))
+        >>> scaler = Transformation(data=pd.DataFrame([1,2,3]))
         >>> normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
 
-        >>> scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
+        >>> scaler = Transformation(data=pd.DataFrame([1,2,3]), method='minmax')
         >>> normalized_df, scaler_dict = scaler()
 
         or using one liner
-        >>> normalized_df, scaler = Transformations(
+        >>> normalized_df, scaler = Transformation(
         ...     data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
         ...     method='log', features=['a'])('transform')
 
@@ -184,18 +184,18 @@ class Transformations(TransformationsContainer):
                 INTIALIZATION and not during transform or inverse transform
 
         Example:
-            >>> from ai4water.preprocessing.transformations import Transformations
+            >>> from ai4water.preprocessing.transformations import Transformation
             >>> from ai4water.datasets import arg_beach
             >>> df = arg_beach()
             >>> inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
-            >>> transformer = Transformations(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
+            >>> transformer = Transformation(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
             >>> new_data = transformer.transform()
 
             Following shows how to apply log transformation on an array containing zeros
             by making use of the argument `replace_zeros`. The zeros in the input array
             will be replaced internally but will be inserted back afterwards.
-            >>> from ai4water.preprocessing.transformations import Transformations
-            >>> transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True,
+            >>> from ai4water.preprocessing.transformations import Transformation
+            >>> transformer = Transformation([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True,
             ...                               replace_zeros=True)
             >>> transformed_data = transformer.transform()
             ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
