@@ -226,7 +226,10 @@ class RegressionMetrics(Metrics):
 
     def corr_coeff(self) -> float:
         """
-        Correlation Coefficient
+        Pearson correlation coefficient.
+        It measures linear correlatin between true and predicted arrays.
+        It is sensitive to outliers.
+        Reference: Pearson, K 1895.
             .. math::
             r = \\frac{\\sum ^n _{i=1}(e_i - \\bar{e})(s_i - \\bar{s})}{\\sqrt{\\sum ^n _{i=1}(e_i - \\bar{e})^2}
              \\sqrt{\\sum ^n _{i=1}(s_i - \\bar{s})^2}}
@@ -960,23 +963,6 @@ class RegressionMetrics(Metrics):
         [1] Moriasi et al., 2015
         """
         return float(100.0 * sum(self.predicted - self.true) / sum(self.true))
-
-    def pearson_r(self) -> float:
-        """
-        Pearson correlation coefficient.
-        It measures linear correlatin between true and predicted arrays.
-        It is sensitive to outliers.
-        Reference: Pearson, K 1895.
-        """
-        # todo, it is same with 'corr_coeff'.
-        sim_mean = np.mean(self.predicted)
-        obs_mean = np.mean(self.true)
-
-        top = np.sum((self.true - obs_mean) * (self.predicted - sim_mean))
-        bot1 = np.sqrt(np.sum((self.true - obs_mean) ** 2))
-        bot2 = np.sqrt(np.sum((self.predicted - sim_mean) ** 2))
-
-        return float(top / (bot1 * bot2))
 
     def rmsle(self) -> float:
         """Root mean square log error.
