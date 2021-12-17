@@ -1045,7 +1045,7 @@ class RegressionMetrics(Metrics):
         r = np.sum(zx * zy) / (len(self.true) - 1)
         return float(r ** 2)
 
-    def r2_mod(self, weights=None):
+    def r2_score(self, weights=None):
         """
         This is not a symmetric function.
         Unlike most other scores, R^2 score may be negative (it need not actually

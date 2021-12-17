@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7]
+        python-version: [3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -20,8 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements_all.txt; fi
+        python -m pip install flake8 pytest tensorflow, scikit-learn matplotlib pandas
     - name: Test with unittest
       run: |
         conda install pytest
@@ -29,5 +28,4 @@ jobs:
         pip install codecov
         pip install python-coveralls
 
-        coverage run -m unittest tests.test_models.test_model_class
-        coverage run -m unittest tests.test_utils.test_utils
+        coverage run -m unittest tests.test_front_page_examples
