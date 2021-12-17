@@ -105,7 +105,7 @@ class MLRegressionExperiments(Experiments):
         self.regression_space = regression_space(num_samples=num_samples)
 
         if catboost is None:
-            self.models.remove('model_CATBoostRegressor')
+            self.models.remove('model_CatBoostRegressor')
         if lightgbm is None:
             self.models.remove('model_LGBMRegressor')
         if xgboost is None:
@@ -213,7 +213,7 @@ class MLRegressionExperiments(Experiments):
 
         return {'model': {'BayesianRidge': kwargs}}
 
-    def model_CATBoostRegressor(self, **kwargs):
+    def model_CatBoostRegressor(self, **kwargs):
         # https://catboost.ai/docs/concepts/python-reference_parameters-list.html
 
         self.path = "catboost.CatBoostRegressor"
