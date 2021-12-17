@@ -102,9 +102,6 @@ def train_predict(model):
 
     x, y = model.training_data()
 
-    model.fit()
-    model.predict()
-
     test_evaluation(model)
 
     return x,y
@@ -121,8 +118,6 @@ def test_train_val_test_data(data, val_data, **kwargs):
         verbosity=0,
         **kwargs
     )
-
-    model.fit()
 
     train_x, train_y = model.training_data()
     _val_data = model.validation_data()
@@ -175,7 +170,7 @@ def test_evaluation(model):
 class TestUtils(unittest.TestCase):
 
     """
-    I also build, train and predict from the model so that it is confirmed that everything works
+    I also build the model so that it is confirmed that everything works
     with different input/output shapes.
     """
 
@@ -487,38 +482,6 @@ class TestUtils(unittest.TestCase):
         assert tr_x.shape[-1] == x1.shape[-1]
         return
 
-    def test_stats(self):
-        d = ts_features(np.random.random(10))
-        self.assertGreater(len(d), 1)
-        return
-
-    def test_stats_pd(self):
-        d = ts_features(pd.Series(np.random.random(10)))
-        self.assertGreater(len(d), 1)
-        return
-
-    def test_stats_list(self):
-        d = ts_features(np.random.random(10).tolist())
-        self.assertGreater(len(d), 1)
-        return
-
-    def test_stats_slice(self):
-        d = ts_features(np.random.random(100), st=10, en=50)
-        self.assertEqual(d['Counts'], 40)
-        return
-
-    def test_ts_features_numbers(self):
-        # test that all the features are calculated
-        d = ts_features(np.random.random(100))
-        self.assertEqual(len(d), 21)
-        return
-
-    def test_ts_features_single_feature(self):
-        # test that only one feature can be calculated
-        d = ts_features(np.random.random(10), features=['Shannon entropy'])
-        self.assertEqual(len(d), 1)
-        return
-
     def test_datetimeindex(self):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
         time.sleep(1)
@@ -534,7 +497,6 @@ class TestUtils(unittest.TestCase):
             train_data='random',
             verbosity=0)
 
-        model.fit()
         t,p = model.predict(return_true=True)
         # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
         for i in range(100):
@@ -608,8 +570,6 @@ class TestUtils(unittest.TestCase):
                       train_data = 'random',
                       verbosity=0)
 
-        model.fit()
-
         x, y = model.training_data()
 
         test_evaluation(model)
@@ -641,8 +601,6 @@ class TestUtils(unittest.TestCase):
                       train_data='random',
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
                       verbosity=0)
-
-        model.fit()
 
         x, y = model.training_data()
 
@@ -754,26 +712,42 @@ class TestUtils(unittest.TestCase):
     #         np.allclose(testy[4][0], df[['out1']].iloc[29])
     #         return
 
-    def test_jsonize(self):
-        a = [np.array([2.0])]
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, list))
-        self.assertTrue(isinstance(b[0], float))
+class TestTSFeatures(unittest.TestCase):
+
+    def test_stats(self):
+        d = ts_features(np.random.random(10))
+        self.assertGreater(len(d), 1)
         return
 
-    def test_jsonize_nested_dict(self):
-        a = {'a': {'b': {'c': {'d': {'e': np.array([2])}}}}}
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, dict))
-        self.assertTrue(isinstance(b['a']['b']['c']['d']['e'], int))
+    def test_stats_pd(self):
+        d = ts_features(pd.Series(np.random.random(10)))
+        self.assertGreater(len(d), 1)
         return
 
-    def test_jsonize_none(self):
-        a = [None]
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, list))
-        self.assertTrue(isinstance(b[0], type(None)))
+    def test_stats_list(self):
+        d = ts_features(np.random.random(10).tolist())
+        self.assertGreater(len(d), 1)
         return
+
+    def test_stats_slice(self):
+        d = ts_features(np.random.random(100), st=10, en=50)
+        self.assertEqual(d['Counts'], 40)
+        return
+
+    def test_ts_features_numbers(self):
+        # test that all the features are calculated
+        d = ts_features(np.random.random(100))
+        self.assertEqual(len(d), 21)
+        return
+
+    def test_ts_features_single_feature(self):
+        # test that only one feature can be calculated
+        d = ts_features(np.random.random(10), features=['Shannon entropy'])
+        self.assertEqual(len(d), 1)
+        return
+
+
+class TestPrepareData(unittest.TestCase):
 
     def test_prepare_data0(self):
         # vanilla case of time series forecasting
@@ -857,6 +831,29 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(x), 33)
         return
 
+
+class TestJsonize(unittest.TestCase):
+
+    def test_jsonize(self):
+        a = [np.array([2.0])]
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, list))
+        self.assertTrue(isinstance(b[0], float))
+        return
+
+    def test_jsonize_nested_dict(self):
+        a = {'a': {'b': {'c': {'d': {'e': np.array([2])}}}}}
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, dict))
+        self.assertTrue(isinstance(b['a']['b']['c']['d']['e'], int))
+        return
+
+    def test_jsonize_none(self):
+        a = [None]
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, list))
+        self.assertTrue(isinstance(b[0], type(None)))
+        return
 
 if __name__ == "__main__":
     unittest.main()
