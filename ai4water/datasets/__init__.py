@@ -55,49 +55,46 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
     in detail in [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)
 
     Arguments:
-        inputs list: features to use as input. By default all environmental data
+        inputs : features to use as input. By default all environmental data
             is used which consists of following parameters
 
-                - tide_cm
-                - wat_temp_c
-                - sal_psu
-                - air_temp_c
-                - pcp_mm
-                - pcp3_mm
-                - pcp6_mm
-                - pcp12_mm
-                - wind_dir_deg
-                - wind_speed_mps
-                - air_p_hpa
-                - mslp_hpa
-                - rel_hum
+            - tide_cm
+            - wat_temp_c
+            - sal_psu
+            - air_temp_c
+            - pcp_mm
+            - pcp3_mm
+            - pcp6_mm
+            - pcp12_mm
+            - wind_dir_deg
+            - wind_speed_mps
+            - air_p_hpa
+            - mslp_hpa
+            - rel_hum
 
-        target list/str: feature/features to use as target/output. By default
+        target : feature/features to use as target/output. By default
             `tetx_coppml` is used as target.
             Logically one or more from following can be considered as target
 
-                - ecoli
-                - 16s
-                - inti1
-                - Total_args
-                - tetx_coppml
-                - sul1_coppml
-                - blaTEM_coppml
-                - aac_coppml
-                - Total_otus
-                - otu_5575
-                - otu_273
-                - otu_94
+            - ecoli
+            - 16s
+            - inti1
+            - Total_args
+            - tetx_coppml
+            - sul1_coppml
+            - blaTEM_coppml
+            - aac_coppml
+            - Total_otus
+            - otu_5575
+            - otu_273
+            - otu_94
     Returns:
         a pandas dataframe with inputs and target and indexed
             with pandas.DateTimeIndex
 
-    Examples
-    --------
-    ```python
-    >>>from ai4water.datasets import arg_beach
-    >>>dataframe = arg_beach()
-    ```
+    Example:
+        >>> from ai4water.datasets import arg_beach
+        >>> dataframe = arg_beach()
     """
     fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")
     df = pd.read_csv(fpath, index_col="index")

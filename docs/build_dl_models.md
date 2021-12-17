@@ -2,9 +2,12 @@
 
 We can construct a normal layered model using keras layers by placing the layers in a dictionary. The keys in the
 dictionary must be a keras layer and optionally can have an identifier separated by an underscore `_` in order to 
-differentiate it from other similar layers in the model. The input/initializating arguments in the layer must be
+differentiate it from other similar layers in the model. For example `Dense_0` and `Dense_1` are two 
+[Dense](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense) layers.
+The input/initializating arguments in the layer must be
 enclosed in a dictionary within the layer. To find out what input/initializing arguments can be used, check
 documentation of corresponding layer in [`Tensorflow` docs](https://www.tensorflow.org/api_docs/python/tf/keras/layers). 
+It should be noted that the layer name if case-sensitive. Therefore, Dense layer cannot be DENSE.
 
 ### multi-layer perceptron
 
@@ -39,14 +42,16 @@ If you do not define the last dense/fully connected layer, it will be inferred f
 model is set to produce. In following case a [`Dense`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense) layer with one `units` is added automatically at the end of 
 second `LSTM` layer.
 ```python
-from ai4water import Model
 import pandas as pd
+
+from ai4water import Model
+from ai4water.datasets import arg_beach
 
 layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
           "LSTM_1": 32
           }
 
-df = pd.read_csv("data/all_data_30min.csv")
+df = arg_beach
 
 model = Model(batch_size=16,
                 lookback=1,
@@ -64,11 +69,11 @@ Activation functions can also be used as a separate layer.
 
 ```python
 layers = {"Conv1D_9": {'filters': 64, 'kernel_size': 2},
-          "dropout": 0.3,
+          "Dropout": 0.3,
           "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-          "maxpool1d": 2,
-          'flatten': {}, # This layer does not receive any input arguments
-          'leakyrelu': {},  # activation function can also be used as a separate layer
+          "MaxPool1D": 2,
+          'Flatten': {}, # This layer does not receive any input arguments
+          'LeakyReLU': {},  # activation function can also be used as a separate layer
           "Dense": 1
           }
 ```
@@ -79,11 +84,11 @@ layers = {"Conv1D_9": {'filters': 64, 'kernel_size': 2},
 ```python
 layers = {"LSTM": {'units': 64, 'return_sequences': True},
           "Conv1D_0": {'filters': 64, 'kernel_size': 2},
-          "dropout": 0.3,
+          "Dropout": 0.3,
           "Conv1D_1": {'filters': 32, 'kernel_size': 2},
-          "maxpool1d": 2,
-          'flatten': {},
-          'leakyrelu': {},
+          "MaxPool1D": 2,
+          'Flatten': {},
+          'LeakyReLU': {},
           "Dense": 1
           }
 ```
@@ -94,10 +99,10 @@ AI4Water will infer input shape for general cases however it is better to explic
 when the input is > 3d or the number of inputs are more than one.
 ```python
 layers = {'Input': {'shape': (3, 1, 4, 8)},
-          'convlstm2d': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
-          'flatten': {},
-          'repeatvector': 1,
-          'lstm':   {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 },
+          'ConvLSTM2D': {'filters': 64, 'kernel_size': (1, 3), 'activation': 'relu'},
+          'Flatten': {},
+          'RepeatVector': 1,
+          'LSTM':   {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 },
           'Dense': 1
           }
 ```
@@ -114,36 +119,35 @@ time_steps = lookback // sub_sequences
 layers = {
     "Input": {'config': {'shape': (None, time_steps, 10)}},
     "TimeDistributed_0": {},
-    'conv1d_0': {'filters': 64, 'kernel_size': 2},
-    'LeakyRelu_0': {},
+    'Conv1D_0': {'filters': 64, 'kernel_size': 2},
+    'LeakyReLU_0': {},
     "TimeDistributed_1":{},
-    'conv1d_1': {'filters': 32, 'kernel_size': 2},
-    'elu_1': {},
+    'Conv1D_1': {'filters': 32, 'kernel_size': 2},
+    'ELU_1': {},
     "TimeDistributed_2": {},
-    'conv1d_2': {'filters': 16, 'kernel_size': 2},
+    'Conv1D_2': {'filters': 16, 'kernel_size': 2},
     'tanh_2': {},
     "TimeDistributed_3": {},
-    "maxpool1d": {'pool_size': 2},
+    "MaxPool1D": {'pool_size': 2},
     "TimeDistributed_4": {},
-    'flatten': {},
-    'lstm_0':   {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
+    'Flatten': {},
+    'LSTM_0':   {'units': 64, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'return_sequences': True,
                'name': 'lstm_0'},
-    'Relu_1': {},
-    'lstm_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
+    'relu_1': {},
+    'LSTM_1':   {'units': 32, 'activation': 'relu', 'dropout': 0.4, 'recurrent_dropout': 0.5, 'name': 'lstm_1'},
     'sigmoid_2': {},
     'Dense': 1
 }
 ```
-#<img src="imgs/cnn_lstm.png" width="800" height="900" />
 ![lstm autoenc](imgs/cnn_lstm.png)
 
 ### LSTM based auto-encoder
 ```python
 layers = {
-    'lstm_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
-    "leakyrelu_0": {},
+    'LSTM_0': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+    "LeakyReLU_0": {},
     'RepeatVector': 11,
-    'lstm_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
+    'LSTM_1': {'units': 100,  'dropout': 0.3, 'recurrent_dropout': 0.4},
     "relu_1": {},
     'Dense': 1
 }
@@ -155,7 +159,7 @@ You can use third party layers such as [`tcn`](https://github.com/philipperemy/k
 installed `tcn`, the layer along with its arguments can be used as following
 
 ```python
-layers = {"tcn": {'nb_filters': 64,
+layers = {"TCN": {'nb_filters': 64,
                   'kernel_size': 2,
                   'nb_stacks': 1,
                   'dilations': [1, 2, 4, 8, 16, 32],
@@ -189,16 +193,16 @@ class MyModel(Model):
 
 
 layers = {"Input_0": {"shape": (5, 10), "name": "cont_inputs"},
-          "lstm_0": {"config": { "units": 62,  "activation": "leakyrelu", "dropout": 0.4,  "recurrent_dropout": 0.4, "return_sequences": False,  "name": "lstm_0"},
+          "LSTM_0": {"config": { "units": 62,  "activation": "leakyrelu", "dropout": 0.4,  "recurrent_dropout": 0.4, "return_sequences": False,  "name": "lstm_0"},
                      "inputs": "cont_inputs"},
 
           "Input_1": {"shape": 10, "name": "disc_inputs"},
           "Dense_0": {"config": {"units": 64,"activation": "leakyrelu", "name": "Dense_0"},
                       "inputs": "disc_inputs"},
-          "flatten_0": {"config": {"name": "flatten_0" },
+          "Flatten_0": {"config": {"name": "flatten_0" },
                         "inputs": "Dense_0"},
 
-          "Concat": {"config": {"name": "Concat" },
+          "Concatenate": {"config": {"name": "Concat" },
                      "inputs": ["lstm_0", "flatten_0"]},
 
           "Dense_1": {"units": 16, "activation": "leakyrelu", "name": "Dense_1"},
@@ -234,7 +238,7 @@ layers = {
     "Flatten": {'config': {'name': 'MyFlatten'},
                 'inputs': 'MyMaxPool'},
 
-    "Concat": {'config': {'name': 'MyConcat'},
+    "Concatenate": {'config': {'name': 'MyConcat'},
             'inputs': ['MyDense', 'MyFlatten']},
 
     "Dense": 1
@@ -269,7 +273,7 @@ layers ={
                'inputs': 'MyInputs',
                'call_args': {'initial_state': ['h_state', 'c_state']}},
 
-    "Concat": {'config': {'name': 'MyConcat'},
+    "Concatenate": {'config': {'name': 'MyConcat'},
             'inputs': ['MyDense', 'MyFlatten', 'MyLSTM2']},
 
     "Dense": 1
@@ -306,3 +310,25 @@ output shape with time series prediction cases with multiple horizons. More on t
 [here]()
 
 For more examples see `examples`.
+
+## Activation layers
+Following activation layers can be used.
+
+|Activation | Name in ai4water |
+|-------|--------|
+|   relu  |   relu  |
+| LeakyReLU | LeakyReLU |
+| PReLU | PReLU |
+| ThresholdedReLU | ThresholdedReLU |
+| ELU | ELU |
+| tanh | tanh |
+| relu | relu |
+| selu | selu
+| sigmoid | sigmoid |
+| hardsigmoid | hardsigmoid
+| crelu | crelu |
+| relu6 | relu6 |
+| softmax | softmax |
+| softplus | softplus |
+| softsign | softsign |
+| swish | swish

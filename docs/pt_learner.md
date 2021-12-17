@@ -7,7 +7,7 @@ Thus, this module does not do any pre-processing, model building and post-proces
 This module is inspired from [fastai's Learner](https://docs.fast.ai/learner.html#Learner) and 
 [keras's Model](https://www.tensorflow.org/api_docs/python/tf/keras/Model) class.
 
-::: ai4water.pytorch_training.Learner
+::: ai4water.models.torch.Learner
     handler: python
     selection:
         members:

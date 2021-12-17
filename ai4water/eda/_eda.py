@@ -19,7 +19,7 @@ from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import find_tot_plots
 from ai4water.preprocessing import Transformations
-from ai4water.utils.utils import  dict_to_file, dateandtime_now, ts_features
+from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 
 
 # qq plot
@@ -48,18 +48,15 @@ class EDA(Plot):
     - lag_plot
     - plot_ecdf
 
-    Example
-    --------
-    ```python
-    >>> from ai4water.datasets import arg_beach
-    >>> eda = EDA(data=arg_beach())
-    >>> eda()
-    ```
+    Example:
+        >>> from ai4water.datasets import arg_beach
+        >>> eda = EDA(data=arg_beach())
+        >>> eda()
     """
 
     def __init__(
             self,
-            data:Union[pd.DataFrame, List[pd.DataFrame], Dict, np.ndarray],
+            data: Union[pd.DataFrame, List[pd.DataFrame], Dict, np.ndarray],
             in_cols=None,
             out_cols=None,
             path=None,
@@ -68,6 +65,7 @@ class EDA(Plot):
             show=True,
     ):
         """
+
         Arguments:
             data : either a dataframe, or list of dataframes or a dictionary whose
                 values are dataframes or a numpy array
@@ -136,7 +134,7 @@ class EDA(Plot):
         ]
 
         if isinstance(self.data, pd.DataFrame) and self.data.shape[-1] > 1:
-            all_methods = all_methods + [# 'plot_pcs',
+            all_methods = all_methods + [  # 'plot_pcs',
                                          'grouped_scatter',
                                          'correlation']
 
@@ -171,12 +169,11 @@ class EDA(Plot):
         Return:
             None
 
-        Example
-        ---------
-        ```python
-        >>>vis = EDA(data)
-        >>>vis.heatmap()
-        ```
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> data = arg_beach()
+            >>> vis = EDA(data)
+            >>> vis.heatmap()
         """
         return self._call_method('_heatmap_df', cols=cols, st=st, en=en, **kwargs)
 
@@ -272,12 +269,11 @@ class EDA(Plot):
             st :
             en :
 
-        Example
-        --------
-        ```python
-        >>>vis = EDA(data)
-        >>>vis.plot_missing()
-        ```
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> data = arg_beach()
+            >>>vis = EDA(data)
+            >>>vis.plot_missing()
         """
         return self._call_method('_plot_missing_df', cols=cols, st=st, en=en, **kwargs)
 
@@ -384,12 +380,11 @@ class EDA(Plot):
 
         Rreturn:
 
-        Example
-        --------
-        ```python
-        >>>eda = EDA()
-        >>>eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
-        >>>eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
+        Example:
+            >>> from ai4water.datasets import arg_beach
+            >>> eda = EDA(arg_beach())
+            >>> eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
+            >>> eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         ```
         """
         # TODO, this method should be available from `model` as well
@@ -528,15 +523,14 @@ class EDA(Plot):
             en :
             kwargs :
 
-        Example
-        --------
-        ```python
-        >>>from ai4water.eda import EDA
-        >>>vis = EDA(data)
-        >>>vis.correlation()
-        ```
+        Example:
+            >>> from ai4water.eda import EDA
+            >>> from ai4water.datasets import arg_beach
+            >>> vis = EDA(arg_beach())
+            >>> vis.correlation()
         """
-        # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman rank correlation etc
+        # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman
+        #  rank correlation etc
         if cols is None:
             if remove_targets:
                 cols = self.in_cols
@@ -690,7 +684,7 @@ class EDA(Plot):
             if hue in data:
                 df_pca[hue] = data[hue]
 
-                if df_pca[hue].isna().sum() > 0: # output columns contains nans, so don't use it as hue.
+                if df_pca[hue].isna().sum() > 0:  # output columns contains nans, so don't use it as hue.
                     hue = None
 
         if isinstance(hue, list) and len(hue) == 0:
@@ -716,6 +710,7 @@ class EDA(Plot):
             **kwargs
     ):
         """Makes scatter plot for each of feature in data.
+
         Arguments:
             inputs :
             outputs :
@@ -1021,11 +1016,11 @@ class EDA(Plot):
         else:
             cols = cols + self.out_cols if outputs else cols
             axis = self._box_plot(data, cols, st=st, en=en,
-                           normalize=normalize, figsize=figsize,
-                           max_features=max_features,
-                           show_datapoints=show_datapoints, freq=freq,
-                           violen=violen,
-                           **kwargs)
+                                  normalize=normalize, figsize=figsize,
+                                  max_features=max_features,
+                                  show_datapoints=show_datapoints, freq=freq,
+                                  violen=violen,
+                                  **kwargs)
         return axis
 
     def _box_plot(self,
@@ -1046,13 +1041,15 @@ class EDA(Plot):
 
         if data.shape[1] <= max_features:
             axis = self._box_plot_df(data,
-                              st=st,
-                              en=en,
-                              normalize=normalize, show_datapoints=show_datapoints,
-                              violen=violen,
-                              freq=freq,
-                              prefix=f"{'violen' if violen else 'box'}_{prefix}",
-                              figsize=figsize, **kwargs)
+                                     st=st,
+                                     en=en,
+                                     normalize=normalize, show_datapoints=show_datapoints,
+                                     violen=violen,
+                                     freq=freq,
+                                     prefix=f"{'violen' if violen else 'box'}_{prefix}",
+                                     figsize=figsize,
+                                     **kwargs
+                                     )
         else:
             tot_plots = find_tot_plots(data.shape[1], max_features)
             for i in range(len(tot_plots) - 1):
@@ -1138,7 +1135,7 @@ class EDA(Plot):
                             freq,
                             violen=False,
                             show_datapoints=False,
-                            figsize=(12,8),
+                            figsize=(12, 8),
                             name='bw',
                             prefix='',
                             **kwargs
@@ -1195,8 +1192,8 @@ class EDA(Plot):
 
     def autocorrelation(
             self,
-            nlags:int=10,
-            cols:Union[list]=None,
+            nlags: int = 10,
+            cols: Union[list] = None,
     ):
         """autocorrelation of individual features of data
         Arguments:
@@ -1207,8 +1204,8 @@ class EDA(Plot):
 
     def partial_autocorrelation(
             self,
-            nlags:int=10,
-            cols:Union[list]=None,
+            nlags: int = 10,
+            cols: Union[list] = None,
     ):
         """Partial autocorrelation of individual features of data
         Arguments:
@@ -1219,9 +1216,9 @@ class EDA(Plot):
 
     def _autocorr_df(
             self,
-            data:pd.DataFrame,
-            nlags:int,
-            partial:bool=False,
+            data: pd.DataFrame,
+            nlags: int,
+            partial: bool = False,
             cols=None,
             fname='',
     ):
@@ -1235,17 +1232,17 @@ class EDA(Plot):
             data = data[cols]
 
         non_nan = data.isna().sum()
-        num_subplots = max(math.ceil(len(non_nan[non_nan==0])/2)*2, 1)
+        num_subplots = max(math.ceil(len(non_nan[non_nan == 0])/2)*2, 1)
 
-        if num_subplots==1:
-            nrows, ncols = 1,1
+        if num_subplots == 1:
+            nrows, ncols = 1, 1
         elif num_subplots == 2:
             nrows, ncols = 1, 2
         else:
             nrows, ncols = int(num_subplots/2), 2
 
         fig, axis = plt.subplots(nrows, ncols, figsize=(9, nrows*2),
-                               sharex="all", sharey="all")
+                                 sharex="all", sharey="all")
         axis = np.array(axis)  # if it is a single axis then axis.flat will not work
         for col, ax in zip(data.columns, axis.flat):
 
@@ -1285,7 +1282,7 @@ class EDA(Plot):
 
     def probability_plots(
             self,
-            cols:Union[str, list]=None
+            cols: Union[str, list] = None
     ):
         """
         draws prbability plot using scipy.stats.probplot
@@ -1297,8 +1294,8 @@ class EDA(Plot):
 
     def _plot_prob_df(
             self,
-            data:pd.DataFrame,
-            cols:Union[str, list] = None,
+            data: pd.DataFrame,
+            cols: Union[str, list] = None,
             fname=None,
     ):
         """probability plots for one dataframe"""
@@ -1322,8 +1319,8 @@ class EDA(Plot):
 
     def _prob_plot_series(
             self,
-            data:Union[pd.DataFrame, pd.Series],
-            fname:str = None
+            data: Union[pd.DataFrame, pd.Series],
+            fname: str = None
     ):
         """probability plots for one series."""
         if not isinstance(data, pd.Series):
@@ -1355,7 +1352,7 @@ class EDA(Plot):
             "pareto":   stats.pareto(2.62)
         }
 
-        fig, axis = plt.subplots(4,4, figsize=(10, 10))
+        fig, axis = plt.subplots(4, 4, figsize=(10, 10))
 
         for (idx, rv), ax in zip(enumerate(cont_distros.values()), axis.flat):
 
@@ -1368,12 +1365,12 @@ class EDA(Plot):
 
             h = ax.plot(osm, osr, label="bo")
 
-            if idx%4==0:
+            if idx % 4 == 0:
                 ax.set_ylabel("Ordered Values", fontsize=12)
             else:
                 ax.set_ylabel("")
 
-            if idx>11:
+            if idx > 11:
                 ax.set_xlabel("Theoretical Quantiles", fontsize=12)
             else:
                 ax.set_xlabel("")
@@ -1381,15 +1378,15 @@ class EDA(Plot):
             text = f"{_name}"
 
             ax.legend(h, [text], loc="best", fontsize=12,
-                       fancybox=True, framealpha=0.7,
-                       handlelength=0, handletextpad=0)
+                      fancybox=True, framealpha=0.7,
+                      handlelength=0, handletextpad=0)
 
         plt.suptitle(data.name, fontsize=18)
         self._save_or_show(f"probplot_{data.name}_{fname}")
 
         return fig
 
-    def _lag_plot_series(self, series:pd.Series, n_lags:int, figsize=None, **kwargs):
+    def _lag_plot_series(self, series: pd.Series, n_lags: int, figsize=None, **kwargs):
 
         if hasattr(n_lags, '__len__'):
             lags = np.array(n_lags)
@@ -1399,8 +1396,8 @@ class EDA(Plot):
 
         figsize = figsize or (5, 5 + n_lags*0.2)
 
-        n_rows, n_cols = 1,1
-        if n_lags>1:
+        n_rows, n_cols = 1, 1
+        if n_lags > 1:
             n_rows = (math.ceil(n_lags/2) * 2) // 2
             n_cols = 2
 
@@ -1417,7 +1414,7 @@ class EDA(Plot):
 
         return axis
 
-    def _lag_plot_df(self, data:pd.DataFrame, n_lags:int, cols=None, **kwargs):
+    def _lag_plot_df(self, data: pd.DataFrame, n_lags: int, cols=None, **kwargs):
 
         data = _preprocess_df(data, cols=cols)
 
@@ -1428,7 +1425,7 @@ class EDA(Plot):
 
         return axes
 
-    def lag_plot(self, n_lags:Union[int, list]=1, cols=None, figsize=None, **kwargs):
+    def lag_plot(self, n_lags: Union[int, list] = 1, cols=None, figsize=None, **kwargs):
         """lag plot between series and its lags
 
         Arguments:
@@ -1455,7 +1452,7 @@ class EDA(Plot):
         """
         return self._call_method("_plot_ecdf_df", cols=cols, figsize=figsize, **kwargs)
 
-    def _plot_ecdf_df(self, data:pd.DataFrame, cols=None, figsize=None, fname=None, **kwargs):
+    def _plot_ecdf_df(self, data: pd.DataFrame, cols=None, figsize=None, fname=None, **kwargs):
 
         data = _preprocess_df(data, cols=cols)
 
@@ -1480,7 +1477,7 @@ class EDA(Plot):
         return axis
 
 
-def plot_ecdf(x:Union[pd.Series, np.ndarray], ax=None, **kwargs):
+def plot_ecdf(x: Union[pd.Series, np.ndarray], ax=None, **kwargs):
 
     if ax is None:
         ax = plt.gca()
@@ -1492,14 +1489,14 @@ def plot_ecdf(x:Union[pd.Series, np.ndarray], ax=None, **kwargs):
         assert isinstance(x, np.ndarray)
         _name = "ecdf"
 
-    x,y = ecdf(x)
+    x, y = ecdf(x)
     ax.plot(x, y, label=_name, **kwargs)
     ax.legend()
 
     return ax
 
 
-def ecdf(x:np.ndarray):
+def ecdf(x: np.ndarray):
     # https://stackoverflow.com/a/37660583/5982232
     xs = np.sort(x)
     ys = np.arange(1, len(xs)+1)/float(len(xs))
@@ -1531,7 +1528,7 @@ def set_axis_paras(axis, leg_kws, label_kws, tick_kws):
     return
 
 
-def plot_style(df:pd.DataFrame, **kwargs):
+def plot_style(df: pd.DataFrame, **kwargs):
     if 'style' not in kwargs and df.isna().sum().sum() > 0:
         kwargs['style'] = ['.' for _ in range(df.shape[1])]
     return kwargs
@@ -1562,6 +1559,3 @@ def _preprocess_df(df, st=None, en=None, cols=None):
         df = df.loc[st:en]
 
     return df
-
-
-

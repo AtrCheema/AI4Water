@@ -152,7 +152,7 @@ class TestVisualize(unittest.TestCase):
 
     def test_ml(self):
 
-        for m in ["DecisionTreeRegressor", "XGBoostRegressor", "CatBoostRegressor", "LGBMRegressor"]:
+        for m in ["DecisionTreeRegressor", "XGBRegressor", "CatBoostRegressor", "LGBMRegressor"]:
             model = Model(
                 model=m,
                 data=arg_beach(),

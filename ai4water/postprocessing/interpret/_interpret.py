@@ -1,20 +1,16 @@
 
 import os
 import warnings
-from typing import Union
 
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
-from ai4water.utils.utils import plot_activations_along_inputs
-from ai4water.preprocessing import Transformations
+from ai4water.utils.utils import plot_activations_along_inputs, imshow
 
 
 class Interpret(Plot):
@@ -118,7 +114,7 @@ class Interpret(Plot):
 
         use_prev = self.model.config['use_predicted_output']
         all_cols = self.model.config['input_features'] if use_prev else self.model.config['input_features'] + \
-                                                                                self.model.config['output_features']
+                                                                        self.model.config['output_features']
         imp_sort = np.sort(importance)[::-1]
         all_cols = np.array(all_cols)
         all_cols = all_cols[np.argsort(importance)[::-1]]
@@ -170,6 +166,9 @@ class Interpret(Plot):
     ):
         """compare various feature importance calculations methods that are built
         in in XGBoost"""
+
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
 
         inp_features = self.model.dh.input_features
         assert isinstance(inp_features, list)
@@ -254,7 +253,7 @@ class Interpret(Plot):
             model : a ai4water's Model instance.
             data : the data to use to calculate attention components
 
-        returns:
+        Returns:
             dictionary containing attention components of tft as numpy arrays.
             Following four attention components are present in the dictionary
                 - decoder_self_attn: (attention_heads, ?, total_time_steps, 22)
@@ -302,11 +301,12 @@ class Interpret(Plot):
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
 
         plt.close('all')
-        im = plt.imshow(encoder_variable_selection_weights[example_index], aspect='auto')
-        plt.ylabel('lookback steps')
+
+        axis, im = imshow(encoder_variable_selection_weights[example_index],
+                      aspect="auto", ylabel="lookback steps", title=example_index)
+
         plt.xticks(np.arange(model.ins), model.in_cols, rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
-        plt.title(example_index)
         plt.savefig(os.path.join(maybe_create_path(model.path), f'{data_name}_enc_var_selec_{example_index}.png'),
                     bbox_inches='tight', dpi=300)
         if show:

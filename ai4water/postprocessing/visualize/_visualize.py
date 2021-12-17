@@ -12,7 +12,7 @@ from ai4water.backend import tf, keras
 
 import ai4water.keract_mod as keract
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import maybe_three_outputs
+from ai4water.utils.utils import maybe_three_outputs, imshow
 
 from ..utils import choose_examples
 
@@ -35,7 +35,7 @@ except ModuleNotFoundError:
 try:
     import xgboost
 except ModuleNotFoundError:
-    xgboost  = None
+    xgboost = None
 
 RNN_INFO = {"LSTM": {'rnn_type': 'LSTM',
                      'gate_names': ['INPUT', 'FORGET', 'CELL', 'OUTPUT'],
@@ -50,7 +50,7 @@ RNN_INFO = {"LSTM": {'rnn_type': 'LSTM',
 CMAPS = [
     'jet_r', 'ocean_r', 'viridis_r', 'BrBG',
     'GnBu', 'crest_r', 'Blues_r', 'bwr_r',
-    'flare', 'mako', 'YlGnBu'
+    'flare', 'YlGnBu'
 ]
 
 
@@ -70,6 +70,7 @@ TREE_BASED_MODELS = [
     "LGBMCLASSIFIER"
 
 ]
+
 
 class Visualize(Plots):
     """Hepler class to peek inside the machine learning mdoel.
@@ -121,12 +122,15 @@ class Visualize(Plots):
                        model.category,
                        config=model.config)
 
-    def __call__(self, layer_name,
-                 data='training',
-                 x=None,
-                 y=None,
-                 examples_to_use=None,
-                 show=False):
+    def __call__(
+            self,
+            layer_name,
+            data='training',
+            x=None,
+            y=None,
+            examples_to_use=None,
+            show: bool = False,
+    ):
 
         if self.model.category == "DL":
             self.activations(layer_name, data, x, examples_to_use, show=show)
@@ -140,10 +144,10 @@ class Visualize(Plots):
         return
 
     def get_activations(self,
-                      layer_names: Union[list, str] = None,
-                      x=None,
-                      data: str = 'training'
-                      ) -> dict:
+                        layer_names: Union[list, str] = None,
+                        x=None,
+                        data: str = 'training'
+                        ) -> dict:
         """gets the activations/outputs of any layer of the Keras Model.
 
         Arguments:
@@ -163,7 +167,7 @@ class Visualize(Plots):
             x, _ = maybe_three_outputs(data, self.model.dh.teacher_forcing)
 
         if self.model.api == "subclassing":
-            dl_model =  self.model
+            dl_model = self.model
         else:
             dl_model = self.model._model
 
@@ -171,14 +175,15 @@ class Visualize(Plots):
 
         return activations
 
-    def activations(self,
-                    layer_names=None,
-                    data:str='training',
-                    x=None,
-                    examples_to_use:Union[int, list, np.ndarray, range]=None,
-                    show: bool=False
-                    ):
-        """Plots outputs of intermediate layers except input and output.
+    def activations(
+            self,
+            layer_names=None,
+            data: str = 'training',
+            x=None,
+            examples_to_use: Union[int, list, np.ndarray, range] = None,
+            show: bool = False
+    ):
+        """Plots outputs of any layer of neural network.
 
         Arguments:
             data : The data to be used for calculating outputs of layers.
@@ -188,6 +193,8 @@ class Visualize(Plots):
             examples_to_use : If integer, it will be the number of examples to use.
                 If array like, it will be the indices of examples to use.
             show :
+            save:
+                whether to save the plot or not
         """
         activations = self.get_activations(x=x, data=data)
 
@@ -233,15 +240,17 @@ class Visualize(Plots):
 
             if activation.ndim == 3:
 
-                self.features_2d(activation, show=show,
-                             name=lyr_name + "_outputs",
-                             sup_title="Activations",
-                             n_rows=6,
-                             sup_xlabel="LSTM units",
-                             sup_ylabel="Lookback steps",
-                             title=indices,
-                             vmin=-1, vmax=1
-                             )
+                self.features_2d(activation,
+                                 show=show,
+                                 name=lyr_name + "_outputs",
+                                 sup_title="Activations",
+                                 n_rows=6,
+                                 sup_xlabel="LSTM units",
+                                 sup_ylabel="Lookback steps",
+                                 title=indices,
+                                 vmin=-1,
+                                 vmax=1
+                                 )
             else:
                 self._imshow(activation, f"{lyr_name} Activations", fname=lyr_name, show=show,
                              ylabel="Examples", xlabel="LSTM units",
@@ -275,10 +284,11 @@ class Visualize(Plots):
                 weights[weight.name] = keras.backend.eval(weight)
         return weights
 
-    def weights(self,
-                layer_names:Union[str, list]=None,
-                show=False
-                ):
+    def weights(
+            self,
+            layer_names: Union[str, list] = None,
+            show: bool = False
+    ):
         """Plots the weights of a specific layer or all layers.
 
         Arguments:
@@ -328,12 +338,13 @@ class Visualize(Plots):
                         print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
         return
 
-    def get_activation_gradients(self,
-                                 layer_names: Union[str, list] = None,
-                                 x=None,
-                                 y=None,
-                                 data:str='training'
-                                 )->dict:
+    def get_activation_gradients(
+            self,
+            layer_names: Union[str, list] = None,
+            x=None,
+            y=None,
+            data: str = 'training'
+    ) -> dict:
         """
         Finds gradients of outputs of a layer.
 
@@ -354,15 +365,16 @@ class Visualize(Plots):
 
         return keract.get_gradients_of_activations(self.model, x, y, layer_names=layer_names)
 
-    def activation_gradients(self,
-                             layer_names:Union[str, list],
-                             data='training',
-                             x=None,
-                             y=None,
-                             examples_to_use=None,
-                             plot_type="2D",
-                             show=False
-                             ):
+    def activation_gradients(
+            self,
+            layer_names: Union[str, list],
+            data='training',
+            x=None,
+            y=None,
+            examples_to_use=None,
+            plot_type="2D",
+            show: bool = False
+    ):
         """Plots the gradients o activations/outputs of layers
 
         Arguments:
@@ -492,11 +504,12 @@ class Visualize(Plots):
                 print("ignoring activation gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
                                                                                                np.ndim(gradient)))
 
-    def get_weight_gradients(self,
-                         data:str='training',
-                         x=None,
-                         y=None
-                         )->dict:
+    def get_weight_gradients(
+            self,
+            data: str = 'training',
+            x=None,
+            y=None
+    ) -> dict:
         """Returns the gradients of weights.
 
         Arguments:
@@ -514,13 +527,14 @@ class Visualize(Plots):
 
         return keract.get_gradients_of_trainable_weights(self.model, x, y)
 
-    def weight_gradients(self,
-                         layer_names:Union[str, list]=None,
-                         data='training',
-                         x=None,
-                         y=None,
-                         show: bool=False
-                         ):
+    def weight_gradients(
+            self,
+            layer_names: Union[str, list] = None,
+            data='training',
+            x=None,
+            y=None,
+            show: bool = False,
+    ):
         """Plots gradient of all trainable weights
 
         Arguments:
@@ -530,7 +544,7 @@ class Visualize(Plots):
             y : alternative to data
             show : whether to show the plot or not.
         """
-        gradients = self.get_weight_gradients(data=data, x=x,y=y)
+        gradients = self.get_weight_gradients(data=data, x=x, y=y)
 
         if layer_names is None:
             layers_to_plot = list(gradients.keys())
@@ -629,7 +643,7 @@ class Visualize(Plots):
                                  show=False
                                  ):
 
-        gradients = self.get_weight_gradients(data=data, x=x,y=y)
+        gradients = self.get_weight_gradients(data=data, x=x, y=y)
 
         rnn_weights = self.get_rnn_weights(gradients)
         for k, w in rnn_weights.items():
@@ -726,7 +740,6 @@ class Visualize(Plots):
             else:
                 save = None
 
-
             if isinstance(title, np.ndarray):
                 _title = title[st:en]
             else:
@@ -753,7 +766,6 @@ class Visualize(Plots):
             features_1D(data, savepath=save, **kwargs)
 
         return
-
 
 
 def features_2D(data,
@@ -789,9 +801,7 @@ def features_2D(data,
         title = np.arange(num_subplots)
 
     for idx, ax in enumerate(axis.flat):
-        im = ax.imshow(data[idx], cmap=cmap, vmin=vmin, vmax=vmax)
-        if title is not None:
-            ax.set_title(title[idx])
+        axis, im = imshow(data[idx], axis=ax, cmap=cmap, vmin=vmin, vmax=vmax, title=title[idx])
 
     if sup_xlabel:
         fig.text(0.5, 0.04, sup_xlabel, ha='center', fontsize=20)
@@ -806,7 +816,7 @@ def features_2D(data,
     if sup_title:
         plt.suptitle(sup_title)
 
-    #fig.tight_layout()
+    # fig.tight_layout()
 
     if savepath:
         plt.savefig(savepath, bbox_inches="tight")

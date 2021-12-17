@@ -10,15 +10,16 @@ from .nn_tools import get_call_args
 from .backend import tf, torch
 import ai4water.backend as K
 
-from .pytorch_attributes import LAYERS as TORCH_LAYERS
+from .models.torch import LAYERS as TORCH_LAYERS
 from .tf_attributes import LAYERS
 
-if K.BACKEND =='tensorflow' and tf is not None:
+if K.BACKEND == 'tensorflow' and tf is not None:
     MODEL = tf.keras.Model
 elif K.BACKEND == 'pytorch' and torch is not None:
     MODEL = torch.nn.Module
 else:
-    class MODEL(object): pass
+    class MODEL(object):
+        pass
 
 
 class Model(MODEL, BaseModel):
@@ -47,7 +48,7 @@ class Model(MODEL, BaseModel):
 
         """
         if K.BACKEND == 'tensorflow' and tf is not None:
-            if tf.__version__ in  ["2.3.0", "2.4.0"]:
+            if tf.__version__ in ["2.3.0", "2.4.0"]:
                 raise NotImplementedError(f"""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
             You can use functional API instead by using
@@ -68,13 +69,13 @@ class Model(MODEL, BaseModel):
 
         self._go_up = True
         BaseModel.__init__(self, data=data, prefix=prefix, path=path, verbosity=verbosity, model=model,
-                           #outputs=outputs, inputs=inputs,
+                           # outputs=outputs, inputs=inputs,
                            **kwargs)
 
         self.config['backend'] = K.BACKEND
 
         if torch is not None:
-            from .pytorch_training import Learner
+            from .models.torch import Learner
             self.torch_learner = Learner(
                 model=self,
                 batch_size=self.config['batch_size'],
@@ -115,7 +116,7 @@ class Model(MODEL, BaseModel):
             _input_lyrs = self.input_lyrs
             if isinstance(_input_lyrs, list) and len(_input_lyrs) == 1:
                 input_lyrs = _input_lyrs[0]
-            elif _input_lyrs.__class__.__name__  == "ListWrapper" and len(_input_lyrs) == 1:
+            elif _input_lyrs.__class__.__name__ == "ListWrapper" and len(_input_lyrs) == 1:
                 input_lyrs = _input_lyrs[0]
             else:
                 input_lyrs = _input_lyrs
@@ -132,7 +133,7 @@ class Model(MODEL, BaseModel):
         self._torch_learner = x
 
     @property
-    def layer_names(self)->List[str]:
+    def layer_names(self) -> List[str]:
         """Returns a list of names of layers/nn.modules
         for deep learning model. For ML models, returns empty list"""
         _all_layers = []
@@ -167,7 +168,7 @@ class Model(MODEL, BaseModel):
 
     @property
     def num_input_layers(self) -> int:
-        if self.category.upper() != "DL":
+        if self.category != "DL":
             return np.inf
         if K.BACKEND == 'pytorch':
             return 1
@@ -220,6 +221,8 @@ class Model(MODEL, BaseModel):
                 return self.torch_learner.evaluate
             else:
                 raise ValueError
+        elif self.category == "ML":
+            return self.evalute_ml_models
 
         return self._model.evaluate
 
@@ -232,7 +235,7 @@ class Model(MODEL, BaseModel):
                 return self.torch_learner.predict
         return self._model.predict
 
-    def initialize_layers(self, layers_config:dict, inputs=None):
+    def initialize_layers(self, layers_config: dict, inputs=None):
         """
         Initializes the layers/weights/variables which are to be used in `forward`
         or `call` method.
@@ -268,7 +271,7 @@ class Model(MODEL, BaseModel):
                 if callable(lyr_config):
                     lyr_initiated = lyr_config
                 else:
-                    lyr_initiated = TORCH_LAYERS[lyr_name.upper()](**lyr_config)
+                    lyr_initiated = TORCH_LAYERS[lyr_name](**lyr_config)
                 setattr(self, lyr, lyr_initiated)
                 initiated_layers[lyr] = {"layer": lyr_initiated, "named_outs": named_outs, 'call_args': call_args,
                                          'inputs': lyr_inputs}
@@ -276,19 +279,20 @@ class Model(MODEL, BaseModel):
             else:
                 # may be user has defined layers without input layer, in this case add Input layer as first layer
                 if first_layer:
-                    if inputs is not None: # This method was called by providing it inputs.
+                    if inputs is not None:  # This method was called by providing it inputs.
                         assert isinstance(inputs, tf.Tensor)
-                        first_layer = False # since inputs have been defined, all the layers that will be added will be next to first layer
+                        # since inputs have been defined, all the layers that will be added will be next to first layer
+                        first_layer = False
                         layer_outputs = inputs
                         initiated_layers[layer_outputs.name] = {'layer': layer_outputs, 'tf_name': lyr_name}
 
-                    elif lyr_name.upper() != "INPUT":
+                    elif lyr_name != "Input":
                         if 'input_shape' in lyr_config:  # input_shape is given in the first layer so make input layer
-                            initialized_layer = LAYERS["INPUT"](shape=lyr_config['input_shape'])
+                            initialized_layer = LAYERS["Input"](shape=lyr_config['input_shape'])
                         else:
                             # for simple dense layer based models, lookback will not be used
                             def_shape = (self.dh.num_ins,) if self.lookback == 1 else (self.lookback, self.dh.num_ins)
-                            initialized_layer = LAYERS["INPUT"](shape=def_shape)
+                            initialized_layer = LAYERS["Input"](shape=def_shape)
 
                         # first layer is built so next iterations will not be for first layer
                         first_layer = False
@@ -298,29 +302,31 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                         input_lyrs.append(initialized_layer)
 
-                if lyr_inputs is None:  # The inputs to the layer have not been specified, so either it is an Input layer
+                # The inputs to the layer have not been specified, so either it is an Input layer
+                if lyr_inputs is None:
                     # or it uses the previous outputs as inputs
-                    if lyr_name.upper() == "INPUT":
+                    if lyr_name == "Input":
                         # it is an Input layer, hence should not be called
-                        initialized_layer = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                        initialized_layer = LAYERS[lyr_name](*args, **lyr_config)
                         initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                 'tf_name': lyr_name}
                         input_lyrs.append(initialized_layer)
                     else:
                         # it is executable and uses previous outputs as inputs
-                        if lyr_name.upper() in ACTIVATION_LAYERS:
-                            layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])
+                        if lyr_name in ACTIVATION_LAYERS:
+                            layer_outputs = ACTIVATION_LAYERS[lyr_name](name=lyr_config['name'])
                             initiated_layers[lyr_config['name']] = {'layer': layer_outputs,
                                                                     'named_outs': named_outs,
                                                                     'call_args': call_args,
                                                                     'inputs': lyr_inputs,
                                                                     'tf_name': lyr_name}
-                        elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                            wrp_layer = LAYERS[lyr_name.upper()]
+                        elif lyr_name in ['TimeDistributed', 'Bidirectional']:
+                            wrp_layer = LAYERS[lyr_name]
+                            # because wrapper layer name is property
                             initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
-                                                                    'tf_name': lyr_name}  # because wrapper layer name is property
+                                                                    'tf_name': lyr_name}
                             continue
-                        elif  "LAMBDA" in lyr_name.upper():
+                        elif "LAMBDA" in lyr_name.upper():
                             # lyr_config is serialized lambda layer, which needs to be deserialized
                             initialized_layer = tf.keras.layers.deserialize(lyr_config)
                             # layers_config['lambda']['config'] still contails lambda, so we need to replace the python
@@ -333,7 +339,7 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                         else:
                             if wrp_layer is not None:
-                                initialized_layer = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))
+                                initialized_layer = wrp_layer(LAYERS[lyr_name](*args, **lyr_config))
                                 initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                         'named_outs': named_outs,
                                                                         'call_args': call_args,
@@ -341,9 +347,9 @@ class Model(MODEL, BaseModel):
                                                                         'tf_name': lyr_name}
                                 wrp_layer = None
                             else:
-                                if lyr_name.upper() == "TEMPORALFUSIONTRANSFORMER":
+                                if lyr_name == "TemporalFusionTransformer":
                                     lyr_config['return_attention_components'] = True
-                                initialized_layer = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                                initialized_layer = LAYERS[lyr_name](*args, **lyr_config)
                                 initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                         'named_outs': named_outs,
                                                                         'call_args': call_args,
@@ -352,18 +358,19 @@ class Model(MODEL, BaseModel):
 
                 else:  # The inputs to this layer have been specified so they must exist in lyr_cache.
                     # it is an executable
-                    if lyr_name.upper() in ACTIVATION_LAYERS:
+                    if lyr_name in ACTIVATION_LAYERS:
 
-                        layer_outputs = ACTIVATION_LAYERS[lyr_name.upper()](name=lyr_config['name'])
+                        layer_outputs = ACTIVATION_LAYERS[lyr_name](name=lyr_config['name'])
                         initiated_layers[lyr_config['name']] = {'layer': layer_outputs,
                                                                 'named_outs': named_outs,
                                                                 'call_args': call_args,
                                                                 'inputs': lyr_inputs,
                                                                 'tf_name': lyr_name}
-                    elif lyr_name.upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
-                        wrp_layer = LAYERS[lyr_name.upper()]
+                    elif lyr_name in ['TimeDistributed', 'Bidirectional']:
+                        wrp_layer = LAYERS[lyr_name]
+                        # because wrapper layer name is property
                         initiated_layers[lyr_config['name']] = {'layer': wrp_layer,
-                                                                'tf_name': lyr_name}  # because wrapper layer name is property
+                                                                'tf_name': lyr_name}
                         continue
                     elif "LAMBDA" in lyr_name.upper():
                         initialized_layer = tf.keras.layers.deserialize(lyr_config)
@@ -375,7 +382,7 @@ class Model(MODEL, BaseModel):
                                                                 'tf_name': lyr_name}
                     else:
                         if wrp_layer is not None:
-                            initialized_layer = wrp_layer(LAYERS[lyr_name.upper()](*args, **lyr_config))
+                            initialized_layer = wrp_layer(LAYERS[lyr_name](*args, **lyr_config))
                             initiated_layers[lyr_config['name']] = {'layer': initialized_layer,
                                                                     'named_outs': named_outs,
                                                                     'call_args': call_args,
@@ -383,7 +390,7 @@ class Model(MODEL, BaseModel):
                                                                     'tf_name': lyr_name}
                             wrp_layer = None
                         else:
-                            layer_initialized = LAYERS[lyr_name.upper()](*args, **lyr_config)
+                            layer_initialized = LAYERS[lyr_name](*args, **lyr_config)
                             initiated_layers[lyr_config['name']] = {'layer': layer_initialized,
                                                                     'named_outs': named_outs,
                                                                     'call_args': call_args,
@@ -397,9 +404,9 @@ class Model(MODEL, BaseModel):
 
         # inputs = [] todo, indentify input layers
         # for k,v in lyr_cache.items():
-        #     # since the model is not build yet and we have access to only output tensors of each list, this is probably
+        #     since the model is not build yet and we have access to only output tensors of each list, this is probably
         #     # the only way to know that how many `Input` layers were encountered during the run of this method. Each
-        #     # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
+        # tensor (except TimeDistributed) has .op.inputs attribute, which is empty if a tensor represents output of Input layer.
         #     if int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 240:
         #         if k.upper() != "TIMEDISTRIBUTED" and hasattr(v, 'op'):
         #             if hasattr(v.op, 'inputs'):
@@ -421,7 +428,7 @@ class Model(MODEL, BaseModel):
         #     if len(layer_outputs.op.inputs) < 1:
         #         print("Warning: the output is of Input tensor class type")
         # else:
-        #     if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
+        #    if 'op' not in dir(layer_outputs):  # layer_outputs does not have `op`, which means it has no incoming node
         #         print("Warning: the output is of Input tensor class type")
 
         # outs = None
@@ -435,7 +442,7 @@ class Model(MODEL, BaseModel):
             #         outputs=outs)
                 #MODEL.__init__(self, inputs=inputs, outputs=outs)
 
-        return input_lyrs#, outs
+        return input_lyrs  # , outs
 
     def call(self, inputs, training=None, mask=None, run_call=True):
 
@@ -482,7 +489,7 @@ class Model(MODEL, BaseModel):
 
             if isinstance(lyr_args['layer'], tf.Tensor) or idx == 0 or is_input(lyr_args['layer']):
                 # this must be an input layer
-                #assert is_input(lyr_args['layer'])
+                # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
                     assert all([is_input(_input) for _input in inputs])
                 if isinstance(inputs, tuple):
@@ -492,9 +499,9 @@ class Model(MODEL, BaseModel):
                 #     assert is_input(inputs)
                 input_tensor = True
                 # don't use the tf.keras.Input from self.initiated_layers
-                #outs = lyr_args['layer']
+                # outs = lyr_args['layer']
 
-            elif lyr_args['tf_name'].upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+            elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
                 continue
 
@@ -515,7 +522,7 @@ class Model(MODEL, BaseModel):
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
-                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
@@ -538,7 +545,7 @@ class Model(MODEL, BaseModel):
 
     def call_210(self, inputs, training=True, mask=None, run_call=True):
 
-        if int(''.join(np.__version__.split('.')[0:2]).ljust(3, '0'))>=120:
+        if int(''.join(np.__version__.split('.')[0:2]).ljust(3, '0')) >= 120:
             raise NumpyVersionException("Decrease")
 
         self.treat_casted_inputs(inputs)
@@ -566,14 +573,14 @@ class Model(MODEL, BaseModel):
             if isinstance(lyr_args['layer'], tf.Tensor) or idx == 0 or is_input(lyr_args['layer']):
                 is_input_tensor = True
                 # this must be an input layer
-                #assert is_input(lyr_args['layer'])
+                # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
                     if not run_call:
                         assert all([is_input(_input) for _input in inputs])
                 if isinstance(inputs, tuple):
-                     assert all([is_input(_input) for _input in inputs])
+                    assert all([is_input(_input) for _input in inputs])
 
-            elif lyr_args['tf_name'].upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+            elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
                 continue
             else:
@@ -589,12 +596,11 @@ class Model(MODEL, BaseModel):
                     call_args, add_args = get_call_args(_inputs, cache, lyr_args['call_args'], lyr)
 
                 # call the initiated layer
-                #print(f"fetching {_inputs} for layer {lyr} call_args are \n{call_args} \n while cache has {cache.keys()}")
                 outs = lyr_args['layer'](call_args, **add_args)
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
-                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
@@ -630,8 +636,10 @@ class Model(MODEL, BaseModel):
         else:
             name_to_assign = self.input_layer_names
             if isinstance(name_to_assign, list):
-                if len(name_to_assign) ==1: name_to_assign = name_to_assign[0]
-                else:  raise ValueError
+                if len(name_to_assign) == 1:
+                    name_to_assign = name_to_assign[0]
+                else:
+                    raise ValueError
             assign_dummy_name(casted_inputs, name_to_assign)
 
         return
@@ -666,7 +674,7 @@ class Model(MODEL, BaseModel):
 
             if isinstance(lyr_args['layer'], tf.Tensor) or idx == 0 or is_input(lyr_args['layer']):
                 # this must be an input layer
-                #assert is_input(lyr_args['layer'])
+                # assert is_input(lyr_args['layer'])
                 if isinstance(inputs, list):
                     assert all([is_input(_input) for _input in inputs])
                 if isinstance(inputs, tuple):
@@ -676,8 +684,7 @@ class Model(MODEL, BaseModel):
                 input_tensor = True
                 # don't use the tf.keras.Input from self.initiated_layers
 
-
-            elif lyr_args['tf_name'].upper() in ['TIMEDISTRIBUTED', 'BIDIRECTIONAL']:
+            elif lyr_args['tf_name'] in ['TimeDistributed', 'Bidirectional']:
                 # no need to call wrapper layer so move to next iteration
                 continue
             else:
@@ -694,7 +701,7 @@ class Model(MODEL, BaseModel):
 
                 # if the layer is TFT, we need to extract the attention components
                 # so that they can be used during post-processign
-                if lyr.upper() == "TEMPORALFUSIONTRANSFORMER":
+                if lyr in ["TemporalFusionTransformer", "TFT"]:
                     outs, self.TemporalFusionTransformer_attentions = outs
 
                 if lyr_args['named_outs'] is not None:
@@ -706,7 +713,7 @@ class Model(MODEL, BaseModel):
                         cache[lyr_args['named_outs']] = outs
 
             if input_tensor:
-                input_tensor = False #    cache[_tensor.name] = _tensor
+                input_tensor = False  # cache[_tensor.name] = _tensor
             else:
                 cache[lyr] = outs
             prev_output_name = lyr
@@ -743,7 +750,7 @@ class Model(MODEL, BaseModel):
             call_args = lyr_args['call_args']
             _inputs = lyr_args['inputs']
 
-            if idx==0:
+            if idx == 0:
                 assert isinstance(inputs, tuple) and len(inputs) == 1
                 _inputs = 'input_0'
 
@@ -802,7 +809,8 @@ class Model(MODEL, BaseModel):
                 else:
                     self.summary()
 
-            self.plot_model(self)
+            if self.verbosity >= 0:  # if verbosity is -ve then don't plot this
+                self.plot_model(self)
 
         elif self.category == "ML":
             self.build_ml_model()
@@ -865,10 +873,10 @@ class Model(MODEL, BaseModel):
         data = None
 
         if isinstance(args, tuple):  # multiple non-keyword arguments were provided
-            if len(args)>0:
+            if len(args) > 0:
                 _config = args[0]
-                if len(args)>1:
-                    data=args[1]
+                if len(args) > 1:
+                    data = args[1]
                 else:
                     data = kwargs.get('data', None)
             else:
@@ -900,7 +908,7 @@ class Model(MODEL, BaseModel):
             else:
                 config_path = _config
             config, path = BaseModel._get_config_and_path(cls,
-                                                          config = config,
+                                                          config=config,
                                                           config_path=config_path,
                                                           make_new_path=kwargs.get('make_new_path', False))
             if 'make_new_path' in kwargs:
@@ -910,9 +918,9 @@ class Model(MODEL, BaseModel):
                 config['verbosity'] = kwargs.pop('verbosity')
 
             return cls(**config,
-                   data=data,
-                   path=path,
-                   **kwargs)
+                       data=data,
+                       path=path,
+                       **kwargs)
 
         # tf1.15 has from_config so call it
         return super().from_config(*args, **kwargs)
@@ -926,14 +934,14 @@ class Model(MODEL, BaseModel):
         return history
 
     def predict_pytorch(self, x, **kwargs):
-        from .utils.torch_utils import to_torch_dataset
+        from .models.torch.utils import to_torch_dataset
         from torch.utils.data import DataLoader
 
         if isinstance(x, torch.utils.data.Dataset):
             dataset = x
         elif isinstance(x, np.ndarray):
             dataset = to_torch_dataset(x=x)
-        elif isinstance(x, list) and len(x)==1:
+        elif isinstance(x, list) and len(x) == 1:
             dataset = to_torch_dataset(x[0])
         else:
             raise ValueError
@@ -946,7 +954,6 @@ class Model(MODEL, BaseModel):
             y_pred_ = self(batch_x.float())
             predictions.append(y_pred_.detach().numpy())
 
-
         return np.concatenate(predictions, axis=0)
 
 
@@ -956,7 +963,7 @@ def is_input(tensor, name=''):
         # Each tensor (except TimeDistributed) has .op.inputs attribute, which is empty
         # if a tensor represents output of Input layer.
 
-        if name.upper() != "TIMEDISTRIBUTED" and hasattr(tensor, 'op'):
+        if name != "TimeDistributed" and hasattr(tensor, 'op'):
             if hasattr(tensor.op, 'inputs'):
                 _ins = tensor.op.inputs
                 if len(_ins) == 0:
@@ -964,7 +971,6 @@ def is_input(tensor, name=''):
     # # not sure if this is the proper way of checking if a layer receives an input or not!
     elif hasattr(tensor, '_keras_mask'):
         _is_input = True
-
 
     return _is_input
 

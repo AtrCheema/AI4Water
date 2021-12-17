@@ -1,25 +1,54 @@
-__all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel", "NBeatsModel"]
+__all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel"]
 
 import os
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
 from ai4water.backend import tf
-from ai4water.main import Model
 from ai4water.functional import Model as FModel
 from ai4water.backend import keras
 from ai4water.utils.utils import print_something
 from ai4water.nn_tools import check_act_fn
-from ai4water.layer_definition import MyTranspose, MyDot
-from ai4water.utils.utils import plot_activations_along_inputs
+from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
+from ai4water.utils.utils import plot_activations_along_inputs, imshow
 
 layers = keras.layers
 KModel = keras.models.Model
 
 
+class DALSTM(keras.layers.Layer):
+
+    def __init__(
+            self,
+            enc_config: dict = None,
+            dec_config: dict = None,
+            drop_remainder: bool = True,
+            teacher_forcing: bool = False,
+            **kwargs
+    ):
+        self.enc_config = enc_config
+        self.dec_config = dec_config
+        self.drop_remainder = drop_remainder
+        self.teacher_forcing = teacher_forcing
+
+        super().__init__(**kwargs)
+        raise NotImplementedError
+
+
 class DualAttentionModel(FModel):
+    """
+    This is Dual-Attention LSTM model of [Qin et al., 2017](https://arxiv.org/abs/1704.02971).
+    The code is adopted from [this](https://github.com/chensvm/A-Dual-Stage-Attention-Based-Recurrent-Neural-Network-for-Time-Series-Prediction)
+    repository
+
+    Example:
+        >>> from ai4water import DualAttentionModel
+        >>> from ai4water.datasets import arg_beach
+        >>> model = DualAttentionModel(data=arg_beach(),
+        >>>                            teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
+        >>> model.fit()
+    """
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m
                    'm': 20,  # length of hidden state m
@@ -33,8 +62,44 @@ class DualAttentionModel(FModel):
         'n_sde0': 30
     }
 
-    def __init__(self, enc_config:dict=None, dec_config:dict=None, **kwargs):
+    def __init__(
+            self,
+            enc_config: dict = None,
+            dec_config: dict = None,
+            teacher_forcing: bool = True,
+            **kwargs
+    ):
+        """
 
+        Arguments:
+            enc_config:
+                dictionary defining configuration of encoder/input attention. It must
+                have following three keys
+
+                    - n_h: 20
+                    - n_s: 20
+                    - m: 20
+                    - enc_lstm1_act: None
+                    - enc_lstm2_act: None
+
+            dec_config:
+                dictionary defining configuration of decoder/output attention. It must have
+                following three keys
+
+                    - p: 30
+                    - n_hde0: None
+                    - n_sde0: None
+
+            teacher_forcing:
+                Whether to use the prvious target/observation as input or not. If
+                yes, then the model will require 2 inputs. The first input will be
+                of shape (num_examples, lookback, num_inputs) while the second input
+                will be of shape (num_examples, lookback-1, 1). This second input is
+                supposed to be the target variable observed at previous time step.
+
+            kwargs :
+                The keyword arguments for the [ai4water's Model][ai4water.Model] class
+        """
         self.method = 'dual_attention'
         if enc_config is None:
             enc_config = DualAttentionModel._enc_config
@@ -48,7 +113,7 @@ class DualAttentionModel(FModel):
         self.enc_config = enc_config
         self.dec_config = dec_config
 
-        super(DualAttentionModel, self).__init__(**kwargs)
+        super(DualAttentionModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
         setattr(self, 'category', "DL")
 
@@ -56,56 +121,60 @@ class DualAttentionModel(FModel):
 
         self.config['dec_config'] = self.dec_config
         self.config['enc_config'] = self.enc_config
+        setattr(self, 'batch_size', self.config['batch_size'])
+        setattr(self, 'drop_remainder', self.config['drop_remainder'])
+        setattr(self, 'teacher_forcing', self.config['teacher_forcing'])
 
         self.de_LSTM_cell = layers.LSTM(self.dec_config['p'], return_state=True, name='decoder_LSTM')
         self.de_densor_We = layers.Dense(self.enc_config['m'])
 
-        h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
-        s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
+        if self.config['drop_remainder']:
+            h_de0 = tf.zeros((self.batch_size, self.dec_config['n_hde0']), name='dec_1st_hidden_state')
+            s_de0 = tf.zeros((self.batch_size, self.dec_config['n_sde0']), name='dec_1st_cell_state')
+        else:
+            h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
+            s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
 
-        #h_de0 = tf.zeros((self.config['batch_size'], self.dec_config['n_hde0']), name='dec_1st_hidden_state')
-        #s_de0 = tf.zeros((self.config['batch_size'], self.dec_config['n_sde0']), name='dec_1st_cell_state')
+        input_y = None
+        if self.teacher_forcing and self.drop_remainder:
+            input_y = layers.Input(batch_shape=(self.batch_size, self.lookback - 1, self.num_outs), name='input_y')
+        elif not self.drop_remainder:
+            input_y = layers.Input(shape=(self.lookback - 1, self.num_outs), name='input_y')
 
-        input_y = layers.Input(shape=(self.lookback - 1, self.num_outs), name='input_y')
-        enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input')
+        if self.drop_remainder:
+            enc_input = keras.layers.Input(batch_shape=(self.batch_size, self.lookback, self.num_ins), name='enc_input')
+        else:
+            enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input')
 
         enc_lstm_out, s0, h0 = self._encoder(enc_input, self.config['enc_config'])
-
-        if self.verbosity > 2:
-            print('encoder output before reshaping: ', enc_lstm_out)
 
         # originally the last dimentions was -1 but I put it equal to 'm'
         # eq 11 in paper
         enc_out = layers.Reshape((self.lookback, self.enc_config['m']), name='enc_out_eq_11')(enc_lstm_out)
-
-        if self.verbosity > 1:
-            print('output from Encoder LSTM:', enc_out)
 
         h, context = self.decoder_attention(enc_out, input_y, s_de0, h_de0)
         h = layers.Reshape((self.num_outs, self.dec_config['p']))(h)
         # concatenation of decoder hidden state and the context vector.
         last_concat = layers.Concatenate(axis=2, name='last_concat')([h, context])  # (None, 1, 50)
 
-        if self.verbosity > 2:
-            print('last_concat', last_concat)
-        sec_dim = self.enc_config['m'] + self.dec_config['p']  # original it was not defined but in tf-keras we need to define it
+        # original it was not defined but in tf-keras we need to define it
+        sec_dim = self.enc_config['m'] + self.dec_config['p']
         last_reshape = layers.Reshape((sec_dim,), name='last_reshape')(last_concat)  # (None, 50)
 
-        if self.verbosity > 2:
-            print('reshape:', last_reshape)
-
         result = layers.Dense(self.dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
-
-        if self.verbosity > 1:
-            print('result:', result)
 
         output = layers.Dense(self.num_outs)(result)
         output = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(output)
 
+        initial_input = [enc_input]
+
+        if input_y is not None:
+            initial_input.append(input_y)
+
         if self.config['drop_remainder']:
-            self._model = self.compile(model_inputs=[enc_input, input_y, s_de0, h_de0], outputs=output)
+            self._model = self.compile(model_inputs=initial_input, outputs=output)
         else:
-            self._model = self.compile(model_inputs=[enc_input, input_y, s0, h0, s_de0, h_de0], outputs=output)
+            self._model = self.compile(model_inputs=initial_input + [s0, h0, s_de0, h_de0], outputs=output)
 
         return
 
@@ -113,10 +182,6 @@ class DualAttentionModel(FModel):
 
         if num_ins is None:
             num_ins = self.num_ins
-
-        #if not self.config['drop_remainder']:
-        #    self.config['drop_remainder'] = True
-        #    print(f"setting `drop_remainder` to {self.config['drop_remainder']}")
 
         self.en_densor_We = layers.Dense(self.lookback, name='enc_We_'+suf)
         _config, act_str = check_act_fn({'activation': config['enc_lstm1_act']})
@@ -126,31 +191,26 @@ class DualAttentionModel(FModel):
 
         # initialize the first cell state
         if s0 is None:
-            if self.config['drop_remainder']:
-                s0 =  tf.zeros((self.config['batch_size'], config['n_s']), name=f'enc_first_cell_state_{suf}')
+            if self.drop_remainder:
+                s0 = tf.zeros((self.batch_size, config['n_s']), name=f'enc_first_cell_state_{suf}')
             else:
                 s0 = layers.Input(shape=(config['n_s'],), name='enc_first_cell_state_' + suf)
         # initialize the first hidden state
         if h0 is None:
-            if self.config['drop_remainder']:
-                h0 = tf.zeros((self.config['batch_size'], config['n_h']), name=f'enc_first_hidden_state_{suf}')
+            if self.drop_remainder:
+                h0 = tf.zeros((self.batch_size, config['n_h']), name=f'enc_first_hidden_state_{suf}')
             else:
                 h0 = layers.Input(shape=(config['n_h'],), name='enc_first_hidden_state_' + suf)
 
         enc_attn_out = self.encoder_attention(enc_inputs, s0, h0, num_ins, suf)
-        if self.verbosity > 2:
-            print('encoder attention output:', enc_attn_out)
+
         enc_lstm_in = layers.Reshape((self.lookback, num_ins), name='enc_lstm_input_'+suf)(enc_attn_out)
-        if self.verbosity > 2:
-            print('input to encoder LSTM:', enc_lstm_in)
 
         _config, act_str = check_act_fn({'activation': config['enc_lstm2_act']})
         enc_lstm_out = layers.LSTM(config['m'], return_sequences=lstm2_seq, activation=_config['activation'],
                                    name='LSTM_after_encoder_'+suf)(enc_lstm_in)  # h_en_all
         config['enc_lstm2_act'] = act_str
 
-        if self.verbosity > 2:
-            print('Output from LSTM out: ', enc_lstm_out)
         return enc_lstm_out, h0, s0
 
     def one_encoder_attention_step(self, h_prev, s_prev, x, t, suf: str = '1'):
@@ -166,7 +226,8 @@ class DualAttentionModel(FModel):
         result1 = self.en_densor_We(_concat)   # (none,1,T)
         result1 = layers.RepeatVector(x.shape[2],)(result1)  # (none,n,T)
         x_temp = MyTranspose(axis=(0, 2, 1))(x)  # X_temp(None,n,T)
-        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t)+'_'+suf)(x_temp)  # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
+        # (none,n,T) Ue(T,T), Ue * Xk in eq 8 of paper
+        result2 = MyDot(self.lookback, name='eq_8_mul_'+str(t)+'_'+suf)(x_temp)
         result3 = layers.Add()([result1, result2])  # (none,n,T)
         result4 = layers.Activation(activation='tanh')(result3)  # (none,n,T)
         result5 = MyDot(1)(result4)
@@ -179,45 +240,28 @@ class DualAttentionModel(FModel):
 
         s = _s0
         _h = _h0
-        if self.verbosity > 2:
-            print('encoder cell state:', s)
         # initialize empty list of outputs
         attention_weight_t = None
         for t in range(self.lookback):
-            if self.verbosity > 2:
-                print('encoder input:', _input)
+
             _context = self.one_encoder_attention_step(_h, s, _input, t, suf=suf)  # (none,1,n)
-            if self.verbosity > 2:
-                print('context:', _context)
             x = layers.Lambda(lambda x: _input[:, t, :])(_input)
             x = layers.Reshape((1, num_ins))(x)
-            if self.verbosity > 2:
-                print('x:', x)
+
             _h, _, s = self.en_LSTM_cell(x, initial_state=[_h, s])
             if t != 0:
-                if self.verbosity > 1:
-                    print('attention_weight_:'+str(t), attention_weight_t)
                 # attention_weight_t = layers.Merge(mode='concat', concat_axis=1,
                 #                                    name='attn_weight_'+str(t))([attention_weight_t,
                 #                                                                _context])
-                attention_weight_t = layers.Concatenate(axis=1,
-                                                        name='attn_weight_'+str(t)+'_'+suf)([attention_weight_t,
-                                                                                             _context])
+                attention_weight_t = layers.Concatenate(
+                    axis=1,
+                    name='attn_weight_'+str(t)+'_'+suf)([attention_weight_t, _context])
             else:
                 attention_weight_t = _context
 
-            if self.verbosity > 2:
-                print('Now attention_weight_:' + str(t), attention_weight_t)
-                print('encoder hidden state:', _h)
-                print('_:', _)
-                print('encoder cell state:', s)
-                print('time-step', t)
-            # break
-
         # get the driving input series
         enc_output = layers.Multiply(name='enc_output_'+suf)([attention_weight_t, _input])  # equation 10 in paper
-        if self.verbosity > 1:
-            print('output from encoder attention:', enc_output)
+
         return enc_output
 
     def one_decoder_attention_step(self, _h_de_prev, _s_de_prev, _h_en_all, t):
@@ -228,16 +272,12 @@ class DualAttentionModel(FModel):
         :param t: int, timestep
         :return: x_t's attention weights,total n numbers,sum these are 1
         """
-        if self.verbosity > 2:
-            print('h_en_all:', _h_en_all)
         # concatenation of the previous hidden state and cell state of the LSTM unit in eq 12
         _concat = layers.Concatenate(name='eq_12_'+str(t))([_h_de_prev, _s_de_prev])  # (None,1,2p)
         result1 = self.de_densor_We(_concat)   # (None,1,m)
         result1 = layers.RepeatVector(self.lookback)(result1)  # (None,T,m)
-        result2 = MyDot(self.config['enc_config']['m'])(_h_en_all)
-        if self.verbosity > 2:
-            print('result1:', result1)
-            print('result2:', result2)
+        result2 = MyDot(self.enc_config['m'])(_h_en_all)
+
         result3 = layers.Add()([result1, result2])  # (None,T,m)
         result4 = layers.Activation(activation='tanh')(result3)  # (None,T,m)
         result5 = MyDot(1)(result4)
@@ -249,58 +289,62 @@ class DualAttentionModel(FModel):
     def decoder_attention(self, _h_en_all, _y, _s0, _h0):
         s = _s0
         _h = _h0
-        if self.verbosity > 2:
-            print('y_prev into decoder: ', _y)
+
         for t in range(self.lookback-1):
-            y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)
-            y_prev = layers.Reshape((1, self.num_outs))(y_prev)   # (None,1,1)
-            if self.verbosity > 2:
-                print('\ny_prev at {}'.format(t), y_prev)
-            _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (None,1,20)
-            # concatenation of decoder input and computed context vector  # ??
-            y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
-            if self.verbosity > 2:
-                print('y_prev1 at {}:'.format(t), y_prev)
-            y_prev = layers.Dense(self.num_outs, name='eq_15_'+str(t))(y_prev)       # (None,1,1),                   Eq 15  in paper
-            if self.verbosity > 2:
-                print('y_prev2 at {}:'.format(t), y_prev)
+            _context = self.one_decoder_attention_step(_h, s, _h_en_all, t)  # (batch_size, 1, 20)
+
+            # if we want to use the true value of target of previous timestep as input then we will use _y
+            if self.teacher_forcing:
+                y_prev = layers.Lambda(lambda y_prev: _y[:, t, :])(_y)  # (batch_size, lookback, 1) -> (batch_size, 1)
+                y_prev = layers.Reshape((1, self.num_outs))(y_prev)   # -> (batch_size, 1, 1)
+
+                # concatenation of decoder input and computed context vector  # ??
+                y_prev = layers.Concatenate(axis=2)([y_prev, _context])   # (None,1,21)
+            else:
+                y_prev = _context
+
+            y_prev = layers.Dense(self.num_outs, name='eq_15_'+str(t))(y_prev)  # (None,1,1),  Eq 15  in paper
+
             _h, _, s = self.de_LSTM_cell(y_prev, initial_state=[_h, s])   # eq 16  ??
-            if self.verbosity > 2:
-                print('decoder hidden state:', _h)
-                print('_:', _)
-                print('decoder cell state:', s)
 
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
     def fetch_data(self, source, **kwargs):
-        self.dh.teacher_forcing = True
-        x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
-        self.dh.teacher_forcing = False
 
-        n_s_feature_dim = self.config['enc_config']['n_s']
-        n_h_feature_dim = self.config['enc_config']['n_h']
-        p_feature_dim = self.config['dec_config']['p']
+        if self.teacher_forcing:
+            self.dh.teacher_forcing = True
+            x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
+            self.dh.teacher_forcing = False
+        else:
+            x, labels = getattr(self.dh, f'{source}_data')(**kwargs)
+            prev_y = None
+
+        n_s_feature_dim = self.enc_config['n_s']
+        n_h_feature_dim = self.enc_config['n_h']
+        p_feature_dim = self.dec_config['p']
 
         if kwargs.get('use_datetime_index', False):  # during deindexification, first feature will be removed.
             n_s_feature_dim += 1
             n_h_feature_dim += 1
             p_feature_dim += 1
             idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
-            prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
-        s0 = np.zeros((x.shape[0], n_s_feature_dim))
-        h0 = np.zeros((x.shape[0], n_h_feature_dim))
 
-        h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
+            if self.use_true_prev_y:
+                prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
 
-        x, prev_y, labels = self.dh.check_for_batch_size([x, prev_y, h_de0, s_de0], prev_y, labels)
-        x, prev_y, h_de0, s_de0 = x
+        other_inputs = []
+        if not self.drop_remainder:
+            s0 = np.zeros((x.shape[0], n_s_feature_dim))
+            h0 = np.zeros((x.shape[0], n_h_feature_dim))
 
-        if self.verbosity > 0:
-            print_something([x, prev_y, s0, h0, h_de0, s_de0], "input_x")
-            print_something(labels, "target")
+            h_de0 = s_de0 = np.zeros((x.shape[0], p_feature_dim))
+            other_inputs = [s0, h0, s_de0, h_de0]
 
-        return [x, prev_y, s0, h0, h_de0, s_de0], prev_y, labels
+        if self.teacher_forcing:
+            return [x, prev_y] + other_inputs, prev_y, labels
+        else:
+            return [x] + other_inputs, labels
 
     def training_data(self, **kwargs):
         return self.fetch_data('training', **kwargs)
@@ -320,17 +364,23 @@ class DualAttentionModel(FModel):
                                    **kwargs)
         return
 
-    def plot_act_along_inputs(self,
-                              layer_name: str,
-                              name: str = None,
-                              vmin=None,
-                              vmax=None,
-                              data='training',
-                              show=False):
+    def plot_act_along_inputs(
+            self,
+            layer_name: str,
+            name: str = None,
+            vmin=None,
+            vmax=None,
+            data='training',
+            show=False
+    ):
+
+        if not os.path.exists(self.act_path):
+            os.makedirs(self.act_path)
 
         data_name = name or data
 
-        assert isinstance(layer_name, str), "layer_name must be a string, not of {} type".format(layer_name.__class__.__name__)
+        assert isinstance(layer_name, str), "layer_name must be a string, not of " \
+                                            "{} type".format(layer_name.__class__.__name__)
 
         predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
@@ -348,15 +398,15 @@ class DualAttentionModel(FModel):
         plt.close('all')
 
         fig, axis = plt.subplots()
-        im = plt.imshow(act_avg_over_examples, aspect='auto')
+
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis.set_ylabel('lookback steps')
-        axis.set_yticks(np.arange(len(ytick_labels)))
-        axis.set_yticklabels(ytick_labels)
+        _, im = imshow(act_avg_over_examples, axis=axis, aspect="auto", yticklabels=ytick_labels,
+               ylabel='lookback steps')
+
         axis.set_xticks(np.arange(len(self.in_cols)))
         axis.set_xticklabels(self.in_cols, rotation=90)
         fig.colorbar(im, orientation='horizontal', pad=0.3)
-        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}') ,
+        plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}'),
                     dpi=400, bbox_inches='tight')
 
         data = self.inputs_for_attention(data)
@@ -413,6 +463,8 @@ class InputAttentionModel(DualAttentionModel):
     def build(self, input_shape=None):
 
         self.config['enc_config'] = self.enc_config
+        setattr(self, 'batch_size', self.config['batch_size'])
+        setattr(self, 'drop_remainder', self.config['drop_remainder'])
 
         setattr(self, 'method', 'input_attention')
         print('building input attention model')
@@ -427,7 +479,7 @@ class InputAttentionModel(DualAttentionModel):
             print('predictions: ', predictions)
 
         inputs = [enc_input]
-        if not self.config['drop_remainder']:
+        if not self.drop_remainder:
             inputs = inputs + [s0, h0]
         self._model = self.compile(model_inputs=inputs, outputs=predictions)
 
@@ -438,9 +490,9 @@ class InputAttentionModel(DualAttentionModel):
 
         x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
         self.dh.teacher_forcing = False
-        #if self.config['drop_remainder']:
+        # if self.config['drop_remainder']:
 
-        #x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
+        # x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
         #                                  transformation=self.config['transformation'], **kwargs)
 
         n_s_feature_dim = self.config['enc_config']['n_s']
@@ -452,7 +504,7 @@ class InputAttentionModel(DualAttentionModel):
             idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
             prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
 
-        #x, prev_y, labels = self.check_batches(x, prev_y, labels)
+        # x, prev_y, labels = self.check_batches(x, prev_y, labels)
 
         if not self.config['drop_remainder']:
             s0 = np.zeros((x.shape[0], n_s_feature_dim))
@@ -542,42 +594,9 @@ class OutputAttentionModel(DualAttentionModel):
         h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.config['dec_config']['p']))
 
         predicted = self._model.predict([test_x, test_y, s_de0_test, h_de0_test],
-                                         batch_size=test_x.shape[0],
-                                         verbose=1)
+                                        batch_size=test_x.shape[0],
+                                        verbose=1)
 
         self.process_results(test_label, predicted, pref, **plot_args)
 
         return predicted, test_label
-
-
-class NBeatsModel(Model):
-    """
-    original paper https://arxiv.org/pdf/1905.10437.pdf which is implemented by https://github.com/philipperemy/n-beats
-    must be used with normalization
-    """
-
-    def training_data(self, data=None, data_keys=None, **kwargs):
-
-        exo_x, x, label = self.fetch_data(data=self.data,
-                                          inps=self.in_cols,
-                                          outs=self.out_cols,
-                                          transformation=self.config['transformation'],
-                                          **kwargs)
-
-        return [x, exo_x[:, :, 0:-1]], exo_x[:, :, 0:-1], label   # TODO  .reshape(-1, 1, 1) ?
-
-    def test_data(self, scaler_key='5', data_keys=None, **kwargs):
-        return self.training_data(scaler_key=scaler_key, data_keys=data_keys, **kwargs)
-
-    def get_batches(self, df, ins, outs):
-        df = pd.DataFrame(df, columns=self.in_cols + self.out_cols)
-        return self.prepare_batches(df, ins, outs)
-
-    def deindexify_input_data(self, inputs:list, sort:bool = False, use_datetime_index:bool = False):
-
-        _, inputs, dt_index = Model.deindexify_input_data(self,
-                                                          inputs,
-                                                          sort=sort,
-                                                          use_datetime_index=use_datetime_index)
-
-        return inputs[0], inputs, dt_index

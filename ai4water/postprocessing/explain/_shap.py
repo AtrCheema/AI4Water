@@ -1,5 +1,5 @@
 import os
-from typing import Union, Callable
+from typing import Union, Callable, List
 
 try:
     import shap
@@ -18,7 +18,7 @@ try:
 except ModuleNotFoundError:
     Flatten, Model, K = None, None, None
 
-from ai4water.utils.utils import axis_imshow
+from ai4water.utils.utils import imshow
 from ai4water.backend import get_sklearn_models
 from ._explain import ExplainerMixin
 
@@ -28,15 +28,11 @@ class ShapExplainer(ExplainerMixin):
     Wrapper around SHAP `explainers` and `plots` to draw and save all the plots
     for a given model.
 
-    Attributes
-    ---------
-    features
-
-    train_summary : only for KernelExplainer
-
-    explainer
-
-    shap_values
+    Attributes:
+        features :
+        train_summary : only for KernelExplainer
+        explainer :
+        shap_values :
 
 
     Methods
@@ -46,20 +42,18 @@ class ShapExplainer(ExplainerMixin):
     - dependence_plot_single_feature
     - force_plot_all
 
-    Example
-    --------
-    ```python
-    >>>from ai4water.post_processing.explain import ShapExplainer
-    >>>from sklearn.model_selection import train_test_split
-    >>>from sklearn import linear_model
-    >>>import shap
-
-    >>>X,y = shap.datasets.diabetes()
-    >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-    >>>lin_regr = linear_model.LinearRegression()
-    >>>lin_regr.fit(X_train, y_train)
-    >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
-    >>>explainer()
+    Examples:
+        >>>from ai4water.postprocessing.explain import ShapExplainer
+        >>>from sklearn.model_selection import train_test_split
+        >>>from sklearn import linear_model
+        >>>import shap
+        ...
+        >>>X,y = shap.datasets.diabetes()
+        >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+        >>>lin_regr = linear_model.LinearRegression()
+        >>>lin_regr.fit(X_train, y_train)
+        >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
+        >>>explainer()
     ```
     """
 
@@ -71,14 +65,17 @@ class ShapExplainer(ExplainerMixin):
         "LinearExplainer",
         "AdditiveExplainer",
         "GPUTreeExplainer",
-        "GradientExplainer"
+        "GradientExplainer",
+        "PermutationExplainer",
+        "SamplingExplainer",
+        "PartitionExplainer"
     ]
 
     def __init__(
             self,
             model,
-            data: Union[np.ndarray, pd.DataFrame],
-            train_data: Union[np.ndarray, pd.DataFrame] = None,
+            data: Union[np.ndarray, pd.DataFrame, List[np.ndarray]],
+            train_data: Union[np.ndarray, pd.DataFrame, List[np.ndarray]] = None,
             explainer: Union[str, Callable] = None,
             num_means: int = 10,
             path: str = None,
@@ -100,11 +97,13 @@ class ShapExplainer(ExplainerMixin):
                 working directory
             features: Names of features. Should only be given if train/test data is numpy
                 array.
-            framework : either "DL" or "ML", where "DL" represents deep learning or neural
+            framework : str
+                either "DL" or "ML", where "DL" represents deep learning or neural
                 network based models and "ML" represents other models. For "DL" the explainer
                 will be eihter "DeepExplainer" or "GradientExplainer". If not given, it will
                 be inferred but "DeepExplainer" will be prioritized over "GradientExplainer".
-            layer : only relevant when framework is "DL" i.e when the model consits of layers
+            layer : Union[int, str]
+                only relevant when framework is "DL" i.e when the model consits of layers
                 of neural networks.
 
         """
@@ -119,7 +118,7 @@ class ShapExplainer(ExplainerMixin):
             self._check_data(train_data, test_data)
 
         self.is_sklearn = True
-        if model.__class__.__name__.upper() not in get_sklearn_models():
+        if model.__class__.__name__ not in get_sklearn_models():
             if model.__class__.__name__ in ["XGBRegressor",
                                             "LGBMRegressor",
                                             "CatBoostRegressor",
@@ -166,7 +165,7 @@ class ShapExplainer(ExplainerMixin):
     def map2layer(self, x, layer):
         feed_dict = dict(zip([self.model.layers[0].input], [x.copy()]))
         import tensorflow as tf
-        if int(tf.__version__[0])<2:
+        if int(tf.__version__[0]) < 2:
             sess = K.get_session()
         else:
             sess = tf.compat.v1.keras.backend.get_session()
@@ -197,7 +196,9 @@ class ShapExplainer(ExplainerMixin):
             assert layer is None
 
         if inf_framework == "DL" and isinstance(explainer, str):
-            assert explainer in ("DeepExplainer", "GradientExplainer"), f"invalid explainer {inf_framework}"
+            assert explainer in ("DeepExplainer",
+                                 "GradientExplainer",
+                                 "PermutationExplainer"), f"invalid explainer {inf_framework}"
 
         return inf_framework
 
@@ -223,6 +224,9 @@ class ShapExplainer(ExplainerMixin):
 
             elif explainer == "GradientExplainer":
                 explainer = self._get_gradient_explainer()
+
+            elif explainer == "PermutationExplainer":
+                explainer = shap.PermutationExplainer(self.model, self.data)
 
             else:
                 explainer = getattr(shap, explainer)(self.model)
@@ -254,7 +258,7 @@ class ShapExplainer(ExplainerMixin):
                                              "XGBRFRegressor"]:
             explainer = shap.TreeExplainer(self.model)
 
-        elif self.model.__class__.__name__.upper() in get_sklearn_models():
+        elif self.model.__class__.__name__ in get_sklearn_models():
             explainer = self._get_kernel_explainer(train_data, num_means)
 
         elif self._framework == "DL":
@@ -278,20 +282,25 @@ class ShapExplainer(ExplainerMixin):
                                           self.map2layer(self.data, self.layer))
 
     def _check_data(self, *data):
-        for d in data:
-            assert type(d) == np.ndarray or type(d) == pd.DataFrame, f"" \
-                                                                     f"data must be numpy array or pandas dataframe " \
-                                                                     f"but it is of type {d.__class__.__name__}"
+        if self.single_source:
+            for d in data:
+                assert type(d) == np.ndarray or type(d) == pd.DataFrame, f"""
+                data must be numpy array or pandas dataframe but it is of type {d.__class__.__name__}"""
 
-        assert len(set([d.ndim for d in data])) == 1, "train and test data should have same ndim"
-        assert len(set([d.shape[-1] for d in data])) == 1, "train and test data should have same input features"
-        assert len(set([type(d) for d in data])) == 1, "train and test data should be of same type"
+            assert len(set([d.ndim for d in data])) == 1, "train and test data should have same ndim"
+            assert len(set([d.shape[-1] for d in data])) == 1, "train and test data should have same input features"
+            assert len(set([type(d) for d in data])) == 1, "train and test data should be of same type"
 
         return
 
     def get_shap_values(self, data, **kwargs):
-        if self._framework == "DL":
+
+        if self.explainer.__class__.__name__ in ["Permutation"]:
+            return self.explainer(data)
+
+        elif self._framework == "DL":
             return self._shap_values_dl(data, **kwargs)
+
         return self.explainer.shap_values(data)
 
     def _shap_values_dl(self, data, ranked_outputs=None, **kwargs):
@@ -314,6 +323,8 @@ class ShapExplainer(ExplainerMixin):
                  dependence_plots=False,
                  beeswarm_plots=False,
                  heatmap=False,
+                 show=False,
+                 save=True
                  ):
         """Draws and saves all the plots for a given sklearn model in the path.
 
@@ -324,71 +335,122 @@ class ShapExplainer(ExplainerMixin):
 
         if dependence_plots:
             for feature in self.features:
-                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}")
+                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}", show=show, save=save)
 
         if force_plots:
             for i in range(self.data.shape[0]):
 
-                self.force_plot_single_example(i, f"force_plot_{i}")
+                self.force_plot_single_example(i, f"force_plot_{i}", show=show, save=save)
 
         if beeswarm_plots:
-            self.beeswarm_plot()
+            self.beeswarm_plot(show=show, save=save)
 
         if plot_force_all:
-            self.force_plot_all("force_plot_all")
+            self.force_plot_all("force_plot_all", show=show, save=save)
 
         if heatmap:
-            self.heatmap()
+            self.heatmap(show=show, save=save)
 
-        self.summary_plot("summary_plot")
+        self.summary_plot("summary_plot", show=show, save=save)
 
         return
 
-    def summary_plot(self, name="summary_plot", show=False, **kwargs):
-        """Plots the summary plot of SHAP package."""
+    def summary_plot(
+            self,
+            name: str = "summary_plot",
+            show: bool = True,
+            save: bool = False,
+            **kwargs
+    ):
+        """Plots the summary plot of SHAP package.
 
-        def _summary_plot(_shap_val, _data, _name):
+        Arguments:
+            name:
+                name of saved file
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
+            kwargs:
+                any keyword arguments to shap.summary_plot
+        """
+
+        def _summary_plot(_shap_val, _data, _features, _name):
             plt.close('all')
-            shap.summary_plot(_shap_val, _data, show=show, feature_names=self.features, **kwargs)
-            plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
+            shap.summary_plot(_shap_val, _data, show=False, feature_names=_features, **kwargs)
+            if save:
+                plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
 
-            shap.summary_plot(_shap_val, _data, show=show, plot_type="bar", feature_names=self.features,
+            shap.summary_plot(_shap_val, _data, show=False, plot_type="bar", feature_names=_features,
                               **kwargs)
-            plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300, bbox_inches="tight")
+            if save:
+                plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
 
             return
 
         shap_vals = self.shap_values
-        if isinstance(shap_vals, list):
+        if isinstance(shap_vals, list) and len(shap_vals) == 1:
             shap_vals = shap_vals[0]
 
         data = self.data
 
-        if data.ndim == 3:
-            assert shap_vals.ndim == 3
+        if self.single_source:
+            if data.ndim == 3:
+                assert shap_vals.ndim == 3
 
-            for lookback in range(data.shape[1]):
+                for lookback in range(data.shape[1]):
 
-                _summary_plot(shap_vals[:, lookback], data[:, lookback],  _name=f"{name}_{lookback}")
+                    _summary_plot(shap_vals[:, lookback], data[:, lookback], self.features,  _name=f"{name}_{lookback}")
+            else:
+                _summary_plot(shap_vals, data, self.features, name)
         else:
-            _summary_plot(shap_vals, data, name)
+            # data is a list of data sources
+            for idx, _data in enumerate(data):
+                if _data.ndim == 3:
+                    for lb in range(_data.shape[1]):
+                        _summary_plot(shap_vals[idx][:, lb], _data[:, lb], self.features[idx],
+                                      _name=f"{name}_{idx}_{lb}")
+                else:
+                    _summary_plot(shap_vals[idx], _data, self.features[idx], _name=f"{name}_{idx}")
 
         return
 
-    def force_plot_single_example(self, idx:int, name=None, lookback=None, show=False, **force_kws):
-        """Draws force_plot for a single example/row/sample/instance/data point.
+    def force_plot_single_example(
+            self,
+            idx:int,
+            name=None,
+            show=True,
+            save=False,
+            **force_kws
+    ):
+        """Draws [force_plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.force.html)
+        for a single example/row/sample/instance/data point.
+
+        If the data is 3d and shap values are 3d then they are unrolled/flattened
+        before plotting
 
         Arguments:
-            idx : index of exmaple
-            name : name of saved file
-            show : whether to show the plot or not
-            lookback : only relevent if input data is 3d
+            idx:
+                index of exmaple to use. It can be any value >=0
+            name:
+                name of saved file
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
             force_kws : any keyword argument for force plot
+
+        Returns:
+            plotter object
         """
 
         shap_vals = self.shap_values
 
-        if isinstance(shap_vals, list):
+        if isinstance(shap_vals, list) and len(shap_vals) == 1:
             shap_vals = shap_vals[0]
 
         shap_vals = shap_vals[idx]
@@ -403,12 +465,12 @@ class ShapExplainer(ExplainerMixin):
         else:
             expected_value = self.explainer.expected_value
 
-        if data.ndim == 2:  # input is 3d
-            assert lookback is not None, f"for 3d input data, lookback must not be None"
-            assert shap_vals.ndim == 2
-            expected_value =  expected_value[0] #todo
-            shap_vals = shap_vals[lookback]
-            data = None
+        features = self.features
+        if data.ndim == 2 and shap_vals.ndim == 2:  # input was 3d i.e. ml model uses 3d input
+            features = self.unrolled_features
+            expected_value = expected_value[0]  # todo
+            shap_vals = shap_vals.reshape(-1,)
+            data = data.reshape(-1, )
 
         plt.close('all')
 
@@ -416,19 +478,20 @@ class ShapExplainer(ExplainerMixin):
             expected_value,
             shap_vals,
             data,
-            feature_names=self.features,
+            feature_names=features,
             show=False,
             matplotlib=True,
             **force_kws
         )
 
-        name = name or f"force_plot_{idx}_{lookback}"
-        plotter.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+        if save:
+            name = name or f"force_plot_{idx}"
+            plotter.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
 
         if show:
             plotter.show()
 
-        return
+        return plotter
 
     def dependence_plot_all_features(self, show=True, save=False, **dependence_kws):
         """dependence plot for all features"""
@@ -447,7 +510,15 @@ class ShapExplainer(ExplainerMixin):
         if len(name) > 150:  # matplotlib raises error if the length of filename is too large
             name = name[0:150]
 
-        shap.dependence_plot(feature, self.shap_values, self.data, show=False, **kwargs)
+        shap_values = self.shap_values
+        if isinstance(shap_values, list) and len(shap_values) == 1:
+            shap_values = shap_values[0]
+
+        shap.dependence_plot(feature,
+                             shap_values,
+                             self.data,
+                             show=False,
+                             **kwargs)
         if save:
             plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
         if show:
@@ -461,15 +532,26 @@ class ShapExplainer(ExplainerMixin):
         if sp.__version__ in ["1.4.1", "1.5.2", "1.7.1"]:
             print(f"force plot can not be plotted for scipy version {sp.__version__}. Please change your scipy")
             return
+
+        shap_values = self.shap_values
+        if isinstance(shap_values, list) and len(shap_values) == 1:
+            shap_values = shap_values[0]
         plt.close('all')
-        plot = shap.force_plot(self.explainer.expected_value, self.shap_values, self.data, **force_kws)
+        plot = shap.force_plot(self.explainer.expected_value, shap_values, self.data, **force_kws)
         if save:
             shap.save_html(os.path.join(self.path, name), plot)
 
         return
 
-    def waterfall_plot_all_examples(self, name: str = "waterfall", save=True, show=False, **waterfall_kws):
-        """Plots the waterfall plot of SHAP package
+    def waterfall_plot_all_examples(
+            self,
+            name: str = "waterfall",
+            save=True,
+            show=False,
+            **waterfall_kws
+    ):
+        """Plots the [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
+         of SHAP package
 
         It plots for all the examples/instances from test_data.
         """
@@ -484,26 +566,71 @@ class ShapExplainer(ExplainerMixin):
             name: str = "waterfall",
             show: bool = False,
             save=True,
-            **waterfall_kws
+            max_display: int = 10,
     ):
-        """draws and saves waterfall plot for one prediction.
+        """draws and saves [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
+         for one example.
 
         The waterfall plots are based upon SHAP values and show the
         contribution by each feature in model's prediction. It shows which
         feature pushed the prediction in which direction. Note that the
         annotated values in waterfall plot are not SHAP values.
         Currently only possible with xgboost, catboost, lgbm models
-        show : whether to show the plot or now
+
+        Arguments:
+            example_index : int
+                index of example to use
+            max_display : int
+                maximu features to display
+            name : str
+                name of plot
+            save : bool
+                whether to save the plot or not
+            show : bool
+                whether to show the plot or now
+
         """
-        shap_vals = self.explainer(self.data)
+        if self.explainer.__class__.__name__ in ["Deep"]:
+            shap_vals_as_exp = None
+        else:
+            shap_vals_as_exp = self.explainer(self.data)
+
+        shap_values = self.shap_values
+        if isinstance(shap_values, list) and len(shap_values) == 1:
+            shap_values = shap_values[0]
+
         plt.close('all')
-        shap.plots.waterfall(shap_vals[example_index], show=False, **waterfall_kws)
+
+        if shap_vals_as_exp is None:
+
+            features = self.features
+            if not self.data_is_2d:
+                features = self.unrolled_features
+
+            class Explanation:
+                # waterfall plot expects first argument as Explaination class
+                # which must have at least these attributes (values, data, feature_names, base_values)
+                # https://github.com/slundberg/shap/issues/1420#issuecomment-715190610
+                if not self.data_is_2d:  # if original data is 3d then we flat it into 1d array
+                    values = shap_values[example_index].reshape(-1, )
+                    data = self.data[example_index].reshape(-1, )
+                else:
+                    values = shap_values[example_index]
+                    data = self.data[example_index]
+
+                feature_names = features
+                base_values = self.explainer.expected_value[0]
+
+            shap.plots.waterfall(Explanation(), show=False, max_display=max_display)
+        else:
+            shap.plots.waterfall(shap_vals_as_exp[example_index], show=False, max_display=max_display)
 
         if save:
             plt.savefig(os.path.join(self.path, f"{name}_{example_index}"), dpi=300, bbox_inches="tight")
 
         if show:
             plt.show()
+
         return
 
     def scatter_plot_single_feature(
@@ -535,7 +662,7 @@ class ShapExplainer(ExplainerMixin):
 
         return
 
-    def heatmap(self, name: str = 'heatmap', show: bool = False, max_display=10):
+    def heatmap(self, name: str = 'heatmap', show: bool = False, save=False, max_display=10):
         """Plots the heat map and saves it
         https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
         This can be drawn for xgboost/lgbm as well as for randomforest type models
@@ -556,14 +683,21 @@ class ShapExplainer(ExplainerMixin):
 
         # by default examples are ordered in such a way that examples with similar
         # explanations are grouped together.
-        self._heatmap(shap_values, f"{name}_basic", show=show, max_display=max_display)
+        self._heatmap(shap_values, f"{name}_basic",
+                      show=show,
+                      save=save,
+                      max_display=max_display)
 
         # sort by the maximum absolute value of a feature over all the examples
-        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show, max_display=max_display,
+        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
+                      max_display=max_display,
+                      save=save,
                       feature_values=shap_values.abs.max(0))
 
         # sorting by the sum of the SHAP values over all features gives a complementary perspective on the data
-        self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show, max_display=max_display,
+        self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show,
+                      save=save,
+                      max_display=max_display,
                       instance_order=shap_values.sum(1))
         return
 
@@ -579,12 +713,11 @@ class ShapExplainer(ExplainerMixin):
 
         if show:
             plt.show()
-
         return
 
     def _get_shap_values_locally(self):
         data = self.data
-        if not isinstance(self.data, pd.DataFrame):
+        if not isinstance(self.data, pd.DataFrame) and data.ndim == 2:
             data = pd.DataFrame(self.data, columns=self.features)
 
         # not using global explainer because, this explainer should data as well
@@ -594,27 +727,45 @@ class ShapExplainer(ExplainerMixin):
         return shap_values
 
     def beeswarm_plot(
-            self, name: str = "beeswarm",
-            show=False,
+            self,
+            name: str = "beeswarm",
+            show: bool = False,
             max_display: int = 10,
-            save=True,
+            save: bool = True,
+            **kwargs
     ):
         """
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
+        Draws the [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
+        of shap.
+
+        Arguments:
+            name : str
+                name of saved file
+            show : bool
+                whether to show the plot or not
+            save :
+                whether to save the plot or not
+            max_display :
+                maximum
+            kwargs :
+                any keyword arguments for shap.beeswarm plot
         """
 
         shap_values = self._get_shap_values_locally()
 
-        self._beeswarm_plot(shap_values, name=f"{name}_basic", show=show, max_display=max_display, save=save)
+        self._beeswarm_plot(shap_values,
+                            name=f"{name}_basic", show=show, max_display=max_display,
+                            save=save,
+                            **kwargs)
 
         # find features with high impacts
         self._beeswarm_plot(shap_values, name=f"{name}_sortby_maxabs", show=show, max_display=max_display,
-                            order=shap_values.abs.max(0), save=save)
+                            order=shap_values.abs.max(0), save=save, **kwargs)
 
         # plot the absolute value
-        self._beeswarm_plot(shap_values.abs, name=f"{name}_abs_shapvalues", show=show, max_display=max_display,
-                            save=save)
-
+        self._beeswarm_plot(shap_values.abs,
+                            name=f"{name}_abs_shapvalues", show=show, max_display=max_display,
+                            save=save, **kwargs)
         return
 
     def _beeswarm_plot(self, shap_values, name, show=False, max_display=10, save=True, **kwargs):
@@ -645,8 +796,8 @@ class ShapExplainer(ExplainerMixin):
         legend_labels = None
         if indices is not None:
             shap_values = shap_values[(indices), :]
-            if len(shap_values)<=10:
-                legend_labels=indices
+            if len(shap_values) <= 10:
+                legend_labels = indices
                 legend_location = "lower right"
 
         if self.explainer.__class__.__name__ in ["Tree"]:
@@ -654,6 +805,7 @@ class ShapExplainer(ExplainerMixin):
                                shap_values,
                                self.features,
                                legend_labels=legend_labels,
+                               show=False,
                                legend_location=legend_location,
                                **decision_kwargs)
             if save:
@@ -665,49 +817,83 @@ class ShapExplainer(ExplainerMixin):
 
     def plot_shap_values(
             self,
-            name: str = "shap_values",
-            show: bool = False,
             interpolation=None,
-            cmap="coolwarm"
+            cmap="coolwarm",
+            name: str = "shap_values",
+            show: bool = True,
+            save: bool = False
     ):
-        """Plots the SHAP values."""
+        """Plots the SHAP values.
+
+        Arguments:
+            name:
+                name of saved file
+            show:
+                whether to show the plot or not
+            interpolation:
+                interpolation argument to axis.imshow
+            cmap:
+                color map
+            save:
+                whether to save the plot or not
+
+        """
         shap_values = self.shap_values
 
-        if isinstance(shap_values, list):
+        if isinstance(shap_values, list) and len(shap_values) == 1:
             shap_values: np.ndarray = shap_values[0]
 
-        if self.data.ndim == 3: # input is 3d
-            assert shap_values.ndim == 3
-            return imshow_3d(shap_values, self.data, self.features, self.path, show=show,
-                             cmap=cmap)
+        def plot_shap_values_single_source(_data, _shap_vals, _features, _name):
+            if _data.ndim == 3 and _shap_vals.ndim == 3:  # input is 3d
+                # assert _shap_vals.ndim == 3
+                return imshow_3d(_shap_vals,
+                                 _data,
+                                 _features,
+                                 name=_name,
+                                 path=self.path,
+                                 show=show,
+                                 cmap=cmap)
 
-        plt.close('all')
-        fig, axis = plt.subplots()
-        im = axis.imshow(shap_values.T, aspect='auto', interpolation=interpolation, cmap=cmap)
-        axis.set_yticks(np.arange(len(self.features)))
-        axis.set_yticklabels(self.features)
-        axis.set_ylabel("Features")
-        axis.set_xlabel("Examples")
+            plt.close('all')
+            fig, axis = plt.subplots()
+            im = axis.imshow(_shap_vals.T, aspect='auto', interpolation=interpolation, cmap=cmap)
+            if _features is not None:  # if imshow is successful then don't worry if features are None
+                axis.set_yticks(np.arange(len(_features)))
+                axis.set_yticklabels(_features)
+            axis.set_ylabel("Features")
+            axis.set_xlabel("Examples")
 
-        fig.colorbar(im)
+            fig.colorbar(im)
+            if save:
+                plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
 
-        plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
+            if show:
+                plt.show()
+            return
 
-        if show:
-            plt.show()
-
+        if self.single_source:
+            plot_shap_values_single_source(self.data, shap_values, self.features, name)
+        else:
+            for idx, d in enumerate(self.data):
+                plot_shap_values_single_source(d,
+                                               shap_values[idx],
+                                               self.features[idx],
+                                               f"{idx}_{name}")
         return
 
     def pdp_all_features(
             self,
-            show=False,
-            save=True,
+            show: bool = False,
+            save: bool = True,
             **pdp_kws
     ):
         """partial dependence plot of all features.
+
         Arguments:
-            show :
-            save :
+            show:
+            save:
+            pdp_kws:
+                any keyword arguments
             """
         for feat in self.features:
             self.pdp_single_feature(feat, show=show, save=save, **pdp_kws)
@@ -716,9 +902,9 @@ class ShapExplainer(ExplainerMixin):
 
     def pdp_single_feature(
             self,
-            feature_name:str,
-            show=False,
-            save=True,
+            feature_name: str,
+            show=True,
+            save=False,
             **pdp_kws
     ):
         """partial depence plot using SHAP package for a single feature."""
@@ -737,6 +923,8 @@ class ShapExplainer(ExplainerMixin):
             model_expected_value=True,
             feature_expected_value=True,
             shap_values=shap_values,
+            feature_names=self.features,
+            show=False,
             **pdp_kws
         )
 
@@ -751,10 +939,12 @@ class ShapExplainer(ExplainerMixin):
 
 def imshow_3d(values,
               data,
-              feature_names:list,
-              path, vmin=None, vmax=None, name="shap_values",
+              feature_names: list,
+              path, vmin=None, vmax=None,
+              name="",
               show=False,
-              cmap=None):
+              cmap=None,
+              ):
 
     num_examples, lookback, input_features = values.shape
     assert data.shape == values.shape
@@ -763,21 +953,24 @@ def imshow_3d(values,
         plt.close('all')
         fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
 
-        axis, im = axis_imshow(ax1, data[:, :, idx].transpose(), lookback, vmin, vmax,
-                               title=feat, cmap=cmap)
+        yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+        axis, im = imshow(data[:, :, idx].transpose(), yticklabels=yticklabels,
+                          axis=ax1, vmin=vmin, vmax=vmax,
+                          title=feat, cmap=cmap)
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        axis, im = axis_imshow(ax2, values[:, :, idx].transpose(), lookback, vmin, vmax,
-                               xlabel="Examples", title=f"SHAP Values", cmap=cmap)
+        axis, im = imshow(values[:, :, idx].transpose(), yticklabels=yticklabels,
+                          vmin=vmin, vmax=vmax, xlabel="Examples",
+                          title=f"SHAP Values", cmap=cmap,
+                          axis=ax2)
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        _name = f'{name}_{feat}'
+        _name = f'{name}_{feat}_shap_values'
         plt.savefig(os.path.join(path, _name), dpi=400, bbox_inches='tight')
 
         if show:
             plt.show()
-
     return
 
 

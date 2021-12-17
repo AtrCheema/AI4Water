@@ -14,29 +14,26 @@ class RegressionMetrics(Metrics):
     """
     Calculates more than 100 regression performance metrics related to sequence data.
 
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>t = np.random.random(10)
-    >>>p = np.random.random(10)
-    >>>errors = RegressionMetrics(t,p)
-    >>>all_errors = errors.calculate_all()
-    ```
+    Example:
+        >>>import numpy as np
+        >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+        >>>t = np.random.random(10)
+        >>>p = np.random.random(10)
+        >>>errors = RegressionMetrics(t,p)
+        >>>all_errors = errors.calculate_all()
     """
 
     def __init__(self, *args, **kwargs):
         """
         Initializes `Metrics`.
 
-        args and kwargs go to parent class 'Metrics'.
+        args and kwargs go to parent class ['Metrics'][ai4water.postprocessing.SeqMetrics.Metrics].
         """
         super().__init__(*args, **kwargs)
         self.all_methods = list_subclass_methods(RegressionMetrics, True,
                                                  additional_ignores=['calculate_hydro_metrics',
-                                                                     #'calculate_scale_dependent_metrics',
-                                                                     #'calculate_scale_independent_metrics'
+                                                                     # 'calculate_scale_dependent_metrics',
+                                                                     # 'calculate_scale_independent_metrics'
                                                                      ])
 
         # if arrays contain negative values, following three errors can not be computed
@@ -158,7 +155,7 @@ class RegressionMetrics(Metrics):
         """Amemiya’s Prediction Criterion"""
         k = 1
         n = len(self.predicted)
-        return float(((n + k) / (n - k)) * ( 1 /n) * self.sse())
+        return float(((n + k) / (n - k)) * (1 / n) * self.sse())
 
     def bias(self) -> float:
         """
@@ -229,7 +226,10 @@ class RegressionMetrics(Metrics):
 
     def corr_coeff(self) -> float:
         """
-        Correlation Coefficient
+        Pearson correlation coefficient.
+        It measures linear correlatin between true and predicted arrays.
+        It is sensitive to outliers.
+        Reference: Pearson, K 1895.
             .. math::
             r = \\frac{\\sum ^n _{i=1}(e_i - \\bar{e})(s_i - \\bar{s})}{\\sqrt{\\sum ^n _{i=1}(e_i - \\bar{e})^2}
              \\sqrt{\\sum ^n _{i=1}(s_i - \\bar{s})^2}}
@@ -591,7 +591,7 @@ class RegressionMetrics(Metrics):
 
         return float(kgenp_c2m_)
 
-    def KLsym(self) -> Union[float, None]:
+    def kl_sym(self) -> Union[float, None]:
         """Symmetric kullback-leibler divergence"""
         if not all((self.true == 0) == (self.predicted == 0)):
             return None  # ('KL divergence not defined when only one distribution is 0.')
@@ -964,23 +964,6 @@ class RegressionMetrics(Metrics):
         """
         return float(100.0 * sum(self.predicted - self.true) / sum(self.true))
 
-    def pearson_r(self) -> float:
-        """
-        Pearson correlation coefficient.
-        It measures linear correlatin between true and predicted arrays.
-        It is sensitive to outliers.
-        Reference: Pearson, K 1895.
-        """
-        # todo, it is same with 'corr_coeff'.
-        sim_mean = np.mean(self.predicted)
-        obs_mean = np.mean(self.true)
-
-        top = np.sum((self.true - obs_mean) * (self.predicted - sim_mean))
-        bot1 = np.sqrt(np.sum((self.true - obs_mean) ** 2))
-        bot2 = np.sqrt(np.sum((self.predicted - sim_mean) ** 2))
-
-        return float(top / (bot1 * bot2))
-
     def rmsle(self) -> float:
         """Root mean square log error.
 
@@ -1048,7 +1031,7 @@ class RegressionMetrics(Metrics):
         r = np.sum(zx * zy) / (len(self.true) - 1)
         return float(r ** 2)
 
-    def r2_mod(self, weights=None):
+    def r2_score(self, weights=None):
         """
         This is not a symmetric function.
         Unlike most other scores, R^2 score may be negative (it need not actually

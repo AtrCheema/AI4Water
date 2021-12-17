@@ -8,19 +8,19 @@ For tutorial on using this class, see
 [this](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb) notebook
 
 **`Categorical`**
-::: ai4water.hyperopt.utils.Categorical 
+::: ai4water.hyperopt._space.Categorical 
     rendering:
         show_root_heading: true
 
 
 **`Real`**
-::: ai4water.hyperopt.utils.Real 
+::: ai4water.hyperopt._space.Real 
     rendering:
         show_root_heading: true
 
 
 **`Integer`**
-::: ai4water.hyperopt.utils.Integer 
+::: ai4water.hyperopt._space.Integer 
     rendering:
         show_root_heading: true
 
@@ -39,3 +39,4 @@ For tutorial on using this class, see
             - skopt_sapce
             - hp_space
             - optuna_study
+            - add_previous_results

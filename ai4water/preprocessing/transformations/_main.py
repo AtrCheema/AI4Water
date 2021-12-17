@@ -16,7 +16,6 @@ from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransforme
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
 
 
-
 # TODO add logistic, tanh and more scalers.
 # rpca
 # tSNE
@@ -62,68 +61,57 @@ class EmdTransformer(object):
         raise NotImplementedError
 
 
-class scaler_container(object):
+class TransformationsContainer(object):
 
     def __init__(self):
         self.scalers = {}
         self.transforming_straight = True
         self.zero_indices = None
         self.nan_indices = None
+        self.negative_indices = None
         self.index = None
 
 
-class Transformations(scaler_container):
+class Transformations(TransformationsContainer):
     """
     Applies transformation to tabular data.
     Any new transforming methods should define two methods one starting with
-   `transform_with_` and `inverse_transofrm_with_`
+    `transform_with_` and `inverse_transofrm_with_`
     https://developers.google.com/machine-learning/data-prep/transform/normalization
 
     Currently following methods are available for transformation and inverse transformation
 
-        - minmax :
-        - maxabs :
-        - robust :
-        - power :
-        - zscore :   also known as standard scalers
-        - quantile :
-        - log :     natural logrithmic
-        - log10 :   log with base 10
-        - log2 : log with base 2
-        - tan :     tangent
-        - cumsum :  cummulative sum
-        - pca :     principle component analysis
-        - kpca :    kernel component analysis
-        - ipca :    incremental principle component analysis
-        - fastica : fast incremental component analysis
+    Methods
+    -------
+    - minmax
+    - maxabs
+    - robust
+    - power
+    - zscore    also known as standard scalers
+    - quantile
+    - log      natural logrithmic
+    - log10    log with base 10
+    - log2  log with base 2
+    - tan      tangent
+    - cumsum   cummulative sum
 
     To transform a datafrmae using any of the above methods use
 
-    ```python
-    >>>scaler = Transformations(data=[1,2,3,5], method='zscore')
-    >>>scaler.transform()
-    ```
+    Examples:
+        >>> scaler = Transformations(data=[1,2,3,5], method='zscore')
+        >>> scaler.transform()
 
-    or
+        or
+        >>> scaler = Transformations(data=pd.DataFrame([1,2,3]))
+        >>> normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
 
-    ```python
-    >>>scaler = Transformations(data=pd.DataFrame([1,2,3]))
-    >>>normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
-    ```
+        >>> scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
+        >>> normalized_df, scaler_dict = scaler()
 
-    or
-
-    ```python
-    >>>scaler = Transformations(data=pd.DataFrame([1,2,3]), method='minmax')
-    >>>normalized_df, scaler_dict = scaler()
-    ```
-
-    or using one liner
-
-    ```python
-    >>>normalized_df, scaler = Transformations(data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
-    ...                                      method='log', features=['a'])('transform')
-    ```
+        or using one liner
+        >>> normalized_df, scaler = Transformations(
+        ...     data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
+        ...     method='log', features=['a'])('transform')
 
     where `method` can be any of the above mentioned methods.
 
@@ -159,6 +147,7 @@ class Transformations(scaler_container):
                  replace_with: Union[str, int, float] = 'mean',
                  replace_zeros: bool = False,
                  replace_zeros_with: Union[str, int, float] = 'mean',
+                 treat_negatives: bool = False,
                  **kwargs
                  ):
         """
@@ -186,32 +175,31 @@ class Transformations(scaler_container):
                 'mean', 'max', 'man'.
             replace_zeros : same as replace_nans but for zeros in the data.
             replace_zeros_with : same as `replace_with` for for zeros in the data.
+            treat_negatives:
+                If true, and if data contains negative values, then the absolute
+                values of these negative values will be considered for transformation.
+                For inverse transformation, the -ve sign is removed, to return the
+                original data.
             kwargs : any arguments which are to be provided to transformer on
-                INTIALIZATION and not during transform or inverse transform e.g.
-                `n_components` for pca.
+                INTIALIZATION and not during transform or inverse transform
 
-        Example
-        ---------
-        ```python
-        >>>from ai4water.preprocessing.transformations import Transformations
-        >>>from ai4water.datasets import arg_beach
-        >>>df = arg_beach()
-        >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
-        >>>transformer = Transformations(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
-        >>>new_data = transformer.transform()
-        ```
+        Example:
+            >>> from ai4water.preprocessing.transformations import Transformations
+            >>> from ai4water.datasets import arg_beach
+            >>> df = arg_beach()
+            >>> inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+            >>> transformer = Transformations(data=df[inputs], method='minmax', features=['sal_psu', 'air_temp_c'])
+            >>> new_data = transformer.transform()
 
-        Following shows how to apply log transformation on an array containing zeros
-        by making use of the argument `replace_zeros`. The zeros in the input array
-        will be replaced internally but will be inserted back afterwards.
-
-        ```python
-        >>>from ai4water.preprocessing.transformations import Transformations
-        >>>transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True, replace_zeros=True)
-        >>>transformed_data = transformer.transform()
-        ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
-        >>>original_data = transformer.inverse_transform(data=transformed_data)
-        ```
+            Following shows how to apply log transformation on an array containing zeros
+            by making use of the argument `replace_zeros`. The zeros in the input array
+            will be replaced internally but will be inserted back afterwards.
+            >>> from ai4water.preprocessing.transformations import Transformations
+            >>> transformer = Transformations([1,2,3,0.0, 5, np.nan, 7], method='log', replace_nans=True,
+            ...                               replace_zeros=True)
+            >>> transformed_data = transformer.transform()
+            ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
+            >>> original_data = transformer.inverse_transform(data=transformed_data)
 
         """
         super().__init__()
@@ -221,6 +209,7 @@ class Transformations(scaler_container):
         self.replace_with = replace_with
         self.replace_zeros = replace_zeros
         self.replace_zeros_with = replace_zeros_with
+        self.treat_negatives = treat_negatives
         data = self.pre_process_data(data.copy())
         self.data = data
 
@@ -253,14 +242,15 @@ class Transformations(scaler_container):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
             transformer = item.split('_')[2]
-            if transformer.lower() in list(self.available_transformers.keys()) + ["log",
-                                                                                  "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()) + [
+                "log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.transform_with_sklearn
+
         elif item.startswith("inverse_transform_with"):
             transformer = item.split('_')[3]
-            if transformer.lower() in list(self.available_transformers.keys()) + ["log",
-                                                                                  "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()) + [
+                "log", "tan", "cumsum", "log10", "log2"]:
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
         else:
@@ -368,20 +358,17 @@ class Transformations(scaler_container):
             if self.zero_indices is None:
                 self.zero_indices = indices
 
-        # if self.replace_negatives:
-        #     indices = {}
-        #     for col in data.columns:
-        #         # find index containing negatives in corrent column of dataframe
-        #         i = data.index[data[col] < 0.0]
-        #         if len(i) > 0:
-        #             indices[col] = i.values
-        #             if self.replace_negatives_with in ['mean', 'max', 'min']:
-        #                 replace_with = float(getattr(np, 'nan' + self.replace_negatives_with)(data[col]))
-        #             else:
-        #                 replace_with = self.replace_negatives_with
-        #             data[col][indices[col]] = get_val(data[col], replace_with)
-        #
-        #     if self.negative_indices is None: self.negative_indices = indices
+        if self.treat_negatives:
+            indices = {}
+            for col in data.columns:
+                # find index containing negatives in corrent column of dataframe
+                i = data.index[data[col] < 0.0]
+                if len(i) > 0:
+                    indices[col] = i.values
+                    # turn -ve values into positives
+                    data[col] = data[col].abs()
+
+            if self.negative_indices is None: self.negative_indices = indices
 
         return data
 
@@ -399,10 +386,11 @@ class Transformations(scaler_container):
                     for col, idx in self.zero_indices.items():
                         data[col][idx] = 0.0
 
-            # if self.replace_negatives:
-            #     if hasattr(self, 'negative_indices'):
-            #         for col, idx in self.negative_indices.items():
-            #             data[col][idx] = 0.0
+            if self.treat_negatives:
+                if hasattr(self, 'negative_indices'):
+                    for col, idx in self.negative_indices.items():
+                        # invert the sign of those values which were originally -ve
+                        data[col][idx] = -data[col][idx]
         return data
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
@@ -510,6 +498,12 @@ class Transformations(scaler_container):
         elif len(self.scalers) == 1:
             kwargs['scaler'] = self.scalers[list(self.scalers.keys())[0]]['scaler']
 
+        if self.treat_negatives and self.negative_indices is not None:
+            data = kwargs.get('data', self.data)
+            for col, idx in self.negative_indices.items():
+                data[col][idx] = -data[col][idx]
+            kwargs['data'] = data
+
         return getattr(self, "inverse_transform_with_" + self.method.lower())(**kwargs)
 
     def get_features(self, **kwargs) -> pd.DataFrame:
@@ -569,7 +563,7 @@ class Transformations(scaler_container):
         return df
 
 
-def get_val(df:pd.DataFrame, method):
+def get_val(df: pd.DataFrame, method):
 
     if isinstance(method, str):
         if method.lower() == "mean":
@@ -582,7 +576,6 @@ def get_val(df:pd.DataFrame, method):
         return method
     else:
         raise ValueError(f"unknown method {method} to replace nan vlaues")
-
 
 
 class InvalidValueError(Exception):

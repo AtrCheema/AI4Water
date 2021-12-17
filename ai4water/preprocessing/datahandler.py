@@ -59,41 +59,44 @@ class DataHandler(AttributeContainer):
     - TimeSeriesSplit_splits: creates splits using `TimeSeriesSplit` of sklearn
 
     """
-    def __init__(self,
-                 data,
-                 input_features: Union[list, dict, str, None] = None,
-                 output_features: Union[list, dict, str, None] = None,
-                 dataset_args: dict = None,
+    def __init__(
+            self,
+            data,
+            input_features: Union[list, dict, str, None] = None,
+            output_features: Union[list, dict, str, None] = None,
+            dataset_args: dict = None,
 
-                 val_fraction: float = 0.2,
-                 test_fraction: float = 0.2,
+            val_fraction: float = 0.2,
+            test_fraction: float = 0.2,
 
-                 input_step: int = 1,
-                 lookback: int = 1,
-                 forecast_len: int = 1,
-                 forecast_step: int = 0,
-                 known_future_inputs: bool = False,
-                 allow_input_nans: bool = False,
+            input_step: int = 1,
+            lookback: int = 1,
+            forecast_len: int = 1,
+            forecast_step: int = 0,
+            known_future_inputs: bool = False,
+            allow_input_nans: bool = False,
 
-                 train_data: Union[str, list] = None,
-                 val_data: Union[str, list, np.ndarray, None] = None,
-                 intervals=None,
-                 transformation: Union[str, list, dict] = None,
-                 shuffle: bool = True,
-                 allow_nan_labels: int = 0,
-                 nan_filler: dict = None,
-                 batch_size: int = 32,
-                 drop_remainder: bool = False,
-                 teacher_forcing: bool = False,
-                 seed: int = 313,
-                 save: bool = False,
-                 verbosity: int = 1,
-                 mode=None,
-                 category=None,
-                 ):
+            train_data: Union[str, list] = None,
+            val_data: Union[str, list, np.ndarray, None] = None,
+            intervals=None,
+            transformation: Union[str, list, dict] = None,
+            shuffle: bool = True,
+            allow_nan_labels: int = 0,
+            nan_filler: dict = None,
+            batch_size: int = 32,
+            drop_remainder: bool = False,
+            teacher_forcing: bool = False,
+            seed: int = 313,
+            save: bool = False,
+            verbosity: int = 1,
+            mode=None,
+            category=None,
+    ):
         """
+
         Arguments:
-            data : source from which to make the data. It can be one of the following:
+            data :
+                source from which to make the data. It can be one of the following:
 
                 - pandas dataframe: each columns is a feature and each row is an example
                 - xarray dataset: it can be xarray dataset or it
@@ -104,9 +107,11 @@ class DataHandler(AttributeContainer):
                     will be read using xarray to load datasets. If the path refers
                     to a directory, it is supposed that each file in the directory refers to one example.
                 - ai4water dataset : any of dataset name from ai4water.datasets
-            input_features : features to use as input. If `data` is pandas dataframe
+            input_features Union[list, dict, str, None]:
+                features to use as input. If `data` is pandas dataframe
                 then this is list of column names from `data` to be used as input.
-            output_features : features to use as output. When `data` is dataframe
+            output_features Union[list, dict, str, None]:
+                features to use as output. When `data` is dataframe
                 then it is list of column names from `data` to be used as output.
                 If `data` is `dict`, then it must be consistent with `data`.
                 Default is None,which means the last column of data will be
@@ -114,41 +119,54 @@ class DataHandler(AttributeContainer):
                 column is not supposed to be one-hot-encoded rather in the form
                 of [0,1,2,0,1,2,1,2,0] for 3 classes. One-hot-encoding is done
                 inside the model.
-            dataset_args : additional arguments for AI4Water's datasets
-            val_fraction : The fraction of the training data to be used for validation.
+            dataset_args dict:
+                additional arguments for AI4Water's datasets
+            val_fraction float:
+                The fraction of the training data to be used for validation.
                 Set to 0.0 if no validation data is to be used.
-            test_fraction : Fraction of the complete data to be used for test
+            test_fraction float:
+                Fraction of the complete data to be used for test
                 purpose. Must be greater than 0.0. This is also the hold-out data.
-            input_step : step size to keep in input data.
-            lookback : The number of lookback steps. The term lookback has been
+            input_step int:
+                step size to keep in input data.
+            lookback int:
+                The number of lookback steps. The term lookback has been
                 adopted from Francois Chollet's "deep learning with keras" book.
                 It means how many historical time-steps of data, we want to feed
                 to model at time-step to predict next value. This value must be
                 one for any non timeseries forecasting related problems.
-            forecast_len : how many future values/horizons we want to predict.
-            forecast_step : how many steps ahead we want to predict. default is
+            forecast_len int:
+                how many future values/horizons we want to predict.
+            forecast_step int:
+                how many steps ahead we want to predict. default is
                  0 which means nowcasting.
-            known_future_inputs :
-            allow_input_nans : don't know why it exists todo
-            train_data : Determines sampling strategy of training data. Possible
+            known_future_inputs bool:
+            allow_input_nans bool:
+                don't know why it exists todo
+            train_data Union[str, list]:
+                Determines sampling strategy of training data. Possible
                 values are
+
                     - `random`
                     - list of indices to be used
-                `None` means the trainign data is chosen based upon val_fraction
-                and `test_fraction`. In this case, the first x fraction of data is
+                    - `None` means the trainign data is chosen based upon val_fraction
+                    and `test_fraction`. In this case, the first x fraction of data is
                 is used for training where $x = 1 - (val_fraction + test_fraction)$.
 
-            val_data :Data to be used for validation. If you want to use same data for
+            val_data Union[str, list, np.ndarray, None]:
+                Data to be used for validation. If you want to use same data for
                  validation and test purpose, then set this argument to 'same'. This
                  can also be indices to be used for selecting validation data.
-            intervals : tuple of tuples where each tuple consits of two integers, marking
+            intervals :
+                tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means indices
-                from the input file/dataframe to be used when when preparing
-                data/batches for NN. This is handly when we want our input data
-                contains chunks of missing values or we don't want to consider several
-                rows in input data to be considered during data_preparation.
+                from the data. Only rows within those indices will be used when preparing
+                data/batches for NN. This is handy when our input data
+                contains chunks of missing values or when we don't want to consider several
+                rows in input data during data_preparation.
                 For further usage see `examples/using_intervals`
-            transformation : type of transformation to be applied.
+            transformation Union[str, list, dict]:
+                type of transformation to be applied.
                 The transformation can be any transformation name from
                 ai4water.utils.transformations.py. The user can specify more than
                 one transformation. Moreover, the user can also determine which
@@ -165,8 +183,9 @@ class DataHandler(AttributeContainer):
                 ```
                 Here `input1`, `input2`, `input3` and `outptu` are the columns in the
                 `data`.
-            shuffle :
-            allow_nan_labels : whether to allow examples with nan labels or not.
+            shuffle bool:
+            allow_nan_labels bool:
+                whether to allow examples with nan labels or not.
                 if it is > 0, and if target values contain Nans, those examples
                 will not be ignored and will be used as it is.
                 In such a case a customized training and evaluation
@@ -182,7 +201,8 @@ class DataHandler(AttributeContainer):
                 considered/will not be removed. This means for multi-outputs, we can end
                 up having examples whose all labels are nans. if the number of outputs
                 are just one. Then this must be set to 2 in order to use samples with nan labels.
-            nan_filler :  Determines how to deal with missing values in the data.
+            nan_filler dict:
+                Determines how to deal with missing values in the data.
                 The default value is None, which will raise error if missing/nan values
                 are encountered in the input data. The user can however specify a
                 dictionary whose key must be either `fillna` or `interpolate` the value
@@ -220,30 +240,32 @@ class DataHandler(AttributeContainer):
                 ```
                 For more on sklearn based imputation methods
                 [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
-            batch_size : size of one batch. Only relevent if `drop_remainder` is True.
-            drop_remainder : whether to drop the remainder if len(data) % batch_size != 0 or not?
-            teacher_forcing : whether to return previous output/target/ground
+            batch_size int:
+                size of one batch. Only relevent if `drop_remainder` is True.
+            drop_remainder bool:
+                whether to drop the remainder if len(data) % batch_size != 0 or not?
+            teacher_forcing bool:
+                whether to return previous output/target/ground
                 truth or not. This is useful when the user wants to feed output
                 at t-1 as input at timestep t. For details about this technique
                 see [this article](https://machinelearningmastery.com/teacher-forcing-for-recurrent-neural-networks/)
-            seed : random seed for reproducibility
-            save : whether to save the data in an h5 file or not.
+            seed int:
+                random seed for reproducibility
+            save bool:
+                whether to save the data in an h5 file or not.
 
         Note: If `indices` are given for `train_data` or `val_data` then these
             indices do not correspond to indices of original data but rather
             indices of 'available examples'. For example if lookback is 10, indices
             will shift backwards by 10, because we have to ignore first 9 rows.
 
-        Example
-        -------
-        ```python
-        import pandas as pd
-        import numpy as np
-        from ai4water.pre_processing import DataHandler
-        data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
-        data_handler = DataHandler(data=data, lookback=5)
-        x,y = data_handler.training_data()
-        ```
+        Example:
+            >>> import pandas as pd
+            >>> import numpy as np
+            >>> from ai4water.preprocessing import DataHandler
+            >>> data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
+            >>> data_handler = DataHandler(data=data, lookback=5)
+            >>> x,y = data_handler.training_data()
 
         # Note
         The word 'index' is not allowed as column name, input_features or output_features
@@ -758,20 +780,19 @@ class DataHandler(AttributeContainer):
 
     def KFold_splits(self, n_splits=5):
         """returns an iterator for kfold cross validation.
+
         The iterator yields two tuples of training and test x,y pairs.
         The iterator on every iteration returns following
         `(train_x, train_y), (test_x, test_y)`
         Note: only `training_data` and `validation_data` are used to make kfolds.
 
-        Example
-        -------
-        ```python
-        >>>data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
-        >>>data_handler = DataHandler(data=data, config={'lookback': 1})
-        >>>kfold_splits = data_handler.KFold_splits()
-        >>>for (train_x, train_y), (test_x, test_y) in kfold_splits:
-        ...    print(train_x, train_y, test_x, test_y)
-        ```
+        Example:
+            >>> data = pd.DataFrame(np.random.randint(0, 10, (20, 3)), columns=['a', 'b', 'c'])
+            >>> data_handler = DataHandler(data=data, config={'lookback': 1})
+            >>> kfold_splits = data_handler.KFold_splits()
+            >>> for (train_x, train_y), (test_x, test_y) in kfold_splits:
+            ...     print(train_x, train_y, test_x, test_y)
+
         """
         x, y = self._get_xy()
 
@@ -1015,7 +1036,11 @@ class DataHandler(AttributeContainer):
         return x, prev_y, y
 
     def training_data(self, key: str = None, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
-        """Renders the training data."""
+        """Renders the training data.
+        Returns:
+            a tuple of nd arrays containing x and y data. If teacher forcing is True, then the tuple
+            consists of three values i.e. x, prev_y and y.
+        """
         if self._from_h5:
 
             return load_data_from_hdf5('training_data', self.data)
@@ -1170,7 +1195,7 @@ class DataHandler(AttributeContainer):
         elif split2:
 
             if indices is None:
-                train_frac = 1.0 -  self.config['test_fraction']
+                train_frac = 1.0 - self.config['test_fraction']
                 train_idx_en = int(round(train_frac * len(x)))
                 x = x[0: train_idx_en, ...]
                 prev_y = prev_y[0: train_idx_en, ...]
@@ -1178,7 +1203,7 @@ class DataHandler(AttributeContainer):
             else:
                 train_idx_en = len(x)
 
-            if self.config['val_fraction']>0.0:
+            if self.config['val_fraction'] > 0.0:
                 train_frac = 1.0 - self.config['val_fraction']
                 train_idx_st = int(round(train_frac * len(x)))
 
@@ -1369,7 +1394,7 @@ class DataHandler(AttributeContainer):
 
         if test_indices is None:
             # we need to divide the data into train/val/test based upon given fractions.
-            train_frac = 1.0 -  self.config['test_fraction']
+            train_frac = 1.0 - self.config['test_fraction']
             # val_frac = self.config['val_fraction']
             train_idx_en = int(round(train_frac * len(x)))
             # val_idx = train_idx + int(round(train_frac + val_frac * tot_obs))
@@ -1576,17 +1601,17 @@ class DataHandler(AttributeContainer):
             data = np.load(data)
             assert len(data) == 1
             d = []
-            for k,v in data.items():
+            for k, v in data.items():
                 d.append(v)
 
-            data:np.ndarray = d[0]
+            data: np.ndarray = d[0]
             _source = pd.DataFrame(data, columns=input_features + output_features)
 
         # matlab's mat file
         elif data.endswith('.mat'):
             import scipy
             mat = scipy.io.loadmat(data)
-            data:np.ndarray = mat['data']
+            data: np.ndarray = mat['data']
             _source = pd.DataFrame(data, columns=input_features + output_features)
 
         elif os.path.isfile(data):
@@ -1660,11 +1685,16 @@ class DataHandler(AttributeContainer):
                 save_in_a_group(x, prev_y, y, model_weights_group)
         return
 
-    def check_for_batch_size(self, x, prev_y, y):
+    def check_for_batch_size(self, x, prev_y=None, y=None):
 
         if self.config['drop_remainder']:
 
-            remainder = len(x) % self.config['batch_size']
+            if isinstance(x, list):
+                _x = x[0]
+            else:
+                _x = x
+            assert isinstance(_x, np.ndarray)
+            remainder = len(_x) % self.config['batch_size']
 
             if remainder:
                 if isinstance(x, list):
@@ -1675,8 +1705,10 @@ class DataHandler(AttributeContainer):
                 else:
                     x = x[0:-remainder]
 
-                prev_y = prev_y[0:-remainder]
-                y = y[0:-remainder]
+                if prev_y is not None:
+                    prev_y = prev_y[0:-remainder]
+                if y is not None:
+                    y = y[0:-remainder]
 
         return x, prev_y, y
 
@@ -1851,7 +1883,7 @@ class MakeData(object):
             else:
                 raise TypeError(f"unknown data type {data.__class__.__name__} for data ")
 
-        if outs>0:
+        if outs > 0:
             input_x, input_y, label_y = data[:, 0:ins], data[:, -outs:], data[:, -outs:]
         else:
             input_x, input_y, label_y = data[:, 0:ins], np.random.random((len(data), outs)), np.random.random((len(data), outs))
@@ -1982,34 +2014,91 @@ class SiteDistributedDataHandler(object):
     - validation_data
     - test_data
 
+
+    Examples:
+        >>> examples = 50
+        >>> data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
+        >>> df = pd.DataFrame(data, columns=['a', 'b', 'c'],
+        ...                index=pd.date_range('20110101', periods=examples, freq='D'))
+        >>> config = {'input_features': ['a', 'b'],
+        ...      'output_features': ['c'],
+        ...      'lookback': 4}
+        >>> data = {'0': df, '1': df, '2': df, '3': df}
+        >>> configs = {'0': config, '1': config, '2': config, '3': config}
+
+        >>> dh = SiteDistributedDataHandler(data, configs)
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
+
+        >>> dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
+
+        A slightly more complicated example where data of each site consits of 2
+        sources
+
+        >>> examples = 40
+        >>> data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
+        >>> cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
+        ...                            index=pd.date_range('20110101', periods=examples, freq='D'))
+        >>> static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(),
+        ...                   columns=['len', 'dep', 'width'],
+        ...                   index=pd.date_range('20110101', periods=examples, freq='D'))
+
+        >>> config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
+        ...          'output_features': {'cont_data': ['d']},
+        ...          'lookback': {'cont_data': 4, 'static_data':1}}
+
+        >>> data = {'cont_data': cont_df, 'static_data': static_df}
+        >>> datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
+        >>> configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
+
+        >>> dh = SiteDistributedDataHandler(datas, configs)
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
+
+        >>> dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
+        ...                                validation_sites=['3', '4'], test_sites=['5', '6'])
+        >>> train_x, train_y = dh.training_data()
+        >>> val_x, val_y = dh.validation_data()
+        >>> test_x, test_y = dh.test_data()
     """
-    def __init__(self,
-                 data: dict,
-                 config: dict,
-                 training_sites: list = None,
-                 validation_sites: list = None,
-                 test_sites: list = None,
-                 swap_axes: bool = True,
-                 allow_variable_len: bool = False,
-                 verbosity: int = 1
-                 ):
+    def __init__(
+            self,
+            data: dict,
+            config: dict,
+            training_sites: list = None,
+            validation_sites: list = None,
+            test_sites: list = None,
+            swap_axes: bool = True,
+            allow_variable_len: bool = False,
+            verbosity: int = 1
+    ):
         """
         Initiates data
 
         Arguments:
-            data : Must be a dictionary of data for each site.
-            config : Must be a dictionary of keyword arguments for each site.
+            data dict:
+                Must be a dictionary of data for each site.
+            config dict:
+                Must be a dictionary of keyword arguments for each site.
                 The keys of `data` and `config` must be same.
-            training_sites : List of names of sites to be used as training.
+            training_sites Union[list, None]:
+                List of names of sites to be used as training.
                 If `None`, data from all sites will be used to extract training
                 data based upon keyword arguments of corresponding site.
-            validation_sites : List of names of sites to be used as validation.
-            test_sites : List of names of sites to be used as test.
-            swap_axes : If True, the returned x data will have shape
+            validation_sites Union[list, None]:
+                List of names of sites to be used as validation.
+            test_sites Union[list, None]:
+                List of names of sites to be used as test.
+            swap_axes bool: If True, the returned x data will have shape
                 `(num_examples, num_sites, lookback, input_features)` otherwise
                 the returned x values will have shape
                 `(num_sites, num_examples, lookback, input_features)`.
-            allow_variable_len : If the number of examples for different sites differ
+            allow_variable_len bool: If the number of examples for different sites differ
                 from each other, then this argument can be set to `True` to avoid
                 `ValueError` from numpy. If the data of different sites results
                 in different number of examples and this argument is False, then
@@ -2020,61 +2109,6 @@ class SiteDistributedDataHandler(object):
                 `site`. Note that setting this argument to `True` will render
                 `swap_axes` redundent.
 
-        Example
-        -------
-        ```python
-        examples = 50
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        df = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=examples, freq='D'))
-        config = {'input_features': ['a', 'b'],
-                  'output_features': ['c'],
-                  'lookback': 4}
-        data = {'0': df, '1': df, '2': df, '3': df}
-        configs = {'0': config, '1': config, '2': config, '3': config}
-
-        dh = SiteDistributedDataHandler(data, configs)
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-
-        dh = SiteDistributedDataHandler(data, configs, training_sites=['0', '1'], validation_sites=['2'], test_sites=['3'])
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-        ```
-
-        A slightly more complicated example where data of each site consits of 2
-        sources
-        ```python
-        examples = 40
-        data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
-        cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                    index=pd.date_range('20110101', periods=examples, freq='D'))
-        static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(),
-                           columns=['len', 'dep', 'width'],
-                           index=pd.date_range('20110101', periods=examples, freq='D'))
-
-        config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
-                  'output_features': {'cont_data': ['d']},
-                  'lookback': {'cont_data': 4, 'static_data':1}
-                  }
-
-        data = {'cont_data': cont_df, 'static_data': static_df}
-        datas = {'0': data, '1': data, '2': data, '3': data, '4': data, '5': data, '6': data}
-        configs = {'0': config, '1': config, '2': config, '3': config, '4': config, '5': config, '6': config}
-
-        dh = SiteDistributedDataHandler(datas, configs)
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-
-        dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
-                                        validation_sites=['3', '4'], test_sites=['5', '6'])
-        train_x, train_y = dh.training_data()
-        val_x, val_y = dh.validation_data()
-        test_x, test_y = dh.test_data()
-        ```
         """
         assert isinstance(data, dict), f'data must be of type dict but it is of type {data.__class__.__name__}'
         self.data = data

@@ -1,6 +1,5 @@
 import os
 import random
-import warnings
 from typing import Union
 
 import numpy as np
@@ -8,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 
-from ai4water.utils.utils import init_subplots
+from ai4water.utils.utils import init_subplots, imshow
 
 
 BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
@@ -17,7 +16,6 @@ BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
 
 # TODO
 # rank histogram, reliability diagram, ROC curve
-
 
 
 class Plots(object):
@@ -94,21 +92,21 @@ class Plots(object):
                 interpolation: str = 'none',
                 where='',
                 rnn_args=None,
-                cmap = None,
+                cmap=None,
                 show=False,
                 **kwargs):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        _, axis = plt.subplots()
-        im = axis.imshow(img, aspect='auto', interpolation=interpolation, cmap=cmap)
+        axis, im = imshow(img, aspect="auto", interpolation=interpolation, cmap=cmap,
+                          xlabel=kwargs.get('xlabel', 'inputs'), title=label)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
 
             rnn_dim = int(img.shape[1] / rnn_args['n_gates'])
             [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.8, color='k')
-                     for gate_idx in range(1, rnn_args['n_gates'])]
+             for gate_idx in range(1, rnn_args['n_gates'])]
 
             kwargs['xlabel'] = rnn_args['gate_names_str']
             if "RECURRENT" in label.upper():
@@ -122,10 +120,7 @@ class Plots(object):
                 if len(xlabels) < 30:
                     axis.set_xticklabels(xlabels, rotation=90)
 
-        plt.xlabel(kwargs.get('xlabel', 'inputs'))
-
         plt.colorbar(im)
-        plt.title(label)
         self.save_or_show(save, fname, where=where, show=show)
 
         return
@@ -141,7 +136,7 @@ class Plots(object):
 
             rnn_dim = int(array.shape[0] / rnn_args['n_gates'])
             [plt.axvline(rnn_dim * gate_idx - .5, linewidth=0.5, color='k')
-                     for gate_idx in range(1, rnn_args['n_gates'])]
+             for gate_idx in range(1, rnn_args['n_gates'])]
             plt.xlabel(rnn_args['gate_names_str'])
 
         self.save_or_show(save=True, fname=fname, where=where, show=show)
@@ -152,7 +147,7 @@ class Plots(object):
 
         return save_or_show(self.path, *args, **kwargs)
 
-    def plot2d_act_for_a_sample(self, activations, sample=0, save:bool = False, name: str = None):
+    def plot2d_act_for_a_sample(self, activations, sample=0, save: bool = False, name: str = None):
         fig, axis = init_subplots(height=8)
         # for idx, ax in enumerate(axis):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
@@ -385,7 +380,7 @@ def bar_chart(labels,
         values = values[sort_idx]
         labels = np.array(labels)[sort_idx]
 
-    if orient=='h':
+    if orient == 'h':
         axis.barh(np.arange(len(values)), values, color=color)
         axis.set_yticks(np.arange(len(values)))
         axis.set_yticklabels(labels, rotation=rotation)
@@ -440,7 +435,7 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
     return
 
 
-def get_cmap(cm:str, num_cols:int, low=0.0, high=1.0):
+def get_cmap(cm: str, num_cols: int, low=0.0, high=1.0):
 
     cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
     return cols

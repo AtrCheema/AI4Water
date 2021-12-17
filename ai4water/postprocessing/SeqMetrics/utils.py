@@ -26,7 +26,7 @@ def plot_metrics(
         exclude: list = None,
         plot_type: str = 'bar',
         max_metrics_per_fig: int = 15,
-        show:bool = True,
+        show: bool = True,
         save: bool = False,
         save_path: str = None,
         **kwargs):
@@ -34,37 +34,35 @@ def plot_metrics(
     Plots the metrics given as dictionary as radial or bar plot between specified ranges.
 
     Arguments:
-        metrics dict:
+        metrics:
             dictionary whose keys are names are erros and values are error values.
-        ranges tuple:
+        ranges:
             tuple of tuples defining range of errors to plot in one plot
-        exclude list/None:
+        exclude:
             List of metrics to be excluded from plotting.
-        max_metrics_per_fig int:
+        max_metrics_per_fig:
             maximum number of metrics to show in one figure.
-        plot_type str:
+        plot_type:
             either of `radial` or `bar`.
         show : If, then figure will be shown/drawn
-        save bool:
+        save:
             if True, the figure will be saved.
-        save_path string/pathlike:
+        save_path:
             if given, the figure will the saved at this location.
-        kwargs dict:
+        kwargs:
             keyword arguments for plotting
 
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>from ai4water.postprocessing.SeqMetrics import plot_metrics
-    >>>t = np.random.random((20, 1))
-    >>>p = np.random.random((20, 1))
-    >>>er = RegressionMetrics(t, p)
-    >>>all_errors = er.calculate_all()
-    >>>plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
-    >>># or draw the radial plot
-    >>>plot_metrics(all_errors, plot_type='radial', max_metrics_per_fig=50)
+    Examples:
+        >>> import numpy as np
+        >>> from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+        >>> from ai4water.postprocessing.SeqMetrics import plot_metrics
+        >>> t = np.random.random((20, 1))
+        >>> p = np.random.random((20, 1))
+        >>> er = RegressionMetrics(t, p)
+        >>> all_errors = er.calculate_all()
+        >>> plot_metrics(all_errors, plot_type='bar', max_metrics_per_fig=50)
+        >>># or draw the radial plot
+        >>> plot_metrics(all_errors, plot_type='radial', max_metrics_per_fig=50)
     ```
     """
     for idx, rng in enumerate(ranges):
@@ -176,8 +174,8 @@ def plot_radial(errors: dict, low: int, up: int, save=True, save_path=None, **kw
 def plot_circular_bar(
         metrics: dict,
         show=False,
-        save: bool=True,
-        save_path: str='',
+        save: bool = True,
+        save_path: str = '',
         **kwargs):
     """
     modified after https://www.python-graph-gallery.com/circular-barplot-basic
@@ -201,20 +199,20 @@ def plot_circular_bar(
 
     # Set the coordinates limits
     # upperLimit = 100
-    lowerLimit = 30
-    Value = np.array(list(metrics.values()))
+    lower_limit = 30
+    value = np.array(list(metrics.values()))
 
     lower = round(np.min(list(metrics.values())), 4)
     upper = round(np.max(list(metrics.values())), 4)
 
     # Compute max and min in the dataset
-    _max = max(Value)  # df['Value'].max()
+    _max = max(value)  # df['Value'].max()
 
     # Let's compute heights: they are a conversion of each item value in those new coordinates
     # In our example, 0 in the dataset will be converted to the lowerLimit (10)
     # The maximum will be converted to the upperLimit (100)
-    slope = (_max - lowerLimit) / _max
-    heights = slope * Value + lowerLimit
+    slope = (_max - lower_limit) / _max
+    heights = slope * value + lower_limit
 
     # Compute the width of each bar. In total we have 2*Pi = 360°
     width = 2 * np.pi / len(metrics)
@@ -228,20 +226,20 @@ def plot_circular_bar(
         x=angles,
         height=heights,
         width=width,
-        bottom=lowerLimit,
+        bottom=lower_limit,
         linewidth=kwargs.get('linewidth', 2),
         edgecolor=kwargs.get('edgecolor', "white"),
         color=kwargs.get('color', "#61a4b2"),
     )
 
     # little space between the bar and the label
-    labelPadding = 4
+    label_padding = 4
 
     metric_names = {
         'r2': "$R^2$",
         'r2_mod': "$R^2$ mod",
         'adjusted_r2': 'adjusted $R^2$',
-        #'nse': "NSE"
+        # 'nse': "NSE"
     }
 
     # Add labels
@@ -263,7 +261,7 @@ def plot_circular_bar(
         # Finally add the labels
         ax.text(
             x=angle,
-            y=lowerLimit + bar.get_height() + labelPadding,
+            y=lower_limit + bar.get_height() + label_padding,
             s=label,
             ha=alignment,
             va='center',
@@ -387,8 +385,8 @@ def list_subclass_methods(cls, is_narrow, ignore_underscore=True, additional_ign
     methods = listMethods(cls)
 
     if is_narrow:
-        parentMethods = listParentMethods(cls)
-        methods = set(cls for cls in methods if not (cls in parentMethods))
+        parent_methods = listParentMethods(cls)
+        methods = set(cls for cls in methods if not (cls in parent_methods))
     
     if additional_ignores is not None:
         methods = methods - set(additional_ignores)

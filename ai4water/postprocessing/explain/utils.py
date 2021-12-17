@@ -1,6 +1,8 @@
 import os
 from typing import Union
 
+import numpy as np
+
 from ._shap import ShapExplainer, shap
 from ._lime import LimeExplainer, lime
 from ..utils import choose_examples
@@ -12,7 +14,7 @@ def explain_model(
         examples_to_explain: Union[int, float, list] = 20,
         explainer=None,
         layer: Union[str, int] = None,
-        method:str = "both"
+        method: str = "both"
 ):
     """
     Explains the ai4water's Model class.
@@ -33,20 +35,18 @@ def explain_model(
             to explain. If string, it will be name of layer of to explain.
         method : either 'both', 'shap' or 'lime'. If both, then the model will
             be explained using both lime and shap methods.
+
     Returns:
         if `method`==both, it will return a tuple of LimeExplainer and ShapExplainer
         otherwise it will return the instance of either LimeExplainer or ShapExplainer.
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.post_processing.explain import explain_model
-    >>>model = Model(model="RandForestRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>explain_model(model)
-    ```
+    Example:
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.postprocessing.explain import explain_model
+        >>> model = Model(model="RandForestRegressor", data=arg_beach())
+        >>> model.fit()
+        >>> explain_model(model)
     """
     if method == 'both':
 
@@ -54,14 +54,14 @@ def explain_model(
 
         exp2 = _explain_with_shap(model, features_to_explain,
                                   examples_to_explain,  explainer, layer)
-        explainer =  (exp1, exp2)
+        explainer = (exp1, exp2)
 
     elif method == 'shap' and shap:
-        explainer =  _explain_with_shap(model, features_to_explain, examples_to_explain,
+        explainer = _explain_with_shap(model, features_to_explain, examples_to_explain,
                                        explainer, layer)
 
     elif method == 'lime' and lime:
-        explainer =  _explain_with_lime(model, examples_to_explain)
+        explainer = _explain_with_lime(model, examples_to_explain)
 
     else:
         ValueError(f"unrecognized method {method}")
@@ -71,25 +71,24 @@ def explain_model(
 
 def explain_model_with_lime(
         model,
-        examples_to_explain:Union[int, float, list] = 20,
-)->"LimeExplainer":
+        examples_to_explain: Union[int, float, list] = 20,
+) -> "LimeExplainer":
     """Explains the model with LimeExplainer
 
     Arguments:
         model : the AI4Water's model to explain
         examples_to_explain : the examples to explain
-    Returns:
-        an instance of LimeExplainer
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.post_processing.explain import explain_model_with_lime
-    >>>model = Model(model="RandForestRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>explain_model_with_lime(model)
+    Returns:
+        an instance of [LimeExplainer][ai4water.postprocessing.explain.LimeExplainer]
+
+    Example:
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.postprocessing.explain import explain_model_with_lime
+        >>> model = Model(model="RandForestRegressor", data=arg_beach())
+        >>> model.fit()
+        >>> explain_model_with_lime(model)
     ```
     """
 
@@ -108,9 +107,10 @@ def explain_model_with_lime(
     else:
         explainer = "LimeTabularExplainer"
 
-    if model.category == "ML" or model.api == "functional":
+    if model.category == "ML":  # or model.api == "functional":
         model = model._model
     else:
+        # even for functional api, we may want to change the output array to 2d
         model = make_model(model)
 
     if mode == "classification":
@@ -134,11 +134,11 @@ def explain_model_with_lime(
 
 def explain_model_with_shap(
         model,
-        features_to_explain:Union[str, list] = None,
-        examples_to_explain:Union[int, float, list] = 20,
+        features_to_explain: Union[str, list] = None,
+        examples_to_explain: Union[int, float, list] = 20,
         explainer=None,
-        layer:Union[str, int] = None,
-)->"ShapExplainer":
+        layer: Union[str, int] = None,
+) -> "ShapExplainer":
     """Expalins the model which is built by AI4Water's Model class using SHAP.
 
     Arguments:
@@ -155,19 +155,15 @@ def explain_model_with_shap(
     Returns:
         an instance of ShapExplainer
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.post_processing.explain import explain_model_with_shap
-    >>>model = Model(model="RandForestRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>explain_model_with_shap(model)
-    ```
+    Example:
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.postprocessing.explain import explain_model_with_shap
+        >>> model = Model(model="RandForestRegressor", data=arg_beach())
+        >>> model.fit()
+        >>> explain_model_with_shap(model)
     """
     assert hasattr(model, 'path')
-
 
     train_x, _ = model.training_data()
     test_x, test_y = model.test_data()
@@ -182,13 +178,14 @@ def explain_model_with_shap(
 
     framework = model.category
 
-    lookback = model.lookback
-
     if framework == "ML":
         model = model._model
-        layer = None
     else:
         layer = layer or 2
+        if model.api == "functional":
+            model = make_model(model._model)
+        else:
+            model = make_model(model)
 
     test_x, index = choose_examples(test_x, examples_to_explain, test_y)
 
@@ -202,16 +199,11 @@ def explain_model_with_shap(
                               layer=layer
                               )
 
-    if lookback >1:
-        for i in range(explainer.data.shape[0]):
-            for lb in range(lookback):
-                explainer.force_plot_single_example(i, lookback=lb, name=f"force_plot_{index[i]}_{lb}")
-    else:
-        for i in range(explainer.data.shape[0]):
-            explainer.force_plot_single_example(i, f"force_plot_{index[i]}")
+    for i in range(explainer.data.shape[0]):
+        explainer.force_plot_single_example(i, f"force_plot_{index[i]}", show=False)
 
-    explainer.summary_plot()
-    explainer.plot_shap_values()
+    explainer.summary_plot(show=False)
+    explainer.plot_shap_values(show=False)
 
     return explainer
 
@@ -225,9 +217,14 @@ def maybe_make_path(path):
 def make_model(model):
 
     class MyModel:
+        def __getattr__(self, item):
+            return getattr(model, item)
+
         def predict(self, *args, **kwargs):
             p = model.predict(*args, **kwargs)
-            return p.reshape(-1,)
+            if isinstance(p, np.ndarray) and p.ndim == 3:
+                return p.reshape(-1,)
+            return p
 
     return MyModel()
 

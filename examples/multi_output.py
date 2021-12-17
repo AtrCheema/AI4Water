@@ -42,6 +42,9 @@ class MultiSite(InputAttentionModel):
         print('building input attention')
 
         self.config['enc_config'] = self.enc_config
+        setattr(self, 'batch_size', self.config['batch_size'])
+        setattr(self, 'drop_remainder', self.config['drop_remainder'])
+        setattr(self, 'teacher_forcing', self.config['teacher_forcing'])
 
         predictions = []
         enc_input = keras.layers.Input(shape=(self.lookback, self.num_ins), name='enc_input1')  # Enter time series data

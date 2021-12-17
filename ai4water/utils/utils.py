@@ -7,7 +7,7 @@ import warnings
 from typing import Union
 from shutil import rmtree
 from copy import deepcopy
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 from collections import OrderedDict
 import collections.abc as collections_abc
 
@@ -33,6 +33,17 @@ MATRIC_TYPES = {
     "kge": "max",
     "corr_coeff": "max",
     "nrmse": "min",
+}
+
+ERROR_LABELS = {
+    'r2': "$R^{2}$",
+    'nse': 'NSE',
+    'rmse': 'RMSE',
+    'mse': 'MSE',
+    'msle': 'MSLE',
+    'nrmse': 'Normalized RMSE',
+    'mape': 'MAPE',
+    'r2_mod': "$R^{2}$ Score"
 }
 
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
@@ -86,7 +97,7 @@ def maybe_create_path(prefix=None, path=None):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    for _dir in ['activations', 'weights', 'data']:
+    for _dir in ['weights']:
         if not os.path.exists(os.path.join(save_dir, _dir)):
             os.makedirs(os.path.join(save_dir, _dir))
 
@@ -182,7 +193,7 @@ def check_kwargs(**kwargs):
                 model = {model: {}}
                 kwargs['model'] = model
 
-            #if list(model.keys())[0].startswith("XGB"):
+            # if list(model.keys())[0].startswith("XGB"):
             #    if "learning_rate" not in model:
             #        kwargs["model"]["learning_rate"] = lr
 
@@ -317,7 +328,7 @@ def _make_model(**kwargs):
         'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'mode': {'type': str, 'default': def_mode, 'lower': None, 'upper': None,
-                    'between': ["regression", "classification"]},
+                 'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
         # can be None or any of the method defined in ai4water.utils.transformatinos.py
@@ -365,21 +376,29 @@ def _make_model(**kwargs):
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
         'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
-        'dataset_args' : {'type': dict, 'default': {}}
+        'dataset_args': {'type': dict, 'default': {}}
     }
 
-    model_config=  {key:val['default'] for key,val in model_args.items()}
+    model_config = {key: val['default'] for key, val in model_args.items()}
 
-    config = {key:val['default'] for key,val in data_args.items()}
+    config = {key: val['default'] for key, val in data_args.items()}
 
     opt_paras = {}
+    # because there are two kinds of hpos which can be optimized
+    # some can be in model config and others are in main config
+    original_other_conf = {}
+    original_mod_conf = {}
 
     for key, val in kwargs.items():
         arg_name = key.lower()  # todo, why this?
 
         if val.__class__.__name__ in ['Integer', "Real", "Categorical"]:
             opt_paras[key] = val
-            val = val.rvs(1).items()[0]
+            val2 = val
+            val = jsonize(val.rvs(1)[0])
+
+            val2.name = key
+            original_other_conf[key] = val2
 
         if key == 'model':
             val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
@@ -409,7 +428,7 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
 
     if isinstance(config['input_features'], dict):
         for data in [config['input_features'], config['output_features']]:
-            for k,v in data.items():
+            for k, v in data.items():
                 assert isinstance(v, list), f"{k} is of type {v.__class__.__name__} but it must of of type list"
 
     _data_config = {}
@@ -417,7 +436,7 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
         if key in data_args:
             _data_config[key] = val
 
-    return config, _data_config, opt_paras, original_mod_conf
+    return config, _data_config, opt_paras, {'model': original_mod_conf, 'other': original_other_conf}
 
 
 def update_dict(key, val, dict_to_lookup, dict_to_update):
@@ -438,7 +457,8 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
                 raise TypeError("{} must be any of the type {} but it is of type {}"
                                 .format(key, dtype, val.__class__.__name__))
         elif not isinstance(val, dtype):
-            if val != dict_to_lookup[key]['default']: # the default value may be None which will be different than dtype
+            # the default value may be None which will be different than dtype
+            if val != dict_to_lookup[key]['default']:
                 raise TypeError(f"{key} must be of type {dtype} but it is of type {val.__class__.__name__}")
 
     if isinstance(val, int) or isinstance(val, float):
@@ -458,12 +478,12 @@ def update_dict(key, val, dict_to_lookup, dict_to_update):
     return
 
 
-def deepcopy_dict_without_clone(d:dict)->dict:
+def deepcopy_dict_without_clone(d: dict) -> dict:
     """makes deepcopy of a dictionary without cloning it"""
     assert isinstance(d, dict)
 
     new_d = {}
-    for k,v in d.items():
+    for k, v in d.items():
         if isinstance(v, dict):
             new_d[k] = deepcopy_dict_without_clone(v)
         elif hasattr(v, '__len__'):
@@ -474,8 +494,8 @@ def deepcopy_dict_without_clone(d:dict)->dict:
 
 
 def find_opt_paras_from_model_config(
-        config:Union[dict, str, None]
-)->Tuple[Union[dict, None, str], dict, Union[dict, str, None]]:
+        config: Union[dict, str, None]
+) -> Tuple[Union[dict, None, str], dict, Union[dict, str, None]]:
 
     opt_paras = {}
 
@@ -494,12 +514,12 @@ def find_opt_paras_from_model_config(
     else:
         # it is a classical ml model
         _ml_config = {}
-        ml_config:dict = list(config.values())[0]
+        ml_config: dict = list(config.values())[0]
         model_name = list(config.keys())[0]
 
         original_model_config, _ = process_config_dict(copy.deepcopy(config[model_name]), False)
 
-        for k,v in ml_config.items():
+        for k, v in ml_config.items():
 
             if v.__class__.__name__ in ['Integer', 'Real', 'Categorical']:
 
@@ -515,7 +535,7 @@ def find_opt_paras_from_model_config(
     return new_model_config, opt_paras, original_model_config
 
 
-def process_config_dict(config_dict:dict, update_initial_guess=True):
+def process_config_dict(config_dict: dict, update_initial_guess=True):
     """From a dicitonary defining structure of neural networks, this function
     finds out which are hyperparameters from them"""
 
@@ -525,7 +545,7 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
 
     def pd(d):
         for k, v in d.items():
-            if isinstance(v, dict) and len(v)>0:
+            if isinstance(v, dict) and len(v) > 0:
                 pd(v)
             elif v.__class__.__name__ in ["Integer", "Real", "Categorical"]:
                 if v.name is None or v.name.startswith("integer_") or v.name.startswith("real_"):
@@ -538,7 +558,7 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
                 if update_initial_guess:
                     x0 = jsonize(v.rvs(1)[0])  # get initial guess
                     d[k] = x0  # inplace change of dictionary
-                else: # we most probably have updated the name, so doing inplace change
+                else:  # we most probably have updated the name, so doing inplace change
                     d[k] = v
         return
 
@@ -546,11 +566,12 @@ def process_config_dict(config_dict:dict, update_initial_guess=True):
     return config_dict, opt_paras
 
 
-def update_model_config(config:dict, suggestions):
+def update_model_config(config: dict, suggestions):
     """returns the updated config if config contains any parameter from suggestions."""
     cc = copy.deepcopy(config)
+
     def update(c):
-        for k,v in c.items():
+        for k, v in c.items():
             if isinstance(v, dict):
                 update(v)
             elif v.__class__.__name__ in ["Integer", "Real", "Categorical"]:
@@ -616,7 +637,7 @@ class Jsonize(object):
         if self.obj is Ellipsis:
             return {'class_name': '__ellipsis__'}
 
-        if wrapt and  isinstance(self.obj, wrapt.ObjectProxy):
+        if wrapt and isinstance(self.obj, wrapt.ObjectProxy):
             return self.obj.__wrapped__
 
         return str(self.obj)
@@ -648,7 +669,7 @@ class Jsonize(object):
                 if isinstance(obj, list) or isinstance(obj, tuple):
                     return obj  # for cases like (1, ) or [1,]
                 return self.stage2(obj[0])
-            else: # when object is []
+            else:  # when object is []
                 return obj
 
         # if obj is a python 'type'
@@ -697,7 +718,7 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_i
     assert best in ['min', 'max']
     all_weights = os.listdir(w_path)
 
-    if len(all_weights)==1:
+    if len(all_weights) == 1:
         return all_weights[0]
 
     losses = {}
@@ -706,8 +727,9 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_i
         try:
             val_loss = str(float(wname.split('_')[2]))  # converting to float so that trailing 0 is removed
         except ValueError as e:
-            raise ValueError(f"while trying to find best weight in {w_path} with {best} and {ext} and {epoch_identifier}"
-                             f"encountered following error \n{e}")
+            raise ValueError(f"while trying to find best weight in {w_path} with {best} and"
+                             f" {ext} and {epoch_identifier}"
+                             f" encountered following error \n{e}")
         losses[val_loss] = {'loss': wname.split('_')[2], 'epoch': wname.split('_')[1]}
 
     best_weight = None
@@ -796,46 +818,157 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
     return best_results
 
 
-def train_val_split(x, y, validation_split):
-    if hasattr(x[0], 'shape'):
-        # x is list of arrays
-        # assert that all arrays are of equal length
-        split_at = int(x[0].shape[0] * (1. - validation_split))
-    else:
-        split_at = int(len(x[0]) * (1. - validation_split))
+class TrainTestSplit(object):
+    """train_test_split of sklearn can not be used for list of arrays so here we go"""
+    def __init__(
+            self,
+            x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            test_fraction: float = 0.3,
+    ):
+        """
+        Arguments:
+            x:
+                arrays to split
 
-    x, val_x = (slice_arrays(x, 0, split_at), slice_arrays(x, split_at))
-    y, val_y = (slice_arrays(y, 0, split_at), slice_arrays(y, split_at))
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+            y:
+                array like
 
-    return x, y, val_x, val_y
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+            test_fraction:
+                test fraction. Must be greater than 0. and less than 1.
+        """
+        self.x = x
+        self.y = y
+        self.test_fraction = test_fraction
 
+    @property
+    def x_is_list(self):
+        if isinstance(self.x, list):
+            return True
+        return False
 
-def slice_arrays(arrays, start, stop=None):
-    if isinstance(arrays, list):
-        return [array[start:stop] for array in arrays]
-    elif hasattr(arrays, 'shape'):
-        return arrays[start:stop]
+    @property
+    def y_is_list(self):
+        if isinstance(self.y, list):
+            return True
+        return False
 
+    def split_by_slicing(self):
+        """splits the x and y by slicing which is defined by `test_fraction`"""
+        def split_arrays(array):
 
-def split_by_indices(x, y, indices):
-    """Slices the x and y arrays or lists of arrays by the indices"""
+            if isinstance(array, list):
+                # x is list of arrays
+                # assert that all arrays are of equal length
+                assert len(set([len(_array) for _array in array])) == 1, f"arrays are of not same length"
+                split_at = int(array[0].shape[0] * (1. - self.test_fraction))
+            else:
+                split_at = int(len(array) * (1. - self.test_fraction))
 
-    def split_with_indices(data):
-        if isinstance(data, list):
+            train, test = (self.slice_arrays(array, 0, split_at), self.slice_arrays(array, split_at))
+
+            return train, test
+
+        train_x, test_x = split_arrays(self.x)
+        train_y, test_y = split_arrays(self.y)
+
+        return train_x, test_x, train_y, test_y
+
+    def split_by_random(
+            self,
+            seed: int = None
+    ):
+        """
+        splits the x and y by random splitting.
+
+        Arguments:
+            seed:
+                random seed for reproducibility
+        """
+
+        reset_seed(seed, np=np)
+
+        if isinstance(self.x, list):
+            indices = np.arange(len(self.x[0]))
+        else:
+            indices = np.arange(len(self.x))
+
+        indices = np.random.permutation(indices)
+
+        split_at = int(len(indices) * (1. - self.test_fraction))
+        train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
+
+        train_x = self.slice_with_indices(self.x, train_indices)
+        train_y = self.slice_with_indices(self.y, train_indices)
+
+        test_x = self.slice_with_indices(self.x, test_indices)
+        test_y = self.slice_with_indices(self.y, test_indices)
+
+        return train_x, test_x, train_y, test_y
+
+    def split_by_indices(
+            self,
+            train_indices: Union[list, np.ndarray],
+            test_indices: Union[list, np.ndarray]
+    ):
+        """splits the x and y by user defined `train_indices` and `test_indices`"""
+
+        return self.slice_with_indices(self.x, train_indices), \
+               self.slice_with_indices(self.y, train_indices), \
+               self.slice_with_indices(self.x, test_indices), \
+               self.slice_with_indices(self.y, test_indices)
+
+    @staticmethod
+    def slice_with_indices(array, indices):
+        if isinstance(array, list):
             _data = []
 
-            for d in data:
+            for d in array:
                 assert isinstance(d, np.ndarray)
                 _data.append(d[indices])
         else:
-            assert isinstance(data, np.ndarray)
-            _data = data[indices]
+            assert isinstance(array, np.ndarray)
+            _data = array[indices]
         return _data
 
-    x = split_with_indices(x)
-    y = split_with_indices(y)
+    @staticmethod
+    def slice_arrays(arrays, start, stop=None):
+        if isinstance(arrays, list):
+            return [array[start:stop] for array in arrays]
+        elif hasattr(arrays, 'shape'):
+            return arrays[start:stop]
 
-    return x, y
+    def KFold_splits(
+            self,
+            n_splits,
+            shuffle=True,
+            random_state=None
+    ):
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
+        spliter = kf.split(self.x[0] if self.x_is_list else self.x)
+
+        for tr_idx, test_idx in spliter:
+
+            if self.x_is_list:
+                train_x = [xarray[tr_idx] for xarray in self.x]
+                test_x = [xarray[test_idx] for xarray in self.x]
+            else:
+                train_x = self.x[tr_idx]
+                test_x = self.x[test_idx]
+
+            if self.y_is_list:
+                train_y = [yarray[tr_idx] for yarray in self.y]
+                test_y = [yarray[test_idx] for yarray in self.y]
+            else:
+                train_y = self.y[tr_idx]
+                test_y = self.y[test_idx]
+
+            yield (train_x, train_y), (test_x, test_y)
 
 
 def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
@@ -972,41 +1105,41 @@ def prepare_data(
         forecast_step: int = 0,
         forecast_len: int = 1,
         known_future_inputs: bool = False,
-        output_steps=1,
+        output_steps: int = 1,
         mask: Union[int, float, np.ndarray] = None
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     converts a numpy nd array into a supervised machine learning problem.
 
     Arguments:
-        data np.ndarray :
+        data:
             nd numpy array whose first dimension represents the number
             of examples and the second dimension represents the number of features.
             Some of those features will be used as inputs and some will be considered
             as outputs depending upon the values of `num_inputs` and `num_outputs`.
-        lookback_steps int :
+        lookback_steps:
             number of previous steps/values to be used at one step.
-        num_inputs int :
+        num_inputs:
             default None, number of input features in data. If None,
             it will be calculated as features-outputs. The input data will be all
             from start till num_outputs in second dimension.
-        num_outputs int :
+        num_outputs:
             number of columns (from last) in data to be used as output.
             If None, it will be caculated as features-inputs.
-        input_steps int :
+        input_steps:
             strides/number of steps in input data
-        forecast_step int :
+        forecast_step:
             must be greater than equal to 0, which t+ith value to
             use as target where i is the horizon. For time series prediction, we
             can say, which horizon to predict.
-        forecast_len int :
+        forecast_len:
             number of horizons/future values to predict.
-        known_future_inputs bool : Only useful if `forecast_len`>1. If True, this
+        known_future_inputs: Only useful if `forecast_len`>1. If True, this
             means, we know and use 'future inputs' while making predictions at t>0
-        output_steps int :
+        output_steps:
             step size in outputs. If =2, it means we want to predict
             every second value from the targets
-        mask int/np.nan/1darray :
+        mask:
             If int, then the examples with these values in
             the output will be skipped. If array then it must be a boolean mask
             indicating which examples to include/exclude. The length of mask should
@@ -1017,10 +1150,10 @@ def prepare_data(
             None, which indicates all the generated examples will be returned.
 
     Returns:
-      x : numpy array of shape (examples, lookback, ins) consisting of
+        x : numpy array of shape (examples, lookback, ins) consisting of
         input examples
-      prev_y : numpy array consisting of previous outputs
-      y : numpy array consisting of target values
+        prev_y : numpy array consisting of previous outputs
+        y : numpy array consisting of target values
 
     Given following data consisting of input/output pairs
 
@@ -1152,14 +1285,12 @@ def prepare_data(
     (examples, lookback_steps+forecast_len-1, ....num_inputs)
 
     ----------
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.utils.utils import prepare_data
-    >>>num_examples = 50
-    >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
-    >>>dataframe[0:10]
+    Example:
+        >>>import numpy as np
+        >>>from ai4water.utils.utils import prepare_data
+        >>>num_examples = 50
+        >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
+        >>>dataframe[0:10]
         array([[  0,  50, 100, 150, 200],
                [  1,  51, 101, 151, 201],
                [  2,  52, 102, 152, 202],
@@ -1170,20 +1301,20 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
-    ...    input_steps=2, forecast_step=2, forecast_len=4)
-    >>>x[0]
-       array([[  0.,  50., 100.],
+        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        ...    input_steps=2, forecast_step=2, forecast_len=4)
+        >>>x[0]
+        array([[  0.,  50., 100.],
               [  2.,  52., 102.],
               [  4.,  54., 104.],
               [  6.,  56., 106.]], dtype=float32)
-    >>>y[0]
-       array([[158., 159., 160., 161.],
+        >>>y[0]
+        array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-    >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
-    ...    forecast_len=3, known_future_inputs=True)
-    >>>x[0]
+        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        ...    forecast_len=3, known_future_inputs=True)
+        >>>x[0]
         array([[  0,  50, 100],
                [  1,  51, 101],
                [  2,  52, 102],
@@ -1191,12 +1322,11 @@ def prepare_data(
                [  4,  54, 104],
                [  5,  55, 105],
                [  6,  56, 106]])       # (7, 3)
-    >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
-    >>>y[0]
+        >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
+        >>>y[0]
 
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)
-    ```
     """
     if not isinstance(data, np.ndarray):
         if isinstance(data, pd.DataFrame):
@@ -1529,9 +1659,12 @@ def plot_activations_along_inputs(
             ax2.plot(pred, label='Prediction')
             ax2.plot(obs, '.', label='Observed')
             ax2.legend()
-
-            axis, im = axis_imshow(ax3, activations[:, :, idx].transpose(), lookback, vmin, vmax,
-                                   xlabel="Examples")
+            ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
+            axis, im = imshow(activations[:, :, idx].transpose(),
+                              vmin=vmin, vmax=vmax, aspect="auto",
+                              axis = ax3,
+                              xlabel="Examples", ylabel="lookback steps",
+                              yticklabels=ytick_labels)
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
             _name = f'attention_weights_{out_name}_{name}'
@@ -1544,18 +1677,57 @@ def plot_activations_along_inputs(
 
     return
 
-def axis_imshow(axis, values, lookback, vmin, vmax, xlabel=None, title=None, cmap=None):
 
-    im = axis.imshow(values, aspect='auto', vmin=vmin, vmax=vmax, cmap=cmap)
-    ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-    axis.set_ylabel('lookback steps')
-    axis.set_yticks(np.arange(len(ytick_labels)))
-    axis.set_yticklabels(ytick_labels)
+def imshow(values,
+           axis=None,
+           vmin=None,
+           vmax=None,
+           xlabel=None,
+           aspect=None,
+           interpolation=None,
+           title=None,
+           cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
+           show=False,
+           annotate=False,
+           annotate_kws=None
+           ):
+    """One stop shop for imshow
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils.utils import imshow
+        >>> x = np.random.random((10, 5))
+        >>> imshow(x, annotate=True)
+    """
+
+    if axis is None:
+        axis = plt.gca()
+
+    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=interpolation)
+
+    if annotate:
+        annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}
+        for i in range(values.shape[0]):
+            for j in range(values.shape[1]):
+                _ = axis.text(j, i, round(values[i, j], 2),
+                            **annotate_kws)
+
+    if yticklabels is not None:
+        axis.set_yticks(np.arange(len(yticklabels)))
+        axis.set_yticklabels(yticklabels)
+
+    if xticklabels is not None:
+        axis.set_xticks(np.arange(len(xticklabels)))
+        axis.set_xticklabels(xticklabels)
+
     if xlabel:
         axis.set_xlabel(xlabel)
-
+    if ylabel:
+        axis.set_ylabel(ylabel)
     if title:
         axis.set_title(title)
+
+    if show:
+        plt.show()
 
     return axis, im
 
@@ -1594,7 +1766,7 @@ def maybe_three_outputs(data, teacher_forcing=False):
 
 def get_version_info(
         **kwargs
-)->dict:
+) -> dict:
     # todo, chekc which attributes are not available in different versions
     import sys
     info = {'python': sys.version, 'os': os.name}
@@ -1605,7 +1777,7 @@ def get_version_info(
         info['tf_is_gpu_available'] = tf.test.is_gpu_available()
         info['eager_execution'] = tf.executing_eagerly()
 
-    for k,v in kwargs.items():
+    for k, v in kwargs.items():
         if v is not None:
             info[k] = getattr(v, '__version__', 'NotDefined')
 

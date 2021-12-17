@@ -101,7 +101,6 @@ def tft_model(**kwargs):
         'hidden_units': 8,
         'dropout_rate': 0.1,
         'num_heads': 4,
-        'stack_size': 1,
         'use_cudnn': False,
         'future_inputs': False,
         'return_sequences': True,
@@ -161,7 +160,7 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_ml(self):
-        for m in ['XGBoostRegressor', 'RandomForestRegressor',
+        for m in ['XGBRegressor', 'RandomForestRegressor',
                   'GradientBoostingRegressor', 'LinearRegression']:
 
             model = build_model(model=m,
@@ -183,7 +182,7 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_xgb_f_imp_comparison(self):
-        model = Model(model="xgboostregressor",
+        model = Model(model="XGBRegressor",
                       data=arg_beach(inputs=["tide_cm", "rel_hum"]))
         model.fit()
         interpreter = Interpret(model)

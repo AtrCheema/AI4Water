@@ -1,6 +1,6 @@
 import os
 import random
-from typing import Union
+from typing import Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -17,12 +17,13 @@ from .plotting_tools import save_or_show
 from ai4water.utils.utils import init_subplots
 
 # TODO add Murphy's plot as shown in MLAir
-# https://robjhyndman.com/hyndsight/murphy-diagrams/
+# prediction_distribution aka actual_plot of PDPbox
+# average_target_value aka target_plot of PDPbox
 # competitive skill score plot/ bootstrap skill score plot as in MLAir
 # rank histogram and reliability diagram for probabilitic forecasting model.
 # show availability plot of data
 
-
+#
 regplot_combs = [
     ['cadetblue', 'slateblue', 'darkslateblue'],
     ['cadetblue', 'mediumblue', 'mediumblue'],
@@ -40,6 +41,7 @@ regplot_combs = [
     ['cadetblue', 'darkblue', 'midnightblue'],
     ['cadetblue', 'deepskyblue', 'cadetblue']
 ]
+
 
 class Plot(object):
 
@@ -181,7 +183,7 @@ class PlotResults(Plot):
 
         ms = 4 if style == '.' else 2
 
-        if len(true)>1000: # because the data is very large, so better to use small marker size
+        if len(true) > 1000:  # because the data is very large, so better to use small marker size
             ms = 2
 
         axis.plot(predicted, style, color='r',  label='Prediction')
@@ -191,10 +193,10 @@ class PlotResults(Plot):
         axis.legend(loc="best", fontsize=22, markerscale=4)
 
         if datetime_axis:
-                loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
-                axis.xaxis.set_major_locator(loc)
-                fmt = mdates.AutoDateFormatter(loc)
-                axis.xaxis.set_major_formatter(fmt)
+            loc = mdates.AutoDateLocator(minticks=4, maxticks=6)
+            axis.xaxis.set_major_locator(loc)
+            fmt = mdates.AutoDateFormatter(loc)
+            axis.xaxis.set_major_formatter(fmt)
 
         plt.xticks(fontsize=18)
         plt.yticks(fontsize=18)
@@ -268,20 +270,20 @@ class PlotResults(Plot):
 
 
 def regplot(
-        x:Union[np.ndarray, pd.DataFrame, pd.Series, list],
-        y:Union[np.ndarray, pd.DataFrame, pd.Series, list],
-        title:str = None,
-        show:bool = False,
-        annotation_key:str=None,
-        annotation_val=None,
-        line_color = None,
-        marker_color = None,
-        fill_color = None,
-        marker_size:int = 20,
-        ci:Union[int, None] = 95,
-        figsize:tuple = None,
-        xlabel:str = 'Observed',
-        ylabel:str = 'Predicted'
+        x: Union[np.ndarray, pd.DataFrame, pd.Series, list],
+        y: Union[np.ndarray, pd.DataFrame, pd.Series, list],
+        title: str = None,
+        show: bool = False,
+        annotation_key: str = None,
+        annotation_val: float = None,
+        line_color=None,
+        marker_color=None,
+        fill_color=None,
+        marker_size: int = 20,
+        ci: Union[int, None] = 95,
+        figsize: tuple = None,
+        xlabel: str = 'Observed',
+        ylabel: str = 'Predicted'
 ):
     """
     Regpression plot with regression line and confidence interval
@@ -302,14 +304,11 @@ def regplot(
         xlabel :
         ylabel :
 
-    Example
-    --------
-    ```python
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.utils.visualizations import regplot
-    >>>data = arg_beach()
-    >>>regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
-    ```
+    Example:
+        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.utils.visualizations import regplot
+        >>> data = arg_beach()
+        >>> regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
     """
     x = to_1d_array(x)
     y = to_1d_array(y)
@@ -321,7 +320,7 @@ def regplot(
     _, axis = plt.subplots(figsize=figsize or (6, 5))
 
     axis.scatter(x, y, c=marker_color or mc,
-                         s=marker_size)  # set style options
+                 s=marker_size)  # set style options
 
     if annotation_key is not None:
         assert annotation_val is not None
@@ -330,7 +329,6 @@ def regplot(
                      xy=(0.3, 0.95),
                      xycoords='axes fraction',
                      horizontalalignment='right', verticalalignment='top', fontsize=16)
-
     _regplot(x,
              y,
              ax=axis,
@@ -374,14 +372,14 @@ def bootdist(f, args, n_boot=1000, **func_kwargs):
 def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
 
     grid = np.linspace(np.min(x), np.max(x), 100)
-    X = np.c_[np.ones(len(x)), x]
+    x = np.c_[np.ones(len(x)), x]
     grid = np.c_[np.ones(len(grid)), grid]
-    yhat = grid.dot(reg_func(X, y))
+    yhat = grid.dot(reg_func(x, y))
 
     ax.plot(grid[:, 1], yhat, color=line_color)
 
     if ci:
-        boots = bootdist(reg_func, args=[X, y], n_boot=1000).T
+        boots = bootdist(reg_func, args=[x, y], n_boot=1000).T
 
         yhat_boots = grid.dot(boots).T
 
@@ -392,7 +390,8 @@ def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
                         alpha=.15)
     return ax
 
-def to_1d_array(array_like)->np.ndarray:
+
+def to_1d_array(array_like) -> np.ndarray:
 
     if array_like.__class__.__name__ in ['list', 'tuple', 'Series']:
         return np.array(array_like)
@@ -409,3 +408,256 @@ def to_1d_array(array_like)->np.ndarray:
         return array_like.values.reshape(-1,)
     else:
         raise ValueError(f'cannot convert object array {array_like.__class__.__name__}  to 1d ')
+
+
+def linear_model(
+        model_name: str,
+        inputs,
+        target
+):
+    import sklearn
+    from ai4water.backend import get_attributes
+
+    models = get_attributes(sklearn, "linear_model", case_sensitive=True)
+    if model_name not in models:
+        raise ValueError(f"Can not find {model_name} in sklearn.linear_model")
+    model = models[model_name]
+    reg = model().fit(inputs, target)
+
+    return reg.predict(inputs)
+
+
+def murphy_diagram(
+        observed: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        predicted: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        reference: Union[list, np.ndarray, pd.Series, pd.DataFrame] = None,
+        reference_model: Union[str, Callable] = None,
+        inputs=None,
+        plot_type: str = "scores",
+        xaxis: str = "theta",
+        ax: plt.Axes = None,
+        line_colors: tuple = None,
+        fill_color: str = "lightgray",
+        show: bool = True
+) -> plt.Axes:
+    """Murphy diagram as introducted by [Ehm et al., 2015](https://arxiv.org/pdf/1503.08195.pdf)
+     and illustrated by [Rob Hyndman](https://robjhyndman.com/hyndsight/murphy-diagrams/)
+
+    Arguments:
+        observed:
+            observed or true values
+        predicted:
+             model's prediction
+        reference:
+             reference prediction
+        reference_model:
+             The model for reference prediction. Only relevent if `reference` is
+             None and `plot_type` is `diff`. It can be callable or a string. If it is a
+             string, then it can be any model name from
+             [sklearn.linear_model](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model)
+        inputs:
+             inputs for reference model. Only relevent if `reference_model` is not
+             None and `plot_type` is `diff`
+        plot_type:
+             either of `scores` or `diff`
+        xaxis:
+             either of `theta` or `time`
+        ax:
+             the axis to use for plotting
+        line_colors:
+             colors of line
+        fill_color:
+             color to fill confidence interval
+        show:
+             whether to show the plot or not
+
+    Returns:
+         matplotlib axes
+
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils.visualizations import murphy_diagram
+        >>> yy = np.random.randint(1, 1000, 100)
+        >>> ff1 = np.random.randint(1, 1000, 100)
+        >>> ff2 = np.random.randint(1, 1000, 100)
+        >>> murphy_diagram(yy, ff1, ff2)
+        ...
+        >>> murphy_diagram(yy, ff1, ff2, plot_type="diff")
+    """
+    assert plot_type in ("scores", "diff")
+    assert xaxis in ("theta", "time")
+
+    y = to_1d_array(observed)
+    f1 = to_1d_array(predicted)
+
+    if reference is None:
+        if plot_type == "diff":
+            assert reference_model is not None
+            if callable(reference_model):
+                reference = reference_model(inputs)
+            else:
+                assert inputs is not None, f"You must specify the inputs for {reference_model}"
+                reference = linear_model(reference_model, inputs, predicted)
+            f2 = to_1d_array(reference)
+        else:
+            f2 = None
+    else:
+        f2 = to_1d_array(reference)
+
+    line_colors = line_colors or ["dimgrey", "tab:orange"]
+
+    n = len(y)
+    _min, _max = np.nanmin(np.hstack([y, f1, f2])), np.nanmax(np.hstack([y, f1, f2]))
+    tmp = _min-0.2*(_max-_min), _max+0.2*(_max-_min)
+
+    theta = np.linspace(tmp[0], tmp[1], 501)
+
+    s1 = np.full((501, n), np.nan)
+    s2 = np.full((501, n), np.nan)
+
+    max1 = np.maximum(f1, y)
+    max2 = np.maximum(f2, y)
+
+    min1 = np.minimum(f1, y)
+    min2 = np.minimum(f2, y)
+
+    for j in range(n):
+
+        s1[:, j] = abs(y[j]-theta) * (max1[j] > theta) * (min1[j] <= theta)
+        s2[:, j] = abs(y[j] - theta) * (max2[j] > theta) * (min2[j] <= theta)
+
+    # grab the axes
+    if ax is None:
+        ax = plt.gca()
+
+    if xaxis == "theta":
+        s1ave, s2ave = _data_for_theta(s1, s2)
+    else:
+        raise NotImplementedError
+
+    if plot_type == "scores":
+        _plot_scores(theta, s1ave, s2ave, ax, line_colors)
+        ax.set_ylabel("Empirical Scores", fontsize=16)
+    else:
+        _plot_diff(theta, s1, s2, n, ax, line_colors[0], fill_color)
+        ax.set_ylabel("Difference in scores", fontsize=16)
+
+    ax.set_xlabel(xaxis, fontsize=16)
+
+    if show:
+        plt.show()
+
+    return ax
+
+
+def last_nonzero(arr, axis, invalid_val=-1):
+    mask = arr != 0
+    val = arr.shape[axis] - np.flip(mask, axis=axis).argmax(axis=axis) - 1
+    return np.where(mask.any(axis=axis), val, invalid_val)
+
+
+def _plot_diff(theta, s1, s2, n, ax, line_color="black", fill_color="lightgray"):
+
+    se = np.std(s1-s2)/np.sqrt(n)
+
+    diff = np.mean(s1-s2, axis=1)
+
+    upper = diff + 1.96 * se
+    lower = diff - 1.96 * se
+
+    ax.plot(theta, diff, color=line_color)
+
+    # first_nonzero occurence
+    st = (diff != 0).argmax(axis=0)
+    en = last_nonzero(diff, axis=0).item()
+
+    ax.fill_between(theta[st:en], upper[st:en], lower[st:en],  # alpha=0.2,
+                    color=fill_color)
+
+    return ax
+
+
+def fdc_plot(
+        sim: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        obs: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        ax: plt.Axes = None,
+        legend: bool = True,
+        xlabel: str = "Exceedence [%]",
+        ylabel: str = "Flow",
+        show: bool = True
+) -> plt.Axes:
+    """Plots flow duration curve
+
+    Arguments:
+        sim:
+            simulated flow
+        obs:
+            observed flow
+        ax:
+            axis on which to plot
+        legend:
+            whether to apply legend or not
+        xlabel:
+            label to set on x-axis. set to None for no x-label
+        ylabel:
+            label to set on y-axis
+        show:
+            whether to show the plot or not
+
+    Returns:
+        matplotlib axes
+
+    Example:
+        >>> import numpy as np
+        >>> import matplotlib.pyplot as plt
+        >>> from ai4water.utils.visualizations import fdc_plot
+        >>> simulated = np.random.random(100)
+        >>> observed = np.random.random(100)
+        >>> fdc_plot(simulated, observed)
+        >>> plt.show()
+    """
+
+    sim = to_1d_array(sim)
+    obs = to_1d_array(obs)
+
+    sort_obs = np.sort(sim)[::-1]
+    exceedence_obs = np.arange(1., len(sort_obs)+1) / len(sort_obs)
+    sort_sim = np.sort(obs)[::-1]
+    exceedence_sim = np.arange(1., len(sort_sim)+1) / len(sort_sim)
+
+    if ax is None:
+        ax = plt.gca()
+
+    ax.plot(exceedence_obs * 100, sort_obs, color='b', label="Observed")
+    ax.plot(exceedence_sim * 100, sort_sim, color='r', label="Simulated")
+
+    if legend:
+        ax.legend()
+
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+
+    if show:
+        plt.show()
+
+    return ax
+
+
+def _plot_scores(theta, s1ave, s2ave, ax, line_colors):
+
+    ax.plot(theta, s1ave, color=line_colors[0])
+    ax.plot(theta, s2ave, color=line_colors[1])
+
+    return ax
+
+
+def _data_for_time(s1, s2):
+    s1ave, s2ave = np.mean(s1, axis=0), np.mean(s2, axis=0)
+
+    return s1ave, s2ave
+
+
+def _data_for_theta(s1, s2):
+    return np.mean(s1, axis=1), np.mean(s2, axis=1)

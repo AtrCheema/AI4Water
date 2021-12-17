@@ -7,7 +7,6 @@ import mpl_toolkits.axisartist.grid_finder as GF
 import mpl_toolkits.axisartist.floating_axes as FA
 
 
-
 COLORS = {
     0: np.array([0.89411765, 0.10196078, 0.10980392, 1.]),
     1: np.array([0.21568627, 0.49411765, 0.72156863, 1.]),
@@ -26,10 +25,10 @@ COLORS = {
     14: np.array([0.13684922, 0.98802401, 0.34518303, 1.]),
     15: np.array(np.random.random(3).tolist() + [1.]),
     16: np.array([0.54829269, 0.15069842, 0.06147751, 1.]),
-    17: np.array([0.61       , 0.59       , 0.51    , 1.]),
+    17: np.array([0.61, 0.59, 0.51, 1.]),
     18: np.array([0.54829269, 0.15069842, 0.06147751, 1.]),
     19: np.array([0.06802773, 0.46382623, 0.49007703, 1.]),
-    20: np.array([0.80       , 0.50       , 0.59    , 1.]),
+    20: np.array([0.80, 0.50, 0.59, 1.]),
     21: np.array(np.random.random(3).tolist() + [1.]),
     22: np.array(np.random.random(3).tolist() + [1.]),
     23: np.array(np.random.random(3).tolist() + [1.]),
@@ -69,6 +68,7 @@ RECTS = {1: (111,),
          3: (311, 312, 313),
          4: (221, 222, 223, 224)}
 
+
 class TaylorDiagram(object):
     """
     Taylor diagram.
@@ -85,7 +85,7 @@ class TaylorDiagram(object):
                  label='_',
                  srange=(0, 1.5),
                  extend=False,
-                 axis_fontdict:dict=None):
+                 axis_fontdict: dict = None):
         """
         Set up Taylor diagram axes, i.e. single quadrant polar
         plot, using `mpl_toolkits.axisartist.floating_axes`.
@@ -214,36 +214,37 @@ class TaylorDiagram(object):
         return contours
 
 
-def taylor_plot(trues:dict,
-                simulations:dict,
-                axis_locs:dict=None,
-                cont_kws:dict=None,
-                grid_kws:dict=None,
-                leg_kws:dict=None,
-                axis_fontdict=None,
-                axis_kws:dict=None,
-                **kwargs
-                )->None:
+def taylor_plot(
+        trues: dict,
+        simulations: dict,
+        axis_locs: dict = None,
+        cont_kws: dict = None,
+        grid_kws: dict = None,
+        leg_kws: dict = None,
+        axis_fontdict: dict = None,
+        axis_kws: dict = None,
+        **kwargs
+) -> plt.Figure:
     """
     Helper function to plot [Taylor's](https://doi.org/10.1029/2000JD900719) plot.
 
     Arguments:
-        trues dict :
+        trues:
             a dictionary of length > 1, whose keys are scenarios and values
             represent true/observations at that scenarios. The values can also
             be a dictionary containing `std`, which stands for standard deviation.
-        simulations dict :
+        simulations:
             A dictionary of length > 1 whose keys are scenarios and whose values
             are also dictionary. Each sub-dictionary i.e. dictionary of scenario
             consist of models/simulations.
-        axis_locs dict :
+        axis_locs:
             dictionary defining axis orientation of figure. For example with two
             scenarios named 'scenario1' and 'scenario2', if we want to plot two
             plots in one column, then this argument will be
-                      {'scenario1': 211,
-                       'scenario2': 212}.
+                >>>          {'scenario1': 211,
+                >>>           'scenario2': 212}.
             Default is None.
-        cont_kws dict :
+        cont_kws:
             keyword arguments related to contours. Following args can be used:
                 - levels level of contours
                 - colors color of contours
@@ -253,7 +254,7 @@ def taylor_plot(trues:dict,
                 - linestyles {None, 'solid', 'dashed', 'dashdot', 'dotted'}
             https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.axes.Axes.contour.html
 
-        grid_kws dict :
+        grid_kws:
             keyword arguments related to grid. Following args can be used.
             Following keyword arguments are allowed
                 - title_fontsize: int, fontsize of the axis title
@@ -261,7 +262,7 @@ def taylor_plot(trues:dict,
                 - axis {'both', 'x', 'y'},
             any kwargs from https://matplotlib.org/3.3.3/api/_as_gen/matplotlib.axes.Axes.grid.html
 
-        leg_kws dict :
+        leg_kws:
             keyword arguments related to legends:
                 - position defaults to `center`
                 - fontsize int or {'xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'}
@@ -270,7 +271,7 @@ def taylor_plot(trues:dict,
             https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.legend.html
             example leg_kws = {'loc': 'upper right', 'numpoints': 1, 'fontsize': 15, 'markerscale': 1}
 
-        axis_fontdict dict :
+        axis_fontdict:
             dictionary defining propertiies of left, bottom and top axis labels
             ```python
             axis_fontdict = {'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
@@ -279,7 +280,7 @@ def taylor_plot(trues:dict,
             ```
             The user can define properties of either one or all axis.
 
-        axis_kws dict :
+        axis_kws:
             dictionary containing general parameters related to axis such as title.
 
         kwargs dict : Following keyword arguments are optional:
@@ -313,52 +314,49 @@ def taylor_plot(trues:dict,
             - figsize : tuple defining figsize, default is (11,8).
 
             - show : bool whether to show the plot or not
-    return:
-        None
+    Returns:
+        matplotlib figure
 
-    Example
-    ---------
-    ```python
-    >>>import numpy as np
-    >>>from ai4water.utils import taylor_plot
-    >>>np.random.seed(92)
-    >>>taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
-    ...            simulations={
-    ...             "site1":
-    ...                    {"LSTM": np.random.normal(20, 40, 10),
-    ...                     "CNN": np.random.normal(20, 40, 10),
-    ...                     "TCN": np.random.normal(20, 40, 10),
-    ...                     "CNN-LSTM": np.random.normal(20, 40, 10)}
-    ...            },
-    ...    cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
-    ...    grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
-    ...    axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-    ...             'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
-    ...             'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
-    ...    leg_kws={'fontsize': 16, 'markerscale': 2}
-    ...            )
-    ```
-    Sometimes we don't have actual true and simulation values as arrays. We can
-    still make Taylor plot using by providing only standard deviation and coefficient
-    of correlation (R) values.
-    ```python
-    >>>trues = {
-    >>>'Scenario 1': {'std': 4.916}}
-    >>>predictions = {
-    ...     'Scenario 1': {
-    ...    'Model 1': {'std': 2.80068, 'corr_coeff': 0.49172, 'pbias': -8.85},
-    ...    'Model 2': {'std': 3.47, 'corr_coeff': 0.67, 'pbias': -19.76},
-    ...    'Model 3': {'std': 3.53, 'corr_coeff': 0.596, 'pbias': 7.81},
-    ...    'Model 4': {'std': 2.36, 'corr_coeff': 0.27, 'pbias': -22.78},
-    ...    'Model 5': {'std': 2.97, 'corr_coeff': 0.452, 'pbias': -7.99}}}
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils import taylor_plot
+        >>> np.random.seed(92)
+        >>> taylor_plot(trues={'site1': np.random.normal(20, 40, 10)},
+        ...            simulations={
+        ...             "site1":
+        ...                    {"LSTM": np.random.normal(20, 40, 10),
+        ...                     "CNN": np.random.normal(20, 40, 10),
+        ...                     "TCN": np.random.normal(20, 40, 10),
+        ...                     "CNN-LSTM": np.random.normal(20, 40, 10)}
+        ...            },
+        ...    cont_kws={'colors': 'blue', 'linewidths': 1.0, 'linestyles': 'dotted'},
+        ...    grid_kws={'axis': 'x', 'color': 'g', 'lw': 1.0},
+        ...    axis_fontdict={'left': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+        ...             'bottom': {'fontsize': 20, 'color': 'k', 'ticklabel_fs': 14},
+        ...             'top': {'fontsize': 20, 'color': 'g', 'ticklabel_fs': 14}},
+        ...    leg_kws={'fontsize': 16, 'markerscale': 2}
+        ...            )
 
-    >>>taylor_plot(trues,
-    ...        predictions,
-    ...        add_grid=True,
-    ...        plot_bias=True,
-    ...        grid_kws={},
-    ...        )
-    ```
+        Sometimes we don't have actual true and simulation values as arrays. We can
+        still make Taylor plot using by providing only standard deviation and coefficient
+        of correlation (R) values.
+
+        >>> trues = {
+        >>> 'Scenario 1': {'std': 4.916}}
+        >>> predictions = {
+        ...     'Scenario 1': {
+        ...    'Model 1': {'std': 2.80068, 'corr_coeff': 0.49172, 'pbias': -8.85},
+        ...    'Model 2': {'std': 3.47, 'corr_coeff': 0.67, 'pbias': -19.76},
+        ...    'Model 3': {'std': 3.53, 'corr_coeff': 0.596, 'pbias': 7.81},
+        ...    'Model 4': {'std': 2.36, 'corr_coeff': 0.27, 'pbias': -22.78},
+        ...    'Model 5': {'std': 2.97, 'corr_coeff': 0.452, 'pbias': -7.99}}}
+        ...
+        >>> taylor_plot(trues,
+        ...        predictions,
+        ...        add_grid=True,
+        ...        plot_bias=True,
+        ...        grid_kws={},
+        ...        )
     """
     # todo replicate https://bookdown.org/david_carslaw/openair/sec-TaylorDiagram.html
     values = False
@@ -367,14 +365,14 @@ def taylor_plot(trues:dict,
         values = True
     else:  # we are given actual arrays
         assert all([isinstance(np.array(v), np.ndarray) for v in trues.values()])
-        assert all([len(array) > 1 for array in trues.values()]), f"""one or more array in true values has less than 2 values
-                                                        {pprint.pprint({key: len(array) for key, array in trues.items()},
-                                                                       width=20)}"""
+        assert all([len(array) > 1 for array in trues.values()]), f"""
+        one or more array in true values has less than 2 values
+        {pprint.pprint({key: len(array) for key, array in trues.items()}, width=20)}"""
     scenarios = trues.keys()
 
     figsizes = {
-        1 : (8,6),
-        2 : (11, 9),
+        1: (8, 6),
+        2: (11, 9),
         3: (11, 9),
         4: (12, 10)
     }
@@ -392,13 +390,13 @@ def taylor_plot(trues:dict,
     plot_bias = kwargs.get('plot_bias', False)
     title = kwargs.get('title', "")
     figsize = kwargs.get("figsize", figsizes[n_plots])  # widht and heigt respectively
-    bbox_inches=kwargs.get("bbox_inches", None)
+    bbox_inches = kwargs.get("bbox_inches", None)
     sim_marker = kwargs.get("sim_marker", None)
     true_label = kwargs.get("true_label", "Reference")
     show = kwargs.get("show", True)
 
     if axis_locs is None:
-        axis_locs = {k:v for k,v in zip(scenarios, RECTS[len(scenarios)])}
+        axis_locs = {k: v for k, v in zip(scenarios, RECTS[len(scenarios)])}
 
     # importing it at the start will be too early, because every sub-module imports from utils
     # so utils must not import something from other sub-modules at the start
@@ -482,7 +480,7 @@ def taylor_plot(trues:dict,
                 corrcoef = model['corr_coeff']
                 third_val = None
 
-                if len(model)>2:
+                if len(model) > 2:
                     _ = list(model.keys())[2]
                     third_val = list(model.values())[2]
             else:
@@ -525,7 +523,7 @@ def taylor_plot(trues:dict,
         # Tricky: ax is the polar ax (used for plots), _ax is the
         # container (used for layout)
         if len(scenarios) > 1:
-            dia._ax.set_title(season.capitalize(), fontdict={'fontsize':title_fontsize})
+            dia._ax.set_title(season.capitalize(), fontdict={'fontsize': title_fontsize})
 
     # Add a figure legend and title. For loc option, place x,y tuple inside [ ].
     # Can also use special options here:
@@ -534,8 +532,6 @@ def taylor_plot(trues:dict,
     if leg_kws is None:
         position = "center" if len(scenarios) == 4 else "upper right"
         leg_kws = {'loc': position}
-
-
 
     fig.legend(dia.samplePoints,
                [p.get_label() for p in dia.samplePoints],
@@ -548,8 +544,8 @@ def taylor_plot(trues:dict,
 
     if show:
         plt.show()
-    plt.close('all')
-    return
+
+    return fig
 
 
 if __name__ == "__main__":

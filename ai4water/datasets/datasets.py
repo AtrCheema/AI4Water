@@ -119,7 +119,7 @@
 # https://hess.copernicus.org/articles/25/3105/2021/
 # https://www.nature.com/articles/s41597-019-0282-4#Sec12
 # https://www.nature.com/articles/sdata201880#Tab3
-
+# https://edg.epa.gov/metadata/catalog/search/resource/details.page?uuid=https://doi.org/10.23719/1378947
 
 # air
 # https://zenodo.org/record/4311854#.YExpwNyRWUk
@@ -162,7 +162,10 @@
 # https://essd.copernicus.org/articles/13/1289/2021/
 # https://essd.copernicus.org/articles/13/1307/2021/
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1786
+# https://doi.org/10.3334/ORNLDAAC/1840
 
+#DWD
+# https://opendata.dwd.de/climate_environment/CDC/observations_germany/
 
 # geologic
 # https://zenodo.org/record/4536561#.YExpQNyRWUk
@@ -793,7 +796,8 @@ class MtropicsLaos(Datasets):
     [ird](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
     data servers.
 
-    For exploratory data analysis of this data see [here](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb)
+    For exploratory data analysis of this data see
+    [here](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb)
     Methods
     -------
     - fetch_lu
@@ -843,6 +847,9 @@ class MtropicsLaos(Datasets):
     inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
 
     def __init__(self, **kwargs):
+
+        if xr is None:
+            raise ModuleNotFoundError("xarray must be installed to use datasets sub-module")
 
         super().__init__(**kwargs)
         self._download()
@@ -932,6 +939,7 @@ class MtropicsLaos(Datasets):
         ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
          NaNs represent missing values. The data is randomly sampled between 2011
          to 2021 during rainfall events. Total 368 E. coli observation points are available now.
+
         Arguments:
             st : start of data. By default the data is fetched from the point it
                 is available.
@@ -1156,7 +1164,8 @@ class MtropicsLaos(Datasets):
                             st: Union[None, str] = "20110525 14:00:00",
                             en: Union[None, str] = "20181027 00:00:00",
                             freq: str = "6min",
-                            threshold: Union[int, dict] = 400
+                            threshold: Union[int, dict] = 400,
+                            lookback_steps: int = None,
                             ) -> pd.DataFrame:
         """
         Makes a classification problem.
@@ -1172,17 +1181,17 @@ class MtropicsLaos(Datasets):
                 are set to 0. The value of 400 is chosen for E. coli to make the
                 the number 0s and 1s balanced. It should be noted that US-EPA recommends
                 threshold value of 400 cfu/ml.
-
+            lookback_steps:
+                the number of previous steps to use. If this argument is used,
+                the resultant dataframe will have (ecoli_observations * lookback_steps)
+                rows. The resulting index will not be continuous.
         returns:
             a dataframe of shape `(inputs+target, st:en)`
 
-        Example
-        -------
-        ```python
-        >>>from ai4water.datasets import MtropicsLaos
-        >>>laos = MtropicsLaos()
-        >>>df = laos.make_classification()
-        ```
+        Example:
+            >>> from ai4water.datasets import MtropicsLaos
+            >>> laos = MtropicsLaos()
+            >>> df = laos.make_classification()
         """
         thresholds = {
             'Ecoli_mpn100': 400
@@ -1203,6 +1212,8 @@ class MtropicsLaos(Datasets):
 
         data[target[0]] = s
 
+        if lookback_steps:
+            return consider_lookback(data, lookback_steps, target)
         return data
 
     def make_regression(self,
@@ -1210,7 +1221,8 @@ class MtropicsLaos(Datasets):
                         output_features: Union[str, list] = "Ecoli_mpn100",
                         st: Union[None, str] = "20110525 14:00:00",
                         en: Union[None, str] = "20181027 00:00:00",
-                        freq: str = "6min"
+                        freq: str = "6min",
+                        lookback_steps: int = None
                         ) -> pd.DataFrame:
         """
         Makes a regression problem using hydrological, environmental,
@@ -1222,24 +1234,27 @@ class MtropicsLaos(Datasets):
             st : starting date of data
             en : end date of data
             freq : frequency of data
+            lookback_steps:
+                the number of previous steps to use. If this argument is used,
+                the resultant dataframe will have (ecoli_observations * lookback_steps)
+                rows. The resulting index will not be continuous.
 
         returns:
             a dataframe of shape `(inputs+target, st:en)`
 
         Example:
-        --------
-        ```python
-        >>>from ai4water.datasets import MtropicsLaos
-        >>>laos = MtropicsLaos()
-        >>>ins = ['pcp', 'temp']
-        >>>out = ['Ecoli_mpn100']
-        >>>reg_data = laos.make_regression(ins, out, '20110101', '20181231')
-        ```
+            >>> from ai4water.datasets import MtropicsLaos
+            >>> laos = MtropicsLaos()
+            >>> ins = ['pcp', 'temp']
+            >>> out = ['Ecoli_mpn100']
+            >>> reg_data = laos.make_regression(ins, out, '20110101', '20181231')
 
         todo add HRU definition
         """
         data = self._make_ml_problem(input_features, output_features, st, en, freq)
 
+        if lookback_steps:
+            return consider_lookback(data, lookback_steps, output_features)
         return data
 
     def _make_ml_problem(self, input_features, output_features, st, en, freq):
@@ -1390,3 +1405,35 @@ def _process_laos_shpfiles(shape_file, out_path):
                                'NAME': lu,
                                'area': poly.area},
             })
+
+
+def consider_lookback(df:pd.DataFrame, lookback:int, col_name:str)->pd.DataFrame:
+    """selects rows from dataframe considering lookback based upon nan
+     values in col_name"""
+
+    if isinstance(col_name, list):
+        assert len(col_name) == 1
+        col_name = col_name[0]
+
+    if not isinstance(col_name, str):
+        raise NotImplementedError
+
+    start = False
+    steps = 0
+
+    masks = np.full(len(df), False)
+
+    for idx, ecoli in enumerate(df[col_name].values[::-1]):
+        if not ecoli != ecoli:
+            start = True
+            steps = 0
+
+        if start and steps < lookback:
+            masks[idx] = True
+            steps += 1
+
+        # if we have started counting but the limit has reached
+        if start and steps > lookback:
+            start = False
+
+    return df.iloc[masks[::-1]]

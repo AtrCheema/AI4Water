@@ -92,15 +92,15 @@ class Metrics(object):
         self.remove_neg = remove_neg
 
     @staticmethod
-    def _minimal()->list:
+    def _minimal() -> list:
         raise NotImplementedError
 
     @staticmethod
-    def _scale_independent_metrics()->list:
+    def _scale_independent_metrics() -> list:
         raise NotImplementedError
 
     @staticmethod
-    def _scale_dependent_metrics()->list:
+    def _scale_dependent_metrics() -> list:
         raise NotImplementedError
 
     @property
@@ -180,7 +180,7 @@ class Metrics(object):
             assert len(np_array.shape) == 1
         return np_array
 
-    def calculate_all(self, statistics=False, verbose=False, write=False, name=None)->dict:
+    def calculate_all(self, statistics=False, verbose=False, write=False, name=None) -> dict:
         """ calculates errors using all available methods except brier_score..
         write: bool, if True, will write the calculated errors in file.
         name: str, if not None, then must be path of the file in which to write."""
@@ -214,7 +214,7 @@ class Metrics(object):
 
         return errors
 
-    def calculate_minimal(self)->dict:
+    def calculate_minimal(self) -> dict:
         """
         Calculates some basic metrics.
 
@@ -282,7 +282,7 @@ class Metrics(object):
         """Absolute error """
         return np.abs(self.true - self.predicted)
 
-    def calculate_scale_independent_metrics(self)->dict:
+    def calculate_scale_independent_metrics(self) -> dict:
         """
         Calculates scale independent metrics
 
@@ -298,7 +298,7 @@ class Metrics(object):
 
         return metrics
 
-    def calculate_scale_dependent_metrics(self)->dict:
+    def calculate_scale_dependent_metrics(self) -> dict:
         """
         Calculates scale dependent metrics
 

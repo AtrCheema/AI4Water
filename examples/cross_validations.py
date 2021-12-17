@@ -4,7 +4,7 @@ from ai4water import Model
 from ai4water.datasets import arg_beach
 
 model = Model(
-    model={'randomforestregressor': {}},
+    model={'RandomForestRegressor': {}},
     data=arg_beach(),
     cross_validator={'TimeSeriesSplit': {'n_splits': 5}},
     val_metric="r2"
@@ -13,7 +13,7 @@ model = Model(
 tssplit_score = model.cross_val_score()
 
 model = Model(
-    model={'randomforestregressor': {}},
+    model={'RandomForestRegressor': {}},
     data=arg_beach(),
     cross_validator={'KFold': {'n_splits': 5}},
     val_metric="r2"
@@ -22,7 +22,7 @@ model = Model(
 kfold_score = model.cross_val_score()
 
 model = Model(
-    model={'randomforestregressor': {}},
+    model={'RandomForestRegressor': {}},
     data=arg_beach(),
     cross_validator={'LeaveOneOut': {}},
     val_metric="mse"

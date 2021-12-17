@@ -18,19 +18,16 @@ class LimeExplainer(ExplainerMixin):
     """
     Wrapper around LIME module.
 
-    Example
-    -------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.datasets import arg_beach
-    >>>model = Model(model="GradientBoostingRegressor", data=arg_beach())
-    >>>model.fit()
-    >>>lime_exp = LimeExplainer(model=model._model,
-    ...                       train_data=model.training_data()[0],
-    ...                       test_data=model.test_data()[0],
-    ...                       mode="regression")
-    >>>lime_exp()
-    ```
+    Example:
+        >>>from ai4water import Model
+        >>>from ai4water.datasets import arg_beach
+        >>>model = Model(model="GradientBoostingRegressor", data=arg_beach())
+        >>>model.fit()
+        >>>lime_exp = LimeExplainer(model=model._model,
+        ...                       train_data=model.training_data()[0],
+        ...                       test_data=model.test_data()[0],
+        ...                       mode="regression")
+        >>>lime_exp()
 
     Attributes:
         explaination_objects : location explaination objects for each individual example/instance
@@ -44,7 +41,8 @@ class LimeExplainer(ExplainerMixin):
             explainer=None,
             path=None,
             features: list = None,
-            verbosity: Union[int, bool] = True
+            verbosity: Union[int, bool] = True,
+            **kwargs
     ):
         """
         Arguments:
@@ -65,7 +63,7 @@ class LimeExplainer(ExplainerMixin):
 
         self.mode = mode
         self.verbosity = verbosity
-        self.explainer = self._get_explainer(explainer)
+        self.explainer = self._get_explainer(explainer, **kwargs)
 
         self.explaination_objects = {}
 
@@ -79,31 +77,43 @@ class LimeExplainer(ExplainerMixin):
             assert x in ["regression", "classification"], f"mode must be either regression or classification not {x}"
         self._mode = x
 
-    def _get_explainer(self, proposed_explainer=None):
+    def _get_explainer(self, proposed_explainer=None, **kwargs):
 
         import lime.lime_tabular
 
         if proposed_explainer is None and self.data.ndim <= 2:
-            lime_explainer = lime.lime_tabular.LimeTabularExplainer(self.train_data,
-                                                                    feature_names=self.features,
-                                                                    # class_names=['price'],
-                                                                    # categorical_features=categorical_features,
-                                                                    verbose=self.verbosity,
-                                                                    mode=self.mode
-                                                                    )
+            lime_explainer = lime.lime_tabular.LimeTabularExplainer(
+                self.train_data,
+                feature_names=self.features,
+                # class_names=['price'],
+                # categorical_features=categorical_features,
+                verbose=self.verbosity,
+                mode=self.mode,
+                **kwargs
+            )
         elif proposed_explainer in lime.lime_tabular.__dict__.keys():
-            lime_explainer = getattr(lime.lime_tabular, proposed_explainer)(self.train_data,
-                                                                            feature_names=self.features,
-                                                                            mode=self.mode,
-                                                                            verbose=self.verbosity)
+            lime_explainer = getattr(lime.lime_tabular, proposed_explainer)(
+                self.train_data,
+                feature_names=self.features,
+                mode=self.mode,
+                verbose=self.verbosity,
+                **kwargs
+            )
         elif self.data.ndim == 3:
-            lime_explainer = lime.lime_tabular.RecurrentTabularExplainer(self.train_data,
-                                                                         mode=self.mode,
-                                                                         feature_names=self.features,
-                                                                         verbose=self.verbosity)
+            lime_explainer = lime.lime_tabular.RecurrentTabularExplainer(
+                self.train_data,
+                mode=self.mode,
+                feature_names=self.features,
+                verbose=self.verbosity,
+                **kwargs
+            )
         elif proposed_explainer is not None:
-            lime_explainer = getattr(lime, proposed_explainer)(self.train_data,
-                                                               features=self.features, mode=self.mode)
+            lime_explainer = getattr(lime, proposed_explainer)(
+                self.train_data,
+                features=self.features,
+                mode=self.mode,
+                **kwargs
+            )
         else:
             raise ValueError(f"Can not infer explainer. Please specify explainer to use.")
         return lime_explainer
@@ -142,7 +152,7 @@ class LimeExplainer(ExplainerMixin):
             plot_type: str = "pyplot",
             name: str = "lime_explaination",
             num_features: int = None,
-            colors = None,
+            colors=None,
             annotate=False,
             show=False,
             save=True,
@@ -198,11 +208,12 @@ def to_np(x) -> np.ndarray:
 
     return x
 
+
 def as_pyplot_figure(
         inst_explainer,
         label=1,
         example_index=None,
-        colors:[str, tuple, list]=None,
+        colors: [str, tuple, list] = None,
         annotate=False,
         **kwargs):
     """Returns the explanation as a pyplot figure.
@@ -225,7 +236,7 @@ def as_pyplot_figure(
 Local prediction: {round(inst_explainer.local_pred.item(), 2)}"""
 
     if colors is None:
-        colors = ([0.9375    , 0.01171875, 0.33203125], [0.23828125, 0.53515625, 0.92578125])
+        colors = ([0.9375, 0.01171875, 0.33203125], [0.23828125, 0.53515625, 0.92578125])
     elif isinstance(colors, str):
         colors = (colors, colors)
 

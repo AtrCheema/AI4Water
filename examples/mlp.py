@@ -33,4 +33,4 @@ model = Model(data=df,
 history = model.fit()
 
 y = model.predict()
-model.view_model()
+model.view()

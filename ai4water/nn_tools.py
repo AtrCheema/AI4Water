@@ -12,7 +12,7 @@ from . import backend as K
 if K.BACKEND == 'tensorflow':
     from ai4water.tf_attributes import LAYERS, tf
 else:
-    from .pytorch_attributes import LAYERS
+    from .models.torch import LAYERS
 
 
 class AttributeNotSetYet:
@@ -70,7 +70,7 @@ class NN(AttributeStore):
         automatically a dense layer matching the number of outputs and
         then reshapes it to match the following dimention (outs, forecast_len/horizons)
         """
-        if self.problem=='classification':
+        if self.problem == 'classification':
             return current_outputs
         new_outputs = current_outputs
         shape = current_outputs.shape
@@ -92,7 +92,7 @@ class NN(AttributeStore):
             num_outs = outs * quantiles
             if shape[-1] != num_outs:  # we add a Dense layer followed by reshaping it
 
-                dense = LAYERS["DENSE"](num_outs, name="model_output")
+                dense = LAYERS["Dense"](num_outs, name="model_output")
                 dense_out = dense(current_outputs)
                 self.update_cache(lyr_cache, dense.name, dense)
                 reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len), name="output_reshaped")
@@ -111,17 +111,18 @@ class NN(AttributeStore):
 
         return new_outputs
 
-    def update_cache(self, cache:dict, key, value):
+    def update_cache(self, cache: dict, key, value):
         if key in cache:
-            raise ValueError("Duplicate input/output name found. The name '{}' already exists as input/output for another layer"
+            raise ValueError("Duplicate input/output name found. The name '{}'"
+                             " already exists as input/output for another layer"
                              .format(key))
         cache[key] = value
         return
 
-    def deconstruct_lyr_args(self, lyr_name,  lyr_args) ->tuple:
+    def deconstruct_lyr_args(self, lyr_name,  lyr_args) -> tuple:
 
         if not isinstance(lyr_args, dict):
-            return lyr_args, None, None,None
+            return lyr_args, None, None, None
 
         if callable(lyr_name):
             if hasattr(lyr_name, '__call__'):
@@ -139,7 +140,7 @@ class NN(AttributeStore):
                 outputs = None
                 call_args = None
             else:
-                raise ValueError(f"No config found for layer {lyr_name}")
+                raise ValueError(f"No config found for layer '{lyr_name}'")
         else:
 
             config = lyr_args['config']
@@ -192,7 +193,7 @@ class NN(AttributeStore):
     def get_layer_name(self, lyr: str) -> str:
 
         layer_name = lyr.split('_')[0]
-        if layer_name.upper() not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
+        if layer_name not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
             raise ValueError(f"""
                             The layer name '{lyr}' you specified, does not exist.
                             Is this a user defined layer? If so, make sure your
@@ -215,13 +216,14 @@ def check_act_fn(config: dict):
         activation = config['activation']
     if activation is not None:
         assert isinstance(activation, str), f"unknown activation function {activation}"
-        config['activation'] = ACTIVATION_FNS[activation.upper()]
+        config['activation'] = ACTIVATION_FNS[activation]
 
     return config, activation
 
 
 def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
-    """ gets the additional call arguments for a layer. It is supposed that the call arguments are actually tensors/layers
+    """ gets the additional call arguments for a layer. It is supposed that the
+    call arguments are actually tensors/layers
     that have been created so far in the model including input layer. The call_args can be a list of inputs as well."""
     if isinstance(lyr_inputs, list):
         call_args = []
@@ -241,14 +243,16 @@ def get_call_args(lyr_inputs, lyr_cache, add_args, lyr_name):
 
     return call_args, get_add_call_args(add_args, lyr_cache, lyr_name)
 
-def get_add_call_args(add_args,lyr_cache, lyr_name):
+
+def get_add_call_args(add_args, lyr_cache, lyr_name):
     additional_args = {}
     if add_args is not None:
         assert isinstance(add_args, dict), "call_args to layer '{}' must be provided as dictionary".format(lyr_name)
         for arg_name, arg_val in add_args.items():
             if isinstance(arg_val, str):
                 if arg_val not in lyr_cache:
-                    raise NotImplementedError("The value {} for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
+                    raise NotImplementedError("The value {} for additional call argument {} to '{}'"
+                                              " layer not understood".format(arg_val, arg_name, lyr_name))
                 additional_args[arg_name] = lyr_cache[arg_val]
 
             elif isinstance(arg_val, list):
@@ -264,6 +268,7 @@ def get_add_call_args(add_args,lyr_cache, lyr_name):
                 additional_args[arg_name] = arg_val
 
             else:
-                raise NotImplementedError("The value `{}` for additional call argument {} to '{}' layer not understood".format(arg_val, arg_name, lyr_name))
+                raise NotImplementedError("The value `{}` for additional call argument {} to '{}'"
+                                          " layer not understood".format(arg_val, arg_name, lyr_name))
 
     return additional_args

@@ -24,3 +24,15 @@ Some utility functions
     handler: python
     rendering:
         show_root_heading: true
+
+**`murphy_diagram`**
+::: ai4water.utils.visualizations.murphy_diagram
+    handler: python
+    rendering:
+        show_root_heading: true
+
+**`fdc_plot`**
+::: ai4water.utils.visualizations.fdc_plot
+    handler: python
+    rendering:
+        show_root_heading: true

@@ -31,21 +31,18 @@ class MakeHRUs(object):
     the `hru_definition`. Currently it is supposed that only land use changes
     with time.
 
-    Example
-    ----------
-    ```python
-    >>>import os
-    >>>from ai4water.pre_processing.spatial_processing import MakeHRUs
-    >>> # shapefile_paths is the path where shapefiles are located. todo
-    >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
-    >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
-    >>>hru_object = MakeHRUs('unique_lu_sub',
-    ...     index={2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
-    ...     2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}},
-    ...                  subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
-    ...                 )
-    >>>hru_object.call()
-    ```
+    Example:
+        >>>import os
+        >>>from ai4water.preprocessing.spatial_processing import MakeHRUs
+        >>> # shapefile_paths is the path where shapefiles are located. todo
+        >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
+        >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
+        >>>hru_object = MakeHRUs('unique_lu_sub',
+        ...     index={2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
+        ...     2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}},
+        ...                  subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
+        ...                 )
+        >>>hru_object.call()
     """
 
     HRU_DEFINITIONS = [

@@ -8,6 +8,7 @@ site.addsitedir(ai4_dir)
 
 
 import shap
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import linear_model
@@ -17,7 +18,7 @@ from ai4water import Model
 from ai4water.datasets import arg_beach, MtropicsLaos
 from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
-from .test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
+from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
 
 laos = MtropicsLaos()
 
@@ -45,13 +46,13 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
     interpreter = ShapExplainer(model._model, x_test, path=model.path,
                                   explainer="Explainer")
-    if heatmap: interpreter.heatmap()
-    if beeswarm_plot: interpreter.beeswarm_plot()
+    if heatmap: interpreter.heatmap(show=False)
+    if beeswarm_plot: interpreter.beeswarm_plot(show=False)
 
     interpreter = ShapExplainer(model._model, x_test.values, path=model.path,
                                   explainer="Explainer")
-    if heatmap: interpreter.heatmap()
-    if beeswarm_plot: interpreter.beeswarm_plot()
+    if heatmap: interpreter.heatmap(show=False)
+    if beeswarm_plot: interpreter.beeswarm_plot(show=False)
 
     return
 
@@ -72,17 +73,17 @@ def fit_and_interpret(model_name:str,
     interpreter = ShapExplainer(model._model, x_test,
                                   train_data=x_train,
                                   path=model.path)
-    interpreter()
+    interpreter(save=False)
 
     if draw_heatmap:
-        interpreter.heatmap()
+        interpreter.heatmap(show=False)
 
     explainer = ShapExplainer(model._model,
                               x_test.values,
                               train_data=x_train.values,
                               features=model.dh.input_features,
                               path=model.path)
-    explainer()
+    explainer(save=False)
 
     return
 
@@ -108,15 +109,15 @@ def fit_and_draw_plots(model_name, data, draw_heatmap=False):
     explainer = ShapExplainer(model._model, x_test, explainer="Explainer",
                                   path=model.path)
 
-    explainer.waterfall_plot_all_examples()
-    explainer.scatter_plot_all_features()
+    explainer.waterfall_plot_all_examples(show=False)
+    explainer.scatter_plot_all_features(show=False)
     if draw_heatmap:
-        explainer.heatmap()
+        explainer.heatmap(show=False)
 
     explainer = ShapExplainer(model._model, x_test.values, explainer="Explainer",
                            path=model.path)
-    explainer.waterfall_plot_all_examples()
-    explainer.scatter_plot_all_features()
+    explainer.waterfall_plot_all_examples(show=False)
+    explainer.scatter_plot_all_features(show=False)
     #explainer.heatmap()
 
     return
@@ -150,7 +151,7 @@ class TestShapExplainers(unittest.TestCase):
                                   path=os.path.join(os.getcwd(), "results"))
         explainer(plot_force_all=True)
 
-        explainer.heatmap()
+        explainer.heatmap(show=False)
         explainer.plot_shap_values(show=False)
 
         return
@@ -158,15 +159,15 @@ class TestShapExplainers(unittest.TestCase):
     def test_pd_plot(self):
 
         for mod in [
-            "XGBoostRegressor", # todo error
+            "XGBRegressor", # todo error
             "RandomForestRegressor",
             "LGBMRegressor",
-            "DECISIONTREEREGRESSOR",
+            "DecisionTreeRegressor",
             "ExtraTreeRegressor",
             "ExtraTreesRegressor",
-            "GRADIENTBOOSTINGREGRESSOR",
-            "HISTGRADIENTBOOSTINGREGRESSOR",
-            "XGBOOSTRFREGRESSOR" # todo error
+            "GradientBoostingRegressor",
+            "HistGradientBoostingRegressor",
+            "XGBRFRegressor" # todo error
                     ]:
 
             exp = get_explainer(mod, arg_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
@@ -223,9 +224,9 @@ class TestShapExplainers(unittest.TestCase):
                           initiate_class)
         return
 
-    def test_xgboost(self):
+    def test_xgb(self):
 
-        fit_and_interpret("XGBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
+        fit_and_interpret("XGBRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
 
         return
 
@@ -241,9 +242,9 @@ class TestShapExplainers(unittest.TestCase):
 
         return
 
-    def test_waterfall_with_xgboost(self):
+    def test_waterfall_with_xgb(self):
 
-        fit_and_draw_plots("XGBoostRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
+        fit_and_draw_plots("XGBRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
 
         return
 
@@ -256,15 +257,15 @@ class TestShapExplainers(unittest.TestCase):
     def test_heatmap(self):
 
         for mod in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
             ##"LGBMRegressor",  # process stopping problem
-            "DECISIONTREEREGRESSOR",
+            "DecisionTreeRegressor",
             "ExtraTreeRegressor",
             "ExtraTreesRegressor",
-            "GRADIENTBOOSTINGREGRESSOR",
+            "GradientBoostingRegressor",
             ##"HISTGRADIENTBOOSTINGREGRESSOR", # taking very long time
-            "XGBOOSTRFREGRESSOR"
+            "XGBRFRegressor"
                     ]:
 
             fit_and_plot(mod, arg_beach(), heatmap=True)
@@ -274,15 +275,15 @@ class TestShapExplainers(unittest.TestCase):
     def test_beeswarm_plot(self):
 
         for mod in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
             "LGBMRegressor",
-            "DECISIONTREEREGRESSOR",
+            "DecisionTreeRegressor",
             "ExtraTreeRegressor",
             "ExtraTreesRegressor",
-            "GRADIENTBOOSTINGREGRESSOR",
-            "HISTGRADIENTBOOSTINGREGRESSOR",
-            "XGBOOSTRFREGRESSOR"
+            "GradientBoostingRegressor",
+            "HistGradientBoostingRegressor",
+            "XGBRFRegressor"
                     ]:
 
             fit_and_plot(mod, arg_beach(), beeswarm_plot=True)
@@ -295,7 +296,7 @@ class TestShapExplainers(unittest.TestCase):
         ex = ShapExplainer(model, testx, explainer="DeepExplainer", layer=2,
                              path=model.path)
 
-        ex.plot_shap_values()
+        ex.plot_shap_values(show=False)
 
         return
 
@@ -306,7 +307,7 @@ class TestShapExplainers(unittest.TestCase):
         ex = ShapExplainer(model, testx, layer=1, explainer="GradientExplainer",
                              path=model.path)
         plt.rcParams.update(plt.rcParamsDefault)
-        ex.plot_shap_values()
+        ex.plot_shap_values(show=False)
 
         return
 
@@ -321,9 +322,9 @@ class TestShapExplainers(unittest.TestCase):
         m, train_x, features, _path = get_lstm_model()
         #
         exp = ShapExplainer(model=m, data=train_x, layer=2, features=features, path=_path)
-        exp.summary_plot()
-        exp.force_plot_single_example(0, lookback=0)
-        exp.plot_shap_values()
+        exp.summary_plot(show=False)
+        exp.force_plot_single_example(0, show=False)
+        exp.plot_shap_values(show=False)
         return
 
     def test_lstm_model_gradient_exp(self):
@@ -332,8 +333,8 @@ class TestShapExplainers(unittest.TestCase):
 
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=features, path=_path)
-        exp.plot_shap_values()
-        exp.force_plot_single_example(0, lookback=0)
+        exp.plot_shap_values(show=False)
+        exp.force_plot_single_example(0, show=False)
         return
 
     def test_lstm_model_ai4water(self):
@@ -341,33 +342,70 @@ class TestShapExplainers(unittest.TestCase):
         train_x, _ = m.training_data()
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
                             features=m.dh.input_features, path=m.path)
-        exp.force_plot_single_example(0, lookback=0)
+        exp.force_plot_single_example(0, show=False)
         return
 
     def test_ai4water_ml(self):
 
         for m in [
-            "XGBoostRegressor",
+            "XGBRegressor",
             "RandomForestRegressor",
-            "GRADIENTBOOSTINGREGRESSOR"
+            "GradientBoostingRegressor"
                   ]:
 
             model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
             exp = explain_model_with_shap(model, examples_to_explain=2)
             assert isinstance(exp, ShapExplainer)
 
+        return
 
     def test_ai4water_mlp(self):
         model = make_mlp_model()
 
         exp = explain_model_with_shap(model, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
+        return
 
     def test_ai4water_lstm(self):
         m = lstm_model()
         m.fit()
         exp = explain_model_with_shap(m, examples_to_explain=2)
         assert isinstance(exp, ShapExplainer)
+        return
+
+    def test_plots_for_3d_input(self):
+        model = lstm_model()
+        test_x, _ = model.test_data()
+        p = model.predict(test_x)
+
+        exp = ShapExplainer(model, test_x, layer=2, path=model.path,
+                            features=model.dh.input_features
+                            )
+        exp.force_plot_single_example(np.argmin(p).item(), show=False)
+        exp.force_plot_single_example(np.argmax(p).item(), show=False)
+        exp.waterfall_plot_single_example(np.argmin(p).item(), show=False)
+        exp.waterfall_plot_single_example(np.argmax(p).item(), show=False)
+        exp.pdp_all_features(lookback=0, show=False)
+
+        return
+
+    def test_multiple_inputs(self):
+        model = Model(model={"layers": {"Input_0": {"shape": (10, 2)},
+                                        "LSTM_0": {"config": {"units": 62},
+                                                   "inputs": "Input_0",
+                                                   "outputs": "lstm0_output"},
+                                        "Input_1": {"shape": (5, 3)},
+                                        "LSTM_1": {"config": {"units": 32},
+                                                   "inputs": "Input_1",
+                                                   "outputs": "lstm1_output"},
+                                        "Concatenate": {"config": {}, "inputs": ["lstm0_output", "lstm1_output"]},
+                                        "Dense": {"config": 1}
+                                        }}, verbosity=0)
+        test_x = [np.random.random((100, 10, 2)), np.random.random((100, 5, 3))]
+        exp = ShapExplainer(model, test_x, layer="LSTM_1", path=model.path)
+        exp.summary_plot(show=False)
+        exp.plot_shap_values(show=False)
+        return
 
 
 if __name__ == "__main__":

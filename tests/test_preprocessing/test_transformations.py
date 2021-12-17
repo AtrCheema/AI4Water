@@ -531,6 +531,24 @@ class test_Scalers(unittest.TestCase):
                               inv_kw_args={"axis": 0, "append": 0})
         return
 
+    def test_negative(self):
+        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
+            x = [1.0, 2.0, -3.0, 4.0]
+            tr = Transformations(x, method=m, treat_negatives=True)
+            xtr = tr.transform()
+            _x = tr.inverse_transform(data=xtr)
+            np.testing.assert_array_almost_equal(x, _x.values.reshape(-1,))
+
+        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
+            x1 = [1.0, -2.0, 0.0, 4.0]
+            df1 = pd.DataFrame(np.column_stack([x, x1]))
+            tr = Transformations(df1, method=m, treat_negatives=True, replace_zeros=True)
+            dft = tr.transform()
+            _df = tr.inverse_transform(data=dft)
+            np.testing.assert_array_almost_equal(df1.values, _df.values)
+
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

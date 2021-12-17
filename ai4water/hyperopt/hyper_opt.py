@@ -62,7 +62,7 @@ from .utils import get_one_tpe_x_iter
 from ai4water.utils.utils import Jsonize, dateandtime_now
 from .utils import skopt_space_from_hp_space
 from .utils import post_process_skopt_results
-from .utils import Categorical, Real, Integer
+from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters
 
@@ -100,6 +100,7 @@ ALGORITHMS = {
     'cmaes': {'name': 'Covariance Matrix Adaptation Evolution Strategy', 'backend': ['optuna']}
 }
 
+
 class HyperOpt(object):
     """
     The purpose of this class is to provide a uniform and simplifed interface to
@@ -126,7 +127,8 @@ class HyperOpt(object):
     The class is expected to pass all the tests written in sklearn or skopt for
     corresponding classes.
 
-    For detailed use of this class see [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
+    For detailed use of this class see
+    [example](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb)
 
     Attributes
     --------------
@@ -149,182 +151,131 @@ class HyperOpt(object):
 
     The following examples illustrate how we can uniformly apply different optimization algorithms.
 
-    Examples
-    ---------
-    ```python
-    >>>from ai4water import Model
-    >>>from ai4water.hyperopt import HyperOpt, Categorical, Integer, Real
-    >>>from ai4water.datasets import arg_beach
-    >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-    >>>data = arg_beach()
-    >>>input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
-    >>>output_features = ['tetx_coppml']
-    ...# We have to define an objective function which will take keyword arguments
-    ...# and return a scaler value as output. This scaler value will be minized during optimzation
-    >>>def objective_fn(**suggestion)->float:
-    ...   # the objective function must receive new parameters as keyword arguments
-    ...    model = Model(
-    ...        input_features=input_features,
-    ...        output_features=output_features,
-    ...        model={"xgboostregressor": suggestion},
-    ...        data=data,
-    ...        train_data='random',
-    ...        verbosity=0)
-    ...
-    ...    model.fit()
-    ...
-    ...    t, p = model.predict(prefix='test', return_true=True)
-    ...    mse = RegressionMetrics(t, p).mse()
-    ...    # the objective function must return a scaler value which needs to be minimized
-    ...    return mse
-    ```
+    Examples:
+        >>>from ai4water import Model
+        >>>from ai4water.hyperopt import HyperOpt, Categorical, Integer, Real
+        >>>from ai4water.datasets import arg_beach
+        >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+        >>>data = arg_beach()
+        >>>input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+        >>>output_features = ['tetx_coppml']
+        ...# We have to define an objective function which will take keyword arguments
+        ...# and return a scaler value as output. This scaler value will be minized during optimzation
+        >>>def objective_fn(**suggestion)->float:
+        ...   # the objective function must receive new parameters as keyword arguments
+        ...    model = Model(
+        ...        input_features=input_features,
+        ...        output_features=output_features,
+        ...        model={"XGBRegressor": suggestion},
+        ...        data=data,
+        ...        train_data='random',
+        ...        verbosity=0)
+        ...
+        ...    model.fit()
+        ...
+        ...    t, p = model.predict(prefix='test', return_true=True)
+        ...    mse = RegressionMetrics(t, p).mse()
+        ...    # the objective function must return a scaler value which needs to be minimized
+        ...    return mse
 
-    # Define search space
-    The search splace determines pool from which parameters are chosen during optimization.
-    ```python
-    >>>num_samples=5   # only relavent for random and grid search
-    >>>search_space = [
-    ...    Categorical(['gbtree', 'dart'], name='booster'),
-    ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
-    ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
-    ...]
-    ```
-    ```
-
-    Using Baysian with gaussian processes
-    ```python
-    >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-    ```
-    # Using TPE with optuna
-    ```python
-    >>>num_iterations = 10
-    >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
-    ...                     backend='optuna',
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-    ```
-
-    # Using cmaes with optuna
-    ```python
-    >>>optimizer = HyperOpt('cmaes', objective_fn=objective_fn, param_space=search_space,
-    ...                     backend='optuna',
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-    ```
-
-    # Using random with optuna, we can also try hyperopt and sklearn as backend for random algorithm
-    ```python
-    >>>optimizer = HyperOpt('random', objective_fn=objective_fn, param_space=search_space,
-    ...                     backend='optuna',
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-    ```
-
-    # Using TPE of hyperopt
-    ```python
-    >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
-    ...                     backend='hyperopt',
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-
-    Using grid with sklearn
-    ```python
-    >>>optimizer = HyperOpt('grid', objective_fn=objective_fn, param_space=search_space,
-    ...                     backend='sklearn',
-    ...                     num_iterations=num_iterations )
-    >>>optimizer.fit()
-    ```
-
-    # Backward compatability
-    The following shows some tweaks with hyperopt to make its working compatible with its underlying libraries.
-    # using grid search with AI4Water
-    ```python
-    >>>opt = HyperOpt("grid",
-    ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
-    ...                        'max_depth': [3, 4, 5, 6]},
-    ...           ai4water_args={'model': 'XGBoostRegressor',
-    ...                        'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-    ...                        'output_features': ['target']},
-    ...           data=data,
-    ...           )
-    >>>opt.fit()
-    ```
-
-    # using random search with AI4Water
-    ```python
-    >>>opt = HyperOpt("random",
-    ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
-    ...                        'max_depth': [3, 4, 5, 6]},
-    ...           ai4water_args={'model': 'XGBoostRegressor',
-    ...                        'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
-    ...                        'output_features': ['target']},
-    ...           data=data,
-    ...           n_iter=100
-    ...           )
-    >>>sr = opt.fit()
-    ```
-
-    # using Bayesian with AI4Water
-    ```python
-    >>>from ai4water.hyperopt import Integer
-    >>>opt = HyperOpt("bayes",
-    ...           param_space=[Integer(low=1000, high=2000, name='n_estimators'),
-    ...                        Integer(low=3, high=6, name='max_depth')],
-    ...           ai4water_args={'model': 'xgboostRegressor'},
-    ...               data=data,
-    ...               n_calls=100,
-    ...               x0=[1000, 3],
-    ...               n_random_starts=3,  # the number of random initialization points
-    ...               random_state=2)
-    >>>sr = opt.fit()
-    ```
+        # Define search space
+        The search splace determines pool from which parameters are chosen during optimization.
+        >>> num_samples=5   # only relavent for random and grid search
+        >>> search_space = [
+        ...    Categorical(['gbtree', 'dart'], name='booster'),
+        ...    Integer(low=1000, high=2000, name='n_estimators', num_samples=num_samples),
+        ...    Real(low=1.0e-5, high=0.1, name='learning_rate', num_samples=num_samples)
+        ...]
 
 
-    # using Bayesian with custom objective_fn
-    ```python
-    >>>def f(x, noise_level=0.1):
-    ...      return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
-    ...
-    >>>opt = HyperOpt("bayes",
-    ...           objective_fn=f,
-    ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-    ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-    ...                        ],
-    ...           acq_func='EI',  # Expected Improvement.
-    ...           n_calls=50,     #number of iterations
-    ...           x0=[32, "relu"],  # inital value of optimizing parameters
-    ...           n_random_starts=3,  # the number of random initialization points
-    ...           )
-    >>>opt_results = opt.fit()
-    ```
+        Using Baysian with gaussian processes
+        >>>optimizer = HyperOpt('bayes', objective_fn=objective_fn, param_space=search_space,
+        ...                     num_iterations=num_iterations )
+        >>>optimizer.fit()
 
-    # using Bayesian with custom objective_fn and named args
-    ```python
-    >>>def f(noise_level=0.1, **kwargs):
-    ...    x = kwargs['x']
-    ...    return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
+        # Using TPE with optuna
+        >>>num_iterations = 10
+        >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
+        ...                     backend='optuna',
+        ...                     num_iterations=num_iterations )
+        >>>optimizer.fit()
 
-    >>>opt = HyperOpt("bayes",
-    ...           objective_fn=f,
-    ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
-    ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
-    ...                        ],
-    ...           acq_func='EI',  # Expected Improvement.
-    ...           n_calls=50,     #number of iterations
-    ...           x0=[32, "relu"],  # inital value of optimizing parameters
-    ...           n_random_starts=3,  # the number of random initialization points
-    ...           random_state=2
-    ...           )
-    >>>opt_results = opt.fit()
-    ```
+        # Using cmaes with optuna
+        >>>optimizer = HyperOpt('cmaes', objective_fn=objective_fn, param_space=search_space,
+        ...                     backend='optuna',
+        ...                     num_iterations=num_iterations )
+        >>>optimizer.fit()
+
+        # Using random with optuna, we can also try hyperopt and sklearn as backend for random algorithm
+        >>>optimizer = HyperOpt('random', objective_fn=objective_fn, param_space=search_space,
+        ...                     backend='optuna',
+        ...                     num_iterations=num_iterations )
+        >>>optimizer.fit()
+
+        # Using TPE of hyperopt
+        >>>optimizer = HyperOpt('tpe', objective_fn=objective_fn, param_space=search_space,
+        ...                     backend='hyperopt',
+        ...                     num_iterations=num_iterations )
+        >>>optimizer.fit()
+
+        # Using grid with sklearn
+        >>>optimizer = HyperOpt('grid', objective_fn=objective_fn, param_space=search_space,
+        ...                     backend='sklearn',
+        ...                     num_iterations=num_iterations )
+        >>>optimizer.fit()
+
+        # Backward compatability
+        The following shows some tweaks with hyperopt to make its working compatible with its underlying libraries.
+        # using grid search with AI4Water
+        >>>opt = HyperOpt("grid",
+        ...           param_space={'n_estimators': [1000, 1200, 1400, 1600, 1800,  2000],
+        ...                        'max_depth': [3, 4, 5, 6]},
+        ...           ai4water_args={'model': 'XGBRegressor',
+        ...                        'input_features': ['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10'],
+        ...                        'output_features': ['target']},
+        ...           data=data,
+        ...           )
+        >>>opt.fit()
+
+        # using Bayesian with custom objective_fn
+        >>>def f(x, noise_level=0.1):
+        ...      return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
+        ...
+        >>>opt = HyperOpt("bayes",
+        ...           objective_fn=f,
+        ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
+        ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
+        ...                        ],
+        ...           acq_func='EI',  # Expected Improvement.
+        ...           n_calls=50,     #number of iterations
+        ...           x0=[32, "relu"],  # inital value of optimizing parameters
+        ...           n_random_starts=3,  # the number of random initialization points
+        ...           )
+        >>>opt_results = opt.fit()
+
+        # using Bayesian with custom objective_fn and named args
+        >>>def f(noise_level=0.1, **kwargs):
+        ...    x = kwargs['x']
+        ...    return np.sin(5 * x[0]) * (1 - np.tanh(x[0] ** 2)) + np.random.randn() * noise_level
+
+        >>>opt = HyperOpt("bayes",
+        ...           objective_fn=f,
+        ...           param_space=[Categorical([32, 64, 128, 256], name='lstm_units'),
+        ...                        Categorical(categories=["relu", "elu", "leakyrelu"], name="dense_actfn")
+        ...                        ],
+        ...           acq_func='EI',  # Expected Improvement.
+        ...           n_calls=50,     #number of iterations
+        ...           x0=[32, "relu"],  # inital value of optimizing parameters
+        ...           n_random_starts=3,  # the number of random initialization points
+        ...           random_state=2
+        ...           )
+        >>>opt_results = opt.fit()
 
     References
     --------------
-    1 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV
+    1 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html
 
-    2 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html#sklearn.model_selection.RandomizedSearchCV
+    2 https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html
 
     3 https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
 
@@ -332,17 +283,18 @@ class HyperOpt(object):
 
     """
 
-    def __init__(self,
-                 algorithm:str, *,
-                 param_space,
-                 objective_fn=None,
-                 eval_on_best:bool=False,
-                 backend:str=None,
-                 opt_path:str = None,
-                 process_results:bool = True,
-                 verbosity:int = 1,
-                 **kwargs
-                 ):
+    def __init__(
+            self,
+            algorithm: str, *,
+            param_space,
+            objective_fn=None,
+            eval_on_best: bool = False,
+            backend: str = None,
+            opt_path: str = None,
+            process_results: bool = True,
+            verbosity: int = 1,
+            **kwargs
+    ):
 
         """
         Arguments:
@@ -385,17 +337,17 @@ class HyperOpt(object):
 
         self.objective_fn = objective_fn
         self.algorithm = algorithm
-        self.backend=backend
-        self.param_space=param_space
+        self.backend = backend
+        self.param_space = param_space
         self.original_space = param_space       # todo self.space and self.param_space should be combined.
         self.ai4water_args = None
         self.title = self.algorithm
         self.results = {}  # internally stored results
         self.gpmin_results = None  #
         self.data = None
-        self.eval_on_best=eval_on_best
+        self.eval_on_best = eval_on_best
         self.opt_path = opt_path
-        self.process_results=process_results
+        self.process_results = process_results
         self.objective_fn_is_dl = False
         self.verbosity = verbosity
 
@@ -474,7 +426,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self.ai4water_args = kwargs.pop("ai4water_args")
             self.data = kwargs.pop("data")
             self._model = self.ai4water_args.pop("model")
-            #self._model = list(_model.keys())[0]
+            # self._model = list(_model.keys())[0]
             self.use_ai4water_model = True
 
         if 'n_initial_points' in kwargs:
@@ -509,7 +461,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.algorithm == "bayes":
             if isinstance(x, dict):
                 _param_space = []
-                for k,v in x.items():
+                for k, v in x.items():
                     assert isinstance(v, Dimension), f"""
                             space for parameter {k} is of invalid type {v.__class__.__name__}.
                             For {self.algorithm}, it must be of type {Dimension.__name__}
@@ -554,7 +506,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 else:
                     raise NotImplementedError
 
-            elif isinstance(x, Dimension): # for single hyper-parameter optimization ?
+            elif isinstance(x, Dimension):  # for single hyper-parameter optimization ?
                 _param_space = x.as_hp()
             else:
                 _param_space = x
@@ -614,14 +566,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     raise NotImplementedError(f"unknown type {v}, {type(v)}")
                 space_.append(s)
 
-            _space = Space(space_) if len(space_)>0 else None
+            _space = Space(space_) if len(space_) > 0 else None
         elif 'rv_frozen' in x.__class__.__name__ or isinstance(x, Apply):
-            _space =  Space([skopt_space_from_hp_space(x)])
+            _space = Space([skopt_space_from_hp_space(x)])
         else:
             raise NotImplementedError(f"unknown type {x}, {type(x)}")
         return _space
 
-    def space(self)->dict:
+    def space(self) -> dict:
         """Returns a skopt compatible space but as dictionary"""
         if self.backend == 'hyperopt':
             if isinstance(self.original_space, Apply):
@@ -637,11 +589,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     else:
                         raise NotImplementedError
             elif isinstance(self.original_space, list):
-                if  all([isinstance(s, Dimension) for s in self.original_space]):
-                    _space = OrderedDict({s.name:s for s in self.original_space})
+                if all([isinstance(s, Dimension) for s in self.original_space]):
+                    _space = OrderedDict({s.name: s for s in self.original_space})
                 elif all([isinstance(s, Apply) for s in self.original_space]):
                     d = [skopt_space_from_hp_space(v) for v in self.original_space]
-                    _space = OrderedDict({s.name:s for s in d})
+                    _space = OrderedDict({s.name: s for s in d})
                 else:
                     raise NotImplementedError
             else:
@@ -707,7 +659,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @property
     def use_skopt_bayes(self):
         # will return true if we have to use skopt based BayesSearchCV
-        if self.algorithm=="bayes" and "sklearn" in str(type(self.objective_fn)):
+        if self.algorithm == "bayes" and "sklearn" in str(type(self.objective_fn)):
             assert not self.use_sklearn
             return True
         return False
@@ -784,7 +736,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         self._opt_path = path
 
-    def best_paras(self, as_list=False)->Union[list, dict]:
+    def best_paras(self, as_list=False) -> Union[list, dict]:
         # returns best parameters either as dictionary or as list
         if self.use_skopt_gpmin:
             d = self.xy_of_iterations()
@@ -814,7 +766,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         """Makes and calls the underlying fit method"""
 
         if self.use_sklearn or self.use_skopt_bayes:
-            fit_fn =  self.optfn.fit
+            fit_fn = self.optfn.fit
 
         elif self.use_skopt_gpmin:
             fit_fn = self.own_fit
@@ -837,7 +789,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         res = fit_fn(*args, **kwargs)
 
         serialized = self.serialize()
-        fname  = os.path.join(self.opt_path, 'serialized.json')
+        fname = os.path.join(self.opt_path, 'serialized.json')
         with open(fname, 'w') as fp:
             json.dump(serialized, fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
@@ -849,13 +801,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                        return_model=False,
                        view_model=False,
                        interpret=False,
-                     **kwargs):
+                       **kwargs):
 
         # this is for it to make json serializable.
         kwargs = Jsonize(kwargs)()
 
         if title is None:
-            title =  self.opt_path #self.method + '_' + config.model["mode"] + '_' + config.model["ml_model"]
+            title = self.opt_path  # self.method + '_' + config.model["mode"] + '_' + config.model["ml_model"]
             self.title = title
         else:
             title = title
@@ -870,7 +822,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                       **self.ai4water_args)
 
         assert model.config["model"] is not None, "Currently supported only for ml models. Make your own" \
-                                                               " AI4Water model and pass it as custom model."
+                                                  " AI4Water model and pass it as custom model."
         model.fit()
 
         t, p = model.predict(process_results=pp, return_true=True)
@@ -907,7 +859,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return names
         else:
             raise NotImplementedError
-
 
     def dims(self):
         # this will be used for gp_minimize
@@ -950,7 +901,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                         dimensions=self.dims(),
                                         **kwargs)
         except ValueError as e:
-            if int(''.join(sklearn.__version__.split('.')[1]))>22:
+            if int(''.join(sklearn.__version__.split('.')[1])) > 22:
                 raise ValueError(f"""
                     For bayesian optimization, If your sklearn version is above 0.23,
                     then this error may be related to 
@@ -963,7 +914,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         # the `space` in search_results may not be in same order as originally provided.
         space = search_result['space']
-        if space.__dict__.__len__()>1:
+        if space.__dict__.__len__() > 1:
             ordered_sapce = OrderedDict()
             for k in self.space().keys():
                 ordered_sapce[k] = [s for s in space if s.name == k][0]
@@ -988,7 +939,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def eval_sequence(self, params):
 
-        if self.verbosity>0:
+        if self.verbosity > 0:
             print(f"total number of iterations: {len(params)}")
         for idx, para in enumerate(params):
 
@@ -996,7 +947,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 err = self.ai4water_model(**para)
             elif self.use_named_args:  # objective_fn is external but uses kwargs
                 err = self.objective_fn(**para)
-            else: # objective_fn is external and does not uses keywork arguments
+            else:  # objective_fn is external and does not uses keywork arguments
                 try:
                     err = self.objective_fn(*list(para.values()))
                 except TypeError:
@@ -1047,7 +998,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def optuna_objective(self, **kwargs):
 
-        if self.verbosity==0:
+        if self.verbosity == 0:
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
         sampler = {
@@ -1060,13 +1011,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         def objective(trial):
             suggestion = {}
             for space_name, _space in self.param_space.items():
-                    suggestion[space_name] = _space.suggest(trial)
+                suggestion[space_name] = _space.suggest(trial)
             return self.objective_fn(**suggestion)
 
         if self.algorithm in ['tpe', 'cmaes', 'random']:
             study = optuna.create_study(direction='minimize', sampler=sampler[self.algorithm]())
         else:
-            space = {s.name:s.grid for s in self.skopt_space()}
+            space = {s.name: s.grid for s in self.skopt_space()}
             study = optuna.create_study(sampler=sampler[self.algorithm](space))
         study.optimize(objective, n_trials=self.num_iterations)
         setattr(self, 'study', study)
@@ -1106,7 +1057,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         else:
             objective_f = self.objective_fn
 
-            if len(self.space()) >1:
+            if len(self.space()) > 1:
                 space = list(self.hp_space().values())
             elif len(self.space()) == 1:
                 space = list(self.hp_space().values())[0]
@@ -1114,17 +1065,17 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 raise NotImplementedError
 
         best = fmin_hyperopt(objective_f,
-                    space=space,
-                    algo=suggest_options[self.algorithm],
-                    trials=trials,
-                    **kwargs,
-                    **model_kws)
+                             space=space,
+                             algo=suggest_options[self.algorithm],
+                             trials=trials,
+                             **kwargs,
+                             **model_kws)
 
         with open(os.path.join(self.opt_path, 'trials.json'), "w") as fp:
             json.dump(Jsonize(trials.trials)(), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
         setattr(self, 'trials', trials)
-        #self.results = trials.results
+        # self.results = trials.results
         if self.process_results:
             self._plot()
 
@@ -1141,15 +1092,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if callable(self.objective_fn) and not self.use_named_args:
             return self.objective_fn(*args)
 
-    def hp_space(self)->dict:
+    def hp_space(self) -> dict:
         """returns a dictionary whose values are hyperopt equivalent space instances."""
-        return {k:v.as_hp(False if self.algorithm=='atpe' else True) for k,v in self.space().items()}
+        return {k: v.as_hp(False if self.algorithm == 'atpe' else True) for k,v in self.space().items()}
 
-    def xy_of_iterations(self)->dict:
+    def xy_of_iterations(self) -> dict:
         # todo, not in original order
         if self.backend == "optuna":
             num_iters = range(self.num_iterations)
-            return {float(f'{round(trial.value, 5)}_{idx}'):trial.params for idx, trial in zip(num_iters, self.study.trials)}
+            return {float(f'{round(trial.value, 5)}_{idx}'): trial.params for idx, trial in zip(num_iters, self.study.trials)}
         elif self.backend == "hyperopt":
             return x_iter_for_tpe(self.trials, self.hp_space(), as_list=False)
         elif self.backend == 'skopt':
@@ -1157,7 +1108,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             # adding idx because sometimes the difference between two func_vals is negligible
             fv = self.gpmin_results['func_vals']
             xiters = self.gpmin_results['x_iters']
-            return {f'{round(k, 5)}_{idx}':self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
+            return {f'{round(k, 5)}_{idx}': self.to_kw(v) for idx, k,v in zip(range(len(fv)), fv, xiters)}
         else:
             # for sklearn based
             return self.results
@@ -1187,11 +1138,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             return SR()
 
-    def best_xy(self)->dict:
+    def best_xy(self) -> dict:
         if self.backend == 'skopt':
             d = self.xy_of_iterations()
             k = list(dict(sorted(d.items())).keys())[0]
-            paras = {k:d[k]}
+            paras = {k: d[k]}
         else:
             raise NotImplementedError
         return paras
@@ -1207,12 +1158,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         sr = self.skopt_results()
         plt.close('all')
         if sr.x_iters is not None and self.backend != "skopt":
-            plot_convergence([sr])  #todo, should include an option to plot original evaluations instead of only minimum
+            # todo, should include an option to plot original evaluations instead of only minimum
+            plot_convergence([sr])
 
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
 
-        if self.backend != 'skopt' and len(self.space())<20:# and len(self.space())>1:
+        if self.backend != 'skopt' and len(self.space()) < 20:  # and len(self.space())>1:
             plt.close('all')
             plot_evaluations(sr, dimensions=self.best_paras(as_list=True))
             plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
@@ -1234,13 +1186,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if self.backend == 'optuna':
 
                 fig = plot_parallel_coordinate(self.study)
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parallel_coordinates.html'),auto_open=False)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parallel_coordinates.html'),
+                                    auto_open=False)
 
                 fig = plot_contour(self.study)
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),auto_open=False)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'), auto_open=False)
 
                 fig = plot_edf(self.study)
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'),auto_open=False)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'), auto_open=False)
 
         return
 
@@ -1313,7 +1266,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                                        return_model=return_model,
                                        interpret=interpret,
                                        title=os.path.join(self.opt_path, "best"),
-                                     **x)
+                                       **x)
 
         if self.use_named_args and self.ai4water_args is None:
             return self.objective_fn(**x)
@@ -1327,7 +1280,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         raise NotImplementedError
 
     @classmethod
-    def from_gp_parameters(cls, fpath:str, objective_fn):
+    def from_gp_parameters(cls, fpath: str, objective_fn):
         """loads results saved from bayesian optimization"""
         opt_path = os.path.dirname(fpath)
         with open(fpath, 'r') as fp:
@@ -1335,7 +1288,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         space = gpmin_results['space']
         spaces = []
         for sp_name, sp_paras in space.items():
-            if sp_paras['type'] ==  'Categorical':
+            if sp_paras['type'] == 'Categorical':
                 spaces.append(Categorical(sp_paras['categories'], name=sp_name))
             elif sp_paras['type'] == 'Integer':
                 spaces.append(Integer(low=sp_paras['low'], high=sp_paras['high'], name=sp_name, prior=sp_paras['prior']))
@@ -1364,15 +1317,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return {'fun': '',
                 'x': '',
                 "best_paras": Jsonize(self.best_paras())(),
-                'space': {k: v.serialize() for k,v in self.space().items()},
+                'space': {k: v.serialize() for k, v in self.space().items()},
                 'fun_vals': self.func_vals(),
-                #'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
+                # 'iters': self.xy_of_iterations(), # todo, for BayesSearchCVs, not getting ys
                 'algorithm': self.algorithm,
                 'backend': self.backend,
                 'opt_path': self.opt_path
                 }
 
-    def optuna_study(self)->Study:
+    def optuna_study(self) -> Study:
         """
         Attempts to create an optuna Study instance so that
         optuna based plots can be generated.
@@ -1407,7 +1360,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             trials = []
             idx = 0
 
-            distributions = {sn:s.to_optuna() for sn, s in self.space().items()}
+            distributions = {sn: s.to_optuna() for sn, s in self.space().items()}
 
             for _y, _x in self.xy_of_iterations().items():
 
@@ -1445,14 +1398,75 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         fname = os.path.join(self.opt_path, "iterations.json")
         with open(fname, "w") as fp:
-            json.dump(jsonized_iterations, fp, sort_keys=True, indent=4, cls=JsonEncoder)
+            json.dump(jsonized_iterations, fp, sort_keys=False, indent=4, cls=JsonEncoder)
 
         fname = os.path.join(self.opt_path, "iterations_sorted.json")
         with open(fname, "w") as fp:
             json.dump(dict(sorted(jsonized_iterations.items())), fp, sort_keys=True, indent=4, cls=JsonEncoder)
 
+    def add_previous_results(
+            self,
+            iterations: Union[dict, str] = None,
+            x: list = None,
+            y :list = None
+    ):
+        """adds results from previous iterations.
 
-def space_from_list(v:list, k:str)->Dimension:
+        If you have run the optimization priviously, you can make use
+        of those results by appending them.
+
+        Arguments:
+            iterations:
+                It can be either a dictionary whose keys are y values and values are x
+                or it can be a path to a file which contains these xy values as dictioary.
+            x:
+                a list of lists where each sub-list is the value of hyperparameter
+                at at one iteratio. The `x` and `y` arguments optional and will
+                only be used if `iterations` are not provided.
+            y:
+                a list of float values where each value in y is the output
+                of objective_fn with corresponding x. The length of `x` and `y`
+                must be equal.
+        """
+
+        assert self.algorithm == "bayes"
+
+        if iterations is None:
+            assert isinstance(x, list) and isinstance(y, list)
+            assert len(x) == len(y), f"x has {len(x)} values while y has {len(y)} values. They must be equal"
+            x0 = x
+            y0 = y
+
+        elif isinstance(iterations, str):
+            assert os.path.exists(iterations), f"the path {iterations} does not exist"
+            # it is a path
+            with open(iterations, 'r') as fp:
+                iter_dict = json.load(fp)
+
+            x0, y0 = self.dict_to_xy(iter_dict)
+        else:
+            if not isinstance(iterations, dict):
+                raise ValueError(f"iterations must be a dictionary but it is of type {iterations.__class__.__name__}")
+
+            x0, y0 = self.dict_to_xy(iterations)
+
+        # todo check for inf and nan in y0
+
+        self.gpmin_args['x0'] = x0
+        self.gpmin_args['y0'] = y0
+
+        return
+
+    @staticmethod
+    def dict_to_xy(iterations:dict):
+        x0, y0 = [], []
+        for y, x in iterations.items():
+            y0.append(float(y))
+            x0.append(list(x.values()))
+        return x0, y0
+
+
+def space_from_list(v: list, k: str) -> Dimension:
     if len(v) > 2:
         if isinstance(v[0], int):
             s = Integer(grid=v, name=k)
