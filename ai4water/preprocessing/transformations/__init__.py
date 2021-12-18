@@ -5,6 +5,8 @@ objects in a json file and load from a json file"""
 
 from ._main import Transformation
 
+from ._transformation_wrapper import Transformations
+
 from ._transformations import ScalerWithConfig
 from ._transformations import MinMaxScaler
 from ._transformations import StandardScaler

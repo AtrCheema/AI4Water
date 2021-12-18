@@ -83,17 +83,17 @@ class Transformation(TransformationsContainer):
 
     Methods
     -------
-    - minmax
-    - maxabs
-    - robust
-    - power
-    - zscore    also known as standard scalers
-    - quantile
-    - log      natural logrithmic
-    - log10    log with base 10
-    - log2  log with base 2
-    - tan      tangent
-    - cumsum   cummulative sum
+    - `minmax`
+    - `maxabs`
+    - `robust`
+    - `power`
+    - `zscore`    also known as standard scalers
+    - `quantile`
+    - `log`      natural logrithmic
+    - `log10`    log with base 10
+    - `log2`  log with base 2
+    - `tan`      tangent
+    - `cumsum`   cummulative sum
 
     To transform a datafrmae using any of the above methods use
 
@@ -115,8 +115,9 @@ class Transformation(TransformationsContainer):
 
     where `method` can be any of the above mentioned methods.
 
-    Note: `tan` and `cumsum` do not return original data upon inverse transformation.
-        Same holds true for methods which causes change in dimension
+    Note:
+    ------
+     `tan` and `cumsum` do not return original data upon inverse transformation.
     """
 
     available_transformers = {
@@ -588,6 +589,8 @@ class InvalidValueError(Exception):
             return "Try setting 'replace_nans' to True"
         elif self.reason == "zero":
             return "Try setting 'replace_zeros' to True"
+        elif self.reason == "negative":
+            return "Try setting 'treat_negatives' to True"
 
     def __str__(self):
         return (f"""

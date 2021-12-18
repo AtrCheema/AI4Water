@@ -18,7 +18,7 @@ from ai4water.utils.utils import _missing_vals
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.plotting_tools import bar_chart
 from ai4water.utils.utils import find_tot_plots
-from ai4water.preprocessing import Transformations
+from ai4water.preprocessing import Transformation
 from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 
 
@@ -668,7 +668,7 @@ class EDA(Plot):
         # pca = PCA(n_components=num_pcs).fit(df_pca)
         # df_pca = pd.DataFrame(pca.transform(df_pca))
 
-        transformer = Transformations(data=data, method='pca', n_components=num_pcs,
+        transformer = Transformation(data=data, method='pca', n_components=num_pcs,
                                       replace_nans=True)
         df_pca = transformer.transform()
 
@@ -1086,7 +1086,7 @@ class EDA(Plot):
         # if data contains duplicated columns, transformation will not work
         data = data.loc[:, ~data.columns.duplicated()]
         if normalize:
-            transformer = Transformations(data=data)
+            transformer = Transformation(data=data)
             data = transformer.transform()
 
         if freq is not None:

@@ -13,6 +13,11 @@
     rendering:
         show_root_heading: true
 
+::: ai4water.preprocessing.transformations.Transformations
+    handler: python
+    rendering:
+        show_root_heading: true
+        
 ::: ai4water.preprocessing.transformations.ScalerWithConfig
     handler: python
     rendering:

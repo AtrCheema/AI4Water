@@ -1,3 +1,3 @@
 
 from .datahandler import DataHandler, SiteDistributedDataHandler
-from .transformations import Transformation
+from .transformations import Transformation, Transformations
