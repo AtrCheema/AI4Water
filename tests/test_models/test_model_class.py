@@ -1,4 +1,5 @@
 
+import time
 import unittest
 
 import tensorflow as tf
@@ -164,6 +165,20 @@ class TestFit(unittest.TestCase):
     def test_fit_functional(self):
         _test_fit(FModel, "RandomForestRegressor", x_reg, y_reg)
         _test_fit(FModel, "RandomForestClassifier", x_cls, y_cls)
+        return
+
+    def test_fit_as_native(self):
+        time.sleep(1)
+        model = FModel(
+            model={"layers": {"Dense": 1}},
+            lookback=1,
+            data=arg_beach(),
+            verbosity=0,
+        )
+
+        model.fit(batch_size=30, callbacks=[tf.keras.callbacks.EarlyStopping(patience=5)] )
+        assert model.config['batch_size'] == 30
+
         return
 
 

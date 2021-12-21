@@ -374,17 +374,6 @@ class Model(BaseModel):
 
         return
 
-    def _do_predict(self, inputs):
-
-        if self.category == "DL":
-            predicted = self._model.predict(x=inputs,
-                                            batch_size=self.config['batch_size'],
-                                            verbose=self.verbosity)
-        else:
-            predicted = self._model.predict(*inputs)
-
-        return predicted
-
     def loss_name(self):
         if isinstance(self._model.loss, str):
             return self._model.loss

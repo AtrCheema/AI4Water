@@ -461,8 +461,18 @@ class BaseModel(NN, Plots):
             _callbacks.append(keras.callbacks.TensorBoard(**tb_kwargs))
             callbacks.pop('tensorboard')
 
-        for val in callbacks.values():
-            _callbacks.append(val)
+        if isinstance(callbacks, dict):
+            for val in callbacks.values():
+                _callbacks.append(val)
+        else:
+            # if any callback provided by user is similar to what we already prepared, take the one
+            # provided by the user
+            assert isinstance(callbacks, list)
+            cbs_provided = [cb.__class__.__name__ for cb in callbacks]
+            for cb in _callbacks:
+                if not cb.__class__.__name__ in cbs_provided:
+                    callbacks.append(cb)
+            _callbacks = callbacks
 
         return _callbacks
 
@@ -554,18 +564,30 @@ class BaseModel(NN, Plots):
 
         batch_siz = None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else self.config['batch_size']
 
+        # natively prepared arguments
+        _kwargs = {
+            'x':inputs,
+            'y':None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
+            'epochs':self.config['epochs'],
+            'batch_size':batch_siz,
+            'validation_data':validation_data,
+            'callbacks':callbacks,
+            'shuffle':self.config['shuffle'],
+            'steps_per_epoch':self.config['steps_per_epoch'],
+            'verbose':max(self.verbosity, 0),
+            'nans_in_y_exist':nans_in_y_exist,
+            'validation_steps':validation_steps,
+        }
+
+        # arguments explicitly provided by user during .fit will take priority
+        for k,v in kwargs.items():
+            if k in _kwargs:
+                if k in self.config:  # also update config
+                    self.config[k] = v
+                _kwargs.pop(k)
+
         self.DO_fit(
-            x=inputs,
-            y=None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
-            epochs=self.config['epochs'],
-            batch_size=batch_siz,
-            validation_data=validation_data,
-            callbacks=callbacks,
-            shuffle=self.config['shuffle'],
-            steps_per_epoch=self.config['steps_per_epoch'],
-            verbose=max(self.verbosity, 0),
-            nans_in_y_exist=nans_in_y_exist,
-            validation_steps=validation_steps,
+            **_kwargs,
             **kwargs,
         )
 
@@ -900,7 +922,7 @@ class BaseModel(NN, Plots):
     def fit(
             self,
             data: str = 'training',
-            callbacks: dict = None,
+            callbacks: Union[list, dict] = None,
             **kwargs
     ):
         """
