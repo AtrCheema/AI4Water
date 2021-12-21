@@ -85,16 +85,16 @@ et_pt = eto_model()
 plt.close('all')
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex='all')
 
-process_axis(ax1,data['et_morton_point_SILO'], c= np.array([0.63797563, 0.05503074, 0.07078517]),
-             label='Morton', ms=0.5, y_label='ETP (mm)', leg_ms=4, leg_pos="upper right")
+process_axis(ax1,data['et_morton_point_SILO'], color= np.array([0.63797563, 0.05503074, 0.07078517]),
+             label='Morton', ms=0.5, ylabel='ETP (mm)', legend_kws={"markerscale":4, "loc":"upper right"})
 
-process_axis(ax2, pd.Series(et_hs, data.index), ms=0.5, c=np.array([0.70670405, 0.71039014, 0.54375619]),
-         label='Hargreaves and Samani', y_label='ETP (mm)', leg_ms=4, leg_pos="upper right")
+process_axis(ax2, pd.Series(et_hs, data.index), ms=0.5, color=np.array([0.70670405, 0.71039014, 0.54375619]),
+         label='Hargreaves and Samani', ylabel='ETP (mm)', legend_kws={"markerscale":4, "loc":"upper right"})
 
-process_axis(ax3, et_jh, ms=0.5, c=np.array([0.27822191, 0.7608274, 0.89536561]),
-         label='Jensen and Haise', y_label='ETP (mm)', leg_ms=4, leg_pos="upper right")
+process_axis(ax3, et_jh, ms=0.5, color=np.array([0.27822191, 0.7608274, 0.89536561]),
+         label='Jensen and Haise', ylabel='ETP (mm)', legend_kws={"markerscale":4, "loc":"upper right"})
 
-process_axis(ax4, pd.Series(et_penman, index=data.index), ms=0.5, c=np.array([0.39865179, 0.61455622, 0.57515074]),
-         label='Penman', y_label='ETP (mm)', leg_ms=4, leg_pos="upper right")
+process_axis(ax4, pd.Series(et_penman, index=data.index), ms=0.5, color=np.array([0.39865179, 0.61455622, 0.57515074]),
+         label='Penman', ylabel='ETP (mm)', legend_kws={"markerscale":4, "loc":"upper right"})
 
 plt.show()

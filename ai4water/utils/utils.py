@@ -7,8 +7,8 @@ import warnings
 from typing import Union
 from shutil import rmtree
 from copy import deepcopy
-from typing import Any, Dict, Tuple, List
 from collections import OrderedDict
+from typing import Any, Dict, Tuple, List
 import collections.abc as collections_abc
 
 import scipy
@@ -1434,33 +1434,12 @@ def process_axis(axis,
                  marker='',
                  fillstyle=None,
                  linestyle='-',
-                 c=None,
+                 color=None,
                  ms=6.0,  # markersize
                  label=None,  # legend
-                 leg_pos="best",
-                 bbox_to_anchor=None,  # will take priority over leg_pos
-                 leg_fs=12,
-                 leg_ms=1,  # legend scale
-                 ylim=None,  # limit for y axis
-                 x_label=None,
-                 xl_fs=None,
-                 y_label=None,
-                 yl_fs=12,  # ylabel font size
-                 yl_c='k',  # y label color, if 'same', c will be used else black
-                 xtp_ls=None,  # x tick_params labelsize
-                 ytp_ls=None,  # x tick_params labelsize
-                 xtp_c='k',  # x tick colors if 'same' c will be used else black
-                 ytp_c='k',  # y tick colors, if 'same', c will be used else else black
                  log=False,
-                 show_xaxis=True,
-                 top_spine=True,
-                 bottom_spine=True,
-                 invert_yaxis=False,
-                 max_xticks=None,
-                 min_xticks=None,
-                 title=None,
-                 title_fs=None,  # title fontszie
                  log_nz=False,
+                 **kwargs
                  ):
 
     """Purpose to act as a middle man between axis.plot/plt.plot.
@@ -1500,31 +1479,54 @@ def process_axis(axis,
         data = pd.Series(_data, index=data.index)
 
     if x is not None:
-        axis.plot(x, data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
+        axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker, linestyle=linestyle, ms=ms, label=label)
     elif use_third:
-        axis.plot(data, style, color=c, ms=ms, label=label)
+        axis.plot(data, style, color=color, ms=ms, label=label)
     else:
-        axis.plot(data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
+        axis.plot(data, fillstyle=fillstyle, color=color, marker=marker, linestyle=linestyle, ms=ms, label=label)
 
-    ylc = c
-    if yl_c != 'same':
-        ylc = 'k'
+    return _process_axis(axis=axis, label=label, log=log, **kwargs)
 
-    _kwargs = {}
-    if label is not None:
+
+def _process_axis(
+        axis: plt.Axes=None,
+        label=None,  # legend
+        log=False,
+        legend_kws:dict = None, # kwargs for axis.legend such as loc, fontsize, bbox_to_anchor, markerscale
+        xlabel=None,
+        xlabel_kws:dict=None,
+        xtick_kws:dict = None, # for axis.tick_params such as which, labelsize, colors etc
+        ylim:tuple=None,  # limit for y axis
+        ylabel=None,
+        ylabel_kws:dict=None,  # ylabel kwargs
+        ytick_kws:dict = None, # for axis.tick_params(  such as which, labelsize, colors etc
+        show_xaxis=True,
+        top_spine=True,
+        bottom_spine=True,
+        right_spine=True,
+        left_spine=True,
+        invert_yaxis=False,
+        max_xticks=None,
+        min_xticks=None,
+        title=None,
+        title_kws:dict=None,  # title kwargs
+)-> plt.Axes:
+    """
+    processing of matplotlib Axes
+    Returns:
+        plt.Axes
+    """
+    if axis is None:
+        axis = plt.gca()
+
+    if label:
         if label != "__nolabel__":
-            if leg_fs is not None:
-                _kwargs.update({'fontsize': leg_fs})
-            if leg_ms is not None:
-                _kwargs.update({'markerscale': leg_ms})
-            if bbox_to_anchor is not None:
-                _kwargs['bbox_to_anchor'] = bbox_to_anchor
-            else:
-                _kwargs['loc'] = leg_pos
-            axis.legend(**_kwargs)
+            legend_kws = legend_kws or {}
+            axis.legend(**legend_kws)
 
-    if y_label is not None:
-        axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
+    if ylabel:
+        ylabel_kws = ylabel_kws or {}
+        axis.set_ylabel(ylabel, **ylabel_kws)
 
     if log:
         axis.set_yscale('log')
@@ -1532,41 +1534,31 @@ def process_axis(axis,
     if invert_yaxis:
         axis.set_ylim(axis.get_ylim()[::-1])
 
-    if ylim is not None:
-        if not isinstance(ylim, tuple):
-            raise TypeError("ylim must be tuple {} provided".format(ylim))
+    if ylim:
         axis.set_ylim(ylim)
 
-    xtpc = c
-    if xtp_c != 'same':
-        xtpc = 'k'
+    if xlabel:  # better not change these paras if user has not defined any x_label
+        xtick_kws = xtick_kws or {}
+        axis.tick_params(axis="x", **xtick_kws)
 
-    ytpc = c
-    if ytp_c != 'same':
-        ytpc = 'k'
-
-    _kwargs = {'colors': xtpc}
-    if x_label is not None or xtp_ls is not None:  # better not change these paras if user has not defined any x_label
-        if xtp_ls is not None:
-            _kwargs.update({'labelsize': xtp_ls})
-        axis.tick_params(axis="x", which='major', **_kwargs)
-
-    _kwargs = {'colors': ytpc}
-    if y_label is not None or ytp_ls is not None:
-        if ytp_ls is not None:
-            _kwargs.update({'labelsize': ytp_ls})
-        axis.tick_params(axis="y", which='major', **_kwargs)
+    if ylabel:
+        ytick_kws = ytick_kws or {}
+        axis.tick_params(axis="y", **ytick_kws)
 
     axis.get_xaxis().set_visible(show_xaxis)
 
-    _kwargs = {}
-    if x_label is not None:
-        if xl_fs is not None:
-            _kwargs.update({'fontsize': xl_fs})
-        axis.set_xlabel(x_label, **_kwargs)
+    if xlabel:
+        xlabel_kws = xlabel_kws or {}
+        axis.set_xlabel(xlabel, **xlabel_kws)
 
-    axis.spines['top'].set_visible(top_spine)
-    axis.spines['bottom'].set_visible(bottom_spine)
+    if top_spine:
+        axis.spines['top'].set_visible(top_spine)
+    if bottom_spine:
+        axis.spines['bottom'].set_visible(bottom_spine)
+    if right_spine:
+        axis.spines['right'].set_visible(right_spine)
+    if left_spine:
+        axis.spines['left'].set_visible(left_spine)
 
     if min_xticks is not None:
         assert isinstance(min_xticks, int)
@@ -1576,11 +1568,9 @@ def process_axis(axis,
         fmt = mdates.AutoDateFormatter(loc)
         axis.xaxis.set_major_formatter(fmt)
 
-    if title_fs is None:
-        title_fs = plt.rcParams['axes.titlesize']
-
-    if title is not None:
-        axis.set_title(title, fontsize=title_fs)
+    if title:
+        title_kws = title_kws or {}
+        axis.set_title(title, **title_kws)
 
     return axis
 
@@ -1721,16 +1711,11 @@ def imshow(values,
         axis.set_xticks(np.arange(len(xticklabels)))
         axis.set_xticklabels(xticklabels)
 
-    if xlabel:
-        axis.set_xlabel(xlabel)
-    if ylabel:
-        axis.set_ylabel(ylabel)
-    if title:
-        axis.set_title(title)
+    _process_axis(axis, xlabel=xlabel, ylabel=ylabel, title=title)
 
     if colorbar:
         fig: plt.Figure = plt.gcf()
-        fig.colorbar(im, cax=axis, orientation=colorbar_orientation, pad=0.3)
+        fig.colorbar(im, orientation=colorbar_orientation, pad=0.2)
 
     if show:
         plt.show()

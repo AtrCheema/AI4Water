@@ -692,11 +692,11 @@ Available cases are {self.models} and you wanted to include
             loss_curves[_model] = df
 
         _kwargs = {'linestyle': '-',
-                   'x_label': "Epochs",
-                   'y_label': 'Loss'}
+                   'xlabel': "Epochs",
+                   'ylabel': 'Loss'}
 
         if len(loss_curves) > 5:
-            _kwargs['bbox_to_anchor'] = (1.1, 0.99)
+            _kwargs['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
 
         _, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
 
@@ -750,8 +750,8 @@ Available cases are {self.models} and you wanted to include
             convergence = sort_array(list(iterations.keys()))
             process_axis(axis=axis, data=convergence, label=_model.split('model_')[1],
                          linestyle='--',
-                         x_label='Number of iterations $n$',
-                         y_label=r"$\min f(x)$ after $n$ calls")
+                         xlabel='Number of iterations $n$',
+                         ylabel=r"$\min f(x)$ after $n$ calls")
         if save:
             fname = os.path.join(self.exp_path, f'{name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
