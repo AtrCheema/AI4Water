@@ -1981,14 +1981,18 @@ class BaseModel(NN, Plots):
                 the transformations to consider. By default, following
                 transformations are considered
 
-                - minmax
-                - zscore also known as standard scaler
-                - power
-                - quantile
-                - robust
-                - log
-                - log2
-                - log10
+                - `minmax`  rescale from 0 to 1
+                - `center`    center the data by subtracting mean from it
+                - `scale`     scale the data by dividing it with its standard deviation
+                - `zscore`    first performs centering and then scaling
+                - `box-cox`
+                - `yeo-johnson`
+                - `quantile`
+                - `robust`
+                - `log`
+                - `log2`
+                - `log10`
+                - `sqrt`    square root
 
             algorithm: str
                 The algorithm to use for optimizing transformations
@@ -2019,7 +2023,9 @@ class BaseModel(NN, Plots):
         """
         from ._optimize import OptimizeTransformations  # optimize_transformations
 
-        categories = ["minmax", "zscore", "log", "robust", "quantile", "log2", "log10", "power", "none"]
+        categories = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
+                      "quantile", "robust", "log", "log2", "log10", "sqrt", "none",
+                      ]
 
         if transformations is not None:
             assert isinstance(transformations, list)
@@ -2046,6 +2052,7 @@ class BaseModel(NN, Plots):
                 if method.startswith("log"):
                     t["replace_nans"] = True
                     t["replace_zeros"] = True
+                    t["treat_negatives"] = True
 
                 transformations.append(t)
 

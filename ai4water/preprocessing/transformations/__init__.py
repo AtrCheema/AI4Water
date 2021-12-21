@@ -27,4 +27,5 @@ from ._transformations import Log2Scaler
 from ._transformations import Log10Scaler
 from ._transformations import TanScaler
 from ._transformations import CumsumScaler
+from ._transformations import Center
 from ._transformations import FunctionTransformer

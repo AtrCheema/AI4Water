@@ -9,6 +9,7 @@ from ai4water.utils.utils import dateandtime_now
 from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
+from ._transformations import Center
 
 
 # TODO add logistic, tanh and more scalers.
@@ -43,8 +44,12 @@ class Transformation(TransformationsContainer):
     - `minmax`
     - `maxabs`
     - `robust`
-    - `power`
+    - `power` same as yeo-johnson
+    - `yeo-johnson`
+    - `box-cox`
     - `zscore`    also known as standard scalers
+    - `scale`    division by standard deviation
+    - 'center'   by subtracting mean
     - `quantile`
     - `log`      natural logrithmic
     - `log10`    log with base 10
@@ -81,9 +86,13 @@ class Transformation(TransformationsContainer):
     available_transformers = {
         "minmax": MinMaxScaler,
         "zscore": StandardScaler,
+        "center": Center,
+        "scale": StandardScaler,
         "robust": RobustScaler,
         "maxabs": MaxAbsScaler,
         "power": PowerTransformer,
+        "yeo-johnson": PowerTransformer,
+        "box-cox": PowerTransformer,
         "quantile": QuantileTransformer,
         "log": LogScaler,
         "log10": Log10Scaler,
@@ -356,7 +365,17 @@ class Transformation(TransformationsContainer):
             if 0 in to_transform.values:
                 raise InvalidValueError(self.method, "zero")
 
-        scaler = self.get_scaler()(**self.kwargs)
+        _kwargs = {}
+        if self.method == "scale":
+            _kwargs['with_mean'] = False
+        elif self.method == "box-cox":
+            _kwargs['method'] = "box-cox"
+
+        for k,v in self.kwargs:
+            if k in _kwargs:
+                _kwargs.pop(k)
+
+        scaler = self.get_scaler()(**_kwargs, **self.kwargs)
 
         data = scaler.fit_transform(to_transform, **kwargs)
 

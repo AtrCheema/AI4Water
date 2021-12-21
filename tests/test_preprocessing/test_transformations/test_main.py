@@ -406,6 +406,27 @@ class test_Scalers(unittest.TestCase):
 
         return
 
+    def test_boxcox(self):
+        t = Transformation([1,2,3], "box-cox")
+        x1 = t.transform()
+        from sklearn.preprocessing import PowerTransformer
+        x2 = PowerTransformer('box-cox').fit_transform(np.array([1,2,3]).reshape(-1,1))
+        np.testing.assert_array_almost_equal(x1, x2)
+        return
+
+    def test_yeojohnson(self):
+        t = Transformation([1,2,3], "yeo-johnson")
+        x1 = t.transform()
+        from sklearn.preprocessing import PowerTransformer
+        x2 = PowerTransformer().fit_transform(np.array([1,2,3]).reshape(-1,1))
+        np.testing.assert_array_almost_equal(x1, x2)
+        return
+
+    def test_center(self):
+        run_log_methods("center")
+        return
+
+
 
 if __name__ == "__main__":
     unittest.main()

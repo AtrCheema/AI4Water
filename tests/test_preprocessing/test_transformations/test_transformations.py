@@ -15,6 +15,7 @@ from ai4water.preprocessing.transformations import CumsumScaler
 from ai4water.preprocessing.transformations import LogScaler
 from ai4water.preprocessing.transformations import Log2Scaler
 from ai4water.preprocessing.transformations import Log10Scaler
+from ai4water.preprocessing.transformations import Center
 
 
 x = np.random.randint(1, 100, (20, 2))
@@ -104,6 +105,10 @@ class TestTransformations(unittest.TestCase):
 
     def test_cumsum(self):
         test_custom_scaler(CumsumScaler, x, False)
+        return
+
+    def test_center(self):
+        test_custom_scaler(Center, x)
         return
 
     def test_function(self):

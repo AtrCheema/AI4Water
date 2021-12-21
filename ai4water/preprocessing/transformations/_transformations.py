@@ -108,6 +108,40 @@ class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):
         return ['scale_', 'n_samples_seen_', 'max_abs_']
 
 
+class Center(ScalerWithConfig):
+
+    def __init__(
+            self,
+            feature_dim="2d"
+    ):
+        self.feature_dim = feature_dim
+
+    def fit(self): pass
+
+    def fit_transform(self, x:np.ndarray)->np.ndarray:
+        dim = x.ndim
+        assert dim == 2
+
+        mean = np.mean(x, axis=0)
+
+        setattr(self, 'mean_', mean)
+        setattr(self, 'data_dim_', dim)
+
+        return x - mean
+
+    def inverse_transform(self, x:np.ndarray)->np.ndarray:
+
+        assert x.ndim == self.data_dim_
+        return x + self.mean_
+
+    @property
+    def config_paras(self):
+        return ['data_dim_', 'mean_']
+
+    def get_params(self):
+        return {'feature_dim': self.feature_dim}
+
+
 class FuncTransformer(ScalerWithConfig):
 
     def __init__(
@@ -137,7 +171,7 @@ class FuncTransformer(ScalerWithConfig):
     def fit(self):
         return
 
-    def _get_dim(self, x):
+    def _get_dim(self, x:np.ndarray):
         dim = x.ndim
         setattr(self, 'data_dim_', dim)
 
