@@ -9,9 +9,16 @@ from ai4water.preprocessing.transformations import RobustScaler
 from ai4water.preprocessing.transformations import QuantileTransformer
 from ai4water.preprocessing.transformations import PowerTransformer
 from ai4water.preprocessing.transformations import FunctionTransformer
+from ai4water.preprocessing.transformations import SqrtScaler
+from ai4water.preprocessing.transformations import TanScaler
+from ai4water.preprocessing.transformations import CumsumScaler
+from ai4water.preprocessing.transformations import LogScaler
+from ai4water.preprocessing.transformations import Log2Scaler
+from ai4water.preprocessing.transformations import Log10Scaler
 
 
 x = np.random.randint(1, 100, (20, 2))
+x3d = np.arange(1, 51).reshape(5, 5, 2)
 
 
 def test_func_transformer(array, func, inverse_func, **kwargs):
@@ -29,9 +36,9 @@ def test_func_transformer(array, func, inverse_func, **kwargs):
     return
 
 
-def test_custom_scaler(Scaler, array):
+def test_custom_scaler(Scaler, array, check_inverse=True, **kwargs):
 
-    mysc = Scaler()
+    mysc = Scaler(**kwargs)
     _x1 = mysc.fit_transform(array)
 
     mysc1 = Scaler.from_config(mysc.config())
@@ -41,7 +48,8 @@ def test_custom_scaler(Scaler, array):
     _x = mysc1.inverse_transform(_x2)
     np.testing.assert_array_almost_equal(_x1, _x2)
 
-    np.testing.assert_array_almost_equal(array, _x)
+    if check_inverse:
+        np.testing.assert_array_almost_equal(array, _x)
 
     return
 
@@ -50,18 +58,53 @@ class TestTransformations(unittest.TestCase):
 
     def test_minmax(self):
         test_custom_scaler(MinMaxScaler, x)
+        return
 
     def test_std(self):
         test_custom_scaler(StandardScaler, x)
+        return
 
     def test_robust(self):
         test_custom_scaler(RobustScaler, x)
+        return
 
     def test_power(self):
         test_custom_scaler(PowerTransformer, x)
+        return
 
     def test_quantile(self):
         test_custom_scaler(QuantileTransformer, x)
+        return
+
+    def test_log(self):
+        test_custom_scaler(LogScaler, x)
+        test_custom_scaler(Log2Scaler, x)
+        test_custom_scaler(Log10Scaler, x)
+        return
+
+    def test_log_3d(self):
+        test_custom_scaler(LogScaler, x3d)
+        test_custom_scaler(Log2Scaler, x3d)
+        test_custom_scaler(Log10Scaler, x3d)
+
+        test_custom_scaler(LogScaler, x3d, feature_dim="1d")
+        test_custom_scaler(Log2Scaler, x3d, feature_dim="1d")
+        test_custom_scaler(Log10Scaler, x3d, feature_dim="1d")
+        return
+
+    def test_sqrt(self):
+        test_custom_scaler(SqrtScaler, x)
+        test_custom_scaler(SqrtScaler, x3d)
+        test_custom_scaler(SqrtScaler, x3d, feature_dim="1d")
+        return
+
+    def test_tan(self):
+        test_custom_scaler(TanScaler, x, False)
+        return
+
+    def test_cumsum(self):
+        test_custom_scaler(CumsumScaler, x, False)
+        return
 
     def test_function(self):
         test_func_transformer(x, np.log, None)
@@ -74,6 +117,7 @@ class TestTransformations(unittest.TestCase):
                               kw_args={"axis": 0},
                               inv_kw_args={"axis": 0, "append": 0})
         return
+
 
 if __name__ == "__main__":
     unittest.main()

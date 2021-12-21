@@ -3,62 +3,19 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA, FastICA, SparsePCA
-
-try:
-    from PyEMD import EMD, EEMD
-except ModuleNotFoundError:
-    EMD, EEMD = None, None
 
 from ai4water.utils.utils import dateandtime_now
 
 from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
+from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
 
 
 # TODO add logistic, tanh and more scalers.
-# rpca
-# tSNE
-# UMAP
-# PaCMAP
 # which transformation to use? Some related articles/posts
 # https://scikit-learn.org/stable/modules/preprocessing.html
 # http://www.faqs.org/faqs/ai-faq/neural-nets/part2/section-16.html
 # https://data.library.virginia.edu/interpreting-log-transformations-in-a-linear-model/
-
-
-class EmdTransformer(object):
-    """Empirical Mode Decomposition"""
-    def __init__(self, ensemble=False, **kwargs):
-        self.ensemble = ensemble
-        if ensemble:
-            self.emd_obj = EEMD(**kwargs)
-        else:
-            self.emd_obj = EMD(**kwargs)
-
-    def fit_transform(self, data, **kwargs):
-
-        if isinstance(data, pd.DataFrame):
-            data = data.values
-        else:
-            assert isinstance(data, np.ndarray)
-
-        assert len(data.shape) == 2
-
-        imfs = []
-        for col in range(data.shape[1]):
-
-            if self.ensemble:
-                IMFs = self.emd_obj.eemd(data[:, col], **kwargs)
-            else:
-                IMFs = self.emd_obj.emd(data[:, col], **kwargs)
-
-            imfs.append(IMFs.T)
-
-        return np.concatenate(imfs, axis=1)
-
-    def inverse_transform(self, **kwargs):
-        raise NotImplementedError
 
 
 class TransformationsContainer(object):
@@ -92,6 +49,7 @@ class Transformation(TransformationsContainer):
     - `log`      natural logrithmic
     - `log10`    log with base 10
     - `log2`  log with base 2
+    - `sqrt` square root
     - `tan`      tangent
     - `cumsum`   cummulative sum
 
@@ -127,18 +85,16 @@ class Transformation(TransformationsContainer):
         "maxabs": MaxAbsScaler,
         "power": PowerTransformer,
         "quantile": QuantileTransformer,
-        "pca": PCA,
-        "kpca": KernelPCA,
-        "ipca": IncrementalPCA,
-        "fastica": FastICA,
-        "sparsepca": SparsePCA,
-        "emd": EmdTransformer,
-        "eemd": EmdTransformer,
+        "log": LogScaler,
+        "log10": Log10Scaler,
+        "log2": Log2Scaler,
+        "sqrt": SqrtScaler,
+        "tan": TanScaler,
+        "cumsum": CumsumScaler
     }
 
-    dim_expand_methods = ['emd', 'eemd']
-    dim_red_methods = ["pca", "kpca", "ipca", "fastica", "sparsepca"]  # dimensionality reduction methods
-    mod_dim_methods = dim_red_methods + dim_expand_methods
+
+    # mod_dim_methods = dim_red_methods + dim_expand_methods
 
     def __init__(self,
                  data: Union[pd.DataFrame, np.ndarray, list],
@@ -243,15 +199,13 @@ class Transformation(TransformationsContainer):
             return self.__getattribute__(item)
         elif item.startswith("transform_with"):
             transformer = item.split('_')[2]
-            if transformer.lower() in list(self.available_transformers.keys()) + [
-                "log", "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()):
                 self.method = transformer
                 return self.transform_with_sklearn
 
         elif item.startswith("inverse_transform_with"):
             transformer = item.split('_')[3]
-            if transformer.lower() in list(self.available_transformers.keys()) + [
-                "log", "tan", "cumsum", "log10", "log2"]:
+            if transformer.lower() in list(self.available_transformers.keys()):
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
         else:
@@ -292,13 +246,6 @@ class Transformation(TransformationsContainer):
     @property
     def num_features(self):
         return len(self.features)
-
-    @property
-    def change_dim(self):
-        if self.method.lower() in self.mod_dim_methods:
-            return True
-        else:
-            return False
 
     def get_scaler(self):
 
@@ -375,23 +322,23 @@ class Transformation(TransformationsContainer):
 
     def post_process_data(self, data):
         """If nans/zeros were replaced with some value, put nans/zeros back."""
-        if self.method not in self.dim_red_methods:
-            if self.replace_nans:
-                if hasattr(self, 'nan_indices'):
+        #if self.method not in self.dim_red_methods:
+        if self.replace_nans:
+            if hasattr(self, 'nan_indices'):
 
-                    for col, idx in self.nan_indices.items():
-                        data[col][idx] = np.nan
+                for col, idx in self.nan_indices.items():
+                    data[col][idx] = np.nan
 
-            if self.replace_zeros:
-                if hasattr(self, 'zero_indices'):
-                    for col, idx in self.zero_indices.items():
-                        data[col][idx] = 0.0
+        if self.replace_zeros:
+            if hasattr(self, 'zero_indices'):
+                for col, idx in self.zero_indices.items():
+                    data[col][idx] = 0.0
 
-            if self.treat_negatives:
-                if hasattr(self, 'negative_indices'):
-                    for col, idx in self.negative_indices.items():
-                        # invert the sign of those values which were originally -ve
-                        data[col][idx] = -data[col][idx]
+        if self.treat_negatives:
+            if hasattr(self, 'negative_indices'):
+                for col, idx in self.negative_indices.items():
+                    # invert the sign of those values which were originally -ve
+                    data[col][idx] = -data[col][idx]
         return data
 
     def transform_with_sklearn(self, return_key=False, **kwargs):
@@ -409,31 +356,11 @@ class Transformation(TransformationsContainer):
             if 0 in to_transform.values:
                 raise InvalidValueError(self.method, "zero")
 
-            if self.method == "log":
-                scaler = FunctionTransformer(func=np.log, inverse_func=np.exp, validate=True, check_inverse=True)
-            elif self.method == "log2":
-                scaler = FunctionTransformer(func=np.log2, inverse_func="""lambda x: 2**x""", validate=True,
-                                             check_inverse=True)
-            else:   # "log10":
-                scaler = FunctionTransformer(func=np.log10, inverse_func="""lambda x: 10**x""", validate=True,
-                                             check_inverse=True)
-        elif self.method.lower() == "tan":
-            scaler = FunctionTransformer(func=np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
-        elif self.method.lower() == "cumsum":
-            scaler = FunctionTransformer(func=np.cumsum, inverse_func=np.diff, validate=True, check_inverse=False,
-                                         kw_args={"axis": 0}, inv_kw_args={"axis": 0, "append": 0})
-        else:
-            scaler = self.get_scaler()(**self.kwargs)
+        scaler = self.get_scaler()(**self.kwargs)
 
         data = scaler.fit_transform(to_transform, **kwargs)
 
-        if self.method.lower() in self.mod_dim_methods:
-            features = [self.method.lower() + str(i+1) for i in range(data.shape[1])]
-            data = pd.DataFrame(data, columns=features)
-            self.transformed_features = features
-            self.features = features
-        else:
-            data = pd.DataFrame(data, columns=to_transform.columns)
+        data = pd.DataFrame(data, columns=to_transform.columns)
 
         scaler = self.serialize_scaler(scaler, to_transform)
 
@@ -456,13 +383,7 @@ class Transformation(TransformationsContainer):
 
         data = scaler.inverse_transform(to_transform)
 
-        if self.method.lower() in self.mod_dim_methods:
-            # now use orignal data columns names, but if the class is being directly called for inverse transform
-            # then we don't know what cols were transformed, in that scenariio use dummy col name.
-            cols = ['data'+str(i) for i in range(data.shape[1])] if self.transformed_features is None else self.data.columns
-            data = pd.DataFrame(data, columns=cols)
-        else:
-            data = pd.DataFrame(data, columns=to_transform.columns)
+        data = pd.DataFrame(data, columns=to_transform.columns)
 
         data = self.maybe_insert_features(data)
 
@@ -545,8 +466,7 @@ class Transformation(TransformationsContainer):
         if self.index is not None:
             trans_df.index = self.index
 
-        transformed_features = len(self.transformed_features) if self.transformed_features is not None else len(trans_df.columns)
-        num_features = len(self.data.columns) if self.method.lower() not in self.mod_dim_methods else transformed_features
+        num_features = len(self.data.columns)
         if len(trans_df.columns) != num_features:
             df = pd.DataFrame(index=self.index)
             for col in self.data.columns:  # features:
@@ -559,8 +479,7 @@ class Transformation(TransformationsContainer):
         else:
             df = trans_df
 
-        if not self.change_dim:
-            assert df.shape == self.initial_shape, f"shape changed from {self.initial_shape} to {df.shape}"
+        assert df.shape == self.initial_shape, f"shape changed from {self.initial_shape} to {df.shape}"
         return df
 
 

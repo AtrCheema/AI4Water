@@ -16,8 +16,6 @@ from ai4water.utils.utils import jsonize
 
 # todo
 # inverse hyperbolic transformation: effective with many zeros
-# percent_normalization https://github.com/ysn2233/attentioned-dual-stage-stock-prediction/blob/master/dataset.py#L57
-# mean and max normalizations as in transformer
 
 class ScalerWithConfig(object):
     """Extends the sklearn's scalers in such a way that they can be
@@ -109,6 +107,168 @@ class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):
     def config_paras(self):
         return ['scale_', 'n_samples_seen_', 'max_abs_']
 
+
+class FuncTransformer(ScalerWithConfig):
+
+    def __init__(
+            self,
+            feature_dim: str = "2d"
+    ):
+        """
+        Arguments:
+            feature_dim:
+                whether the features are 2 dimensional or 1 dimensional. Only
+                relevant if the `x` to `fit_transform` is 3D. In such as case
+                if feature_dim is `1D`, it will be considered that the x consists
+                of following shape (num_examples, time_steps, num_features)
+
+        """
+        assert feature_dim in ("1d", "2d")
+        self.feature_dim = feature_dim
+
+    @property
+    def func(self):
+        raise NotImplementedError
+
+    @property
+    def inv_func(self):
+        raise NotImplementedError
+
+    def fit(self):
+        return
+
+    def _get_dim(self, x):
+        dim = x.ndim
+        setattr(self, 'data_dim_', dim)
+
+        if dim > 3:
+            raise ValueError(f" dimension {dim} not allowed")
+        return dim
+
+    def fit_transform(self, x:np.ndarray)-> np.ndarray:
+
+        dim = self._get_dim(x)
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = self.func(x[:, time_step])
+        else:
+            _x = self.func(x)
+
+        return _x
+
+    def inverse_transform(self, x):
+
+        dim = x.ndim
+        assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = self.inv_func(x[:, time_step])
+
+        elif 2 <= dim < 4:
+            _x = self.inv_func(x)
+        else:
+            raise  ValueError(f" dimension {dim} not allowed")
+
+        return _x
+
+    @property
+    def config_paras(self):
+        return ['data_dim_']
+
+    def get_params(self):
+        return {'feature_dim': self.feature_dim}
+
+
+class SqrtScaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.sqrt
+
+    @property
+    def inv_func(self):
+        return np.square
+
+
+class LogScaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.log
+
+    @property
+    def inv_func(self):
+        return np.exp
+
+
+class Log2Scaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.log2
+
+    @property
+    def inv_func(self):
+        return lambda x: np.power(2, x)
+
+
+class Log10Scaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.log10
+
+    @property
+    def inv_func(self):
+        return lambda x: np.power(10, x)
+
+
+class TanScaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.tan
+
+    @property
+    def inv_func(self):
+        return np.tanh
+
+
+class CumsumScaler(FuncTransformer):
+
+    def fit_transform(self, x:np.ndarray) -> np.ndarray:
+
+        dim = self._get_dim(x)
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = self.func(x[:, time_step], axis=0)
+        else:
+            _x = np.cumsum(x, axis=0)
+
+        return _x
+
+    def inverse_transform(self, x):
+
+        dim = x.ndim
+        assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = np.diff(x[:, time_step], axis=0, append=0)
+
+        elif 2 <= dim < 4:
+            _x = np.diff(x, axis=0, append=0)
+        else:
+            raise  ValueError(f" dimension {dim} not allowed")
+
+        return _x
 
 class FunctionTransformer(SKFunctionTransformer):
     """Serializing a custom func/inverse_func is difficult. Therefore

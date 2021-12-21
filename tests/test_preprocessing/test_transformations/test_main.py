@@ -9,16 +9,15 @@ import numpy as np
 import pandas as pd
 
 from ai4water.preprocessing.transformations import Transformation
-
 from ai4water.tf_attributes import tf
+from ai4water.datasets import arg_beach
+
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
     from ai4water.functional import Model
     print(f"Switching to functional API due to tensorflow version {tf.__version__}")
 else:
     from ai4water import Model
-
-from ai4water.datasets import arg_beach
 
 
 df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
@@ -203,10 +202,6 @@ class test_Scalers(unittest.TestCase):
         for idx, v in enumerate(denorm['data2']):
             self.assertEqual(v, 1001 + idx)
 
-    # def test_call_error(self):
-    #
-    #     self.assertRaises(ValueError, Transformations(data=df), 'transform')
-
     def test_get_scaler_from_dict_error(self):
         normalized_df1, _ = Transformation(data=df)('transform', return_key=True)
         self.assertRaises(ValueError, Transformation(data=normalized_df1), 'inverse')
@@ -261,69 +256,6 @@ class test_Scalers(unittest.TestCase):
 
     def test_quantile_scaler(self):
         self.run_method("quantile", assert_equality=True)
-
-    def test_pca(self):
-        self.run_decomposition(method="pca")
-
-    def test_kpca(self):
-        self.run_decomposition(method="kpca")
-
-    def test_ipca(self):
-        self.run_decomposition(method="ipca")
-
-    def test_fastica(self):
-        self.run_decomposition(method="fastica")
-
-    def test_pca_with_components(self):
-        self.run_decomposition_with_components(method="pca")
-
-    def test_kpca_with_components(self):
-        self.run_decomposition_with_components(method="kpca")
-
-    def test_ipca_with_components(self):
-        self.run_decomposition_with_components(method="ipca")
-
-    def test_fastica_with_components(self):
-        self.run_decomposition_with_components(method="fastica")
-
-    def run_decomposition(self, method):
-        df_len, features, components = 10, 5, 5
-        for run_method in [1,2, 3]:
-            _, trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
-            self.assertEqual(trans_df.shape, orig_df.shape)
-
-    def run_decomposition_with_components(self, method):
-        df_len, features, components = 10, 5, 4
-        for run_method in [1,2,3]:
-            _, trans_df, orig_df = self.do_decomposition(df_len, features,components, run_method, method)
-            self.assertEqual(trans_df.shape, (df_len,components))
-            self.assertEqual(orig_df.shape, (df_len, features))
-
-    def do_decomposition(self, df_len, features, components, m, method):
-        #print(f"testing {method} with {features} features and {components} components with {m} call method")
-
-        data = pd.DataFrame(np.random.random((df_len, features)),
-                          columns=['data' + str(i) for i in range(features)])
-
-        args = {"n_components": components}
-        if method.upper() == "KPCA":
-            args.update({"fit_inverse_transform": True})
-
-        if m==1:
-            return self.run_decomposition1(data, args, method=method)
-            #return run_method1(data=data, method=method, **args)
-        elif m==2:
-            return run_method2(data=data, method=method, **args)
-        elif m==3:
-            return run_method3(data=data, method=method, **args)
-
-    def run_decomposition1(self, data, args, method):
-
-        scaler = Transformation(data=data, method=method, **args)
-        normalized_df, scaler_dict = scaler.transform(return_key=True)
-        denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
-
-        return None, normalized_df, denormalized_df
 
     def test_log_with_nans(self):
         run_log_methods(index=None)
@@ -455,14 +387,6 @@ class test_Scalers(unittest.TestCase):
         np.allclose(data[inputs].values, orig_data.values)
 
         return
-
-    # def test_multiple_transformation_multiple_inputs(self):
-    #     # TODO
-    #     return
-    #
-    # def test_multile_transformations_multile_outputs(self):
-    #     # TODO
-    #     return
 
     def test_negative(self):
         for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
