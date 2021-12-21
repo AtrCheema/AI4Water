@@ -9,3 +9,4 @@ pandas
 scikit-optimize
 plotly
 tensorflow
+torch

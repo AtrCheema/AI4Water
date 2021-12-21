@@ -22,16 +22,16 @@ except ImportError:
     from scipy.stats import median_absolute_deviation as mad
 
 from ai4water.nn_tools import NN
-from ai4water.preprocessing.datahandler import DataHandler
 from ai4water.backend import sklearn_models
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import ts_features, make_model
-from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
-from ai4water.models.tensorflow.custom_training import train_step, test_step
 from ai4water.utils.visualizations import PlotResults
+from ai4water.utils.utils import ts_features, make_model
+from ai4water.preprocessing.datahandler import DataHandler
+from ai4water.utils.utils import maybe_three_outputs, get_version_info
+from ai4water.models.tensorflow.custom_training import train_step, test_step
+from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
 from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
-from ai4water.utils.utils import maybe_three_outputs, get_version_info
 import ai4water.backend as K
 
 if K.BACKEND == 'tensorflow' and tf is not None:
@@ -902,7 +902,7 @@ class BaseModel(NN, Plots):
             data: str = 'training',
             callbacks: dict = None,
             **kwargs
-            ):
+    ):
         """
         Trains the model with data which is taken from data accoring to `data` arguments.
 
@@ -1234,7 +1234,7 @@ class BaseModel(NN, Plots):
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
         if metrics is not None:
-            return self._custom_eval(x, y, metrics)
+            return self._manual_eval(x, y, metrics)
 
         if hasattr(self._model, 'evaluate'):
             return self._model.evaluate(x, y, **kwargs)
@@ -1244,10 +1244,10 @@ class BaseModel(NN, Plots):
     def evalute_ml_models(self, x, y, metrics=None):
         if metrics is None:
             metrics = self.config['val_metric']
-        return self._custom_eval(x, y, metrics)
+        return self._manual_eval(x, y, metrics)
 
-    def _custom_eval(self, x, y, metrics):
-
+    def _manual_eval(self, x, y, metrics):
+        """manual evaluation"""
         p = self.predict(x=x, return_true=False, process_results=False)
 
         if self.problem == "regression":
