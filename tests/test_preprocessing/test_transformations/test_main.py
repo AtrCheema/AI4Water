@@ -42,77 +42,64 @@ def build_and_run(transformation, data, inputs, outputs):
 
 def run_method1(method,
                 cols=None,
-                replace_nans=False,
                 data=None,
                 **kwargs):
 
-    #print(f"testing: {method} with {cols} features")
-
-    normalized_df1, scaler = Transformation(data=df if data is None else data,
-                                             method=method,
+    normalized_df1, scaler = Transformation(method=method,
                                              features=cols,
-                                             replace_nans=replace_nans,
-                                             **kwargs)('Transform', return_key=True)
+                                             **kwargs)(data,
+                                                       'Transform',
+                                                       return_key=True)
 
-    denormalized_df1 = Transformation(data=normalized_df1,
-                                       features=cols,
-                                       replace_nans=replace_nans)('inverse', scaler=scaler['scaler'])
+    denormalized_df1 = Transformation(features=cols,
+                                      )(normalized_df1,
+                                        'inverse',
+                                        scaler=scaler['scaler'])
     return normalized_df1, denormalized_df1
 
 
 def run_method2(method,
-                replace_nans=False,
                 data=None,
                 index=None,
                 **kwargs):
 
-    data = df if data is None else data
-
     if index:
         data.index = pd.date_range("20110101", periods=len(data), freq="D")
 
-    scaler = Transformation(data,
-                             replace_nans=replace_nans,
-                             method=method,
+    scaler = Transformation(method=method,
                              **kwargs)
 
-    normalized_df, scaler_dict = scaler.transform(return_key=True)
+    normalized_df, scaler_dict = scaler.transform(data, return_key=True)
 
     denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
     return data, normalized_df, denormalized_df
 
 
 def run_method3(method,
-                replace_nans=False,
                 data=None,
                 index=None,
                 **kwargs):
 
-    data = df if data is None else data
-
     if index:
         data.index = pd.date_range("20110101", periods=len(data), freq="D")
 
-    scaler = Transformation(data,
-                             replace_nans=replace_nans,
-                             method=method,
+    scaler = Transformation(method=method,
                              **kwargs)
 
-    normalized_df3, scaler_dict = scaler(return_key=True)
-    denormalized_df3 = scaler('inverse', data=normalized_df3, key=scaler_dict['key'])
+    normalized_df3, scaler_dict = scaler(data,
+                                         return_key=True)
+    denormalized_df3 = scaler(what='inverse', data=normalized_df3, key=scaler_dict['key'])
 
     return data, normalized_df3, denormalized_df3
 
 
-def run_method4(method,
-                replace_nans=False,
-                index=None,
-                data=None, **kwargs):
+def run_method4(method,data=None, **kwargs):
 
-    scaler = Transformation(data=df if data is None else data,
-                             replace_nans=replace_nans, **kwargs)
+    scaler = Transformation(**kwargs)
 
-    normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)(return_key=True)
+    normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)(
+        data=data,
+        return_key=True)
     denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
 
     return normalized_df4, denormalized_df4
@@ -135,10 +122,6 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
         a[6, 1] = 1.0
         a[9, 2:3] = 1.0
 
-    kwargs = {}
-    if insert_zeros:
-        kwargs['replace_zeros'] = True
-
     cols = ['data1', 'data2', 'data3', 'data4']
 
     if index is not None:
@@ -146,13 +129,13 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
 
     df3 = pd.DataFrame(a, columns=cols, index=index)
 
-    _, _ = run_method1(method=method, replace_nans=True, data=df3, **kwargs)
+    _, _ = run_method1(method=method, data=df3.copy())
 
-    _, _, dfo2 = run_method2(method=method, replace_nans=True, data=df3, **kwargs)
+    _, _, dfo2 = run_method2(method=method, data=df3.copy())
 
-    _, _, dfo3 = run_method3(method=method, replace_nans=True, data=df3, **kwargs)
+    _, _, dfo3 = run_method3(method=method, data=df3.copy())
 
-    _, dfo4 = run_method4(method=method, replace_nans=True, data=df3, **kwargs)
+    _, dfo4 = run_method4(method=method, data=df3.copy())
 
     if assert_equality:
         #assert np.allclose(df3, dfo1, equal_nan=True)
@@ -167,15 +150,18 @@ class test_Scalers(unittest.TestCase):
     def run_method(self, method, cols=None, index=None, assert_equality=False):
 
         cols = ['data1', 'data2'] if cols is None else cols
-        #print(f"testing: {method} with {cols} features")
 
-        normalized_df1, denormalized_df1 = run_method1(method, cols)
+        normalized_df1, denormalized_df1 = run_method1(method, cols, data=df.copy())
 
-        orig_data2, normalized_df2, denormalized_df2 = run_method2(method, index=index, features=cols)
+        orig_data2, normalized_df2, denormalized_df2 = run_method2(method,
+                                                                   index=index,
+                                                                   features=cols,
+                                                                   data=df.copy())
 
-        orig_data3, normalized_df3, denormalized_df3 = run_method3(method, index=index)
+        orig_data3, normalized_df3, denormalized_df3 = run_method3(method, index=index,
+                                                                   data=df.copy())
 
-        normalized_df4, denormalized_df4 = run_method4(method, index=index)
+        normalized_df4, denormalized_df4 = run_method4(method, data=df.copy())
 
         if assert_equality:
             assert np.allclose(orig_data2, denormalized_df2)
@@ -203,17 +189,21 @@ class test_Scalers(unittest.TestCase):
             self.assertEqual(v, 1001 + idx)
 
     def test_get_scaler_from_dict_error(self):
-        normalized_df1, _ = Transformation(data=df)('transform', return_key=True)
-        self.assertRaises(ValueError, Transformation(data=normalized_df1), 'inverse')
+        normalized_df1, _ = Transformation()(df, 'transform', return_key=True)
+        self.assertRaises(ValueError, Transformation(), what='inverse', data=normalized_df1)
+        return
 
     def test_log_scaler_with_feat(self):
         self.run_method("log", cols=["data1"])
+        return
 
     def test_robust_scaler_with_feat(self):
         self.run_method("robust", cols=["data1"], assert_equality=True)
+        return
 
     def test_minmax_scaler_with_feat(self):
         self.run_method("minmax", cols=["data1"], assert_equality=True)
+        return
 
     def test_minmax_scaler_with_feat_and_index(self):
         self.run_method("minmax", cols=["data1"], index=True, assert_equality=True)
@@ -235,15 +225,19 @@ class test_Scalers(unittest.TestCase):
 
     def test_log10_scaler(self):
         self.run_method("log10", assert_equality=True)
+        return
 
     def test_log2_scaler(self):
         self.run_method("log2", assert_equality=True)
+        return
 
     def test_robust_scaler(self):
         self.run_method("robust", assert_equality=True)
+        return
 
     def test_minmax_scaler(self):
         self.run_method("minmax", assert_equality=True)
+        return
 
     def test_maxabs_scaler(self):
         self.run_method("maxabs", assert_equality=True)
@@ -256,6 +250,7 @@ class test_Scalers(unittest.TestCase):
 
     def test_quantile_scaler(self):
         self.run_method("quantile", assert_equality=True)
+        return
 
     def test_log_with_nans(self):
         run_log_methods(index=None)
@@ -313,7 +308,6 @@ class test_Scalers(unittest.TestCase):
         run_log_methods("log10", True, insert_nans=True, insert_zeros=True, insert_ones=True)
         return
 
-
     def test_zero_log2(self):
         run_log_methods("log2", True, insert_nans=True, insert_zeros=True)
         return
@@ -330,7 +324,7 @@ class test_Scalers(unittest.TestCase):
         data = pd.DataFrame(np.random.random((100, 3)), columns=inputs+outputs)
 
         transformation = [
-            {"method": "log", "replace_nans": True, "replace_zeros": True, "features": outputs},
+            {"method": "log", "features": outputs},
             {"method": "minmax", "features": inputs + outputs}
                           ]
 
@@ -381,42 +375,45 @@ class test_Scalers(unittest.TestCase):
     def test_example(self):
         data = arg_beach()
         inputs = ['pcp6_mm', 'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa']
-        transformer = Transformation(data=data[inputs], method='minmax', features=['pcp6_mm', 'pcp12_mm'])
-        new_data = transformer.transform()
+        transformer = Transformation(method='minmax', features=['pcp6_mm', 'pcp12_mm'])
+        new_data = transformer.transform(data[inputs])
         orig_data = transformer.inverse_transform(data=new_data)
         np.allclose(data[inputs].values, orig_data.values)
 
         return
 
     def test_negative(self):
-        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
+        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power",
+                  "scale", "center", "sqrt", "yeo-johnson", "box-cox"]:
             x = [1.0, 2.0, -3.0, 4.0]
-            tr = Transformation(x, method=m, treat_negatives=True)
-            xtr = tr.transform()
+            tr = Transformation(method=m, treat_negatives=True)
+            xtr = tr.transform(x)
             _x = tr.inverse_transform(data=xtr)
             np.testing.assert_array_almost_equal(x, _x.values.reshape(-1,))
 
-        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power"]:
+        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power",
+                  "scale", "center", "sqrt", "yeo-johnson",
+                  "box-cox"]:
             x1 = [1.0, -2.0, 0.0, 4.0]
             df1 = pd.DataFrame(np.column_stack([x, x1]))
-            tr = Transformation(df1, method=m, treat_negatives=True, replace_zeros=True)
-            dft = tr.transform()
+            tr = Transformation(method=m, treat_negatives=True, replace_zeros=True, replace_zeros_with=1)
+            dft = tr.transform(df1)
             _df = tr.inverse_transform(data=dft)
             np.testing.assert_array_almost_equal(df1.values, _df.values)
 
         return
 
     def test_boxcox(self):
-        t = Transformation([1,2,3], "box-cox")
-        x1 = t.transform()
+        t = Transformation("box-cox")
+        x1 = t.transform([1,2,3])
         from sklearn.preprocessing import PowerTransformer
         x2 = PowerTransformer('box-cox').fit_transform(np.array([1,2,3]).reshape(-1,1))
         np.testing.assert_array_almost_equal(x1, x2)
         return
 
     def test_yeojohnson(self):
-        t = Transformation([1,2,3], "yeo-johnson")
-        x1 = t.transform()
+        t = Transformation("yeo-johnson")
+        x1 = t.transform([1,2,3])
         from sklearn.preprocessing import PowerTransformer
         x2 = PowerTransformer().fit_transform(np.array([1,2,3]).reshape(-1,1))
         np.testing.assert_array_almost_equal(x1, x2)
@@ -426,6 +423,37 @@ class test_Scalers(unittest.TestCase):
         run_log_methods("center")
         return
 
+    def test_scale(self):
+        run_log_methods('scale')
+        return
+
+    def test_from_config_1d(self):
+        for method in ["quantile", "robust",
+                       "power", "box-cox", "center", "zscore", "scale"
+                       ]:
+            t = Transformation(method, treat_negatives=True, replace_zeros=True)
+            x = [1., 2., 3., 0.0, -5., 6.]
+            x1 = t.transform(data=x)
+            conf = t.config()
+            t2 = Transformation.from_config(conf)
+            x2 = t2.inverse_transform(data=x1)
+            np.testing.assert_array_almost_equal(np.array(x), x2.values.reshape(-1,))
+        return
+
+    def test_from_config_2d(self):
+        for method in ["quantile", "robust",
+                       "power", "box-cox", "center", "zscore", "scale"
+                       ]:
+            t = Transformation(method, features=['a', 'b'],
+                               treat_negatives=True, replace_zeros=True)
+            x = np.random.randint(-2, 30, (10, 3))
+            data = pd.DataFrame(x, columns=['a', 'b', 'c'])
+            x1 = t.transform(data=data.copy())
+            conf = t.config()
+            t2 = Transformation.from_config(conf)
+            x2 = t2.inverse_transform(data=x1)
+            np.testing.assert_array_almost_equal(x, x2.values)
+        return
 
 
 if __name__ == "__main__":

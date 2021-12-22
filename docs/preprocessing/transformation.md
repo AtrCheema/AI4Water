@@ -10,6 +10,8 @@
             - __getattr__
             - transform
             - inverse_transform
+            - config
+            - from_config
     rendering:
         show_root_heading: true
 

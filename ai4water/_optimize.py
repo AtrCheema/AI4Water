@@ -174,9 +174,13 @@ class OptimizeTransformations(ModelOptimizerMixIn):
                 t = {"method": method, "features": [feature]}
 
                 if method.startswith("log"):
-                    t["replace_nans"] = True
-                    t["replace_zeros"] = True
                     t["treat_negatives"] = True
+                elif method == "box-cox":
+                    t["treat_negatives"] = True
+                    t["replace_zeros"] = True
+                elif method == "sqrt":
+                    t['treat_negatives'] = True
+
                 transformations.append(t)
 
         # following parameters must be overwritten even if they were provided by the user.

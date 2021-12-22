@@ -1,4 +1,5 @@
 
+from scipy.special import boxcox
 
 from sklearn.preprocessing import MinMaxScaler as SKMinMaxScaler
 from sklearn.preprocessing import StandardScaler as SKStandardScaler
@@ -91,14 +92,69 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
     @property
     def config_paras(self):
-        return ['lambdas_']
+        return ['lambdas_', 'scaler_to_standardize_']
 
+    @classmethod
+    def from_config(cls, config: dict):
+        """Build the scaler/transformer from config
+
+        Arguments:
+            config : dictionary of parameters which can be used to build transformer/scaler.
+
+        Returns :
+            An instance of scaler/transformer
+        """
+        scaler = cls(**config['params'])
+        setattr(scaler, '_config', config['config'])
+        setattr(scaler, '_from_config', True)
+
+        _scaler_config = config['config'].pop('scaler_to_standardize_')
+        setattr(scaler, '_scaler', StandardScaler.from_config(_scaler_config))
+
+        for attr, attr_val in config['config'].items():
+            setattr(scaler, attr, attr_val)
+        return scaler
+
+    def _fit(self, X, y=None, force_transform=False):
+        """copying from sklearn because I want to use our own StandardScaler
+        which can be serialzied."""
+        X = self._check_input(X, in_fit=True, check_positive=True,
+                              check_method=True)
+
+        if not self.copy and not force_transform:  # if call from fit()
+            X = X.copy()  # force copy so that fit does not change X inplace
+
+        optim_function = {'box-cox': self._box_cox_optimize,
+                          'yeo-johnson': self._yeo_johnson_optimize
+                          }[self.method]
+        with np.errstate(invalid='ignore'):  # hide NaN warnings
+            self.lambdas_ = np.array([optim_function(col) for col in X.T])
+
+        if self.standardize or force_transform:
+            transform_function = {'box-cox': boxcox,
+                                  'yeo-johnson': self._yeo_johnson_transform
+                                  }[self.method]
+            for i, lmbda in enumerate(self.lambdas_):
+                with np.errstate(invalid='ignore'):  # hide NaN warnings
+                    X[:, i] = transform_function(X[:, i], lmbda)
+
+        setattr(self, 'scaler_to_standardize_', None)
+        if self.standardize:
+            self._scaler = StandardScaler(copy=False)
+            if force_transform:
+                X = self._scaler.fit_transform(X)
+            else:
+                self._scaler.fit(X)
+
+            setattr(self, 'scaler_to_standardize_', self._scaler.config())
+
+        return X
 
 class QuantileTransformer(SKQuantileTransformer, ScalerWithConfig):
 
     @property
     def config_paras(self):
-        return ['n_quantiles_', 'references_']
+        return ['n_quantiles_', 'references_', 'quantiles_']
 
 
 class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):

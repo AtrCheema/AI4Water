@@ -1,10 +1,11 @@
 
 from typing import Union, List, Dict
 
-from ai4water.preprocessing.transformations import Transformation
-
 import numpy as np
 import pandas as pd
+
+from ai4water.utils.utils import jsonize
+from ai4water.preprocessing.transformations import Transformation
 
 
 class Transformations(object):
@@ -63,12 +64,10 @@ class Transformations(object):
 
         """
         self.names = feature_names
-        self.config = config
-
-        self.scalers = {}
+        self.t_config = config
 
     def transformation(self, data):
-        config = self.config
+        config = self.t_config
 
         if isinstance(data, list):
             if isinstance(config, str):
@@ -111,7 +110,7 @@ class Transformations(object):
         Returns:
             The transformed data which has same type and dimensions as the input data
         """
-        if self.config is None:  # if no transformation then just return the data as it is
+        if self.t_config is None:  # if no transformation then just return the data as it is
             return data
 
         orignal_data_type = data.__class__.__name__
@@ -127,6 +126,7 @@ class Transformations(object):
         else:
             raise ValueError
 
+        setattr(self, 'scalers_', {})
         # first unpack the data if required
         self._check_features()
 
@@ -150,32 +150,32 @@ class Transformations(object):
         if transformation:
 
             if isinstance(transformation, dict):
-                data, scaler = Transformation(data=pd.DataFrame(data, columns=columns),
-                                              **transformation)('transformation', return_key=True)
-                scalers[key] = scaler
+                transformer = Transformation(**transformation)
+                data = transformer.transform(pd.DataFrame(data, columns=columns))
+                scalers[key] = transformer.config()
 
             # we want to apply multiple transformations
             elif isinstance(transformation, list):
                 for idx, trans in enumerate(transformation):
 
                     if isinstance(trans, str):
-                        data, scaler = Transformation(data=pd.DataFrame(data, columns=columns),
-                                                      method=trans)('transformation', return_key=True)
-                        scalers[f'{key}_{trans}_{idx}'] = scaler
+                        transformer = Transformation(method=trans)
+                        data = transformer.transform(pd.DataFrame(data, columns=columns))
+                        scalers[f'{key}_{trans}_{idx}'] = transformer.config()
 
                     elif trans['method'] is not None:
-                        data, scaler = Transformation(data=pd.DataFrame(data, columns=columns),
-                                                      **trans)('transformation', return_key=True)
-                        scalers[f'{key}_{trans["method"]}_{idx}'] = scaler
+                        transformer = Transformation(**trans)
+                        data = transformer.transform(pd.DataFrame(data, columns=columns))
+                        scalers[f'{key}_{trans["method"]}_{idx}'] = transformer.config()
             else:
                 assert isinstance(transformation, str)
-                data, scaler = Transformation(data=pd.DataFrame(data, columns=columns),
-                                              method=transformation)('transformation', return_key=True)
-                scalers[key] = scaler
+                transformer = Transformation(method=transformation)
+                data = transformer.transform(pd.DataFrame(data, columns=columns))
+                scalers[key] = transformer.config()
 
             data = data.values
 
-        self.scalers.update(scalers)
+        self.scalers_.update(scalers)
 
         return data
 
@@ -234,6 +234,8 @@ class Transformations(object):
         Returns:
             The original data which was given to `fit_transform` method.
         """
+        if not hasattr(self, 'scalers_'):
+            raise ValueError(f"Transformations class has not been fitted yet")
         return self._inverse_transform(data)
 
     def _inverse_transform(self, data, key="5"):
@@ -287,49 +289,79 @@ class Transformations(object):
         if transformation is not None:
             if isinstance(transformation, str):
 
-                if key not in self.scalers:
+                if key not in self.scalers_:
                     raise ValueError(f"""
-                    key `{key}` for inverse transformation not found. Available keys are {list(self.scalers.keys())}""")
+                    key `{key}` for inverse transformation not found. Available keys are {list(self.scalers_.keys())}""")
 
-                scaler = self.scalers[key]
-                scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
+                scaler = self.scalers_[key]
+                scaler, shape = scaler, scaler['shape']
                 original_shape = data.shape
 
-                data, dummy_features = conform_shape(data, shape)  # get data to transform
-                transformed_data = scaler.inverse_transform(data)
-                data = transformed_data[:, dummy_features:]  # remove the dummy data
-                data = data.reshape(original_shape)
+                transformer = Transformation.from_config(scaler)
+                transformed_data = transformer.inverse_transform(data)
+                data = transformed_data
 
             elif isinstance(transformation, list):
                 # idx and trans both in reverse form
                 for idx, trans in reversed(list(enumerate(transformation))):
                     if isinstance(trans, str):
-                        scaler = self.scalers[f'{key}_{trans}_{idx}']
-                        scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
-                        data = Transformation(data=data, method=trans)(what='inverse', scaler=scaler)
+                        scaler = self.scalers_[f'{key}_{trans}_{idx}']
+                        scaler, shape = scaler, scaler['shape']
+                        transformer = Transformation.from_config(scaler)
+                        data = transformer.inverse_transform(data=data)
 
                     elif trans['method'] is not None:
                         features = trans.get('features', columns)
                         # if any of the feature in data was transformed
                         if any([True if f in data else False for f in features]):
                             orig_cols = data.columns  # copy teh columns in the original df
-                            scaler = self.scalers[f'{key}_{trans["method"]}_{idx}']
-                            scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
+                            scaler = self.scalers_[f'{key}_{trans["method"]}_{idx}']
+                            scaler, shape = scaler, scaler['shape']
                             data, dummy_features = conform_shape(data, shape, features)  # get data to transform
 
-                            transformed_data = Transformation(data=data, **trans)(what='inverse', scaler=scaler)
+                            transformer = Transformation.from_config(scaler)
+                            transformed_data = transformer.inverse_transform(data=data)
                             data = transformed_data[orig_cols]  # remove the dummy data
 
             elif isinstance(transformation, dict):
 
-                if any([True if f in data else False for f in transformation['features']]):
+                features = transformation.get('features', columns)
+                if any([True if f in data else False for f in features]):
                     orig_cols = data.columns
-                    scaler = self.scalers[key]
-                    scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
-                    data, dummy_features = conform_shape(data, shape, features=transformation['features'])
-                    transformed_data = Transformation(data=data, **transformation)(what='inverse', scaler=scaler)
+                    scaler = self.scalers_[key]
+                    scaler, shape = scaler, scaler['shape']
+                    data, dummy_features = conform_shape(data, shape, features=features)
+
+                    transformer = Transformation.from_config(scaler)
+                    transformed_data = transformer.inverse_transform(data=data)
                     data = transformed_data[orig_cols]  # remove the dummy data
         return data
+
+    def config(self)->dict:
+        """returns a python dictionary which can be used to construct this class
+        in fitted form i.e as if the fit_transform method has already been applied.
+        Returns:
+            a dictionary from which `Transformations` class can be constructed
+        """
+        return {
+            'scalers_': jsonize(self.scalers_),
+            "feature_names": self.names,
+            "config": self.t_config,
+            "is_numpy_": self.is_numpy_,
+            "is_dict_": self.is_dict_,
+            "is_list_": self.is_list_,
+        }
+
+    @classmethod
+    def from_config(cls, config:dict)->"Transformations":
+        """constructs the Transformations class which may has already been fitted.
+        """
+        transformer = cls(config.pop('feature_names'), config.pop('config'))
+
+        for attr_name, attr_val in config.items():
+            setattr(cls, attr_name, attr_val)
+
+        return transformer
 
 
 def conform_shape(data, shape, features=None):

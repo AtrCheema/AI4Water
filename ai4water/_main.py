@@ -2050,8 +2050,11 @@ class BaseModel(NN, Plots):
                 t = {'method': method, 'features': [feature]}
 
                 if method.startswith("log"):
-                    t["replace_nans"] = True
+                    t["treat_negatives"] = True
+                elif method == "box-cox":
                     t["replace_zeros"] = True
+                    t["treat_negatives"] = True
+                elif method == "sqrt":
                     t["treat_negatives"] = True
 
                 transformations.append(t)

@@ -13,8 +13,8 @@ data = arg_beach()
 
 
 def calculate_manually(xarray_3d, **kwds):
-    x1_0 = Transformation(xarray_3d[:, 0].copy(), **kwds).transform().values
-    x1_1 = Transformation(xarray_3d[:, 1].copy(), **kwds).transform()
+    x1_0 = Transformation(**kwds).transform(xarray_3d[:, 0].copy()).values
+    x1_1 = Transformation(**kwds).transform(xarray_3d[:, 1].copy())
     transformed_x = np.stack([x1_0, x1_1], axis=1)
     return transformed_x
 
@@ -24,27 +24,32 @@ class Test3dData(unittest.TestCase):
     def test_3d_simple_data(self):
         for method in ['minmax', 'log','log10', 'log2',
                        'robust', 'quantile', 'power', 'zscore',
-                        'cumsum', 'tan']:
+                       'cumsum', 'tan', "scale", "center",
+                       "box-cox", "sqrt"
+                       ]:
 
             kwargs = {'method': method}
 
             if method.startswith('log'):
                 kwargs['treat_negatives'] = True
+            elif method == "box-cox":
+                kwargs['treat_negatives'] = True
                 kwargs['replace_zeros'] = True
-                kwargs['replace_zeros_with'] = 1.0
+            elif method == "sqrt":
+                kwargs['treat_negatives'] = True
 
             x = np.arange(-1, 29, dtype='float32').reshape(15, 2)
             x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
             x1 = calculate_manually(x3d, **kwargs)
 
-            x2_0 = Transformation(x, **kwargs).transform().values
+            x2_0 = Transformation(**kwargs).transform(x).values
             x2, _, _ = prepare_data(x2_0, num_outputs=0, lookback_steps=2)
             # print(x1.sum(), x2.sum())
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
                                           config=[kwargs])
             x3d_ = transformer.fit_transform(x3d.copy())
-            _x3d = transformer.inverse_transform(x3d_)
+            _x3d = transformer.inverse_transform(x3d_.copy())
 
             if method not in ['log', 'log10', 'log2', 'tan', 'cumsum']:
                 # don't do inverse checking
@@ -82,17 +87,21 @@ class Test3dData(unittest.TestCase):
             kwargs = {'method': method}
             if method.startswith('log'):
                 kwargs['treat_negatives'] = True
+#                kwargs['replace_zeros'] = True
+            elif method == "box-cox":
+                kwargs['treat_negatives'] = True
                 kwargs['replace_zeros'] = True
-                kwargs['replace_zeros_with'] = 1.0
+            elif method == "sqrt":
+                kwargs['treat_negatives'] = True
 
             x = data[['tide_cm', 'pcp_mm']].values
             x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
-            x1 = calculate_manually(x3d, **kwargs)
+            x1 = calculate_manually(x3d.copy(), **kwargs)
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
                                           config=[kwargs])
             x3d_ = transformer.fit_transform(x3d.copy())
-            _x3d = transformer.inverse_transform(x3d_)
+            _x3d = transformer.inverse_transform(x3d_.copy())
 
             if method not in ['log', 'log10', 'log2', 'tan', 'cumsum']:
                 np.testing.assert_array_almost_equal(x3d, _x3d, decimal=5)
@@ -116,6 +125,7 @@ class TestSingleSource(unittest.TestCase):
         transformer = Transformations(['a', 'b'])
         x_ = transformer.fit_transform(x)
         np.testing.assert_array_almost_equal(x, x_)
+        return
 
     def test_single_transformation(self):
         x = np.arange(50).reshape(25, 2)
@@ -236,6 +246,22 @@ class TestMultipleSources(unittest.TestCase):
 
         for i, j in zip(x.values(), _x.values()):
             np.testing.assert_array_almost_equal(i, j)
+        return
+
+
+    def test_from_config(self):
+        for method in ["minmax", "log", "sqrt", "box-cox", "scale", "center", "robust"]:
+
+            config = {'method': method, 'treat_negatives': True, 'replace_zeros': True}
+
+            x = np.random.randint(-2, 30, (10, 3))
+            t = Transformations(['a', 'b', 'c'], config)
+            x_ = t.fit_transform(x.copy())
+            conf = t.config()
+
+            t2 = Transformations.from_config(conf)
+            _x = t2.inverse_transform(x_.copy())
+            np.testing.assert_array_almost_equal(x, _x)
         return
 
 if __name__ == "__main__":
