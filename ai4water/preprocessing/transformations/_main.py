@@ -4,7 +4,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from ai4water.utils.utils import dateandtime_now, jsonize
+from ai4water.utils.utils import dateandtime_now, jsonize, deepcopy_dict_without_clone
 
 from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
@@ -245,14 +245,7 @@ class Transformation(TransformationsContainer):
 
     def pre_process_data(self, data):
         """Makes sure that data is dataframe and optionally replaces nans"""
-        if isinstance(data, pd.DataFrame):
-            data = data
-        else:
-            data = np.array(data)
-            if data.ndim == 1:
-                data = data.reshape(-1, 1)
-            assert isinstance(data, np.ndarray)
-            data = pd.DataFrame(data, columns=['data'+str(i) for i in range(data.shape[1])])
+        data = to_dataframe(data)
 
         # save the index if not already saved so that can be used later
         if self.index is None:
@@ -400,6 +393,10 @@ class Transformation(TransformationsContainer):
         """
         self.transforming_straight = False
 
+        # during transform, we convert to df even when input is list or np array
+        # which inserts columns/features into data.
+        data = to_dataframe(data)
+
         if 'key' in kwargs or 'scaler' in kwargs:
             pass
         elif len(self.scalers) == 1:
@@ -442,7 +439,14 @@ class Transformation(TransformationsContainer):
     def maybe_insert_features(self, original_df, trans_df):
 
         if self.index is not None:
-            trans_df.index = self.index
+            # the data on which to perform inverse transformation has different
+            # length so can't insert index, therefore make sure that negatives and
+            # zeros were not treated beccause their indexes do not remain same now
+            if len(trans_df) != len(self.index):
+                assert len(self.zero_indices_) == 0
+                assert len(self.negative_indices_) == 0
+            else:
+                trans_df.index = self.index
 
         num_features = len(original_df.columns)
         if len(trans_df.columns) != num_features:
@@ -498,6 +502,8 @@ class Transformation(TransformationsContainer):
         Returns:
             an instance of `Transformation` class.
         """
+        config = deepcopy_dict_without_clone(config)
+
         shape = config.pop('shape')
         scaler = config.pop('scaler')
         negative_indices_ = config.pop("negative_indices_")
@@ -555,3 +561,16 @@ Input data contains {self.reason} values so {self.method} transformation
 can not be applied.
 {self.remedy()}
 """)
+
+
+def to_dataframe(data)->pd.DataFrame:
+
+    if isinstance(data, pd.DataFrame):
+        data = data
+    else:
+        data = np.array(data)
+        if data.ndim == 1:
+            data = data.reshape(-1, 1)
+        assert isinstance(data, np.ndarray)
+        data = pd.DataFrame(data, columns=['data' + str(i) for i in range(data.shape[1])])
+    return data

@@ -1086,8 +1086,8 @@ class EDA(Plot):
         # if data contains duplicated columns, transformation will not work
         data = data.loc[:, ~data.columns.duplicated()]
         if normalize:
-            transformer = Transformation(data=data)
-            data = transformer.transform()
+            transformer = Transformation()
+            data = transformer.transform(data)
 
         if freq is not None:
             return self._box_plot_with_freq(data,

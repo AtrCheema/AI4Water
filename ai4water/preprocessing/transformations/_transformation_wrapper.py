@@ -4,7 +4,7 @@ from typing import Union, List, Dict
 import numpy as np
 import pandas as pd
 
-from ai4water.utils.utils import jsonize
+from ai4water.utils.utils import jsonize, deepcopy_dict_without_clone
 from ai4water.preprocessing.transformations import Transformation
 
 
@@ -61,6 +61,18 @@ class Transformations(object):
                 names of features in data
             config:
                 Determines the type of transformation to be applied on data.
+                It can be one of the following types
+
+                - `string` when you want to apply single transformation
+                >>> config='minmax'
+                - `dict`: to pass additional arguments to the [Transformation][ai4water.preprocessing.Transformation]
+                   class
+                >>> config = {"method": 'log', 'treat_negatives': True, 'features': ['features']}
+                - `list` when we want to apply multiple transformations
+                >>> ['minmax', 'zscore']
+                or
+                >>> [{"method": 'log', 'treat_negatives': True, 'features': ['features']},
+                >>>  {'method': 'sqrt', 'treat_negatives': True}]
 
         """
         self.names = feature_names
@@ -93,7 +105,7 @@ class Transformations(object):
             assert isinstance(self.names, dict), f"""
             feature_names are of type {type(self.names)}"""
             for src_name, n in self.names.items():
-                assert n.__class__.__name__ == 'list'
+                assert n.__class__.__name__ in ["ListWrapper", 'list']
 
         return
 
@@ -110,13 +122,16 @@ class Transformations(object):
         Returns:
             The transformed data which has same type and dimensions as the input data
         """
+        setattr(self, 'is_numpy_', False)
+        setattr(self, 'is_list_', False)
+        setattr(self, 'is_dict_', False)
+        setattr(self, 'scalers_', {})
+
         if self.t_config is None:  # if no transformation then just return the data as it is
             return data
 
         orignal_data_type = data.__class__.__name__
-        setattr(self, 'is_numpy_', False)
-        setattr(self, 'is_list_', False)
-        setattr(self, 'is_dict_', False)
+
         if isinstance(data, np.ndarray):
             setattr(self, 'is_numpy_', True)
         elif isinstance(data, list):
@@ -126,7 +141,6 @@ class Transformations(object):
         else:
             raise ValueError
 
-        setattr(self, 'scalers_', {})
         # first unpack the data if required
         self._check_features()
 
@@ -284,7 +298,7 @@ class Transformations(object):
 
     def _inverse_transform_2d(self, data, columns, key, transformation):
         """inverse transforms one 2d array"""
-        data = pd.DataFrame(data, columns=columns)
+        data = pd.DataFrame(data.copy(), columns=columns)
 
         if transformation is not None:
             if isinstance(transformation, str):
@@ -356,6 +370,8 @@ class Transformations(object):
     def from_config(cls, config:dict)->"Transformations":
         """constructs the Transformations class which may has already been fitted.
         """
+        config = deepcopy_dict_without_clone(config)
+
         transformer = cls(config.pop('feature_names'), config.pop('config'))
 
         for attr_name, attr_val in config.items():
