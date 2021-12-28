@@ -139,7 +139,7 @@ class Transformations(object):
         elif isinstance(data, dict):
             setattr(self, 'is_dict_', True)
         else:
-            raise ValueError
+            raise ValueError(f"invalid data of type {data.__class__.__name__}")
 
         # first unpack the data if required
         self._check_features()
@@ -296,7 +296,7 @@ class Transformations(object):
 
         return _data
 
-    def _inverse_transform_2d(self, data, columns, key, transformation):
+    def _inverse_transform_2d(self, data, columns, key, transformation)->np.ndarray:
         """inverse transforms one 2d array"""
         data = pd.DataFrame(data.copy(), columns=columns)
 
@@ -349,6 +349,10 @@ class Transformations(object):
                     transformer = Transformation.from_config(scaler)
                     transformed_data = transformer.inverse_transform(data=data)
                     data = transformed_data[orig_cols]  # remove the dummy data
+
+        if data.__class__.__name__ == "DataFrame":
+            data = data.values  # there is no need to return DataFrame
+
         return data
 
     def config(self)->dict:

@@ -12,8 +12,7 @@ layers = {
     "SpatialAttention": {"conv_dim": "1d"},
 
     "Flatten": {},
-    "Dense": 1,
-    "Reshape": {"target_shape": (1, 1)}
+    "Dense": 1
 }
 
 model = Model(

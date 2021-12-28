@@ -8,16 +8,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold, LeaveOneOut, TimeSeriesSplit
-from sklearn.preprocessing import OneHotEncoder
 
-from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index
-from ai4water.datasets import all_datasets
-from ai4water.preprocessing.transformations import Transformation
-from ai4water.preprocessing.imputation import Imputation
 import ai4water.datasets as datasets
+from ai4water.datasets import all_datasets
 from ai4water.utils.utils import print_something
+from ai4water.preprocessing.imputation import Imputation
+from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index
 
 cmap_cv = plt.cm.coolwarm
 
@@ -79,7 +78,6 @@ class DataHandler(AttributeContainer):
             train_data: Union[str, list] = None,
             val_data: Union[str, list, np.ndarray, None] = None,
             intervals=None,
-            transformation: Union[str, list, dict] = None,
             shuffle: bool = True,
             allow_nan_labels: int = 0,
             nan_filler: dict = None,
@@ -165,24 +163,6 @@ class DataHandler(AttributeContainer):
                 contains chunks of missing values or when we don't want to consider several
                 rows in input data during data_preparation.
                 For further usage see `examples/using_intervals`
-            transformation Union[str, list, dict]:
-                type of transformation to be applied.
-                The transformation can be any transformation name from
-                ai4water.utils.transformations.py. The user can specify more than
-                one transformation. Moreover, the user can also determine which
-                transformation to be applied on which input feature. Default is 'minmax'.
-                To apply a single transformation on all the data
-                ```python
-                transformation = 'minmax'
-                ```
-                To apply different transformations on different input and output features
-                ```python
-                transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
-                                {'method': 'zscore', 'features': ['input3', 'output']}
-                                ]
-                ```
-                Here `input1`, `input2`, `input3` and `outptu` are the columns in the
-                `data`.
             shuffle bool:
             allow_nan_labels bool:
                 whether to allow examples with nan labels or not.
@@ -286,7 +266,7 @@ class DataHandler(AttributeContainer):
                                   train_data=train_data,
                                   val_data=val_data,
                                   intervals=intervals,
-                                  transformation=transformation,
+                                  # transformation=transformation,
                                   shuffle=False,  # todo
                                   allow_nan_labels=allow_nan_labels,
                                   nan_filler=nan_filler,
@@ -307,7 +287,7 @@ class DataHandler(AttributeContainer):
             self._to_disk()
 
     def __getattr__(self, item):
-        if item in ['lookback', 'input_step', 'transformation', 'forecast_step',
+        if item in ['lookback', 'input_step',  'forecast_step',
                     'forecast_len',  # todo, can it be local?
                     'known_future_inputs', 'allow_nan_labels', 'allow_input_nans']:
             if self.source_is_df:
@@ -334,7 +314,7 @@ class DataHandler(AttributeContainer):
                 raise NotImplementedError(f"Unknown data type {self.data.__class__.__name__}")
         else:
             # Default behaviour
-            raise AttributeError(f"DataLoader does not have an attribute {item}")
+            raise AttributeError(f"DataHandler does not have an attribute {item}")
 
     @property
     def classes(self):
@@ -985,13 +965,6 @@ class DataHandler(AttributeContainer):
             verbosity=self.verbosity
                               )
 
-        data, scalers = data_maker.transform(
-            data=data,
-            transformation=self.transformation if identifier is None else self.transformation[identifier],
-            key=key
-        )
-        self.scalers.update(scalers)
-
         # numpy arrays are not indexed and is supposed that the whole array is use as input
         if not isinstance(data, np.ndarray):
             data = data_maker.indexify(data, key)
@@ -1140,7 +1113,7 @@ class DataHandler(AttributeContainer):
         if self.teacher_forcing:
             return return_x_yy(x, prev_y, y, "Training", self.verbosity)
 
-        return return_xy(x, y, "Training", self.verbosity)
+        return self.return_xy(x, y, "Training")
 
     def _make_val_data_from_src(self,
                                 indices,
@@ -1297,7 +1270,7 @@ class DataHandler(AttributeContainer):
         if self.teacher_forcing:
             return return_x_yy(x, prev_y, y, "Validation", self.verbosity)
 
-        return return_xy(x, y, "Validation", self.verbosity)
+        return self.return_xy(x, y, "Validation")
 
     def test_data(self, key='test', data_keys=None, **kwargs
                   ) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
@@ -1376,7 +1349,7 @@ class DataHandler(AttributeContainer):
         if self.teacher_forcing:
             return return_x_yy(x, prev_y, y, "Test", self.verbosity)
 
-        return return_xy(x, y, "Test", self.verbosity)
+        return self.return_xy(x, y, "Test")
 
     def test_data_from_one_src(self,
                                key,
@@ -1445,81 +1418,6 @@ class DataHandler(AttributeContainer):
             raise ValueError
 
         return data, index
-
-    def transform(self):
-        return
-
-    def inverse_transform(self, data, key):
-
-        transformation = self.transformation
-        if self.source_is_df:
-
-            data = self._inv_transform_one_src(data, key, transformation)
-
-        elif self.source_is_list:
-            assert isinstance(data, list)
-            _data = []
-            for idx, src in enumerate(data):
-                __data = self._inv_transform_one_src(src, f'{key}_{idx}', transformation[idx])
-                _data.append(__data)
-            data = _data
-
-        elif self.source_is_dict:
-            assert isinstance(data, dict)
-            _data = {}
-            for src_name, src in data.items():
-                _data[src_name] = self._inv_transform_one_src(src, f'{key}_{src_name}', transformation[src_name])
-            data = _data
-
-        else:
-            raise NotImplementedError
-
-        return data
-
-    def _inv_transform_one_src(self, data, key, transformation):
-
-        if transformation is not None:
-            if isinstance(transformation, str):
-
-                if key not in self.scalers:
-                    raise ValueError(f"""
-                    key `{key}` for inverse transformation not found. Available keys are {list(self.scalers.keys())}""")
-
-                scaler = self.scalers[key]
-                scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
-                original_shape = data.shape
-
-                data, dummy_features = conform_shape(data, shape)  # get data to transform
-                transformed_data = scaler.inverse_transform(data)
-                data = transformed_data[:, dummy_features:]  # remove the dummy data
-                data = data.reshape(original_shape)
-
-            elif isinstance(transformation, list):
-                assert data.__class__.__name__ in ['DataFrame', 'Series']
-                for idx, trans in reversed(list(enumerate(transformation))):  # idx and trans both in reverse form
-                    if trans['method'] is not None:
-                        features = trans['features']
-                        # if any of the feature in data was transformed
-                        if any([True if f in data else False for f in features]):
-                            orig_cols = data.columns  # copy teh columns in the original df
-                            scaler = self.scalers[f'{key}_{trans["method"]}_{idx}']
-                            scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
-                            data, dummy_features = conform_shape(data, shape, features)  # get data to transform
-
-                            transformed_data = Transformation(**trans)(data, what='inverse', scaler=scaler)
-                            data = transformed_data[orig_cols]  # remove the dummy data
-
-            elif isinstance(transformation, dict):
-                assert data.__class__.__name__ in ['DataFrame', 'Series'], f'data is of type {data.__class__.__name__}'
-                if any([True if f in data else False for f in transformation['features']]):
-                    orig_cols = data.columns
-                    scaler = self.scalers[key]
-                    scaler, shape, _key = scaler['scaler'], scaler['shape'], scaler['key']
-                    data, dummy_features = conform_shape(data, shape, features=transformation['features'])
-                    transformed_data = Transformation(**transformation)(data, what='inverse', scaler=scaler)
-                    data = transformed_data[orig_cols]  # remove the dummy data
-
-        return data
 
     def check_nans(self):
         return
@@ -1712,6 +1610,23 @@ class DataHandler(AttributeContainer):
 
         return x, prev_y, y
 
+    def return_xy(self, x, y, initial):
+
+        if isinstance(y, np.ndarray):
+            #y = np.squeeze(y)  # (None, ...) -> (None,)
+
+            if self.mode == "classification" and  self.is_binary:
+                if len(y) == y.size:
+                    y = y.reshape(-1,1)
+            #elif self.forecast_len == 1:
+            #    y = y.reshape(-1, self.num_outs)   # (None,) -> (None, 1)
+
+        if self.verbosity > 0:
+            print(f"{'*' * 5} {initial} {'*' * 5}")
+            print_something(x, "input_x")
+            print_something(y, "target")
+
+        return x, y
 
 class MakeData(object):
 
@@ -1788,33 +1703,9 @@ class MakeData(object):
 
         return input_x, input_y, label_y
 
-    def transform(self, data, transformation, key='5'):
-
-        # it is better to make a copy here because all the operations on data happen after this.
-        data = data.copy()
-        scalers = {}
-        if transformation:
-
-            if isinstance(transformation, dict):
-                data, scaler = Transformation(**transformation)(data, 'transformation', return_key=True)
-                scalers[key] = scaler
-
-            # we want to apply multiple transformations
-            elif isinstance(transformation, list):
-                for idx, trans in enumerate(transformation):
-                    if trans['method'] is not None:
-                        data, scaler = Transformation(**trans)(data, 'transformation', return_key=True)
-                        scalers[f'{key}_{trans["method"]}_{idx}'] = scaler
-            else:
-                assert isinstance(transformation, str)
-                data, scaler = Transformation(method=transformation)(data, 'transformation', return_key=True)
-                scalers[key] = scaler
-
-        self.scalers.update(scalers)
-        return data, scalers
-
     def indexify(self, data: pd.DataFrame, key):
 
+        data = data.copy()
         dummy_index = False
         # for dataframes
         if isinstance(data.index, pd.DatetimeIndex):
@@ -1915,6 +1806,8 @@ class MakeData(object):
         if en is None:
             en = data.shape[0]
 
+        data = data.copy()
+
         if isinstance(data, pd.DataFrame):
             data = data[self.input_features + self.output_features].copy()
             df = data
@@ -1960,6 +1853,9 @@ class MakeData(object):
 
         if 'index' in data:
             data.pop('index')
+
+        if self.forecast_len == 1 and len(self.output_features)>0:
+            y = y.reshape(-1, len(self.output_features))
 
         return x, prev_y, y
 
@@ -2595,13 +2491,3 @@ def return_x_yy(x, prev_y, y, initial, verbosity):
         print_something(prev_y, "prev_y")
         print_something(y, "target")
     return x, prev_y, y
-
-
-def return_xy(x, y, initial, verbosity):
-
-    if verbosity > 0:
-        print(f"{'*' * 5} {initial} {'*' * 5}")
-        print_something(x, "input_x")
-        print_something(y, "target")
-
-    return x, y

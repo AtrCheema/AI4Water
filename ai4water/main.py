@@ -539,7 +539,7 @@ class Model(MODEL, BaseModel):
                 cache[lyr] = outs
             prev_output_name = lyr
 
-        outs = self.maybe_add_output_layer(outs, cache)
+        #outs = self.maybe_add_output_layer(outs, cache)
 
         return outs
 
@@ -617,7 +617,7 @@ class Model(MODEL, BaseModel):
                 cache[lyr] = outs
             prev_output_name = lyr
 
-        outs = self.maybe_add_output_layer(outs, cache)
+        #outs = self.maybe_add_output_layer(outs, cache)
 
         return outs
 
@@ -718,7 +718,7 @@ class Model(MODEL, BaseModel):
                 cache[lyr] = outs
             prev_output_name = lyr
 
-        outs = self.maybe_add_output_layer(outs, cache)
+        #outs = self.maybe_add_output_layer(outs, cache)
 
         return outs
 

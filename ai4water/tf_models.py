@@ -164,7 +164,8 @@ class DualAttentionModel(FModel):
         result = layers.Dense(self.dec_config['p'], name='eq_22')(last_reshape)  # (None, 30)  # equation 22
 
         output = layers.Dense(self.num_outs)(result)
-        output = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(output)
+        if self.forecast_len>1:
+            output = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(output)
 
         initial_input = [enc_input]
 
@@ -474,7 +475,8 @@ class InputAttentionModel(DualAttentionModel):
 
         act_out = layers.LeakyReLU()(lstm_out)
         predictions = layers.Dense(self.num_outs)(act_out)
-        predictions = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(predictions)
+        if self.forecast_len>1:
+            predictions = layers.Reshape(target_shape=(self.num_outs, self.forecast_len))(predictions)
         if self.verbosity > 2:
             print('predictions: ', predictions)
 

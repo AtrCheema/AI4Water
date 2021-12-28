@@ -49,7 +49,7 @@ class TestBuiltTFConfig(unittest.TestCase):
 
 
         assert model.trainable_parameters() == 3201
-        assert model.nn_layers().__len__() == 8
+        assert model.nn_layers().__len__() == 7
         return
 
     def test_lstm(self):
@@ -63,7 +63,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             12)
 
         assert model.trainable_parameters() == 31137
-        assert model.nn_layers().__len__() == 6
+        assert model.nn_layers().__len__() == 5
 
     def test_1dcnn(self):
 
@@ -78,7 +78,7 @@ class TestBuiltTFConfig(unittest.TestCase):
                   },
         12)
         assert model.trainable_parameters() == 5377
-        assert model.nn_layers().__len__() == 9
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_lstmcnn(self):
@@ -95,7 +95,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
             12)
         assert model.trainable_parameters() == 31233
-        assert model.nn_layers().__len__() == 10
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_convlstm(self):
@@ -110,7 +110,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
             12)
         assert model.trainable_parameters() == 187265
-        assert model.nn_layers().__len__() == 7
+        assert model.nn_layers().__len__() == 6
 
     def test_cnnlstm(self):
         sub_sequences = 3
@@ -142,7 +142,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         15)
 
         assert model.trainable_parameters() == 39697
-        assert model.nn_layers().__len__() == 15
+        assert model.nn_layers().__len__() == 14
         return
 
     def test_lstm_autoenc(self):
@@ -156,7 +156,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         }, 12)
         assert model.trainable_parameters() == 124101
-        assert model.nn_layers().__len__() == 8
+        assert model.nn_layers().__len__() == 7
         return
 
     def test_tcn(self):
@@ -173,7 +173,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         }, 12)
         assert model.trainable_parameters() == 92545
-        assert model.nn_layers().__len__() == 4
+        assert model.nn_layers().__len__() == 3
 
     def test_multi_inputs(self):
 
@@ -197,7 +197,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense_2": 1
         }, 5)
         assert model.trainable_parameters() == 20857
-        assert model.nn_layers().__len__() == 10
+        assert model.nn_layers().__len__() == 9
 
     def test_multi_output(self):
 
@@ -222,7 +222,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
         15)
         assert model.trainable_parameters() == 31491
-        assert model.nn_layers().__len__() == 9
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_add_args(self):
@@ -253,7 +253,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         }, 15)
         assert model.trainable_parameters() == 50243
-        assert model.nn_layers().__len__() == 10
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_custom_layer(self):
@@ -310,7 +310,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
         10)
         assert model.trainable_parameters() == 5281
-        assert model.nn_layers().__len__() == 5
+        assert model.nn_layers().__len__() == 4
         return
 
 

@@ -14,8 +14,8 @@ model = Model(
     verbosity=0,
 )
 
-class TestEvaluate(unittest.TestCase):
 
+class TestEvaluate(unittest.TestCase):
 
     def test_basic(self):
         eval_scores = model.evaluate()
@@ -34,34 +34,35 @@ class TestEvaluate(unittest.TestCase):
         return
 
     def test_custom_xy(self):
-        eval_scores = model.evaluate(np.random.random((10, 13)), np.random.random((10, 1, 1)))
+        eval_scores = model.evaluate(np.random.random((10, 13)), np.random.random((10, 1)))
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_custom_xy0(self):
         # only y as keyword
-        eval_scores = model.evaluate(np.random.random((10, 13)), y=np.random.random((10, 1, 1)))
+        eval_scores = model.evaluate(np.random.random((10, 13)), y=np.random.random((10, 1)))
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_custom_xy_as_keyword_args(self):
-        eval_scores = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1, 1)))
+        eval_scores = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1)))
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_custom_xy_with_metrics(self):
         # custom data with metrics
-        pbias = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1, 1)),
+        pbias = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1)),
                                     metrics='pbias')
         assert isinstance(pbias, float)
         return
 
     def test_custom_xy_with_metric_groups(self):
         # custom data with group of metrics
-        hydro = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1, 1)),
+        hydro = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1)),
                                     metrics='hydro_metrics')
         assert isinstance(hydro, dict)
         return
+
 
 if __name__ == "__main__":
 

@@ -109,7 +109,6 @@ class TestExperiments(unittest.TestCase):
                 _layers = {
                 "LSTM": {"config": {"units": int(kwargs['lstm_units'])}},
                 "Dense": {"config": {"units": 1, "activation": kwargs['dense_actfn']}},
-                "Reshape": {"config": {"target_shape": (1, 1)}}
                 }
 
                 return {
@@ -117,7 +116,7 @@ class TestExperiments(unittest.TestCase):
                     'lookback': int(kwargs['lookback']),
                     'batch_size': int(kwargs['batch_size']),
                     'lr': float(kwargs['lr']),
-                    'transformation': kwargs['transformation']
+                    'x_transformation': kwargs['transformation']
                 }
 
         cases = {'model_minmax': {'transformation': 'minmax'},

@@ -63,13 +63,12 @@ class TestNBeats(unittest.TestCase):
                                  {"Input": {"shape": (10, 3)},
                                  "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
                                   "Flatten": {},
-                                  "Reshape": {"target_shape": (1,1)}},
-                             },
+                             }},
                       lookback=10,
                       verbosity=0
                       )
 
-        model.fit(x=x, y=y.reshape(-1,1,1))
+        model.fit(x=x, y=y)
         return
 
 
@@ -78,8 +77,7 @@ class TestNBeats(unittest.TestCase):
             {
                 "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 12},
                 "Flatten": {},
-                "Reshape": {"target_shape": (1,1)}},
-        },
+        }},
             lookback=10,
             data=arg_beach(),
             forecast_step=1,

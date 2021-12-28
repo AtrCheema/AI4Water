@@ -107,33 +107,33 @@ def check_num_examples(train_x, val_x, test_x, val_ex, test_ex, data_loader):
     return
 
 
-def check_inverse_transformation(data, data_loader, y, cols, key):
-    if cols is None:
-        # not output columns, so not checking
-        return
-
-    # check that after inverse transformation, we get correct y.
-    if data_loader.source_is_df:
-        train_y_ = data_loader.inverse_transform(data=pd.DataFrame(y.reshape(-1, len(cols)), columns=cols), key=key)
-        train_y_, index = data_loader.deindexify(train_y_, key=key)
-        compare_individual_item(data, key, cols, train_y_, data_loader)
-
-    elif data_loader.source_is_list:
-        #for idx in range(data_loader.num_sources):
-        #    y_ = y[idx].reshape(-1, len(cols[idx]))
-        train_y_ = data_loader.inverse_transform(data=y, key=key)
-
-        train_y_, _ = data_loader.deindexify(train_y_, key=key)
-
-        for idx, y in enumerate(train_y_):
-            compare_individual_item(data[idx], f'{key}_{idx}', cols[idx], y, data_loader)
-
-    elif data_loader.source_is_dict:
-        train_y_ = data_loader.inverse_transform(data=y, key=key)
-        train_y_, _ = data_loader.deindexify(train_y_, key=key)
-
-        for src_name, val in train_y_.items():
-            compare_individual_item(data[src_name], f'{key}_{src_name}', cols[src_name], val, data_loader)
+# def check_inverse_transformation(data, data_loader, y, cols, key):
+#     if cols is None:
+#         # not output columns, so not checking
+#         return
+#
+#     # check that after inverse transformation, we get correct y.
+#     if data_loader.source_is_df:
+#         train_y_ = data_loader.inverse_transform(data=pd.DataFrame(y.reshape(-1, len(cols)), columns=cols), key=key)
+#         train_y_, index = data_loader.deindexify(train_y_, key=key)
+#         compare_individual_item(data, key, cols, train_y_, data_loader)
+#
+#     elif data_loader.source_is_list:
+#         #for idx in range(data_loader.num_sources):
+#         #    y_ = y[idx].reshape(-1, len(cols[idx]))
+#         train_y_ = data_loader.inverse_transform(data=y, key=key)
+#
+#         train_y_, _ = data_loader.deindexify(train_y_, key=key)
+#
+#         for idx, y in enumerate(train_y_):
+#             compare_individual_item(data[idx], f'{key}_{idx}', cols[idx], y, data_loader)
+#
+#     elif data_loader.source_is_dict:
+#         train_y_ = data_loader.inverse_transform(data=y, key=key)
+#         train_y_, _ = data_loader.deindexify(train_y_, key=key)
+#
+#         for src_name, val in train_y_.items():
+#             compare_individual_item(data[src_name], f'{key}_{src_name}', cols[src_name], val, data_loader)
 
 
 def compare_individual_item(data, key, cols, y, data_loader):
@@ -246,13 +246,13 @@ def build_and_test_loader(data, config, out_cols, train_ex=None, val_ex=None, te
     if isinstance(data, str):
         data = data_loader.data
 
-    check_inverse_transformation(data, data_loader, train_y, out_cols, 'train')
+    #check_inverse_transformation(data, data_loader, train_y, out_cols, 'train')
 
-    if val_ex:
-        check_inverse_transformation(data, data_loader, val_y, out_cols, 'val')
+    #if val_ex:
+    #    check_inverse_transformation(data, data_loader, val_y, out_cols, 'val')
 
-    if test_ex:
-        check_inverse_transformation(data, data_loader, test_y, out_cols, 'test')
+    #if test_ex:
+    #    check_inverse_transformation(data, data_loader, test_y, out_cols, 'test')
 
     check_kfold_splits(data_loader)
 
@@ -300,9 +300,9 @@ class TestAllCases(object):
         test_examples = 30 - (self.lookback - 2) if self.lookback>1 else 30
 
         if self.output_features == ['c']:
-            tty = np.arange(202, 250).reshape(-1, 1, 1)
-            tvy = np.arange(250, 271).reshape(-1, 1, 1)
-            ttesty = np.arange(271, 300).reshape(-1, 1, 1)
+            tty = np.arange(202, 250).reshape(-1, 1)
+            tvy = np.arange(250, 271).reshape(-1, 1)
+            ttesty = np.arange(271, 300).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -370,9 +370,9 @@ class TestAllCases(object):
                   'val_data': 'same'}
 
         if self.output_features == ['c']:
-            tty = np.arange(202, 271).reshape(-1, 1, 1)
-            tvy = np.arange(271, 300).reshape(-1, 1, 1)
-            ttesty = np.arange(271, 300).reshape(-1, 1, 1)
+            tty = np.arange(202, 271).reshape(-1, 1)
+            tvy = np.arange(271, 300).reshape(-1, 1)
+            ttesty = np.arange(271, 300).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -419,8 +419,8 @@ class TestAllCases(object):
                   'val_fraction': 0.0}
 
         if self.output_features == ['c']:
-            tty = np.arange(202, 271).reshape(-1, 1, 1)
-            ttesty = np.arange(271, 300).reshape(-1, 1, 1)
+            tty = np.arange(202, 271).reshape(-1, 1)
+            ttesty = np.arange(271, 300).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -464,8 +464,8 @@ class TestAllCases(object):
                   'test_fraction': 0.0}
 
         if self.output_features == ['c']:
-            tty = np.arange(202, 271).reshape(-1, 1, 1)
-            tvy = np.arange(271, 300).reshape(-1, 1, 1)
+            tty = np.arange(202, 271).reshape(-1, 1)
+            tvy = np.arange(271, 300).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -488,8 +488,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                   'lookback': self.lookback,
                   'train_data': 'random',
-                  'test_fraction': 0.0,
-                  'transformation': 'minmax'}
+                  'test_fraction': 0.0}
 
         tr_examples = 15- (self.lookback - 1) if self.lookback > 1 else 15
         loader = build_and_test_loader(data, config, self.output_features, tr_examples, 5, 0,
@@ -510,7 +509,8 @@ class TestAllCases(object):
                   'lookback': self.lookback,
                   'train_data': 'random',
                   'test_fraction': 0.0,
-                  'transformation': 'minmax'}
+                  #'transformation': 'minmax'
+                  }
 
         tr_examples = 15 - (self.lookback - 1) if self.lookback > 1 else 15
         loader = build_and_test_loader(data, config, self.output_features, tr_examples, 5, 0,
@@ -530,7 +530,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                   'lookback': self.lookback,
                   'train_data': 'random',
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'intervals': [(0, 10), (20, 35)]
                   }
 
@@ -553,7 +553,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                   'lookback': self.lookback,
                   'train_data': 'random',
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'intervals': [('20110101', '20110110'), ('20110121', '20110204')]
                   }
 
@@ -578,7 +578,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                   'lookback': self.lookback,
                   'train_data': [1,2,3,4,5,6,7,8,9,10,11,12],
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   }
 
         tr_examples = 9 - (self.lookback - 2) if self.lookback > 1 else 9
@@ -598,7 +598,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                   'lookback': self.lookback,
                   'train_data': [1,2,3,4,5,6,7,8,9,10,11,12],
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'val_fraction': 0.0,
                   }
 
@@ -619,7 +619,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                    'lookback': self.lookback,
                   'train_data': [1,2,3,4,5,6,7,8,9,10,11,12],
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'val_data': 'same',
                   }
         test_examples = 8 - (self.lookback - 1) if self.lookback > 1 else 8
@@ -638,7 +638,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                    'lookback': self.lookback,
                   'train_data': [1,2,3,4,5,6,7,8,9,10,11,12],
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'val_data': [0, 12, 14, 16, 5],
                   'val_fraction': 0.0,
                   }
@@ -672,9 +672,9 @@ class TestAllCases(object):
                   }
 
         if self.output_features == ['c']:
-            tty = np.array([63., 64., 65., 66., 67., 68., 69., 82.]).reshape(-1, 1, 1)
-            tvy = np.arange(83, 87).reshape(-1, 1, 1)
-            ttesty = np.array([62., 87., 88., 89.]).reshape(-1, 1, 1)
+            tty = np.array([63., 64., 65., 66., 67., 68., 69., 82.]).reshape(-1, 1)
+            tvy = np.arange(83, 87).reshape(-1, 1)
+            ttesty = np.array([62., 87., 88., 89.]).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -697,13 +697,13 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
-                  'transformation': [{'method': 'minmax', 'features': ['a']}],
+                  #'transformation': [{'method': 'minmax', 'features': ['a']}],
                   }
 
         if self.output_features == ['c']:
-            tty = np.arange(42, 51).reshape(-1, 1, 1)
-            tvy = np.arange(51, 55).reshape(-1, 1, 1)
-            ttesty = np.arange(55, 60).reshape(-1, 1, 1)
+            tty = np.arange(42, 51).reshape(-1, 1)
+            tvy = np.arange(51, 55).reshape(-1, 1)
+            ttesty = np.arange(55, 60).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -725,13 +725,13 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
-                  'transformation': [{'method': 'minmax', 'features': ['a']}, {'method': 'zscore', 'features': ['a']}],
+                  #'transformation': [{'method': 'minmax', 'features': ['a']}, {'method': 'zscore', 'features': ['a']}],
                   }
 
         if self.output_features == ['c']:
-            tty = np.arange(42, 51).reshape(-1, 1, 1)
-            tvy = np.arange(51, 55).reshape(-1, 1, 1)
-            ttesty = np.arange(55, 60).reshape(-1, 1, 1)
+            tty = np.arange(42, 51).reshape(-1, 1)
+            tvy = np.arange(51, 55).reshape(-1, 1)
+            ttesty = np.arange(55, 60).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -753,7 +753,7 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
-                  'transformation': [{'method': 'minmax', 'features': ['a', 'b', 'c']}, {'method': 'zscore', 'features': ['c']}],
+                  #'transformation': [{'method': 'minmax', 'features': ['a', 'b', 'c']}, {'method': 'zscore', 'features': ['c']}],
                   }
 
         tr_examples = 11 - (self.lookback - 1) if self.lookback > 1 else 11
@@ -772,13 +772,13 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
-                  'transformation': [{'method': 'minmax', 'features': ['a', 'b']}],
+                  #'transformation': [{'method': 'minmax', 'features': ['a', 'b']}],
                   }
 
         if self.output_features == ['c']:
-            tty = np.arange(42, 51).reshape(-1, 1, 1)
-            tvy = np.arange(51, 55).reshape(-1, 1, 1)
-            ttesty = np.arange(55, 60).reshape(-1, 1, 1)
+            tty = np.arange(42, 51).reshape(-1, 1)
+            tvy = np.arange(51, 55).reshape(-1, 1)
+            ttesty = np.arange(55, 60).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -801,13 +801,13 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
-                  'transformation': {'method': 'minmax', 'features': ['a', 'b']},
+                  #'transformation': {'method': 'minmax', 'features': ['a', 'b']},
                   }
 
         if self.output_features == ['c']:
-            tty = np.arange(42, 51).reshape(-1, 1, 1)
-            tvy = np.arange(51, 55).reshape(-1, 1, 1)
-            ttesty = np.arange(55, 60).reshape(-1, 1, 1)
+            tty = np.arange(42, 51).reshape(-1, 1)
+            tvy = np.arange(51, 55).reshape(-1, 1)
+            ttesty = np.arange(55, 60).reshape(-1, 1)
         else:
             tty, tvy, ttesty = None, None, None
 
@@ -829,7 +829,7 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
-                  'transformation': {'method': 'minmax', 'features': ['c']},
+                  #'transformation': {'method': 'minmax', 'features': ['c']},
                   }
         tr_examples = 11 - (self.lookback - 1) if self.lookback > 1 else 11
         val_examples = 6 - (self.lookback - 1) if self.lookback > 1 else 6
@@ -848,7 +848,7 @@ class TestAllCases(object):
         config =  {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback, 'train_data': 'random',
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'intervals': [(0, 10), (20, 30)]
                   }
 
@@ -869,7 +869,7 @@ class TestAllCases(object):
         config =  {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback, 'train_data': 'random', 'val_data': 'same',
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'intervals': [(0, 10), (20, 30)]
                   }
 
@@ -891,7 +891,7 @@ class TestAllCases(object):
                   'output_features': self.output_features,
                   'lookback': self.lookback,
                   'train_data': 'random', 'val_fraction': 0.0,
-                  'transformation': 'minmax',
+                  #'transformation': 'minmax',
                   'intervals': [(0, 10), (20, 30)]
                   }
         tr_examples = 13 - (self.lookback - 1) if self.lookback > 1 else 13
@@ -1473,7 +1473,7 @@ def test_multisource_basic():
 
     # # #testing with transformation
     config['input_features'] = {'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']}
-    config['transformation'] = {'cont_data': 'minmax', 'static_data': 'zscore'}
+    #config['transformation'] = {'cont_data': 'minmax', 'static_data': 'zscore'}
     config['output_features'] = {'cont_data': ['c', 'd'], 'static_data': []}
     build_and_test_loader(data={'cont_data': df1, 'static_data': df2},
                           config=config, out_cols=config['output_features'],
@@ -1718,7 +1718,7 @@ def test_with_string_index():
         'output_features': ['tetx_coppml'],
         'lookback': 3,
         'train_data': 'random',
-        'transformation': 'minmax'
+        #'transformation': 'minmax'
     }
 
     #build_and_test_loader(data, config, out_cols=['target'], train_ex=136, val_ex=58, test_ex=84)

@@ -27,6 +27,7 @@ from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.visualizations import PlotResults
 from ai4water.utils.utils import ts_features, make_model
 from ai4water.preprocessing.datahandler import DataHandler
+from ai4water.preprocessing.transformations import Transformations
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 from ai4water.models.tensorflow.custom_training import train_step, test_step
 from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
@@ -55,6 +56,8 @@ class BaseModel(NN, Plots):
     def __init__(self,
                  model: Union[dict, str] = None,
                  data=None,
+                 x_transformation: Union[str, dict, list] = None,
+                 y_transformation:Union[str, dict, list] = None,
                  lr: float = 0.001,
                  optimizer='Adam',
                  loss: Union[str, Callable] = 'mse',
@@ -116,6 +119,27 @@ class BaseModel(NN, Plots):
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
                 [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
+            x_transformation:
+                type of transformation to be applied on x data.
+                The transformation can be any transformation name from
+                ai4water.utils.transformations.py. The user can specify more than
+                one transformation. Moreover, the user can also determine which
+                transformation to be applied on which input feature. Default is 'minmax'.
+                To apply a single transformation on all the data
+                ```python
+                transformation = 'minmax'
+                ```
+                To apply different transformations on different input and output features
+                ```python
+                transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
+                                {'method': 'zscore', 'features': ['input3', 'input4']}
+                                ]
+                ```
+                Here `input1`, `input2`, `input3` and `input4` are the columns in the
+                `data`. For more info see [Transformations][ai4water.preprocessing.Transformations]
+                and [Transformation][ai4water.preprocessing.Transformation] classes.
+            y_transformation:
+                type of transformation to be applied on y/label data.
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -199,6 +223,8 @@ class BaseModel(NN, Plots):
         if self._go_up:
             maker = make_model(
                 model=model,
+                x_transformation=x_transformation,
+                y_transformation=y_transformation,
                 prefix=prefix,
                 path=path,
                 verbosity=verbosity,
@@ -662,6 +688,11 @@ class BaseModel(NN, Plots):
     def maybe_not_3d_data(self, true, predicted, forecast_len):
 
         if true.ndim < 3:
+            if isinstance(forecast_len, dict):
+                forecast_len = set(list(forecast_len.values()))
+                assert len(forecast_len) == 1
+                forecast_len = forecast_len.pop()
+
             assert forecast_len == 1, f'{forecast_len}'
             axis = 2 if true.ndim == 2 else (1, 2)
             true = np.expand_dims(true, axis=axis)
@@ -978,7 +1009,15 @@ class BaseModel(NN, Plots):
                 kwargs.pop('y')
             inputs = kwargs.pop('x')
 
+        x_transformer = Transformations(self.dh.input_features, self.config['x_transformation'])
+        inputs = x_transformer.fit_transform(inputs)
+        self.config['x_transformer_'] = x_transformer.config()
+        y_transformer = Transformations(self.dh.output_features, self.config['y_transformation'])
+        outputs = y_transformer.fit_transform(outputs)
+        self.config['y_transformer_'] = y_transformer.config()
+
         if isinstance(outputs, np.ndarray) and self.category == "DL":
+
             if isinstance(self.ai4w_outputs, list):
                 assert len(self.ai4w_outputs) == 1
                 model_output_shape = tuple(self.ai4w_outputs[0].shape.as_list()[1:])
@@ -1003,6 +1042,15 @@ class BaseModel(NN, Plots):
             if 'validation_data' not in kwargs:
                 val_data = self.validation_data()
                 val_x, val_y = maybe_three_outputs(val_data, self.dh.teacher_forcing)
+
+                if val_x is not None:
+                    x_transformer = Transformations(self.dh.input_features, self.config['x_transformation'])
+                    val_x = x_transformer.fit_transform(val_x)
+                    self.config['val_x_transformer_'] = x_transformer.config()
+                    y_transformer = Transformations(self.dh.output_features, self.config['y_transformation'])
+                    val_y = y_transformer.fit_transform(val_y)
+                    self.config['val_y_transformer_'] = y_transformer.config()
+
                 val_data = (val_x, val_y)
                 kwargs['validation_data'] = val_data
             history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
@@ -1049,6 +1097,10 @@ class BaseModel(NN, Plots):
         self._maybe_change_residual_threshold(outputs)
 
         history = self._model.fit(inputs, outputs)
+
+        if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
+            # by default feature_names of booster as set to f0, f1,...
+            self._model.get_booster().feature_names = self.dh.input_features
 
         self._save_ml_model()
 
@@ -1259,6 +1311,7 @@ class BaseModel(NN, Plots):
             return self._manual_eval(x, y, metrics)
 
         if hasattr(self._model, 'evaluate'):
+            # todo, should we transform?
             return self._model.evaluate(x, y, **kwargs)
 
         return self.evaluate_fn(x, y, **kwargs)
@@ -1359,7 +1412,7 @@ class BaseModel(NN, Plots):
 
         transformation_key = None
 
-        if data.__class__.__name__ in ["ndarray", "Dataset", "list"]: # .predict(x,y,...)
+        if data.__class__.__name__ in ["ndarray", "Dataset", "list", "DataFrame"]: # .predict(x,y,...)
             # the predict method is called like .predict(x)
             assert 'x' not in kwargs
             inputs = data
@@ -1391,13 +1444,39 @@ class BaseModel(NN, Plots):
         if 'batch_size' in kwargs:
             batch_size = kwargs.pop('batch_size')
 
+        x_transformer = Transformations(self.dh.input_features, self.config['x_transformation'])
+        inputs = x_transformer.fit_transform(inputs)
+        self.config['x_transformer_'] = x_transformer.config()
+        y_transformer = None
+        if true_outputs is not None:
+
+            y_transformer = Transformations(self.dh.output_features, self.config['y_transformation'])
+            true_outputs = y_transformer.fit_transform(true_outputs)
+
         if self.category == 'DL':
             predicted = self.predict_fn(x=inputs,
                                         batch_size=batch_size,
                                         verbose=verbosity,
                                         **kwargs)
         else:
+            if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
+                # since we have changed feature_names of booster,
+                kwargs['validate_features'] = False
             predicted = self.predict_ml_models(inputs, **kwargs)
+
+        if true_outputs is None:  # only x was given, build transformer from the config
+            if self.config.get('y_transformer_', None) is None:
+                # when predict/evaluate is called without fitting the model first
+                # in such case either we must have true_outputs or y_transformation should be None.
+                assert self.config['y_transformation'] is None
+            else:
+                y_transformer = Transformations.from_config(self.config['y_transformer_'])
+                predicted = y_transformer.inverse_transform(predicted)
+        else:
+            # both x,and true_y were given
+            predicted = y_transformer.inverse_transform(predicted)
+            true_outputs = y_transformer.inverse_transform(true_outputs)
+
 
         if true_outputs is None:
             if return_true:
@@ -1405,9 +1484,8 @@ class BaseModel(NN, Plots):
             return predicted
 
         dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
-        if not user_defined_data:
-            true_outputs, predicted = self.inverse_transform(true_outputs, predicted, transformation_key)
 
+        if not user_defined_data:
             true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
 
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
@@ -1449,38 +1527,6 @@ class BaseModel(NN, Plots):
     def predict_ml_models(self, inputs, **kwargs):
         """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
-
-    def inverse_transform(self,
-                          true: Union[np.ndarray, dict],
-                          predicted: Union[np.ndarray, dict],
-                          key: str
-                          ) -> Tuple[np.ndarray, np.ndarray]:
-
-        if self.dh.source_is_dict or self.dh.source_is_list:
-            true = self.dh.inverse_transform(true, key=key)
-            if isinstance(predicted, np.ndarray):
-                assert len(true) == 1
-                predicted = {list(true.keys())[0]: predicted}
-            predicted = self.dh.inverse_transform(predicted, key=key)
-
-        else:
-            true_shape, pred_shape = true.shape, predicted.shape
-            if isinstance(true, np.ndarray) and self.forecast_len == 1 and isinstance(self.num_outs, int):
-                true = pd.DataFrame(true.reshape(len(true), self.num_outs), columns=self.out_cols)
-                predicted = pd.DataFrame(predicted.reshape(len(predicted), self.num_outs), columns=self.out_cols)
-
-            true = self.dh.inverse_transform(true, key=key)
-            predicted = self.dh.inverse_transform(predicted, key=key)
-
-            if predicted.__class__.__name__ in ['DataFrame', 'Series']:
-                predicted = predicted.values
-            if true.__class__.__name__ in ['DataFrame', 'Series']:
-                true = true.values
-
-            true = true.reshape(true_shape)
-            predicted = predicted.reshape(pred_shape)
-
-        return true, predicted
 
     def plot_model(self, nn_model) -> None:
         kwargs = {}
@@ -1964,11 +2010,13 @@ class BaseModel(NN, Plots):
     def optimize_transformations(
             self,
             transformations: Union[list, str] = None,
-            algorithm: str = "bayes",
-            num_iterations: int = 12,
             include: Union[str, list, dict] = None,
             exclude: Union[str, list] = None,
             append: dict = None,
+            transform_y: bool = True,
+            y_transformations: Union[list, str] = None,
+            algorithm: str = "bayes",
+            num_iterations: int = 12,
             update_config: bool = True
     ):
         """optimizes the transformations for the input/output features
@@ -1979,7 +2027,7 @@ class BaseModel(NN, Plots):
         Arguments:
             transformations:
                 the transformations to consider. By default, following
-                transformations are considered
+                transformations are considered for input features
 
                 - `minmax`  rescale from 0 to 1
                 - `center`    center the data by subtracting mean from it
@@ -1994,19 +2042,29 @@ class BaseModel(NN, Plots):
                 - `log10`
                 - `sqrt`    square root
 
-            algorithm: str
-                The algorithm to use for optimizing transformations
-            num_iterations: int
-                The number of iterations for optimizatino algorithm.
-            include: the names of features to include
-            exclude: the name/names of features to exclude
+            exclude: the name/names of input features to exclude
             append:
-                the features with custom candidate transformations. For example
+                the input features with custom candidate transformations. For example
                 if we want to try only `minmax` and `zscore` on feature `tide_cm`, then
                 it can be done as following
                 ```python
                 >>> append={"tide_cm": ["minmax", "zscore"]}
                 ```
+            transform_y:
+                whether you want to transform output/target feature or not?
+            y_transformations:
+                only relevant if `transform_y` is True. The candidate transformations
+                for target/output feature. By default only following transformations
+                are considered for output/target feature.
+                ```
+                >>> y_transformations = ['log', 'log10', 'log2', 'sqrt']
+                ```
+                where `none` indicates no transformation
+            algorithm: str
+                The algorithm to use for optimizing transformations
+            num_iterations: int
+                The number of iterations for optimizatino algorithm.
+            include: the names of features to include
             update_config: whether to update the config of model or not.
 
         Returns:
@@ -2032,6 +2090,12 @@ class BaseModel(NN, Plots):
             assert all([t in categories for t in transformations]), f"transformations must be one of {categories}"
             categories = transformations
 
+        if y_transformations is None:
+            y_transformations = ['log', 'log10', 'log2', 'sqrt', 'none']
+        if transform_y:
+            assert isinstance(y_transformations, list)
+            assert all([t in categories for t in y_transformations]), f"transformations must be one of {categories}"
+
         optimizer = OptimizeTransformations(
             self,
             algorithm=algorithm,
@@ -2039,10 +2103,14 @@ class BaseModel(NN, Plots):
             include=include,
             exclude=exclude,
             append=append,
-            categories=categories
+            categories=categories,
+            transform_y=transform_y,
+            y_transformations=y_transformations,
         ).fit()
 
-        transformations = []
+        x_transformations = []
+        y_transformations = []
+
         for feature, method in optimizer.best_paras().items():
             if method == "none":
                 pass
@@ -2057,11 +2125,14 @@ class BaseModel(NN, Plots):
                 elif method == "sqrt":
                     t["treat_negatives"] = True
 
-                transformations.append(t)
+                if feature in self.dh.input_features:
+                    x_transformations.append(t)
+                else:
+                    y_transformations.append(t)
 
         if update_config:
-            self.config['transformation'] = transformations
-            self.dh.config['transformation'] = transformations
+            self.config['x_transformation'] = x_transformations
+            self.config['y_transformation'] = y_transformations
 
         return optimizer
 

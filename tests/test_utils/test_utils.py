@@ -67,11 +67,14 @@ def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=N
 
 def get_layers(o=1, forecast_len=1):
 
-    return {
+    _layers = {
             "LSTM": {"units": 1},
-            "Dense": {"units": o*forecast_len },
-            "Reshape": {"target_shape": (o, forecast_len)}
+            "Dense": {"units": o*forecast_len }
         }
+
+    if forecast_len>1:
+        _layers.update({"Reshape": {"target_shape": (o, forecast_len)}})
+    return _layers
 
 
 default_model = {
@@ -79,7 +82,6 @@ default_model = {
         "Dense_0": {'units': 64, 'activation': 'relu'},
         "Flatten": {},
         "Dense_3": 1,
-        "Reshape": {"target_shape": (1, 1)}
     }
 }
 
@@ -90,7 +92,6 @@ def build_model(**kwargs):
         verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
-        transformation=None,  # todo, test with transformation
         epochs=1,
         **kwargs
     )
@@ -514,7 +515,6 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       output_features=['out1'],
                       model=default_model,
-                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
@@ -561,7 +561,6 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       model=default_model,
                       output_features=['out1'],
-                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
@@ -593,7 +592,6 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       output_features=['out1'],
                       model=default_model,
-                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
@@ -662,7 +660,6 @@ class TestUtils(unittest.TestCase):
                 "Reshape": {"target_shape": (2 ,1)}}
 
             model = FModel(allow_nan_labels=1,  # todo, make sure that model-subclassing also work
-                          transformation=None,
                           model={'layers': layers},
                           input_features=['in1', 'in2'],
                           output_features=['out1', 'out2'],

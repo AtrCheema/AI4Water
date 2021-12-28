@@ -274,6 +274,11 @@ def _make_model(**kwargs):
     model_args = {
 
         'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
+        # can be None or any of the method defined in ai4water.utils.transformatinos.py
+        'x_transformation': {"type": [str, type(None), dict, list], "default": None, 'lower': None,
+                             'upper': None, 'between': None},
+        'y_transformation': {"type": [str, type(None), dict, list], "default": None, 'lower': None,
+                             'upper': None, 'between': None},
         # for auto-encoders
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
@@ -331,9 +336,6 @@ def _make_model(**kwargs):
                  'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # can be None or any of the method defined in ai4water.utils.transformatinos.py
-        'transformation':         {"type": [str, type(None), dict, list],   "default": None, 'lower': None,
-                                   'upper': None, 'between': None},
         # The term lookback has been adopted from Francois Chollet's
         # "deep learning with keras" book. This means how many
         # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
@@ -409,6 +411,9 @@ def _make_model(**kwargs):
 
         elif arg_name in config:
             update_dict(arg_name, val, data_args, config)
+
+        elif arg_name in ['x_transformer_', 'y_transformer_', 'val_x_transformer_', 'val_y_transformer_']:
+            pass
 
         # config may contain additional user defined args which will not be checked
         elif not accept_additional_args:

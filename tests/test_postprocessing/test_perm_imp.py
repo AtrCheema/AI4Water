@@ -29,6 +29,7 @@ class TestPermImportance(unittest.TestCase):
         model = Model(
             model={"layers": {
                 "LSTM": 32,
+                "Dense": 1
             }},
             verbosity=0,
             data=arg_beach()
@@ -53,7 +54,8 @@ class TestPermImportance(unittest.TestCase):
                 "Input_1": {"shape": (5, 3)},
                 "Concatenate": {"config": {"name": "Concat"},
                                 "inputs": ["Input_0", "Input_1"]},
-                "LSTM": 32
+                "LSTM": 32,
+                "Dense": 1
             }},
             data=arg_beach(),
             verbosity=0

@@ -27,7 +27,6 @@ default_model = {
         "Dense_0": {'units': 64, 'activation': 'relu'},
         "Flatten": {},
         "Dense_3": 1,
-        "Reshape": {"target_shape": (1, 1)}
     }
 }
 
@@ -48,12 +47,12 @@ def build_model(**kwargs):
     model = Model(
         verbosity=0,
         batch_size=16,
-        transformation=None,  # todo, test with transformation
         epochs=1,
         **kwargs
     )
 
     return model
+
 
 def da_lstm_model(**kwargs):
 
@@ -73,6 +72,7 @@ def da_lstm_model(**kwargs):
 
     return model
 
+
 def ia_lstm_model(**kwargs):
     model = InputAttentionModel(
         data = arg_beach(),
@@ -84,8 +84,10 @@ def ia_lstm_model(**kwargs):
 
     return model
 
+
 def lstm_with_SelfAtten(**kwargs):
     return
+
 
 def tft_model(**kwargs):
     num_encoder_steps = 30
@@ -112,7 +114,6 @@ def tft_model(**kwargs):
         "TemporalFusionTransformer": {"config": params},
         "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
         "Dense": {"config": {"units": output_size * 1}},
-        'Reshape': {'target_shape': (1, 1)},
     }
 
     model = Model(model={'layers': layers},

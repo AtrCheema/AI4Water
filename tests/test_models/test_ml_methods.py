@@ -53,7 +53,6 @@ def run_class_test(method):
             output_features=['target'],
             val_fraction=0.2,
             mode=mode,
-            transformation=None,
             data=df_reg if mode=="regression" else df_class,
             model={method: kwargs},
             verbosity=0)
@@ -355,7 +354,6 @@ class TestMLMethods(unittest.TestCase):
             category="ML",
             mode="regression",
             model={"XGBRegressor": {}},
-            transformation=None,
             data=df_reg,
             train_data='random',
             verbosity=0)

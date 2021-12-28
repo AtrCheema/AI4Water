@@ -112,7 +112,6 @@ def run_ai4water(method):
                      "val_fraction": 0.0,
                    "test_fraction": 0.3,
                    "model": {"XGBRegressor": {}},
-                   "transformation": None
                    }
 
     opt = HyperOpt(method,
@@ -340,7 +339,6 @@ class TestHyperOpt(unittest.TestCase):
                 test_fraction=0.3,
                 val_fraction=0.0,
                 model={"XGBRegressor": kwargs},
-                transformation=None,
                 data=data,
                 prefix='testing',
                 train_data='random',
@@ -386,7 +384,6 @@ class TestHyperOpt(unittest.TestCase):
                          "val_fraction": 0.0,
                        "model": {"XGBRegressor": {}},
                        #"ml_model_args": {'objective': 'reg:squarederror'}, TODO
-                       "transformation": None
                        }
 
         opt = HyperOpt("bayes",

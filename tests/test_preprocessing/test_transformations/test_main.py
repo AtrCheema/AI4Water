@@ -24,18 +24,20 @@ df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(100
                   columns=['data1', 'data2'])
 
 
-def build_and_run(transformation, data, inputs, outputs):
+def build_and_run(x_transformation, y_transformation,
+                  data, inputs, outputs):
 
     model = Model(data=data,
                   input_features=inputs,
                   output_features=outputs,
-                  transformation=transformation,
+                  x_transformation=x_transformation,
+                  y_transformation=y_transformation,
                   verbosity=0)
     x, y = model.training_data(key='junk')
 
-    pred, pred = model.inverse_transform(y, y, key='junk')
+    #pred, pred = model.inverse_transform(y, y, key='junk')
 
-    pred, index = model.dh.deindexify(pred, key='junk')
+    pred, index = model.dh.deindexify(y, key='junk')
     pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs), columns=outputs, index=index).sort_index()
     return pred
 
@@ -323,12 +325,10 @@ class test_Scalers(unittest.TestCase):
 
         data = pd.DataFrame(np.random.random((100, 3)), columns=inputs+outputs)
 
-        transformation = [
-            {"method": "log", "features": outputs},
-            {"method": "minmax", "features": inputs + outputs}
-                          ]
+        x_transformation = "minmax"
+        y_transformation = ["log", "minmax"]
 
-        pred = build_and_run(transformation, data, inputs, outputs)
+        pred = build_and_run(x_transformation, y_transformation, data, inputs, outputs)
 
         for i in pred.index:
             assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])
@@ -342,11 +342,10 @@ class test_Scalers(unittest.TestCase):
 
         data = pd.DataFrame(np.random.random((100, 3)), columns=inputs+outputs)
 
-        transformation = [
-            {"method": "robust", "features": outputs},
-            {"method": "robust", "features": inputs + outputs}
-                          ]
-        pred = build_and_run(transformation, data, inputs,outputs)
+        x_transformation = "robust"
+        y_transformation = ["robust", "robust"]
+
+        pred = build_and_run(x_transformation, y_transformation, data, inputs,outputs)
 
         for i in pred.index:
             assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])
@@ -360,11 +359,10 @@ class test_Scalers(unittest.TestCase):
 
         data = pd.DataFrame(np.random.random((100, 4)), columns=inputs+outputs)
 
-        transformation = [
-            {"method": "robust", "features": outputs},
-            {"method": "robust", "features": inputs + outputs}
-                          ]
-        pred = build_and_run(transformation, data, inputs,outputs)
+        x_transformation = "rbust"
+        y_transformation = ["robust", "robust"]
+
+        pred = build_and_run(x_transformation, y_transformation, data, inputs,outputs)
 
         for i in pred.index:
             assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])

@@ -299,7 +299,7 @@ class Model(BaseModel):
             self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
             first_layer = False
 
-        layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
+        #layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
 
         inputs = []
         for k, v in lyr_cache.items():

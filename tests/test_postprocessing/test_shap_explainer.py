@@ -25,17 +25,10 @@ laos = MtropicsLaos()
 class_data = laos.make_classification()
 
 
-def get_lstm_model():
-    from tensorflow.keras.models import Model as KModel
-    from tensorflow.keras.layers import Flatten
+# todo, do not use any transformation on y for classification problem
+# todo, allowed y_transformation are only log and sqrt
+# todo unable to use functional api with transformation for model explainability
 
-    m = make_lstm_reg_model()
-    train_x, _ = m.training_data()
-    o = Flatten()(m.outputs[0])
-    # #
-    m2 = KModel(inputs=m.inputs, outputs=o)
-
-    return m2, train_x, m.dh.input_features, m.path
 
 
 def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
@@ -44,13 +37,13 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
 
     x_test, y_test = model.test_data()
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
-    interpreter = ShapExplainer(model._model, x_test, path=model.path,
-                                  explainer="Explainer")
+    interpreter = ShapExplainer(model, x_test, path=model.path,
+                                  explainer="Explainer", framework="ML")
     if heatmap: interpreter.heatmap(show=False)
     if beeswarm_plot: interpreter.beeswarm_plot(show=False)
 
-    interpreter = ShapExplainer(model._model, x_test.values, path=model.path,
-                                  explainer="Explainer")
+    interpreter = ShapExplainer(model, x_test.values, path=model.path,
+                                  explainer="Explainer", framework="ML")
     if heatmap: interpreter.heatmap(show=False)
     if beeswarm_plot: interpreter.beeswarm_plot(show=False)
 
@@ -60,6 +53,7 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
 def fit_and_interpret(model_name:str,
                       data,
                       draw_heatmap=True,
+                      **kwargs
                       ):
 
     model = get_fitted_model(model_name, data)
@@ -70,22 +64,29 @@ def fit_and_interpret(model_name:str,
     x_test, y_test = model.test_data()
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:2]
 
-    interpreter = ShapExplainer(model._model, x_test,
-                                  train_data=x_train,
-                                  path=model.path)
+    interpreter = ShapExplainer(model, x_test,
+                                train_data=x_train,
+                                path=model.path,
+                                framework="ML",
+                                **kwargs
+                                )
     interpreter(save=False)
 
     if draw_heatmap:
         interpreter.heatmap(show=False)
 
-    explainer = ShapExplainer(model._model,
+    explainer = ShapExplainer(model,
                               x_test.values,
                               train_data=x_train.values,
                               features=model.dh.input_features,
-                              path=model.path)
+                              path=model.path,
+                              framework="ML",
+                              **kwargs
+                              )
     explainer(save=False)
 
     return
+
 
 def get_explainer(model_name, data):
     model = get_fitted_model(model_name, data)
@@ -94,9 +95,10 @@ def get_explainer(model_name, data):
 
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
 
-    explainer = ShapExplainer(model._model, x_test, explainer="Explainer",
+    explainer = ShapExplainer(model, x_test, explainer="Explainer",
                                   path=model.path)
     return explainer
+
 
 def fit_and_draw_plots(model_name, data, draw_heatmap=False):
 
@@ -106,16 +108,16 @@ def fit_and_draw_plots(model_name, data, draw_heatmap=False):
 
     x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
 
-    explainer = ShapExplainer(model._model, x_test, explainer="Explainer",
-                                  path=model.path)
+    explainer = ShapExplainer(model, x_test, explainer="Explainer",
+                                  path=model.path, framework="ML")
 
     explainer.waterfall_plot_all_examples(show=False)
     explainer.scatter_plot_all_features(show=False)
     if draw_heatmap:
         explainer.heatmap(show=False)
 
-    explainer = ShapExplainer(model._model, x_test.values, explainer="Explainer",
-                           path=model.path)
+    explainer = ShapExplainer(model, x_test.values, explainer="Explainer",
+                           path=model.path, framework="ML")
     explainer.waterfall_plot_all_examples(show=False)
     explainer.scatter_plot_all_features(show=False)
     #explainer.heatmap()
@@ -193,16 +195,17 @@ class TestShapExplainers(unittest.TestCase):
 
         x_test = pd.DataFrame(x_test, columns=model.dh.input_features).iloc[0:5]
 
-        explainer = ShapExplainer(model._model,
+        explainer = ShapExplainer(model,
                                   data=x_test, train_data=x_train,
-                                        num_means=10, path=model.path)
+                                  num_means=10, path=model.path,
+                                  explainer="KernelExplainer")
 
         explainer(plot_force_all=False)
         #explainer.heatmap()
 
-        explainer = ShapExplainer(model._model,
+        explainer = ShapExplainer(model,
                                   train_data=x_train.values, data=x_test.values,
-                                  num_means=10, path=model.path)
+                                  num_means=10, path=model.path, explainer="KernelExplainer")
         explainer(plot_force_all=False)
         #explainer.heatmap()
         return
@@ -218,33 +221,37 @@ class TestShapExplainers(unittest.TestCase):
         x_test, y_test = model.test_data()
 
         def initiate_class():
-            return ShapExplainer(model._model, x_test)
+            return ShapExplainer(model, x_test)
 
-        self.assertRaises(ValueError,
+        self.assertRaises(AssertionError,
                           initiate_class)
         return
 
     def test_xgb(self):
 
-        fit_and_interpret("XGBRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
+        fit_and_interpret("XGBRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+                          draw_heatmap=True, explainer="TreeExplainer")
 
         return
 
     def test_lgbm(self):
 
-        fit_and_interpret("LGBMRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=False)
+        fit_and_interpret("LGBMRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+                          draw_heatmap=False, explainer="TreeExplainer")
 
         return
 
     def test_catboost(self):
 
-        fit_and_interpret("CatBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=False)
+        fit_and_interpret("CatBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+                          draw_heatmap=False, explainer="TreeExplainer")
 
         return
 
     def test_waterfall_with_xgb(self):
 
-        fit_and_draw_plots("XGBRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']), draw_heatmap=True)
+        fit_and_draw_plots("XGBRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+                           draw_heatmap=True)
 
         return
 
@@ -313,15 +320,16 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_class_model(self):
 
-        fit_and_interpret("DecisionTreeClassifier", data=class_data, draw_heatmap=False)
+        fit_and_interpret("DecisionTreeClassifier", data=class_data, draw_heatmap=False,
+                          explainer="KernelExplainer")
 
         return
 
     def test_lstm_model_deep_exp(self):
 
-        m, train_x, features, _path = get_lstm_model()
-        #
-        exp = ShapExplainer(model=m, data=train_x, layer=2, features=features, path=_path)
+        m = make_lstm_reg_model()
+        train_x, _ = m.training_data()
+        exp = ShapExplainer(model=m, data=train_x, layer=2, features=m.dh.input_features, path=m.path)
         exp.summary_plot(show=False)
         exp.force_plot_single_example(0, show=False)
         exp.plot_shap_values(show=False)
@@ -329,10 +337,11 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_lstm_model_gradient_exp(self):
 
-        m, train_x, features, _path = get_lstm_model()
+        m = make_lstm_reg_model()
+        train_x, _ = m.training_data()
 
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
-                            features=features, path=_path)
+                            features=m.dh.input_features, path=m.path)
         exp.plot_shap_values(show=False)
         exp.force_plot_single_example(0, show=False)
         return
@@ -354,12 +363,13 @@ class TestShapExplainers(unittest.TestCase):
                   ]:
 
             model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
-            exp = explain_model_with_shap(model, examples_to_explain=2)
+            exp = explain_model_with_shap(model, examples_to_explain=2, explainer="TreeExplainer")
             assert isinstance(exp, ShapExplainer)
 
         return
 
     def test_ai4water_mlp(self):
+        time.sleep(1)
         model = make_mlp_model()
 
         exp = explain_model_with_shap(model, examples_to_explain=2)

@@ -149,7 +149,7 @@ class TestClassifications(unittest.TestCase):
         model = Model(
             model= {'layers': {'LSTM': {'units': 32},
                                'Dense': {'units': 2},
-                               'Reshape': {'target_shape': (2,1)}}},
+                               }},
             lookback=5,
             output_features = ['blaTEM_coppml', 'tetx_coppml'],
             data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml']),

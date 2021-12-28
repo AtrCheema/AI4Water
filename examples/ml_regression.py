@@ -18,7 +18,6 @@ model = Model(
     batches="2d",
     val_fraction=0.0,
     model={'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}},
-    transformation=None
 )
 
 h = model.fit()

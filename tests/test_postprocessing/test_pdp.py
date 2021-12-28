@@ -34,7 +34,7 @@ class TestPDP(unittest.TestCase):
         return
 
     def test_3d_single_input(self):
-        model = Model(model={"layers": {"LSTM": 32}},
+        model = Model(model={"layers": {"LSTM": 32, "Dense": 1}},
                       lookback=4,
                       verbosity=0,
                       data=arg_beach())

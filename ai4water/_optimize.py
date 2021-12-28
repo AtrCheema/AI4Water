@@ -145,6 +145,8 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             include=None,
             exclude=None,
             append=None,
+            transform_y=True,
+            y_transformations=None,
             process_results=False,
             data=None,
     ):
@@ -157,13 +159,27 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             data=data
         )
 
-        self.space = make_space(self.model.data.columns.to_list(),
-                                include=include, exclude=exclude, append=append,
+        self.space = make_space(self.model.dh.input_features,
+                                include=include,
+                                exclude=exclude,
+                                append=append,
+                                output_features=model.dh.output_features,
+                                transform_y=transform_y,
+                                y_transformations=y_transformations,
                                 categories=categories)
+
+        self.input_features = model.dh.input_features
+        assert isinstance(self.input_features, list)
+        self.output_features = model.dh.output_features
+        if isinstance(self.output_features, str):
+            self.output_features = [self.output_features]
+        assert len(self.output_features) == 1
+
 
     def update(self, config, suggestions):
 
         transformations = []
+        y_transformations = []
 
         for feature, method in suggestions.items():
 
@@ -181,27 +197,38 @@ class OptimizeTransformations(ModelOptimizerMixIn):
                 elif method == "sqrt":
                     t['treat_negatives'] = True
 
-                transformations.append(t)
+                if feature in self.input_features:
+                    transformations.append(t)
+                else:
+                    y_transformations.append(t)
 
         # following parameters must be overwritten even if they were provided by the user.
-        config['transformation'] = transformations
+        config['x_transformation'] = transformations
+        config['y_transformation'] = y_transformations or None
+
         return
 
 
 def make_space(
-        features: list,
+        input_features: list,
         categories: list,
+        output_features: Union[str, list] = None,
         include: Union[str, list, dict] = None,
         exclude: Union[str, list] = None,
         append: dict = None,
+        transform_y=True,
+        y_transformations=None,
 ) -> list:
     """
     Arguments:
-        features :
+        input_features :
         categories :
-        include: the names of features to include
-        exclude: the name/names of features to exclude
-        append: the features with custom candidate transformations
+        output_features
+        include: the names of input features to include
+        exclude: the name/names of input features to exclude
+        append: the input features with custom candidate transformations
+        transform_y:
+        y_transformations
     """
     hpo = importlib.import_module("ai4water.hyperopt")
     Categorical = hpo.Categorical
@@ -209,7 +236,7 @@ def make_space(
     # although we need space as list at the end, it is better to create a dictionary of it
     # because manipulating dictionary is easier
     space = {
-        name: Categorical(categories, name=name) for name in features
+        name: Categorical(categories, name=name) for name in input_features
     }
 
     if include is not None:
@@ -249,5 +276,14 @@ def make_space(
                 assert isinstance(v, list), f"space for {k} must be list but it is {v.__class__.__name__}"
                 v = Categorical(v, name=k)
             space[k] = v
+
+    # we also want to transform target/output feature, so put its parameter space in `space`
+    if transform_y:
+        if y_transformations is None:
+            y_transformations = ['log', 'log10', 'log2', 'sqrt', 'none']
+        if isinstance(output_features, list):
+            assert len(output_features) == 1
+            output_features = output_features[0]
+        space.update({output_features: Categorical(y_transformations, name=output_features)})
 
     return list(space.values())

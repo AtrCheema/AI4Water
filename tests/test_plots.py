@@ -18,9 +18,11 @@ else:
 
 from ai4water.datasets import arg_beach
 
+
 beach_data:pd.DataFrame = arg_beach()
 
 inputs = beach_data.columns.to_list()[0:-1]
+
 
 def run_plots(model):
     model.plot_train_data()

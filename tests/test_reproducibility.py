@@ -16,6 +16,7 @@ def get_model(model_name):
 
     return p
 
+
 class TestML(unittest.TestCase):
 
     def test_xgboost(self):

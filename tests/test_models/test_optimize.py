@@ -34,40 +34,56 @@ class TestOptimize(unittest.TestCase):
         model = Model(model="XGBRegressor", data=df)
 
         model.optimize_transformations(exclude="tide_cm", algorithm="random", num_iterations=3)
-        assert isinstance(model.config['transformation'], list)
+        assert isinstance(model.config['x_transformation'], list)
+        assert isinstance(model.config['y_transformation'], list)
         return
 
     def test_make_space(self):
-        space = make_space(data.columns.to_list(), categories=['log', 'log2', 'minmax', 'none'])
+        space = make_space(data.columns.to_list(),
+                           categories=['log', 'log2', 'minmax', 'none'],
+                           transform_y=False)
         assert len(space) == 14
         # include
         space = make_space(data.columns.to_list(), include="tide_cm",
-                           categories=['log', 'log2', 'minmax', 'none'])
+                           categories=['log', 'log2', 'minmax', 'none'],
+                           transform_y=False)
         assert len(space) == 1
 
         include = ["tide_cm", "tetx_coppml"]
         space = make_space(data.columns.to_list(), include=include,
-                           categories=['log', 'log2', 'minmax', 'none'])
+                           categories=['log', 'log2', 'minmax', 'none'],
+                           transform_y=False)
         for sp, _name in zip(space, include):
             assert sp.name == _name
 
         exclude = "tide_cm"
         space = make_space(data.columns.to_list(), exclude=exclude,
-                           categories=['log', 'log2', 'minmax', 'none'])
+                           categories=['log', 'log2', 'minmax', 'none'],
+                           transform_y=False)
         for sp in space:
             assert sp.name != exclude
 
         exclude = ["tide_cm", "tetx_coppml"]
         space = make_space(data.columns.to_list(), exclude=exclude,
-                           categories=['log', 'log2', 'minmax', 'none'])
+                           categories=['log', 'log2', 'minmax', 'none'],
+                           transform_y=False)
         for sp in space:
             assert sp.name not in exclude
 
         new = {"tetx_coppml": ["log", "log2", "log10"]}
         space = make_space(data.columns.to_list(), include="tetx_coppml", append=new,
-                           categories=['log', 'log2', 'minmax', 'none', 'log10'])
+                           categories=['log', 'log2', 'minmax', 'none', 'log10'],
+                           transform_y=False)
         assert len(space) == 1, space
         assert len(space[0].categories) == 3
+
+        space = make_space(data.columns.to_list()[0:-1],
+                           categories=['log', 'log2', 'minmax', 'none'],
+                           output_features=data.columns.to_list()[-1:])
+
+        assert len(space) == 14
+        # the last one is target
+        assert 'sqrt' in space[-1].categories
         return
 
 

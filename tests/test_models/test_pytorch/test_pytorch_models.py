@@ -40,10 +40,8 @@ class TestPytorchModels(unittest.TestCase):
                          lr=0.0001,
                          batch_size=4,
                          train_data='random',
-                         transformation=[
-                             {'method': 'minmax', 'features': list(arg_beach().columns)[0:-1]},
-                             {'method': 'log2', 'features': ['tetx_coppml'], 'replace_zeros': True, 'replace_nans': True}
-                         ],
+                         x_transformation={'method': 'minmax', 'features': list(arg_beach().columns)[0:-1]},
+                         y_transformation={'method': 'log2', 'features': ['tetx_coppml'], 'replace_zeros': True},
                          model={'layers': {'hidden_units': 4}},
                          verbosity=0
                          )

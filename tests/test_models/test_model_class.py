@@ -109,7 +109,7 @@ class TestPredictMethod(unittest.TestCase):
         _test_ml_inbuilt_data_reg(Model)
         _test_ml_inbuilt_data_cls(Model)
         return
-#
+
     def test_ml_inbuilt_data_fn(self):
         #_test_ml_inbuilt_data_reg(FModel)
         _test_ml_inbuilt_data_cls(FModel)

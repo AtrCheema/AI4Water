@@ -1,3 +1,4 @@
+import time
 import unittest
 import os
 import sys
@@ -78,7 +79,6 @@ def make_class_model(**kwargs):
     model = Model(
         model="DecisionTreeClassifier",
         data=class_data.dropna().iloc[0:30],
-        transformation={'method': 'quantile', 'features': ['Ecoli_mpn100']},
         verbosity=0,
         **kwargs
     )
@@ -88,16 +88,7 @@ def make_class_model(**kwargs):
 
 def make_lstm_reg_model():
 
-    class MyModel(Model):
-        def predict(self,
-                *args, **kwargs
-                ):
-            p = super(MyModel, self).predict(*args, **kwargs)
-
-            return p.reshape(-1,)
-
-
-    model = MyModel(
+    model = Model(
         model = {"layers": {
             "LSTM": 4,
             "Dense": 1
@@ -107,6 +98,7 @@ def make_lstm_reg_model():
         verbosity=0
     )
     return model
+
 
 def make_reg_model(**kwargs):
 
@@ -149,7 +141,7 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
 
     train_x, test_x = get_data(model, to_dataframe=to_dataframe, examples_to_explain=examples_to_explain)
 
-    lime_exp = LimeExplainer(model=model._model,
+    lime_exp = LimeExplainer(model=model,
                                train_data=train_x,
                                data=test_x,
                                mode="regression",
@@ -197,7 +189,7 @@ class TestLimeExplainer(unittest.TestCase):
                       data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
                       verbosity=0)
         model.fit()
-        lime_exp = LimeExplainer(model=model._model,
+        lime_exp = LimeExplainer(model=model,
                                    train_data=model.training_data()[0],
                                    data=model.test_data()[0][0:3],
                                    mode="regression",
@@ -255,7 +247,7 @@ class TestLimeExplainer(unittest.TestCase):
             "RandomForestRegressor",
             "GradientBoostingRegressor"
                   ]:
-
+            print(m, 'hereeeee')
             model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
             exp = explain_model_with_lime(model, examples_to_explain=2)
             assert isinstance(exp, LimeExplainer)
@@ -269,10 +261,12 @@ class TestLimeExplainer(unittest.TestCase):
         return
 
     def test_ai4water_lstm(self):
+        time.sleep(1)
         m = lstm_model()
         m.fit(epochs=1)
         exp = explain_model_with_lime(m, examples_to_explain=2)
         assert isinstance(exp, LimeExplainer)
+        return
 
 
 if __name__ == "__main__":

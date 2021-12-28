@@ -62,19 +62,19 @@ def make_layers(outs):
         "Concatenate": {"config": {},
                    "inputs": ["LSTM_1d", "Flatten"]},
         "Dense": {"units": outs},
-        "Reshape": {"target_shape": (outs, 1)}
+        #"Reshape": {"target_shape": (outs, 1)}
     }
     return layers
 
 
-def build_and_run(outputs, transformation=None, indices=None):
+def build_and_run(outputs, x_transformation=None, indices=None):
     model = Model(
         model={"layers": make_layers(len(outputs['inp_1d']))},
         lookback=lookback,
         input_features = {"inp_1d": inp_1d, "inp_2d": inp_2d},
         output_features=outputs,
         data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d},
-        transformation = transformation,
+        x_transformation = x_transformation,
         train_data=indices,
         epochs=2,
         verbosity=0
@@ -90,13 +90,13 @@ class test_MultiInputModels(unittest.TestCase):
     def test_with_no_transformation(self):
         time.sleep(1)
         outputs = {"inp_1d": ['flow']}
-        build_and_run(outputs, transformation=None)
+        build_and_run(outputs, x_transformation=None)
         return
 
     def test_with_transformation(self):
         outputs = {"inp_1d": ['flow']}
         transformation={'inp_1d': 'minmax', 'inp_2d': None}
-        build_and_run(outputs, transformation=transformation)
+        build_and_run(outputs, x_transformation=transformation)
         return
 
     def test_with_random_sampling(self):
@@ -112,7 +112,7 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_output_layer1(self):
         # check if it adds both dense and reshapes it correctly or not
-        model = Model(model={'layers': {'LSTM': 64}},
+        model = Model(model={'layers': {'LSTM': 64, "Dense": 1}},
                       data=load_nasdaq(),
                       verbosity=0)
 
@@ -136,7 +136,8 @@ class test_MultiInputModels(unittest.TestCase):
         # check if it does not add layers when it does not have to
         model = Model(model={'layers': {'LSTM': 64,
                                         'Dense': 1,
-                                        'Reshape': {'target_shape': (1,1)}}},
+                                        #'Reshape': {'target_shape': (1,1)}
+                             }},
                       data=load_nasdaq(),
                       verbosity=0)
 
@@ -163,7 +164,7 @@ class test_MultiInputModels(unittest.TestCase):
                 conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
                 s = tf.keras.layers.Concatenate()([out1, conc2])
                 out = Dense(1, name='output')(s)
-                out = tf.keras.layers.Reshape((1,1))(out)
+                #out = tf.keras.layers.Reshape((1,1))(out)
                 return [inp1, inp2, inp3, inp4], out
 
             def training_data(self, data=None, data_keys=None, **kwargs):
@@ -172,7 +173,7 @@ class test_MultiInputModels(unittest.TestCase):
                 in2 = np.random.random((_examples, 10, 4))
                 in3 = np.random.random((_examples, 10))
                 in4 = np.random.random((_examples, 9))
-                o = np.random.random((_examples, 1, 1))
+                o = np.random.random((_examples, 1))
                 return [in1, in2, in3, in4], o
 
             def validation_data(self, *args, **kwargs):
