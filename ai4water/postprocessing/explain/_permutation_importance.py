@@ -202,7 +202,7 @@ class PermutationImportance(ExplainerMixin):
 
         imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
 
-        from ai4water.utils.utils import imshow
+        from ai4water.utils.easy_mpl import imshow
 
         fig, axis = plt.subplots()
 

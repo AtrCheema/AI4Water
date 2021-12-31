@@ -9,8 +9,8 @@ import pandas as pd
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.plotting_tools import bar_chart
-from ai4water.utils.utils import plot_activations_along_inputs, imshow
+from ai4water.utils.easy_mpl import bar_chart, imshow
+from ai4water.utils.utils import plot_activations_along_inputs
 
 
 class Interpret(Plot):

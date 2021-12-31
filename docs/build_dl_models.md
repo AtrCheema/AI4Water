@@ -48,7 +48,8 @@ from ai4water import Model
 from ai4water.datasets import arg_beach
 
 layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
-          "LSTM_1": 32
+          "LSTM_1": 32,
+          "Dense": 1
           }
 
 df = arg_beach
@@ -58,7 +59,6 @@ model = Model(batch_size=16,
                 lr=0.001,
                 model={'layers':layers},
                 epochs=2,
-              data=df
               )
 ```
 ![LSTM](imgs/lstm.png)

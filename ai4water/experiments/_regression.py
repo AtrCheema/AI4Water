@@ -160,7 +160,7 @@ class MLRegressionExperiments(Experiments):
         else:
             model.fit(data=self.data, **fit_kws)
             vt, vp = model.predict(data='validation', return_true=True)
-            val_score = getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
+            val_score = getattr(RegressionMetrics(vt, vp), model.val_metric)()
 
         tt, tp = model.predict(data='test', return_true=True)
 

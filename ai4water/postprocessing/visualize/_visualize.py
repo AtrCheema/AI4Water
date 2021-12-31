@@ -12,7 +12,8 @@ from ai4water.backend import tf, keras
 
 import ai4water.keract_mod as keract
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import maybe_three_outputs, imshow
+from ai4water.utils.utils import maybe_three_outputs
+from ai4water.utils.easy_mpl import imshow
 
 from ..utils import choose_examples
 

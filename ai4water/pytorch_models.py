@@ -17,7 +17,7 @@ if torch is not None:
 else:
     HARHN, IMVTensorLSTM = None, None
 
-from ai4water.utils.utils import imshow
+from ai4water.utils.easy_mpl import imshow
 
 
 class HARHNModel(Model):

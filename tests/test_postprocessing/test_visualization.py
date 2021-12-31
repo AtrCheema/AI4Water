@@ -1,20 +1,18 @@
 import os
 import sys
 import site
-import random
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
 import unittest
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from ai4water import Model
 from ai4water.datasets import arg_beach
 from ai4water.postprocessing.visualize import Visualize
-from ai4water.utils.visualizations import PlotResults, regplot
-from ai4water.utils.plotting_tools import bar_chart, BAR_CMAPS, get_cmap
+from ai4water.utils.visualizations import PlotResults
+
 
 
 data = arg_beach()
@@ -29,11 +27,6 @@ def get_history(keys, add_val=False):
         if add_val:
             history[f"val_{k}"] = np.random.random(10)
     return history
-
-
-def get_chart_data(n):
-    d = np.random.randint(2, 50, n)
-    return d, [f'feature_{i}' for i in d]
 
 
 class TestLossCurve(unittest.TestCase):
@@ -72,54 +65,6 @@ class TestLossCurve(unittest.TestCase):
         visualizer = PlotResults()
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias']))
         visualizer.plot_loss(get_history(['loss', 'nse', 'r2', 'kge', 'pbias', 'bias'], True))
-        return
-
-
-class TestRegplot(unittest.TestCase):
-
-    def test_reg_plot_with_line(self):
-        regplot(data['pcp3_mm'], data['pcp6_mm'], ci=None)
-        return
-
-    def test_regplot_with_line_and_ci(self):
-        regplot(data['pcp3_mm'], data['pcp6_mm'])
-        return
-    def test_regplot_with_line_ci_and_annotation(self):
-        regplot(data['pcp3_mm'], data['pcp6_mm'], annotation_key="MSE", annotation_val=0.2)
-
-    def test_with_list_as_inputs(self):
-        regplot(data['pcp3_mm'].values.tolist(), data['pcp6_mm'].values.tolist())
-        return
-
-
-class TestBarChart(unittest.TestCase):
-
-    def test_bar_h(self):
-        d, names = get_chart_data(5)
-        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
-
-        plt.close('all')
-        _, axis = plt.subplots()
-        bar_chart(values=d, labels=names, axis=axis, color=cm)
-        return
-
-    def test_bar_v_without_axis(self):
-        d, names = get_chart_data(5)
-        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
-
-        bar_chart(values=d, labels=names, color=cm, sort=True)
-
-    def test_h_sorted(self):
-        d, names = get_chart_data(5)
-        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
-
-        bar_chart(values=d, labels=names, color=cm, orient='v')
-        return
-
-    def test_vertical_without_axis(self):
-        d, names = get_chart_data(5)
-        cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
-        bar_chart(values=d, labels=names, color=cm, sort=True, orient='v')
         return
 
 
@@ -164,6 +109,7 @@ class TestVisualize(unittest.TestCase):
             model.fit(data=data)
             model.view(show=False)
         return
+
 
 if __name__ == "__main__":
     unittest.main()

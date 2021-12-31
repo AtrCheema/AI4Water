@@ -11,10 +11,10 @@ from ai4water.hyperopt import HyperOpt
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.taylor_diagram import taylor_plot
 from ai4water.hyperopt import Real, Categorical, Integer
-from ai4water.utils.utils import init_subplots, process_axis, jsonize, ERROR_LABELS
+from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 from ai4water.backend import tf
-from ai4water.utils.plotting_tools import bar_chart
+from ai4water.utils.easy_mpl import bar_chart, process_axis, init_subplots
 from ai4water.utils.visualizations import PlotResults
 from ai4water.preprocessing import DataHandler
 
@@ -1221,7 +1221,7 @@ be used to build ai4water's Model class.
         else:
             model.fit(data=self.data,)
             val_true, val_pred = model.predict(data='validation', return_true=True)
-            val_score = getattr(RegressionMetrics(val_true, val_pred), model.config['val_metric'])()
+            val_score = getattr(RegressionMetrics(val_true, val_pred), model.val_metric)()
 
         if predict:
             trt, trp = model.predict(data='training', return_true=True)

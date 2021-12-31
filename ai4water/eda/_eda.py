@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 from .utils import pac_yw, auto_corr, plot_autocorr
 from ai4water.utils.utils import _missing_vals
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.plotting_tools import bar_chart
+from ai4water.utils.easy_mpl import bar_chart
 from ai4water.utils.utils import find_tot_plots
 from ai4water.preprocessing import Transformation
 from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features

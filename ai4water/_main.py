@@ -1763,6 +1763,7 @@ class BaseModel(NN):
                 config['min_loss'] = np.nanmin(min_loss_array)
 
         config['config'] = self.config.copy()
+        config['config']['val_metric'] = self.val_metric  # it is calculated during run time
         config['method'] = self.method
 
         if 'path' in config['config']:  # we don't want our saved config to have 'path' key in it

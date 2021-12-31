@@ -1,16 +1,9 @@
 import os
-import random
 from typing import Union
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
-from ai4water.utils.utils import init_subplots, imshow
-
-
-BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
-             'GnBu', 'PuBu', 'PuBuGn', 'summer_r']
 
 
 # TODO
@@ -80,6 +73,8 @@ class Plots(object):
                 show=False,
                 **kwargs):
 
+        from .easy_mpl import imshow
+
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
         axis, im = imshow(img, aspect="auto", interpolation=interpolation, cmap=cmap,
@@ -132,6 +127,8 @@ class Plots(object):
         return save_or_show(self.path, *args, **kwargs)
 
     def plot2d_act_for_a_sample(self, activations, sample=0, save: bool = False, name: str = None):
+        from ai4water.utils.easy_mpl import init_subplots
+
         fig, axis = init_subplots(height=8)
         # for idx, ax in enumerate(axis):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
@@ -247,53 +244,6 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
     return n_rows, n_cols
 
 
-def bar_chart(labels,
-              values,
-              axis=None,
-              orient='h',
-              sort=False,
-              color=None,
-              xlabel=None,
-              xlabel_fs=None,
-              title=None,
-              title_fs=None,
-              show_yaxis=True,
-              rotation=0
-              ):
-
-    cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
-    color = color if color is not None else cm
-
-    if not axis:
-        _, axis = plt.subplots()
-
-    if sort:
-        sort_idx = np.argsort(values)
-        values = values[sort_idx]
-        labels = np.array(labels)[sort_idx]
-
-    if orient == 'h':
-        axis.barh(np.arange(len(values)), values, color=color)
-        axis.set_yticks(np.arange(len(values)))
-        axis.set_yticklabels(labels, rotation=rotation)
-
-    else:
-        axis.bar(np.arange(len(values)), values, color=color)
-        axis.set_xticks(np.arange(len(values)))
-        axis.set_xticklabels(labels, rotation=rotation)
-
-    if not show_yaxis:
-        axis.get_yaxis().set_visible(False)
-
-    if xlabel:
-        axis.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
-
-    if title:
-        axis.set_title(title, fontdict={'fontsize': title_fs})
-
-    return axis
-
-
 def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True,
                  show=False):
 
@@ -327,7 +277,20 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
     return
 
 
-def get_cmap(cm: str, num_cols: int, low=0.0, high=1.0):
+def to_1d_array(array_like) -> np.ndarray:
 
-    cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
-    return cols
+    if array_like.__class__.__name__ in ['list', 'tuple', 'Series']:
+        return np.array(array_like)
+
+    elif array_like.__class__.__name__ == 'ndarray':
+        if array_like.ndim == 1:
+            return array_like
+        else:
+            assert array_like.size == len(array_like), f'cannot convert multidim ' \
+                                                       f'array of shape {array_like.shape} to 1d'
+            return array_like.reshape(-1, )
+
+    elif array_like.__class__.__name__ == 'DataFrame' and array_like.ndim == 2:
+        return array_like.values.reshape(-1,)
+    else:
+        raise ValueError(f'cannot convert object array {array_like.__class__.__name__}  to 1d ')

@@ -6,7 +6,6 @@ import datetime
 import warnings
 from typing import Union
 from shutil import rmtree
-from copy import deepcopy
 from collections import OrderedDict
 from typing import Any, Dict, Tuple, List
 import collections.abc as collections_abc
@@ -15,7 +14,6 @@ import scipy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
 try:
@@ -1420,179 +1418,6 @@ def find_tot_plots(features, max_subplots):
     return tot_plots
 
 
-def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
-    """Initializes the fig for subplots"""
-    plt.close('all')
-    fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
-    if width is not None:
-        fig.set_figwidth(width)
-    if height is not None:
-        fig.set_figheight(height)
-    return fig, axis
-
-
-def process_axis(axis,
-                 data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
-                 x: Union[list, np.ndarray] = None,  # array to plot as x
-                 marker='',
-                 fillstyle=None,
-                 linestyle='-',
-                 color=None,
-                 ms=6.0,  # markersize
-                 label=None,  # legend
-                 log=False,
-                 log_nz=False,
-                 **kwargs
-                 ):
-
-    """Purpose to act as a middle man between axis.plot/plt.plot.
-    Returns:
-        axis
-        """
-    # TODO
-    # default fontsizes should be same as used by matplotlib
-    # should not complicate plt.plot or axis.plto
-    # allow multiple plots on same axis
-
-    if log and log_nz:
-        raise ValueError
-
-    use_third = False
-    if x is not None:
-        if isinstance(x, str):  # the user has not specified x so x is currently plot style.
-            style = x
-            x = None
-            if marker == '.':
-                use_third = True
-
-    if log_nz:
-        data = deepcopy(data)
-        _data = data.values
-        d_nz_idx = np.where(_data > 0.0)
-        data_nz = _data[d_nz_idx]
-        d_nz_log = np.log(data_nz)
-        _data[d_nz_idx] = d_nz_log
-        _data = np.where(_data < 0.0, 0.0, _data)
-        data = pd.Series(_data, index=data.index)
-
-    if log:
-        data = deepcopy(data)
-        _data = np.where(data.values < 0.0, 0.0, data.values)
-        print(len(_data[np.where(_data < 0.0)]))
-        data = pd.Series(_data, index=data.index)
-
-    if x is not None:
-        axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker, linestyle=linestyle, ms=ms, label=label)
-    elif use_third:
-        axis.plot(data, style, color=color, ms=ms, label=label)
-    else:
-        axis.plot(data, fillstyle=fillstyle, color=color, marker=marker, linestyle=linestyle, ms=ms, label=label)
-
-    return _process_axis(axis=axis, label=label, log=log, **kwargs)
-
-
-def _process_axis(
-        axis: plt.Axes=None,
-        label=None,  # legend
-        log=False,
-        legend_kws:dict = None, # kwargs for axis.legend such as loc, fontsize, bbox_to_anchor, markerscale
-        xlabel=None,
-        xlabel_kws:dict=None,
-        xtick_kws:dict = None, # for axis.tick_params such as which, labelsize, colors etc
-        ylim:tuple=None,  # limit for y axis
-        ylabel=None,
-        ylabel_kws:dict=None,  # ylabel kwargs
-        ytick_kws:dict = None, # for axis.tick_params(  such as which, labelsize, colors etc
-        show_xaxis=True,
-        top_spine=True,
-        bottom_spine=True,
-        right_spine=True,
-        left_spine=True,
-        invert_yaxis=False,
-        max_xticks=None,
-        min_xticks=None,
-        title=None,
-        title_kws:dict=None,  # title kwargs
-)-> plt.Axes:
-    """
-    processing of matplotlib Axes
-    Returns:
-        plt.Axes
-    """
-    if axis is None:
-        axis = plt.gca()
-
-    if label:
-        if label != "__nolabel__":
-            legend_kws = legend_kws or {}
-            axis.legend(**legend_kws)
-
-    if ylabel:
-        ylabel_kws = ylabel_kws or {}
-        axis.set_ylabel(ylabel, **ylabel_kws)
-
-    if log:
-        axis.set_yscale('log')
-
-    if invert_yaxis:
-        axis.set_ylim(axis.get_ylim()[::-1])
-
-    if ylim:
-        axis.set_ylim(ylim)
-
-    if xlabel:  # better not change these paras if user has not defined any x_label
-        xtick_kws = xtick_kws or {}
-        axis.tick_params(axis="x", **xtick_kws)
-
-    if ylabel:
-        ytick_kws = ytick_kws or {}
-        axis.tick_params(axis="y", **ytick_kws)
-
-    axis.get_xaxis().set_visible(show_xaxis)
-
-    if xlabel:
-        xlabel_kws = xlabel_kws or {}
-        axis.set_xlabel(xlabel, **xlabel_kws)
-
-    if top_spine:
-        axis.spines['top'].set_visible(top_spine)
-    if bottom_spine:
-        axis.spines['bottom'].set_visible(bottom_spine)
-    if right_spine:
-        axis.spines['right'].set_visible(right_spine)
-    if left_spine:
-        axis.spines['left'].set_visible(left_spine)
-
-    if min_xticks is not None:
-        assert isinstance(min_xticks, int)
-        assert isinstance(max_xticks, int)
-        loc = mdates.AutoDateLocator(minticks=min_xticks, maxticks=max_xticks)
-        axis.xaxis.set_major_locator(loc)
-        fmt = mdates.AutoDateFormatter(loc)
-        axis.xaxis.set_major_formatter(fmt)
-
-    if title:
-        title_kws = title_kws or {}
-        axis.set_title(title, **title_kws)
-
-    return axis
-
-
-def plot(*args, show=True, **kwargs):
-    """
-    One liner plot function. It should not be more complex than axis.plot() or
-    plt.plot() yet it must accomplish all in one line what requires multiple
-    lines in matplotlib. args and kwargs can be anything which goes into plt.plot()
-    or axis.plot(). They can also be anything which goes into `process_axis`.
-    """
-    _, axis = init_subplots()
-    axis = process_axis(axis, *args, **kwargs)
-    if kwargs.get('save', False):
-        plt.savefig(f"{kwargs.get('name', 'fig.png')}")
-    if show:
-        plt.show()
-    return axis
-
 
 class JsonEncoder(json.JSONEncoder):
 
@@ -1625,6 +1450,8 @@ def plot_activations_along_inputs(
         vmax=None,
         show=False
 ):
+    from .easy_mpl import imshow  # at the top will make circular import
+
     # activation must be of shape (num_examples, lookback, input_features)
     assert activations.shape[1] == lookback
     assert activations.shape[2] == len(in_cols), f'{activations.shape}, {len(in_cols)}'
@@ -1669,61 +1496,6 @@ def plot_activations_along_inputs(
             plt.close('all')
 
     return
-
-
-def imshow(values,
-           axis=None,
-           vmin=None,
-           vmax=None,
-           xlabel=None,
-           aspect=None,
-           interpolation=None,
-           title=None,
-           cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
-           show=False,
-           annotate=False,
-           annotate_kws=None,
-           colorbar:bool=False,
-           colorbar_orientation:str = 'vertical'
-           ):
-    """One stop shop for imshow
-    Example:
-        >>> import numpy as np
-        >>> from ai4water.utils.utils import imshow
-        >>> x = np.random.random((10, 5))
-        >>> imshow(x, annotate=True)
-    """
-
-    if axis is None:
-        axis = plt.gca()
-
-    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=interpolation)
-
-    if annotate:
-        annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}
-        for i in range(values.shape[0]):
-            for j in range(values.shape[1]):
-                _ = axis.text(j, i, round(values[i, j], 2),
-                            **annotate_kws)
-
-    if yticklabels is not None:
-        axis.set_yticks(np.arange(len(yticklabels)))
-        axis.set_yticklabels(yticklabels)
-
-    if xticklabels is not None:
-        axis.set_xticks(np.arange(len(xticklabels)))
-        axis.set_xticklabels(xticklabels)
-
-    _process_axis(axis, xlabel=xlabel, ylabel=ylabel, title=title)
-
-    if colorbar:
-        fig: plt.Figure = plt.gcf()
-        fig.colorbar(im, orientation=colorbar_orientation, pad=0.2)
-
-    if show:
-        plt.show()
-
-    return axis, im
 
 
 def print_something(something, prefix=''):

@@ -16,7 +16,7 @@ try:
 except ModuleNotFoundError:
     K = None
 
-from ai4water.utils.utils import imshow
+from ai4water.utils.easy_mpl import imshow
 from ai4water.backend import sklearn_models
 from ._explain import ExplainerMixin
 from .utils import convert_ai4water_model
