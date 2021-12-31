@@ -8,6 +8,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
+
 try:
     import plotly
 except ModuleNotFoundError:
@@ -105,6 +107,7 @@ class PlotResults(Plot):
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
+        self.quantiles = None
 
         super().__init__(path, backend=backend)
 
@@ -123,6 +126,14 @@ class PlotResults(Plot):
     @data.setter
     def data(self, x):
         self._data = x
+
+    @property
+    def quantiles(self):
+        return self._quantiles
+
+    @quantiles.setter
+    def quantiles(self, x):
+        self._quantiles = x
 
     def horizon_plots(self, errors: dict, fname='', save=True):
         plt.close('')
@@ -266,6 +277,98 @@ class PlotResults(Plot):
         fig.set_figwidth(sub_plots[len(history)]['width'])
         self.save_or_show(fname=name, save=True if name is not None else False, show=show)
         mpl.rcParams.update(mpl.rcParamsDefault)
+        return
+
+    def plot_all_qs(self, true_outputs, predicted, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        st, en = 0, true_outputs.shape[0]
+
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+
+        for idx, q in enumerate(self.quantiles):
+            q_name = "{:.1f}".format(q * 100)
+            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
+
+        plt.legend(loc="best")
+        self.save_or_show(save, fname="all_quantiles", where='results')
+
+        return
+
+    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
+        assert true_outputs.shape[-2:] == (1, 1)
+        if en is None:
+            en = true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
+
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
+                             predicted[st:en, -q].reshape(-1,), alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
+        return
+
+    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        if en is None:
+            en = true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
+
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en),
+                             predicted[st:en, q].reshape(-1,),
+                             predicted[st:en, q + 1].reshape(-1,),
+                             alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
+        return
+
+    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
+
+        if en is None:
+            en = true_outputs.shape[0]
+        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
+                                              str(en))
+
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+        plt.fill_between(np.arange(st, en),
+                         predicted[st:en, min_q].reshape(-1,),
+                         predicted[st:en, max_q].reshape(-1,),
+                         alpha=0.2,
+                         color='g', edgecolor=None, label=q_name + ' %')
+        plt.legend(loc="best")
+        self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
+        return
+
+    def roc_curve(self, estimator, x, y, save=True):
+
+        plot_roc_curve(estimator, x, y.reshape(-1, ))
+        self.save_or_show(save, fname="roc", where="results")
+        return
+
+    def confusion_matrx(self,estimator, x, y, save=True):
+
+        plot_confusion_matrix(estimator, x, y.reshape(-1, ))
+        self.save_or_show(save, fname="confusion_matrix", where="results")
+        return
+
+    def precision_recall_curve(self, estimator, x, y, save=True):
+
+        plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
+        self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
 
 

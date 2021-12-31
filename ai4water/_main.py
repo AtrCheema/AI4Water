@@ -364,54 +364,53 @@ class BaseModel(NN):
     def data_path(self):
         return os.path.join(self.path, 'data')
 
-    def training_data(self, x=None, y=None, data='training', key=None):
+    def loss_name(self):
+        raise NotImplementedError
 
-        if x is None:
-            if isinstance(data, DataHandler) or isinstance(data, SiteDistributedDataHandler):
-                setattr(self, 'dh_', data)
-                data = data.training_data(key=key)
-            elif isinstance(data, str):
-                if data in ['validation', 'test']:
-                    # for .predict(data='training') case
-                    data = getattr(self, f'{data}_data')(key=key)
-                elif data == 'training':
-                    # assuming either dh_ has been set externally
-                    # or training_data() has been overwritten by the user
-                    data = self.dh_.training_data(key=key)
+    def training_data(self, x=None, y=None, data='training', key=None)->tuple:
+        #x,y are not used but only given to be used if user overwrites this method
+        return self.__fetch('training', data,key)
+
+    def validation_data(self, x=None, y=None, data='validation', key=None, **kwargs)->tuple:
+        """This method should return x,y pairs of validation data"""
+        return self.__fetch('validation', data,key)
+
+    def test_data(self, x=None, y=None, data='test', key=None)->tuple:
+        """This method should return x,y pairs of validation data"""
+        return self.__fetch('test', data,key)
+
+    def __fetch(self, source, data=None, key=None):
+        """if data is string, then it must either be `trianing`, `validation` or
+        `test` or name of a valid dataset. Otherwise data is supposed to be raw
+        data which will be given to DataHandler
+        """
+        if isinstance(data, str):
+            if data in ['training', 'test', 'validation']:
+                if hasattr(self, 'dh_'):
+                    data = getattr(self.dh_, f'{data}_data')(key=key)
                 else:
-                    # e.g. 'CAMELS_AUS'
-                    dh = DataHandler(data=data, **self.data_config)
-                    setattr(self, 'dh_', dh)
-                    data = self.dh_.training_data(key=key)
+                    raise AttributeError(f"Unable to get {source} data")
             else:
-                # DataHandler needs to be constructed
-                dh_ = DataHandler(data=data, **self.data_config)
-                setattr(self, 'dh_', dh_)
-                data = dh_.training_data(key=key)
-            x, y = maybe_three_outputs(data, self.teacher_forcing)
+                # e.g. 'CAMELS_AUS'
+                dh = DataHandler(data=data, **self.data_config)
+                setattr(self, 'dh_', dh)
+                data = getattr(dh, f'{source}_data')(key=key)
+
+
+        else:
+            dh = DataHandler(data=data, **self.data_config)
+            setattr(self, 'dh_', dh)
+            data = getattr(dh, f'{source}_data')(key=key)
+
+        x, y = maybe_three_outputs(data, self.teacher_forcing)
 
         return x, y
-
-    def validation_data(self, *args, **kwargs)->tuple:
-        """This method should return x,y pairs of validation data"""
-        val_data = None, None
-        if hasattr(self, 'dh_'):
-            val_data = self.dh_.validation_data(*args, **kwargs)
-        val_x, val_y = maybe_three_outputs(val_data, self.teacher_forcing)
-
-        val_x = self._transform_x(val_x, 'val_x_transformer_')
-        val_y = self._transform_y(val_y, 'val_y_transformer_')
-
-        return val_x, val_y
 
     @property
     def teacher_forcing(self):  # returns None if undefined
         if hasattr(self, 'dh_'):
             return self.dh_.teacher_forcing
         return self.config['teacher_forcing']
-
-    def test_data(self, *args, **kwargs):
-        return self.dh_.test_data(*args, **kwargs)
 
     def nn_layers(self):
         if hasattr(self, 'layers'):
@@ -591,7 +590,7 @@ class BaseModel(NN):
 
         return validation_data
 
-    def DO_fit(self, x, **kwargs):
+    def _call_fit_fn(self, x, **kwargs):
         """
         Some preprocessing before calling actual fit
 
@@ -608,7 +607,7 @@ class BaseModel(NN):
 
         return self.fit_fn(x, **kwargs)
 
-    def _FIT(self, inputs, outputs, validation_data, validation_steps=None, callbacks=None, **kwargs):
+    def _fit(self, inputs, outputs, validation_data, validation_steps=None, callbacks=None, **kwargs):
 
         nans_in_y_exist = False
         if isinstance(outputs, np.ndarray):
@@ -669,7 +668,7 @@ class BaseModel(NN):
                     self.config[k] = v
                 _kwargs.pop(k)
 
-        self.DO_fit(
+        self._call_fit_fn(
             **_kwargs,
             **kwargs,
         )
@@ -1064,7 +1063,11 @@ class BaseModel(NN):
         visualizer = PlotResults(path=self.path)
         self.is_training = True
 
-        inputs, outputs = self.training_data(x=x,y=y, data=data)
+        source = 'training'
+        if isinstance(data, str) and data in ['validation', 'test']:
+            source = data
+
+        inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
         # apply preprocessing/feature engineering if required.
         inputs = self._transform_x(inputs, 'x_transformer_')
@@ -1094,14 +1097,23 @@ class BaseModel(NN):
 
         if self.category == "DL":
             if 'validation_data' in kwargs:
+                # validation data is provided by user but since transformations are part of
+                # model so we must transform it
                 val_x, val_y = kwargs['validation_data']
-                val_x = self._transform_x(val_x, 'val_x_transformer_')
-                val_y = self._transform_y(val_y, 'val_y_transformer_')
-                kwargs['validation_data'] = val_x, val_y
+            elif user_defined_x:
+                # user defined x,y but did not give validation data using
+                # validation_data keyword argument
+                val_x, val_y = None, None
             else:
-                kwargs['validation_data'] = self.validation_data()
+                # either get validation data from DataHandler or maybe the user
+                # has overwritten validation_data method, in both cases transformatins
+                # are applied inside validation data.
+                val_x, val_y = self.validation_data()
+            val_x = self._transform_x(val_x, 'val_x_transformer_')
+            val_y = self._transform_y(val_y, 'val_y_transformer_')
+            kwargs['validation_data'] = val_x, val_y
 
-            history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
+            history = self._fit(inputs, outputs, callbacks=callbacks, **kwargs)
 
             if self.verbosity >= 0:
                 visualizer.plot_loss(history.history, show=self.verbosity)
@@ -1270,6 +1282,18 @@ class BaseModel(NN):
                     print(f"changing residual_threshold from {old_value} to {self._model.residual_threshold}")
         return
 
+    def score(self, x=None, y=None, data='test', **kwargs):
+        """since preprocesisng is part of Model, so the trained model with
+        sklearn as backend must also be able to apply preprocessing on inputs
+        before calculating score from sklearn. Currently it just calls the
+        `score` function of sklearn by first transforming x and y."""
+        if self.category == "ML" and hasattr(self, '_model'):
+            x,y, _, _, _ = self._fetch_data('test', x=x,y=y, data=data)
+            x = self._transform_x(x, 'x_score_')
+            x = self._transform_x(x, 'y_score_')
+            return self._model.score(x, y, **kwargs)
+        raise NotImplementedError(f"can not calculate score")
+
     def evaluate(
             self,
             x=None,
@@ -1345,22 +1369,11 @@ class BaseModel(NN):
 
     def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
 
-        if x is None:
-            assert data.__class__.__name__ != "NoneType"
-            if isinstance(data, str):
-                assert hasattr(self, 'dh_')
-                x,y = getattr(self, f'{data}_data')()
-            elif isinstance(data, DataHandler):
-                setattr(self, 'dh_', data)
-                data = data.test_data()
-                x, y = maybe_three_outputs(data, self.teacher_forcing)
-            else:
-                data = DataHandler(data=data, **self.data_config)
-                setattr(self, 'dh_', data)
-                data = data.test_data()
-                x, y = maybe_three_outputs(data, self.teacher_forcing)
-        else:
-            assert y.__class__.__name__ != "NoneType"
+        source = 'test'
+        if isinstance(data, str) and data in ['training', 'validation', 'test']:
+            source = data
+
+        x, y, _, _, _ = self._fetch_data(source, x, y, data)
 
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
@@ -1472,46 +1485,16 @@ class BaseModel(NN):
                      return_true: bool = False,
                      **kwargs):
 
-        transformation_key = None
-        user_defined_data = False
-        if x.__class__.__name__ == "NoneType":
-            transformation_key = '5_{data}'
+        source = 'test'
+        if isinstance(data, str) and data in ['training', 'validation', 'test']:
+            source = data
 
-            if isinstance(data, str):
-                prefix=data
-                if data in ['training', 'validation', 'test']:
-                    data = getattr(self, f'{data}_data')(key=transformation_key)
-                    inputs, true_outputs = maybe_three_outputs(data, self.teacher_forcing)
-                else:
-                    # dataset name from ai4water.datasets
-                    dh = DataHandler(data=data, **self.data_config)
-                    setattr(self, 'dh_', dh)
-                    inputs, true_outputs = dh.test_data(key=transformation_key)
-            elif isinstance(data, DataHandler):
-                prefix = f"dh_{dateandtime_now()}"
-                setattr(self, 'dh_', data)
-                inputs, true_outputs = data.test_data(key=transformation_key)
-            else:
-                prefix = f"data_{dateandtime_now()}"
-                dh = DataHandler(data=data, **self.data_config)
-                setattr(self, 'dh_', dh)
-                inputs, true_outputs = dh.test_data(key=transformation_key)
-        else:
-            prefix=f"x_{dateandtime_now()}"
-            inputs=x
-            user_defined_data=True
-            true_outputs=None
-            if y is not None:
-                true_outputs=y
-
-        if 'verbose' in kwargs:
-            verbosity = kwargs.pop('verbose')
-        else:
-            verbosity = self.verbosity
-
-        batch_size = self.config['batch_size']
-        if 'batch_size' in kwargs:
-            batch_size = kwargs.pop('batch_size')
+        inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+            source=source,
+            x=x,
+            y=y,
+            data=data
+        )
 
         inputs = self._transform_x(inputs, 'x_transformer_')
 
@@ -1522,14 +1505,22 @@ class BaseModel(NN):
                 true_outputs = y_transformer.fit_transform(true_outputs)
 
         if self.category == 'DL':
-            predicted = self.predict_fn(x=inputs,
-                                        batch_size=batch_size,
-                                        verbose=verbosity,
-                                        **kwargs)
+            # some arguments specifically for DL models
+            if 'verbose' not in kwargs:
+                kwargs['verbose'] = self.verbosity
+
+            if 'batch_size' in kwargs:  # if given by user
+                self.config['batch_size'] = kwargs['batch_size']  # update config
+            else:  # otherwise use from config
+                kwargs['batch_size'] = self.config['batch_size']
+
+            predicted = self.predict_fn(x=inputs,  **kwargs)
+
         else:
             if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
                 # since we have changed feature_names of booster,
                 kwargs['validate_features'] = False
+
             predicted = self.predict_ml_models(inputs, **kwargs)
 
         if true_outputs is None:  # only x was given, build transformer from the config
@@ -1586,9 +1577,13 @@ class BaseModel(NN):
 
         else:
             assert self.num_outs == 1
-            self.plot_quantiles1(true_outputs, predicted)
-            self.plot_quantiles2(true_outputs, predicted)
-            self.plot_all_qs(true_outputs, predicted)
+
+            visualizer = PlotResults(path=self.path)
+            visualizer.quantiles = self.quantiles
+
+            visualizer.plot_quantiles1(true_outputs, predicted)
+            visualizer.plot_quantiles2(true_outputs, predicted)
+            visualizer.plot_all_qs(true_outputs, predicted)
 
         if return_true:
             return true_outputs, predicted
@@ -1720,12 +1715,13 @@ class BaseModel(NN):
         if 'layers' not in self.config['model']:
 
             if self.mode.lower().startswith("cl"):
+                visualizer = PlotResults(path=self.path)
 
                 data = self.test_data()
                 x, y = maybe_three_outputs(data)
-                self.confusion_matrx(x=x, y=y)
-                self.precision_recall_curve(x=x, y=y)
-                self.roc_curve(x=x, y=y)
+                visualizer.confusion_matrx(self._model, x=x, y=y)
+                visualizer.precision_recall_curve(self._model, x=x, y=y)
+                visualizer.roc_curve(self._model, x=x, y=y)
 
         return Interpret(self)
 
@@ -1908,16 +1904,6 @@ class BaseModel(NN):
                 self.load_weights(weight_file_path)
         if self.verbosity > 0:
             print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
-        return
-
-    def write_cache(self, _fname, input_x, input_y, label_y):
-        fname = os.path.join(self.path, _fname)
-        if h5py is not None:
-            h5 = h5py.File(fname, 'w')
-            h5.create_dataset('input_X', data=input_x)
-            h5.create_dataset('input_Y', data=input_y)
-            h5.create_dataset('label_Y', data=label_y)
-            h5.close()
         return
 
     def eda(self, data, freq: str = None):
@@ -2308,6 +2294,32 @@ class BaseModel(NN):
             data = transformer.fit_transform(data)
             self.config[name] = transformer.config()
         return data
+
+    def _fetch_data(self, source:str, x=None, y=None, data=None):
+        """The main idea is that the user should be able to fully customize
+        training/test data by overwriting training_data and test_data methods.
+        However, if x is given or data is DataHandler then the training_data/test_data
+        methods of this(Model) class will not be called."""
+        user_defined_x = True
+        prefix = f'{source}_{dateandtime_now()}'
+        key = None
+
+        if x is None:
+            user_defined_x = False
+            key=f"5_{source}"
+
+            # the user has provided DataHandler from which training/test data needs to be extracted
+            if isinstance(data, DataHandler) or isinstance(data, SiteDistributedDataHandler):
+                setattr(self, 'dh_', data)
+                data = getattr(data, f'{source}_data')(key=key)
+
+            else:
+                data = getattr(self, f'{source}_data')(x=x, y=y, data=data, key=key)
+
+            # data may be tuple/list of three arrays
+            x,y = maybe_three_outputs(data, self.teacher_forcing)
+
+        return x,y, prefix, key, user_defined_x
 
 def get_values(outputs):
 

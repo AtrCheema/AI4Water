@@ -35,6 +35,8 @@ def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, ep
 
     _ = model.fit(data=data)
 
+    pred_y = model.predict(data='training')
+    eval_score = model.evaluate(data='training')
     pred_y = model.predict()
 
     return pred_y

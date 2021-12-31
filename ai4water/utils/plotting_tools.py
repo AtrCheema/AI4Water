@@ -5,7 +5,6 @@ from typing import Union
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 
 from ai4water.utils.utils import init_subplots, imshow
 
@@ -48,10 +47,6 @@ class Plots(object):
     @property
     def out_cols(self):
         return self.config['output_features']
-
-    # @property
-    # def lookback(self):
-    #     return self.config['lookback']
 
     def _imshow_3d(self, activation,
                    lyr_name,
@@ -213,98 +208,6 @@ class Plots(object):
                                         where='data')
             else:
                 print(f'skipping shape is {inputs.shape}')
-        return
-
-    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        for q in range(len(self.quantiles) - 1):
-            st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
-
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en),
-                             predicted[st:en, q].reshape(-1,),
-                             predicted[st:en, q + 1].reshape(-1,),
-                             alpha=0.2,
-                             color='g', edgecolor=None, label=st_q + '_' + en_q)
-            plt.legend(loc="best")
-            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
-        return
-
-    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
-                                              str(en))
-
-        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-        plt.fill_between(np.arange(st, en),
-                         predicted[st:en, min_q].reshape(-1,),
-                         predicted[st:en, max_q].reshape(-1,),
-                         alpha=0.2,
-                         color='g', edgecolor=None, label=q_name + ' %')
-        plt.legend(loc="best")
-        self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
-        return
-
-    def plot_all_qs(self, true_outputs, predicted, save=False):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        st, en = 0, true_outputs.shape[0]
-
-        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-
-        for idx, q in enumerate(self.quantiles):
-            q_name = "{:.1f}".format(q * 100)
-            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
-
-        plt.legend(loc="best")
-        self.save_or_show(save, fname="all_quantiles", where='results')
-
-        return
-
-    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
-        plt.close('all')
-        plt.style.use('ggplot')
-        assert true_outputs.shape[-2:] == (1, 1)
-        if en is None:
-            en = true_outputs.shape[0]
-        for q in range(len(self.quantiles) - 1):
-            st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
-
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
-                             predicted[st:en, -q].reshape(-1,), alpha=0.2,
-                             color='g', edgecolor=None, label=st_q + '_' + en_q)
-            plt.legend(loc="best")
-            self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
-        return
-
-    def roc_curve(self, x, y, save=True):
-        assert self.problem.upper().startswith("CLASS")
-        plot_roc_curve(self._model, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="roc", where="results")
-        return
-
-    def confusion_matrx(self, x, y, save=True):
-        assert self.problem.upper().startswith("CLASS")
-        plot_confusion_matrix(self._model, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="confusion_matrix", where="results")
-        return
-
-    def precision_recall_curve(self, x, y, save=True):
-        assert self.problem.upper().startswith("CLASS")
-        plot_precision_recall_curve(self._model, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
 
     def plot_histogram(self,

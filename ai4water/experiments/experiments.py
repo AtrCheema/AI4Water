@@ -275,7 +275,7 @@ class Experiments(object):
                 self.config['eval_models'][model_type] = self._model.path
 
                 if cross_validate:
-                    cv_scoring = self._model.config['val_metric']
+                    cv_scoring = self._model.val_metric
                     self.cv_scores[model_type] = getattr(self._model, f'cross_val_{cv_scoring}')
                     setattr(self, '_cv_scoring', cv_scoring)
 

@@ -36,7 +36,6 @@ class ModelOptimizerMixIn(object):
 
         hpo = importlib.import_module("ai4water.hyperopt")
 
-        #data = self.model.data
         val_metric = self.model.val_metric
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
@@ -164,9 +163,6 @@ class OptimizeTransformations(ModelOptimizerMixIn):
                                 include=include,
                                 exclude=exclude,
                                 append=append,
-                                #output_features=model.dh.output_features,
-                                #transform_y=transform_y,
-                                #y_transformations=y_transformations,
                                 categories=categories)
 
         self.input_features = model.input_features
@@ -187,7 +183,6 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             if method == "none":
                 pass
             else:
-
                 t = {"method": method, "features": [feature]}
 
                 if method.startswith("log"):
@@ -213,12 +208,9 @@ class OptimizeTransformations(ModelOptimizerMixIn):
 def make_space(
         input_features: list,
         categories: list,
-        #output_features: Union[str, list] = None,
         include: Union[str, list, dict] = None,
         exclude: Union[str, list] = None,
         append: dict = None,
-        #transform_y=False,
-        #y_transformations=None,
 ) -> list:
     """
     Arguments:
@@ -274,14 +266,5 @@ def make_space(
                 assert isinstance(v, list), f"space for {k} must be list but it is {v.__class__.__name__}"
                 v = Categorical(v, name=k)
             space[k] = v
-
-    # # we also want to transform target/output feature, so put its parameter space in `space`
-    # if transform_y:
-    #     if y_transformations is None:
-    #         y_transformations = ['log', 'log10', 'log2', 'sqrt', 'none']
-    #     if isinstance(output_features, list):
-    #         assert len(output_features) == 1
-    #         output_features = output_features[0]
-    #     space.update({output_features: Categorical(y_transformations, name=output_features)})
 
     return list(space.values())

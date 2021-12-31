@@ -23,6 +23,18 @@ class TestEvaluate(unittest.TestCase):
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
+    def test_basic_on_training_data(self):
+        model.fit(data=arg_beach(), epochs=1)
+        eval_scores = model.evaluate(data='training')
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
+    def test_basic_on_validation_data(self):
+        model.fit(data=arg_beach(), epochs=1)
+        eval_scores = model.evaluate(data='validation')
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
     def test_basic_with_metrics(self):
         # basic example with metrics
         eval_scores = model.evaluate(data=arg_beach(), metrics="kge")
