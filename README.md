@@ -104,7 +104,6 @@ data = arg_beach()
 model = Model(
         model = {'layers': {"LSTM": 64,
                             'Dense': 1}},
-        data = data,
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],     # columns in csv file to be used as output
         lookback = 12
@@ -113,7 +112,7 @@ model = Model(
 
 Train the model by calling the `fit()` method
 ```python
-history = model.fit()
+history = model.fit(data=data)
 ```
 
 Make predictions from it
@@ -175,10 +174,9 @@ model = Model(
         #  any regressor from https://scikit-learn.org/stable/modules/classes.html
         model={"RandomForestRegressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
     # some of the paramters are https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html#sklearn.ensemble.RandomForestRegressor
-        data=data
               )
 
-history = model.fit()
+history = model.fit(data=data)
 
 preds, obs = model.predict()
 ```

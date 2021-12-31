@@ -88,7 +88,6 @@ default_model = {
 def build_model(**kwargs):
 
     model = Model(
-        data=data1.astype(np.float32),
         verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
@@ -101,6 +100,7 @@ def build_model(**kwargs):
 
 def train_predict(model):
 
+    model.fit(data=data1.astype(np.float32))
     x, y = model.training_data()
 
     test_evaluation(model)
@@ -112,13 +112,16 @@ def test_train_val_test_data(data, val_data, **kwargs):
 
     model = Model(
         model=default_model,
-        data=data,
         val_data=val_data,
         test_fraction=0.2,
+        input_features=data.columns.to_list()[0:-1],
+        output_features=data.columns.to_list()[-1:],
         epochs=2,
         verbosity=0,
         **kwargs
     )
+
+    model.fit(data=data)
 
     train_x, train_y = model.training_data()
     _val_data = model.validation_data()
@@ -148,13 +151,13 @@ def test_train_val_test_data(data, val_data, **kwargs):
 
 def test_evaluation(model):
 
-    model.evaluate('training')
+    model.evaluate(data='training')
     train_x, train_y = model.training_data()
 
-    model.evaluate('validation')
+    model.evaluate(data='validation')
     val_data = model.validation_data()
 
-    model.evaluate('test')
+    model.evaluate(data='test')
     test_x, test_y = model.test_data()
 
     if model.config['val_data'] == "same":
@@ -206,7 +209,7 @@ class TestUtils(unittest.TestCase):
         x, y = train_predict(model)
 
         self.assertEqual(model.num_outs, 5)
-        self.assertEqual(model.ins, 1)
+        self.assertEqual(model.num_ins, 1)
         self.assertEqual(model.forecast_step, 0)
 
         self.assertEqual(int(x[0].sum()), 91)
@@ -487,7 +490,6 @@ class TestUtils(unittest.TestCase):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
         time.sleep(1)
         model = Model(
-            data=data1.astype(np.float32),
             input_features=in_cols,
             output_features=out_cols,
             epochs=2,
@@ -498,10 +500,10 @@ class TestUtils(unittest.TestCase):
             train_data='random',
             verbosity=0)
 
-        t,p = model.predict(return_true=True)
+        t,p = model.predict(data=data1.astype(np.float32),return_true=True)
         # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
         for i in range(100):
-            idx = model.dh.test_indices[i] + model.lookback - 1
+            idx = model.dh_.test_indices[i] + model.lookback - 1
             true = int(round(t[i].item()))
             self.assertEqual(true, idx + 10000)
         test_evaluation(model)
@@ -518,14 +520,13 @@ class TestUtils(unittest.TestCase):
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
-                      data=df,
                       train_data='random',
                       verbosity=0
                       )
 
-        model.fit()
+        model.fit(data=df)
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
-        self.assertTrue(np.allclose(idx5, model.dh.train_indices[-8:]))
+        self.assertTrue(np.allclose(idx5, model.dh_.train_indices[-8:]))
 
         x, y = model.training_data()
 
@@ -544,8 +545,8 @@ class TestUtils(unittest.TestCase):
         #self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[10]) # todo
         #self.assertTrue(np.allclose(xx[2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[10])) # todo
 
-        assert np.max(model.dh.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.dh.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh_.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh_.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
 
         test_evaluation(model)
 
@@ -564,17 +565,17 @@ class TestUtils(unittest.TestCase):
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
-                      data=df,
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
                       train_data = 'random',
                       verbosity=0)
 
+        model.fit(data=df)
         x, y = model.training_data()
 
         test_evaluation(model)
 
         for i in range(100):
-            idx = model.dh.train_indices[i]
+            idx = model.dh_.train_indices[i]
             df_x = df[['in1', 'in2']].iloc[idx]
             if idx > model.lookback and int(df_x.isna().sum()) == 0:
                 self.assertAlmostEqual(float(df['out1'].iloc[idx+14]), y[i], 6)
@@ -595,10 +596,11 @@ class TestUtils(unittest.TestCase):
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
-                      data=df,
                       train_data='random',
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
                       verbosity=0)
+
+        model.fit(data=df)
 
         x, y = model.training_data()
 
@@ -611,8 +613,8 @@ class TestUtils(unittest.TestCase):
         #         self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
         #         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
 
-        assert np.max(model.dh.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.dh.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh_.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        assert np.max(model.dh_.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
 
         return
 
@@ -637,9 +639,9 @@ class TestUtils(unittest.TestCase):
                           output_features=['out1', 'out2'],
                           epochs=10,
                           verbosity=0,
-                          data=df)
+                          )
 
-            history = model.fit()
+            history = model.fit(data=df)
 
             self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
@@ -667,9 +669,9 @@ class TestUtils(unittest.TestCase):
                           verbosity=0,
                           batch_size=4,
                           train_data = 'random',
-                          data=df.copy())
+                          )
 
-            history = model.fit()
+            history = model.fit(data=df.copy())
 
             self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)

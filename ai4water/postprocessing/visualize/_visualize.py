@@ -118,7 +118,7 @@ class Visualize(Plots):
 
         Plots.__init__(self,
                        self.vis_path,
-                       model.problem,
+                       model.mode,
                        model.category,
                        config=model.config)
 
@@ -163,8 +163,8 @@ class Visualize(Plots):
         """
         if x is None:
             # if layer names are not specified, this will get get activations of allparameters
-            data = getattr(self.model, f'{data}_data')()
-            x, _ = maybe_three_outputs(data, self.model.dh.teacher_forcing)
+            x, _ = getattr(self.model, f'{data}_data')()
+            #x, _ = maybe_three_outputs(data, self.model.teacher_forcing)
 
         if self.model.api == "subclassing":
             dl_model = self.model
@@ -263,7 +263,7 @@ class Visualize(Plots):
 
         elif np.ndim(activation) == 3:
             if "input" in lyr_name.lower():
-                kwargs['xticklabels'] = self.model.dh.input_features
+                kwargs['xticklabels'] = self.model.input_features
             self._imshow_3d(activation, lyr_name, save=show, **kwargs, where='')
         elif np.ndim(activation) == 2:  # this is now 1d
             # shape= (?, 1)
@@ -691,7 +691,7 @@ class Visualize(Plots):
                     lightgbm.plot_tree(self.model._model, ax=axis, **kwargs)
 
                 else:  # sklearn types
-                    plot_tree(self.model._model, feature_names=self.model.dh.input_features,
+                    plot_tree(self.model._model, feature_names=self.model.input_features,
                               ax=axis, **kwargs)
 
                 plt.savefig(fname, dpi=500)

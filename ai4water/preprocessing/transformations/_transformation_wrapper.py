@@ -64,15 +64,23 @@ class Transformations(object):
                 It can be one of the following types
 
                 - `string` when you want to apply single transformation
+                ```python
                 >>> config='minmax'
+                ```
                 - `dict`: to pass additional arguments to the [Transformation][ai4water.preprocessing.Transformation]
                    class
+                ```python
                 >>> config = {"method": 'log', 'treat_negatives': True, 'features': ['features']}
+                ```
                 - `list` when we want to apply multiple transformations
+                ```python
                 >>> ['minmax', 'zscore']
+                ```
                 or
+                ```python
                 >>> [{"method": 'log', 'treat_negatives': True, 'features': ['features']},
                 >>>  {'method': 'sqrt', 'treat_negatives': True}]
+                ```
 
         """
         self.names = feature_names
@@ -93,13 +101,13 @@ class Transformations(object):
     def _check_features(self):
 
         if self.is_numpy_:
-            assert self.names.__class__.__name__ == 'list', f"""
+            assert isinstance(self.names, list), f"""
             feature_names are of type {type(self.names)}"""
 
         elif self.is_list_:
             for n in self.names:
-                assert n.__class__.__name__ == 'list', f"""
-                feature_names {type(self.names)} don't match data"""
+                assert isinstance(n, list), f"""
+                feature_names {type(n)} don't match data"""
 
         elif self.is_dict_:
             assert isinstance(self.names, dict), f"""
@@ -141,7 +149,7 @@ class Transformations(object):
         else:
             raise ValueError(f"invalid data of type {data.__class__.__name__}")
 
-        # first unpack the data if required
+        # first check that data matches config
         self._check_features()
 
         # then apply transformation

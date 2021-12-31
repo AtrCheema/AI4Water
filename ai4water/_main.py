@@ -3,7 +3,7 @@ import json
 import time
 import random
 import warnings
-from typing import Union, Callable, Tuple
+from typing import Union, Callable
 from types import MethodType
 
 try:
@@ -23,7 +23,6 @@ except ImportError:
 
 from ai4water.nn_tools import NN
 from ai4water.backend import sklearn_models
-from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.visualizations import PlotResults
 from ai4water.utils.utils import ts_features, make_model
 from ai4water.preprocessing.datahandler import DataHandler
@@ -49,13 +48,12 @@ except ModuleNotFoundError:
     wandb = None
 
 
-class BaseModel(NN, Plots):
+class BaseModel(NN):
 
     """ Model class that implements logic of AI4Water. """
 
     def __init__(self,
                  model: Union[dict, str] = None,
-                 data=None,
                  x_transformation: Union[str, dict, list] = None,
                  y_transformation:Union[str, dict, list] = None,
                  lr: float = 0.001,
@@ -209,16 +207,21 @@ class BaseModel(NN, Plots):
             kwargs :
                 keyword arguments for [`DataHandler`][ai4water.preprocessing.datahandler.DataHandler.__init__] class
 
+        Note
+        -----
+            The transformations applied on `x` and `y` data using `x_transformation`
+            and `y_transformations` are part of **model**. See [this](https://stats.stackexchange.com/q/555839/314919)
         Example:
             >>>from ai4water import Model
             >>>from ai4water.datasets import arg_beach
             >>>df = arg_beach()
-            >>>model = Model(data=df,
+            >>>model_ = Model(input_features=df.columns.tolist()[0:-1],
             ...              batch_size=16,
-            ...           model={'layers': {'LSTM': 64}},
+            ...              output_features=df.columns.tolist()[-1:],
+            ...              model={'layers': {'LSTM': 64, 'Dense': 1}},
             ...)
-            >>>history = model.fit()
-            >>>y, obs = model.predict()
+            >>>history = model_.fit(data=df)
+            >>>y, obs = model_.predict()
         """
         if self._go_up:
             maker = make_model(
@@ -245,25 +248,16 @@ class BaseModel(NN, Plots):
                 **kwargs
             )
 
-            # data_config, model_config = config['data_config'], config['model_config']
             reset_seed(maker.config['seed'], os=os, random=random, tf=tf, torch=torch)
             if tf is not None:
                 # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
                 # file, they may share same graph.
                 tf.keras.backend.clear_session()
 
-            if data.__class__.__name__ in ["DataHanlder", "SiteDistributedDataHandler"]:
-                self.dh = data
-            else:
-                self.dh = DataHandler(data=data, **maker.data_config)
+            self.data_config = maker.data_config
 
             self.opt_paras = maker.opt_paras
             self._original_model_config = maker.orig_model
-
-            # if DataHanlder defines input and output features, we must put it back in config
-            # so that it can be accessed as .config['input_features'] etc.
-            maker.config['input_features'] = self.dh.input_features
-            maker.config['output_features'] = self.dh.output_features
 
             NN.__init__(self, config=maker.config)
 
@@ -274,59 +268,66 @@ class BaseModel(NN, Plots):
             self.mode = self.config['mode']
             self.info = {}
 
-            Plots.__init__(self, self.path, self.mode, self.category,
-                           config=maker.config)
-
     def __getattr__(self, item):
-        """instead of doing model.dh.num_ins do model.num_ins"""
+        """instead of doing model.dh_.num_ins do model.num_ins"""
         if item in [
             'data',
             'test_indices', 'train_indices',
-            'num_outs', 'forecast_step', 'num_ins',
+             'forecast_step',
                     ]:
-            return getattr(self.dh, item)
+            return getattr(self.dh_, item)
         else:
             raise AttributeError(f'BaseModel has no attribute named {item}')
+
+    @property
+    def input_features(self):
+        if hasattr(self, 'dh_'):
+            return self.dh_.input_features
+        return self.config['input_features']
+
+    @property
+    def num_ins(self):  # raises error if input_features are not defined
+        return len(self.input_features)
+
+    @property
+    def output_features(self):
+        if hasattr(self, 'dh_'):
+            return self.dh_.output_features
+        return self.config['output_features']
+
+    @property
+    def num_outs(self):
+        return len(self.output_features)
 
     # because __getattr__ does not work with pytorch, we explicitly get attributes from
     # DataHandler and assign them to Model
     @property
     def forecast_len(self):
-        return self.dh.forecast_len
-
-    @property
-    def num_outs(self):
-        return self.dh.num_outs
-
-    @property
-    def num_ins(self):
-        return self.dh.num_ins
+        if hasattr(self, 'dh_'):
+            return self.dh_.forecast_len
+        return self.config['forecast_len']
 
     @property
     def is_binary(self):
-        return self.dh.is_binary
+        return self.dh_.is_binary
 
     @property
     def is_multiclass(self):
-        return self.dh.is_multiclass
-
-    @property
-    def output_features(self):
-        return self.dh.output_features
+        return self.dh_.is_multiclass
 
     @property
     def classes(self):
-        return self.dh.classes
+        return self.dh_.classes
 
     @property
     def num_classes(self):
-        return self.dh.num_classes
+        return self.dh_.num_classes
 
     @property
     def is_multilabel(self):
-        if self.dh.data is None:
+        if self.dh_.data is None:
             return None
-        return self.dh.is_multilabel
+        return self.dh_.is_multilabel
 
     @property
     def quantiles(self):
@@ -346,15 +347,48 @@ class BaseModel(NN, Plots):
 
     # because __getattr__ does not work with pytorch, we explicitly get attributes from
     # DataHandler and assign them to Model
-    def training_data(self, *args, **kwargs):
+    def training_data(self, x=None, y=None, data='training', key=None):
 
-        return self.dh.training_data(*args, **kwargs)
+        if x is None:
+            if data.__class__.__name__ in ["DataHanlder", "SiteDistributedDataHandler"]:
+                dh_ = data
+                setattr(self, 'dh_', data)
+                data = dh_.training_data(key=key)
+            elif isinstance(data, str):
+                if data in ['validation', 'test']:
+                    # for .predict(data='training') case
+                    data = getattr(self, f'{data}_data')(key=key)
+                elif data == 'training':
+                    # assuming either dh_ has been set externally
+                    # or training_data() has been overwritten by the user
+                    data = self.dh_.training_data(key=key)
+                else:
+                    # e.g. 'CAMELS_AUS'
+                    dh = DataHandler(data=data, **self.data_config)
+                    setattr(self, 'dh_', dh)
+                    data = self.dh_.training_data(key=key)
+            else:
+                # DataHandler needs to be constructed
+                dh_ = DataHandler(data=data, **self.data_config)
+                setattr(self, 'dh_', dh_)
+                data = dh_.training_data(key=key)
+            x, y = maybe_three_outputs(data, self.teacher_forcing)
+
+        return x, y
 
     def validation_data(self, *args, **kwargs):
-        return self.dh.validation_data(*args, **kwargs)
+        if hasattr(self, 'dh_'):
+            return self.dh_.validation_data(*args, **kwargs)
+        return None, None
+
+    @property
+    def teacher_forcing(self):  # returns None if undefined
+        if hasattr(self, 'dh_'):
+            return self.dh_.teacher_forcing
+        return self.config['teacher_forcing']
 
     def test_data(self, *args, **kwargs):
-        return self.dh.test_data(*args, **kwargs)
+        return self.dh_.test_data(*args, **kwargs)
 
     def nn_layers(self):
         if hasattr(self, 'layers'):
@@ -636,7 +670,7 @@ class BaseModel(NN, Plots):
                 wandb.init(name=os.path.basename(self.path),
                            project=wandb_config.pop('project'),
                            notes=wandb_config.get('notes', f"{self.mode} with {self.config['backend']}"),
-                           tags=['ai4water', self.api, self.category, self.problem],
+                           tags=['ai4water', self.api, self.category, self.mode],
                            entity=wandb_config.pop('entity'))
 
                 monitor = self.config.get('monitor', 'val_loss')
@@ -732,7 +766,7 @@ class BaseModel(NN, Plots):
         else:
             if predicted.ndim == 1:
                 predicted = predicted.reshape(-1, 1)
-            for idx, _class in enumerate(self.out_cols):
+            for idx, _class in enumerate(self.output_features):
                 _true = true[:, idx]
                 _pred = predicted[:, idx]
 
@@ -789,7 +823,12 @@ class BaseModel(NN, Plots):
             if isinstance(forecast_len, dict):
                 forecast_len = np.unique(list(forecast_len.values())).item()
 
-            out_cols = list(self.out_cols.values())[0] if isinstance(self.out_cols, dict) else self.out_cols
+            out_cols = self.output_features
+            if isinstance(out_cols, dict):
+                if len(out_cols)>1:
+                    raise NotImplementedError("can not process results with more than 1 output arrays")
+                else:
+                    out_cols = list(out_cols.values())[0]
 
         for idx, out in enumerate(out_cols):
 
@@ -921,9 +960,9 @@ class BaseModel(NN, Plots):
         if estimator in ["ElasticNetCV", "LassoCV"] and 'precompute' not in kwargs:
             kwargs['precompute'] = False
 
-        self.residual_threshold_not_set = False
+        self.residual_threshold_not_set_ = False
         if estimator == "RANSACRegressor" and 'residual_threshold' not in kwargs:
-            self.residual_threshold_not_set = True
+            self.residual_threshold_not_set_ = True
 
         if estimator in ["LGBMRegressor", 'LGBMClassifier']:
             if 'random_state' not in kwargs:
@@ -952,7 +991,9 @@ class BaseModel(NN, Plots):
 
     def fit(
             self,
-            data: str = 'training',
+            x=None,
+            y=None,
+            data: Union[np.ndarray, pd.DataFrame, "DataHandler", str] = 'training',
             callbacks: Union[list, dict] = None,
             **kwargs
     ):
@@ -960,14 +1001,22 @@ class BaseModel(NN, Plots):
         Trains the model with data which is taken from data accoring to `data` arguments.
 
         Arguments:
+            x:
+                The input data consisting of input features
+            y:
+                Correct labels/observations/true data corresponding to 'x'.
             data :
-                data to use for model training. Default is 'training`.
+                Raw data fromw which `x`,`y` pairs are prepared. This will be
+                passed to [DataHandler][ai4water.preprocessing.DataHandler].
+                It can also be an instance if [DataHandler][ai4water.preprocessing.DataHandler] or
+                [SiteDistributedDataHandler][ai4water.preprocessing.SiteDistributedDataHandler].
+                It can also be name of dataset from [ai4water.datasets][ai4water.datasets.all_datasets]
             callbacks:
                 Any callback compatible with keras. If you want to log the output
                 to tensorboard, then just use `callbacks={'tensorboard':{}}` or
                 to provide additional arguments
                 ```python
-                callbacks={'tensorboard': {'histogram_freq': 1}}
+                >>> callbacks={'tensorboard': {'histogram_freq': 1}}
                 ```
             kwargs :
                 Any keyword argument for the `fit` method of the underlying algorithm.
@@ -977,12 +1026,14 @@ class BaseModel(NN, Plots):
             as backend or anything returned by `fit` method of underlying model.
         """
 
-        if isinstance(data, str):
-            assert data in ['training', 'test', 'validation']
+        if x is not None:
+            assert y is not None
 
-        return self.call_fit(data=data, callbacks=callbacks, **kwargs)
+        return self.call_fit(x=x, y=y, data=data, callbacks=callbacks, **kwargs)
 
     def call_fit(self,
+                 x=None,
+                 y=None,
                  data='training',
                  callbacks=None,
                  **kwargs):
@@ -990,31 +1041,18 @@ class BaseModel(NN, Plots):
         visualizer = PlotResults(path=self.path)
         self.is_training = True
 
-        if isinstance(data, np.ndarray):  # .fit(x,...)
-            assert 'x' not in kwargs
-            kwargs['x'] = data
+        inputs, outputs = self.training_data(x=x,y=y, data=data)
 
-        if isinstance(callbacks, np.ndarray):  # .fit(x,y)
-            assert 'y' not in kwargs
-            kwargs['y'] = callbacks
-            callbacks = None
+        # apply preprocessing/feature engineering if required.
+        if self.config['x_transformation']:
+            x_transformer = Transformations(self.input_features, self.config['x_transformation'])
+            inputs = x_transformer.fit_transform(inputs)
+            self.config['x_transformer_'] = x_transformer.config()
 
-        if 'x' not in kwargs:
-            train_data = getattr(self, f'{data}_data')()
-            inputs, outputs = maybe_three_outputs(train_data, self.dh.teacher_forcing)
-        else:
-            outputs = None
-            if 'y' in kwargs:
-                outputs = kwargs['y']
-                kwargs.pop('y')
-            inputs = kwargs.pop('x')
-
-        x_transformer = Transformations(self.dh.input_features, self.config['x_transformation'])
-        inputs = x_transformer.fit_transform(inputs)
-        self.config['x_transformer_'] = x_transformer.config()
-        y_transformer = Transformations(self.dh.output_features, self.config['y_transformation'])
-        outputs = y_transformer.fit_transform(outputs)
-        self.config['y_transformer_'] = y_transformer.config()
+        if self.config['y_transformation']:
+            y_transformer = Transformations(self.dh_.output_features, self.config['y_transformation'])
+            outputs = y_transformer.fit_transform(outputs)
+            self.config['y_transformer_'] = y_transformer.config()
 
         if isinstance(outputs, np.ndarray) and self.category == "DL":
 
@@ -1039,15 +1077,15 @@ class BaseModel(NN, Plots):
         self.info['training_start'] = dateandtime_now()
 
         if self.category == "DL":
-            if 'validation_data' not in kwargs:
+            if 'validation_data' not in kwargs:  # todo, apply transformation when 'validation_data' is in kwargs
                 val_data = self.validation_data()
-                val_x, val_y = maybe_three_outputs(val_data, self.dh.teacher_forcing)
+                val_x, val_y = maybe_three_outputs(val_data, self.teacher_forcing)
 
                 if val_x is not None:
-                    x_transformer = Transformations(self.dh.input_features, self.config['x_transformation'])
+                    x_transformer = Transformations(self.input_features, self.config['x_transformation'])
                     val_x = x_transformer.fit_transform(val_x)
                     self.config['val_x_transformer_'] = x_transformer.config()
-                    y_transformer = Transformations(self.dh.output_features, self.config['y_transformation'])
+                    y_transformer = Transformations(self.output_features, self.config['y_transformation'])
                     val_y = y_transformer.fit_transform(val_y)
                     self.config['val_y_transformer_'] = y_transformer.config()
 
@@ -1089,9 +1127,7 @@ class BaseModel(NN, Plots):
             if arg in self.config:
                 self.config.pop(arg)
 
-        if self.dh.is_multiclass:
-            outputs = outputs
-        else:
+        if len(outputs) == outputs.size:
             outputs = outputs.reshape(-1, )
 
         self._maybe_change_residual_threshold(outputs)
@@ -1100,7 +1136,7 @@ class BaseModel(NN, Plots):
 
         if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
             # by default feature_names of booster as set to f0, f1,...
-            self._model.get_booster().feature_names = self.dh.input_features
+            self._model.get_booster().feature_names = self.input_features
 
         self._save_ml_model()
 
@@ -1118,19 +1154,24 @@ class BaseModel(NN, Plots):
 
     def cross_val_score(
             self,
+            x=None,
+            y=None,
+            data: Union[pd.DataFrame, np.ndarray, str] = None,
             scoring: str = None,
-            data=None,
     ) -> float:
         """computes cross validation score
 
         Arguments:
+            x:
+                input data
+            y:
+                output corresponding to `x`.
+            data:
+                raw unprepared data which will be given to [DataHandler][ai4water.preprocessing.DataHandler]
+                to prepare x,y from it.
             scoring:
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
-            data:
-                a tuple of x,y parirs
-                If given, it will override the data prepared by Model class.
-
         Returns:
             cross validation score
 
@@ -1152,19 +1193,19 @@ class BaseModel(NN, Plots):
         cross_validator = list(self.config['cross_validator'].keys())[0]
         cross_validator_args = self.config['cross_validator'][cross_validator]
 
-        if data is None:
+        if data is None:  # prepared data is given
+            from .utils.utils import TrainTestSplit
+            splitter = TrainTestSplit(x, y, test_fraction=self.config['test_fraction'])
+            splits = splitter.KFold_splits(**cross_validator_args)
 
-            if self.num_outs > 1:  # we may not be able to check num_outs with custom data
-                raise ValueError
+        else: # we need to prepare data first as x,y
 
             if callable(cross_validator):
                 splits = cross_validator(**cross_validator_args)
             else:
-                splits = getattr(self.dh, f'{cross_validator}_splits')(**cross_validator_args)
-        else:
-            from .utils.utils import TrainTestSplit
-            splitter = TrainTestSplit(*data, test_fraction=self.config['test_fraction'])
-            splits = splitter.KFold_splits(**cross_validator_args)
+                dh = DataHandler(data=data, **self.data_config)
+                setattr(self, 'dh_', dh)
+                splits = getattr(self.dh_, f'{cross_validator}_splits')(**cross_validator_args)
 
         for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
 
@@ -1206,7 +1247,7 @@ class BaseModel(NN, Plots):
 
     def _maybe_change_residual_threshold(self, outputs) -> None:
         # https://stackoverflow.com/a/64396757/5982232
-        if self.residual_threshold_not_set:
+        if self.residual_threshold_not_set_:
             old_value = self._model.residual_threshold or mad(outputs.reshape(-1, ).tolist())
             if np.isnan(old_value) or old_value < 0.001:
                 self._model.set_params(residual_threshold=0.001)
@@ -1216,6 +1257,8 @@ class BaseModel(NN, Plots):
 
     def evaluate(
             self,
+            x=None,
+            y=None,
             data='test',
             metrics=None,
             **kwargs
@@ -1226,10 +1269,16 @@ class BaseModel(NN, Plots):
         method is not available in underlying `model`, then `predict` is called.
 
         Arguments:
+            x:
+                inputs
+            y:
+                outputs/true data corresponding to `x`
             data:
-                which data type to use, valid values are `training`, `test`
-                and `validation`. You can also provide your own x,y values as keyword
-                arguments. In such a case, this argument will have no meaning.
+                Raw unprepared data which will be fed to [DataHandler][ai4water.preprocessing.DataHandler]
+                to prepare x and y.
+                It is is a string then it will identify, which data type to use,
+                valid values are `training`, `test` and `validation`. If `x` and
+                `y` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
@@ -1254,8 +1303,8 @@ class BaseModel(NN, Plots):
         Example:
             >>> from ai4water import Model
             >>> from ai4water.datasets import arg_beach
-            >>> model = Model(model={"layers": {"Dense": 1}}, data=arg_beach())
-            >>> model.fit()
+            >>> model = Model(model={"layers": {"Dense": 1}})
+            >>> model.fit(data=arg_beach())
 
             for evaluation on test data
             >>> model.evaluate()
@@ -1277,33 +1326,26 @@ class BaseModel(NN, Plots):
             >>> model.evaluate(x, y=y)
             >>> model.evaluate(x=x, y=y)
         """
-        return self.call_evaluate(data, **kwargs)
+        return self.call_evaluate(x=x, y=y, data=data, **kwargs)
 
-    def call_evaluate(self, data='test', metrics=None, **kwargs):
+    def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
 
-        if data.__class__.__name__ in ["ndarray", "Dataset"]:  # .fit(x,y,...)
-            assert 'x' not in kwargs
-            x = data
-            if 'y' in kwargs:  # (.evaluate(x, y=y)
-                y = kwargs.pop('y')
+        if x is None:
+            assert data.__class__.__name__ != "NoneType"
+            if isinstance(data, str):
+                assert hasattr(self, 'dh_')
+                x,y = getattr(self, f'{data}_data')()
+            elif isinstance(data, DataHandler):
+                setattr(self, 'dh_', data)
+                data = data.test_data()
+                x, y = maybe_three_outputs(data, self.teacher_forcing)
             else:
-                y = metrics  # (.evaluate(x, y,...)
-                metrics = None
-
-        elif 'x' in kwargs:  # .fit(x=x, y=y)
-            assert data in ['training', 'test', 'validation']
-            x = kwargs.pop('x')
-            y = kwargs.pop('y')
-
-        elif isinstance(data, str):
-            assert data in ['training', 'test', 'validation']
-
-            # get the relevant data
-            data = getattr(self, f'{data}_data')()
-            x, y = maybe_three_outputs(data, self.dh.teacher_forcing)
-
+                data = DataHandler(data=data, **self.data_config)
+                setattr(self, 'dh_', data)
+                data = data.test_data()
+                x, y = maybe_three_outputs(data, self.teacher_forcing)
         else:
-            raise ValueError
+            assert y.__class__.__name__ != "NoneType"
 
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
@@ -1325,7 +1367,7 @@ class BaseModel(NN, Plots):
         """manual evaluation"""
         p = self.predict(x=x, return_true=False, process_results=False)
 
-        if self.problem == "regression":
+        if self.mode == "regression":
             from ai4water.postprocessing.SeqMetrics import RegressionMetrics
             errs = RegressionMetrics(y, p)
         else:
@@ -1353,9 +1395,9 @@ class BaseModel(NN, Plots):
 
     def predict(
             self,
-            data: str = 'test',
             x=None,
             y=None,
+            data: Union[str, pd.DataFrame, np.ndarray, DataHandler] = 'test',
             process_results: bool = True,
             metrics: str = "minimal",
             return_true: bool = False,
@@ -1365,17 +1407,21 @@ class BaseModel(NN, Plots):
         Makes prediction from the trained model.
 
         Arguments:
-            data: str
-                which data to use. Possible values are
-
-                - `training`
-                - `test`
-                - `validation`.
-                By default, `test` data is used for predictions.
             x:
-                if given, it will override `data`
+                The data on which to make prediction. if given, it will override
+                `data`
             y:
                 Used for pos-processing etc. if given it will overrite `data`
+            data:
+                It can either be a string indicating which data to use. In this
+                case, possible values are
+                    - `training`
+                    - `test`
+                    - `validation`.
+                By default, `test` data is used for predictions.
+                It can also be unprepared/raw data which will be given to [DataHandler][ai4water.preprocessing.DataHandler]
+                to prepare x,y values.
+
             process_results: bool
                 post processing of results
             metrics: str
@@ -1384,56 +1430,66 @@ class BaseModel(NN, Plots):
             return_true: bool
                 whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
-            kwargs : any keyword argument for `fit` method.
+            kwargs : any keyword argument for `predict` method.
         Returns:
             An numpy array of predicted values.
             If return_true is True then a tuple of arrays. The first is true
             and the second is predicted. If `x` is given but `y` is not given,
             then, first array which is returned is None.
         """
-        if isinstance(data, str):
-            assert data in ['training', 'test', 'validation']
+        if x is not None:
+            assert y is not None
 
         assert metrics in ("minimal", "all", "hydro_metrics")
 
-        return self.call_predict(data=data, x=x, y=y, process_results=process_results,
+        return self.call_predict(x=x,
+                                 y=y,
+                                 data=data,
+                                 process_results=process_results,
                                  metrics=metrics,
                                  return_true=return_true,
                                  **kwargs)
 
     def call_predict(self,
-                     data='test',
                      x=None,
                      y=None,
+                     data='test',
                      process_results=True,
                      metrics="minimal",
                      return_true: bool = False,
                      **kwargs):
 
         transformation_key = None
+        user_defined_data = False
+        if x.__class__.__name__ == "NoneType":
+            transformation_key = '5_{data}'
 
-        if data.__class__.__name__ in ["ndarray", "Dataset", "list", "DataFrame"]: # .predict(x,y,...)
-            # the predict method is called like .predict(x)
-            assert 'x' not in kwargs
-            inputs = data
-            user_defined_data = True
-            true_outputs = None
-            prefix = 'x'
+            if isinstance(data, str):
+                prefix=data
+                if data in ['training', 'validation', 'test']:
+                    data = getattr(self, f'{data}_data')(key=transformation_key)
+                    inputs, true_outputs = maybe_three_outputs(data, self.teacher_forcing)
+                else:
+                    # dataset name from ai4water.datasets
+                    dh = DataHandler(data=data, **self.data_config)
+                    setattr(self, 'dh_', dh)
+                    inputs, true_outputs = dh.test_data(key=transformation_key)
+            elif isinstance(data, DataHandler):
+                prefix = f"dh_{dateandtime_now()}"
+                setattr(self, 'dh_', data)
+                inputs, true_outputs = data.test_data(key=transformation_key)
+            else:
+                prefix = f"data_{dateandtime_now()}"
+                dh = DataHandler(data=data, **self.data_config)
+                setattr(self, 'dh_', dh)
+                inputs, true_outputs = dh.test_data(key=transformation_key)
         else:
-            transformation_key = '5'
-
-            if x is None:  # .predict('training')
-                if self.dh.data is None:
-                    raise ValueError("You must specify the data on which to make prediction")
-                user_defined_data = False
-                prefix = data
-                data = getattr(self, f'{data}_data')(key=transformation_key)
-                inputs, true_outputs = maybe_three_outputs(data, self.dh.teacher_forcing)
-            else:  # .predict(x=x,...)
-                user_defined_data = True
-                prefix = 'x'
-                inputs = x
-                true_outputs = y
+            prefix=f"x_{dateandtime_now()}"
+            inputs=x
+            user_defined_data=True
+            true_outputs=None
+            if y is not None:
+                true_outputs=y
 
         if 'verbose' in kwargs:
             verbosity = kwargs.pop('verbose')
@@ -1444,14 +1500,16 @@ class BaseModel(NN, Plots):
         if 'batch_size' in kwargs:
             batch_size = kwargs.pop('batch_size')
 
-        x_transformer = Transformations(self.dh.input_features, self.config['x_transformation'])
-        inputs = x_transformer.fit_transform(inputs)
-        self.config['x_transformer_'] = x_transformer.config()
+        if self.config['x_transformation']:
+            x_transformer = Transformations(self.input_features, self.config['x_transformation'])
+            inputs = x_transformer.fit_transform(inputs)
+            self.config['x_transformer_'] = x_transformer.config()
+
         y_transformer = None
         if true_outputs is not None:
-
-            y_transformer = Transformations(self.dh.output_features, self.config['y_transformation'])
-            true_outputs = y_transformer.fit_transform(true_outputs)
+            if self.config['y_transformation']:
+                y_transformer = Transformations(self.output_features, self.config['y_transformation'])
+                true_outputs = y_transformer.fit_transform(true_outputs)
 
         if self.category == 'DL':
             predicted = self.predict_fn(x=inputs,
@@ -1472,7 +1530,7 @@ class BaseModel(NN, Plots):
             else:
                 y_transformer = Transformations.from_config(self.config['y_transformer_'])
                 predicted = y_transformer.inverse_transform(predicted)
-        else:
+        elif self.config['y_transformation']:
             # both x,and true_y were given
             predicted = y_transformer.inverse_transform(predicted)
             true_outputs = y_transformer.inverse_transform(true_outputs)
@@ -1486,7 +1544,7 @@ class BaseModel(NN, Plots):
         dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
 
         if not user_defined_data:
-            true_outputs, dt_index = self.dh.deindexify(true_outputs, key=transformation_key)
+            true_outputs, dt_index = self.dh_.deindexify(true_outputs, key=transformation_key)
 
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
@@ -1502,9 +1560,11 @@ class BaseModel(NN, Plots):
 
             if process_results:
                 if self.mode == 'regression':
-                    self.process_regres_results(true_outputs, predicted,
+                    self.process_regres_results(true_outputs,
+                                                predicted,
                                                 metrics=metrics,
-                                                prefix=prefix + '_', index=dt_index,
+                                                prefix=prefix + '_',
+                                                index=dt_index,
                                                 user_defined_data=user_defined_data)
                 else:
                     self.process_class_results(true_outputs,
@@ -1636,7 +1696,10 @@ class BaseModel(NN, Plots):
             An instance of [Interpret][ai4water.postprocessing.interpret.Interpret] class
 
         Example:
-            >>> model.fit()
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import arg_beach
+            >>> model = Model(model=...)
+            >>> model.fit(data=arg_beach())
             >>> model.interpret()
         ```
         """
@@ -1709,7 +1772,6 @@ class BaseModel(NN, Plots):
     def from_config(
             cls,
             config: dict,
-            data=None,
             make_new_path: bool = False,
             **kwargs
     ):
@@ -1718,8 +1780,6 @@ class BaseModel(NN, Plots):
         Arguments:
             config: dict
                 dictionary containing model's parameters i.e. model.config
-            data:
-                the data
             make_new_path:
                 whether to make new path or not?
             kwargs:
@@ -1730,7 +1790,6 @@ class BaseModel(NN, Plots):
         config, path = cls._get_config_and_path(cls, config=config, make_new_path=make_new_path)
 
         return cls(**config,
-                   data=data,
                    path=path,
                    **kwargs)
 
@@ -1738,7 +1797,6 @@ class BaseModel(NN, Plots):
     def from_config_file(
             cls,
             config_path: str,
-            data=None,
             make_new_path: bool = False,
             **kwargs) -> "BaseModel":
         """
@@ -1747,8 +1805,6 @@ class BaseModel(NN, Plots):
         Arguments:
             config_path:
                 complete path of config file
-            data :
-                data for Model
             make_new_path:
                 If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
@@ -1761,7 +1817,7 @@ class BaseModel(NN, Plots):
         config, path = cls._get_config_and_path(cls, config_path=config_path, make_new_path=make_new_path)
 
         return cls(**config,
-                   data=data,
+                   #data=data,
                    path=path,
                    **kwargs)
 
@@ -1903,12 +1959,6 @@ class BaseModel(NN, Plots):
 
     def print_info(self):
         class_type = ''
-        if self.is_binary:
-            class_type = "binary"
-        elif self.is_multiclass:
-            class_type = "multi-class"
-        elif self.is_multilabel:
-            class_type = "multi-label"
 
         if isinstance(self.config['model'], dict):
             if 'layers' in self.config['model']:
@@ -1936,11 +1986,11 @@ class BaseModel(NN, Plots):
 
     def optimize_hyperparameters(
             self,
+            data: Union[tuple, list, pd.DataFrame, np.ndarray],
             algorithm: str = "bayes",
             num_iterations: int = 14,
             process_results: bool = True,
             update_config: bool = True,
-            data: Union[tuple, list] = None,
             **kwargs
     ):
         """
@@ -1949,6 +1999,11 @@ class BaseModel(NN, Plots):
         The parameaters that needs to be optimized, must be given as space.
 
         Arguments:
+            data:
+                It can be one of following
+
+                    - tuple of x,y pairs
+                    - a list of
             algorithm:
                 the algorithm to use for optimization
             num_iterations:
@@ -1957,10 +2012,6 @@ class BaseModel(NN, Plots):
                 whether to perform postprocessing of optimization results or not
             update_config:
                 whether to update the config of model or not.
-            data:
-                Only required if `data` argument to Model class was not provided
-                i.e. user has its own custom data to train on. It must be a tuple
-                of x,y pairs.
         Returns:
             an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] which is used for optimization
 
@@ -1971,18 +2022,24 @@ class BaseModel(NN, Plots):
             >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
             >>>                 "max_depth": Categorical([10, 20, 30]),
             >>>                 "learning_rate": Real(0.00001, 0.1)}}
-            >>> model = Model(model=model_config, data=arg_beach())
-            >>> optimizer = model.optimize_hyperparameters()
+            >>> model = Model(model=model_config)
+            >>> optimizer = model.optimize_hyperparameters(data=arg_beach())
 
             Same can be done if a model is defined using neural networks
-            >>> model_conf = {"layers":
-            ...     {"LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
+            >>> model_conf = {"layers": {
+            ...     "Input": {"input_shape": (15, 13)},
+            ...     "LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
             ...      "Dense1": {"units": 1,
             ...            "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
-            >>> model = Model(model=model_config, data=arg_beach())
-            >>> optimizer = model.optimize_hyperparameters()
+            >>> model = Model(model=model_config)
+            >>> optimizer = model.optimize_hyperparameters(data=arg_beach())
         """
         from ._optimize import OptimizeHyperparameters  # optimize_hyperparameters
+
+        if isinstance(data, list) or isinstance(data, tuple):
+            pass
+        else:
+            self.dh_ = DataHandler(data, **self.data_config)
 
         _optimizer = OptimizeHyperparameters(
             self,
@@ -2009,12 +2066,12 @@ class BaseModel(NN, Plots):
 
     def optimize_transformations(
             self,
+            data:Union[np.ndarray, pd.DataFrame],
             transformations: Union[list, str] = None,
             include: Union[str, list, dict] = None,
             exclude: Union[str, list] = None,
             append: dict = None,
-            transform_y: bool = True,
-            y_transformations: Union[list, str] = None,
+            y_transformations: Union[list, dict] = None,
             algorithm: str = "bayes",
             num_iterations: int = 12,
             update_config: bool = True
@@ -2025,6 +2082,8 @@ class BaseModel(NN, Plots):
         function for optimization problem.
 
         Arguments:
+            data:
+
             transformations:
                 the transformations to consider. By default, following
                 transformations are considered for input features
@@ -2042,6 +2101,7 @@ class BaseModel(NN, Plots):
                 - `log10`
                 - `sqrt`    square root
 
+            include: the names of features to include
             exclude: the name/names of input features to exclude
             append:
                 the input features with custom candidate transformations. For example
@@ -2050,21 +2110,26 @@ class BaseModel(NN, Plots):
                 ```python
                 >>> append={"tide_cm": ["minmax", "zscore"]}
                 ```
-            transform_y:
-                whether you want to transform output/target feature or not?
             y_transformations:
-                only relevant if `transform_y` is True. The candidate transformations
-                for target/output feature. By default only following transformations
-                are considered for output/target feature.
+                It can either be a list of transformations to be considered for
+                output features for example
                 ```
                 >>> y_transformations = ['log', 'log10', 'log2', 'sqrt']
                 ```
-                where `none` indicates no transformation
+                would mean that consider `log`, `log10`, `log2` and `sqrt` are
+                to be considered for output transformations during optimization.
+                It can also be a dictionary whose keys are names of output features
+                and whose values are lists of transformations to be considered for output
+                features. For example
+                ```
+                >>> y_transformations = {'output1': ['log2', 'log10'], 'output2': ['log', 'sqrt']}
+                ```
+                Default is None, which means do not optimize transformation for output
+                features.
             algorithm: str
                 The algorithm to use for optimizing transformations
             num_iterations: int
                 The number of iterations for optimizatino algorithm.
-            include: the names of features to include
             update_config: whether to update the config of model or not.
 
         Returns:
@@ -2073,28 +2138,43 @@ class BaseModel(NN, Plots):
         Example:
             >>> from ai4water.datasets import arg_beach
             >>> from ai4water import Model
-            >>> model = Model(model="xgboostregressor", data=arg_beach())
-            >>> optimizer = model.optimize_transformations(exclude="tide_cm")
-            >>> print(optimizer.best_paras())  # find the best/optimized transformations
-            >>> model.fit()
+            >>> model = Model(model="xgboostregressor")
+            >>> optimizer_ = model.optimize_transformations(data=arg_beach(), exclude="tide_cm")
+            >>> print(optimizer_.best_paras())  # find the best/optimized transformations
+            >>> model.fit(data=arg_beach())
             >>> model.predict()
         """
         from ._optimize import OptimizeTransformations  # optimize_transformations
 
+        self.dh_ = DataHandler(data=data, **self.data_config)
+
         categories = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
                       "quantile", "robust", "log", "log2", "log10", "sqrt", "none",
                       ]
+
+        append = append or {}
 
         if transformations is not None:
             assert isinstance(transformations, list)
             assert all([t in categories for t in transformations]), f"transformations must be one of {categories}"
             categories = transformations
 
-        if y_transformations is None:
-            y_transformations = ['log', 'log10', 'log2', 'sqrt', 'none']
-        if transform_y:
-            assert isinstance(y_transformations, list)
-            assert all([t in categories for t in y_transformations]), f"transformations must be one of {categories}"
+        if y_transformations:
+
+            if isinstance(y_transformations, list):
+                assert all([t in categories for t in y_transformations]), f"transformations must be one of {categories}"
+                for out in self.output_features:
+                    append[out] = y_transformations
+
+            else:
+                assert isinstance(y_transformations, dict)
+                for out_feature, out_transformations in y_transformations.items():
+
+                    assert out_feature in self.output_features
+                    assert isinstance(out_transformations, list)
+                    assert all(
+                        [t in categories for t in y_transformations]), f"transformations must be one of {categories}"
+                    append[out_feature] = out_transformations
 
         optimizer = OptimizeTransformations(
             self,
@@ -2104,8 +2184,7 @@ class BaseModel(NN, Plots):
             exclude=exclude,
             append=append,
             categories=categories,
-            transform_y=transform_y,
-            y_transformations=y_transformations,
+            data=data,
         ).fit()
 
         x_transformations = []
@@ -2125,14 +2204,14 @@ class BaseModel(NN, Plots):
                 elif method == "sqrt":
                     t["treat_negatives"] = True
 
-                if feature in self.dh.input_features:
+                if feature in self.input_features:
                     x_transformations.append(t)
                 else:
                     y_transformations.append(t)
 
         if update_config:
             self.config['x_transformation'] = x_transformations
-            self.config['y_transformation'] = y_transformations
+            self.config['y_transformation'] = y_transformations or None
 
         return optimizer
 
@@ -2177,7 +2256,8 @@ class BaseModel(NN, Plots):
         Examples:
             >>> from ai4water import Model
             >>> from ai4water.datasets import arg_beach
-            >>> model = Model(model="XGBRegressor", data=arg_beach())
+            >>> model = Model(model="XGBRegressor")
+            >>> model.fit(data=arg_beach())
             >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
         """
         assert data in ("training", "validation", "test")
@@ -2191,7 +2271,7 @@ class BaseModel(NN, Plots):
             self.predict, x, y, scoring,
             n_repeats, noise, use_noise_only,
             path=os.path.join(self.path, "explain"),
-            features=self.dh.input_features,
+            features=self.input_features,
             weights=weights,
             seed=self.config['seed']
         )

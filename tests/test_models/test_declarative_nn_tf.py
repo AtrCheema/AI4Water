@@ -28,7 +28,6 @@ def build_model(layers, lookback):
         input_features=inputs,
         output_features=outputs,
         lookback=lookback,
-        data=data,
         verbosity=0
     )
     return model

@@ -33,6 +33,9 @@ tf115, subclassing and functional both working
 tf21, tf26 subclassing is only working by disabling eager mode while functional is fine
 """
 
+input_features = arg_beach().columns.tolist()[0:-1]
+output_features = arg_beach().columns.tolist()[-1:]
+
 class TestNBeats(unittest.TestCase):
 
     def test_as_layer(self):
@@ -73,19 +76,19 @@ class TestNBeats(unittest.TestCase):
 
 
     def test_ai4water_with_inherent_data(self):
-        model = Model(model={"layers":
-            {
-                "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 12},
-                "Flatten": {},
+        model = Model(model={"layers": {
+            "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 12},
+            "Flatten": {},
         }},
             lookback=10,
-            data=arg_beach(),
+            input_features=input_features,
+            output_features=output_features,
             forecast_step=1,
             epochs=2,
             verbosity=0
         )
 
-        model.fit()
+        model.fit(data=arg_beach())
         return
 
 if __name__ == "__main__":

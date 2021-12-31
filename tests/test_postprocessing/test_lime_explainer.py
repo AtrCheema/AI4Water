@@ -38,13 +38,14 @@ def make_mlp_model():
             "Flatten": {},
             "Dense_3": 1,
         }},
-        data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
         epochs=2,
         lookback=1,
+        input_features=['wat_temp_c', 'tide_cm'],
+        output_features=['tetx_coppml'],
         verbosity=0
     )
 
-    model.fit()
+    model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']))
     return model
 
 
@@ -52,11 +53,10 @@ def get_fitted_model(model_name, data):
 
     model = Model(
         model=model_name,
-        data=data,
         verbosity=0
     )
 
-    model.fit()
+    model.fit(data=data)
 
     return model
 
@@ -68,9 +68,13 @@ def lstm_model():
             "LSTM": 4,
             "Dense": 1
         }},
-        data = arg_beach(inputs=['wat_temp_c', 'tide_cm']).iloc[0:400],
-        verbosity=0
+        verbosity=0,
+        input_features=['wat_temp_c', 'tide_cm'],
+        output_features=['tetx_coppml'],
     )
+
+    model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']).iloc[0:400], epochs=1)
+
     return model
 
 
@@ -78,11 +82,10 @@ def make_class_model(**kwargs):
 
     model = Model(
         model="DecisionTreeClassifier",
-        data=class_data.dropna().iloc[0:30],
         verbosity=0,
         **kwargs
     )
-    model.fit()
+    model.fit(data=class_data.dropna().iloc[0:30])
     return model
 
 
@@ -93,10 +96,12 @@ def make_lstm_reg_model():
             "LSTM": 4,
             "Dense": 1
         }},
+        input_features=reg_data.columns.tolist()[0:-1],
+        output_features=reg_data.columns.tolist()[-1:],
         # dropna would be wrong for lstm based models but we are just testing
-        data = reg_data.dropna(),
         verbosity=0
     )
+    model.fit(data=reg_data.dropna())
     return model
 
 
@@ -104,13 +109,12 @@ def make_reg_model(**kwargs):
 
     model = Model(
         model="GradientBoostingRegressor",
-        data=reg_data.dropna().iloc[0:30],
         val_metric='r2',
         verbosity=0,
         **kwargs
     )
 
-    model.fit()
+    model.fit(data=reg_data.dropna().iloc[0:30])
 
     return model
 
@@ -120,8 +124,8 @@ def get_data(model, to_dataframe, examples_to_explain):
     test_x, test_y = model.test_data()
 
     if to_dataframe:
-        train_x = pd.DataFrame(train_x, columns=model.in_cols)
-        test_x = pd.DataFrame(test_x[0:examples_to_explain], columns=model.in_cols)
+        train_x = pd.DataFrame(train_x, columns=model.input_features)
+        test_x = pd.DataFrame(test_x[0:examples_to_explain], columns=model.input_features)
     else:
         test_x = test_x[0:examples_to_explain]
 
@@ -145,7 +149,7 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
                                train_data=train_x,
                                data=test_x,
                                mode="regression",
-                               features=list(model.in_cols),
+                               features=list(model.input_features),
                                path=model.path,
                                verbosity=False,
                                )
@@ -185,10 +189,10 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_docstring_example(self):
 
-        model = Model(model="GradientBoostingRegressor",
-                      data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
-                      verbosity=0)
-        model.fit()
+        model = Model(model="GradientBoostingRegressor", verbosity=0)
+
+        model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+
         lime_exp = LimeExplainer(model=model,
                                    train_data=model.training_data()[0],
                                    data=model.test_data()[0][0:3],
@@ -231,12 +235,17 @@ class TestLimeExplainer(unittest.TestCase):
 
     def test_lstm_model(self):
         m = make_lstm_reg_model()
+
         train_x, _ =  m.training_data()
         test_x, _ =  m.test_data()
 
-        exp = LimeExplainer(m, test_x, train_x, mode="regression",
-                              path=m.path,
-                              explainer="RecurrentTabularExplainer", features=m.dh.input_features)
+        exp = LimeExplainer(m,
+                            test_x,
+                            train_x,
+                            mode="regression",
+                            path=m.path,
+                            explainer="RecurrentTabularExplainer",
+                            features=m.input_features)
         exp.explain_example(0)
         return
 
@@ -247,7 +256,7 @@ class TestLimeExplainer(unittest.TestCase):
             "RandomForestRegressor",
             "GradientBoostingRegressor"
                   ]:
-            print(m, 'hereeeee')
+
             model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
             exp = explain_model_with_lime(model, examples_to_explain=2)
             assert isinstance(exp, LimeExplainer)
@@ -263,7 +272,7 @@ class TestLimeExplainer(unittest.TestCase):
     def test_ai4water_lstm(self):
         time.sleep(1)
         m = lstm_model()
-        m.fit(epochs=1)
+
         exp = explain_model_with_lime(m, examples_to_explain=2)
         assert isinstance(exp, LimeExplainer)
         return

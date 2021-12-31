@@ -22,7 +22,8 @@ class Plots(object):
     # TODO initialte this class with at least path
 
     def __init__(self, path, problem, category, config, model=None):
-        self.path = path
+
+        self.path = path or os.path.join(os.getcwd(), "results")
         self.problem = problem
         self.category = category
         self.ml_model = model
@@ -41,10 +42,6 @@ class Plots(object):
         raise AttributeError
 
     @property
-    def data(self):
-        raise AttributeError
-
-    @property
     def in_cols(self):
         return self.config['input_features']
 
@@ -52,17 +49,9 @@ class Plots(object):
     def out_cols(self):
         return self.config['output_features']
 
-    @property
-    def ins(self):
-        return len(self.config['input_features'])
-
-    @property
-    def outs(self):
-        return self.config['output_features']
-
-    @property
-    def lookback(self):
-        return self.config['lookback']
+    # @property
+    # def lookback(self):
+    #     return self.config['lookback']
 
     def _imshow_3d(self, activation,
                    lyr_name,

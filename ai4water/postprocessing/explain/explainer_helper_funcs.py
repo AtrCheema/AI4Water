@@ -91,7 +91,7 @@ def explain_model_with_lime(
     ```
     """
 
-    features = model.dh.input_features
+    features = model.input_features
     train_x, _ = model.training_data()
     test_x, test_y = model.test_data()
 
@@ -162,11 +162,11 @@ def explain_model_with_shap(
 
     train_x, _ = model.training_data()
     test_x, test_y = model.test_data()
-    features = model.dh.input_features
+    features = model.input_features
 
     shap_exp_path = maybe_make_path(os.path.join(model.path, "explainability", "shap"))
 
-    if not model.dh.source_is_df:
+    if not model.dh_.source_is_df:
         raise NotImplementedError
 
     features_to_explain = get_features(features, features_to_explain)

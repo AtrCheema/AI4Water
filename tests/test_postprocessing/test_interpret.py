@@ -1,3 +1,4 @@
+import time
 import unittest
 import os
 import sys
@@ -42,6 +43,11 @@ data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).tra
                     index=pd.date_range("20110101", periods=examples, freq="D"))
 
 
+beach_data = arg_beach()
+input_features=beach_data.columns.tolist()[0:-1]
+output_features=beach_data.columns.tolist()[-1:]
+
+
 def build_model(**kwargs):
 
     model = Model(
@@ -57,7 +63,6 @@ def build_model(**kwargs):
 def da_lstm_model(**kwargs):
 
     model = DualAttentionModel(
-        data = 'CAMELS_AUS',
         input_features = ['precipitation_AWAP',
                            'evap_pan_SILO'],
         output_features = ['streamflow_MLd_inclInfilled'],
@@ -68,19 +73,16 @@ def da_lstm_model(**kwargs):
         **kwargs
     )
 
-    _ = model.fit()
+    _ = model.fit(data='CAMELS_AUS')
 
     return model
 
 
 def ia_lstm_model(**kwargs):
-    model = InputAttentionModel(
-        data = arg_beach(),
-        verbosity=0,
-        **kwargs
-    )
 
-    _ = model.fit()
+    model = InputAttentionModel(verbosity=0, **kwargs)
+
+    _ = model.fit(data=beach_data)
 
     return model
 
@@ -117,7 +119,6 @@ def tft_model(**kwargs):
     }
 
     model = Model(model={'layers': layers},
-                  data='CAMELS_AUS',
                   input_features=['et_morton_point_SILO',
                                   'precipitation_AWAP',
                                   'tmax_AWAP',
@@ -138,13 +139,15 @@ class TestInterpret(unittest.TestCase):
 
     def test_plot_feature_importance(self):
 
+        time.sleep(1)
         model = build_model(
             lookback=7,
-            data=data1.astype(np.float32),
             input_features=in_cols,
             output_features=out_cols,
             model=default_model
         )
+
+        model.fit(data=data1.astype(np.float32))
 
         Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
@@ -156,24 +159,25 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_ia_interpret(self):
-        m = ia_lstm_model()
+        m = ia_lstm_model(input_features=input_features,
+                          output_features=output_features)
         m.interpret()
         return
 
     def test_ml(self):
+        time.sleep(1)
         for m in ['XGBRegressor', 'RandomForestRegressor',
                   'GradientBoostingRegressor', 'LinearRegression']:
 
-            model = build_model(model=m,
-                                data=arg_beach())
-            model.fit()
+            model = build_model(model=m)
+            model.fit(data=arg_beach())
             model.interpret()
         return
 
     def test_tft(self):
 
         model = tft_model()
-        model.fit()
+        model.fit(data='CAMELS_AUS')
 
         i = Interpret(model)
 
@@ -183,12 +187,12 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_xgb_f_imp_comparison(self):
-        model = Model(model="XGBRegressor",
-                      data=arg_beach(inputs=["tide_cm", "rel_hum"]))
-        model.fit()
+        model = Model(model="XGBRegressor")
+        model.fit(data=arg_beach(inputs=["tide_cm", "rel_hum"]))
         interpreter = Interpret(model)
         interpreter.compare_xgb_f_imp()
         return
+
 
 if __name__ == "__main__":
     unittest.main()

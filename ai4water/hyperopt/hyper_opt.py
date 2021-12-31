@@ -167,13 +167,12 @@ class HyperOpt(object):
         ...        input_features=input_features,
         ...        output_features=output_features,
         ...        model={"XGBRegressor": suggestion},
-        ...        data=data,
         ...        train_data='random',
         ...        verbosity=0)
         ...
-        ...    model.fit()
+        ...    model.fit(data=data)
         ...
-        ...    t, p = model.predict(prefix='test', return_true=True)
+        ...    t, p = model.predict(return_true=True)
         ...    mse = RegressionMetrics(t, p).mse()
         ...    # the objective function must return a scaler value which needs to be minimized
         ...    return mse
@@ -815,15 +814,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         _model = self._model
         if isinstance(_model, dict):
             _model = list(_model.keys())[0]
-        model = Model(data=self.data,
-                      prefix=title,
+        model = Model(prefix=title,
                       verbosity=self.verbosity,
                       model={_model: kwargs},
                       **self.ai4water_args)
 
         assert model.config["model"] is not None, "Currently supported only for ml models. Make your own" \
                                                   " AI4Water model and pass it as custom model."
-        model.fit()
+        model.fit(data=self.data)
 
         t, p = model.predict(process_results=pp, return_true=True)
         mse = RegressionMetrics(t, p).mse()
@@ -840,7 +838,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         if view_model:
             model.predict(data='training', prefix='train')
-            model.predict(prefix='all')
+            model.predict()
             model.view_model()
             if interpret:
                 model.interpret(save=True)

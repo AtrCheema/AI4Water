@@ -51,7 +51,6 @@ class MLClassificationExperiments(Experiments):
             verbosity = self.model_kws.pop('verbosity')
 
         model = self.dl4seq_model(
-            data=self.data,
             prefix=title,
             verbosity=verbosity,
             **self.model_kws,
@@ -60,7 +59,7 @@ class MLClassificationExperiments(Experiments):
 
         setattr(self, '_model', model)
 
-        model.fit(**fit_kws)
+        model.fit(data=self.data, **fit_kws)
 
         t = model.predict()
 
@@ -68,7 +67,7 @@ class MLClassificationExperiments(Experiments):
             model.view_model()
 
         if predict:
-            model.predict('training')
+            model.predict(data='training')
 
         return ClassificationMetrics(t, t).mse()
 

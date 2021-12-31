@@ -21,9 +21,13 @@ class ModelOptimizerMixIn(object):
         self.num_iterations = num_iterations
         self.process_results = process_results
         self.prefix = prefix
-        if data is not None:
-            if not isinstance(data, tuple):
-                assert isinstance(data, list) and len(data) == 2
+
+        if isinstance(data, tuple) or isinstance(data, list):
+            assert len(data) == 2
+            self.xy = True
+        else:
+            self.xy = False
+
         self.data = data
 
     def fit(self):
@@ -32,7 +36,7 @@ class ModelOptimizerMixIn(object):
 
         hpo = importlib.import_module("ai4water.hyperopt")
 
-        data = self.model.data
+        #data = self.model.data
         val_metric = self.model.config['val_metric']
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
@@ -50,28 +54,35 @@ class ModelOptimizerMixIn(object):
 
             _model = self.model.from_config(
                 config.copy(),
-                data=data,
+                #data=data,
                 make_new_path=True,
             )
 
-            if self.data is not None:  # todo, it is better to split data outside objective_fn
-                splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
-                train_x, test_x, train_y, test_y = splitter.split_by_slicing()
-                _model.fit(x=train_x, y=train_y)
-            else:
-                _model.fit()
+            # if self.xy:
+            #     splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
+            #     train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+            #     _model.fit(x=train_x, y=train_y)
+            # else:
+            #     _model.fit(data=self.data)
 
             if cross_validator is None:
 
-                if self.data is not None:
-
+                if self.xy:  # todo, it is better to split data outside objective_fn
+                    splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
+                    train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+                    _model.fit(x=train_x, y=train_y)
                     p = _model.predict(test_x)
                 else:
-                    test_y, p = _model.predict(return_true=True, process_results=False)
+                    _model.fit(data=self.data)
+                    test_y, p = _model.predict(data='validation', return_true=True, process_results=False)
+
                 metrics = RegressionMetrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
-                val_score = self.model.cross_val_score(data=self.data)
+                if self.xy:
+                    val_score = self.model.cross_val_score(*self.data)
+                else:
+                    val_score = self.model.cross_val_score(data=self.data)
 
             if metric_type != "min":
                 val_score = 1.0 - val_score
@@ -145,8 +156,6 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             include=None,
             exclude=None,
             append=None,
-            transform_y=True,
-            y_transformations=None,
             process_results=False,
             data=None,
     ):
@@ -159,18 +168,18 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             data=data
         )
 
-        self.space = make_space(self.model.dh.input_features,
+        self.space = make_space(self.model.input_features,
                                 include=include,
                                 exclude=exclude,
                                 append=append,
-                                output_features=model.dh.output_features,
-                                transform_y=transform_y,
-                                y_transformations=y_transformations,
+                                #output_features=model.dh.output_features,
+                                #transform_y=transform_y,
+                                #y_transformations=y_transformations,
                                 categories=categories)
 
-        self.input_features = model.dh.input_features
+        self.input_features = model.input_features
         assert isinstance(self.input_features, list)
-        self.output_features = model.dh.output_features
+        self.output_features = model.output_features
         if isinstance(self.output_features, str):
             self.output_features = [self.output_features]
         assert len(self.output_features) == 1
@@ -212,23 +221,20 @@ class OptimizeTransformations(ModelOptimizerMixIn):
 def make_space(
         input_features: list,
         categories: list,
-        output_features: Union[str, list] = None,
+        #output_features: Union[str, list] = None,
         include: Union[str, list, dict] = None,
         exclude: Union[str, list] = None,
         append: dict = None,
-        transform_y=True,
-        y_transformations=None,
+        #transform_y=False,
+        #y_transformations=None,
 ) -> list:
     """
     Arguments:
         input_features :
         categories :
-        output_features
         include: the names of input features to include
         exclude: the name/names of input features to exclude
         append: the input features with custom candidate transformations
-        transform_y:
-        y_transformations
     """
     hpo = importlib.import_module("ai4water.hyperopt")
     Categorical = hpo.Categorical
@@ -277,13 +283,13 @@ def make_space(
                 v = Categorical(v, name=k)
             space[k] = v
 
-    # we also want to transform target/output feature, so put its parameter space in `space`
-    if transform_y:
-        if y_transformations is None:
-            y_transformations = ['log', 'log10', 'log2', 'sqrt', 'none']
-        if isinstance(output_features, list):
-            assert len(output_features) == 1
-            output_features = output_features[0]
-        space.update({output_features: Categorical(y_transformations, name=output_features)})
+    # # we also want to transform target/output feature, so put its parameter space in `space`
+    # if transform_y:
+    #     if y_transformations is None:
+    #         y_transformations = ['log', 'log10', 'log2', 'sqrt', 'none']
+    #     if isinstance(output_features, list):
+    #         assert len(output_features) == 1
+    #         output_features = output_features[0]
+    #     space.update({output_features: Categorical(y_transformations, name=output_features)})
 
     return list(space.values())

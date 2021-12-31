@@ -14,6 +14,7 @@ from sklearn.model_selection import KFold, LeaveOneOut, TimeSeriesSplit
 
 import ai4water.datasets as datasets
 from ai4water.datasets import all_datasets
+from ai4water.utils.plotting_tools import Plots
 from ai4water.utils.utils import print_something
 from ai4water.preprocessing.imputation import Imputation
 from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index
@@ -39,7 +40,7 @@ class AttributeContainer(object):
         self.source_is_dict = False
 
 
-class DataHandler(AttributeContainer):
+class DataHandler(AttributeContainer, Plots):
     """
     Using the data source provided by the user, this class divides the data into
     training, validation and test set. It handles all operations around data for
@@ -86,6 +87,7 @@ class DataHandler(AttributeContainer):
             teacher_forcing: bool = False,
             seed: int = 313,
             save: bool = False,
+            path: str = None,
             verbosity: int = 1,
             mode=None,
             category=None,
@@ -118,7 +120,7 @@ class DataHandler(AttributeContainer):
                 of [0,1,2,0,1,2,1,2,0] for 3 classes. One-hot-encoding is done
                 inside the model.
             dataset_args dict:
-                additional arguments for AI4Water's datasets
+                additional arguments for AI4Water's [datasets][ai4water.datasets]
             val_fraction float:
                 The fraction of the training data to be used for validation.
                 Set to 0.0 if no validation data is to be used.
@@ -252,39 +254,43 @@ class DataHandler(AttributeContainer):
         """
         super().__init__()
 
-        self.config = make_config(input_features=input_features,
-                                  output_features=output_features,
-                                  dataset_args=dataset_args or {},
-                                  val_fraction=val_fraction,
-                                  test_fraction=test_fraction,
-                                  input_step=input_step,
-                                  lookback=lookback,
-                                  forecast_len=forecast_len,
-                                  forecast_step=forecast_step,
-                                  known_future_inputs=known_future_inputs,
-                                  allow_input_nans=allow_input_nans,  # todo why this is even allowed
-                                  train_data=train_data,
-                                  val_data=val_data,
-                                  intervals=intervals,
-                                  # transformation=transformation,
-                                  shuffle=False,  # todo
-                                  allow_nan_labels=allow_nan_labels,
-                                  nan_filler=nan_filler,
-                                  batch_size=batch_size,
-                                  drop_remainder=drop_remainder,
-                                  seed=seed,
-                                  category=category,
+        self.config = make_config(
+            input_features=input_features,
+            output_features=output_features,
+            dataset_args=dataset_args or {},
+            val_fraction=val_fraction,
+            test_fraction=test_fraction,
+            input_step=input_step,
+            lookback=lookback,
+            forecast_len=forecast_len,
+            forecast_step=forecast_step,
+            known_future_inputs=known_future_inputs,
+            allow_input_nans=allow_input_nans,  # todo why this is even allowed
+            train_data=train_data,
+            val_data=val_data,
+            intervals=intervals,
+            shuffle=False,  # todo
+            allow_nan_labels=allow_nan_labels,
+            nan_filler=nan_filler,
+            batch_size=batch_size,
+            drop_remainder=drop_remainder,
+            seed=seed,
+            category=category,
                                   )
         self.data = self._process_source(data, input_features, output_features)
         self.verbosity = verbosity
         self.teacher_forcing = teacher_forcing
         self.mode = mode
+        self.path = path
 
         self.scalers = {}
         self.indexes = {}
 
         if save:
             self._to_disk()
+
+        Plots.__init__(self, self.path, self.mode, category=category,
+                       config=self.config)
 
     def __getattr__(self, item):
         if item in ['lookback', 'input_step',  'forecast_step',
@@ -321,10 +327,10 @@ class DataHandler(AttributeContainer):
         _classes = []
         if self.mode == 'classification':
             if self.num_outs == 1:  # for binary/multiclass
-                array = self.data[self.output_features].values
+                array = self.data[self._output_features].values
                 _classes = np.unique(array[~np.isnan(array)])
             else:  # for one-hot encoded
-                _classes = self.output_features
+                _classes = self._output_features
 
         return _classes
 
@@ -338,7 +344,7 @@ class DataHandler(AttributeContainer):
         _default = False
         if self.mode == 'classification':
             if self.num_outs == 1:
-                array = self.data[self.output_features].values
+                array = self.data[self._output_features].values
                 unique_vals = np.unique(array[~np.isnan(array)])
                 if len(unique_vals) == 2:
                     _default = True
@@ -353,7 +359,7 @@ class DataHandler(AttributeContainer):
         _default = False
         if self.mode == 'classification':
             if self.num_outs == 1:
-                array = self.data[self.output_features].values
+                array = self.data[self._output_features].values
                 unique_vals = np.unique(array[~np.isnan(array)])
                 if len(unique_vals) > 2:
                     _default = True
@@ -392,10 +398,6 @@ class DataHandler(AttributeContainer):
     @teacher_forcing.setter
     def teacher_forcing(self, x):
         self._teacher_forcing = x
-
-    @property
-    def category(self):
-        return self.config['category']
 
     @property
     def batch_dim(self):
@@ -444,8 +446,9 @@ class DataHandler(AttributeContainer):
         return _inputs
 
     @property
-    def output_features(self):
-        _outputs = self.config['output_features']
+    def _output_features(self):
+        """for internal use"""
+        _outputs = copy.deepcopy(self.config['output_features'])
 
         if isinstance(self.data, list):
             assert isinstance(_outputs, list)
@@ -458,6 +461,17 @@ class DataHandler(AttributeContainer):
                     _outputs[k] = []
 
         elif _outputs is None and self.data is not None:
+            assert isinstance(self.data, pd.DataFrame)
+            _outputs = [col for col in self.data.columns if col not in self.input_features]
+
+        return _outputs
+
+    @property
+    def output_features(self):
+        """for external use"""
+        _outputs = self.config['output_features']
+
+        if _outputs is None and self.data is not None:
             assert isinstance(self.data, pd.DataFrame)
             _outputs = [col for col in self.data.columns if col not in self.input_features]
 
@@ -632,7 +646,7 @@ class DataHandler(AttributeContainer):
 
     def tot_obs_for_one_df(self):
         if self.source_is_df:
-            tot_obs = tot_obs_for_one_df(self.data, self.allow_nan_labels, self.output_features, self.lookback,
+            tot_obs = tot_obs_for_one_df(self.data, self.allow_nan_labels, self._output_features, self.lookback,
                                          self.input_step,
                                          self.num_outs,
                                          self.forecast_step,
@@ -645,7 +659,7 @@ class DataHandler(AttributeContainer):
             for idx in range(len(self.data)):
                 _tot_obs = tot_obs_for_one_df(self.data[idx],
                                               self.allow_nan_labels[idx],
-                                              self.output_features[idx], self.lookback[idx],
+                                              self._output_features[idx], self.lookback[idx],
                                               self.input_step[idx], self.num_outs[idx],
                                               self.forecast_step[idx],
                                               self.forecast_len[idx],
@@ -659,7 +673,7 @@ class DataHandler(AttributeContainer):
             for src_name in self.data.keys():
                 _tot_obs = tot_obs_for_one_df(self.data[src_name],
                                               self.allow_nan_labels[src_name],
-                                              self.output_features[src_name],
+                                              self._output_features[src_name],
                                               self.lookback[src_name],
                                               self.input_step[src_name],
                                               self.num_outs[src_name],
@@ -747,11 +761,11 @@ class DataHandler(AttributeContainer):
     @property
     def num_outs(self):
         if self.source_is_df:
-            return len(self.output_features)
+            return len(self._output_features)
         elif self.source_is_list:
-            return [len(out_feat) for out_feat in self.output_features]
+            return [len(out_feat) for out_feat in self._output_features]
         elif self.source_is_dict:
-            return {k: len(out_feat) for k, out_feat in self.output_features.items()}
+            return {k: len(out_feat) for k, out_feat in self._output_features.items()}
         elif self.data.__class__.__name__ == "NoneType":
             return None
         else:
@@ -947,7 +961,7 @@ class DataHandler(AttributeContainer):
         """Makes the data for each source."""
 
         data = self.data if identifier is None else self.data[identifier]
-        output_features = self.output_features if identifier is None else self.output_features[identifier]
+        output_features = self._output_features if identifier is None else self._output_features[identifier]
         if self.source_is_list and all([flag == 0 for flag in self.allow_nan_labels]):
             data, output_features = self._indexify_y(data, output_features)
 
@@ -1221,7 +1235,7 @@ class DataHandler(AttributeContainer):
             x, prev_y, y = [], [], []
             for idx, src in enumerate(self.data):
 
-                output_features = self.output_features[idx]
+                output_features = self._output_features[idx]
                 if all([flag == 0 for flag in self.allow_nan_labels]):
                     src, output_features = self._indexify_y(src, output_features)
 
@@ -1306,7 +1320,7 @@ class DataHandler(AttributeContainer):
 
             for idx, src in enumerate(self.data):
 
-                output_features = self.output_features[idx]
+                output_features = self._output_features[idx]
                 if all([flag == 0 for flag in self.allow_nan_labels]):
                     src, output_features = self._indexify_y(src, output_features)
 
@@ -1437,8 +1451,8 @@ class DataHandler(AttributeContainer):
         f.close()
         return cls(path, **config)
 
-    def _to_disk(self, path=None):
-        path = path or os.path.join(os.getcwd(), "results")
+    def _to_disk(self):
+        path = self.path or os.path.join(os.getcwd(), "results")
         filepath = os.path.join(path, "data.h5")
 
         f = h5py.File(filepath, mode='w')
@@ -2039,7 +2053,7 @@ class SiteDistributedDataHandler(object):
                 new_config[k] = config
         return new_config
 
-    def training_data(self) -> Tuple[np.ndarray, np.ndarray]:
+    def training_data(self, key=None) -> Tuple[np.ndarray, np.ndarray]:
         """Returns the x,y pairs for training data"""
         x, y = [], []
 

@@ -38,7 +38,6 @@ layers = {
 }
 
 model = Model(
-    data=df,
     batch_size=16,
     lookback=lookback,
     input_features=input_features,
@@ -48,6 +47,6 @@ model = Model(
               )
 
 # This model is built only to showcase how to build multi layer model by manipulating config
-# history = model.fit()
+# history = model.fit(data=df)
 
 # y = model.predict()

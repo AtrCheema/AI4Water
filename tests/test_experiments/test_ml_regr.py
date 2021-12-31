@@ -8,10 +8,11 @@ site.addsitedir(ai4_dir)
 import warnings
 warnings.filterwarnings("ignore")
 
-from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
+
 from ai4water.datasets import arg_beach
-from ai4water.hyperopt import Categorical, Integer, Real
 from ai4water.utils.utils import dateandtime_now
+from ai4water.hyperopt import Categorical, Integer, Real
+from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
 
 
 input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp12_mm',
@@ -20,6 +21,7 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 outputs = ['blaTEM_coppml']
 
 df = arg_beach(input_features, outputs)
+
 
 class TestExperiments(unittest.TestCase):
 

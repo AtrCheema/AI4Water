@@ -206,7 +206,7 @@ class Model(BaseModel):
                         assign_dummy_name(layer_outputs, 'input')
                     else:
                         # for simple dense layer based models, lookback will not be used
-                        def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
+                        def_shape = (self.num_ins,) if self.lookback == 1 else (self.lookback, self.num_ins)
                         layer_outputs = LAYERS["Input"](shape=def_shape)
 
                     # first layer is built so next iterations will not be for first layer

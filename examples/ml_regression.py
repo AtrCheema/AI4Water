@@ -8,10 +8,10 @@ from ai4water import Model
 
 data_class = load_diabetes()
 cols = data_class['feature_names'] + ['target']
-df = pd.DataFrame(np.concatenate([data_class['data'], data_class['target'].reshape(-1, 1)], axis=1), columns=cols)
+df = pd.DataFrame(np.concatenate([data_class['data'], data_class['target'].reshape(-1, 1)], axis=1),
+                  columns=cols)
 
 model = Model(
-    data=df,
     input_features=data_class['feature_names'],
     output_features=['target'],
     lookback=1,
@@ -20,6 +20,6 @@ model = Model(
     model={'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}},
 )
 
-h = model.fit()
+h = model.fit(data=df)
 
 x, y = model.training_data()

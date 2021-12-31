@@ -7,10 +7,9 @@ from ai4water.datasets import arg_beach
 
 def get_model(model_name):
     model = Model(model=model_name,
-                  data=arg_beach(),
                   verbosity=0)
 
-    model.fit()
+    model.fit(data=arg_beach())
 
     p = model.predict()
 
@@ -45,6 +44,7 @@ class TestML(unittest.TestCase):
         assert p.sum() == 2706155.5142797576
 
         return
+
 
 if __name__ == "__main__":
     unittest.main()

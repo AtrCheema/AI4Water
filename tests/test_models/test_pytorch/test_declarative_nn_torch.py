@@ -16,7 +16,6 @@ def build_and_fit(nn_model, parameters, lookback=1):
 
     model = Model(
         model=nn_model,
-        data=df,
         lookback=lookback,
         epochs=50,
         x_transformation='minmax',
@@ -26,12 +25,12 @@ def build_and_fit(nn_model, parameters, lookback=1):
         val_fraction=0.0,
         patience=10,
         verbosity=0,
-        #val_data="same",
     )
 
     assert model.trainable_parameters() == parameters
-    model.fit()
+    model.fit(data=df)
     return model
+
 
 class TestTorchDeclarativeDef(unittest.TestCase):
 

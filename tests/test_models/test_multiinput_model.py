@@ -16,6 +16,8 @@ else:
 from ai4water.functional import Model as FModel
 from ai4water.datasets import load_nasdaq, arg_beach
 
+nasdaq_input_features = load_nasdaq().columns.tolist()[0:-1],
+nasdaq_output_features = load_nasdaq().columns.tolist()[-1:],
 
 examples = 200
 lookback = 10
@@ -73,16 +75,15 @@ def build_and_run(outputs, x_transformation=None, indices=None):
         lookback=lookback,
         input_features = {"inp_1d": inp_1d, "inp_2d": inp_2d},
         output_features=outputs,
-        data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d},
         x_transformation = x_transformation,
         train_data=indices,
         epochs=2,
         verbosity=0
     )
 
-    model.fit()
+    model.fit(data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d})
 
-    return model.predict()
+    return model.predict(data='test')
 
 
 class test_MultiInputModels(unittest.TestCase):
@@ -113,7 +114,8 @@ class test_MultiInputModels(unittest.TestCase):
     def test_add_output_layer1(self):
         # check if it adds both dense and reshapes it correctly or not
         model = Model(model={'layers': {'LSTM': 64, "Dense": 1}},
-                      data=load_nasdaq(),
+                      input_features=nasdaq_input_features,
+                      output_features=nasdaq_output_features,
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -125,7 +127,8 @@ class test_MultiInputModels(unittest.TestCase):
         # check if it reshapes the output correctly
         model = Model(model={'layers': {'LSTM': 64,
                                         'Dense': 1}},
-                      data=load_nasdaq(),
+                      input_features=nasdaq_input_features,
+                      output_features=nasdaq_output_features,
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -134,11 +137,10 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_no_output_layer(self):
         # check if it does not add layers when it does not have to
-        model = Model(model={'layers': {'LSTM': 64,
-                                        'Dense': 1,
-                                        #'Reshape': {'target_shape': (1,1)}
+        model = Model(model={'layers': {'LSTM': 64, 'Dense': 1,
                              }},
-                      data=load_nasdaq(),
+                      input_features=nasdaq_input_features,
+                      output_features=nasdaq_output_features,
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -233,12 +235,11 @@ class test_MultiInputModels(unittest.TestCase):
             verbosity=0,
             model={'layers': layers},
             epochs=2,
-            data=data.astype(np.float32),
             train_data = np.arange(1500),
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-        model.fit()
+        model.fit(data=data.astype(np.float32))
 
         return
 
@@ -246,19 +247,17 @@ class test_MultiInputModels(unittest.TestCase):
         # make sure that .predict method can be called without `y`.
 
         model = Model(model='RandomForestRegressor',
-                      data=arg_beach(),
                       verbosity=0
                       )
-        model.fit()
+        model.fit(data=arg_beach())
         y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
         # check also for functional model
         model = FModel(model='RandomForestRegressor',
-                      data=arg_beach(),
                       verbosity=0
                       )
-        model.fit()
+        model.fit(data=arg_beach())
         y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 

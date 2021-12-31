@@ -307,8 +307,6 @@ def _make_model(**kwargs):
         'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
         # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
         'metrics': {"type": list, "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
-        # if true, model will use previous predictions as input  # todo, where it is used?
-        'use_predicted_output': {"type": bool, "default": True, 'lower': None, 'upper': None, 'between': None},
         # todo, is it  redundant?
         # If the model takes one kind of input_features that is it consists of
         # only 1 Input layer, then the shape of the batches
@@ -1757,7 +1755,10 @@ def maybe_three_outputs(data, teacher_forcing=False):
         elif len(data) == 3:
             return data[0], data[2]
     else:
-        return [data[0], data[1]], data[2]
+        if len(data)==3:
+            return [data[0], data[1]], data[2]
+        # DA, IA-LSTM models return [x,prevy],y even when teacher_forcing is on!
+        return data
 
 
 def get_version_info(

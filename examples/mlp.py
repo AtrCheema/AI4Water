@@ -20,8 +20,7 @@ input_features = list(df.columns)[0:-1]
 # column in dataframe to bse used as output/target
 outputs = list(df.columns)[-1]
 
-model = Model(data=df,
-              batch_size=16,
+model = Model(batch_size=16,
               lookback=1,
               model=mlp_model,
               input_features=input_features,
@@ -30,7 +29,7 @@ model = Model(data=df,
               train_data='random',
               )
 
-history = model.fit()
+history = model.fit(data=df)
 
 y = model.predict()
 model.view()

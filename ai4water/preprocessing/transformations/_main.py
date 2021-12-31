@@ -314,6 +314,9 @@ class Transformation(TransformationsContainer):
         if self.method == "scale":
             _kwargs['with_mean'] = False
         elif self.method == "box-cox":
+            # a = np.array([87.52, 89.41, 89.4, 89.23, 89.92], dtype=np.float32).reshape(-1,1)
+            # PowerTransformer('box-cox').fit_transform(a) raises error due to float32 overflow
+            to_transform = to_transform.astype(np.float)
             _kwargs['method'] = "box-cox"
 
         for k,v in self.kwargs.items():

@@ -18,6 +18,9 @@ from ai4water.utils.plotting_tools import bar_chart, BAR_CMAPS, get_cmap
 
 
 data = arg_beach()
+input_features = data.columns.tolist()[0:-1]
+output_features = data.columns.tolist()[-1:]
+
 
 def get_history(keys, add_val=False):
     history = {}
@@ -128,13 +131,14 @@ class TestVisualize(unittest.TestCase):
             "LSTM_1": {"units": 8},
             "Dense": 1,
         }},
-            data=arg_beach(),
             lookback=12,
+            input_features=input_features,
+            output_features=output_features,
             epochs=2,
             verbosity=0
         )
 
-        model.fit()
+        model.fit(data=data)
 
         vis = Visualize(model)
 
@@ -155,10 +159,9 @@ class TestVisualize(unittest.TestCase):
         for m in ["DecisionTreeRegressor", "XGBRegressor", "CatBoostRegressor", "LGBMRegressor"]:
             model = Model(
                 model=m,
-                data=arg_beach(),
                 verbosity=0
             )
-            model.fit()
+            model.fit(data=data)
             model.view(show=False)
         return
 

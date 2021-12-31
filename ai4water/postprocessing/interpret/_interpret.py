@@ -78,7 +78,7 @@ class Interpret(Plot):
             # colors = ['red' if c < 0 else 'blue' for c in self._model.coef_[idx]]
             ax.bar(range(features), self._model.coef_[idx], 0.4)
 
-        plt.xticks(ticks=range(features), labels=self.model.in_cols, rotation=90, fontsize=12)
+        plt.xticks(ticks=range(features), labels=self.model.input_features, rotation=90, fontsize=12)
         self.save_or_show(save=save, fname=f"{list(self.model.config['model'].keys())[0]}_feature_importance")
         return
 
@@ -100,7 +100,7 @@ class Interpret(Plot):
             model_name = list(self.model.config['model'].keys())[0]
             if model_name.upper() in ["SVC", "SVR"]:
                 if self.model._model.kernel == "linear":
-                    return self.f_importances_svm(importance, self.model.in_cols, save=save)
+                    return self.f_importances_svm(importance, self.model.input_features, save=save)
                 else:
                     warnings.warn(f"for {self.model._model.kernel} kernels of {model_name}, feature "
                                   f"importance can not be plotted.")
@@ -112,9 +112,10 @@ class Interpret(Plot):
         if importance is None:
             return
 
-        use_prev = self.model.config['use_predicted_output']
-        all_cols = self.model.config['input_features'] if use_prev else self.model.config['input_features'] + \
-                                                                        self.model.config['output_features']
+        all_cols = self.model.input_features + self.model.output_features
+        if self.model.teacher_forcing:
+            all_cols = self.model.input_features
+
         imp_sort = np.sort(importance)[::-1]
         all_cols = np.array(all_cols)
         all_cols = all_cols[np.argsort(importance)[::-1]]
@@ -141,7 +142,7 @@ class Interpret(Plot):
             warnings.warn("install xgboost to plot plot_importance using xgboost", UserWarning)
         else:
             booster = self.model._model.get_booster()
-            booster.feature_names = self.model.in_cols
+            booster.feature_names = self.model.input_features
             plt.close('all')
             # global feature importance with xgboost comes with different types
             xgboost.plot_importance(booster, max_num_features=max_num_features)
@@ -170,11 +171,11 @@ class Interpret(Plot):
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
 
-        inp_features = self.model.dh.input_features
+        inp_features = self.model.input_features
         assert isinstance(inp_features, list)
 
         booster = self.model._model.get_booster()
-        booster.feature_names = self.model.in_cols
+        booster.feature_names = self.model.input_features
 
         _importance_types = ['weight', 'gain', 'cover', 'total_gain', 'total_cover']
         importance_types = _importance_types.copy()
@@ -305,7 +306,7 @@ class Interpret(Plot):
         axis, im = imshow(encoder_variable_selection_weights[example_index],
                       aspect="auto", ylabel="lookback steps", title=example_index)
 
-        plt.xticks(np.arange(model.ins), model.in_cols, rotation=90)
+        plt.xticks(np.arange(model.num_ins), model.input_features, rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
         plt.savefig(os.path.join(maybe_create_path(model.path), f'{data_name}_enc_var_selec_{example_index}.png'),
                     bbox_inches='tight', dpi=300)
@@ -322,7 +323,7 @@ class Interpret(Plot):
         """
         model = model or self.model
 
-        true, predictions = model.predict(data, return_true=True, process_results=False)
+        true, predictions = model.predict(data=data, return_true=True, process_results=False)
 
         ac = self.tft_attention_components(model=model, data=data)
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
@@ -333,8 +334,8 @@ class Interpret(Plot):
                                       data=train_x[:, -1],
                                       observations=true,
                                       predictions=predictions,
-                                      in_cols=model.dh.input_features,
-                                      out_cols=model.dh.output_features,
+                                      in_cols=model.input_features,
+                                      out_cols=model.output_features,
                                       lookback=model.lookback,
                                       name=f'tft_encoder_weights_{data}',
                                       path=maybe_create_path(model.path)

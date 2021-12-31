@@ -15,10 +15,16 @@ layers = {
     "Dense": 1
 }
 
+data = arg_beach()
+input_features=data.columns.tolist()[0:-1]
+output_features = data.columns.tolist()[-1:]
+
 model = Model(
     model={'layers': layers},
     lookback=10,
     train_data='random',
-    data=arg_beach())
+    input_features=input_features,
+    output_features=output_features,
+)
 
-history = model.fit()
+history = model.fit(data=data)

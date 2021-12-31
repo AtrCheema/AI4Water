@@ -46,18 +46,15 @@ def run_class_test(method):
         if "CatBoost" in method:
             kwargs = {'iterations': 2}
 
-        print(f"testing {method}")
-
         model = Model(
             input_features=data_reg['feature_names'] if mode=="regression" else data_class['feature_names'].tolist(),
             output_features=['target'],
             val_fraction=0.2,
             mode=mode,
-            data=df_reg if mode=="regression" else df_class,
             model={method: kwargs},
             verbosity=0)
 
-        return model.fit()
+        return model.fit(data=df_reg if mode=="regression" else df_class)
 
 
 class TestMLMethods(unittest.TestCase):
@@ -354,11 +351,10 @@ class TestMLMethods(unittest.TestCase):
             category="ML",
             mode="regression",
             model={"XGBRegressor": {}},
-            data=df_reg,
             train_data='random',
             verbosity=0)
 
-        model.fit()
+        model.fit(data=df_reg)
         trtt, trp = model.predict(data='training', return_true=True)
         t, p = model.predict(return_true=True)
         self.assertGreater(len(t), 1)

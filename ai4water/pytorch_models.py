@@ -22,7 +22,7 @@ from ai4water.utils.utils import imshow
 
 class HARHNModel(Model):
 
-    def __init__(self, use_gpu=True, **kwargs):
+    def __init__(self, use_gpu=True, teacher_forcing=True, **kwargs):
 
         dev = torch.device("cpu")
         if use_gpu and torch.cuda.is_available():
@@ -30,7 +30,7 @@ class HARHNModel(Model):
 
         self.dev = dev
 
-        super(HARHNModel, self).__init__(**kwargs)
+        super(HARHNModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
         # should be set after initiating upper classes so that torch_learner attribute is set
         self.torch_learner.use_cuda = use_gpu
@@ -43,7 +43,7 @@ class HARHNModel(Model):
                               self.num_outs,
                               n_units_enc=layers_config['enc_units'],
                               n_units_dec=layers_config['dec_units'],
-                              use_predicted_output=True,  # self.config['use_predicted_output']
+                              use_predicted_output=self.teacher_forcing,  # self.config['use_predicted_output']
                               ).to(self.dev)
 
         return
@@ -54,6 +54,9 @@ class HARHNModel(Model):
 
 
 class IMVModel(HARHNModel):
+
+    def __init__(self, *args, teacher_forcing=False, **kwargs):
+        super(IMVModel, self).__init__(*args, teacher_forcing=teacher_forcing, **kwargs)
 
     def initialize_layers(self, layers_config:dict, inputs=None):
 
@@ -104,8 +107,8 @@ class IMVModel(HARHNModel):
                                       activations=alphas.reshape(-1, self.lookback, self.num_ins),
                                       observations=true,
                                       predictions=predicted,
-                                      in_cols=self.in_cols,
-                                      out_cols=self.out_cols,
+                                      in_cols=self.input_features,
+                                      out_cols=self.output_features,
                                       lookback=self.lookback,
                                       name=name,
                                       path=path,
@@ -117,7 +120,7 @@ class IMVModel(HARHNModel):
         alphas = alphas[..., 0]  # (lookback, ins)
         alphas = alphas.transpose(1, 0)  # (ins, lookback)
 
-        all_cols = self.in_cols
+        all_cols = self.input_features
         plt.close('all')
         fig, ax = plt.subplots()
         fig.set_figwidth(16)

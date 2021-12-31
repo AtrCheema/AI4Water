@@ -1206,7 +1206,6 @@ be used to build ai4water's Model class.
             verbosity = self.model_kws.pop('verbosity')
 
         model = self.ai4water_model(
-            data=self.data,
             prefix=title,
             verbosity=verbosity,
             **self.update_paras(**suggested_paras),
@@ -1218,14 +1217,14 @@ be used to build ai4water's Model class.
         model = self.process_model_before_fit(model)
 
         if cross_validate:
-            val_score = model.cross_val_score()
+            val_score = model.cross_val_score(data=self.data)
         else:
-            model.fit()
-            val_true, val_pred = model.predict('validation', return_true=True)
+            model.fit(data=self.data,)
+            val_true, val_pred = model.predict(data='validation', return_true=True)
             val_score = getattr(RegressionMetrics(val_true, val_pred), model.config['val_metric'])()
 
         if predict:
-            trt, trp = model.predict('training', return_true=True)
+            trt, trp = model.predict(data='training', return_true=True)
 
             testt, testp = model.predict(return_true=True)
 
@@ -1238,15 +1237,15 @@ be used to build ai4water's Model class.
 
     def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
 
-        model = self.ai4water_model.from_config_file(config_path=config_path, data=self.data)
+        model = self.ai4water_model.from_config_file(config_path=config_path)
         weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict('training', return_true=True)
+        train_true, train_pred = model.predict(data=self.data, return_true=True)
 
-        test_true, test_pred = model.predict('test', return_true=True)
+        test_true, test_pred = model.predict(data='test', return_true=True)
 
         model.data['allow_nan_labels'] = 1
         model.predict()

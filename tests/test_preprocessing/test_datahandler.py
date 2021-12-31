@@ -24,6 +24,19 @@ np.random.seed(313)
 # todo, check last dimension of x,y
 # todo test with 3d y
 
+
+def make_df(examples: int, columns: list, add=0) -> pd.DataFrame:
+
+    data = np.arange(int(examples * len(columns)), dtype=np.int32).reshape(-1, examples).transpose()
+
+    data = data + add
+
+    dataframe = pd.DataFrame(data,
+                             columns=columns,
+                             index=pd.date_range('20110101', periods=examples, freq='D'))
+    return dataframe
+
+
 def _check_xy_equal_len(x, prev_y, y, lookback, num_ins, num_outs, num_examples, data_type='training'):
 
     feat_dim = 1
@@ -390,9 +403,9 @@ class TestAllCases(object):
         return
 
     def test_with_same_val_data_and_random(self):
-        examples = 100
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(100, ['a', 'b', 'c'])
+
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -410,9 +423,8 @@ class TestAllCases(object):
 
     def test_with_no_val_data(self):
         # we dont' want to have any validation_data
-        examples = 100
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(100, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -435,9 +447,8 @@ class TestAllCases(object):
 
     def test_with_no_val_data_with_random(self):
         # we dont' want to have any validation_data
-        examples = 100
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(100, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -455,9 +466,8 @@ class TestAllCases(object):
 
     def test_with_no_test_data(self):
         # we don't want any test_data
-        examples = 100
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(100, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -481,9 +491,8 @@ class TestAllCases(object):
 
     def test_with_no_test_data_with_random(self):
         # we don't want any test_data
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -499,11 +508,9 @@ class TestAllCases(object):
 
     def test_with_dt_index(self):
         # we don't want any test_data
-        #print('testing test_with_dt_index', self.lookback)
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=20, freq='D'))
+
+        data = make_df(20, ['a', 'b', 'c'])
+
         config = {'input_features': self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -520,11 +527,8 @@ class TestAllCases(object):
         return
 
     def test_with_intervals(self):
-        #print('testing test_with_intervals', self.lookback)
-        examples = 35
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=35, freq='D'))
+
+        data = make_df(35, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -544,10 +548,8 @@ class TestAllCases(object):
 
     def test_with_dt_intervals(self):
         # check whether indices of intervals can be datetime?
-        examples = 35
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=35, freq='D'))
+
+        data = make_df(35, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -570,10 +572,7 @@ class TestAllCases(object):
     def test_with_custom_train_indices(self):
         #print('testing test_with_custom_train_indices')
 
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=20, freq='D'))
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -590,10 +589,8 @@ class TestAllCases(object):
         return
 
     def test_with_custom_train_indices_no_val_data(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=20, freq='D'))
+
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -610,11 +607,8 @@ class TestAllCases(object):
         return
 
     def test_with_custom_train_indices_same_val_data(self):
-        #print('testing test_with_custom_train_indices_same_val_data')
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=20, freq='D'))
+
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
@@ -630,10 +624,8 @@ class TestAllCases(object):
         return
 
     def test_with_custom_train_and_val_indices(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=20, freq='D'))
+
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
@@ -658,11 +650,8 @@ class TestAllCases(object):
     #     return
 
     def test_with_custom_train_indices_and_intervals(self):
-        #print('testing test_with_custom_train_indices_and_intervals', self.lookback)
-        examples = 30
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=30, freq='D'))
+
+        data = make_df(30, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -690,9 +679,8 @@ class TestAllCases(object):
         return
 
     def test_with_one_feature_transformation(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -719,9 +707,8 @@ class TestAllCases(object):
         return
 
     def test_with_one_feature_multi_transformation(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'lookback': self.lookback,
@@ -746,9 +733,8 @@ class TestAllCases(object):
         return
 
     def test_with_one_feature_multi_transformation_on_diff_features(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -765,9 +751,8 @@ class TestAllCases(object):
         return
 
     def test_with_input_transformation(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -794,9 +779,8 @@ class TestAllCases(object):
         return
 
     def test_with_input_transformation_as_dict(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -823,9 +807,8 @@ class TestAllCases(object):
         return
 
     def test_with_output_transformation(self):
-        examples = 20
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'])
+
+        data = make_df(20, ['a', 'b', 'c'])
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                   'lookback': self.lookback,
@@ -840,10 +823,8 @@ class TestAllCases(object):
         return
 
     def test_with_indices_and_intervals(self):
-        examples = 30
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=30, freq='D'))
+
+        data = make_df(30, ['a', 'b', 'c'])
 
         config =  {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -861,10 +842,8 @@ class TestAllCases(object):
         return
 
     def test_with_indices_and_intervals_same_val_data(self):
-        examples = 30
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=30, freq='D'))
+
+        data = make_df(30, ['a', 'b', 'c'])
 
         config =  {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -882,10 +861,8 @@ class TestAllCases(object):
         return
 
     def test_with_indices_and_intervals_no_val_data(self):
-        examples = 30
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=30, freq='D'))
+
+        data = make_df(30, ['a', 'b', 'c'])
 
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
@@ -902,10 +879,8 @@ class TestAllCases(object):
         return
 
     def test_with_indices_and_nans(self):
-        examples = 30
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=30, freq='D'))
+
+        data = make_df(30, ['a', 'b', 'c'])
         if self.output_features is not None:
             data['c'].iloc[10:20] = np.nan
             config =  {'input_features':self.input_features,
@@ -926,10 +901,8 @@ class TestAllCases(object):
         return
 
     def test_with_indices_and_nans_interpolate(self):
-        examples = 30
-        data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-        data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                            index=pd.date_range('20110101', periods=30, freq='D'))
+
+        data = make_df(30, ['a', 'b', 'c'])
 
         if self.output_features is not None:
             data['b'].iloc[10:20] = np.nan
@@ -979,10 +952,8 @@ class TestAllCases(object):
 
     def test_with_indices_and_nans_at_irregular_intervals(self):
         if self.output_features is not None and len(self.output_features)>1:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['b'].iloc[20:30] = np.nan
             data['c'].iloc[10:20] = np.nan
 
@@ -1006,10 +977,8 @@ class TestAllCases(object):
     def test_with_intervals_and_nans(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
             config =  {'input_features':self.input_features,
                       'output_features': self.output_features,
@@ -1035,10 +1004,8 @@ class TestAllCases(object):
     def test_with_intervals_and_nans_at_irregular_intervals(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None and len(self.output_features) > 1:
-            examples = 50
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=50, freq='D'))
+
+            data = make_df(50, ['a', 'b', 'c'])
             data['b'].iloc[20:30] = np.nan
             data['c'].iloc[40:50] = np.nan
             config =  {'input_features':self.input_features,
@@ -1060,10 +1027,8 @@ class TestAllCases(object):
     def test_with_intervals_and_nans_same_val_data(self):
         # if data contains nans and we also have intervals and val_data is same
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
             config =  {'input_features':self.input_features,
                       'output_features': self.output_features,
@@ -1088,10 +1053,8 @@ class TestAllCases(object):
     def test_with_intervals_and_nans_at_irregular_intervals_and_same_val_data(self):
         # if data contains nans and we also have intervals and val_data is same
         if self.output_features is not None and len(self.output_features) > 1:
-            examples = 50
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=50, freq='D'))
+
+            data = make_df(50, ['a', 'b', 'c'])
             data['b'].iloc[20:30] = np.nan
             data['c'].iloc[40:50] = np.nan
             config =  {'input_features':self.input_features,
@@ -1115,10 +1078,8 @@ class TestAllCases(object):
     def test_with_intervals_and_nans_no_val_data(self):
         # if data contains nans and we also have intervals and val_data is same
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
             config =  {'input_features':self.input_features,
                       'output_features': self.output_features,
@@ -1142,10 +1103,8 @@ class TestAllCases(object):
     def test_with_intervals_and_nans_at_irreg_intervals_and_no_val_data(self):
         # if data contains nans and we also have intervals and val_data is same
         if self.output_features is not None and len(self.output_features) > 1:
-            examples = 50
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=50, freq='D'))
+
+            data = make_df(50, ['a', 'b', 'c'])
             data['b'].iloc[20:30] = np.nan
             data['c'].iloc[40:50] = np.nan
             config =  {'input_features':self.input_features,
@@ -1169,10 +1128,8 @@ class TestAllCases(object):
     def test_with_indices_intervals_and_nans(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
 
             config =  {'input_features':self.input_features,
@@ -1196,10 +1153,8 @@ class TestAllCases(object):
     def test_with_indices_intervals_and_nans_with_same_val_data(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
             config =  {'input_features':self.input_features,
                       'output_features': self.output_features,
@@ -1226,10 +1181,8 @@ class TestAllCases(object):
     def test_with_indices_intervals_and_nans_with_no_val_data(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
 
             config =  {'input_features':self.input_features,
@@ -1255,10 +1208,8 @@ class TestAllCases(object):
     def test_with_indices_intervals_and_nans_with_no_test_data(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
             config =  {'input_features':self.input_features,
                       'output_features': self.output_features,
@@ -1283,10 +1234,8 @@ class TestAllCases(object):
     def test_with_custom_indices_intervals_and_nans(self):
         # if data contains nans and we also have intervals
         if self.output_features is not None:
-            examples = 40
-            data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-            data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+            data = make_df(40, ['a', 'b', 'c'])
             data['c'].iloc[20:30] = np.nan
             config =  {'input_features':self.input_features,
                       'output_features': self.output_features,
@@ -1313,9 +1262,8 @@ class TestAllCases(object):
 
 
 def test_with_random_with_transformation_of_features():
-    examples = 100
-    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-    data = pd.DataFrame(data, columns=['a', 'b', 'c'], index=pd.date_range('20110101', periods=len(data), freq='D'))
+
+    data = make_df(100, ['a', 'b', 'c'])
     data['date'] = data.index
     config = {'input_features':['b'],
               'output_features': ['c'],
@@ -1325,7 +1273,7 @@ def test_with_random_with_transformation_of_features():
     dh = DataHandler(data, verbosity=0, **config)
 
     x,y = dh.training_data()
-
+    assert x is not None
     return
 
 
@@ -1366,7 +1314,6 @@ def make_cross_validator(cv, **kwargs):
 
     model = Model(
         model={'RandomForestRegressor': {}},
-        data=arg_beach(),
         cross_validator=cv,
         val_metric="mse",
         verbosity=0,
@@ -1380,20 +1327,20 @@ class TestCVs(object):
 
     def test_kfold(self):
         model = make_cross_validator(cv={'TimeSeriesSplit': {'n_splits': 5}})
-        model.cross_val_score()
-        model.dh.plot_TimeSeriesSplit_splits(show=False)
+        model.cross_val_score(data=arg_beach())
+        model.dh_.plot_TimeSeriesSplit_splits(show=False)
         return
 
     def test_loocv(self):
         model = make_cross_validator(cv={'KFold': {'n_splits': 5}})
-        model.cross_val_score()
-        model.dh.plot_KFold_splits(show=False)
+        model.cross_val_score(data=arg_beach())
+        model.dh_.plot_KFold_splits(show=False)
         return
 
     def test_tscv(self):
         model = make_cross_validator(cv={'LeaveOneOut': {}}, test_fraction=0.6)
-        model.cross_val_score()
-        model.dh.plot_LeaveOneOut_splits(show=False)
+        model.cross_val_score(data=arg_beach())
+        model.dh_.plot_LeaveOneOut_splits(show=False)
         return
 
 #
@@ -1435,10 +1382,9 @@ def test_AI4WaterDataSets():
 
 
 def test_multisource_basic():
-    examples = 40
-    data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
-    df1 = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+    df1 = make_df(40, ['a', 'b', 'c', 'd'])
+
     df2 = pd.DataFrame(np.array([5,6]).repeat(40, axis=0).reshape(40, -1), columns=['len', 'dep'],
                        index=pd.date_range('20110101', periods=40, freq='D'))
 
@@ -1500,10 +1446,9 @@ def test_multisource_basic():
 
 
 def test_multisource_basic2():
-    examples = 40
-    data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
-    df1 = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+    df1 = make_df(40, ['a', 'b', 'c', 'd'])
+
     df2 = pd.DataFrame(np.array([[5],[6], [7]]).repeat(40, axis=1).transpose(), columns=['len', 'dep', 'y'],
                        index=pd.date_range('20110101', periods=40, freq='D'))
     input_features = [['a', 'b'], ['len', 'dep']]
@@ -1566,16 +1511,12 @@ def test_multisource_basic3():
 
 
 def test_multisource_multi_loc():
-    examples = 40
-    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-    training_data = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                        index=pd.date_range('20110101', periods=40, freq='D'))
 
-    val_data = pd.DataFrame(data+1000.0, columns=['a', 'b', 'c'],
-                        index=pd.date_range('20110101', periods=40, freq='D'))
+    training_data = make_df(40, ['a', 'b', 'c'])
 
-    test_data = pd.DataFrame(data+2000, columns=['a', 'b', 'c'],
-                        index=pd.date_range('20110101', periods=40, freq='D'))
+    val_data = make_df(40, ['a', 'b', 'c'], add=1000)
+
+    test_data = make_df(40, ['a', 'b', 'c'], add=2000)
 
     dh = MultiLocDataHandler()
 
@@ -1590,10 +1531,9 @@ def test_multisource_multi_loc():
 
 
 def test_multisource_basic4():
-    examples = 40
-    data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
-    df1 = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                index=pd.date_range('20110101', periods=40, freq='D'))
+
+    df1 = make_df(40, ['a', 'b', 'c', 'd'])
+
     df2 = pd.DataFrame(np.array([5,6]).repeat(40, axis=0).reshape(40, -1), columns=['len', 'dep'],
                        index=pd.date_range('20110101', periods=40, freq='D'))
 
@@ -1613,10 +1553,9 @@ def test_multisource_basic4():
 
 
 def site_distributed_basic():
-    examples = 50
-    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-    df = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                        index=pd.date_range('20110101', periods=examples, freq='D'))
+
+    df =  make_df(50, ['a', 'b', 'c'])
+
     config = {'input_features': ['a', 'b'],
               'output_features': ['c'],
               'lookback': 4,
@@ -1646,10 +1585,9 @@ def site_distributed_basic():
 
 
 def site_distributed_diff_lens():
-    examples = 50
-    data = np.arange(int(examples * 3), dtype=np.int32).reshape(-1, examples).transpose()
-    df = pd.DataFrame(data, columns=['a', 'b', 'c'],
-                        index=pd.date_range('20110101', periods=examples, freq='D'))
+
+    df = make_df(50, ['a', 'b', 'c'])
+
     config = {'input_features': ['a', 'b'],
               'output_features': ['c'],
               'lookback': 4,
@@ -1665,7 +1603,9 @@ def site_distributed_diff_lens():
     dh = SiteDistributedDataHandler(data, configs, allow_variable_len=True, verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
+    assert val_x is not None
     test_x, test_y = dh.test_data()
+    assert test_x is not None
     assert isinstance(train_x, dict)
 
 
@@ -1673,16 +1613,19 @@ def site_distributed_diff_lens():
                                     test_sites=['3'], allow_variable_len=True, verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
+    assert val_x is not None
     test_x, test_y = dh.test_data()
+    assert test_x is not None
     assert isinstance(train_x, dict)
 
 
 def site_distributed_multiple_srcs():
     examples = 40
-    data = np.arange(int(examples * 4), dtype=np.int32).reshape(-1, examples).transpose()
-    cont_df = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                index=pd.date_range('20110101', periods=examples, freq='D'))
-    static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(), columns=['len', 'dep', 'width'],
+
+    cont_df = make_df(40, ['a', 'b', 'c', 'd'])
+
+    static_df = pd.DataFrame(np.array([[5],[6], [7]]).repeat(examples, axis=1).transpose(),
+                             columns=['len', 'dep', 'width'],
                        index=pd.date_range('20110101', periods=examples, freq='D'))
 
     config = {'input_features': {'cont_data': ['a', 'b', 'c'], 'static_data': ['len', 'dep', 'width']},
@@ -1699,21 +1642,25 @@ def site_distributed_multiple_srcs():
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
+    assert train_x is not None
+    assert val_x is not None
+    assert test_x is not None
 
     dh = SiteDistributedDataHandler(datas, configs, training_sites=['0', '1', '2'],
                                     validation_sites=['3', '4'], test_sites=['5', '6'], verbosity=0)
     train_x, train_y = dh.training_data()
     val_x, val_y = dh.validation_data()
     test_x, test_y = dh.test_data()
-
+    assert train_x is not None
+    assert val_x is not None
+    assert test_x is not None
+    return
 
 def test_with_string_index():
 
     data = arg_beach()
     data.index = [f"ind_{i}" for i in range(len(data))]
     config = {
-        #'input_features': ['x1', 'x2', 'x3', 'x4'],
-        #'output_features': ['target'],
         'input_features': ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c'],
         'output_features': ['tetx_coppml'],
         'lookback': 3,
@@ -1721,7 +1668,6 @@ def test_with_string_index():
         #'transformation': 'minmax'
     }
 
-    #build_and_test_loader(data, config, out_cols=['target'], train_ex=136, val_ex=58, test_ex=84)
     build_and_test_loader(data, config, out_cols=['tetx_coppml'], train_ex=106, val_ex=46, test_ex=66)
     return
 
@@ -1803,6 +1749,7 @@ def test_file_formats(data):
         assert test_y.shape == test_y_shape
 
     return
+
 
 test_with_indices_and_nans()
 test_with_string_index()

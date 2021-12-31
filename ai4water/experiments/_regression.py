@@ -147,7 +147,6 @@ class MLRegressionExperiments(Experiments):
             verbosity = self.model_kws.pop('verbosity')
 
         model = self.ai4water_model(
-            data=self.data,
             prefix=title,
             verbosity=verbosity,
             **self.model_kws,
@@ -157,19 +156,19 @@ class MLRegressionExperiments(Experiments):
         setattr(self, '_model', model)
 
         if cross_validate:
-            val_score = model.cross_val_score(model.config['val_metric'])
+            val_score = model.cross_val_score(data=self.data, scoring=model.config['val_metric'])
         else:
-            model.fit(**fit_kws)
-            vt, vp = model.predict('validation', return_true=True)
+            model.fit(data=self.data, **fit_kws)
+            vt, vp = model.predict(data='validation', return_true=True)
             val_score = getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
 
-        tt, tp = model.predict('test', return_true=True)
+        tt, tp = model.predict(data='test', return_true=True)
 
         if view:
             model.view_model()
 
         if predict:
-            t, p = model.predict('training', return_true=True)
+            t, p = model.predict(data='training', return_true=True)
 
             return (t, p), (tt, tp)
 

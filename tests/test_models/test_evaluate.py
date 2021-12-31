@@ -9,8 +9,9 @@ from ai4water.datasets import arg_beach
 
 model = Model(
     model={"layers": {"Dense": 1}},
+    input_features=arg_beach().columns.tolist()[0:-1],
+    output_features=arg_beach().columns.tolist()[-1:],
     lookback=1,
-    data=arg_beach(),
     verbosity=0,
 )
 
@@ -18,18 +19,18 @@ model = Model(
 class TestEvaluate(unittest.TestCase):
 
     def test_basic(self):
-        eval_scores = model.evaluate()
+        eval_scores = model.evaluate(data=arg_beach())
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_basic_with_metrics(self):
         # basic example with metrics
-        eval_scores = model.evaluate(metrics="kge")
+        eval_scores = model.evaluate(data=arg_beach(), metrics="kge")
         assert isinstance(eval_scores, float)
 
     def test_basic_with_metric_groups(self):
         # basic example with metrics
-        eval_scores = model.evaluate(metrics="hydro_metrics")
+        eval_scores = model.evaluate(data=arg_beach(), metrics="hydro_metrics")
         assert isinstance(eval_scores, dict)
         return
 

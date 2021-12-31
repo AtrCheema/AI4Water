@@ -1,3 +1,4 @@
+import time
 import unittest
 
 import numpy as np
@@ -10,9 +11,8 @@ from ai4water.postprocessing.explain import PermutationImportance
 class TestPermImportance(unittest.TestCase):
 
     def test_one_2d_input(self):
-        model = Model(model="XGBRegressor", verbosity=0,
-                      data=arg_beach())
-        model.fit()
+        model = Model(model="XGBRegressor", verbosity=0)
+        model.fit(data=arg_beach())
         x_val, y_val = model.validation_data()
 
         pimp = PermutationImportance(
@@ -26,14 +26,19 @@ class TestPermImportance(unittest.TestCase):
         return
 
     def test_one_3d_input(self):
+        time.sleep(1)
+        beach_data = arg_beach()
         model = Model(
             model={"layers": {
                 "LSTM": 32,
                 "Dense": 1
             }},
-            verbosity=0,
-            data=arg_beach()
+            input_features=beach_data.columns.tolist()[0:-1],
+            output_features=beach_data.columns.tolist()[-1:],
+            verbosity=0
         )
+
+        model.fit(data=beach_data)
 
         x, y = model.training_data()
 
@@ -57,7 +62,6 @@ class TestPermImportance(unittest.TestCase):
                 "LSTM": 32,
                 "Dense": 1
             }},
-            data=arg_beach(),
             verbosity=0
         )
 
@@ -84,7 +88,6 @@ class TestPermImportance(unittest.TestCase):
                                 "inputs": ["LSTM", "Dense_0"]},
                 "Dense": 1
             }},
-            data=arg_beach(),
             verbosity=0,
         )
 

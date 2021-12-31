@@ -27,17 +27,19 @@ df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(100
 def build_and_run(x_transformation, y_transformation,
                   data, inputs, outputs):
 
-    model = Model(data=data,
+    model = Model(model="RandomForestRegressor",
                   input_features=inputs,
                   output_features=outputs,
                   x_transformation=x_transformation,
                   y_transformation=y_transformation,
                   verbosity=0)
+
+    model.fit(data=data)
     x, y = model.training_data(key='junk')
 
     #pred, pred = model.inverse_transform(y, y, key='junk')
 
-    pred, index = model.dh.deindexify(y, key='junk')
+    pred, index = model.dh_.deindexify(y, key='junk')
     pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs), columns=outputs, index=index).sort_index()
     return pred
 
@@ -359,7 +361,7 @@ class test_Scalers(unittest.TestCase):
 
         data = pd.DataFrame(np.random.random((100, 4)), columns=inputs+outputs)
 
-        x_transformation = "rbust"
+        x_transformation = "robust"
         y_transformation = ["robust", "robust"]
 
         pred = build_and_run(x_transformation, y_transformation, data, inputs,outputs)

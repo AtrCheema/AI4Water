@@ -18,6 +18,8 @@ from ai4water.datasets import load_nasdaq
 
 
 df = load_nasdaq()
+input_features=df.columns.tolist()[0:-1]
+output_features = df.columns.tolist()[-1:]
 
 version = tf.__version__.split('.')[0] + tf.__version__.split('.')[1]
 
@@ -36,9 +38,10 @@ class TestActivations(unittest.TestCase):
         model = Model(epochs=2,
                       lookback=1,
                       model={'layers': layers},
-                      data=df,
                       x_transformation='minmax',
                       y_transformation="minmax",
+                      input_features=input_features,
+                      output_features=output_features,
                       verbosity=0
                       )
 
@@ -62,7 +65,7 @@ class TestActivations(unittest.TestCase):
             '24_nt_functional': [0.049483511596918106, 0.04080097749829292],
         }
 
-        history = model.fit()
+        history = model.fit(data=df)
         if int(tf.__version__.split('.')[0]) > 1:
             print(f"{version}_{os.name}_{model.api}")
             for t,p in zip(history.history['val_loss'], val_losses[f"{version}_{os.name}_{model.api}"]):
@@ -79,13 +82,14 @@ class TestActivations(unittest.TestCase):
         model = Model(epochs=2,
                       lookback=1,
                       model={'layers': layers},
-                      data=df,
+                      input_features=input_features,
+                      output_features=output_features,
                       x_transformation='minmax',
                       y_transformation="minmax",
                       verbosity=0
                       )
 
-        history = model.fit()
+        history = model.fit(data=df)
         val_losses = {
             '20_posix_functional': [0.8971164431680119, 0.10688107734841351],
             '21_posix_functional': [0.10688107734841351, 0.0938945620801094],

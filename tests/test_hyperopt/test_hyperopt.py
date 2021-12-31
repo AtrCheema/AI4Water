@@ -50,12 +50,11 @@ outputs = [list(data.columns)[-1]]
 def objective_func(**suggestion):
     model = Model(
         model={"XGBRegressor": suggestion},
-        data=arg_beach(),
         prefix=f'test_{"bayes"}_xgboost',
         train_data='random',
         verbosity=0)
 
-    model.fit()
+    model.fit(data=arg_beach())
 
     t, p = model.predict(return_true=True, process_results=False)
     mse = RegressionMetrics(t, p).mse()
@@ -141,12 +140,11 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
             input_features=inputs,
             output_features=outputs,
             model={"XGBRegressor": suggestion},
-            data=data,
             prefix=f'test_{algorithm}_xgboost_{backend}',
             train_data='random',
             verbosity=0)
 
-        model.fit()
+        model.fit(data=data)
 
         t, p = model.predict(return_true=True, process_results=False)
         mse = RegressionMetrics(t, p).mse()
@@ -339,12 +337,11 @@ class TestHyperOpt(unittest.TestCase):
                 test_fraction=0.3,
                 val_fraction=0.0,
                 model={"XGBRegressor": kwargs},
-                data=data,
                 prefix='testing',
                 train_data='random',
                 verbosity=0)
 
-            model.fit()
+            model.fit(data=data)
 
             t, p = model.predict(return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()
@@ -482,12 +479,11 @@ class TestHyperOpt(unittest.TestCase):
                 input_features=inputs,
                 output_features=outputs,
                 model={"XGBRegressor": suggestion},
-                data=data,
                 prefix='test_tpe_xgboost',
                 train_data='random',
                 verbosity=0)
 
-            model.fit()
+            model.fit(data=data)
 
             t, p = model.predict(return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()

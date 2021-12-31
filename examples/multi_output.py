@@ -74,7 +74,6 @@ if __name__ == "__main__":
     input_features = list(df.columns)[0:-2]
 
     model = MultiSite(
-        data=df,
         batch_size=4,
         lookback=15,
         input_features=input_features,
@@ -94,7 +93,7 @@ if __name__ == "__main__":
 
     model.loss = loss
 
-    history = model.fit(callbacks={'tensorboard': {}})
+    history = model.fit(data=df, callbacks={'tensorboard': {}})
 
     y = model.predict()
     activations = model.activations()

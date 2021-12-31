@@ -49,7 +49,6 @@ def make_and_run(
                           (1110, 1447))
 
     model = model(
-        data=df,
         verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
@@ -64,7 +63,7 @@ def make_and_run(
         **kwargs
     )
 
-    _ = model.fit()
+    _ = model.fit(data=df)
 
     pred_y = model.predict()
 

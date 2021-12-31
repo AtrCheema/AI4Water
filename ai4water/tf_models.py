@@ -10,6 +10,7 @@ from ai4water.functional import Model as FModel
 from ai4water.backend import keras
 from ai4water.utils.utils import print_something
 from ai4water.nn_tools import check_act_fn
+from ai4water.preprocessing import DataHandler
 from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs, imshow
 
@@ -45,9 +46,8 @@ class DualAttentionModel(FModel):
     Example:
         >>> from ai4water import DualAttentionModel
         >>> from ai4water.datasets import arg_beach
-        >>> model = DualAttentionModel(data=arg_beach(),
-        >>>                            teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
-        >>> model.fit()
+        >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
+        >>> model.fit(data=arg_beach())
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m
@@ -123,7 +123,6 @@ class DualAttentionModel(FModel):
         self.config['enc_config'] = self.enc_config
         setattr(self, 'batch_size', self.config['batch_size'])
         setattr(self, 'drop_remainder', self.config['drop_remainder'])
-        setattr(self, 'teacher_forcing', self.config['teacher_forcing'])
 
         self.de_LSTM_cell = layers.LSTM(self.dec_config['p'], return_state=True, name='decoder_LSTM')
         self.de_densor_We = layers.Dense(self.enc_config['m'])
@@ -314,11 +313,9 @@ class DualAttentionModel(FModel):
     def fetch_data(self, source, **kwargs):
 
         if self.teacher_forcing:
-            self.dh.teacher_forcing = True
-            x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
-            self.dh.teacher_forcing = False
+            x, prev_y, labels = getattr(self.dh_, f'{source}_data')(**kwargs)
         else:
-            x, labels = getattr(self.dh, f'{source}_data')(**kwargs)
+            x, labels = getattr(self.dh_, f'{source}_data')(**kwargs)
             prev_y = None
 
         n_s_feature_dim = self.enc_config['n_s']
@@ -343,18 +340,27 @@ class DualAttentionModel(FModel):
             other_inputs = [s0, h0, s_de0, h_de0]
 
         if self.teacher_forcing:
-            return [x, prev_y] + other_inputs, prev_y, labels
+            return [x, prev_y] + other_inputs, labels
         else:
             return [x] + other_inputs, labels
 
-    def training_data(self, **kwargs):
-        return self.fetch_data('training', **kwargs)
+    def training_data(self, x=None, y=None, data='training', key=None):
 
-    def validation_data(self, **kwargs):
-        return self.fetch_data('validation', **kwargs)
+        if x is not None:
+            return x, y
 
-    def test_data(self,  **kwargs):
-        return self.fetch_data('test', **kwargs)
+        if isinstance(data, str) and data not in ['training', 'test', 'validation']:
+            self.dh_ = DataHandler(data=data, **self.data_config)
+        elif not isinstance(data, str):
+            self.dh_ = DataHandler(data=data, **self.data_config)
+
+        return self.fetch_data(x=x, y=y, source='training', key=key)
+
+    def validation_data(self, x=None, y=None, data='validation', **kwargs):
+        return self.fetch_data(data, **kwargs)
+
+    def test_data(self, x=None, y=None, data='test',  **kwargs):
+        return self.fetch_data(data, **kwargs)
 
     def interpret(self, data='training', **kwargs):
         import matplotlib
@@ -389,7 +395,7 @@ class DualAttentionModel(FModel):
 
         activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data)
 
-        data, _, _ = getattr(self, f'{data}_data')()
+        data, _ = getattr(self, f'{data}_data')()
         lookback = self.config['lookback']
 
         activation = activation[layer_name]  # (num_examples, lookback, num_ins)
@@ -404,8 +410,8 @@ class DualAttentionModel(FModel):
         _, im = imshow(act_avg_over_examples, axis=axis, aspect="auto", yticklabels=ytick_labels,
                ylabel='lookback steps')
 
-        axis.set_xticks(np.arange(len(self.in_cols)))
-        axis.set_xticklabels(self.in_cols, rotation=90)
+        axis.set_xticks(np.arange(self.num_ins))
+        axis.set_xticklabels(self.input_features, rotation=90)
         fig.colorbar(im, orientation='horizontal', pad=0.3)
         plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}'),
                     dpi=400, bbox_inches='tight')
@@ -417,8 +423,8 @@ class DualAttentionModel(FModel):
             activations=activation,
             observations=observations,
             predictions=predictions,
-            in_cols=self.in_cols,
-            out_cols=self.out_cols,
+            in_cols=self.input_features,
+            out_cols=self.output_features,
             lookback=lookback,
             name=name,
             path=self.act_path,
@@ -437,7 +443,7 @@ class DualAttentionModel(FModel):
 
         fig, axis = plt.subplots()
 
-        for idx, _name in enumerate(self.in_cols):
+        for idx, _name in enumerate(self.input_features):
             axis.plot(act_t[idx, :], label=_name)
 
         axis.set_xlabel('Lookback')
@@ -460,6 +466,9 @@ class DualAttentionModel(FModel):
 
 
 class InputAttentionModel(DualAttentionModel):
+
+    def __init__(self, *args, teacher_forcing=False, **kwargs):
+        super(InputAttentionModel, self).__init__(*args, teacher_forcing=teacher_forcing, **kwargs)
 
     def build(self, input_shape=None):
 
@@ -488,14 +497,12 @@ class InputAttentionModel(DualAttentionModel):
         return
 
     def fetch_data(self, source, **kwargs):
-        self.dh.teacher_forcing = True
 
-        x, prev_y, labels = getattr(self.dh, f'{source}_data')(**kwargs)
-        self.dh.teacher_forcing = False
-        # if self.config['drop_remainder']:
-
-        # x, prev_y, labels = self.fetch_data(self.data, self.in_cols, self.out_cols,
-        #                                  transformation=self.config['transformation'], **kwargs)
+        data = getattr(self.dh_, f'{source}_data')(**kwargs)
+        if self.teacher_forcing:
+            x, prev_y, labels = data
+        else:
+            x, labels = data
 
         n_s_feature_dim = self.config['enc_config']['n_s']
         n_h_feature_dim = self.config['enc_config']['n_h']
@@ -504,9 +511,8 @@ class InputAttentionModel(DualAttentionModel):
             n_s_feature_dim += 1
             n_h_feature_dim += 1
             idx = np.expand_dims(x[:, 1:, 0], axis=-1)   # extract the index from x
-            prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
-
-        # x, prev_y, labels = self.check_batches(x, prev_y, labels)
+            if self.teacher_forcing:
+                prev_y = np.concatenate([prev_y, idx], axis=2)  # insert index in prev_y
 
         if not self.config['drop_remainder']:
             s0 = np.zeros((x.shape[0], n_s_feature_dim))
@@ -517,12 +523,15 @@ class InputAttentionModel(DualAttentionModel):
             print_something(x, "input_x")
             print_something(labels, "target")
 
-        return x, prev_y, labels
+        if self.teacher_forcing:
+            return [x, prev_y], labels
+        else:
+            return x, labels
 
 
 class OutputAttentionModel(DualAttentionModel):
 
-    def build(self):
+    def build(self, input_shape=None):
         self.config['dec_config'] = self.dec_config
         self.config['enc_config'] = self.enc_config
 
@@ -560,8 +569,8 @@ class OutputAttentionModel(DualAttentionModel):
         train_x, train_y, train_label = self.fetch_data(self.data,
                                                         st=st,
                                                         en=en,
-                                                        inps=self.in_cols,
-                                                        outs=self.out_cols,
+                                                        inps=self.input_features,
+                                                        outs=self.output_features,
                                                         shuffle=True,
                                                         write_data=self.config['CACHEDATA'],
                                                         indices=indices)
@@ -589,8 +598,8 @@ class OutputAttentionModel(DualAttentionModel):
                                                      st=st,
                                                      en=en, shuffle=False,
                                                      write_data=False,
-                                                     inps=self.in_cols,
-                                                     outs=self.out_cols,
+                                                     inps=self.input_features,
+                                                     outs=self.output_features,
                                                      indices=indices)
 
         h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.config['dec_config']['p']))
