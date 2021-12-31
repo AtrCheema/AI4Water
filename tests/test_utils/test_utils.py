@@ -545,8 +545,12 @@ class TestUtils(unittest.TestCase):
         #self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[10]) # todo
         #self.assertTrue(np.allclose(xx[2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[10])) # todo
 
-        assert np.max(model.dh_.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.dh_.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        test_indices = model.dh_.test_indices
+        train_indices = model.dh_.train_indices
+        _data = model.dh_.data
+
+        assert np.max(test_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        assert np.max(train_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
 
         test_evaluation(model)
 
@@ -613,8 +617,12 @@ class TestUtils(unittest.TestCase):
         #         self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
         #         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
 
-        assert np.max(model.dh_.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.dh_.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        test_indices = model.dh_.test_indices
+        train_indices = model.dh_.train_indices
+        _data = model.dh_.data
+
+        assert np.max(test_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        assert np.max(train_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
 
         return
 

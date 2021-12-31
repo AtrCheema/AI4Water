@@ -1325,6 +1325,12 @@ def make_cross_validator(cv, **kwargs):
 
 class TestCVs(object):
 
+    def __call__(self, *args, **kwargs):
+        self.test_loocv()
+        self.test_tscv()
+        self.test_kfold()
+        return
+
     def test_kfold(self):
         model = make_cross_validator(cv={'TimeSeriesSplit': {'n_splits': 5}})
         model.cross_val_score(data=arg_beach())
@@ -1767,9 +1773,7 @@ test_multisource_basic3()
 test_file_formats(arg_beach())
 
 cv_tester = TestCVs()
-cv_tester.test_loocv()
-cv_tester.test_tscv()
-cv_tester.test_kfold()
+cv_tester()
 
 
 # TestAllCases(input_features = ['a', 'b'],

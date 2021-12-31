@@ -1,3 +1,4 @@
+import time
 import unittest
 
 import matplotlib.pyplot as plt
@@ -39,6 +40,7 @@ class TestPDP(unittest.TestCase):
         return
 
     def test_3d_single_input(self):
+        time.sleep(1)
         model = Model(model={"layers": {"LSTM": 32, "Dense": 1}},
                       lookback=4,
                       input_features=input_features,

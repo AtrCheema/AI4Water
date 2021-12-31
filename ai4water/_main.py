@@ -65,7 +65,7 @@ class BaseModel(NN):
                  patience: int = 100,
                  save_model: bool = True,
                  metrics: Union[str, list] = None,
-                 val_metric: str = 'mse',
+                 val_metric: str = None,
                  cross_validator: dict = None,
                  wandb_config: dict = None,
                  seed: int = 313,
@@ -91,11 +91,12 @@ class BaseModel(NN):
                 model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
                 ```
                 The key 'DecisionTreeRegressor' should exactly match the name of
-                the model from following libraries
-                            -scikit-learn
-                            -xgboost
-                            -catboost
-                            -lightgbm
+                the model from one of following libraries
+
+                    - scikit-learn
+                    - xgboost
+                    - catboost
+                    - lightgbm
                 The value {"max_depth": 3, "criterion": "mae"} is another dictionary
                 which can be any keyword argument which the `model` (DecisionTreeRegressor
                 in this case) accepts. The user must refer to the documentation
@@ -164,7 +165,9 @@ class BaseModel(NN):
             val_metric str:
                 performance metric to be used for validation/cross_validation.
                 This metric will be used for hyper-parameter optimizationa and
-                experiment comparison
+                experiment comparison. If not defined then [r2_score][ai4water.postprocessing.SeqMetrics.RegressionMetrics.r2_score]
+                will be used for regression and [accuracy][r2_score][ai4water.postprocessing.SeqMetrics.ClassificationMetrics.accuracy]
+                will be used for classification.
             cross_validator dict:
                 selects the type of cross validation to be applied. It can be any
                 cross validator from sklear.model_selection. Default is None, which
@@ -298,8 +301,8 @@ class BaseModel(NN):
     @property
     def val_metric(self):
         if self.mode=='regression':
-            return 'r2_score'
-        return 'accuracy'
+            return self.config['val_metric'] or 'r2_score'
+        return self.config['val_metric'] or 'accuracy'
 
     @property
     def forecast_step(self):
@@ -333,9 +336,17 @@ class BaseModel(NN):
 
     @property
     def is_multilabel(self):
-        if self.dh_.data is None:
-            return None
-        return self.dh_.is_multilabel
+        if hasattr(self, 'dh_'):
+            if self.dh_.data is None:
+                return None
+            return self.dh_.is_multilabel
+        raise NotImplementedError
+
+    def _get_dummy_input_shape(self):
+        raise NotImplementedError
+
+    def build(self, *args, **kwargs):
+        raise NotImplementedError
 
     @property
     def quantiles(self):

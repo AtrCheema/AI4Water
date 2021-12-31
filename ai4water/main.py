@@ -193,7 +193,11 @@ class Model(MODEL, BaseModel):
         shape = ()
         if K.BACKEND == 'tensorflow' and self.category == "DL":
             if isinstance(self.inputs, list):
-                shape = self.inputs[0].shape
+                if len(self.inputs)==1:
+                    shape = self.inputs[0].shape
+                else:
+                    shape = [inp.shape for inp in self.inputs]
+
 
         return shape
 
@@ -538,8 +542,6 @@ class Model(MODEL, BaseModel):
                 cache[lyr] = outs
             prev_output_name = lyr
 
-        #outs = self.maybe_add_output_layer(outs, cache)
-
         return outs
 
     def call_210(self, inputs, training=True, mask=None, run_call=True):
@@ -615,8 +617,6 @@ class Model(MODEL, BaseModel):
             else:
                 cache[lyr] = outs
             prev_output_name = lyr
-
-        #outs = self.maybe_add_output_layer(outs, cache)
 
         return outs
 
@@ -716,8 +716,6 @@ class Model(MODEL, BaseModel):
             else:
                 cache[lyr] = outs
             prev_output_name = lyr
-
-        #outs = self.maybe_add_output_layer(outs, cache)
 
         return outs
 
@@ -825,9 +823,9 @@ class Model(MODEL, BaseModel):
         """ instead of tuple, returning a list so that it can be moified if needed"""
         if K.BACKEND == 'pytorch':
             if self.lookback == 1:
-                return [-1, self.ins]
+                return [-1, self.num_ins]
             else:
-                return [-1, self.lookback, self.ins]
+                return [-1, self.lookback, self.num_ins]
 
         if self.num_input_layers > 1:
             shapes = {}

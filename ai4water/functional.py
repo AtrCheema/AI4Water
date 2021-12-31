@@ -117,6 +117,17 @@ class Model(BaseModel):
     def predict_fn(self):
         return self._model.predict
 
+    def _get_dummy_input_shape(self):
+        shape = ()
+        if self.config['backend'] == 'tensorflow' and self.category == "DL":
+            if isinstance(self.model_.inputs, list):
+                if len(self.model_.inputs) == 1:
+                    shape = self.model_.inputs[0].shape
+                else:
+                    shape = [inp.shape for inp in self.model_.inputs]
+
+        return shape
+
     def first_layer_shape(self):
         """ instead of tuple, returning a list so that it can be moified if needed"""
         if self.num_input_layers > 1:
@@ -341,7 +352,7 @@ class Model(BaseModel):
         self.plot_model(k_model)
         return k_model
 
-    def build(self):
+    def build(self, input_shape=None):
 
         self.print_info()
 

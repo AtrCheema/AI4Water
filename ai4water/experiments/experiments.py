@@ -1247,7 +1247,7 @@ be used to build ai4water's Model class.
 
         test_true, test_pred = model.predict(data='test', return_true=True)
 
-        model.data['allow_nan_labels'] = 1
+        model.dh_.config['allow_nan_labels'] = 1
         model.predict()
 
         return (train_true, train_pred), (test_true, test_pred)
