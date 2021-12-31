@@ -37,7 +37,7 @@ class ModelOptimizerMixIn(object):
         hpo = importlib.import_module("ai4water.hyperopt")
 
         #data = self.model.data
-        val_metric = self.model.config['val_metric']
+        val_metric = self.model.val_metric
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
         config = jsonize(self.model.config)
@@ -54,16 +54,8 @@ class ModelOptimizerMixIn(object):
 
             _model = self.model.from_config(
                 config.copy(),
-                #data=data,
                 make_new_path=True,
             )
-
-            # if self.xy:
-            #     splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
-            #     train_x, test_x, train_y, test_y = splitter.split_by_slicing()
-            #     _model.fit(x=train_x, y=train_y)
-            # else:
-            #     _model.fit(data=self.data)
 
             if cross_validator is None:
 

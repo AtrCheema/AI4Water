@@ -25,7 +25,7 @@ from ai4water.nn_tools import NN
 from ai4water.backend import sklearn_models
 from ai4water.utils.visualizations import PlotResults
 from ai4water.utils.utils import ts_features, make_model
-from ai4water.preprocessing.datahandler import DataHandler
+from ai4water.preprocessing.datahandler import DataHandler, SiteDistributedDataHandler
 from ai4water.preprocessing.transformations import Transformations
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 from ai4water.models.tensorflow.custom_training import train_step, test_step
@@ -268,16 +268,6 @@ class BaseModel(NN):
             self.mode = self.config['mode']
             self.info = {}
 
-    def __getattr__(self, item):
-        """instead of doing model.dh_.num_ins do model.num_ins"""
-        if item in [
-            'data',
-            'test_indices', 'train_indices',
-             'forecast_step',
-                    ]:
-            return getattr(self.dh_, item)
-        else:
-            raise AttributeError(f'BaseModel has no attribute named {item}')
 
     @property
     def input_features(self):
@@ -299,8 +289,6 @@ class BaseModel(NN):
     def num_outs(self):
         return len(self.output_features)
 
-    # because __getattr__ does not work with pytorch, we explicitly get attributes from
-    # DataHandler and assign them to Model
     @property
     def forecast_len(self):
         if hasattr(self, 'dh_'):
@@ -308,20 +296,40 @@ class BaseModel(NN):
         return self.config['forecast_len']
 
     @property
+    def val_metric(self):
+        if self.mode=='regression':
+            return 'r2_score'
+        return 'accuracy'
+
+    @property
+    def forecast_step(self):
+        if hasattr(self, 'dh_'):
+            return self.dh_.forecast_step
+        return self.config['forecast_step']
+
+    @property
     def is_binary(self):
-        return self.dh_.is_binary
+        if hasattr(self, 'dh_'):
+            return self.dh_.is_binary
+        raise NotImplementedError
 
     @property
     def is_multiclass(self):
-        return self.dh_.is_multiclass
+        if hasattr(self, 'dh_'):
+            return self.dh_.is_multiclass
+        raise NotImplementedError
 
     @property
     def classes(self):
-        return self.dh_.classes
+        if hasattr(self, 'dh_'):
+            return self.dh_.classes
+        raise NotImplementedError
 
     @property
     def num_classes(self):
-        return self.dh_.num_classes
+        if hasattr(self, 'dh_'):
+            return self.dh_.num_classes
+        raise NotImplementedError
 
     @property
     def is_multilabel(self):
@@ -345,15 +353,12 @@ class BaseModel(NN):
     def data_path(self):
         return os.path.join(self.path, 'data')
 
-    # because __getattr__ does not work with pytorch, we explicitly get attributes from
-    # DataHandler and assign them to Model
     def training_data(self, x=None, y=None, data='training', key=None):
 
         if x is None:
-            if data.__class__.__name__ in ["DataHanlder", "SiteDistributedDataHandler"]:
-                dh_ = data
+            if isinstance(data, DataHandler) or isinstance(data, SiteDistributedDataHandler):
                 setattr(self, 'dh_', data)
-                data = dh_.training_data(key=key)
+                data = data.training_data(key=key)
             elif isinstance(data, str):
                 if data in ['validation', 'test']:
                     # for .predict(data='training') case
@@ -376,10 +381,17 @@ class BaseModel(NN):
 
         return x, y
 
-    def validation_data(self, *args, **kwargs):
+    def validation_data(self, *args, **kwargs)->tuple:
+        """This method should return x,y pairs of validation data"""
+        val_data = None, None
         if hasattr(self, 'dh_'):
-            return self.dh_.validation_data(*args, **kwargs)
-        return None, None
+            val_data = self.dh_.validation_data(*args, **kwargs)
+        val_x, val_y = maybe_three_outputs(val_data, self.teacher_forcing)
+
+        val_x = self._transform_x(val_x, 'val_x_transformer_')
+        val_y = self._transform_y(val_y, 'val_y_transformer_')
+
+        return val_x, val_y
 
     @property
     def teacher_forcing(self):  # returns None if undefined
@@ -1044,15 +1056,8 @@ class BaseModel(NN):
         inputs, outputs = self.training_data(x=x,y=y, data=data)
 
         # apply preprocessing/feature engineering if required.
-        if self.config['x_transformation']:
-            x_transformer = Transformations(self.input_features, self.config['x_transformation'])
-            inputs = x_transformer.fit_transform(inputs)
-            self.config['x_transformer_'] = x_transformer.config()
-
-        if self.config['y_transformation']:
-            y_transformer = Transformations(self.dh_.output_features, self.config['y_transformation'])
-            outputs = y_transformer.fit_transform(outputs)
-            self.config['y_transformer_'] = y_transformer.config()
+        inputs = self._transform_x(inputs, 'x_transformer_')
+        outputs = self._transform_y(outputs, 'y_transformer_')
 
         if isinstance(outputs, np.ndarray) and self.category == "DL":
 
@@ -1077,20 +1082,14 @@ class BaseModel(NN):
         self.info['training_start'] = dateandtime_now()
 
         if self.category == "DL":
-            if 'validation_data' not in kwargs:  # todo, apply transformation when 'validation_data' is in kwargs
-                val_data = self.validation_data()
-                val_x, val_y = maybe_three_outputs(val_data, self.teacher_forcing)
+            if 'validation_data' in kwargs:
+                val_x, val_y = kwargs['validation_data']
+                val_x = self._transform_x(val_x, 'val_x_transformer_')
+                val_y = self._transform_y(val_y, 'val_y_transformer_')
+                kwargs['validation_data'] = val_x, val_y
+            else:
+                kwargs['validation_data'] = self.validation_data()
 
-                if val_x is not None:
-                    x_transformer = Transformations(self.input_features, self.config['x_transformation'])
-                    val_x = x_transformer.fit_transform(val_x)
-                    self.config['val_x_transformer_'] = x_transformer.config()
-                    y_transformer = Transformations(self.output_features, self.config['y_transformation'])
-                    val_y = y_transformer.fit_transform(val_y)
-                    self.config['val_y_transformer_'] = y_transformer.config()
-
-                val_data = (val_x, val_y)
-                kwargs['validation_data'] = val_data
             history = self._FIT(inputs, outputs, callbacks=callbacks, **kwargs)
 
             if self.verbosity >= 0:
@@ -1182,8 +1181,13 @@ class BaseModel(NN):
         """
         from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 
+        if self.mode == "classification":
+            Metrics = ClassificationMetrics
+        else:
+            Metrics = RegressionMetrics
+
         if scoring is None:
-            scoring = self.config['val_metric']
+            scoring = self.val_metric
 
         scores = []
 
@@ -1222,7 +1226,7 @@ class BaseModel(NN):
 
             pred = self._model.predict(test_x)
 
-            metrics = RegressionMetrics(test_y.reshape(-1, 1), pred)
+            metrics = Metrics(test_y.reshape(-1, 1), pred)
             val_score = getattr(metrics, scoring)()
 
             scores.append(val_score)
@@ -1310,7 +1314,7 @@ class BaseModel(NN):
             >>> model.evaluate()
 
             for evaluation on training data
-            >>> model.evaluate('training')
+            >>> model.evaluate(data='training')
 
             evaluate on any metric from [Metrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics] module
             >>> model.evaluate(metrics='pbias')
@@ -1437,8 +1441,6 @@ class BaseModel(NN):
             and the second is predicted. If `x` is given but `y` is not given,
             then, first array which is returned is None.
         """
-        if x is not None:
-            assert y is not None
 
         assert metrics in ("minimal", "all", "hydro_metrics")
 
@@ -1500,10 +1502,7 @@ class BaseModel(NN):
         if 'batch_size' in kwargs:
             batch_size = kwargs.pop('batch_size')
 
-        if self.config['x_transformation']:
-            x_transformer = Transformations(self.input_features, self.config['x_transformation'])
-            inputs = x_transformer.fit_transform(inputs)
-            self.config['x_transformer_'] = x_transformer.config()
+        inputs = self._transform_x(inputs, 'x_transformer_')
 
         y_transformer = None
         if true_outputs is not None:
@@ -1817,7 +1816,6 @@ class BaseModel(NN):
         config, path = cls._get_config_and_path(cls, config_path=config_path, make_new_path=make_new_path)
 
         return cls(**config,
-                   #data=data,
                    path=path,
                    **kwargs)
 
@@ -1911,17 +1909,16 @@ class BaseModel(NN):
             h5.close()
         return
 
-    def eda(self, freq: str = None, cols=None):
+    def eda(self, data, freq: str = None):
         """Performs comprehensive Exploratory Data Analysis.
 
         Arguments:
+            data:
             freq:
                 if specified, small chunks of data will be plotted instead of
                 whole data at once. The data will NOT be resampled. This is valid
                 only `plot_data` and `box_plot`. Possible values are `yearly`,
                     weekly`, and  `monthly`.
-            cols:
-
         Returns:
             an instance of [EDA][ai4water.eda.EDA] class
         """
@@ -1929,11 +1926,13 @@ class BaseModel(NN):
         from ai4water.eda import EDA
 
         # todo, Uniform Manifold Approximation and Projection (UMAP) of input data
-        if self.data is None:
-            print("data is None so eda can not be performed.")
-            return
+
         # todo, radial heatmap to show temporal trends http://holoviews.org/reference/elements/bokeh/RadialHeatMap.html
-        eda = EDA(data=self.data, path=self.path, in_cols=self.in_cols, out_cols=self.out_cols, save=True)
+        eda = EDA(data=data,
+                  path=self.path,
+                  in_cols=self.input_features,
+                  out_cols=self.output_features,
+                  save=True)
 
         eda()
 
@@ -2039,7 +2038,7 @@ class BaseModel(NN):
         if isinstance(data, list) or isinstance(data, tuple):
             pass
         else:
-            self.dh_ = DataHandler(data, **self.data_config)
+            setattr(self, 'dh_', DataHandler(data, **self.data_config))
 
         _optimizer = OptimizeHyperparameters(
             self,
@@ -2146,7 +2145,7 @@ class BaseModel(NN):
         """
         from ._optimize import OptimizeTransformations  # optimize_transformations
 
-        self.dh_ = DataHandler(data=data, **self.data_config)
+        setattr(self, 'dh_', DataHandler(data=data, **self.data_config))
 
         categories = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
                       "quantile", "robust", "log", "log2", "log10", "sqrt", "none",
@@ -2282,6 +2281,22 @@ class BaseModel(NN):
             assert plot_type in ("boxplot", "heatmap")
             return getattr(pm, f"plot_as_{plot_type}")()
 
+    def _transform_x(self, x, name):
+        """transforms x and puts the transformer in config witht he key name"""
+        return self._transform(x, name, self.config['x_transformation'], self.input_features)
+
+    def _transform_y(self, y, name):
+        """transforms y and puts the transformer in config witht he key name"""
+        return self._transform(y, name, self.config['y_transformation'], self.output_features)
+
+    def _transform(self, data, name, transformation, feature_names):
+        """transforms the `data` using `transformation` and puts it in config
+        with config `name`."""
+        if data is not None and transformation:
+            transformer = Transformations(feature_names, transformation)
+            data = transformer.fit_transform(data)
+            self.config[name] = transformer.config()
+        return data
 
 def get_values(outputs):
 
