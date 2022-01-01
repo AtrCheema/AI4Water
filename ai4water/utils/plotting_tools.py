@@ -77,8 +77,13 @@ class Plots(object):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        axis, im = imshow(img, aspect="auto", interpolation=interpolation, cmap=cmap,
-                          xlabel=kwargs.get('xlabel', 'inputs'), title=label)
+        axis, im = imshow(img,
+                          aspect="auto",
+                          interpolation=interpolation,
+                          cmap=cmap,
+                          xlabel=kwargs.get('xlabel', 'inputs'),
+                          show=False,
+                          title=label)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
@@ -134,7 +139,6 @@ class Plots(object):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
         axis.set_xlabel('lookback')
         axis.set_ylabel('inputs')
-        print(self.in_cols)
         axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
         fig.colorbar(im)
         self.save_or_show(save=save, fname=name + '_' + str(sample), where='path')

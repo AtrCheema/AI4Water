@@ -854,7 +854,11 @@ class ShapExplainer(ExplainerMixin):
 
             plt.close('all')
             fig, axis = plt.subplots()
-            im = axis.imshow(_shap_vals.T, aspect='auto', interpolation=interpolation, cmap=cmap)
+            im = axis.imshow(_shap_vals.T,
+                             aspect='auto',
+                             interpolation=interpolation,
+                             cmap=cmap
+                             )
             if _features is not None:  # if imshow is successful then don't worry if features are None
                 axis.set_yticks(np.arange(len(_features)))
                 axis.set_yticklabels(_features)
@@ -952,14 +956,23 @@ def imshow_3d(values,
         fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
 
         yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis, im = imshow(data[:, :, idx].transpose(), yticklabels=yticklabels,
-                          axis=ax1, vmin=vmin, vmax=vmax,
-                          title=feat, cmap=cmap)
+        axis, im = imshow(data[:, :, idx].transpose(),
+                          yticklabels=yticklabels,
+                          axis=ax1, vmin=vmin,
+                          vmax=vmax,
+                          title=feat,
+                          cmap=cmap,
+                          show=False
+                          )
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        axis, im = imshow(values[:, :, idx].transpose(), yticklabels=yticklabels,
-                          vmin=vmin, vmax=vmax, xlabel="Examples",
-                          title=f"SHAP Values", cmap=cmap,
+        axis, im = imshow(values[:, :, idx].transpose(),
+                          yticklabels=yticklabels,
+                          vmin=vmin, vmax=vmax,
+                          xlabel="Examples",
+                          title=f"SHAP Values",
+                          cmap=cmap,
+                          show=False,
                           axis=ax2)
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)

@@ -320,8 +320,11 @@ class EDA(Plot):
             ax1 = fig.add_subplot(gs[:1, :5])
 
             # ax1 - Barplot
-            ax1 = bar_chart(labels=list(data.columns), values=np.round(mv_cols_ratio * 100, 2),
-                            orient='v', axis=ax1)
+            ax1 = bar_chart(labels=list(data.columns),
+                            values=np.round(mv_cols_ratio * 100, 2),
+                            orient='v',
+                            show=False,
+                            axis=ax1)
 
             ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
             ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)

@@ -122,17 +122,24 @@ class Interpret(Plot):
 
         # save the whole importance before truncating it
         fname = os.path.join(self.model.path, 'feature_importance.csv')
-        pd.DataFrame(imp_sort, index=all_cols, columns=['importance_sorted']).to_csv(fname)
+        pd.DataFrame(imp_sort, index=all_cols,
+                     columns=['importance_sorted']).to_csv(fname)
 
         imp = np.concatenate([imp_sort[0:max_num_features], [imp_sort[max_num_features:].sum()]])
         all_cols = list(all_cols[0:max_num_features]) + [f'rest_{len(all_cols) - max_num_features}']
 
         if use_xgb:
-            self._feature_importance_xgb(max_num_features=max_num_features, save=save, show=show)
+            self._feature_importance_xgb(max_num_features=max_num_features,
+                                         save=save, show=show)
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
-            bar_chart(labels=all_cols, values=imp, axis=axis, title="Feature importance", xlabel_fs=12)
+            bar_chart(labels=all_cols,
+                      values=imp,
+                      axis=axis,
+                      title="Feature importance",
+                      show=False,
+                      xlabel_fs=12)
             self.save_or_show(save=save, show=show, fname="feature_importance.png")
         return
 
@@ -146,15 +153,18 @@ class Interpret(Plot):
             plt.close('all')
             # global feature importance with xgboost comes with different types
             xgboost.plot_importance(booster, max_num_features=max_num_features)
-            self.save_or_show(save=save, show=show, fname="feature_importance_weight.png")
+            self.save_or_show(save=save, show=show,
+                              fname="feature_importance_weight.png")
             plt.close('all')
             xgboost.plot_importance(booster, importance_type="cover",
                                     max_num_features=max_num_features, **kwargs)
-            self.save_or_show(save=save, show=show, fname="feature_importance_type_cover.png")
+            self.save_or_show(save=save, show=show,
+                              fname="feature_importance_type_cover.png")
             plt.close('all')
             xgboost.plot_importance(booster, importance_type="gain",
                                     max_num_features=max_num_features, **kwargs)
-            self.save_or_show(save=save, show=show, fname="feature_importance_type_gain.png")
+            self.save_or_show(save=save, show=show,
+                              fname="feature_importance_type_gain.png")
 
         return
 
@@ -197,7 +207,8 @@ class Interpret(Plot):
             score = pd.DataFrame(score, columns=[imp_type])
 
             if rescale:
-                # so that the sum of all feature importance is 1.0 and the scale is relative
+                # so that the sum of all feature importance is 1.0 and the
+                # scale is relative
                 score = score / score.sum()
 
             importance.append(score)
@@ -280,7 +291,8 @@ class Interpret(Plot):
                 attention_components[k] = temp_model.predict(x=x, verbose=1, steps=1)
         return attention_components
 
-    def interpret_example_tft(self, example_index, model=None, data='test', show=False):
+    def interpret_example_tft(self, example_index, model=None, data='test',
+                              show=False):
         """interprets a single example using TFT model.
 
         Arguments:
@@ -304,7 +316,11 @@ class Interpret(Plot):
         plt.close('all')
 
         axis, im = imshow(encoder_variable_selection_weights[example_index],
-                      aspect="auto", ylabel="lookback steps", title=example_index)
+                          aspect="auto",
+                          ylabel="lookback steps",
+                          title=example_index,
+                          show=False
+                          )
 
         plt.xticks(np.arange(model.num_ins), model.input_features, rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
@@ -323,7 +339,8 @@ class Interpret(Plot):
         """
         model = model or self.model
 
-        true, predictions = model.predict(data=data, return_true=True, process_results=False)
+        true, predictions = model.predict(data=data, return_true=True,
+                                          process_results=False)
 
         ac = self.tft_attention_components(model=model, data=data)
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']

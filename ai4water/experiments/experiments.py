@@ -631,7 +631,8 @@ Available cases are {self.models} and you wanted to include
                   title="Train",
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
-                  title_fs=kwargs.get('title_fs', 20)
+                  title_fs=kwargs.get('title_fs', 20),
+                  show=False,
                   )
 
         bar_chart(axis=axis[1],
@@ -642,7 +643,8 @@ Available cases are {self.models} and you wanted to include
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
                   title_fs=kwargs.get('title_fs', 20),
-                  show_yaxis=False
+                  show_yaxis=False,
+                  show=False
                   )
 
         appendix = f"{cutoff_val or ''}{cutoff_type or ''}{len(models)}"

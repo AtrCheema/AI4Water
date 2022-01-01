@@ -51,7 +51,8 @@ def bar_chart(labels,
               title=None,
               title_fs=None,
               show_yaxis=True,
-              rotation=0
+              rotation=0,
+              show=True,
               ):
 
     cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
@@ -83,6 +84,9 @@ def bar_chart(labels,
 
     if title:
         axis.set_title(title, fontdict={'fontsize': title_fs})
+
+    if show:
+        plt.show()
 
     return axis
 
@@ -162,7 +166,8 @@ def regplot(
         plt.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
                      xy=(0.3, 0.95),
                      xycoords='axes fraction',
-                     horizontalalignment='right', verticalalignment='top', fontsize=16)
+                     horizontalalignment='right', verticalalignment='top',
+                     fontsize=16)
     _regplot(x,
              y,
              ax=axis,
@@ -287,11 +292,13 @@ def process_axis(axis,
         data = pd.Series(_data, index=data.index)
 
     if x is not None:
-        axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker, linestyle=linestyle, ms=ms, label=label)
+        axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker,
+                  linestyle=linestyle, ms=ms, label=label)
     elif use_third:
         axis.plot(data, style, color=color, ms=ms, label=label)
     else:
-        axis.plot(data, fillstyle=fillstyle, color=color, marker=marker, linestyle=linestyle, ms=ms, label=label)
+        axis.plot(data, fillstyle=fillstyle, color=color, marker=marker,
+                  linestyle=linestyle, ms=ms, label=label)
 
     return _process_axis(axis=axis, label=label, log=log, **kwargs)
 
@@ -368,7 +375,8 @@ def _process_axis(
     if left_spine:
         axis.spines['left'].set_visible(left_spine)
 
-    if min_xticks is not None:
+    if max_xticks is not None:
+        min_xticks = min_xticks or max_xticks-1
         assert isinstance(min_xticks, int)
         assert isinstance(max_xticks, int)
         loc = mdates.AutoDateLocator(minticks=min_xticks, maxticks=max_xticks)
@@ -391,8 +399,11 @@ def imshow(values,
            aspect=None,
            interpolation=None,
            title=None,
-           cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
-           show=False,
+           cmap=None,
+           ylabel=None,
+           yticklabels=None,
+           xticklabels=None,
+           show=True,
            annotate=False,
            annotate_kws=None,
            colorbar:bool=False,
@@ -409,7 +420,8 @@ def imshow(values,
     if axis is None:
         axis = plt.gca()
 
-    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=interpolation)
+    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax,
+                     cmap=cmap, interpolation=interpolation)
 
     if annotate:
         annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}

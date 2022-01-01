@@ -408,8 +408,13 @@ class DualAttentionModel(FModel):
         fig, axis = plt.subplots()
 
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        _, im = imshow(act_avg_over_examples, axis=axis, aspect="auto", yticklabels=ytick_labels,
-               ylabel='lookback steps')
+        _, im = imshow(act_avg_over_examples,
+                       axis=axis,
+                       aspect="auto",
+                       yticklabels=ytick_labels,
+                       ylabel='lookback steps',
+                       show=False
+                       )
 
         axis.set_xticks(np.arange(self.num_ins))
         axis.set_xticklabels(self.input_features, rotation=90)

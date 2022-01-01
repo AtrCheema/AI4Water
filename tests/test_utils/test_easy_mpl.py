@@ -25,26 +25,26 @@ class TestBarChart(unittest.TestCase):
 
         plt.close('all')
         _, axis = plt.subplots()
-        bar_chart(values=d, labels=names, axis=axis, color=cm)
+        bar_chart(values=d, labels=names, axis=axis, color=cm, show=False)
         return
 
     def test_bar_v_without_axis(self):
         d, names = get_chart_data(5)
         cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
 
-        bar_chart(values=d, labels=names, color=cm, sort=True)
+        bar_chart(values=d, labels=names, color=cm, sort=True, show=False)
 
     def test_h_sorted(self):
         d, names = get_chart_data(5)
         cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
 
-        bar_chart(values=d, labels=names, color=cm, orient='v')
+        bar_chart(values=d, labels=names, color=cm, orient='v', show=False)
         return
 
     def test_vertical_without_axis(self):
         d, names = get_chart_data(5)
         cm = get_cmap(random.choice(BAR_CMAPS), len(d), 0.2)
-        bar_chart(values=d, labels=names, color=cm, sort=True, orient='v')
+        bar_chart(values=d, labels=names, color=cm, sort=True, orient='v', show=False)
         return
 
 
@@ -68,7 +68,7 @@ class TestRegplot(unittest.TestCase):
 class TestImshow(unittest.TestCase):
 
     def test_imshow(self):
-        imshow(np.random.random((10, 10)), colorbar=True)
+        imshow(np.random.random((10, 10)), colorbar=True, show=False)
         return
 
 
