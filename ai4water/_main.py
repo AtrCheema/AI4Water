@@ -561,7 +561,10 @@ class BaseModel(NN):
     def get_val_data(self, val_data):
         """Finds out if there is val_data or not"""
         if isinstance(val_data, tuple):
-            if val_data[0] is None and val_data[1] is None:
+            x,y = val_data
+            if x is None and y is None:
+                return None
+            elif hasattr(x, '__len__') and len(x)==0:
                 return None
             # val_data was probably available in kwargs, so use them as it is
             return val_data
