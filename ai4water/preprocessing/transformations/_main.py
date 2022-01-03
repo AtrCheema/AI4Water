@@ -61,20 +61,20 @@ class Transformation(TransformationsContainer):
     To transform a datafrmae using any of the above methods use
 
     Examples:
-        >>> scaler = Transformation(data=[1,2,3,5], method='zscore')
-        >>> scaler.transform()
+        >>> transformer = Transformation(method='zscore')
+        >>> transformer.transform(data=[1,2,3,5])
 
         or
-        >>> scaler = Transformation(data=pd.DataFrame([1,2,3]))
-        >>> normalized_df, scaler_dict = scaler.transform_with_minmax(return_key=True)
+        >>> transformer = Transformation(method='minmax')
+        >>> normalized_df = transformer.transform_with_minmax(data=pd.DataFrame([1,2,3]))
 
-        >>> scaler = Transformation(data=pd.DataFrame([1,2,3]), method='minmax')
-        >>> normalized_df, scaler_dict = scaler()
+        >>> transformer = Transformation(method='minmax')
+        >>> normalized_df, scaler_dict = transformer(data=pd.DataFrame([1,2,3]))
 
         or using one liner
-        >>> normalized_df, scaler = Transformation(
-        ...     data=pd.DataFrame([[1,2,3],[4,5,6]], columns=['a', 'b']),
-        ...     method='log', features=['a'])('transform')
+        >>> normalized_df = Transformation(method='minmax',
+        ...                       features=['a'])(data=pd.DataFrame([[1,2],[3,4], [5,6]],
+        ...                                       columns=['a', 'b']))
 
     where `method` can be any of the above mentioned methods.
 
