@@ -187,11 +187,13 @@ class OptimizeTransformations(ModelOptimizerMixIn):
 
                 if method.startswith("log"):
                     t["treat_negatives"] = True
+                    t["replace_zeros"] = True
                 elif method == "box-cox":
                     t["treat_negatives"] = True
                     t["replace_zeros"] = True
                 elif method == "sqrt":
                     t['treat_negatives'] = True
+                    t["replace_zeros"] = True
 
                 if feature in self.input_features:
                     transformations.append(t)

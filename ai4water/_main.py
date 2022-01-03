@@ -2198,11 +2198,13 @@ class BaseModel(NN):
 
                 if method.startswith("log"):
                     t["treat_negatives"] = True
+                    t["replace_zeros"] = True
                 elif method == "box-cox":
                     t["replace_zeros"] = True
                     t["treat_negatives"] = True
                 elif method == "sqrt":
                     t["treat_negatives"] = True
+                    t["replace_zeros"] = True
 
                 if feature in self.input_features:
                     x_transformations.append(t)
