@@ -52,7 +52,7 @@ def run_method1(method,
     normalized_df1, scaler = Transformation(method=method,
                                              features=cols,
                                              **kwargs)(data,
-                                                       'Transform',
+                                                       'fit_transform',
                                                        return_key=True)
 
     denormalized_df1 = Transformation(features=cols,
@@ -73,7 +73,7 @@ def run_method2(method,
     scaler = Transformation(method=method,
                              **kwargs)
 
-    normalized_df, scaler_dict = scaler.transform(data, return_key=True)
+    normalized_df, scaler_dict = scaler.fit_transform(data, return_key=True)
 
     denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
     return data, normalized_df, denormalized_df
@@ -101,7 +101,7 @@ def run_method4(method,data=None, **kwargs):
 
     scaler = Transformation(**kwargs)
 
-    normalized_df4, scaler_dict = getattr(scaler, "transform_with_" + method)(
+    normalized_df4, scaler_dict = getattr(scaler, "fit_transform_with_" + method)(
         data=data,
         return_key=True)
     denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
@@ -197,7 +197,7 @@ class test_Scalers(unittest.TestCase):
             self.assertEqual(v, 1001 + idx)
 
     def test_get_scaler_from_dict_error(self):
-        normalized_df1, _ = Transformation()(df, 'transform', return_key=True)
+        normalized_df1, _ = Transformation()(df, 'fit_transform', return_key=True)
         self.assertRaises(ValueError, Transformation(), what='inverse', data=normalized_df1)
         return
 
@@ -380,7 +380,7 @@ class test_Scalers(unittest.TestCase):
         data = arg_beach()
         inputs = ['pcp6_mm', 'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa']
         transformer = Transformation(method='minmax', features=['pcp6_mm', 'pcp12_mm'])
-        new_data = transformer.transform(data[inputs])
+        new_data = transformer.fit_transform(data[inputs])
         orig_data = transformer.inverse_transform(data=new_data)
         np.allclose(data[inputs].values, orig_data.values)
 
@@ -394,7 +394,7 @@ class test_Scalers(unittest.TestCase):
                 kwargs['n_quantiles'] = 2
             x = [1.0, 2.0, -3.0, 4.0]
             tr = Transformation(method=m, treat_negatives=True, **kwargs)
-            xtr = tr.transform(x)
+            xtr = tr.fit_transform(x)
             _x = tr.inverse_transform(data=xtr)
             np.testing.assert_array_almost_equal(x, _x.values.reshape(-1,))
 
@@ -408,7 +408,7 @@ class test_Scalers(unittest.TestCase):
             df1 = pd.DataFrame(np.column_stack([x, x1]))
             tr = Transformation(method=m, treat_negatives=True, replace_zeros=True,
                                 replace_zeros_with=1, **kwargs)
-            dft = tr.transform(df1)
+            dft = tr.fit_transform(df1)
             _df = tr.inverse_transform(data=dft)
             np.testing.assert_array_almost_equal(df1.values, _df.values)
 
@@ -416,7 +416,7 @@ class test_Scalers(unittest.TestCase):
 
     def test_boxcox(self):
         t = Transformation("box-cox")
-        x1 = t.transform([1,2,3])
+        x1 = t.fit_transform([1,2,3])
         from sklearn.preprocessing import PowerTransformer
         x2 = PowerTransformer('box-cox').fit_transform(np.array([1,2,3]).reshape(-1,1))
         np.testing.assert_array_almost_equal(x1, x2)
@@ -424,7 +424,7 @@ class test_Scalers(unittest.TestCase):
 
     def test_yeojohnson(self):
         t = Transformation("yeo-johnson")
-        x1 = t.transform([1,2,3])
+        x1 = t.fit_transform([1,2,3])
         from sklearn.preprocessing import PowerTransformer
         x2 = PowerTransformer().fit_transform(np.array([1,2,3]).reshape(-1,1))
         np.testing.assert_array_almost_equal(x1, x2)
@@ -448,7 +448,7 @@ class test_Scalers(unittest.TestCase):
 
             t = Transformation(method, treat_negatives=True, replace_zeros=True, **kwargs)
             x = [1., 2., 3., 0.0, -5., 6.]
-            x1 = t.transform(data=x)
+            x1 = t.fit_transform(data=x)
             conf = t.config()
             t2 = Transformation.from_config(conf)
             x2 = t2.inverse_transform(data=x1)
@@ -468,7 +468,7 @@ class test_Scalers(unittest.TestCase):
                                treat_negatives=True, replace_zeros=True, **kwargs)
             x = np.random.randint(-2, 30, (10, 3))
             data = pd.DataFrame(x, columns=['a', 'b', 'c'])
-            x1 = t.transform(data=data.copy())
+            x1 = t.fit_transform(data=data.copy())
             conf = t.config()
             t2 = Transformation.from_config(conf)
             x2 = t2.inverse_transform(data=x1)

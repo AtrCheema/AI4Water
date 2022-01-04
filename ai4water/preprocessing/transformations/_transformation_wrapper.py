@@ -173,7 +173,7 @@ class Transformations(object):
 
             if isinstance(transformation, dict):
                 transformer = Transformation(**transformation)
-                data = transformer.transform(pd.DataFrame(data, columns=columns))
+                data = transformer.fit_transform(pd.DataFrame(data, columns=columns))
                 scalers[key] = transformer.config()
 
             # we want to apply multiple transformations
@@ -182,17 +182,17 @@ class Transformations(object):
 
                     if isinstance(trans, str):
                         transformer = Transformation(method=trans)
-                        data = transformer.transform(pd.DataFrame(data, columns=columns))
+                        data = transformer.fit_transform(pd.DataFrame(data, columns=columns))
                         scalers[f'{key}_{trans}_{idx}'] = transformer.config()
 
                     elif trans['method'] is not None:
                         transformer = Transformation(**trans)
-                        data = transformer.transform(pd.DataFrame(data, columns=columns))
+                        data = transformer.fit_transform(pd.DataFrame(data, columns=columns))
                         scalers[f'{key}_{trans["method"]}_{idx}'] = transformer.config()
             else:
                 assert isinstance(transformation, str)
                 transformer = Transformation(method=transformation)
-                data = transformer.transform(pd.DataFrame(data, columns=columns))
+                data = transformer.fit_transform(pd.DataFrame(data, columns=columns))
                 scalers[key] = transformer.config()
 
             data = data.values

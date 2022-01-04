@@ -15,8 +15,8 @@ data = arg_beach()
 
 
 def calculate_manually(xarray_3d, **kwds):
-    x1_0 = Transformation(**kwds).transform(xarray_3d[:, 0].copy()).values
-    x1_1 = Transformation(**kwds).transform(xarray_3d[:, 1].copy())
+    x1_0 = Transformation(**kwds).fit_transform(xarray_3d[:, 0].copy()).values
+    x1_1 = Transformation(**kwds).fit_transform(xarray_3d[:, 1].copy())
     transformed_x = np.stack([x1_0, x1_1], axis=1)
     return transformed_x
 
@@ -44,7 +44,7 @@ class Test3dData(unittest.TestCase):
             x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
             x1 = calculate_manually(x3d, **kwargs)
 
-            x2_0 = Transformation(**kwargs).transform(x).values
+            x2_0 = Transformation(**kwargs).fit_transform(x).values
             x2, _, _ = prepare_data(x2_0, num_outputs=0, lookback_steps=2)
             # print(x1.sum(), x2.sum())
 
@@ -288,9 +288,9 @@ class TestMultipleSources(unittest.TestCase):
                 x = data1[:, 0:2]
                 y = data1[:, -1]
                 minmax_t = Transformation(x_trans)
-                x_ = minmax_t.transform(x)
+                x_ = minmax_t.fit_transform(x)
                 log_t = Transformation(y_trans)
-                y_ = log_t.transform(y)
+                y_ = log_t.fit_transform(y)
                 data_ = np.column_stack((x_, y_))
                 df2 = pd.DataFrame(data_, columns=['a', 'b', 'c'])
 

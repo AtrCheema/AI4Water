@@ -61,11 +61,11 @@ class Transformation(TransformationsContainer):
 
     Examples:
         >>> transformer = Transformation(method='zscore')
-        >>> transformer.transform(data=[1,2,3,5])
+        >>> transformer.fit_transform(data=[1,2,3,5])
 
         or
         >>> transformer = Transformation(method='minmax')
-        >>> normalized_df = transformer.transform_with_minmax(data=pd.DataFrame([1,2,3]))
+        >>> normalized_df = transformer.fit_transform_with_minmax(data=pd.DataFrame([1,2,3]))
 
         >>> transformer = Transformation(method='minmax')
         >>> normalized_df, scaler_dict = transformer(data=pd.DataFrame([1,2,3]))
@@ -143,14 +143,14 @@ class Transformation(TransformationsContainer):
             >>> df = arg_beach()
             >>> inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
             >>> transformer = Transformation(method='minmax', features=['sal_psu', 'air_temp_c'])
-            >>> new_data = transformer.transform(df[inputs])
+            >>> new_data = transformer.fit_transform(df[inputs])
 
             Following shows how to apply log transformation on an array containing zeros
             by making use of the argument `replace_zeros`. The zeros in the input array
             will be replaced internally but will be inserted back afterwards.
             >>> from ai4water.preprocessing.transformations import Transformation
             >>> transformer = Transformation(method='log', replace_zeros=True)
-            >>> transformed_data = transformer.transform([1,2,3,0.0, 5, np.nan, 7])
+            >>> transformed_data = transformer.fit_transform([1,2,3,0.0, 5, np.nan, 7])
             ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
             >>> original_data = transformer.inverse_transform(data=transformed_data)
 
@@ -170,16 +170,16 @@ class Transformation(TransformationsContainer):
         self.kwargs = kwargs
         self.transformed_features = None
 
-    def __call__(self, data, what="transform", return_key=False, **kwargs):
+    def __call__(self, data, what="fit_transform", return_key=False, **kwargs):
         """
-        Calls the `transform` and `inverse_transform` methods.
+        Calls the `fit_transform` and `inverse_transform` methods.
         """
-        if what.upper().startswith("TRANS"):
+        if what.startswith("fit"):
             self.transforming_straight = True
 
-            return self.transform(data, return_key=return_key, **kwargs)
+            return self.fit_transform(data, return_key=return_key, **kwargs)
 
-        elif what.upper().startswith("INV"):
+        elif what.startswith("inv"):
             self.transforming_straight = False
             return self.inverse_transform(data, **kwargs)
 
@@ -192,19 +192,19 @@ class Transformation(TransformationsContainer):
         """
         if item.startswith('_'):
             return self.__getattribute__(item)
-        elif item.startswith("transform_with"):
-            transformer = item.split('_')[2]
+        elif item.startswith("fit_transform_with"):
+            transformer = item.split('_')[-1]
             if transformer.lower() in list(self.available_transformers.keys()):
                 self.method = transformer
-                return self.transform_with_sklearn
+                return self.fit_transform_with_sklearn
 
         elif item.startswith("inverse_transform_with"):
-            transformer = item.split('_')[3]
+            transformer = item.split('_')[-1]
             if transformer.lower() in list(self.available_transformers.keys()):
                 self.method = transformer
                 return self.inverse_transform_with_sklearn
         else:
-            raise AttributeError(f'Transformation has not attribute {item}')
+            raise AttributeError(f'Transformation has no attribute {item}')
 
     @property
     def data(self):
@@ -300,7 +300,7 @@ class Transformation(TransformationsContainer):
                     data.iloc[idx, col] = -data.iloc[idx, col]
         return data
 
-    def transform_with_sklearn(
+    def fit_transform_with_sklearn(
             self,
             data:Union[pd.DataFrame, np.ndarray],
             return_key=False,
@@ -363,7 +363,7 @@ class Transformation(TransformationsContainer):
 
         return data
 
-    def transform(self, data, return_key=False, **kwargs):
+    def fit_transform(self, data, return_key=False, **kwargs):
         """
         Transforms the data
 
@@ -385,7 +385,7 @@ class Transformation(TransformationsContainer):
 
         setattr(self, 'initial_shape_', data.shape)
 
-        return getattr(self, "transform_with_" + self.method.lower())(data, return_key=return_key, **kwargs)
+        return getattr(self, "fit_transform_with_" + self.method)(data, return_key=return_key, **kwargs)
 
     def inverse_transform(self, data, **kwargs):
         """
