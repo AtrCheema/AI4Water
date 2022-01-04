@@ -9,7 +9,6 @@ seaborn
 # pytorch # only if you want to use pytorch-based models
 h5py<2.11.0 # only if you want to save batches
 xgboost
-EMD-signal  # for emd transformation
 lightgbm
 catboost
 plotly

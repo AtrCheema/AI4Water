@@ -7,13 +7,13 @@ differentiate it from other similar layers in the model. For example `Dense_0` a
 The input/initializating arguments in the layer must be
 enclosed in a dictionary within the layer. To find out what input/initializing arguments can be used, check
 documentation of corresponding layer in [`Tensorflow` docs](https://www.tensorflow.org/api_docs/python/tf/keras/layers). 
-It should be noted that the layer name if case-sensitive. Therefore, Dense layer cannot be DENSE.
+It should be noted that the layer name is case-sensitive. Therefore, Dense layer cannot be DENSE.
 
 ### multi-layer perceptron
 
 ```python
 from ai4water import Model
-
+from ai4water.datasets import arg_beach
 import pandas as pd
 
 layers = {"Dense_0": {'units': 64, 'activation': 'relu'},
@@ -24,22 +24,20 @@ layers = {"Dense_0": {'units': 64, 'activation': 'relu'},
           "Dense_3": 1     # 1 refers to 'units' keyword argument in Dense layer in Tensorflow
           }
 
-df = pd.read_csv('data/all_data_30min.csv')
+df = arg_beach()
 
 model = Model(
-            batch_size=16,
+            input_features=df.columns.tolist()[0:-1],
+            output_features=df.columns.tolist()[-1:],
             lookback=1,
-            lr=0.001,
             model={'layers':layers},
-            epochs=2,
-              data=df
               )
+
 ```
 ![MLP](imgs/mlp.png)
 
 ### LSTM based model
-If you do not define the last dense/fully connected layer, it will be inferred from the number of outputs the 
-model is set to produce. In following case a [`Dense`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense) layer with one `units` is added automatically at the end of 
+In following case a [`Dense`](https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense) layer with one `units` is added automatically at the end of 
 second `LSTM` layer.
 ```python
 import pandas as pd
@@ -54,12 +52,10 @@ layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
 
 df = arg_beach
 
-model = Model(batch_size=16,
-                lookback=1,
-                lr=0.001,
-                model={'layers':layers},
-                epochs=2,
-              )
+model = Model(lookback=1,
+              input_features=df.columns.tolist()[0:-1],
+              output_features=df.columns.tolist()[-1:],
+              model={'layers':layers})
 ```
 ![LSTM](imgs/lstm.png)
 
@@ -300,14 +296,10 @@ layers = {
 # The model can be seelessly loaded from the saved json file using
 
 config_path = "path like"
-df = pd.read_csv('data/data.csv')
-model = Model.from_config(config_path=config_path, data=df)
+model = Model.from_config(config_path=config_path)
 ```
 ![lambda](imgs/lambda.png)
 
-You may notice reshaping of the outputs into 3d. This is done for a consistent
-output shape with time series prediction cases with multiple horizons. More on this
-[here]()
 
 For more examples see `examples`.
 
