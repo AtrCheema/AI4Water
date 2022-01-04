@@ -239,7 +239,7 @@ class Experiments(object):
                                               **config)
 
                 if run_type == 'dry_run':
-                    if self.verbosity > 0: print(f"running  {model_type} model")
+                    if self.verbosity >= 0: print(f"running  {model_type} model")
                     train_results, test_results = objective_fn()
                     self._populate_results(model_name, train_results, test_results)
                 else:
@@ -659,6 +659,7 @@ Available cases are {self.models} and you wanted to include
     def plot_losses(
             self,
             loss_name: Union[str, list] = 'loss',
+            include: list = None,
             save: bool = True,
             name: str = 'loss_comparison',
             show: bool = True,
@@ -670,6 +671,8 @@ Available cases are {self.models} and you wanted to include
         Arguments:
             loss_name:
                 the name of loss value, must be recorded during training
+            include:
+                name of models to include
             save:
                 whether to save the plot or not
             name:
@@ -688,10 +691,14 @@ Available cases are {self.models} and you wanted to include
         if not isinstance(loss_name, list):
             assert isinstance(loss_name, str)
             loss_name = [loss_name]
+
+        include = self._check_include_arg(include)
+
         loss_curves = {}
         for _model, _path in self.config['eval_models'].items():
-            df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
-            loss_curves[_model] = df
+            if _model in include:
+                df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
+                loss_curves[_model] = df
 
         _kwargs = {'linestyle': '-',
                    'xlabel': "Epochs",

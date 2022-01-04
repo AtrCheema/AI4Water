@@ -27,7 +27,6 @@ extra_requires = [
 #'pytorch',  # only if you want to use pytorch-based models
 'h5py<2.11.0', # only if you want to save batches
 'xgboost',
-'EMD-signal',  # for emd transformation
 'lightgbm',
 'catboost',
 'tpot',
@@ -52,7 +51,11 @@ extra_requires = [
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
 post_process_requirements = ['lime', 'shap']
-exp_requirements = ['catboost', 'lightgbm', 'xgboost', 'tpot']
+exp_requirements = ['catboost', 'lightgbm', 'xgboost',
+                    'tpot',
+                    'optuna', 'hyperopt', 'scikit-optimize',
+                    'h5py<2.11.0'
+                    ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
 
 all_requirements = min_requirements + extra_requires

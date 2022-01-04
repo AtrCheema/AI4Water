@@ -695,22 +695,22 @@ class Visualize(Plots):
         if self.model.category == "ML":
             model_name = list(self.model.config['model'].keys())[0]
 
-            if model_name.upper() in TREE_BASED_MODELS:
+            if model_name in TREE_BASED_MODELS:
 
                 _fig, axis = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
 
-                if model_name.upper().startswith("XGB"):
+                if model_name.startswith("XGB"):
                     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree
                     xgboost.plot_tree(self.model._model, ax=axis, **kwargs)
 
-                elif model_name.upper().startswith("CATBOOST"):
+                elif model_name.startswith("Cat"):
 
                     gv_object = self.model._model.plot_tree(0, **kwargs)
                     if show:
                         gv_object.view()
                     gv_object.save(filename="decision_tree", directory=self.path)
 
-                elif model_name.upper().startswith("LGBM"):
+                elif model_name.startswith("LGBM"):
                     lightgbm.plot_tree(self.model._model, ax=axis, **kwargs)
 
                 else:  # sklearn types
@@ -730,8 +730,8 @@ class Visualize(Plots):
     def decision_tree_leaves(self, save=True, data='training'):
         """Plots dtreeviz related plots if dtreeviz is installed"""
 
-        model = list(self.config['model'].keys())[0].upper()
-        if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"]:
+        model = list(self.config['model'].keys())[0]
+        if model in ["DecisionTreeRegressor", "DecisionTreeClassifier"]:
 
             if trees is None:
                 print("dtreeviz related plots can not be plotted")
