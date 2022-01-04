@@ -25,11 +25,12 @@ except ModuleNotFoundError:
 MATRIC_TYPES = {
     "r2": "max",
     "nse": "max",
+    "r2_score": "max",
+    "kge": "max",
+    "corr_coeff": "max",
     "mse": "min",
     "rmse": "min",
     "mape": "min",
-    "kge": "max",
-    "corr_coeff": "max",
     "nrmse": "min",
 }
 

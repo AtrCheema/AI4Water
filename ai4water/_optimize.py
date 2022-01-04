@@ -33,6 +33,8 @@ class ModelOptimizerMixIn(object):
     def fit(self):
 
         PREFIX = f"{self.prefix}_{dateandtime_now()}"
+        self.iter = 0
+        print("{:<15} {:<20}".format("Iteration No.",  "Validation Score"))
 
         hpo = importlib.import_module("ai4water.hyperopt")
 
@@ -65,7 +67,8 @@ class ModelOptimizerMixIn(object):
                     p = _model.predict(test_x)
                 else:
                     _model.fit(data=self.data)
-                    test_y, p = _model.predict(data='validation', return_true=True, process_results=False)
+                    test_y, p = _model.predict(data='validation', return_true=True,
+                                               process_results=False)
 
                 metrics = RegressionMetrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
@@ -78,7 +81,8 @@ class ModelOptimizerMixIn(object):
             if metric_type != "min":
                 val_score = 1.0 - val_score
 
-            print("val_score", val_score)
+            print("{:<15} {:<20.3f}".format(self.iter, val_score))
+            self.iter += 1
 
             return val_score
 
@@ -174,7 +178,8 @@ class OptimizeTransformations(ModelOptimizerMixIn):
 
 
     def update(self, config, suggestions):
-
+        """updates `x_transformation` and `y_transformation` keys in config
+        based upon `suggestions`."""
         transformations = []
         y_transformations = []
 
@@ -188,7 +193,7 @@ class OptimizeTransformations(ModelOptimizerMixIn):
                 if method.startswith("log"):
                     t["treat_negatives"] = True
                     t["replace_zeros"] = True
-                elif method == "box-cox":
+                elif method in ["box-cox", "yeo-johnson", "power"]:
                     t["treat_negatives"] = True
                     t["replace_zeros"] = True
                 elif method == "sqrt":

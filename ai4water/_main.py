@@ -2101,7 +2101,7 @@ class BaseModel(NN):
                 - `log10`
                 - `sqrt`    square root
 
-            include: the names of features to include
+            include: the names of input features to include
             exclude: the name/names of input features to exclude
             append:
                 the input features with custom candidate transformations. For example
@@ -2145,24 +2145,31 @@ class BaseModel(NN):
             >>> model.predict()
         """
         from ._optimize import OptimizeTransformations  # optimize_transformations
+        from .preprocessing.transformations.utils import InvalidTransformation
 
         setattr(self, 'dh_', DataHandler(data=data, **self.data_config))
 
-        categories = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
+        allowed_transforamtions = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
                       "quantile", "robust", "log", "log2", "log10", "sqrt", "none",
                       ]
 
         append = append or {}
 
+        categories = allowed_transforamtions
         if transformations is not None:
             assert isinstance(transformations, list)
-            assert all([t in categories for t in transformations]), f"transformations must be one of {categories}"
+            for t in transformations:
+                if t not in allowed_transforamtions:
+                    raise InvalidTransformation(t, allowed_transforamtions)
             categories = transformations
 
         if y_transformations:
 
             if isinstance(y_transformations, list):
-                assert all([t in categories for t in y_transformations]), f"transformations must be one of {categories}"
+                for t in y_transformations:
+                    if t not in allowed_transforamtions:
+                        raise InvalidTransformation(t, allowed_transforamtions)
+
                 for out in self.output_features:
                     append[out] = y_transformations
 
@@ -2172,8 +2179,9 @@ class BaseModel(NN):
 
                     assert out_feature in self.output_features
                     assert isinstance(out_transformations, list)
-                    assert all(
-                        [t in categories for t in y_transformations]), f"transformations must be one of {categories}"
+                    for t in out_transformations:
+                        if t not in allowed_transforamtions:
+                            raise InvalidTransformation(t, allowed_transforamtions)
                     append[out_feature] = out_transformations
 
         optimizer = OptimizeTransformations(
@@ -2326,6 +2334,7 @@ class BaseModel(NN):
             x,y = maybe_three_outputs(data, self.teacher_forcing)
 
         return x,y, prefix, key, user_defined_x
+
 
 def get_values(outputs):
 

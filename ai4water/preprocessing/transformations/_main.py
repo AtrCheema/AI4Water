@@ -10,6 +10,7 @@ from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransforme
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
 from ._transformations import Center
+from .utils import InvalidTransformation
 
 
 # TODO add logistic, tanh and more scalers.
@@ -24,9 +25,7 @@ class TransformationsContainer(object):
     def __init__(self):
         self.scalers = {}
         self.transforming_straight = True
-        #self.zero_indices = {}
         # self.nan_indices = None
-        #self.negative_indices = {}
         self.index = None
 
 
@@ -157,6 +156,9 @@ class Transformation(TransformationsContainer):
 
         """
         super().__init__()
+
+        if method not in self.available_transformers.keys():
+            raise InvalidTransformation(method, list(self.available_transformers.keys()))
 
         self.method = method
         self.replace_zeros = replace_zeros
