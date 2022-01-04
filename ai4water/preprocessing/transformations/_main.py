@@ -253,27 +253,29 @@ class Transformation(TransformationsContainer):
 
         indices = {}
         if self.replace_zeros and self.transforming_straight:
-            for col in data.columns:
+            # instead of saving indices with column names, using column indices
+            # because df.iloc[row_idx, col_idx] is better than df[col_name].iloc[row_idx]
+            for col_idx, col in enumerate(data.columns):
                 # find index containing 0s in corrent column of dataframe
                 i = data.index[data[col] == 0.0]
                 if len(i) > 0:
-                    indices[col] = i.values
+                    indices[col_idx] = i.values
                     if self.replace_zeros_with in ['mean', 'max', 'min']:
                         replace_with = float(getattr(np, 'nan' + self.replace_zeros_with)(data[col]))
                     else:
                         replace_with = self.replace_zeros_with
-                    data[col][indices[col]] = get_val(data[col], replace_with)  # todo SettingWithCopyWarning
+                    data.iloc[indices[col_idx], col_idx] = get_val(data[col], replace_with)
 
             #if self.zero_indices is None:
         self.zero_indices_ = indices
 
         indices = {}
         if self.treat_negatives:
-            for col in data.columns:
+            for col_idx, col in enumerate(data.columns):
                 # find index containing negatives in corrent column of dataframe
                 i = data.index[data[col] < 0.0]
                 if len(i) > 0:
-                    indices[col] = i.values
+                    indices[col_idx] = i.values
                     # turn -ve values into positives
                     data[col] = data[col].abs()
 
@@ -283,17 +285,17 @@ class Transformation(TransformationsContainer):
 
     def post_process_data(self, data):
         """If nans/zeros were replaced with some value, put nans/zeros back."""
-
+        data = data.copy()
         if self.replace_zeros:
             if hasattr(self, 'zero_indices_'):
                 for col, idx in self.zero_indices_.items():
-                    data[col][idx] = 0.0
+                    data.iloc[idx, col] = 0.0
 
         if self.treat_negatives:
             if hasattr(self, 'negative_indices_'):
                 for col, idx in self.negative_indices_.items():
                     # invert the sign of those values which were originally -ve
-                    data[col][idx] = -data[col][idx]
+                    data.iloc[idx, col] = -data.iloc[idx, col]
         return data
 
     def transform_with_sklearn(
@@ -406,8 +408,8 @@ class Transformation(TransformationsContainer):
             kwargs['scaler'] = list(self.scalers.values())[0]
 
         if self.treat_negatives and hasattr(self, "negative_indices_"):
-           for col, idx in self.negative_indices_.items():
-               data[col][idx] = -data[col][idx]
+            for col, idx in self.negative_indices_.items():
+                data.iloc[idx, col] = -data.iloc[idx, col]
 
         return getattr(self, "inverse_transform_with_" + self.method.lower())(data, **kwargs)
 

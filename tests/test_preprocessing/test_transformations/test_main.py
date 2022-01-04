@@ -151,7 +151,7 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
 
 class test_Scalers(unittest.TestCase):
 
-    def run_method(self, method, cols=None, index=None, assert_equality=False):
+    def run_method(self, method, cols=None, index=None, assert_equality=False, **kwargs):
 
         cols = ['data1', 'data2'] if cols is None else cols
 
@@ -160,12 +160,16 @@ class test_Scalers(unittest.TestCase):
         orig_data2, normalized_df2, denormalized_df2 = run_method2(method,
                                                                    index=index,
                                                                    features=cols,
-                                                                   data=df.copy())
+                                                                   data=df.copy(),
+                                                                   **kwargs
+                                                                   )
 
         orig_data3, normalized_df3, denormalized_df3 = run_method3(method, index=index,
-                                                                   data=df.copy())
+                                                                   data=df.copy(),
+                                                                   **kwargs)
 
-        normalized_df4, denormalized_df4 = run_method4(method, data=df.copy())
+        normalized_df4, denormalized_df4 = run_method4(method, data=df.copy(),
+                                                                   **kwargs)
 
         if assert_equality:
             assert np.allclose(orig_data2, denormalized_df2)
@@ -222,7 +226,7 @@ class test_Scalers(unittest.TestCase):
         self.run_method("maxabs", cols=["data1"], assert_equality=True)
 
     def test_quantile_scaler_with_feat(self):
-        self.run_method("quantile", cols=["data1"], assert_equality=True)
+        self.run_method("quantile", cols=["data1"], assert_equality=True, n_quantiles=5)
 
     def test_log_scaler(self):
         self.run_method("log", assert_equality=True)
@@ -253,7 +257,7 @@ class test_Scalers(unittest.TestCase):
         self.run_method("maxabs", assert_equality=True)
 
     def test_quantile_scaler(self):
-        self.run_method("quantile", assert_equality=True)
+        self.run_method("quantile", assert_equality=True, n_quantiles=5)
         return
 
     def test_log_with_nans(self):
@@ -385,8 +389,11 @@ class test_Scalers(unittest.TestCase):
     def test_negative(self):
         for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power",
                   "scale", "center", "sqrt", "yeo-johnson", "box-cox"]:
+            kwargs = {}
+            if m=="quantile":
+                kwargs['n_quantiles'] = 2
             x = [1.0, 2.0, -3.0, 4.0]
-            tr = Transformation(method=m, treat_negatives=True)
+            tr = Transformation(method=m, treat_negatives=True, **kwargs)
             xtr = tr.transform(x)
             _x = tr.inverse_transform(data=xtr)
             np.testing.assert_array_almost_equal(x, _x.values.reshape(-1,))
@@ -394,9 +401,13 @@ class test_Scalers(unittest.TestCase):
         for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power",
                   "scale", "center", "sqrt", "yeo-johnson",
                   "box-cox"]:
+            kwargs = {}
+            if m=="quantile":
+                kwargs['n_quantiles'] = 2
             x1 = [1.0, -2.0, 0.0, 4.0]
             df1 = pd.DataFrame(np.column_stack([x, x1]))
-            tr = Transformation(method=m, treat_negatives=True, replace_zeros=True, replace_zeros_with=1)
+            tr = Transformation(method=m, treat_negatives=True, replace_zeros=True,
+                                replace_zeros_with=1, **kwargs)
             dft = tr.transform(df1)
             _df = tr.inverse_transform(data=dft)
             np.testing.assert_array_almost_equal(df1.values, _df.values)
@@ -431,7 +442,11 @@ class test_Scalers(unittest.TestCase):
         for method in ["quantile", "robust",
                        "power", "box-cox", "center", "zscore", "scale"
                        ]:
-            t = Transformation(method, treat_negatives=True, replace_zeros=True)
+            kwargs = {}
+            if method=="quantile":
+                kwargs['n_quantiles'] = 5
+
+            t = Transformation(method, treat_negatives=True, replace_zeros=True, **kwargs)
             x = [1., 2., 3., 0.0, -5., 6.]
             x1 = t.transform(data=x)
             conf = t.config()
@@ -441,11 +456,16 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_from_config_2d(self):
+
         for method in ["quantile", "robust",
                        "power", "box-cox", "center", "zscore", "scale"
                        ]:
+            kwargs = {}
+            if method=="quantile":
+                kwargs['n_quantiles'] = 5
+
             t = Transformation(method, features=['a', 'b'],
-                               treat_negatives=True, replace_zeros=True)
+                               treat_negatives=True, replace_zeros=True, **kwargs)
             x = np.random.randint(-2, 30, (10, 3))
             data = pd.DataFrame(x, columns=['a', 'b', 'c'])
             x1 = t.transform(data=data.copy())
