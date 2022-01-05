@@ -151,7 +151,8 @@ class Visualize(Plots):
     def get_activations(self,
                         layer_names: Union[list, str] = None,
                         x=None,
-                        data: str = 'training'
+                        data: str = 'training',
+                        batch_size=None,
                         ) -> dict:
         """gets the activations/outputs of any layer of the Keras Model.
 
@@ -177,7 +178,26 @@ class Visualize(Plots):
         else:
             dl_model = self.model._model
 
-        activations = keract.get_activations(dl_model, x, layer_names=layer_names,
+        if isinstance(x, list):
+            num_examples = len(x[0])
+        elif isinstance(x, np.ndarray):
+            num_examples = len(x)
+        else:
+            raise ValueError
+
+        if batch_size:
+            # feed each batch and get activations per batch
+            assert isinstance(layer_names, str)
+            _activations = []
+            for batch in range(num_examples // 32):
+                batch_x = _get_batch_input(x, batch, batch_size)
+                batch_activations = keract.get_activations(dl_model, batch_x, layer_names=layer_names,
+                                                 auto_compile=True)
+                assert len(batch_activations) == 1  # todo
+                _activations.append(list(batch_activations.values())[0])
+            activations = {layer_names: np.concatenate(_activations)}
+        else:
+            activations = keract.get_activations(dl_model, x, layer_names=layer_names,
                                              auto_compile=True)
 
         return activations
@@ -894,3 +914,15 @@ def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, title=
     if show:
         plt.show()
     return
+
+
+def _get_batch_input(inp, batch_idx, batch_size):
+    if isinstance(inp, list):
+        batch_inp = []
+        for x in inp:
+            st = batch_idx*batch_size
+            batch_inp.append(x[st: st+batch_size])
+    else:
+        st = batch_idx * batch_size
+        batch_inp = inp[st: st+batch_size]
+    return batch_inp

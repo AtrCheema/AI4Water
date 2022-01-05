@@ -394,7 +394,10 @@ class DualAttentionModel(FModel):
 
         from ai4water.postprocessing.visualize import Visualize
 
-        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data)
+        kwargs = {}
+        if self.config['drop_remainder']:
+            kwargs['batch_size'] = self.config['batch_size']
+        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data, **kwargs)
 
         data, _ = getattr(self, f'{data}_data')()
         lookback = self.config['lookback']

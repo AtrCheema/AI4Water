@@ -158,6 +158,13 @@ class TestInterpret(unittest.TestCase):
         m.interpret()
         return
 
+    def test_da_without_prevy_interpret(self):
+        m = da_lstm_model(teacher_forcing=False, drop_remainder=True)
+        x,y = m.training_data()
+
+        m.interpret()
+        return
+
     def test_ia_interpret(self):
         m = ia_lstm_model(input_features=input_features,
                           output_features=output_features)
