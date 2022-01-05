@@ -1197,7 +1197,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def plot_importance(self, raise_error=True):
 
-        msg = "You must optuna and plotly installed to get hyper-parameter importance."
+        msg = "You must have optuna and plotly installed to get hyper-parameter importance."
         if plotly is None or optuna is None:
             if raise_error:
                 raise ModuleNotFoundError(msg)
