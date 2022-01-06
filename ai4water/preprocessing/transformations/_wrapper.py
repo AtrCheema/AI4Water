@@ -86,7 +86,7 @@ class Transformations(object):
         self.names = feature_names
         self.t_config = config
 
-    def transformation(self, data):
+    def _fetch_transformation(self, data):
         config = self.t_config
 
         if isinstance(data, list):
@@ -224,7 +224,7 @@ class Transformations(object):
 
     def _fit_transform(self, data, key="5"):
         """performs transformation on every data source in data"""
-        transformation = self.transformation(data)
+        transformation = self._fetch_transformation(data)
         if self.is_numpy_:
             _data = self.__fit_transform(data, self.names, transformation, key)
 
@@ -262,7 +262,7 @@ class Transformations(object):
 
     def _inverse_transform(self, data, key="5"):
 
-        transformation = self.transformation(data)
+        transformation = self._fetch_transformation(data)
 
         if self.is_numpy_:
             data = self.__inverse_transform(data, self.names, transformation, key)

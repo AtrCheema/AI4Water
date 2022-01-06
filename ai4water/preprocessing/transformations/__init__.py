@@ -12,7 +12,7 @@ single array or multiple arrays.
 
 from ._main import Transformation
 
-from ._transformation_wrapper import Transformations
+from ._wrapper import Transformations
 
 from ._transformations import ScalerWithConfig
 from ._transformations import MinMaxScaler

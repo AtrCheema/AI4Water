@@ -123,6 +123,23 @@ class TestTransformations(unittest.TestCase):
                               inv_kw_args={"axis": 0, "append": 0})
         return
 
+    def test_power_with_custom_lambdas(self):
+        xx = np.array([1, 2, 3, 4, 5, 43, 3, 2, 2, 4, 5]).reshape(-1, 1)
+
+        tr = PowerTransformer(method="box-cox")
+        x_ = tr.fit_transform(xx)
+        tr_from_config = PowerTransformer.from_config(tr.config())
+        _x = tr_from_config.inverse_transform(x_)
+
+        tr1 = PowerTransformer(method="box-cox", lambdas=np.array([-0.49657307]))
+        x1_ = tr1.fit_transform(xx)
+        tr1_from_config = PowerTransformer.from_config(tr1.config())
+        _x1 = tr1_from_config.inverse_transform(x1_)
+
+        assert np.allclose(x_, x1_)
+        assert np.allclose(_x, _x1)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

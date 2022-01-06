@@ -24,6 +24,14 @@
     handler: python
     rendering:
         show_root_heading: true
+    selection:
+        members:
+            - __init__
+
+::: ai4water.preprocessing.transformations.PowerTransformer
+    handler: python
+    rendering:
+        show_root_heading: true
 
 ::: ai4water.preprocessing.transformations.FunctionTransformer
     handler: python

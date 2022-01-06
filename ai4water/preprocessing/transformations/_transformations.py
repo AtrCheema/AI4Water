@@ -89,6 +89,31 @@ class RobustScaler(SKRobustScaler, ScalerWithConfig):
 
 
 class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
+    """This transformation enhances scikit-learn's PowerTransformer by allowing
+    the user to define `lambdas` parameter for each input feature. The default
+    behaviour of this transformer is same as that of scikit-learn's.
+    """
+    def __init__(self, method='yeo-johnson', *, standardize=True, copy=True,
+                 lambdas=None):
+        """
+        lambdas: float or 1d array like for each feature. If not given, it is
+            calculated from scipy.stats.boxcox(X, lmbda=None). Only available
+            if method is box-cox.
+        For complete documentation see [scikit-learn's documentation](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html)
+        """
+        if lambdas is not None:
+            if isinstance(lambdas, float):
+                lambdas = np.array([lambdas])
+            lambdas = np.array(lambdas)
+            # if given lambdas must be a 1d array
+            assert lambdas.size == len(lambdas)
+            lambdas = lambdas.reshape(-1,)
+            assert method != "yeo-johnson"
+
+        self.lambdas = lambdas
+
+        super(PowerTransformer, self).__init__(method=method, standardize=standardize,
+                                               copy=copy)
 
     @property
     def config_paras(self):
@@ -116,8 +141,9 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
         return scaler
 
     def _fit(self, X, y=None, force_transform=False):
-        """copying from sklearn because I want to use our own StandardScaler
-        which can be serialzied."""
+        """copying from sklearn because we want to use our own StandardScaler
+        which can be serialzied. and optionally with user provided with lambda
+        parameter."""
         X = self._check_input(X, in_fit=True, check_positive=True,
                               check_method=True)
 
@@ -127,8 +153,11 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
         optim_function = {'box-cox': self._box_cox_optimize,
                           'yeo-johnson': self._yeo_johnson_optimize
                           }[self.method]
-        with np.errstate(invalid='ignore'):  # hide NaN warnings
-            self.lambdas_ = np.array([optim_function(col) for col in X.T])
+        if self.lambdas is None:
+            with np.errstate(invalid='ignore'):  # hide NaN warnings
+                self.lambdas_ = np.array([optim_function(col) for col in X.T])
+        else:  # take user defined lambdas
+            self.lambdas_ = self.lambdas
 
         if self.standardize or force_transform:
             transform_function = {'box-cox': boxcox,
