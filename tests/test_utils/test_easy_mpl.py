@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ai4water.datasets import arg_beach
-from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow
+from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow, hist
 from ai4water.utils.visualizations import regplot
 
 
@@ -71,6 +71,16 @@ class TestImshow(unittest.TestCase):
         imshow(np.random.random((10, 10)), colorbar=True, show=False)
         return
 
+class Testhist(unittest.TestCase):
+
+    def test_hist(self):
+        hist(np.random.random((10, 1)), show=False)
+        return
+
+    def test_hist_with_axes(self):
+        _, ax = plt.subplots()
+        hist(np.random.random((10, 1)), ax=ax, show=False)
+        return
 
 if __name__ == "__main__":
     unittest.main()

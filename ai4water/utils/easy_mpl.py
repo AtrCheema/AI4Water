@@ -1,5 +1,6 @@
 
-__all__ = ["plot", "bar_chart", "regplot", "imshow", "process_axis", "init_subplots"]
+__all__ = ["plot", "bar_chart", "regplot", "imshow", "hist",
+           "process_axis", "init_subplots"]
 
 import random
 from typing import Union
@@ -325,6 +326,8 @@ def _process_axis(
         min_xticks=None,
         title=None,
         title_kws:dict=None,  # title kwargs
+        grid=None,
+        grid_kws:dict = None,  # keyword arguments for axes.grid
 )-> plt.Axes:
     """
     processing of matplotlib Axes
@@ -388,6 +391,10 @@ def _process_axis(
         title_kws = title_kws or {}
         axis.set_title(title, **title_kws)
 
+    if grid:
+        grid_kws = grid_kws or {}
+        axis.grid(grid, **grid_kws)
+
     return axis
 
 
@@ -448,3 +455,36 @@ def imshow(values,
         plt.show()
 
     return axis, im
+
+
+def hist(
+        x:Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        hist_kws: dict = None,
+        grid:bool = True,
+        ax: plt.Axes = None,
+        show: bool = True,
+        **kwargs
+)->plt.Axes:
+    """
+    one stop shop for histogram
+    Arguments:
+        x: array like, must not be greader than 1d
+        grid: whether to show the grid or not
+        show: whether to show the plot or not
+        ax: axes on which to draw the plot
+        hist_kws: any keyword arguments for [axes.hist](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.hist.html)
+        kwargs: any keyword arguments for axes manipulation such as title, xlable, ylable etc
+    Returns:
+        matplotlib Axes
+    """
+    if not ax:
+        ax = plt.gca()
+    hist_kws = hist_kws or {}
+    n, bins, patches = ax.hist(x, **hist_kws)
+
+    _process_axis(ax, grid=grid, **kwargs)
+
+    if show:
+        plt.show()
+
+    return ax
