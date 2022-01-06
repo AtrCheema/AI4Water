@@ -1,3 +1,4 @@
+import copy
 import importlib
 from typing import Union
 
@@ -242,6 +243,7 @@ def make_space(
         elif isinstance(include, list):
             _include = {}
             for feat in include:
+                assert feat in input_features, f"{feat} is not in input_features but is used in include"
                 if isinstance(feat, str):
                     _include[feat] = categories
                 else:

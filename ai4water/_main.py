@@ -1735,23 +1735,29 @@ class BaseModel(NN):
         from ai4water.postprocessing.explain import explain_model
         return explain_model(self, *args, **kwargs)
 
-    def save_indices(self):
+    def _save_indices(self):
+        # saves the training and test indices to a json file
         indices = {}
-        for idx in ['train_indices', 'test_indices']:
-            if hasattr(self, idx):
-                idx_val = getattr(self, idx)
-                if idx_val is not None and not isinstance(idx_val, str):
-                    idx_val = np.array(idx_val, dtype=int).tolist()
-            else:
-                idx_val = None
+        if hasattr(self, 'dh_'):
+            for idx in ['train_indices', 'test_indices']:
+                if hasattr(self.dh_, idx):
+                    idx_values = getattr(self.dh_, idx)
+                    if idx_values is not None and not isinstance(idx_values, str):
+                        idx_values = np.array(idx_values, dtype=int).tolist()
+                else:
+                    idx_values = None
 
-            indices[idx] = idx_val
+                indices[idx] = idx_values
         dict_to_file(indices=indices, path=self.path)
         return
 
     def save_config(self, history: dict = None):
-
-        self.save_indices()
+        """saves the current state of model in a json file.
+        By current state, we mean, train and test indices (if available),
+        hyperparameters of related to model and data and current performance
+        statistics. All the data is stored in model.path.
+        """
+        self._save_indices()
 
         config = dict()
         if history is not None:
@@ -1843,12 +1849,10 @@ class BaseModel(NN):
             with open(config_path, 'r') as fp:
                 config = json.load(fp)
                 config = config['config']
-                idx_file = os.path.join(os.path.dirname(config_path), 'indices.json')
                 path = os.path.dirname(config_path)
         else:
             assert isinstance(config, dict), f"config must be dictionary but it is of type {config.__class__.__name__}"
             path = config['path']
-            idx_file = os.path.join(path, 'indices.json')
 
         # todo
         # shouldn't we remove 'path' from Model's init? we just need prefix
@@ -1856,14 +1860,7 @@ class BaseModel(NN):
         if 'path' in config:
             config.pop('path')
 
-        with open(idx_file, 'r') as fp:
-            indices = json.load(fp)
-
         cls.from_check_point = True
-
-        # These paras neet to be set here because they are not withing init method
-        cls.test_indices = indices["test_indices"]
-        cls.train_indices = indices["train_indices"]
 
         if make_new_path:
             cls.allow_weight_loading = False
