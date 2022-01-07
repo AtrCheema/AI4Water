@@ -1,8 +1,13 @@
+import sys
 
 from ai4water.hyperopt import Integer, Real, Categorical
 
 
-def regression_space(num_samples:int, num_examples:int=None)->dict:
+def regression_space(
+        num_samples:int,
+        num_examples:int=None,
+        verbosity: bool = 0
+)->dict:
 
     spaces = {
         "AdaBoostRegressor":{
@@ -399,10 +404,18 @@ def regression_space(num_samples:int, num_examples:int=None)->dict:
                  0.1, 0.1, 0.1, 0.1, 0.1]}
         }
 
+    # remove the estimators from those libraries which are not available/installed
+    libraries_to_models = {
+        'catboost': 'CatBoostRegressor',
+        'xgboost': ['XGBRFRegressor', 'XGBRegressor'],
+        'lightgbm': ['LGBMRegressor']
+    }
+    _remove_estimator(spaces, libraries_to_models, verbosity)
+
     return spaces
 
 
-def classification_space(num_samples:int):
+def classification_space(num_samples:int, verbosity=0):
 
     spaces = {
         "AdaBoostClassifier": {
@@ -675,4 +688,32 @@ def classification_space(num_samples:int):
             "x0":
                 [1000, 0.01, 5, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']}
     }
+    # remove the estimators from those libraries which are not available/installed
+    libraries_to_models = {
+        'catboost': 'CatBoostClassifier',
+        'xgboost': ['XGBRFClassifier', 'XGBClassifier'],
+        'lightgbm': ['LGBMClassifier']
+    }
+    _remove_estimator(spaces, libraries_to_models, verbosity)
+
     return spaces
+
+
+def _remove_estimator(spaces, libraries_to_models, verbosity=0):
+    for lib, estimators in libraries_to_models.items():
+        if lib not in sys.modules:
+            for estimator in estimators:
+                if verbosity>0:
+                    print(f"excluding {estimator} because library {lib} is not found")
+                spaces.pop(estimator)
+    return spaces
+
+
+def regression_models()->list:
+    """returns availabel regression models as list"""
+    return list(regression_space(5,5).keys())
+
+
+def classification_models()->list:
+    """returns availabel classification models as list"""
+    return list(classification_space(5,0).keys())
