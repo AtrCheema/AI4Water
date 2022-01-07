@@ -75,9 +75,11 @@ class ModelOptimizerMixIn(object):
                 val_score = getattr(metrics, val_metric)()
             else:
                 if self.xy:
-                    val_score = self.model.cross_val_score(*self.data)
+                    val_score = _model.cross_val_score(*self.data)
                 else:
-                    val_score = self.model.cross_val_score(data=self.data)
+                    val_score = _model.cross_val_score(data=self.data)
+
+            del _model
 
             if metric_type != "min":
                 val_score = 1.0 - val_score

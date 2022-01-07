@@ -1310,17 +1310,15 @@ def test_random_with_intervals():
     return
 
 
-def make_cross_validator(cv, **kwargs):
+def make_cross_validator(**kwargs):
 
-    model = Model(
-        model={'RandomForestRegressor': {}},
-        cross_validator=cv,
-        val_metric="mse",
+    dh = DataHandler(
+        data=arg_beach(),
         verbosity=0,
         **kwargs
     )
 
-    return model
+    return dh
 
 
 class TestCVs(object):
@@ -1332,21 +1330,21 @@ class TestCVs(object):
         return
 
     def test_kfold(self):
-        model = make_cross_validator(cv={'TimeSeriesSplit': {'n_splits': 5}})
-        model.cross_val_score(data=arg_beach())
-        model.dh_.plot_TimeSeriesSplit_splits(show=False)
+        dh = make_cross_validator()
+        dh.TimeSeriesSplit(n_splits=5)
+        dh.plot_TimeSeriesSplit_splits(show=False)
         return
 
     def test_loocv(self):
-        model = make_cross_validator(cv={'KFold': {'n_splits': 5}})
-        model.cross_val_score(data=arg_beach())
-        model.dh_.plot_KFold_splits(show=False)
+        dh = make_cross_validator()
+        dh.KFold(n_splits=5)
+        dh.plot_KFold_splits(show=False)
         return
 
     def test_tscv(self):
-        model = make_cross_validator(cv={'LeaveOneOut': {}}, test_fraction=0.6)
-        model.cross_val_score(data=arg_beach())
-        model.dh_.plot_LeaveOneOut_splits(show=False)
+        dh = make_cross_validator(test_fraction=0.6)
+        dh.LeaveOneOut()
+        dh.plot_LeaveOneOut_splits(show=False)
         return
 
 #

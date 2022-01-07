@@ -1170,7 +1170,7 @@ class BaseModel(NN):
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
         model_name = list(self.config['model'].keys())[0]
-        fname = os.path.join(self.w_path, self.category + '_' + self.mode + '_' + model_name)
+        fname = os.path.join(self.w_path, model_name)
 
         if "tpot" not in model_name:
             joblib.dump(self._model, fname)
@@ -1183,6 +1183,7 @@ class BaseModel(NN):
             y=None,
             data: Union[pd.DataFrame, np.ndarray, str] = None,
             scoring: str = None,
+            refit: bool = False,
     ) -> float:
         """computes cross validation score
 
@@ -1197,6 +1198,9 @@ class BaseModel(NN):
             scoring:
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
+            refit:
+                If True, the model will be trained on the whole training+validation
+                data after calculating cross validation score.
         Returns:
             cross validation score
 
@@ -1248,9 +1252,9 @@ class BaseModel(NN):
 
             self._maybe_change_residual_threshold(train_y)
 
-            self._model.fit(train_x, y=train_y.reshape(-1, ))
+            self.fit(x=train_x, y=train_y.reshape(-1, ))
 
-            pred = self._model.predict(test_x)
+            pred = self.predict(x=test_x, process_results=False)
 
             metrics = Metrics(test_y.reshape(-1, 1), pred)
             val_score = getattr(metrics, scoring)()
@@ -1269,8 +1273,13 @@ class BaseModel(NN):
         # set it as class attribute so that it can be used
         setattr(self, f'cross_val_{scoring}', scores)
 
-        # if we do not run .fit(), then we should still have model saved in the disk
-        # so that it can be used.
+        if refit:
+            x = np.concatenate([train_x, test_x])
+            y = np.concatenate([train_y, test_y])
+            self.fit(x=x, y=y)
+
+        # Even if we do not run .fit(), then we should still have model saved in
+        # the disk so that it can be used.
         self._save_ml_model()
 
         return np.mean(scores).item()
