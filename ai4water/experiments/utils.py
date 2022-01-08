@@ -406,7 +406,7 @@ def regression_space(
 
     # remove the estimators from those libraries which are not available/installed
     libraries_to_models = {
-        'catboost': 'CatBoostRegressor',
+        'catboost': ['CatBoostRegressor'],
         'xgboost': ['XGBRFRegressor', 'XGBRegressor'],
         'lightgbm': ['LGBMRegressor']
     }
@@ -690,7 +690,7 @@ def classification_space(num_samples:int, verbosity=0):
     }
     # remove the estimators from those libraries which are not available/installed
     libraries_to_models = {
-        'catboost': 'CatBoostClassifier',
+        'catboost': ['CatBoostClassifier'],
         'xgboost': ['XGBRFClassifier', 'XGBClassifier'],
         'lightgbm': ['LGBMClassifier']
     }
