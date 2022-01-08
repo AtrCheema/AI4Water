@@ -11,7 +11,7 @@ with open('version.py') as fv:
     exec(fv.read())
 
 min_requirements = [
-    'numpy<=1.19.2',
+    'numpy<=1.19.5',
     'scikit-learn',
     'pandas',
     'matplotlib',
@@ -99,6 +99,8 @@ setup(
 
     packages=['ai4water',
               'ai4water/models',
+              'ai4water/models/tensorflow',
+              'ai4water/models/torch',
               'ai4water/hyperopt',
               'ai4water/utils',
               'ai4water/preprocessing',
