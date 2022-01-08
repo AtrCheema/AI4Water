@@ -1,3 +1,4 @@
+import math
 import os
 import json
 import time
@@ -1264,7 +1265,7 @@ class BaseModel(NN):
             if self.verbosity > 0:
                 print(f'fold: {fold} val_score: {val_score}')
 
-        # save all the scores as json in model path
+        # save all the scores as json in model path`
         cv_name = str(cross_validator)
         fname = os.path.join(self.path, f'{cv_name}_{scoring}.json')
         with open(fname, 'w') as fp:
@@ -1274,15 +1275,35 @@ class BaseModel(NN):
         setattr(self, f'cross_val_{scoring}', scores)
 
         if refit:
-            x = np.concatenate([train_x, test_x])
-            y = np.concatenate([train_y, test_y])
-            self.fit(x=x, y=y)
+            self.fit_on_all_training_data(data=data)
 
         # Even if we do not run .fit(), then we should still have model saved in
         # the disk so that it can be used.
         self._save_ml_model()
 
-        return np.mean(scores).item()
+        cv_score = np.nanmean(scores).item()
+
+        if not math.isfinite(cv_score):
+            cv_score = 1.0
+
+        return cv_score
+
+    def fit_on_all_training_data(self, data=None):
+        """Fits the model on training+validation data"""
+        x_train, y_train = self.training_data(data=data)
+        x_val, y_val = self.validation_data()
+        if not isinstance(x_train, np.ndarray):
+            raise NotImplementedError
+
+        x, y = x_train, y_train
+        # if not validation data is available then use only training data
+        if x_val is not None:
+            if hasattr(x_val, '__len__') and len(x_val)>0:
+                x = np.concatenate([x_train, x_val])
+                y = np.concatenate([y_train, y_val])
+
+        return self.fit(x=x, y=y)
+
 
     def _maybe_change_residual_threshold(self, outputs) -> None:
         # https://stackoverflow.com/a/64396757/5982232

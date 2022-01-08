@@ -165,6 +165,11 @@ class TestFit(unittest.TestCase):
         _test_fit(FModel, "RandomForestClassifier", x_cls, y_cls)
         return
 
+    def test_fill_on_all_data(self):
+        model = Model(model="RandomForestRegressor", verbosity=0)
+        model.fit_on_all_training_data(data=data)
+        return
+
     def test_fit_as_native(self):
         time.sleep(1)
         model = FModel(
