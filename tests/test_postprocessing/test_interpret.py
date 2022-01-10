@@ -60,20 +60,16 @@ def build_model(**kwargs):
     return model
 
 
-def da_lstm_model(**kwargs):
+def da_lstm_model(data,
+                  **kwargs):
 
     model = DualAttentionModel(
-        input_features = ['precipitation_AWAP',
-                           'evap_pan_SILO'],
-        output_features = ['streamflow_MLd_inclInfilled'],
-        intervals =  [("20000101", "20011231")],
-        dataset_args = {'stations': 1},
         train_data='random',
         verbosity=0,
         **kwargs
     )
 
-    _ = model.fit(data='CAMELS_AUS')
+    _ = model.fit(data=data)
 
     return model
 
@@ -154,15 +150,26 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_da_interpret(self):
-        m = da_lstm_model()
+        m = da_lstm_model(data='CAMELS_AUS',
+                          input_features = ['precipitation_AWAP',
+                          'evap_pan_SILO'],
+        output_features = ['streamflow_MLd_inclInfilled'],
+        intervals =  [("20000101", "20011231")],
+        dataset_args = {'stations': 1},)
         m.interpret()
         return
 
     def test_da_without_prevy_interpret(self):
-        m = da_lstm_model(teacher_forcing=False, drop_remainder=True)
+        m = da_lstm_model(teacher_forcing=False, drop_remainder=True,
+                          data=beach_data,
+                          input_features=input_features,
+                          batch_size=8,
+                          lookback=14,
+                          output_features=output_features)
         x,y = m.training_data()
 
-        m.interpret()
+
+        m.interpret(data='training')
         return
 
     def test_ia_interpret(self):

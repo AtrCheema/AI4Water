@@ -189,7 +189,7 @@ class Visualize(Plots):
             # feed each batch and get activations per batch
             assert isinstance(layer_names, str)
             _activations = []
-            for batch in range(num_examples // 32):
+            for batch in range(num_examples // batch_size):
                 batch_x = _get_batch_input(x, batch, batch_size)
                 batch_activations = keract.get_activations(dl_model, batch_x, layer_names=layer_names,
                                                  auto_compile=True)

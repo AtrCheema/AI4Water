@@ -47,8 +47,13 @@ class DualAttentionModel(FModel):
     Example:
         >>> from ai4water import DualAttentionModel
         >>> from ai4water.datasets import arg_beach
+        >>> data = arg_beach()
+        >>> model = DualAttentionModel(lookback=5, input_features=data.columns.tolist()[0:-1],
+        >>>                            output_features=data.columns.tolist()[-1:])
+        If you do not wish to feed previous output as input to the model, you can set teacher forcing to False
+        The drop_remainder argument must be set to True in such a case.
         >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
-        >>> model.fit(data=arg_beach())
+        >>> model.fit(data=data)
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m
