@@ -27,10 +27,12 @@ w = 5
 h = 5
 
 # input for 2D data, radar images
-pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h)  # 5 rows 5 columns, and 100 images
+# 5 rows 5 columns, and 100 images
+pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h)
 lai = np.random.randint(6, 10, examples*w*h).reshape(examples, w, h)
 
-data_2d = np.full((len(pcp), len(inp_2d), w, h), np.nan) #np.shape(data)==(100,5,5,5); 5 rows, 5 columns, 5 variables, and 100 images in each variable
+# np.shape(data)==(100,5,5,5); 5 rows, 5 columns, 5 variables, and 100 images in each variable
+data_2d = np.full((len(pcp), len(inp_2d), w, h), np.nan)
 
 ##output
 flow = np.full((len(pcp), 1), np.nan)  # np.shape(flow)==(100,1)
@@ -194,15 +196,6 @@ class test_MultiInputModels(unittest.TestCase):
     def test_customize_loss(self):
         class QuantileModel(Model):
 
-            def denormalize_data(self,
-                                 inputs: np.ndarray,
-                                 predicted: np.ndarray,
-                                 true: np.ndarray,
-                                 in_cols, out_cols,
-                                 scaler_key: str,
-                                 transformation=None):
-                return predicted, true
-
             def loss(self):
                 return qloss
 
@@ -217,30 +210,34 @@ class test_MultiInputModels(unittest.TestCase):
         # Define a dummy dataset consisting of 6 time-series.
         cols = 6
         data = np.arange(int(2000 * cols)).reshape(-1, 2000).transpose()
-        data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
+        data = pd.DataFrame(data, columns=['input_' + str(col) for col in range(cols)],
                             index=pd.date_range('20110101', periods=len(data), freq='H'))
 
         # Define Model
-        layers = {'Dense_0': {'units': 64, 'activation': 'relu'},
-                  'Dense_3': {'units': 3}}
+        layers = {'Dense_0': {'units': 8, 'activation': 'relu'},
+                  'Dense_3': {'units': 3},
+                  }
 
         # Define Quantiles
         quantiles = [0.005, 0.025,   0.995]
 
         # Initiate Model
         model = QuantileModel(
-            input_features=['input_' + str(i) for i in range(cols - 1)],
-            output_features=['input_' + str(cols - 1)],
+            input_features=data.columns.tolist()[0:-1],
+            output_features=data.columns.tolist()[-1:],
             lookback=1,
             verbosity=0,
             model={'layers': layers},
             epochs=2,
+            y_transformation='log10',
             train_data = np.arange(1500),
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
         model.fit(data=data.astype(np.float32))
 
+        t,p = model.predict(return_true=True)
+        assert p.shape[1]==3
         return
 
     def test_predict_without_y(self):

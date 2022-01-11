@@ -368,45 +368,6 @@ class BaseModel(NN):
     def loss_name(self):
         raise NotImplementedError
 
-    def training_data(self, x=None, y=None, data='training', key=None)->tuple:
-        #x,y are not used but only given to be used if user overwrites this method
-        return self.__fetch('training', data,key)
-
-    def validation_data(self, x=None, y=None, data='validation', key=None, **kwargs)->tuple:
-        """This method should return x,y pairs of validation data"""
-        return self.__fetch('validation', data,key)
-
-    def test_data(self, x=None, y=None, data='test', key=None)->tuple:
-        """This method should return x,y pairs of validation data"""
-        return self.__fetch('test', data,key)
-
-    def __fetch(self, source, data=None, key=None):
-        """if data is string, then it must either be `trianing`, `validation` or
-        `test` or name of a valid dataset. Otherwise data is supposed to be raw
-        data which will be given to DataHandler
-        """
-        if isinstance(data, str):
-            if data in ['training', 'test', 'validation']:
-                if hasattr(self, 'dh_'):
-                    data = getattr(self.dh_, f'{data}_data')(key=key)
-                else:
-                    raise AttributeError(f"Unable to get {source} data")
-            else:
-                # e.g. 'CAMELS_AUS'
-                dh = DataHandler(data=data, **self.data_config)
-                setattr(self, 'dh_', dh)
-                data = getattr(dh, f'{source}_data')(key=key)
-
-
-        else:
-            dh = DataHandler(data=data, **self.data_config)
-            setattr(self, 'dh_', dh)
-            data = getattr(dh, f'{source}_data')(key=key)
-
-        x, y = maybe_three_outputs(data, self.teacher_forcing)
-
-        return x, y
-
     @property
     def teacher_forcing(self):  # returns None if undefined
         if hasattr(self, 'dh_'):
@@ -1384,7 +1345,8 @@ class BaseModel(NN):
             for evaluation on training data
             >>> model.evaluate(data='training')
 
-            evaluate on any metric from [Metrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics] module
+            evaluate on any metric from [Metrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics]
+            module
             >>> model.evaluate(metrics='pbias')
 
             to evaluate on custom data, the user can provide its own x and y
@@ -1480,7 +1442,8 @@ class BaseModel(NN):
                     - `test`
                     - `validation`.
                 By default, `test` data is used for predictions.
-                It can also be unprepared/raw data which will be given to [DataHandler][ai4water.preprocessing.DataHandler]
+                It can also be unprepared/raw data which will be given to
+                [DataHandler][ai4water.preprocessing.DataHandler]
                 to prepare x,y values.
 
             process_results: bool
@@ -1566,9 +1529,8 @@ class BaseModel(NN):
                 predicted = y_transformer.inverse_transform(predicted)
         elif self.config['y_transformation']:
             # both x,and true_y were given
-            predicted = y_transformer.inverse_transform(predicted)
-            true_outputs = y_transformer.inverse_transform(true_outputs)
-
+            predicted = self._inverse_transform_y(predicted, y_transformer)
+            true_outputs = self._inverse_transform_y(true_outputs, y_transformer)
 
         if true_outputs is None:
             if return_true:
@@ -1610,6 +1572,9 @@ class BaseModel(NN):
 
         else:
             assert self.num_outs == 1
+
+            if true_outputs.ndim == 2:  # todo, this should be avoided
+                true_outputs = np.expand_dims(true_outputs, axis=-1)
 
             visualizer = PlotResults(path=self.path)
             visualizer.quantiles = self.quantiles
@@ -2269,7 +2234,8 @@ class BaseModel(NN):
         Arguments:
             data:
                 one of `training`, `test` or `validation`. By default test data is
-                used based upon recommendations of [Christoph Molnar's book](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data)
+                used based upon recommendations of
+                [Christoph Molnar's book](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data)
             x:
                 inputs for the model. alternative to data
             y:
@@ -2335,6 +2301,64 @@ class BaseModel(NN):
             data = transformer.fit_transform(data)
             self.config[name] = transformer.config()
         return data
+
+    def _inverse_transform_y(self, y, transformer)->np.ndarray:
+        """inverse transforms y where y is supposed to be true or predicted output
+        from model."""
+        if isinstance(y, np.ndarray):
+            # it is ndarray, either num_outs>1 or quantiles>1 or forecast_len>1 some combination of them
+            if y.size > len(y):
+                if y.ndim == 2:
+                    for out in range(y.shape[1]):
+                        y[:, out] = transformer.inverse_transform(y[:, out]).reshape(-1, )
+                else:
+                    # (exs, outs, quantiles) or (exs, outs, forecast_len) or (exs, forecast_len, quantiles)
+                    for out in range(y.shape[1]):
+                        for q in range(y.shape[2]):
+                            y[:, out, q] = transformer.inverse_transform(y[:, out, q]).reshape(-1, )
+            else:  # 1d array
+                y = transformer.inverse_transform(y)
+        else:
+            raise ValueError(f"can't inverse transform y of type {type(y)}")
+
+        return y
+
+    def training_data(self, x=None, y=None, data='training', key=None)->tuple:
+        #x,y are not used but only given to be used if user overwrites this method
+        return self.__fetch('training', data,key)
+
+    def validation_data(self, x=None, y=None, data='validation', key=None, **kwargs)->tuple:
+        """This method should return x,y pairs of validation data"""
+        return self.__fetch('validation', data,key)
+
+    def test_data(self, x=None, y=None, data='test', key=None)->tuple:
+        """This method should return x,y pairs of validation data"""
+        return self.__fetch('test', data,key)
+
+    def __fetch(self, source, data=None, key=None):
+        """if data is string, then it must either be `trianing`, `validation` or
+        `test` or name of a valid dataset. Otherwise data is supposed to be raw
+        data which will be given to DataHandler
+        """
+        if isinstance(data, str):
+            if data in ['training', 'test', 'validation']:
+                if hasattr(self, 'dh_'):
+                    data = getattr(self.dh_, f'{data}_data')(key=key)
+                else:
+                    raise AttributeError(f"Unable to get {source} data")
+            else:
+                # e.g. 'CAMELS_AUS'
+                dh = DataHandler(data=data, **self.data_config)
+                setattr(self, 'dh_', dh)
+                data = getattr(dh, f'{source}_data')(key=key)
+        else:
+            dh = DataHandler(data=data, **self.data_config)
+            setattr(self, 'dh_', dh)
+            data = getattr(dh, f'{source}_data')(key=key)
+
+        x, y = maybe_three_outputs(data, self.teacher_forcing)
+
+        return x, y
 
     def _fetch_data(self, source:str, x=None, y=None, data=None):
         """The main idea is that the user should be able to fully customize
