@@ -602,8 +602,8 @@ Available cases are {self.models} and you wanted to include
 
         Example:
             >>> from ai4water.experiments import MLRegressionExperiments
-            >>> from ai4water.datasets import arg_beach
-            >>> data = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
             >>> inputs = list(data.columns)[0:-1]
             >>> outputs = list(data.columns)[-1]
             >>> experiment = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs)
@@ -1022,8 +1022,8 @@ Available cases are {self.models} and you wanted to include
 
         Example:
             >>> from ai4water.experiments import MLRegressionExperiments
-            >>> from ai4water.datasets import arg_beach
-            >>> exp = MLRegressionExperiments(data=arg_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
+            >>> from ai4water.datasets import busan_beach
+            >>> exp = MLRegressionExperiments(data=busan_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
             >>> exp.fit()
             >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
         """
@@ -1133,7 +1133,7 @@ class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
 
         Example:
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>>from ai4water.experiments import TransformationExperiments
             ...# Define your experiment
             >>>class MyTransformationExperiments(TransformationExperiments):
@@ -1149,7 +1149,7 @@ class TransformationExperiments(Experiments):
             ...                'batch_size': int(kwargs['batch_size']),
             ...                'lr': float(kwargs['lr']),
             ...                'transformation': kwargs['transformation']}
-            >>>data = arg_beach()
+            >>>data = busan_beach()
             >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
             >>>outputs = ['tetx_coppml']
             >>>cases = {'model_minmax': {'transformation': 'minmax'},

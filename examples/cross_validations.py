@@ -1,7 +1,9 @@
 
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
+
+data = busan_beach()
 
 model = Model(
     model={'RandomForestRegressor': {}},
@@ -9,7 +11,7 @@ model = Model(
     val_metric="r2"
 )
 
-tssplit_score = model.cross_val_score(data=arg_beach())
+tssplit_score = model.cross_val_score(data=data)
 
 model = Model(
     model={'RandomForestRegressor': {}},
@@ -17,7 +19,7 @@ model = Model(
     val_metric="r2"
 )
 
-kfold_score = model.cross_val_score(data=arg_beach())
+kfold_score = model.cross_val_score(data=data)
 
 model = Model(
     model={'RandomForestRegressor': {}},
@@ -25,4 +27,4 @@ model = Model(
     val_metric="mse"
 )
 
-loo_score = model.cross_val_score(data=arg_beach())
+loo_score = model.cross_val_score(data=data)

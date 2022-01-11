@@ -2,14 +2,14 @@
 import unittest
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
 def get_model(model_name):
     model = Model(model=model_name,
                   verbosity=0)
 
-    model.fit(data=arg_beach())
+    model.fit(data=busan_beach())
 
     p = model.predict()
 

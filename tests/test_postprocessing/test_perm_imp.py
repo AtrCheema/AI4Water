@@ -4,15 +4,17 @@ import unittest
 import numpy as np
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.explain import PermutationImportance
 
+
+data=busan_beach()
 
 class TestPermImportance(unittest.TestCase):
 
     def test_one_2d_input(self):
         model = Model(model="XGBRegressor", verbosity=0)
-        model.fit(data=arg_beach())
+        model.fit(data=data)
         x_val, y_val = model.validation_data()
 
         pimp = PermutationImportance(
@@ -27,7 +29,7 @@ class TestPermImportance(unittest.TestCase):
 
     def test_one_3d_input(self):
         time.sleep(1)
-        beach_data = arg_beach()
+        beach_data = data
         model = Model(
             model={"layers": {
                 "LSTM": 32,

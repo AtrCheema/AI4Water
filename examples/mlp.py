@@ -3,7 +3,7 @@
 import tensorflow as tf
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 tf.compat.v1.disable_eager_execution()  # because we want to view model
 
@@ -13,7 +13,7 @@ mlp_model = {'layers': {
     "Dense_3": 1,
 }}
 
-df = arg_beach()
+df = busan_beach()
 
 input_features = list(df.columns)[0:-1]
 

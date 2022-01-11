@@ -49,8 +49,8 @@ class EDA(Plot):
     - plot_ecdf
 
     Example:
-        >>> from ai4water.datasets import arg_beach
-        >>> eda = EDA(data=arg_beach())
+        >>> from ai4water.datasets import busan_beach
+        >>> eda = EDA(data=busan_beach())
         >>> eda()
     """
 
@@ -171,8 +171,8 @@ class EDA(Plot):
             None
 
         Example:
-            >>> from ai4water.datasets import arg_beach
-            >>> data = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
             >>> vis = EDA(data)
             >>> vis.heatmap()
         """
@@ -271,8 +271,8 @@ class EDA(Plot):
             en : end row/index in data to be used for plotting
 
         Example:
-            >>> from ai4water.datasets import arg_beach
-            >>> data = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
             >>>vis = EDA(data)
             >>>vis.plot_missing()
         """
@@ -386,8 +386,8 @@ class EDA(Plot):
         Rreturn:
 
         Example:
-            >>> from ai4water.datasets import arg_beach
-            >>> eda = EDA(arg_beach())
+            >>> from ai4water.datasets import busan_beach
+            >>> eda = EDA(busan_beach())
             >>> eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
             >>> eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         ```
@@ -531,8 +531,8 @@ class EDA(Plot):
 
         Example:
             >>> from ai4water.eda import EDA
-            >>> from ai4water.datasets import arg_beach
-            >>> vis = EDA(arg_beach())
+            >>> from ai4water.datasets import busan_beach
+            >>> vis = EDA(busan_beach())
             >>> vis.correlation()
         """
         # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman

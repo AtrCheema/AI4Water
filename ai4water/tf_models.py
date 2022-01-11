@@ -46,8 +46,8 @@ class DualAttentionModel(FModel):
 
     Example:
         >>> from ai4water import DualAttentionModel
-        >>> from ai4water.datasets import arg_beach
-        >>> data = arg_beach()
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
         >>> model = DualAttentionModel(lookback=5, input_features=data.columns.tolist()[0:-1],
         >>>                            output_features=data.columns.tolist()[-1:])
         If you do not wish to feed previous output as input to the model, you can set teacher forcing to False

@@ -12,8 +12,10 @@ import numpy as np
 
 from ai4water.eda import EDA
 from ai4water.eda.utils import pac_yw, auto_corr, ccovf_np, ccf_np
-from ai4water.datasets import MtropicsLaos, arg_beach
+from ai4water.datasets import MtropicsLaos, busan_beach
 
+
+beach_data = busan_beach()
 laos = MtropicsLaos()
 
 pcp = laos.fetch_pcp(
@@ -29,13 +31,13 @@ class TestEDA(unittest.TestCase):
         return
 
     def test_dataframe(self):
-        eda = EDA(data=arg_beach(), dpi=50, save=False, show=False)
+        eda = EDA(data=beach_data, dpi=50, save=False, show=False)
         eda()
         return
 
     def test_with_input_features(self):
         eda = EDA(
-            data=arg_beach(), in_cols=arg_beach().columns.to_list()[0:-1],
+            data=beach_data, in_cols=beach_data.columns.to_list()[0:-1],
             dpi=50,
             save=False,
             show=False)
@@ -44,12 +46,12 @@ class TestEDA(unittest.TestCase):
 
     def test_autocorr(self):
 
-        eda = EDA(data=arg_beach(), path=os.path.join(os.getcwd(), "results"), save=False, show=False)
+        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"), save=False, show=False)
         eda.autocorrelation(nlags=10)
         return
 
     def test_partial_autocorr(self):
-        eda = EDA(data=arg_beach(), path=os.path.join(os.getcwd(), "results"), save=False, show=False)
+        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"), save=False, show=False)
         eda.partial_autocorrelation(nlags=10)
         return
 
@@ -85,7 +87,7 @@ class TestEDA(unittest.TestCase):
         return
 
     def test_probplot(self):
-        EDA(data=arg_beach(), save=False, show=False).probability_plots(cols="pcp_mm")
+        EDA(data=beach_data, save=False, show=False).probability_plots(cols="pcp_mm")
         return
 
     def test_ndarray(self):

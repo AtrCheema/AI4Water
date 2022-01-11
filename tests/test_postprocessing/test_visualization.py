@@ -9,13 +9,13 @@ import unittest
 import numpy as np
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.visualize import Visualize
 from ai4water.utils.visualizations import PlotResults
 
 
 
-data = arg_beach()
+data = busan_beach()
 input_features = data.columns.tolist()[0:-1]
 output_features = data.columns.tolist()[-1:]
 

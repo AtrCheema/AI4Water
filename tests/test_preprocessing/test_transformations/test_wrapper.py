@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.utils.utils import prepare_data
 from ai4water.preprocessing import Transformation
 from ai4water.preprocessing.transformations import Transformations
 
 
-data = arg_beach()
+data = busan_beach()
 
 
 def calculate_manually(xarray_3d, **kwds):

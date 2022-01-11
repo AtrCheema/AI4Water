@@ -29,7 +29,7 @@ optuna.logging.set_verbosity(optuna.logging.ERROR)
 
 from ai4water.tf_attributes import tf
 from ai4water.utils.utils import Jsonize
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.hyperopt import HyperOpt, Real, Categorical, Integer
 
@@ -42,7 +42,7 @@ if tf is not None:
 
 
 
-data = arg_beach()
+data = busan_beach()
 inputs = list(data.columns)[0:-1]
 outputs = [list(data.columns)[-1]]
 
@@ -54,7 +54,7 @@ def objective_func(**suggestion):
         train_data='random',
         verbosity=0)
 
-    model.fit(data=arg_beach())
+    model.fit(data=data)
 
     t, p = model.predict(return_true=True, process_results=False)
     mse = RegressionMetrics(t, p).mse()

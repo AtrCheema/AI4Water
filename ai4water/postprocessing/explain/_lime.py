@@ -20,12 +20,12 @@ class LimeExplainer(ExplainerMixin):
 
     Example:
         >>>from ai4water import Model
-        >>>from ai4water.datasets import arg_beach
-        >>>model = Model(model="GradientBoostingRegressor", data=arg_beach())
-        >>>model.fit()
+        >>>from ai4water.datasets import busan_beach
+        >>>model = Model(model="GradientBoostingRegressor")
+        >>>model.fit(data=busan_beach())
         >>>lime_exp = LimeExplainer(model=model._model,
         ...                       train_data=model.training_data()[0],
-        ...                       test_data=model.test_data()[0],
+        ...                       data=model.test_data()[0],
         ...                       mode="regression")
         >>>lime_exp()
 
@@ -47,7 +47,8 @@ class LimeExplainer(ExplainerMixin):
         """
         Arguments:
             model : the model to explain. The model must have `predict` method.
-            data : the data to explain.
+            data : the data to explain. This would typically be test data but it
+                can be any data.
             train_data : the data on which the model was trained.
             mode : either of `regression` or `classification`
             explainer : The explainer to use. By default, LimeTabularExplainer is used.

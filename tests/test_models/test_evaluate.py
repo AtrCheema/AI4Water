@@ -4,13 +4,14 @@ import unittest
 import numpy as np
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
+beach_data = busan_beach()
 model = Model(
     model={"layers": {"Dense": 1}},
-    input_features=arg_beach().columns.tolist()[0:-1],
-    output_features=arg_beach().columns.tolist()[-1:],
+    input_features=beach_data.columns.tolist()[0:-1],
+    output_features=beach_data.columns.tolist()[-1:],
     lookback=1,
     verbosity=0,
 )
@@ -19,30 +20,30 @@ model = Model(
 class TestEvaluate(unittest.TestCase):
 
     def test_basic(self):
-        eval_scores = model.evaluate(data=arg_beach())
+        eval_scores = model.evaluate(data=beach_data)
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_basic_on_training_data(self):
-        model.fit(data=arg_beach(), epochs=1)
+        model.fit(data=beach_data, epochs=1)
         eval_scores = model.evaluate(data='training')
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_basic_on_validation_data(self):
-        model.fit(data=arg_beach(), epochs=1)
+        model.fit(data=beach_data, epochs=1)
         eval_scores = model.evaluate(data='validation')
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_basic_with_metrics(self):
         # basic example with metrics
-        eval_scores = model.evaluate(data=arg_beach(), metrics="kge")
+        eval_scores = model.evaluate(data=beach_data, metrics="kge")
         assert isinstance(eval_scores, float)
 
     def test_basic_with_metric_groups(self):
         # basic example with metrics
-        eval_scores = model.evaluate(data=arg_beach(), metrics="hydro_metrics")
+        eval_scores = model.evaluate(data=beach_data, metrics="hydro_metrics")
         assert isinstance(eval_scores, dict)
         return
 

@@ -10,13 +10,13 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.datasets import arg_beach, MtropicsLaos
+from ai4water.datasets import busan_beach, MtropicsLaos
 
 from ai4water.functional import Model as FModel
 from ai4water.preprocessing.datahandler import DataHandler
 
 
-data = arg_beach()
+data = busan_beach()
 dh = DataHandler(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
 
@@ -42,7 +42,7 @@ def test_user_defined_data(_model, x, y):
 def _test_ml_inbuilt_data_reg(_model):
     model = _model(model="RandomForestRegressor",
                    verbosity=0)
-    model.fit(data=arg_beach())
+    model.fit(data=data)
 
     test_user_defined_data(model, x_reg, y_reg)
 
@@ -175,12 +175,12 @@ class TestFit(unittest.TestCase):
         model = FModel(
             model={"layers": {"Dense": 1}},
             lookback=1,
-            input_features=arg_beach().columns.tolist()[0:-1],
-            output_features=arg_beach().columns.tolist()[-1:],
+            input_features=data.columns.tolist()[0:-1],
+            output_features=data.columns.tolist()[-1:],
             verbosity=0,
         )
 
-        model.fit(data=arg_beach(),
+        model.fit(data=data,
                   batch_size=30,
                   callbacks=[tf.keras.callbacks.EarlyStopping(patience=5)] )
         assert model.config['batch_size'] == 30
@@ -193,7 +193,7 @@ class TestPermImp(unittest.TestCase):
     def test_basic0(self):
         model = Model(model="XGBRegressor",
                       verbosity=0)
-        model.fit(data=arg_beach())
+        model.fit(data=data)
         imp = model.permutation_importance(data="validation")
         assert imp.shape == (13, 5)
         return

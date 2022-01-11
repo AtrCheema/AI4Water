@@ -144,9 +144,9 @@ def regplot(
         ylabel :
 
     Example:
-        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.datasets import busan_beach
         >>> from ai4water.utils.easy_mpl import regplot
-        >>> data = arg_beach()
+        >>> data = arg_busan()
         >>> regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
     """
     x = to_1d_array(x)

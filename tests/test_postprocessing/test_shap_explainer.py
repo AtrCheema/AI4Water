@@ -15,7 +15,7 @@ from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 
 from ai4water import Model
-from ai4water.datasets import arg_beach, MtropicsLaos
+from ai4water.datasets import busan_beach, MtropicsLaos
 from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
 from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_model, make_mlp_model
@@ -23,6 +23,7 @@ from test_lime_explainer import make_lstm_reg_model, lstm_model, get_fitted_mode
 laos = MtropicsLaos()
 
 class_data = laos.make_classification()
+beach_data = busan_beach()
 
 # todo, do not use any transformation on y for classification problem
 # todo, allowed y_transformation are only log and sqrt
@@ -171,7 +172,7 @@ class TestShapExplainers(unittest.TestCase):
             "XGBRFRegressor" # todo error
                     ]:
 
-            exp = get_explainer(mod, arg_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
+            exp = get_explainer(mod, busan_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
             exp.pdp_single_feature(feature_name=exp.features[0], show=False, save=False)
 
             time.sleep(1)
@@ -184,7 +185,7 @@ class TestShapExplainers(unittest.TestCase):
             verbosity=0
         )
 
-        model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+        model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
 
         x_train, y_train = model.training_data()
         x_test, y_test = model.test_data()
@@ -216,7 +217,7 @@ class TestShapExplainers(unittest.TestCase):
             output_features=['tetx_coppml', "ecoli", "16s", "inti1"],
             verbosity=0
         )
-        model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm'],
+        model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm'],
                                  target=['tetx_coppml', "ecoli", "16s", "inti1"]))
 
         x_test, y_test = model.test_data()
@@ -230,35 +231,35 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_xgb(self):
 
-        fit_and_interpret("XGBRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+        fit_and_interpret("XGBRegressor", data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
                           draw_heatmap=True, explainer="TreeExplainer")
 
         return
 
     def test_lgbm(self):
 
-        fit_and_interpret("LGBMRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+        fit_and_interpret("LGBMRegressor", data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
                           draw_heatmap=False, explainer="TreeExplainer")
 
         return
 
     def test_catboost(self):
 
-        fit_and_interpret("CatBoostRegressor", data=arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+        fit_and_interpret("CatBoostRegressor", data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
                           draw_heatmap=False, explainer="TreeExplainer")
 
         return
 
     def test_waterfall_with_xgb(self):
 
-        fit_and_draw_plots("XGBRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']),
+        fit_and_draw_plots("XGBRegressor", busan_beach(inputs=['wat_temp_c', 'tide_cm']),
                            draw_heatmap=True)
 
         return
 
     def test_waterfall_with_catboost(self):
 
-        fit_and_draw_plots("CatBoostRegressor", arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+        fit_and_draw_plots("CatBoostRegressor", busan_beach(inputs=['wat_temp_c', 'tide_cm']))
 
         return
 
@@ -276,7 +277,7 @@ class TestShapExplainers(unittest.TestCase):
             "XGBRFRegressor"
                     ]:
 
-            fit_and_plot(mod, arg_beach(), heatmap=True)
+            fit_and_plot(mod, beach_data, heatmap=True)
         time.sleep(1)
         return
 
@@ -294,7 +295,7 @@ class TestShapExplainers(unittest.TestCase):
             "XGBRFRegressor"
                     ]:
 
-            fit_and_plot(mod, arg_beach(), beeswarm_plot=True)
+            fit_and_plot(mod, beach_data, beeswarm_plot=True)
             time.sleep(1)
         return
 
@@ -364,7 +365,7 @@ class TestShapExplainers(unittest.TestCase):
             "GradientBoostingRegressor"
                   ]:
 
-            model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c', 'tide_cm']))
             exp = explain_model_with_shap(model, examples_to_explain=2, explainer="TreeExplainer")
             assert isinstance(exp, ShapExplainer)
 

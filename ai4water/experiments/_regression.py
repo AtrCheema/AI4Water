@@ -69,10 +69,10 @@ class MLRegressionExperiments(Experiments):
                 and are not optimized.
 
         Examples:
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> # first compare the performance of all available models without optimizing their parameters
-            >>> data = arg_beach()  # read data file, in this case load the default data
+            >>> data = busan_beach()  # read data file, in this case load the default data
             >>> inputs = list(data.columns)[0:-1]  # define input and output columns in data
             >>> outputs = list(data.columns)[-1]
             >>> comparisons = MLRegressionExperiments(data=data,

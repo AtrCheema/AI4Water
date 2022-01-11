@@ -16,7 +16,7 @@ else:
     from ai4water import Model
 
 from ai4water.functional import Model as FModel
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
@@ -37,7 +37,7 @@ def make_and_run(
         **kwargs):
 
     outputs = ['blaTEM_coppml']
-    df = arg_beach(input_features, target=outputs)
+    df = busan_beach(input_features, target=outputs)
     inputs = input_features
     # column in dataframe to bse used as output/target
     df['blaTEM_coppml'] = np.log10(df['blaTEM_coppml'])

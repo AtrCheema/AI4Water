@@ -217,8 +217,8 @@ class BaseModel(NN):
             and `y_transformations` are part of **model**. See [this](https://stats.stackexchange.com/q/555839/314919)
         Example:
             >>>from ai4water import Model
-            >>>from ai4water.datasets import arg_beach
-            >>>df = arg_beach()
+            >>>from ai4water.datasets import busan_beach
+            >>>df = busan_beach()
             >>>model_ = Model(input_features=df.columns.tolist()[0:-1],
             ...              batch_size=16,
             ...              output_features=df.columns.tolist()[-1:],
@@ -1335,9 +1335,9 @@ class BaseModel(NN):
 
         Example:
             >>> from ai4water import Model
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> model = Model(model={"layers": {"Dense": 1}})
-            >>> model.fit(data=arg_beach())
+            >>> model.fit(data=busan_beach())
 
             for evaluation on test data
             >>> model.evaluate()
@@ -1700,9 +1700,9 @@ class BaseModel(NN):
 
         Example:
             >>> from ai4water import Model
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> model = Model(model=...)
-            >>> model.fit(data=arg_beach())
+            >>> model.fit(data=busan_beach())
             >>> model.interpret()
         ```
         """
@@ -2009,13 +2009,13 @@ class BaseModel(NN):
 
         Examples:
             >>> from ai4water import Model
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> from ai4water.hyperopt import Integer, Categorical, Real
             >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
             >>>                 "max_depth": Categorical([10, 20, 30]),
             >>>                 "learning_rate": Real(0.00001, 0.1)}}
             >>> model = Model(model=model_config)
-            >>> optimizer = model.optimize_hyperparameters(data=arg_beach())
+            >>> optimizer = model.optimize_hyperparameters(data=busan_beach())
 
             Same can be done if a model is defined using neural networks
             >>> model_conf = {"layers": {
@@ -2024,7 +2024,7 @@ class BaseModel(NN):
             ...      "Dense1": {"units": 1,
             ...            "activation": Categorical(["relu", "tanh"], name="dense1_act")}}}
             >>> model = Model(model=model_config)
-            >>> optimizer = model.optimize_hyperparameters(data=arg_beach())
+            >>> optimizer = model.optimize_hyperparameters(data=busan_beach())
         """
         from ._optimize import OptimizeHyperparameters  # optimize_hyperparameters
 
@@ -2128,12 +2128,12 @@ class BaseModel(NN):
             an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] class which is used for optimization
 
         Example:
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> from ai4water import Model
             >>> model = Model(model="xgboostregressor")
-            >>> optimizer_ = model.optimize_transformations(data=arg_beach(), exclude="tide_cm")
+            >>> optimizer_ = model.optimize_transformations(data=busan_beach(), exclude="tide_cm")
             >>> print(optimizer_.best_paras())  # find the best/optimized transformations
-            >>> model.fit(data=arg_beach())
+            >>> model.fit(data=busan_beach())
             >>> model.predict()
         """
         from ._optimize import OptimizeTransformations  # optimize_transformations
@@ -2258,9 +2258,9 @@ class BaseModel(NN):
 
         Examples:
             >>> from ai4water import Model
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> model = Model(model="XGBRegressor")
-            >>> model.fit(data=arg_beach())
+            >>> model.fit(data=busan_beach())
             >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
         """
         assert data in ("training", "validation", "test")

@@ -41,10 +41,10 @@ def explain_model(
 
     Example:
         >>> from ai4water import Model
-        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.datasets import busan_beach
         >>> from ai4water.postprocessing.explain import explain_model
-        >>> model = Model(model="RandForestRegressor", data=arg_beach())
-        >>> model.fit()
+        >>> model = Model(model="RandForestRegressor")
+        >>> model.fit(data=busan_beach())
         >>> explain_model(model)
     """
     if method == 'both':
@@ -83,10 +83,10 @@ def explain_model_with_lime(
 
     Example:
         >>> from ai4water import Model
-        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.datasets import busan_beach
         >>> from ai4water.postprocessing.explain import explain_model_with_lime
-        >>> model = Model(model="RandForestRegressor", data=arg_beach())
-        >>> model.fit()
+        >>> model = Model(model="RandForestRegressor")
+        >>> model.fit(data=busan_beach())
         >>> explain_model_with_lime(model)
     ```
     """
@@ -152,10 +152,10 @@ def explain_model_with_shap(
 
     Example:
         >>> from ai4water import Model
-        >>> from ai4water.datasets import arg_beach
+        >>> from ai4water.datasets import busan_beach
         >>> from ai4water.postprocessing.explain import explain_model_with_shap
-        >>> model = Model(model="RandForestRegressor", data=arg_beach())
-        >>> model.fit()
+        >>> model = Model(model="RandForestRegressor")
+        >>> model.fit(data=busan_beach())
         >>> explain_model_with_shap(model)
     """
     assert hasattr(model, 'path')

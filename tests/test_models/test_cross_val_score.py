@@ -4,7 +4,10 @@ import unittest
 import numpy as np
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
+
+
+beach_data = busan_beach()
 
 
 def make_cross_validator(cv, **kwargs):
@@ -24,28 +27,28 @@ class Testcross_val_score(unittest.TestCase):
     """cross_val_score of Model class"""
     def test_tscv(self):
         model = make_cross_validator(cv={'TimeSeriesSplit': {'n_splits': 5}})
-        cv_score = model.cross_val_score(data=arg_beach())
+        cv_score = model.cross_val_score(data=beach_data)
         assert isinstance(cv_score, float)
         assert hasattr(model.cross_val_mse, '__len__')  # cross_val_scores are array like
         return
 
     def test_kfold(self):
         model = make_cross_validator(cv={'KFold': {'n_splits': 5}})
-        cv_score = model.cross_val_score(data=arg_beach())
+        cv_score = model.cross_val_score(data=beach_data)
         assert isinstance(cv_score, float)
         assert hasattr(model.cross_val_mse, '__len__')  # cross_val_scores are array like
         return
 
     def test_loocv(self):
         model = make_cross_validator(cv={'LeaveOneOut': {}}, test_fraction=0.6)
-        cv_score = model.cross_val_score(data=arg_beach())
+        cv_score = model.cross_val_score(data=beach_data)
         assert isinstance(cv_score, float)
         assert hasattr(model.cross_val_mse, '__len__')  # cross_val_scores are array like
         return
 
     def test_kfold_with_refit(self):
         model = make_cross_validator(cv={'KFold': {'n_splits': 5}})
-        cv_score = model.cross_val_score(data=arg_beach(), refit=True)
+        cv_score = model.cross_val_score(data=beach_data, refit=True)
         assert isinstance(cv_score, float)
         assert hasattr(model.cross_val_mse, '__len__')  # cross_val_scores are array like
         return

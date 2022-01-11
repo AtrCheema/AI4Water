@@ -21,7 +21,7 @@ else:
     from ai4water import Model
 
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
 def test_evaluation(model):
@@ -151,12 +151,12 @@ class TestClassifications(unittest.TestCase):
                                'Dense': {'units': 2},
                                }},
             lookback=5,
-            input_features=arg_beach().columns.tolist()[0:-1],
+            input_features=busan_beach().columns.tolist()[0:-1],
             output_features = ['blaTEM_coppml', 'tetx_coppml'],
             verbosity=0
         )
 
-        model.fit(data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml']))
+        model.fit(data=busan_beach(target=['blaTEM_coppml', 'tetx_coppml']))
         t,p = model.predict(data='test', return_true=True)
 
         assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])

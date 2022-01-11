@@ -8,11 +8,11 @@ site.addsitedir(ai4_dir)
 import numpy as np
 import pandas as pd
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.preprocessing import DataHandler
 
 
-beach_data:pd.DataFrame = arg_beach()
+beach_data:pd.DataFrame = busan_beach()
 input_features = beach_data.columns.to_list()[0:-2]
 output_features = beach_data.columns.to_list()[-2:]
 

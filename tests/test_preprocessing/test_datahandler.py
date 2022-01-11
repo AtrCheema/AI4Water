@@ -14,12 +14,12 @@ from sklearn.model_selection import train_test_split
 from ai4water import Model
 from ai4water.preprocessing import DataHandler, SiteDistributedDataHandler
 from ai4water.preprocessing.datahandler import MultiLocDataHandler
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 os.environ['PYTHONHASHSEED'] = '313'
 random.seed(313)
 np.random.seed(313)
-
+busan_beach = busan_beach()
 
 # todo, check last dimension of x,y
 # todo test with 3d y
@@ -1313,7 +1313,7 @@ def test_random_with_intervals():
 def make_cross_validator(**kwargs):
 
     dh = DataHandler(
-        data=arg_beach(),
+        data=busan_beach,
         verbosity=0,
         **kwargs
     )
@@ -1662,7 +1662,7 @@ def site_distributed_multiple_srcs():
 
 def test_with_string_index():
 
-    data = arg_beach()
+    data = busan_beach
     data.index = [f"ind_{i}" for i in range(len(data))]
     config = {
         'input_features': ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c'],
@@ -1677,7 +1677,7 @@ def test_with_string_index():
 
 def test_with_indices_and_nans():
     # todo, check with two output columns
-    data = arg_beach()
+    data = busan_beach
     train_idx, test_idx = train_test_split(np.arange(len(data.dropna())),
                                            test_size=0.25, random_state=332898)
     out_cols = [list(data.columns)[-1]]
@@ -1768,7 +1768,7 @@ test_multisource_basic()
 test_multisource_basic2()
 test_multisource_basic3()
 # #test_multisource_basic4() todo
-test_file_formats(arg_beach())
+test_file_formats(busan_beach)
 
 cv_tester = TestCVs()
 cv_tester()

@@ -10,7 +10,7 @@ import pandas as pd
 
 from ai4water.preprocessing.transformations import Transformation
 from ai4water.tf_attributes import tf
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -377,7 +377,7 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_example(self):
-        data = arg_beach()
+        data = busan_beach()
         inputs = ['pcp6_mm', 'pcp12_mm', 'wind_dir_deg', 'wind_speed_mps', 'air_p_hpa']
         transformer = Transformation(method='minmax', features=['pcp6_mm', 'pcp12_mm'])
         new_data = transformer.fit_transform(data[inputs])

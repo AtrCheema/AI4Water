@@ -9,7 +9,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from ai4water import InputAttentionModel
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 tf.compat.v1.disable_eager_execution()
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     # column in dataframe to bse used as output/target
     outputs = ['blaTEM_coppml', 'aac_coppml']
 
-    df = arg_beach(target=outputs)
+    df = busan_beach(target=outputs)
     input_features = list(df.columns)[0:-2]
 
     model = MultiSite(

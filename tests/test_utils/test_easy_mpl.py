@@ -5,12 +5,12 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow, hist
 from ai4water.utils.visualizations import regplot
 
 
-data = arg_beach()
+data = busan_beach()
 
 def get_chart_data(n):
     d = np.random.randint(2, 50, n)

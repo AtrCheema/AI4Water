@@ -19,7 +19,7 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing import Interpret
 from ai4water import InputAttentionModel, DualAttentionModel
 
@@ -43,7 +43,7 @@ data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).tra
                     index=pd.date_range("20110101", periods=examples, freq="D"))
 
 
-beach_data = arg_beach()
+beach_data = busan_beach()
 input_features=beach_data.columns.tolist()[0:-1]
 output_features=beach_data.columns.tolist()[-1:]
 
@@ -184,7 +184,7 @@ class TestInterpret(unittest.TestCase):
                   'GradientBoostingRegressor', 'LinearRegression']:
 
             model = build_model(model=m)
-            model.fit(data=arg_beach())
+            model.fit(data=beach_data)
             model.interpret()
         return
 
@@ -202,7 +202,7 @@ class TestInterpret(unittest.TestCase):
 
     def test_xgb_f_imp_comparison(self):
         model = Model(model="XGBRegressor")
-        model.fit(data=arg_beach(inputs=["tide_cm", "rel_hum"]))
+        model.fit(data=busan_beach(inputs=["tide_cm", "rel_hum"]))
         interpreter = Interpret(model)
         interpreter.compare_xgb_f_imp()
         return

@@ -18,7 +18,7 @@ else:
     from ai4water import Model
 
 from ai4water.functional import Model as FModel
-from ai4water.datasets import load_nasdaq, arg_beach
+from ai4water.datasets import load_nasdaq, busan_beach
 from ai4water.utils.utils import TrainTestSplit, ts_features, prepare_data, Jsonize
 
 
@@ -42,6 +42,7 @@ data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).tra
 
 lookback=7
 batch_size=16
+busan_beach = busan_beach()
 
 
 def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None, input_cols=None):
@@ -401,20 +402,20 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_same_val_data_with_st_en_defined(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data=np.arange(165).tolist(), val_data="same")
+        x, y = test_train_val_test_data(data=busan_beach, train_data=np.arange(165).tolist(), val_data="same")
         return
 
     def test_same_val_data_with_random(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data='random', val_data="same")
+        x, y = test_train_val_test_data(data=busan_beach, train_data='random', val_data="same")
         return
 
     def test_with_st_en_defined(self):
         time.sleep(1)
-        test_train_val_test_data(data=arg_beach(), train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
+        test_train_val_test_data(data=busan_beach, train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
         return
 
     def test_with_random(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data='random', val_data=None, val_fraction=0.0)
+        x, y = test_train_val_test_data(data=busan_beach, train_data='random', val_data=None, val_fraction=0.0)
         return
 
     def test_train_val_split(self):

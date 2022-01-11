@@ -3,9 +3,9 @@
 # to two LSTM layers.
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
-df = arg_beach()
+df = busan_beach()
 input_features = list(df.columns)[0:-1]
 
 # column in dataframe to bse used as output/target

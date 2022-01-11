@@ -139,8 +139,8 @@ class Transformation(TransformationsContainer):
 
         Example:
             >>> from ai4water.preprocessing.transformations import Transformation
-            >>> from ai4water.datasets import arg_beach
-            >>> df = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> df = busan_beach()
             >>> inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
             >>> transformer = Transformation(method='minmax', features=['sal_psu', 'air_temp_c'])
             >>> new_data = transformer.fit_transform(df[inputs])

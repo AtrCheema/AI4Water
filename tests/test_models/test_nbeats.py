@@ -25,7 +25,7 @@ from tensorflow.keras.models import Model as KModel
 from tensorflow.keras.layers import Input, Flatten
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.models.tensorflow import NBeats
 
 """
@@ -33,8 +33,9 @@ tf115, subclassing and functional both working
 tf21, tf26 subclassing is only working by disabling eager mode while functional is fine
 """
 
-input_features = arg_beach().columns.tolist()[0:-1]
-output_features = arg_beach().columns.tolist()[-1:]
+busan_beach = busan_beach()
+input_features = busan_beach.columns.tolist()[0:-1]
+output_features = busan_beach.columns.tolist()[-1:]
 
 class TestNBeats(unittest.TestCase):
 
@@ -88,7 +89,7 @@ class TestNBeats(unittest.TestCase):
             verbosity=0
         )
 
-        model.fit(data=arg_beach())
+        model.fit(data=busan_beach)
         return
 
 if __name__ == "__main__":

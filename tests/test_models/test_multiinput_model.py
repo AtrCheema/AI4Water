@@ -14,7 +14,7 @@ else:
 
 
 from ai4water.functional import Model as FModel
-from ai4water.datasets import load_nasdaq, arg_beach
+from ai4water.datasets import load_nasdaq, busan_beach
 
 nasdaq_input_features = load_nasdaq().columns.tolist()[0:-1],
 nasdaq_output_features = load_nasdaq().columns.tolist()[-1:],
@@ -246,7 +246,7 @@ class test_MultiInputModels(unittest.TestCase):
         model = Model(model='RandomForestRegressor',
                       verbosity=0
                       )
-        model.fit(data=arg_beach())
+        model.fit(data=busan_beach())
         y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
@@ -254,7 +254,7 @@ class test_MultiInputModels(unittest.TestCase):
         model = FModel(model='RandomForestRegressor',
                       verbosity=0
                       )
-        model.fit(data=arg_beach())
+        model.fit(data=busan_beach())
         y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 

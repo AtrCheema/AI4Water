@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.utils.utils import dateandtime_now
 from ai4water.hyperopt import Categorical, Integer, Real
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
@@ -20,7 +20,7 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 # column in dataframe to bse used as output/target
 outputs = ['blaTEM_coppml']
 
-df = arg_beach(input_features, outputs)
+df = busan_beach(input_features, outputs)
 
 
 class TestExperiments(unittest.TestCase):
@@ -145,7 +145,7 @@ class TestExperiments(unittest.TestCase):
         return
 
     def test_fit_with_tpot(self):
-        exp = MLRegressionExperiments(data=arg_beach(),
+        exp = MLRegressionExperiments(data=busan_beach(),
                                       exp_name=f"tpot_{dateandtime_now()}",
                                       verbosity=0)
 
@@ -160,7 +160,7 @@ class TestExperiments(unittest.TestCase):
 
     def test_fit_with_tpot1(self):
 
-        exp = MLRegressionExperiments(data=arg_beach(),
+        exp = MLRegressionExperiments(data=busan_beach(),
                                       exp_name=f"tpot_{dateandtime_now()}",
                                       verbosity=0)
 

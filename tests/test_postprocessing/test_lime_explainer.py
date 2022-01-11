@@ -18,7 +18,7 @@ tf_version = int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0'))
 if 230 <= tf_version < 260:
     from ai4water.functional import Model
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.datasets import MtropicsLaos
 from ai4water.postprocessing.explain import LimeExplainer, explain_model_with_lime
 
@@ -45,7 +45,7 @@ def make_mlp_model():
         verbosity=0
     )
 
-    model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+    model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
     return model
 
 
@@ -73,7 +73,7 @@ def lstm_model():
         output_features=['tetx_coppml'],
     )
 
-    model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']).iloc[0:400], epochs=1)
+    model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm']).iloc[0:400], epochs=1)
 
     return model
 
@@ -191,7 +191,7 @@ class TestLimeExplainer(unittest.TestCase):
 
         model = Model(model="GradientBoostingRegressor", verbosity=0)
 
-        model.fit(data=arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+        model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
 
         lime_exp = LimeExplainer(model=model,
                                    train_data=model.training_data()[0],
@@ -257,7 +257,7 @@ class TestLimeExplainer(unittest.TestCase):
             "GradientBoostingRegressor"
                   ]:
 
-            model = get_fitted_model(m, arg_beach(inputs=['wat_temp_c', 'tide_cm']))
+            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c', 'tide_cm']))
             exp = explain_model_with_lime(model, examples_to_explain=2)
             assert isinstance(exp, LimeExplainer)
         return

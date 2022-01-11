@@ -69,8 +69,8 @@ Build a `Model` by providing all the arguments to initiate it.
 
 ```python
 from ai4water import Model
-from ai4ater.datasets import arg_beach
-data = arg_beach()
+from ai4ater.datasets import busan_beach
+data = busan_beach()
 model = Model(
         model = {'layers': {"LSTM": 64}},
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
@@ -124,9 +124,9 @@ classification and regression problems by making use of `model` keyword argument
 However, integration of ML based models is not complete yet.
 ```python
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
-data = arg_beach()  # path for data file
+data = busan_beach()  # path for data file
 
 model = Model(
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input

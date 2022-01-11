@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from ai4water.et import HargreavesSamani, ETBase, Penman, PriestleyTaylor
 from ai4water.datasets import CAMELS_AUS
-from ai4water.utils.utils import process_axis
+from ai4water.utils.easy_mpl import process_axis
 
 
 units = {'tmin': 'Centigrade',

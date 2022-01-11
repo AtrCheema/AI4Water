@@ -155,9 +155,9 @@ class HyperOpt(object):
     Examples:
         >>>from ai4water import Model
         >>>from ai4water.hyperopt import HyperOpt, Categorical, Integer, Real
-        >>>from ai4water.datasets import arg_beach
+        >>>from ai4water.datasets import busan_beach
         >>>from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-        >>>data = arg_beach()
+        >>>data = busan_beach()
         >>>input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
         >>>output_features = ['tetx_coppml']
         ...# We have to define an objective function which will take keyword arguments

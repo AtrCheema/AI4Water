@@ -14,9 +14,9 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
-data = arg_beach()
+data = busan_beach()
 
 
 class TestFrontPage(unittest.TestCase):

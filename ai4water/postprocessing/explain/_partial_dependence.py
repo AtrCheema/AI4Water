@@ -51,7 +51,7 @@ class PartialDependencePlot(ExplainerMixin):
             model:
                 the trained/calibrated model which must be callable. It must take the
                 `data` as input and sprout an array of predicted values. For example
-                if you are using Keras' Mode, then you must pass model.predict
+                if you are using Keras/sklearn Model, then you must pass model.predict
             data:
                 The inputs to the `model`.
             feature_names:

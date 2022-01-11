@@ -4,11 +4,11 @@ import unittest
 import matplotlib.pyplot as plt
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.explain import PartialDependencePlot
 
 
-data = arg_beach()
+data = busan_beach()
 input_features = data.columns.tolist()[0:-1]
 output_features = data.columns.tolist()[-1:]
 
@@ -30,7 +30,7 @@ class TestPDP(unittest.TestCase):
         model = Model(model="XGBRegressor",
                       verbosity=0)
 
-        model.fit(data=arg_beach())
+        model.fit(data=data)
         x, _ = model.training_data()
 
         pdp = PartialDependencePlot(model.predict, x, model.input_features, num_points=14)
@@ -48,7 +48,7 @@ class TestPDP(unittest.TestCase):
                       verbosity=0,
                       )
 
-        model.fit(data=arg_beach())
+        model.fit(data=data)
 
         x, _ = model.training_data()
 
@@ -59,7 +59,7 @@ class TestPDP(unittest.TestCase):
     def test_interactions_2d_single_data(self):
         model = Model(model="XGBRegressor", verbosity=0)
 
-        model.fit(data=arg_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu',
+        model.fit(data=busan_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu',
                                              'air_temp_c', 'pcp_mm', 'pcp3_mm',
                                              'rel_hum']))
         x, _ = model.training_data()

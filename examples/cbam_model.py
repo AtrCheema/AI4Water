@@ -2,7 +2,7 @@
 
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
 layers = {
@@ -15,7 +15,7 @@ layers = {
     "Dense": 1
 }
 
-data = arg_beach()
+data = busan_beach()
 input_features=data.columns.tolist()[0:-1]
 output_features = data.columns.tolist()[-1:]
 
