@@ -136,6 +136,7 @@ class Experiments(object):
 
     def fit(
             self,
+            data,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -151,6 +152,7 @@ class Experiments(object):
         todo, post_optimize not working for 'eval_best' with ML methods.
 
         Arguments:
+            data: this will be passed to `Model`.
             run_type :
                 One of `dry_run` or `optimize`. If `dry_run`, the all
                 the `models` will be trained only once. if `optimize`, then
@@ -182,6 +184,8 @@ class Experiments(object):
         assert run_type in ['optimize', 'dry_run']
 
         assert post_optimize in ['eval_best', 'train_best']
+
+        self.data_ = data
 
         if exclude == '':
             exclude = []
@@ -606,8 +610,8 @@ Available cases are {self.models} and you wanted to include
             >>> data = busan_beach()
             >>> inputs = list(data.columns)[0:-1]
             >>> outputs = list(data.columns)[-1]
-            >>> experiment = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs)
-            >>> experiment.fit()
+            >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
+            >>> experiment.fit(data=data)
             >>> experiment.compare_errors('mse')
             >>> experiment.compare_errors('r2', 0.2, 'greater')
         """
@@ -757,7 +761,9 @@ Available cases are {self.models} and you wanted to include
                 iterations = json.load(fp)
 
             convergence = sort_array(list(iterations.keys()))
-            process_axis(axis=axis, data=convergence, label=_model.split('model_')[1],
+            process_axis(axis=axis,
+                         data=convergence,
+                         label=_model.split('model_')[1],
                          linestyle='--',
                          xlabel='Number of iterations $n$',
                          ylabel=r"$\min f(x)$ after $n$ calls")
@@ -978,6 +984,7 @@ Available cases are {self.models} and you wanted to include
 
     def fit_with_tpot(
             self,
+            data,
             models: Union[int, List[str], dict, str] = None,
             selection_criteria: str = 'mse',
             scoring: str = None,
@@ -988,6 +995,7 @@ Available cases are {self.models} and you wanted to include
         finds out the best pipline for the given data.
 
         Arguments:
+            data:
             models:
                 It can be of three types.
 
@@ -1023,9 +1031,9 @@ Available cases are {self.models} and you wanted to include
         Example:
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> from ai4water.datasets import busan_beach
-            >>> exp = MLRegressionExperiments(data=busan_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
-            >>> exp.fit()
-            >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
+            >>> exp = MLRegressionExperiments(exp_name=f"tpot_reg_{dateandtime_now()}")
+            >>> exp.fit(data=busan_beach())
+            >>> tpot_regr = exp.fit_with_tpot(busan_beach(), 2, generations=1, population_size=2)
         """
         tpot_caller = self.tpot_estimator
         assert tpot_caller is not None, f"tpot must be installed"
@@ -1098,7 +1106,7 @@ Available cases are {self.models} and you wanted to include
             if arg in model_kws:
                 model_kws.pop(arg)
 
-        dh = DataHandler(self.data, **model_kws)
+        dh = DataHandler(data, **model_kws)
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
@@ -1163,12 +1171,11 @@ class TransformationExperiments(Experiments):
             ...        ]
             >>>x0 = [20, 14, 12, 0.00029613, 'relu']
             >>>experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
-            ...                output_features=outputs, data=data, exp_name="testing"
+            ...                output_features=outputs, exp_name="testing"
             ...                 param_space=search_space, x0=x0)
     """
 
     def __init__(self,
-                 data,
                  param_space=None,
                  x0=None,
                  cases: dict = None,
@@ -1177,7 +1184,6 @@ class TransformationExperiments(Experiments):
                  ai4water_model=None,
                  verbosity: int = 1,
                  **model_kws):
-        self.data = data
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kws
@@ -1226,9 +1232,9 @@ be used to build ai4water's Model class.
         model = self.process_model_before_fit(model)
 
         if cross_validate:
-            val_score = model.cross_val_score(data=self.data)
+            val_score = model.cross_val_score(data=self.data_)
         else:
-            model.fit(data=self.data,)
+            model.fit(data=self.data_)
             val_true, val_pred = model.predict(data='validation', return_true=True)
             val_score = getattr(RegressionMetrics(val_true, val_pred), model.val_metric)()
 
@@ -1252,7 +1258,7 @@ be used to build ai4water's Model class.
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict(data=self.data, return_true=True)
+        train_true, train_pred = model.predict(data=self.data_, return_true=True)
 
         test_true, test_pred = model.predict(data='test', return_true=True)
 

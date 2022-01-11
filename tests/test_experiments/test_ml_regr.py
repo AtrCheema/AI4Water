@@ -28,13 +28,13 @@ class TestExperiments(unittest.TestCase):
     def test_dryrun(self):
 
         comparisons = MLRegressionExperiments(
-            data=df, input_features=input_features, output_features=outputs,
+            input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features},
             verbosity=0
         )
         exclude = []
 
-        comparisons.fit(run_type="dry_run", exclude=exclude)
+        comparisons.fit(data=df, run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2', show=False)
         best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01, show=False)
         self.assertGreater(len(best_models), 1), len(best_models)
@@ -49,13 +49,12 @@ class TestExperiments(unittest.TestCase):
             ]
 
         comparisons = MLRegressionExperiments(
-            data=df,
             input_features=input_features, output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
             exp_name="BestMLModels",
         verbosity=0)
         comparisons.num_samples = 2
-        comparisons.fit(run_type="optimize", opt_method="random",
+        comparisons.fit(data=df, run_type="optimize", opt_method="random",
                         num_iterations=4,
                         include=best_models, post_optimize='train_best')
         comparisons.compare_errors('r2', show=False)
@@ -65,13 +64,15 @@ class TestExperiments(unittest.TestCase):
     def test_cross_val(self):
 
         comparisons = MLRegressionExperiments(
-            data=df,
-            input_features=input_features, output_features=outputs,
+            input_features=input_features,
+            output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
             cross_validator = {"KFold": {"n_splits": 5}},
             exp_name="MLRegrCrossVal",
         verbosity=0)
-        comparisons.fit(cross_validate=True, include=['GaussianProcessRegressor',
+        comparisons.fit(data=df,
+                        cross_validate=True,
+                        include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor',
                        'XGBRFRegressor'])
         comparisons.compare_errors('r2', show=False)
@@ -84,13 +85,13 @@ class TestExperiments(unittest.TestCase):
     def test_from_config(self):
 
         exp = MLRegressionExperiments(
-            data=df,
             input_features=input_features,
             output_features=outputs,
             nan_filler={'method': 'SimpleImputer', 'features': input_features, 'imputer_args': {'strategy': 'mean'}},
             exp_name=f"BestMLModels_{dateandtime_now()}",
         verbosity=0)
-        exp.fit(run_type="dry_run",
+        exp.fit(data=df,
+                run_type="dry_run",
                 include=['GaussianProcessRegressor',
                        'HistGradientBoostingRegressor'],
                 post_optimize='train_best')
@@ -135,38 +136,41 @@ class TestExperiments(unittest.TestCase):
         experiment = MyTransformationExperiments(cases=cases,
                                                  input_features=input_features,
                                                  output_features = outputs,
-                                                 data = df,
                                                  param_space=search_space,
                                                  x0=x0,
                                                  verbosity=0,
                                                  exp_name = f"testing_{dateandtime_now()}")
         experiment.num_samples = 2
-        experiment.fit('optimize', opt_method='random', num_iterations=2)
+        experiment.fit(data = df, run_type='optimize', opt_method='random', num_iterations=2)
         return
 
     def test_fit_with_tpot(self):
-        exp = MLRegressionExperiments(data=busan_beach(),
-                                      exp_name=f"tpot_{dateandtime_now()}",
-                                      verbosity=0)
+        exp = MLRegressionExperiments(
+            exp_name=f"tpot_{dateandtime_now()}",
+            verbosity=0)
 
-        exp.fit(include=[
+        exp.fit(
+            data=busan_beach(),
+            include=[
             "XGBRegressor",
             "LGBMRegressor",
             "RandomForestRegressor",
             "GradientBoostingRegressor"])
 
-        exp.fit_with_tpot(2, generations=1, population_size=1)
+        exp.fit_with_tpot( data=busan_beach(), models=2, generations=1, population_size=1)
         return
 
     def test_fit_with_tpot1(self):
 
-        exp = MLRegressionExperiments(data=busan_beach(),
-                                      exp_name=f"tpot_{dateandtime_now()}",
-                                      verbosity=0)
+        exp = MLRegressionExperiments(
+            exp_name=f"tpot_{dateandtime_now()}",
+            verbosity=0)
 
-        exp.fit_with_tpot(["LGBMRegressor",
-                           "RandomForestRegressor"],
-                          generations=1, population_size=1)
+        exp.fit_with_tpot(
+            data=busan_beach(),
+            models = ["LGBMRegressor", "RandomForestRegressor"],
+            generations=1,
+            population_size=1)
         return
 
 

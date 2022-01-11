@@ -48,7 +48,6 @@ class MLRegressionExperiments(Experiments):
     def __init__(self,
                  param_space=None,
                  x0=None,
-                 data=None,
                  cases=None,
                  ai4water_model=None,
                  exp_name='MLExperiments',
@@ -63,7 +62,6 @@ class MLRegressionExperiments(Experiments):
                 can be overwritten in `models`.
             x0 list: initial values of the parameters which are to be optimized.
                 These can be overwritten in `models`
-            data: this will be passed to `Model`.
             exp_name str: name of experiment, all results will be saved within this folder
             model_kwargs dict: keyword arguments which are to be passed to `Model`
                 and are not optimized.
@@ -75,28 +73,27 @@ class MLRegressionExperiments(Experiments):
             >>> data = busan_beach()  # read data file, in this case load the default data
             >>> inputs = list(data.columns)[0:-1]  # define input and output columns in data
             >>> outputs = list(data.columns)[-1]
-            >>> comparisons = MLRegressionExperiments(data=data,
+            >>> comparisons = MLRegressionExperiments(
             ...       input_features=inputs, output_features=outputs,
             ...       nan_filler= {'method': 'KNNImputer', 'features': inputs} )
-            >>> comparisons.fit(run_type="dry_run")
+            >>> comparisons.fit(data=data,run_type="dry_run")
             >>> comparisons.compare_errors('r2')
             >>> # find out the models which resulted in r2> 0.5
             >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater',
             ...                                                cutoff_val=0.3)
             >>> best_models = [m[1] for m in best_models.values()]
             >>> # now build a new experiment for best models and otpimize them
-            >>> comparisons = MLRegressionExperiments(data=data,
+            >>> comparisons = MLRegressionExperiments(
             ...     inputs_features=inputs, output_features=outputs,
             ...     nan_filler= {'method': 'KNNImputer', 'features': inputs},
             ...     exp_name="BestMLModels")
-            >>> comparisons.fit(run_type="optimize", include=best_models)
+            >>> comparisons.fit(data=data, run_type="optimize", include=best_models)
             >>> comparisons.compare_errors('r2')
             >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
         ```
         """
         self.param_space = param_space
         self.x0 = x0
-        self.data = data
         self.model_kws = model_kwargs
         self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
@@ -156,16 +153,16 @@ class MLRegressionExperiments(Experiments):
         setattr(self, '_model', model)
 
         if cross_validate:
-            val_score = model.cross_val_score(data=self.data, scoring=model.config['val_metric'])
+            val_score = model.cross_val_score(data=self.data_, scoring=model.config['val_metric'])
         else:
-            model.fit(data=self.data, **fit_kws)
+            model.fit(data=self.data_, **fit_kws)
             vt, vp = model.predict(data='validation', return_true=True)
             val_score = getattr(RegressionMetrics(vt, vp), model.val_metric)()
 
         tt, tp = model.predict(data='test', return_true=True)
 
         if view:
-            model.view_model()
+            model.view()
 
         if predict:
             t, p = model.predict(data='training', return_true=True)

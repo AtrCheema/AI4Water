@@ -12,7 +12,6 @@ class MLClassificationExperiments(Experiments):
     def __init__(self,
                  param_space=None,
                  x0=None,
-                 data=None,
                  cases=None,
                  exp_name='MLExperiments',
                  dl4seq_model=None,
@@ -20,7 +19,6 @@ class MLClassificationExperiments(Experiments):
                  **model_kwargs):
         self.param_space = param_space
         self.x0 = x0
-        self.data = data
         self.model_kws = model_kwargs
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
@@ -59,12 +57,12 @@ class MLClassificationExperiments(Experiments):
 
         setattr(self, '_model', model)
 
-        model.fit(data=self.data, **fit_kws)
+        model.fit(data=self.data_, **fit_kws)
 
         t = model.predict()
 
         if view:
-            model.view_model()
+            model.view()
 
         if predict:
             model.predict(data='training')
