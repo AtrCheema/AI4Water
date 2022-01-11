@@ -1107,7 +1107,7 @@ class EDA(Plot):
         data = data.loc[:, ~data.columns.duplicated()]
         if normalize:
             transformer = Transformation()
-            data = transformer.transform(data)
+            data = transformer.fit_transform(data)
 
         if freq is not None:
             return self._box_plot_with_freq(data,
