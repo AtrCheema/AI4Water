@@ -1383,7 +1383,7 @@ class BaseModel(NN):
 
     def evalute_ml_models(self, x, y, metrics=None):
         if metrics is None:
-            metrics = self.config['val_metric']
+            metrics = self.val_metric
         return self._manual_eval(x, y, metrics)
 
     def _manual_eval(self, x, y, metrics):
