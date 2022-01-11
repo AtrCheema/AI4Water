@@ -367,6 +367,7 @@ class EDA(Plot):
             freq: str = None,
             cols=None,
             max_cols_in_plot: int = 10,
+            ignore_datetime_index=False,
             **kwargs
     ):
         """
@@ -381,6 +382,9 @@ class EDA(Plot):
                 in data.
             freq : one of 'daily', 'weekly', 'monthly', 'yearly', determines
                 interval of plot of data. It is valid for only time-series data.
+            ignore_datetime_index:
+                only valid if dataframe's index is `pd.DateTimeIndex`. In such a case, if
+                you want to ignore time index on x-axis, set this to True.
             kwargs : https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
 
         Rreturn:
@@ -394,6 +398,7 @@ class EDA(Plot):
         """
         return self._call_method("_plot_df", st=st, en=en, cols=cols, freq=freq,
                                  max_cols_in_plot=max_cols_in_plot,
+                                 ignore_datetime_index=ignore_datetime_index,
                                  **kwargs)
 
     def _plot_df(self,
@@ -407,6 +412,7 @@ class EDA(Plot):
                  leg_kws=None,
                  label_kws=None,
                  tick_kws=None,
+                 ignore_datetime_index=False,
                  **kwargs):
         """Plots each columns of dataframe and saves it if `save` is True.
 
@@ -424,7 +430,7 @@ class EDA(Plot):
         if tick_kws is None:
             tick_kws = {'axis': "both", 'which': 'major', 'labelsize': 12}
 
-        df = _preprocess_df(df, st, en, cols)
+        df = _preprocess_df(df, st, en, cols, ignore_datetime_index=ignore_datetime_index)
 
         if df.shape[1] <= max_cols_in_plot:
 
@@ -517,6 +523,7 @@ class EDA(Plot):
             remove_targets=False,
             st=None,
             en=None,
+            method="pearson",
             **kwargs
     ):
         """
@@ -527,6 +534,8 @@ class EDA(Plot):
             remove_targets :
             st : starting row/index in data to be used for plotting
             en : end row/index in data to be used for plotting
+            method : str, optional
+                     {"pearson", "spearman", "kendall"}, by default "pearson"
             kwargs :
 
         Example:
@@ -545,7 +554,12 @@ class EDA(Plot):
             if isinstance(cols, dict):
                 cols = None
 
-        return self._call_method("_feature_feature_corr_df", cols=cols, st=st, en=en, **kwargs)
+        return self._call_method("_feature_feature_corr_df",
+                                 cols=cols,
+                                 st=st,
+                                 en=en,
+                                 method=method,
+                                 **kwargs)
 
     def _feature_feature_corr_df(self,
                                  data,
@@ -725,7 +739,8 @@ class EDA(Plot):
             cols :
             st : starting row/index in data to be used for plotting
             en : end row/index in data to be used for plotting
-            max_subplots :
+            max_subplots: int, it can be set to large number to show all the scatter
+            plots on one axis.
             kwargs :
         """
         fname = "scatter_plot_"
@@ -764,11 +779,14 @@ class EDA(Plot):
                                                   **kwargs)
         return
 
-    def _grouped_scatter_plot_df(self,
-                                 data: pd.DataFrame,
-                                 max_subplots: int = 10,
-                                 st=None, en=None,
-                                 prefix='', **kwargs):
+    def _grouped_scatter_plot_df(
+            self,
+            data: pd.DataFrame,
+            max_subplots: int = 10,
+            st=None,
+            en=None,
+            prefix='',
+            **kwargs):
         """
         max_subplots: int, it can be set to large number to show all the scatter
         plots on one axis.
@@ -1141,7 +1159,7 @@ class EDA(Plot):
             axis = sns.violinplot(data=data, **kwargs)
         else:
             axis = sns.boxplot(data=data, **kwargs)
-            axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
+        axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
 
         if show_datapoints:
             sns.swarmplot(data=data)
@@ -1212,34 +1230,34 @@ class EDA(Plot):
 
     def autocorrelation(
             self,
-            nlags: int = 10,
+            n_lags: int = 10,
             cols: Union[list] = None,
     ):
         """autocorrelation of individual features of data
         Arguments:
-            nlags : number of lag steps to consider
+            n_lags : number of lag steps to consider
             cols : columns to use. If not defined then all the columns are used
         """
-        return self._call_method("_autocorr_df", partial=False, nlags=nlags,
+        return self._call_method("_autocorr_df", partial=False, n_lags=n_lags,
                                  cols=cols)
 
     def partial_autocorrelation(
             self,
-            nlags: int = 10,
+            n_lags: int = 10,
             cols: Union[list] = None,
     ):
         """Partial autocorrelation of individual features of data
         Arguments:
-            nlags : number of lag steps to consider
+            n_lags : number of lag steps to consider
             cols : columns to use. If not defined then all the columns are used
         """
-        return self._call_method("_autocorr_df", partial=True, nlags=nlags,
+        return self._call_method("_autocorr_df", partial=True, n_lags=n_lags,
                                  cols=cols)
 
     def _autocorr_df(
             self,
             data: pd.DataFrame,
-            nlags: int,
+            n_lags: int,
             partial: bool = False,
             cols=None,
             fname='',
@@ -1272,9 +1290,9 @@ class EDA(Plot):
             if np.isnan(x).sum() == 0:
 
                 if partial:
-                    _ac = pac_yw(x, nlags)
+                    _ac = pac_yw(x, n_lags)
                 else:
-                    _ac = auto_corr(x, nlags)
+                    _ac = auto_corr(x, n_lags)
 
                 plot_autocorr(_ac, axis=ax, legend=col, show=False,
                               legend_fs=nrows*2)
@@ -1467,7 +1485,7 @@ class EDA(Plot):
 
     def plot_ecdf(
             self,
-            cols,
+            cols=None,
             figsize=None,
             **kwargs
     ):
@@ -1571,7 +1589,7 @@ def validate_freq(df, freq):
     return
 
 
-def _preprocess_df(df, st=None, en=None, cols=None):
+def _preprocess_df(df:pd.DataFrame, st=None, en=None, cols=None, ignore_datetime_index=False):
 
     if cols is not None:
         if isinstance(cols, str):
@@ -1587,5 +1605,8 @@ def _preprocess_df(df, st=None, en=None, cols=None):
         df = df.iloc[st:en]
     else:
         df = df.loc[st:en]
+
+    if ignore_datetime_index:
+        df = df.reset_index(drop=True)
 
     return df

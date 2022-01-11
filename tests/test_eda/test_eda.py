@@ -47,12 +47,12 @@ class TestEDA(unittest.TestCase):
     def test_autocorr(self):
 
         eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"), save=False, show=False)
-        eda.autocorrelation(nlags=10)
+        eda.autocorrelation(n_lags=10)
         return
 
     def test_partial_autocorr(self):
         eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"), save=False, show=False)
-        eda.partial_autocorrelation(nlags=10)
+        eda.partial_autocorrelation(n_lags=10)
         return
 
     def test_autocorr_against_statsmodels(self):

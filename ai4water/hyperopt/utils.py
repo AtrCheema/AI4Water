@@ -299,9 +299,12 @@ def plot_hyperparameters(
 
 
 def post_process_skopt_results(skopt_results, results, opt_path):
-    mpl.rcParams.update(mpl.rcParamsDefault)
 
     skopt_plots(skopt_results, pref=opt_path)
+
+    return save_skopt_results(skopt_results, results, opt_path)
+
+def save_skopt_results(skopt_results, results, opt_path):
 
     fname = os.path.join(opt_path, 'gp_parameters')
 
