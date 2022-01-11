@@ -7,7 +7,7 @@ from scipy.stats import gmean, kendalltau
 import numpy as np
 
 from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
-from ._SeqMetrics import Metrics, EPS
+from ._main import Metrics, EPS
 
 
 class RegressionMetrics(Metrics):

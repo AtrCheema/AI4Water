@@ -1,5 +1,5 @@
 
-from .experiments import Experiments
+from ._main import Experiments
 from ._regression import MLRegressionExperiments
 from ._classification import MLClassificationExperiments
-from .experiments import TransformationExperiments
+from ._main import TransformationExperiments

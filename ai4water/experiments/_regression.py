@@ -2,7 +2,7 @@
 
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.utils import get_version_info
-from .experiments import Experiments, Model
+from ._main import Experiments, Model
 from .utils import regression_space
 
 

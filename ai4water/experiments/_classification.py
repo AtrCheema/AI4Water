@@ -1,7 +1,7 @@
 
 
 from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
-from .experiments import Experiments, Model
+from ._main import Experiments, Model
 from .utils import classification_space
 
 
