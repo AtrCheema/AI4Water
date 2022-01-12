@@ -61,7 +61,6 @@ class TestFrontPage(unittest.TestCase):
         model.fit(x=x,y=y)
         return
 
-
     def test_example3(self):
 
         model = Model(
@@ -81,6 +80,7 @@ class TestFrontPage(unittest.TestCase):
 
         model.predict()
         return
+
 
 if __name__ == "__main__":
 
