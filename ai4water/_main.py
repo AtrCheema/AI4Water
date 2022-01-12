@@ -286,7 +286,7 @@ class BaseModel(NN):
         from .experiments.utils import regression_models, classification_models
         if self.config.get('mode', None):
             return self.config['mode']
-        else:
+        elif self.model_name is not None:
             if self.model_name in classification_models():
                 _mode = "classification"
             elif self.model_name in regression_models():
@@ -308,7 +308,10 @@ class BaseModel(NN):
             # so that next time don't have to go through all these ifelse statements
             self.config['mode'] = _mode
             self.data_config['mode'] = _mode
-            return _mode
+        else:  # when model_name is None, mode should also be None.
+            _mode = None
+
+        return _mode
 
     @property
     def input_features(self):
@@ -1324,6 +1327,22 @@ class BaseModel(NN):
             x = self._transform_x(x, 'y_score_')
             return self._model.score(x, y, **kwargs)
         raise NotImplementedError(f"can not calculate score")
+
+    def predict_proba(self, x=None,  data='test', **kwargs):
+        if self.category == "ML" and hasattr(self, '_model'):
+            x,y, _, _, _ = self._fetch_data('test', x=x, data=data)
+            x = self._transform_x(x, 'x_proba_')
+            x = self._transform_x(x, 'y_proba_')
+            return self._model.predict_proba(x,  **kwargs)
+        raise NotImplementedError(f"can not calculate proba")
+
+    def predict_log_proba(self, x=None,  data='test', **kwargs):
+        if self.category == "ML" and hasattr(self, '_model'):
+            x,y, _, _, _ = self._fetch_data('test', x=x, data=data)
+            x = self._transform_x(x, 'x_log_proba_')
+            x = self._transform_x(x, 'y_log_proba_')
+            return self._model.predict_log_proba(x, **kwargs)
+        raise NotImplementedError(f"can not calculate log_proba")
 
     def evaluate(
             self,
