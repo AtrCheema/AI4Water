@@ -26,12 +26,12 @@ from ai4water.nn_tools import NN
 from ai4water.backend import sklearn_models
 from ai4water.utils.visualizations import PlotResults
 from ai4water.utils.utils import ts_features, make_model
-from ai4water.preprocessing.datahandler import DataHandler, SiteDistributedDataHandler
 from ai4water.preprocessing.transformations import Transformations
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 from ai4water.models.tensorflow.custom_training import train_step, test_step
-from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
 from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
+from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
+from ai4water.preprocessing.datahandler import DataHandler, SiteDistributedDataHandler
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
 
@@ -269,9 +269,46 @@ class BaseModel(NN):
             self.config['path'] = self.path
             self.verbosity = verbosity
             self.category = self.config['category']
-            self.mode = self.config['mode']
+
             self.info = {}
 
+
+    @property
+    def model_name(self)->str:
+        model_def = self.config['model']
+        if isinstance(model_def, str):
+            return model_def
+        elif isinstance(model_def, dict):
+            return list(model_def.keys())[0]
+
+    @property
+    def mode(self)->str:
+        from .experiments.utils import regression_models, classification_models
+        if self.config.get('mode', None):
+            return self.config['mode']
+        else:
+            if self.model_name in classification_models():
+                _mode = "classification"
+            elif self.model_name in regression_models():
+                _mode = "regression"
+            elif 'class' in self.model_name.lower():
+                _mode = "classification"
+            elif "regr" in self.model_name.lower():
+                _mode = "regression"
+            elif self.config['loss'] in ['sparse_categorical_crossentropy',
+                                         'categorical_crossentropy',
+                                         'binary_crossentropy']:
+                _mode = "classification"
+            elif self.model_name == "layers":
+                # todo
+                _mode = "regression"
+            else:
+                raise NotImplementedError
+
+            # so that next time don't have to go through all these ifelse statements
+            self.config['mode'] = _mode
+            self.data_config['mode'] = _mode
+            return _mode
 
     @property
     def input_features(self):

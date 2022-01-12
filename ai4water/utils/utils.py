@@ -239,13 +239,11 @@ def _make_model(**kwargs):
         such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
-    # from ..experiments.utils import classification_models
 
     kwargs = process_io(**kwargs)
 
     kwargs = check_kwargs(**kwargs)
 
-    #def_mode = "regression"  # default mode
     model = kwargs.get('model', None)
     def_cat = None
 
@@ -254,22 +252,7 @@ def _make_model(**kwargs):
             def_cat = "DL"
             # for DL, the default mode case will be regression
         else:
-            #model_name = list(model.keys())[0]
-            #if model_name.endswith("Class") or model_name in classification_models():
-                #def_mode = "classification"
             def_cat = "ML"
-
-    #if 'loss' in kwargs:
-        #if callable(kwargs['loss']) and hasattr(kwargs['loss'], 'name'):
-        #    loss_name = kwargs['loss'].name
-        #else:
-        #    loss_name = kwargs['loss']
-        # if loss_name in [
-        #     'sparse_categorical_crossentropy',
-        #     'categorical_crossentropy',
-        #     'binary_crossentropy'
-        # ]:
-            #def_mode = 'classification'
 
     accept_additional_args = False
     if 'accept_additional_args' in kwargs:

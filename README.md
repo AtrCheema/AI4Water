@@ -216,7 +216,7 @@ model.optimize_hyperparameters(data=data,
 
 [ai4water.preprocessing.DataHandler](https://ai4water.readthedocs.io/en/dev/preprocessing/datahandler/)
 
-[Imputation](https://ai4water.readthedocs.io/en/dev/preprocessing/imputation/)
+[ai4water.preprocessing.Imputation](https://ai4water.readthedocs.io/en/dev/preprocessing/imputation/)
 
 [ai4water.preprocessing.transformation.Transformation](https://ai4water.readthedocs.io/en/dev/preprocessing/transformation/#ai4water.preprocessing.transformations._main.Transformation)
 

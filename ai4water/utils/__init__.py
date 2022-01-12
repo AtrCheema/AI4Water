@@ -1,6 +1,7 @@
-from ai4water.utils.utils import make_model
 
-from ai4water.utils.visualizations import PlotResults
+from ai4water.utils.utils import make_model, prepare_data
+
+from ai4water.utils.visualizations import PlotResults, murphy_diagram, fdc_plot
 
 from ai4water.utils.taylor_diagram import taylor_plot
 
