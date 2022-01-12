@@ -7,16 +7,16 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from ai4water.hyperopt import HyperOpt
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from ai4water.utils.taylor_diagram import taylor_plot
-from ai4water.hyperopt import Real, Categorical, Integer
-from ai4water.utils.utils import jsonize, ERROR_LABELS
-from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 from ai4water.backend import tf
-from ai4water.utils.easy_mpl import bar_chart, process_axis, init_subplots
-from ai4water.utils.visualizations import PlotResults
+from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataHandler
+from ai4water.utils.taylor_diagram import taylor_plot
+from ai4water.utils.visualizations import PlotResults
+from ai4water.utils.utils import jsonize, ERROR_LABELS
+from ai4water.hyperopt import Real, Categorical, Integer
+from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
+from ai4water.utils.easy_mpl import bar_chart, process_axis, init_subplots
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -35,7 +35,10 @@ SEP = os.sep
 # paired ttest 5x2cv
 
 
-
+Metrics = {
+    'regression': RegressionMetrics,
+    'classification': ClassificationMetrics
+}
 
 
 class Experiments(object):
@@ -124,6 +127,10 @@ class Experiments(object):
 
     @property
     def tpot_estimator(self):
+        raise NotImplementedError
+
+    @property
+    def mode(self):
         raise NotImplementedError
 
     @property
@@ -470,8 +477,9 @@ Available cases are {self.models} and you wanted to include
         fpath_best: str = os.path.join(best_run, output, f"{run_type}_{output}_0.csv")
         best = pd.read_csv(fpath_best, index_col=['index'])
 
-        initial_metric: float = getattr(RegressionMetrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
-        best_metric: float = getattr(RegressionMetrics(best.values[:, 0], best.values[:, 1]), matric_name)()
+        metrics = Metrics[self.mode]
+        initial_metric: float = getattr(metrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
+        best_metric: float = getattr(metrics(best.values[:, 0], best.values[:, 1]), matric_name)()
 
         # -ve values become difficult to plot, moreover they do not reveal anything significant
         # as compared to when a metric is 0, therefore consider -ve values as zero.
@@ -936,7 +944,7 @@ Available cases are {self.models} and you wanted to include
     ) -> dict:
         """returns the models sorted according to their performance"""
         def find_matric_array(true, sim):
-            errors = RegressionMetrics(true, sim)
+            errors = Metrics[self.mode](true, sim)
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -1236,7 +1244,8 @@ be used to build ai4water's Model class.
         else:
             model.fit(data=self.data_)
             val_true, val_pred = model.predict(data='validation', return_true=True)
-            val_score = getattr(RegressionMetrics(val_true, val_pred), model.val_metric)()
+            metrics = Metrics[self.mode]
+            val_score = getattr(metrics(val_true, val_pred), model.val_metric)()
 
         if predict:
             trt, trp = model.predict(data='training', return_true=True)

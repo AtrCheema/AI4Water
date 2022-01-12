@@ -1,6 +1,19 @@
 
-__all__ = ["plot", "bar_chart", "regplot", "imshow", "hist",
-           "process_axis", "init_subplots", "pie"]
+"""
+easy_mpl stands for easy maplotlib. The purpose of this is to ease the use of
+matplotlib while keeping the flexibility intact.
+"""
+
+__all__ = [
+    "plot",
+    "bar_chart",
+    "regplot",
+    "imshow",
+    "hist",
+    "process_axis",
+    "init_subplots",
+    "pie"
+]
 
 import random
 from typing import Union
@@ -12,6 +25,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 from .plotting_tools import to_1d_array
+
 
 BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
              'GnBu', 'PuBu', 'PuBuGn', 'summer_r']

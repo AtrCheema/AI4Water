@@ -34,6 +34,10 @@ class MLClassificationExperiments(Experiments):
             TPOTClassifier = None
         return TPOTClassifier
 
+    @property
+    def mode(self):
+        return "classification"
+
     def build_and_run(self,
                       predict=False,
                       view=False,
@@ -57,17 +61,25 @@ class MLClassificationExperiments(Experiments):
 
         setattr(self, '_model', model)
 
-        model.fit(data=self.data_, **fit_kws)
-
-        t = model.predict()
+        if cross_validate:
+            val_score = model.cross_val_score(data=self.data_, scoring=model.val_metric)
+        else:
+            model.fit(data=self.data_, **fit_kws)
+            vt, vp = model.predict(data='validation', return_true=True)
+            val_score = getattr(ClassificationMetrics(vt, vp), model.val_metric)()
 
         if view:
             model.view()
 
         if predict:
-            model.predict(data='training')
+            tt, tp = model.predict(data='test', return_true=True)
+            tr_t, tr_p = model.predict(data='training', return_true=True)
+            return (tr_t, tr_p), (tt, tp)
 
-        return ClassificationMetrics(t, t).mse()
+        if model.val_metric in ['r2', 'nse', 'kge', 'r2_mod', 'accuracy', 'f1_score']:
+            val_score = 1.0 - val_score
+
+        return val_score
 
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
@@ -247,10 +259,10 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
 
         self.path = "sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis"
-        self.param_space = self.classification_space["QuadraticDiscriminantAnalysi"]["param_space"]
-        self.x0 = self.classification_space["QuadraticDiscriminantAnalysi"]["x0"]
+        self.param_space = self.classification_space["QuadraticDiscriminantAnalysis"]["param_space"]
+        self.x0 = self.classification_space["QuadraticDiscriminantAnalysis"]["x0"]
 
-        return {'model': {'QuadraticDiscriminantAnalysi': kwargs}}
+        return {'model': {'QuadraticDiscriminantAnalysis': kwargs}}
 
     def model_RandomForestClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html

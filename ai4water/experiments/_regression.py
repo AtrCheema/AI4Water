@@ -122,6 +122,10 @@ class MLRegressionExperiments(Experiments):
             TPOTRegressor = None
         return TPOTRegressor
 
+    @property
+    def mode(self):
+        return "regression"
+
     def build_and_run(self,
                       predict=True,
                       view=False,

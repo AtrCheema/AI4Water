@@ -28,6 +28,8 @@ MATRIC_TYPES = {
     "r2_score": "max",
     "kge": "max",
     "corr_coeff": "max",
+    'accuracy': "max",
+    'f1_score': 'max',
     "mse": "min",
     "rmse": "min",
     "mape": "min",
@@ -237,6 +239,8 @@ def _make_model(**kwargs):
         such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
+    from ..experiments.utils import classification_models
+
     kwargs = process_io(**kwargs)
 
     kwargs = check_kwargs(**kwargs)
@@ -250,7 +254,8 @@ def _make_model(**kwargs):
             def_cat = "DL"
             # for DL, the default mode case will be regression
         else:
-            if list(model.keys())[0].upper().endswith("CLASSIFIER"):
+            model_name = list(model.keys())[0]
+            if model_name.endswith("Class") or model_name in classification_models():
                 def_mode = "classification"
             def_cat = "ML"
 
