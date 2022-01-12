@@ -6,14 +6,13 @@ from ai4water.datasets import MtropicsLaos
 data = MtropicsLaos().make_classification(lookback_steps=2)
 
 model = Model(
-    data=data,
     input_features=data.columns.tolist()[0:-1],
     output_features=data.columns.tolist()[-1],
     val_fraction=0.0,
     model={"DecisionTreeClassifier": {"max_depth": 4}},
 )
 
-h = model.fit()
+h = model.fit(data=data)
 
 # make prediction on test data
 p = model.predict()

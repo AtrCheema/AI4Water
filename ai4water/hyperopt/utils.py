@@ -2,6 +2,7 @@ import os
 import json
 from itertools import islice
 from pickle import PicklingError
+from collections import OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -18,8 +19,11 @@ except ImportError:
 try:
     from skopt.plots import plot_evaluations, plot_objective, plot_convergence
     import skopt
+    from skopt.space.space import Space, Dimension
 except ImportError:
     plot_evaluations, plot_objective, plot_convergence = None, None, None
+    Space = None
+    Dimension = None
 
 try:
     from skopt.utils import dump
@@ -295,9 +299,12 @@ def plot_hyperparameters(
 
 
 def post_process_skopt_results(skopt_results, results, opt_path):
-    mpl.rcParams.update(mpl.rcParamsDefault)
 
     skopt_plots(skopt_results, pref=opt_path)
+
+    return save_skopt_results(skopt_results, results, opt_path)
+
+def save_skopt_results(skopt_results, results, opt_path):
 
     fname = os.path.join(opt_path, 'gp_parameters')
 
@@ -607,6 +614,55 @@ class SerializeSKOptResults(object):
         return mods
 
 
+def to_skopt_space(x):
+    """converts the space x into skopt compatible space"""
+    if isinstance(x, list):
+        if all([isinstance(s, Dimension) for s in x]):
+            _space = Space(x)
+        elif len(x) == 1 and isinstance(x[0], tuple):
+            if len(x[0]) == 2:
+                if 'int' in x[0][0].__class__.__name__:
+                    _space = Integer(low=x[0][0], high=x[0][1])
+                elif 'float' in x[0][0].__class__.__name__:
+                    _space = Integer(low=x[0][0], high=x[0][1])
+                else:
+                    raise NotImplementedError
+            else:
+                raise NotImplementedError
+        elif all([s.__class__.__name__== "Apply" for s in x]):
+            _space = Space([skopt_space_from_hp_space(v) for v in x])
+        else:
+            raise NotImplementedError
+    elif isinstance(x, dict):  # todo, in random, should we build Only Categorical space?
+        space_ = []
+        for k, v in x.items():
+            if isinstance(v, list):
+                s = space_from_list(v, k)
+            elif isinstance(v, Dimension):
+                # it is possible that the user has not specified the name so assign the names
+                # because we have keys.
+                if v.name is None or v.name.startswith('real_') or v.name.startswith('integer_'):
+                    v.name = k
+                s = v
+            elif v.__class__.__name__== "Apply" or 'rv_frozen' in v.__class__.__name__:
+                s = skopt_space_from_hp_space(v, k)
+            elif isinstance(v, tuple):
+                s = Categorical(v, name=k)
+            elif isinstance(v, np.ndarray):
+                s = Categorical(v.tolist(), name=k)
+            else:
+                raise NotImplementedError(f"unknown type {v}, {type(v)}")
+            space_.append(s)
+
+        # todo, why converting to Space
+        _space = Space(space_) if len(space_) > 0 else None
+    elif 'rv_frozen' in x.__class__.__name__ or x.__class__.__name__== "Apply":
+        _space = Space([skopt_space_from_hp_space(x)])
+    else:
+        raise NotImplementedError(f"unknown type {x}, {type(x)}")
+    return _space
+
+
 def scatterplot_matrix_colored(params_names: list,
                                params_values: list,
                                best_accs: list,
@@ -763,3 +819,104 @@ def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False,
     plt.savefig(fname, dpi=300, bbox_inches='tight')
 
     return
+
+
+def to_skopt_as_dict(algorithm:str, backend:str, original_space)->dict:
+
+    if backend == 'hyperopt':
+        if original_space.__class__.__name__ == "Apply":
+            _space = skopt_space_from_hp_space(original_space)
+            _space = {_space.name: _space}
+        elif isinstance(original_space, dict):
+            _space = OrderedDict()
+            for k, v in original_space.items():
+                if v.__class__.__name__ == "Apply" or 'rv_frozen' in v.__class__.__name__:
+                    _space[k] = skopt_space_from_hp_space(v)
+                elif isinstance(v, Dimension):
+                    _space[v.name] = v
+                else:
+                    raise NotImplementedError
+        elif isinstance(original_space, list):
+            if all([isinstance(s, Dimension) for s in original_space]):
+                _space = OrderedDict({s.name: s for s in original_space})
+            elif all([s.__class__.__name__== "Apply" for s in original_space]):
+                d = [skopt_space_from_hp_space(v) for v in original_space]
+                _space = OrderedDict({s.name: s for s in d})
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+    elif backend == 'optuna':
+        if isinstance(original_space, list):
+            if all([isinstance(s, Dimension) for s in original_space]):
+                _space = OrderedDict({s.name: s for s in original_space})
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+    elif backend == 'skopt':
+        sk_space = to_skopt_space(original_space)
+
+        if isinstance(sk_space, Dimension):
+            _space = {sk_space.name: sk_space}
+
+        elif all([isinstance(s, Dimension) for s in sk_space]):
+            _space = OrderedDict()
+            for s in sk_space:
+                _space[s.name] = s
+        else:
+            raise NotImplementedError
+
+    elif backend == 'sklearn':
+        if isinstance(original_space, list):
+            if all([isinstance(s, Dimension) for s in original_space]):
+                _space = OrderedDict({s.name: s for s in original_space})
+            else:
+                raise NotImplementedError
+        elif isinstance(original_space, dict):
+            _space = OrderedDict()
+            for k, v in original_space.items():
+                if isinstance(v, list):
+                    s = space_from_list(v, k)
+                elif isinstance(v, Dimension):
+                    s = v
+                elif isinstance(v, tuple) or isinstance(v, list):
+                    s = Categorical(v, name=k)
+                elif  v.__class__.__name__ == "Apply" or 'rv_frozen' in v.__class__.__name__:
+                    if algorithm == 'random':
+                        s = Real(v.kwds['loc'], v.kwds['loc'] + v.kwds['scale'], name=k, prior=v.dist.name)
+                    else:
+                        s = skopt_space_from_hp_space(v)
+                else:
+                    raise NotImplementedError(f"unknown type {v}, {type(v)}")
+                _space[k] = s
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+    return _space
+
+
+def space_from_list(v: list, k: str):
+    """Returns space of tyep "Dimension"
+    """
+    if len(v) > 2:
+        if isinstance(v[0], int):
+            s = Integer(grid=v, name=k)
+        elif isinstance(v[0], float):
+            s = Real(grid=v, name=k)
+        else:
+            s = Categorical(v, name=k)
+    else:
+        if isinstance(v[0], int):
+            s = Integer(low=np.min(v), high=np.max(v), name=k)
+        elif isinstance(v[0], float):
+            s = Real(low=np.min(v), high=np.max(v), name=k)
+        elif isinstance(v[0], str):
+            s = Categorical(v, name=k)
+        else:
+            raise NotImplementedError
+    return s

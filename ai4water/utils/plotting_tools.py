@@ -1,17 +1,9 @@
 import os
-import random
 from typing import Union
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
-
-from ai4water.utils.utils import init_subplots, imshow
-
-
-BAR_CMAPS = ['Blues', 'BuGn', 'gist_earth_r',
-             'GnBu', 'PuBu', 'PuBuGn', 'summer_r']
 
 
 # TODO
@@ -22,7 +14,8 @@ class Plots(object):
     # TODO initialte this class with at least path
 
     def __init__(self, path, problem, category, config, model=None):
-        self.path = path
+
+        self.path = path or os.path.join(os.getcwd(), "results")
         self.problem = problem
         self.category = category
         self.ml_model = model
@@ -41,28 +34,12 @@ class Plots(object):
         raise AttributeError
 
     @property
-    def data(self):
-        raise AttributeError
-
-    @property
     def in_cols(self):
         return self.config['input_features']
 
     @property
     def out_cols(self):
         return self.config['output_features']
-
-    @property
-    def ins(self):
-        return len(self.config['input_features'])
-
-    @property
-    def outs(self):
-        return self.config['output_features']
-
-    @property
-    def lookback(self):
-        return self.config['lookback']
 
     def _imshow_3d(self, activation,
                    lyr_name,
@@ -96,10 +73,17 @@ class Plots(object):
                 show=False,
                 **kwargs):
 
+        from .easy_mpl import imshow
+
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        axis, im = imshow(img, aspect="auto", interpolation=interpolation, cmap=cmap,
-                          xlabel=kwargs.get('xlabel', 'inputs'), title=label)
+        axis, im = imshow(img,
+                          aspect="auto",
+                          interpolation=interpolation,
+                          cmap=cmap,
+                          xlabel=kwargs.get('xlabel', 'inputs'),
+                          show=False,
+                          title=label)
 
         if rnn_args is not None:
             assert isinstance(rnn_args, dict)
@@ -148,12 +132,13 @@ class Plots(object):
         return save_or_show(self.path, *args, **kwargs)
 
     def plot2d_act_for_a_sample(self, activations, sample=0, save: bool = False, name: str = None):
+        from ai4water.utils.easy_mpl import init_subplots
+
         fig, axis = init_subplots(height=8)
         # for idx, ax in enumerate(axis):
         im = axis.imshow(activations[sample, :, :].transpose(), aspect='auto')
         axis.set_xlabel('lookback')
         axis.set_ylabel('inputs')
-        print(self.in_cols)
         axis.set_title('Activations of all inputs at different lookbacks for sample ' + str(sample))
         fig.colorbar(im)
         self.save_or_show(save=save, fname=name + '_' + str(sample), where='path')
@@ -226,98 +211,6 @@ class Plots(object):
                 print(f'skipping shape is {inputs.shape}')
         return
 
-    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        for q in range(len(self.quantiles) - 1):
-            st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
-
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en),
-                             predicted[st:en, q].reshape(-1,),
-                             predicted[st:en, q + 1].reshape(-1,),
-                             alpha=0.2,
-                             color='g', edgecolor=None, label=st_q + '_' + en_q)
-            plt.legend(loc="best")
-            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
-        return
-
-    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        if en is None:
-            en = true_outputs.shape[0]
-        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
-                                              str(en))
-
-        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-        plt.fill_between(np.arange(st, en),
-                         predicted[st:en, min_q].reshape(-1,),
-                         predicted[st:en, max_q].reshape(-1,),
-                         alpha=0.2,
-                         color='g', edgecolor=None, label=q_name + ' %')
-        plt.legend(loc="best")
-        self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
-        return
-
-    def plot_all_qs(self, true_outputs, predicted, save=False):
-        plt.close('all')
-        plt.style.use('ggplot')
-
-        st, en = 0, true_outputs.shape[0]
-
-        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-
-        for idx, q in enumerate(self.quantiles):
-            q_name = "{:.1f}".format(q * 100)
-            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
-
-        plt.legend(loc="best")
-        self.save_or_show(save, fname="all_quantiles", where='results')
-
-        return
-
-    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
-        plt.close('all')
-        plt.style.use('ggplot')
-        assert true_outputs.shape[-2:] == (1, 1)
-        if en is None:
-            en = true_outputs.shape[0]
-        for q in range(len(self.quantiles) - 1):
-            st_q = "{:.1f}".format(self.quantiles[q] * 100)
-            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
-
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
-                             predicted[st:en, -q].reshape(-1,), alpha=0.2,
-                             color='g', edgecolor=None, label=st_q + '_' + en_q)
-            plt.legend(loc="best")
-            self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
-        return
-
-    def roc_curve(self, x, y, save=True):
-        assert self.problem.upper().startswith("CLASS")
-        plot_roc_curve(self._model, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="roc", where="results")
-        return
-
-    def confusion_matrx(self, x, y, save=True):
-        assert self.problem.upper().startswith("CLASS")
-        plot_confusion_matrix(self._model, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="confusion_matrix", where="results")
-        return
-
-    def precision_recall_curve(self, x, y, save=True):
-        assert self.problem.upper().startswith("CLASS")
-        plot_precision_recall_curve(self._model, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
-        return
-
     def plot_histogram(self,
                        data: np.ndarray,
                        save: bool = True,
@@ -355,53 +248,6 @@ def _get_nrows_and_ncols(n_subplots, n_rows=None):
     return n_rows, n_cols
 
 
-def bar_chart(labels,
-              values,
-              axis=None,
-              orient='h',
-              sort=False,
-              color=None,
-              xlabel=None,
-              xlabel_fs=None,
-              title=None,
-              title_fs=None,
-              show_yaxis=True,
-              rotation=0
-              ):
-
-    cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
-    color = color if color is not None else cm
-
-    if not axis:
-        _, axis = plt.subplots()
-
-    if sort:
-        sort_idx = np.argsort(values)
-        values = values[sort_idx]
-        labels = np.array(labels)[sort_idx]
-
-    if orient == 'h':
-        axis.barh(np.arange(len(values)), values, color=color)
-        axis.set_yticks(np.arange(len(values)))
-        axis.set_yticklabels(labels, rotation=rotation)
-
-    else:
-        axis.bar(np.arange(len(values)), values, color=color)
-        axis.set_xticks(np.arange(len(values)))
-        axis.set_xticklabels(labels, rotation=rotation)
-
-    if not show_yaxis:
-        axis.get_yaxis().set_visible(False)
-
-    if xlabel:
-        axis.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
-
-    if title:
-        axis.set_title(title, fontdict={'fontsize': title_fs})
-
-    return axis
-
-
 def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_inches='tight', close=True,
                  show=False):
 
@@ -435,7 +281,20 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
     return
 
 
-def get_cmap(cm: str, num_cols: int, low=0.0, high=1.0):
+def to_1d_array(array_like) -> np.ndarray:
 
-    cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
-    return cols
+    if array_like.__class__.__name__ in ['list', 'tuple', 'Series']:
+        return np.array(array_like)
+
+    elif array_like.__class__.__name__ == 'ndarray':
+        if array_like.ndim == 1:
+            return array_like
+        else:
+            assert array_like.size == len(array_like), f'cannot convert multidim ' \
+                                                       f'array of shape {array_like.shape} to 1d'
+            return array_like.reshape(-1, )
+
+    elif array_like.__class__.__name__ == 'DataFrame' and array_like.ndim == 2:
+        return array_like.values.reshape(-1,)
+    else:
+        raise ValueError(f'cannot convert object array {array_like.__class__.__name__}  to 1d ')

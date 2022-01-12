@@ -2,19 +2,19 @@
 import unittest
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
 def get_model(model_name):
     model = Model(model=model_name,
-                  data=arg_beach(),
                   verbosity=0)
 
-    model.fit()
+    model.fit(data=busan_beach())
 
     p = model.predict()
 
     return p
+
 
 class TestML(unittest.TestCase):
 
@@ -44,6 +44,7 @@ class TestML(unittest.TestCase):
         assert p.sum() == 2706155.5142797576
 
         return
+
 
 if __name__ == "__main__":
     unittest.main()

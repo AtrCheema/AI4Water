@@ -1,5 +1,4 @@
 import os
-import random
 from typing import Union, Callable
 
 import numpy as np
@@ -8,13 +7,16 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
+
 try:
     import plotly
 except ModuleNotFoundError:
     plotly = None
 
-from .plotting_tools import save_or_show
-from ai4water.utils.utils import init_subplots
+from .plotting_tools import save_or_show, to_1d_array
+from ai4water.utils.easy_mpl import init_subplots
+from .easy_mpl import regplot
 
 # TODO add Murphy's plot as shown in MLAir
 # prediction_distribution aka actual_plot of PDPbox
@@ -24,24 +26,6 @@ from ai4water.utils.utils import init_subplots
 # show availability plot of data
 
 #
-regplot_combs = [
-    ['cadetblue', 'slateblue', 'darkslateblue'],
-    ['cadetblue', 'mediumblue', 'mediumblue'],
-    ['cornflowerblue', 'dodgerblue', 'darkblue'],
-    ['cornflowerblue', 'dodgerblue', 'steelblue'],
-    ['cornflowerblue', 'mediumblue', 'dodgerblue'],
-    ['cornflowerblue', 'steelblue', 'mediumblue'],
-    ['darkslateblue', 'aliceblue', 'mediumblue'],
-    ['darkslateblue', 'blue', 'royalblue'],
-    ['darkslateblue', 'blueviolet', 'royalblue'],
-    ['darkslateblue', 'darkblue', 'midnightblue'],
-    ['darkslateblue', 'mediumblue', 'darkslateblue'],
-    ['darkslateblue', 'midnightblue', 'mediumblue'],
-    ['seagreen', 'darkslateblue', 'cadetblue'],
-    ['cadetblue', 'darkblue', 'midnightblue'],
-    ['cadetblue', 'deepskyblue', 'cadetblue']
-]
-
 
 class Plot(object):
 
@@ -105,6 +89,7 @@ class PlotResults(Plot):
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
+        self.quantiles = None
 
         super().__init__(path, backend=backend)
 
@@ -123,6 +108,14 @@ class PlotResults(Plot):
     @data.setter
     def data(self, x):
         self._data = x
+
+    @property
+    def quantiles(self):
+        return self._quantiles
+
+    @quantiles.setter
+    def quantiles(self, x):
+        self._quantiles = x
 
     def horizon_plots(self, errors: dict, fname='', save=True):
         plt.close('')
@@ -268,146 +261,97 @@ class PlotResults(Plot):
         mpl.rcParams.update(mpl.rcParamsDefault)
         return
 
+    def plot_all_qs(self, true_outputs, predicted, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
 
-def regplot(
-        x: Union[np.ndarray, pd.DataFrame, pd.Series, list],
-        y: Union[np.ndarray, pd.DataFrame, pd.Series, list],
-        title: str = None,
-        show: bool = False,
-        annotation_key: str = None,
-        annotation_val: float = None,
-        line_color=None,
-        marker_color=None,
-        fill_color=None,
-        marker_size: int = 20,
-        ci: Union[int, None] = 95,
-        figsize: tuple = None,
-        xlabel: str = 'Observed',
-        ylabel: str = 'Predicted'
-):
-    """
-    Regpression plot with regression line and confidence interval
+        st, en = 0, true_outputs.shape[0]
 
-    Arguments:
-        x : array like, the 'x' value.
-        y : array like
-        ci : confidence interval. Set to None if not required.
-        show : whether to show the plot or not
-        annotation_key : The name of the value to annotate with.
-        annotation_val : The value to annotate with.
-        marker_size :
-        line_color :
-        marker_color:
-        fill_color : only relevent if ci is not None.
-        figsize : tuple
-        title : name to be used for title
-        xlabel :
-        ylabel :
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
 
-    Example:
-        >>> from ai4water.datasets import arg_beach
-        >>> from ai4water.utils.visualizations import regplot
-        >>> data = arg_beach()
-        >>> regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
-    """
-    x = to_1d_array(x)
-    y = to_1d_array(y)
+        for idx, q in enumerate(self.quantiles):
+            q_name = "{:.1f}".format(q * 100)
+            plt.plot(np.arange(st, en), predicted[st:en, idx], label="q {} %".format(q_name))
 
-    mc, lc, fc = random.choice(regplot_combs)
-    _metric_names = {'r2': '$R^2$'}
-    plt.close('all')
+        plt.legend(loc="best")
+        self.save_or_show(save, fname="all_quantiles", where='results')
 
-    _, axis = plt.subplots(figsize=figsize or (6, 5))
+        return
 
-    axis.scatter(x, y, c=marker_color or mc,
-                 s=marker_size)  # set style options
+    def plot_quantiles1(self, true_outputs, predicted, st=0, en=None, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
+        assert true_outputs.shape[-2:] == (1, 1)
+        if en is None:
+            en = true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[-q] * 100)
 
-    if annotation_key is not None:
-        assert annotation_val is not None
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
+                             predicted[st:en, -q].reshape(-1,), alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
+        return
 
-        plt.annotate(f'{annotation_key}: {round(annotation_val, 3)}',
-                     xy=(0.3, 0.95),
-                     xycoords='axes fraction',
-                     horizontalalignment='right', verticalalignment='top', fontsize=16)
-    _regplot(x,
-             y,
-             ax=axis,
-             ci=ci,
-             line_color=line_color or lc,
-             fill_color=fill_color or fc)
+    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
+        plt.close('all')
+        plt.style.use('ggplot')
 
-    plt.xlabel(xlabel, fontsize=14)
-    plt.ylabel(ylabel, fontsize=14)
-    plt.title(title, fontsize=26)
+        if en is None:
+            en = true_outputs.shape[0]
+        for q in range(len(self.quantiles) - 1):
+            st_q = "{:.1f}".format(self.quantiles[q] * 100)
+            en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
 
-    if show:
-        plt.show()
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.fill_between(np.arange(st, en),
+                             predicted[st:en, q].reshape(-1,),
+                             predicted[st:en, q + 1].reshape(-1,),
+                             alpha=0.2,
+                             color='g', edgecolor=None, label=st_q + '_' + en_q)
+            plt.legend(loc="best")
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
+        return
 
-    return axis
+    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
+        plt.close('all')
+        plt.style.use('ggplot')
 
+        if en is None:
+            en = true_outputs.shape[0]
+        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
+                                              str(en))
 
-def _ci(a, which=95, axis=None):
-    """Return a percentile range from an array of values."""
-    p = 50 - which / 2, 50 + which / 2
-    return np.nanpercentile(a, p, axis)
+        plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+        plt.fill_between(np.arange(st, en),
+                         predicted[st:en, min_q].reshape(-1,),
+                         predicted[st:en, max_q].reshape(-1,),
+                         alpha=0.2,
+                         color='g', edgecolor=None, label=q_name + ' %')
+        plt.legend(loc="best")
+        self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
+        return
 
+    def roc_curve(self, estimator, x, y, save=True):
 
-def reg_func(_x, _y):
-    return np.linalg.pinv(_x).dot(_y)
+        plot_roc_curve(estimator, x, y.reshape(-1, ))
+        self.save_or_show(save, fname="roc", where="results")
+        return
 
+    def confusion_matrx(self,estimator, x, y, save=True):
 
-def bootdist(f, args, n_boot=1000, **func_kwargs):
+        plot_confusion_matrix(estimator, x, y.reshape(-1, ))
+        self.save_or_show(save, fname="confusion_matrix", where="results")
+        return
 
-    n = len(args[0])
-    integers = np.random.randint
-    boot_dist = []
-    for i in range(int(n_boot)):
-        resampler = integers(0, n, n, dtype=np.intp)  # intp is indexing dtype
-        sample = [a.take(resampler, axis=0) for a in args]
-        boot_dist.append(f(*sample, **func_kwargs))
+    def precision_recall_curve(self, estimator, x, y, save=True):
 
-    return np.array(boot_dist)
-
-
-def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
-
-    grid = np.linspace(np.min(x), np.max(x), 100)
-    x = np.c_[np.ones(len(x)), x]
-    grid = np.c_[np.ones(len(grid)), grid]
-    yhat = grid.dot(reg_func(x, y))
-
-    ax.plot(grid[:, 1], yhat, color=line_color)
-
-    if ci:
-        boots = bootdist(reg_func, args=[x, y], n_boot=1000).T
-
-        yhat_boots = grid.dot(boots).T
-
-        err_bands = _ci(yhat_boots, ci, axis=0)
-
-        ax.fill_between(grid[:, 1], *err_bands,
-                        facecolor=fill_color,
-                        alpha=.15)
-    return ax
-
-
-def to_1d_array(array_like) -> np.ndarray:
-
-    if array_like.__class__.__name__ in ['list', 'tuple', 'Series']:
-        return np.array(array_like)
-
-    elif array_like.__class__.__name__ == 'ndarray':
-        if array_like.ndim == 1:
-            return array_like
-        else:
-            assert array_like.size == len(array_like), f'cannot convert multidim ' \
-                                                       f'array of shape {array_like.shape} to 1d'
-            return array_like.reshape(-1, )
-
-    elif array_like.__class__.__name__ == 'DataFrame' and array_like.ndim == 2:
-        return array_like.values.reshape(-1,)
-    else:
-        raise ValueError(f'cannot convert object array {array_like.__class__.__name__}  to 1d ')
+        plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
+        self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
+        return
 
 
 def linear_model(

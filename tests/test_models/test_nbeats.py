@@ -25,13 +25,17 @@ from tensorflow.keras.models import Model as KModel
 from tensorflow.keras.layers import Input, Flatten
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.models.tensorflow import NBeats
 
 """
 tf115, subclassing and functional both working
 tf21, tf26 subclassing is only working by disabling eager mode while functional is fine
 """
+
+busan_beach = busan_beach()
+input_features = busan_beach.columns.tolist()[0:-1]
+output_features = busan_beach.columns.tolist()[-1:]
 
 class TestNBeats(unittest.TestCase):
 
@@ -63,31 +67,29 @@ class TestNBeats(unittest.TestCase):
                                  {"Input": {"shape": (10, 3)},
                                  "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
                                   "Flatten": {},
-                                  "Reshape": {"target_shape": (1,1)}},
-                             },
+                             }},
                       lookback=10,
                       verbosity=0
                       )
 
-        model.fit(x=x, y=y.reshape(-1,1,1))
+        model.fit(x=x, y=y)
         return
 
 
     def test_ai4water_with_inherent_data(self):
-        model = Model(model={"layers":
-            {
-                "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 12},
-                "Flatten": {},
-                "Reshape": {"target_shape": (1,1)}},
-        },
+        model = Model(model={"layers": {
+            "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 12},
+            "Flatten": {},
+        }},
             lookback=10,
-            data=arg_beach(),
+            input_features=input_features,
+            output_features=output_features,
             forecast_step=1,
             epochs=2,
             verbosity=0
         )
 
-        model.fit()
+        model.fit(data=busan_beach)
         return
 
 if __name__ == "__main__":

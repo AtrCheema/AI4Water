@@ -12,7 +12,10 @@ from . import backend as K
 if K.BACKEND == 'tensorflow':
     from ai4water.tf_attributes import LAYERS, tf
 else:
-    from .models.torch import LAYERS
+    try:  # maybe torch is also not available.
+        from .models.torch import LAYERS
+    except (ModuleNotFoundError, ImportError):
+        LAYERS = {}
 
 
 class AttributeNotSetYet:
@@ -62,54 +65,6 @@ class NN(AttributeStore):
     @lookback.setter
     def lookback(self, x):
         self._lookback = x
-
-    def maybe_add_output_layer(self, current_outputs, lyr_cache:dict):
-        """
-        If the shape of the last layer in the NN structure does not
-        matches with the number of outputs/self.num_outs, then this layer
-        automatically a dense layer matching the number of outputs and
-        then reshapes it to match the following dimention (outs, forecast_len/horizons)
-        """
-        if self.problem == 'classification':
-            return current_outputs
-        new_outputs = current_outputs
-        shape = current_outputs.shape
-        quantiles = 1 if getattr(self, 'quantiles', None) is None else len(self.quantiles)
-        change_shape = True
-        if isinstance(self.num_outs, int):
-            outs = self.num_outs
-        elif isinstance(self.num_outs, dict):
-            if len(self.num_outs) == 1:
-                outs = list(self.num_outs.values())[0]
-            else:
-                change_shape = False
-        elif self.num_outs is None:  # outputs are not known yet
-            change_shape = False
-        else:
-            raise NotImplementedError
-
-        if len(shape) < 3 and change_shape:  # the output is not of shape (?, num_outputs, horizons)
-            num_outs = outs * quantiles
-            if shape[-1] != num_outs:  # we add a Dense layer followed by reshaping it
-
-                dense = LAYERS["Dense"](num_outs, name="model_output")
-                dense_out = dense(current_outputs)
-                self.update_cache(lyr_cache, dense.name, dense)
-                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len), name="output_reshaped")
-                new_outputs = reshape(dense_out)
-                self.update_cache(lyr_cache, reshape.name, reshape)
-
-            else:  # just reshape the output to match (?, num_outputs, horizons)
-                reshape = tf.keras.layers.Reshape(target_shape=(num_outs, self.forecast_len), name="output_reshaped")
-                new_outputs = reshape(current_outputs)
-                self.update_cache(lyr_cache, reshape.name, reshape)
-        elif len(shape) > 3:
-            # let's raise the error now and see where it should not
-            raise NotImplementedError(f"Model output with shape {shape} not implemented")
-        else:
-            pass # currently not checking 3d output and supposing it is of currect shape
-
-        return new_outputs
 
     def update_cache(self, cache: dict, key, value):
         if key in cache:

@@ -43,10 +43,10 @@ from .datasets import MtropcsThailand
 from .datasets import MtropicsVietnam
 
 
-def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
+def busan_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
     """
     Loads the Antibiotic resitance genes (ARG) data from a recreational beach
-    in Korea along with environment variables.
+    in Busan, South Korea along with environment variables.
 
     The data is in the form of
     mutlivariate time series and was collected over the period of 2 years during
@@ -93,8 +93,8 @@ def arg_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> 
             with pandas.DateTimeIndex
 
     Example:
-        >>> from ai4water.datasets import arg_beach
-        >>> dataframe = arg_beach()
+        >>> from ai4water.datasets import busan_beach
+        >>> dataframe = busan_beach()
     """
     fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")
     df = pd.read_csv(fpath, index_col="index")

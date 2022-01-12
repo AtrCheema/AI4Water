@@ -14,11 +14,11 @@ except ModuleNotFoundError:
     sns = None
 
 from .utils import pac_yw, auto_corr, plot_autocorr
-from ai4water.utils.utils import _missing_vals
+from .utils import _missing_vals
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.plotting_tools import bar_chart
+from ai4water.utils.easy_mpl import bar_chart
 from ai4water.utils.utils import find_tot_plots
-from ai4water.preprocessing import Transformations
+from ai4water.preprocessing import Transformation
 from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 
 
@@ -49,8 +49,8 @@ class EDA(Plot):
     - plot_ecdf
 
     Example:
-        >>> from ai4water.datasets import arg_beach
-        >>> eda = EDA(data=arg_beach())
+        >>> from ai4water.datasets import busan_beach
+        >>> eda = EDA(data=busan_beach())
         >>> eda()
     """
 
@@ -71,7 +71,8 @@ class EDA(Plot):
                 values are dataframes or a numpy array
             in_cols :
             out_cols :
-            path : the path where to save the figures
+            path : the path where to save the figures. If not given, plots will be
+                saved in 'data' folder in current working directory.
             save : whether to save the plots or not
             show : whether to show the plots or not
             dpi :  the resolution with which to save the image
@@ -163,15 +164,15 @@ class EDA(Plot):
         Arguments:
             cols : columns to use to draw heatmap
             kwargs :
-            st : Starting index of data to be used
-            en : end index of data to be used
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
 
         Return:
             None
 
         Example:
-            >>> from ai4water.datasets import arg_beach
-            >>> data = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
             >>> vis = EDA(data)
             >>> vis.heatmap()
         """
@@ -196,8 +197,8 @@ class EDA(Plot):
         Arguments:
             data : pd.DataFrame,
             cols : list, columns from data to be used.
-            st :
-            en :
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
             spine_color
             title: str, title of the plot
             title_fs: int, font size of title
@@ -266,12 +267,12 @@ class EDA(Plot):
 
         Arguments:
             cols : columns to be used.
-            st :
-            en :
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
 
         Example:
-            >>> from ai4water.datasets import arg_beach
-            >>> data = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
             >>>vis = EDA(data)
             >>>vis.plot_missing()
         """
@@ -320,8 +321,11 @@ class EDA(Plot):
             ax1 = fig.add_subplot(gs[:1, :5])
 
             # ax1 - Barplot
-            ax1 = bar_chart(labels=list(data.columns), values=np.round(mv_cols_ratio * 100, 2),
-                            orient='v', axis=ax1)
+            ax1 = bar_chart(labels=list(data.columns),
+                            values=np.round(mv_cols_ratio * 100, 2),
+                            orient='v',
+                            show=False,
+                            axis=ax1)
 
             ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
             ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)
@@ -362,33 +366,39 @@ class EDA(Plot):
             en=None,
             freq: str = None,
             cols=None,
-            max_subplots: int = 10,
+            max_cols_in_plot: int = 10,
+            ignore_datetime_index=False,
             **kwargs
     ):
         """
         Plots the data.
 
         Arguments:
-            st :
-            en :
-            cols : columns in self.data to plot
-            max_subplots : number of subplots within one plot. Each feature will
-                be shown in a separate subplot.
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
+            cols : columns in data to consider for plotting
+            max_cols_in_plot : Maximum number of columns in one plot. Maximum
+                number of plots depends upon this value and number of columns
+                in data.
             freq : one of 'daily', 'weekly', 'monthly', 'yearly', determines
                 interval of plot of data. It is valid for only time-series data.
+            ignore_datetime_index:
+                only valid if dataframe's index is `pd.DateTimeIndex`. In such a case, if
+                you want to ignore time index on x-axis, set this to True.
             kwargs : https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
 
         Rreturn:
 
         Example:
-            >>> from ai4water.datasets import arg_beach
-            >>> eda = EDA(arg_beach())
+            >>> from ai4water.datasets import busan_beach
+            >>> eda = EDA(busan_beach())
             >>> eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
             >>> eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         ```
         """
-        # TODO, this method should be available from `model` as well
-        return self._call_method("_plot_df", st=st, en=en, cols=cols, freq=freq, max_subplots=max_subplots,
+        return self._call_method("_plot_df", st=st, en=en, cols=cols, freq=freq,
+                                 max_cols_in_plot=max_cols_in_plot,
+                                 ignore_datetime_index=ignore_datetime_index,
                                  **kwargs)
 
     def _plot_df(self,
@@ -396,11 +406,13 @@ class EDA(Plot):
                  st=None,
                  en=None,
                  cols=None,
-                 freq=None, max_subplots=10,
+                 freq=None,
+                 max_cols_in_plot=10,
                  prefix='',
                  leg_kws=None,
                  label_kws=None,
                  tick_kws=None,
+                 ignore_datetime_index=False,
                  **kwargs):
         """Plots each columns of dataframe and saves it if `save` is True.
 
@@ -418,9 +430,9 @@ class EDA(Plot):
         if tick_kws is None:
             tick_kws = {'axis': "both", 'which': 'major', 'labelsize': 12}
 
-        df = _preprocess_df(df, st, en, cols)
+        df = _preprocess_df(df, st, en, cols, ignore_datetime_index=ignore_datetime_index)
 
-        if df.shape[1] <= max_subplots:
+        if df.shape[1] <= max_cols_in_plot:
 
             if freq is None:
                 kwargs = plot_style(df, **kwargs)
@@ -435,7 +447,7 @@ class EDA(Plot):
             else:
                 self._plot_df_with_freq(df, freq, **kwargs)
         else:
-            tot_plots = find_tot_plots(df.shape[1], max_subplots)
+            tot_plots = find_tot_plots(df.shape[1], max_cols_in_plot)
 
             for i in range(len(tot_plots) - 1):
                 st, en = tot_plots[i], tot_plots[i + 1]
@@ -511,6 +523,7 @@ class EDA(Plot):
             remove_targets=False,
             st=None,
             en=None,
+            method="pearson",
             **kwargs
     ):
         """
@@ -519,14 +532,16 @@ class EDA(Plot):
         Arguments:
             cols : columns to use
             remove_targets :
-            st :
-            en :
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
+            method : str, optional
+                     {"pearson", "spearman", "kendall"}, by default "pearson"
             kwargs :
 
         Example:
             >>> from ai4water.eda import EDA
-            >>> from ai4water.datasets import arg_beach
-            >>> vis = EDA(arg_beach())
+            >>> from ai4water.datasets import busan_beach
+            >>> vis = EDA(busan_beach())
             >>> vis.correlation()
         """
         # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman
@@ -539,7 +554,12 @@ class EDA(Plot):
             if isinstance(cols, dict):
                 cols = None
 
-        return self._call_method("_feature_feature_corr_df", cols=cols, st=st, en=en, **kwargs)
+        return self._call_method("_feature_feature_corr_df",
+                                 cols=cols,
+                                 st=st,
+                                 en=en,
+                                 method=method,
+                                 **kwargs)
 
     def _feature_feature_corr_df(self,
                                  data,
@@ -554,7 +574,8 @@ class EDA(Plot):
                                  ):
         """
         split : Optional[str], optional
-        Type of split to be performed {None, "pos", "neg", "high", "low"}, by default None
+        Type of split to be performed {None, "pos", "neg", "high", "low"}, by default
+            None
         method : str, optional
                  {"pearson", "spearman", "kendall"}, by default "pearson"
 
@@ -589,7 +610,8 @@ class EDA(Plot):
         vmax = np.round(np.nanmax(corr.where(~mask)) - 0.05, 2)
         vmin = np.round(np.nanmin(corr.where(~mask)) + 0.05, 2)
         # width x height
-        _, ax = plt.subplots(figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 9 + len(cols)*0.1)))
+        _, ax = plt.subplots(
+            figsize=kwargs.get('figsize', (5 + len(cols)*0.25, 9 + len(cols)*0.1)))
 
         _kwargs = dict()
         _kwargs['annot'] = kwargs.get('annot', True if len(cols) <= 20 else False)
@@ -612,8 +634,8 @@ class EDA(Plot):
         """Plots principle components.
         Arguments:
             num_pcs :
-            st :
-            en :
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
             save_as_csv :
             figsize :
             kwargs :will go to sns.pairplot.
@@ -668,7 +690,7 @@ class EDA(Plot):
         # pca = PCA(n_components=num_pcs).fit(df_pca)
         # df_pca = pd.DataFrame(pca.transform(df_pca))
 
-        transformer = Transformations(data=data, method='pca', n_components=num_pcs,
+        transformer = Transformation(data=data, method='pca', n_components=num_pcs,
                                       replace_nans=True)
         df_pca = transformer.transform()
 
@@ -683,8 +705,8 @@ class EDA(Plot):
                     hue = None
             if hue in data:
                 df_pca[hue] = data[hue]
-
-                if df_pca[hue].isna().sum() > 0:  # output columns contains nans, so don't use it as hue.
+                # output columns contains nans, so don't use it as hue.
+                if df_pca[hue].isna().sum() > 0:
                     hue = None
 
         if isinstance(hue, list) and len(hue) == 0:
@@ -715,9 +737,10 @@ class EDA(Plot):
             inputs :
             outputs :
             cols :
-            st :
-            en :
-            max_subplots :
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
+            max_subplots: int, it can be set to large number to show all the scatter
+            plots on one axis.
             kwargs :
         """
         fname = "scatter_plot_"
@@ -735,7 +758,8 @@ class EDA(Plot):
             assert isinstance(cols, list)
 
         if isinstance(self.data, pd.DataFrame):
-            self._grouped_scatter_plot_df(self.data[cols], max_subplots, st=st, en=en,
+            self._grouped_scatter_plot_df(self.data[cols], max_subplots, st=st,
+                                          en=en,
                                           **kwargs)
 
         elif isinstance(self.data, list):
@@ -755,11 +779,14 @@ class EDA(Plot):
                                                   **kwargs)
         return
 
-    def _grouped_scatter_plot_df(self,
-                                 data: pd.DataFrame,
-                                 max_subplots: int = 10,
-                                 st=None, en=None,
-                                 prefix='', **kwargs):
+    def _grouped_scatter_plot_df(
+            self,
+            data: pd.DataFrame,
+            max_subplots: int = 10,
+            st=None,
+            en=None,
+            prefix='',
+            **kwargs):
         """
         max_subplots: int, it can be set to large number to show all the scatter
         plots on one axis.
@@ -769,13 +796,16 @@ class EDA(Plot):
         data = _preprocess_df(data, st, en)
 
         if data.shape[1] <= max_subplots:
-            self._grouped_scatter_plot(data, name=f'grouped_scatter_{prefix}',  **kwargs)
+            self._grouped_scatter_plot(data, name=f'grouped_scatter_{prefix}',
+                                       **kwargs)
         else:
             tot_plots = find_tot_plots(data.shape[1], max_subplots)
             for i in range(len(tot_plots) - 1):
                 st, en = tot_plots[i], tot_plots[i + 1]
                 sub_df = data.iloc[:, st:en]
-                self._grouped_scatter_plot(sub_df, name=f'grouped_scatter_{prefix}_{st}_{en}', **kwargs)
+                self._grouped_scatter_plot(sub_df,
+                                           name=f'grouped_scatter_{prefix}_{st}_{en}',
+                                           **kwargs)
         return
 
     def _grouped_scatter_plot(self, df, name='grouped_scatter', **kwargs):
@@ -849,7 +879,8 @@ class EDA(Plot):
         if isinstance(index, pd.DataFrame):
             index = index.index
 
-        idx = pd.DataFrame(np.ones(len(index)), index=index, columns=['Observations'])
+        idx = pd.DataFrame(np.ones(len(index)), index=index,
+                           columns=['Observations'])
         axis = idx.plot(linestyle='', marker='.', color=color, figsize=figsize)
         axis.legend(fontsize=leg_fs, markerscale=leg_ms)
         axis.set_xlabel(axis.get_xlabel(), fontdict={'fontsize': label_fs})
@@ -894,8 +925,10 @@ class EDA(Plot):
             description = {}
             for col in cols:
                 if col in self.data:
-                    description[col] = ts_features(_preprocess_df(self.data[col], st, en),
-                                                   precision=precision, name=col)
+                    description[col] = ts_features(
+                        _preprocess_df(self.data[col],
+                                       st, en),
+                        precision=precision, name=col)
 
             save_stats(description, self.path)
 
@@ -909,8 +942,9 @@ class EDA(Plot):
 
                     for col in cols:
                         if col in data:
-                            _description[col] = ts_features(_preprocess_df(data[col], st, en),
-                                                            precision=precision, name=col)
+                            _description[col] = ts_features(
+                                _preprocess_df(data[col], st, en),
+                                precision=precision, name=col)
 
                 description['data' + str(idx)] = _description
                 _fpath = os.path.join(self.path, fname + f'_{idx}')
@@ -921,8 +955,9 @@ class EDA(Plot):
                 _description = {}
                 if isinstance(data, pd.DataFrame):
                     for col in data.columns:
-                        _description[col] = ts_features(_preprocess_df(data[col], st, en),
-                                                        precision=precision, name=col)
+                        _description[col] = ts_features(
+                            _preprocess_df(data[col], st, en),
+                            precision=precision, name=col)
 
                 description[f'data_{data_name}'] = _description
                 _fpath = os.path.join(self.path, fname + f'_{data_name}')
@@ -953,8 +988,8 @@ class EDA(Plot):
         Arguments:
             inputs :
             outputs :
-            st :
-            en :
+            st : starting row/index in data to be used for plotting
+            en : end row/index in data to be used for plotting
             normalize : If True, then each feature/column is rescaled between 0 and 1.
             figsize :
             freq : str, one of 'weekly', 'monthly', 'yearly'. If given, box plot
@@ -994,7 +1029,8 @@ class EDA(Plot):
                 else:
                     _cols = cols + [self.out_cols[idx]] if outputs else cols
 
-                self._box_plot(d, _cols, st, en, normalize, figsize, max_features, show_datapoints, freq,
+                self._box_plot(d, _cols, st, en, normalize, figsize, max_features,
+                               show_datapoints, freq,
                                violen=violen,
                                prefix=str(idx),
                                **kwargs)
@@ -1043,7 +1079,8 @@ class EDA(Plot):
             axis = self._box_plot_df(data,
                                      st=st,
                                      en=en,
-                                     normalize=normalize, show_datapoints=show_datapoints,
+                                     normalize=normalize,
+                                     show_datapoints=show_datapoints,
                                      violen=violen,
                                      freq=freq,
                                      prefix=f"{'violen' if violen else 'box'}_{prefix}",
@@ -1058,7 +1095,8 @@ class EDA(Plot):
                 self._box_plot_df(sub_df,
                                   st=st,
                                   en=en,
-                                  normalize=normalize, show_datapoints=show_datapoints,
+                                  normalize=normalize,
+                                  show_datapoints=show_datapoints,
                                   violen=violen,
                                   figsize=figsize,
                                   freq=freq,
@@ -1086,8 +1124,8 @@ class EDA(Plot):
         # if data contains duplicated columns, transformation will not work
         data = data.loc[:, ~data.columns.duplicated()]
         if normalize:
-            transformer = Transformations(data=data)
-            data = transformer.transform()
+            transformer = Transformation()
+            data = transformer.fit_transform(data)
 
         if freq is not None:
             return self._box_plot_with_freq(data,
@@ -1121,7 +1159,7 @@ class EDA(Plot):
             axis = sns.violinplot(data=data, **kwargs)
         else:
             axis = sns.boxplot(data=data, **kwargs)
-            axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
+        axis.set_xticklabels(list(data.columns), fontdict={'rotation': 70})
 
         if show_datapoints:
             sns.swarmplot(data=data)
@@ -1192,32 +1230,34 @@ class EDA(Plot):
 
     def autocorrelation(
             self,
-            nlags: int = 10,
+            n_lags: int = 10,
             cols: Union[list] = None,
     ):
         """autocorrelation of individual features of data
         Arguments:
-            nlags : number of lag steps to consider
+            n_lags : number of lag steps to consider
             cols : columns to use. If not defined then all the columns are used
         """
-        return self._call_method("_autocorr_df", partial=False, nlags=nlags, cols=cols)
+        return self._call_method("_autocorr_df", partial=False, n_lags=n_lags,
+                                 cols=cols)
 
     def partial_autocorrelation(
             self,
-            nlags: int = 10,
+            n_lags: int = 10,
             cols: Union[list] = None,
     ):
         """Partial autocorrelation of individual features of data
         Arguments:
-            nlags : number of lag steps to consider
+            n_lags : number of lag steps to consider
             cols : columns to use. If not defined then all the columns are used
         """
-        return self._call_method("_autocorr_df", partial=True, nlags=nlags, cols=cols)
+        return self._call_method("_autocorr_df", partial=True, n_lags=n_lags,
+                                 cols=cols)
 
     def _autocorr_df(
             self,
             data: pd.DataFrame,
-            nlags: int,
+            n_lags: int,
             partial: bool = False,
             cols=None,
             fname='',
@@ -1250,11 +1290,12 @@ class EDA(Plot):
             if np.isnan(x).sum() == 0:
 
                 if partial:
-                    _ac = pac_yw(x, nlags)
+                    _ac = pac_yw(x, n_lags)
                 else:
-                    _ac = auto_corr(x, nlags)
+                    _ac = auto_corr(x, n_lags)
 
-                plot_autocorr(_ac, axis=ax, legend=col, show=False, legend_fs=nrows*2)
+                plot_autocorr(_ac, axis=ax, legend=col, show=False,
+                              legend_fs=nrows*2)
             else:
                 print(f"cannot plot autocorrelation for {col} feature")
 
@@ -1361,7 +1402,8 @@ class EDA(Plot):
             else:
                 _name = rv.dist.name
 
-            (osm, osr), (slope, intercept, r) = stats.probplot(array, dist=rv, plot=ax)
+            (osm, osr), (slope, intercept, r) = stats.probplot(array, dist=rv,
+                                                               plot=ax)
 
             h = ax.plot(osm, osr, label="bo")
 
@@ -1386,7 +1428,8 @@ class EDA(Plot):
 
         return fig
 
-    def _lag_plot_series(self, series: pd.Series, n_lags: int, figsize=None, **kwargs):
+    def _lag_plot_series(self, series: pd.Series, n_lags: int, figsize=None,
+                         **kwargs):
 
         if hasattr(n_lags, '__len__'):
             lags = np.array(n_lags)
@@ -1401,7 +1444,8 @@ class EDA(Plot):
             n_rows = (math.ceil(n_lags/2) * 2) // 2
             n_cols = 2
 
-        fig, axis = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=figsize, sharex="all")
+        fig, axis = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=figsize,
+                                 sharex="all")
 
         if n_lags == 1:
             axis = np.array([axis])
@@ -1425,7 +1469,8 @@ class EDA(Plot):
 
         return axes
 
-    def lag_plot(self, n_lags: Union[int, list] = 1, cols=None, figsize=None, **kwargs):
+    def lag_plot(self, n_lags: Union[int, list] = 1, cols=None, figsize=None,
+                 **kwargs):
         """lag plot between series and its lags
 
         Arguments:
@@ -1435,11 +1480,12 @@ class EDA(Plot):
             figsize : figsize
             kwargs : any keyword arguments for axis.scatter
         """
-        return self._call_method("_lag_plot_df", n_lags=n_lags, cols=cols, figsize=figsize, **kwargs)
+        return self._call_method("_lag_plot_df", n_lags=n_lags, cols=cols,
+                                 figsize=figsize, **kwargs)
 
     def plot_ecdf(
             self,
-            cols,
+            cols=None,
             figsize=None,
             **kwargs
     ):
@@ -1450,9 +1496,11 @@ class EDA(Plot):
             figsize :
             kwargs : any keyword argument for axis.plot
         """
-        return self._call_method("_plot_ecdf_df", cols=cols, figsize=figsize, **kwargs)
+        return self._call_method("_plot_ecdf_df", cols=cols, figsize=figsize,
+                                 **kwargs)
 
-    def _plot_ecdf_df(self, data: pd.DataFrame, cols=None, figsize=None, fname=None, **kwargs):
+    def _plot_ecdf_df(self, data: pd.DataFrame, cols=None, figsize=None,
+                      fname=None, **kwargs):
 
         data = _preprocess_df(data, cols=cols)
 
@@ -1541,7 +1589,7 @@ def validate_freq(df, freq):
     return
 
 
-def _preprocess_df(df, st=None, en=None, cols=None):
+def _preprocess_df(df:pd.DataFrame, st=None, en=None, cols=None, ignore_datetime_index=False):
 
     if cols is not None:
         if isinstance(cols, str):
@@ -1557,5 +1605,8 @@ def _preprocess_df(df, st=None, en=None, cols=None):
         df = df.iloc[st:en]
     else:
         df = df.loc[st:en]
+
+    if ignore_datetime_index:
+        df = df.reset_index(drop=True)
 
     return df

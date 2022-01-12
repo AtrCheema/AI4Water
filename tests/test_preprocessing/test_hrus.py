@@ -61,7 +61,12 @@ class TestHrus(unittest.TestCase):
             hru_object.call(plot_hrus=False if 'slope' in hru_def else False)
 
             for yr in years:
-                hru_object.draw_pie(yr, title=False, n_merge=n_merges, save=False, textprops={'fontsize': '12'}, show=False)
+                hru_object.draw_pie(yr,
+                                    title=False,
+                                    n_merge=n_merges,
+                                    save=False,
+                                    textprops={'fontsize': '12'},
+                                    show=False)
 
             hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=False, show=False)
 

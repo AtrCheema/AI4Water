@@ -7,16 +7,16 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from ai4water.hyperopt import HyperOpt
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from ai4water.utils.taylor_diagram import taylor_plot
-from ai4water.hyperopt import Real, Categorical, Integer
-from ai4water.utils.utils import init_subplots, process_axis, jsonize, ERROR_LABELS
-from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 from ai4water.backend import tf
-from ai4water.utils.plotting_tools import bar_chart
-from ai4water.utils.visualizations import PlotResults
+from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataHandler
+from ai4water.utils.taylor_diagram import taylor_plot
+from ai4water.utils.visualizations import PlotResults
+from ai4water.utils.utils import jsonize, ERROR_LABELS
+from ai4water.hyperopt import Real, Categorical, Integer
+from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
+from ai4water.utils.easy_mpl import bar_chart, process_axis, init_subplots
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -35,7 +35,10 @@ SEP = os.sep
 # paired ttest 5x2cv
 
 
-
+Metrics = {
+    'regression': RegressionMetrics,
+    'classification': ClassificationMetrics
+}
 
 
 class Experiments(object):
@@ -127,6 +130,10 @@ class Experiments(object):
         raise NotImplementedError
 
     @property
+    def mode(self):
+        raise NotImplementedError
+
+    @property
     def num_samples(self):
         return self._num_samples
 
@@ -136,6 +143,7 @@ class Experiments(object):
 
     def fit(
             self,
+            data,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -151,6 +159,7 @@ class Experiments(object):
         todo, post_optimize not working for 'eval_best' with ML methods.
 
         Arguments:
+            data: this will be passed to `Model`.
             run_type :
                 One of `dry_run` or `optimize`. If `dry_run`, the all
                 the `models` will be trained only once. if `optimize`, then
@@ -182,6 +191,8 @@ class Experiments(object):
         assert run_type in ['optimize', 'dry_run']
 
         assert post_optimize in ['eval_best', 'train_best']
+
+        self.data_ = data
 
         if exclude == '':
             exclude = []
@@ -239,7 +250,7 @@ class Experiments(object):
                                               **config)
 
                 if run_type == 'dry_run':
-                    if self.verbosity > 0: print(f"running  {model_type} model")
+                    if self.verbosity >= 0: print(f"running  {model_type} model")
                     train_results, test_results = objective_fn()
                     self._populate_results(model_name, train_results, test_results)
                 else:
@@ -275,7 +286,7 @@ class Experiments(object):
                 self.config['eval_models'][model_type] = self._model.path
 
                 if cross_validate:
-                    cv_scoring = self._model.config['val_metric']
+                    cv_scoring = self._model.val_metric
                     self.cv_scores[model_type] = getattr(self._model, f'cross_val_{cv_scoring}')
                     setattr(self, '_cv_scoring', cv_scoring)
 
@@ -466,8 +477,9 @@ Available cases are {self.models} and you wanted to include
         fpath_best: str = os.path.join(best_run, output, f"{run_type}_{output}_0.csv")
         best = pd.read_csv(fpath_best, index_col=['index'])
 
-        initial_metric: float = getattr(RegressionMetrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
-        best_metric: float = getattr(RegressionMetrics(best.values[:, 0], best.values[:, 1]), matric_name)()
+        metrics = Metrics[self.mode]
+        initial_metric: float = getattr(metrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
+        best_metric: float = getattr(metrics(best.values[:, 0], best.values[:, 1]), matric_name)()
 
         # -ve values become difficult to plot, moreover they do not reveal anything significant
         # as compared to when a metric is 0, therefore consider -ve values as zero.
@@ -602,12 +614,12 @@ Available cases are {self.models} and you wanted to include
 
         Example:
             >>> from ai4water.experiments import MLRegressionExperiments
-            >>> from ai4water.datasets import arg_beach
-            >>> data = arg_beach()
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
             >>> inputs = list(data.columns)[0:-1]
             >>> outputs = list(data.columns)[-1]
-            >>> experiment = MLRegressionExperiments(data=data, input_features=inputs, output_features=outputs)
-            >>> experiment.fit()
+            >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
+            >>> experiment.fit(data=data)
             >>> experiment.compare_errors('mse')
             >>> experiment.compare_errors('r2', 0.2, 'greater')
         """
@@ -631,7 +643,8 @@ Available cases are {self.models} and you wanted to include
                   title="Train",
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
-                  title_fs=kwargs.get('title_fs', 20)
+                  title_fs=kwargs.get('title_fs', 20),
+                  show=False,
                   )
 
         bar_chart(axis=axis[1],
@@ -642,7 +655,8 @@ Available cases are {self.models} and you wanted to include
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
                   xlabel_fs=kwargs.get('xlabel_fs', 16),
                   title_fs=kwargs.get('title_fs', 20),
-                  show_yaxis=False
+                  show_yaxis=False,
+                  show=False
                   )
 
         appendix = f"{cutoff_val or ''}{cutoff_type or ''}{len(models)}"
@@ -657,6 +671,7 @@ Available cases are {self.models} and you wanted to include
     def plot_losses(
             self,
             loss_name: Union[str, list] = 'loss',
+            include: list = None,
             save: bool = True,
             name: str = 'loss_comparison',
             show: bool = True,
@@ -668,6 +683,8 @@ Available cases are {self.models} and you wanted to include
         Arguments:
             loss_name:
                 the name of loss value, must be recorded during training
+            include:
+                name of models to include
             save:
                 whether to save the plot or not
             name:
@@ -686,17 +703,21 @@ Available cases are {self.models} and you wanted to include
         if not isinstance(loss_name, list):
             assert isinstance(loss_name, str)
             loss_name = [loss_name]
+
+        include = self._check_include_arg(include)
+
         loss_curves = {}
         for _model, _path in self.config['eval_models'].items():
-            df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
-            loss_curves[_model] = df
+            if _model in include:
+                df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
+                loss_curves[_model] = df
 
         _kwargs = {'linestyle': '-',
-                   'x_label': "Epochs",
-                   'y_label': 'Loss'}
+                   'xlabel': "Epochs",
+                   'ylabel': 'Loss'}
 
         if len(loss_curves) > 5:
-            _kwargs['bbox_to_anchor'] = (1.1, 0.99)
+            _kwargs['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
 
         _, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
 
@@ -748,10 +769,12 @@ Available cases are {self.models} and you wanted to include
                 iterations = json.load(fp)
 
             convergence = sort_array(list(iterations.keys()))
-            process_axis(axis=axis, data=convergence, label=_model.split('model_')[1],
+            process_axis(axis=axis,
+                         data=convergence,
+                         label=_model.split('model_')[1],
                          linestyle='--',
-                         x_label='Number of iterations $n$',
-                         y_label=r"$\min f(x)$ after $n$ calls")
+                         xlabel='Number of iterations $n$',
+                         ylabel=r"$\min f(x)$ after $n$ calls")
         if save:
             fname = os.path.join(self.exp_path, f'{name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
@@ -921,7 +944,7 @@ Available cases are {self.models} and you wanted to include
     ) -> dict:
         """returns the models sorted according to their performance"""
         def find_matric_array(true, sim):
-            errors = RegressionMetrics(true, sim)
+            errors = Metrics[self.mode](true, sim)
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -969,6 +992,7 @@ Available cases are {self.models} and you wanted to include
 
     def fit_with_tpot(
             self,
+            data,
             models: Union[int, List[str], dict, str] = None,
             selection_criteria: str = 'mse',
             scoring: str = None,
@@ -979,6 +1003,7 @@ Available cases are {self.models} and you wanted to include
         finds out the best pipline for the given data.
 
         Arguments:
+            data:
             models:
                 It can be of three types.
 
@@ -1013,10 +1038,10 @@ Available cases are {self.models} and you wanted to include
 
         Example:
             >>> from ai4water.experiments import MLRegressionExperiments
-            >>> from ai4water.datasets import arg_beach
-            >>> exp = MLRegressionExperiments(data=arg_beach(), exp_name=f"tpot_reg_{dateandtime_now()}")
-            >>> exp.fit()
-            >>> tpot_regr = exp.fit_with_tpot(2, generations=1, population_size=2)
+            >>> from ai4water.datasets import busan_beach
+            >>> exp = MLRegressionExperiments(exp_name=f"tpot_reg_{dateandtime_now()}")
+            >>> exp.fit(data=busan_beach())
+            >>> tpot_regr = exp.fit_with_tpot(busan_beach(), 2, generations=1, population_size=2)
         """
         tpot_caller = self.tpot_estimator
         assert tpot_caller is not None, f"tpot must be installed"
@@ -1089,7 +1114,7 @@ Available cases are {self.models} and you wanted to include
             if arg in model_kws:
                 model_kws.pop(arg)
 
-        dh = DataHandler(self.data, **model_kws)
+        dh = DataHandler(data, **model_kws)
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
@@ -1124,7 +1149,7 @@ class TransformationExperiments(Experiments):
     """Helper to conduct experiments with different transformations
 
         Example:
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>>from ai4water.experiments import TransformationExperiments
             ...# Define your experiment
             >>>class MyTransformationExperiments(TransformationExperiments):
@@ -1140,7 +1165,7 @@ class TransformationExperiments(Experiments):
             ...                'batch_size': int(kwargs['batch_size']),
             ...                'lr': float(kwargs['lr']),
             ...                'transformation': kwargs['transformation']}
-            >>>data = arg_beach()
+            >>>data = busan_beach()
             >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
             >>>outputs = ['tetx_coppml']
             >>>cases = {'model_minmax': {'transformation': 'minmax'},
@@ -1154,12 +1179,15 @@ class TransformationExperiments(Experiments):
             ...        ]
             >>>x0 = [20, 14, 12, 0.00029613, 'relu']
             >>>experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
-            ...                output_features=outputs, data=data, exp_name="testing"
+            ...                output_features=outputs, exp_name="testing"
             ...                 param_space=search_space, x0=x0)
     """
 
+    @property
+    def mode(self):
+        return "regression"
+
     def __init__(self,
-                 data,
                  param_space=None,
                  x0=None,
                  cases: dict = None,
@@ -1168,7 +1196,6 @@ class TransformationExperiments(Experiments):
                  ai4water_model=None,
                  verbosity: int = 1,
                  **model_kws):
-        self.data = data
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kws
@@ -1206,7 +1233,6 @@ be used to build ai4water's Model class.
             verbosity = self.model_kws.pop('verbosity')
 
         model = self.ai4water_model(
-            data=self.data,
             prefix=title,
             verbosity=verbosity,
             **self.update_paras(**suggested_paras),
@@ -1218,14 +1244,15 @@ be used to build ai4water's Model class.
         model = self.process_model_before_fit(model)
 
         if cross_validate:
-            val_score = model.cross_val_score()
+            val_score = model.cross_val_score(data=self.data_)
         else:
-            model.fit()
-            val_true, val_pred = model.predict('validation', return_true=True)
-            val_score = getattr(RegressionMetrics(val_true, val_pred), model.config['val_metric'])()
+            model.fit(data=self.data_)
+            val_true, val_pred = model.predict(data='validation', return_true=True)
+            metrics = Metrics[self.mode]
+            val_score = getattr(metrics(val_true, val_pred), model.val_metric)()
 
         if predict:
-            trt, trp = model.predict('training', return_true=True)
+            trt, trp = model.predict(data='training', return_true=True)
 
             testt, testp = model.predict(return_true=True)
 
@@ -1238,17 +1265,17 @@ be used to build ai4water's Model class.
 
     def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
 
-        model = self.ai4water_model.from_config_file(config_path=config_path, data=self.data)
+        model = self.ai4water_model.from_config_file(config_path=config_path)
         weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict('training', return_true=True)
+        train_true, train_pred = model.predict(data=self.data_, return_true=True)
 
-        test_true, test_pred = model.predict('test', return_true=True)
+        test_true, test_pred = model.predict(data='test', return_true=True)
 
-        model.data['allow_nan_labels'] = 1
+        model.dh_.config['allow_nan_labels'] = 1
         model.predict()
 
         return (train_true, train_pred), (test_true, test_pred)

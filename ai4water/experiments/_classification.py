@@ -1,7 +1,7 @@
 
 
 from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
-from .experiments import Experiments, Model
+from ._main import Experiments, Model
 from .utils import classification_space
 
 
@@ -12,7 +12,6 @@ class MLClassificationExperiments(Experiments):
     def __init__(self,
                  param_space=None,
                  x0=None,
-                 data=None,
                  cases=None,
                  exp_name='MLExperiments',
                  dl4seq_model=None,
@@ -20,7 +19,6 @@ class MLClassificationExperiments(Experiments):
                  **model_kwargs):
         self.param_space = param_space
         self.x0 = x0
-        self.data = data
         self.model_kws = model_kwargs
         self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
@@ -35,6 +33,10 @@ class MLClassificationExperiments(Experiments):
         except (ModuleNotFoundError, ImportError):
             TPOTClassifier = None
         return TPOTClassifier
+
+    @property
+    def mode(self):
+        return "classification"
 
     def build_and_run(self,
                       predict=False,
@@ -51,7 +53,6 @@ class MLClassificationExperiments(Experiments):
             verbosity = self.model_kws.pop('verbosity')
 
         model = self.dl4seq_model(
-            data=self.data,
             prefix=title,
             verbosity=verbosity,
             **self.model_kws,
@@ -60,17 +61,25 @@ class MLClassificationExperiments(Experiments):
 
         setattr(self, '_model', model)
 
-        model.fit(**fit_kws)
-
-        t = model.predict()
+        if cross_validate:
+            val_score = model.cross_val_score(data=self.data_, scoring=model.val_metric)
+        else:
+            model.fit(data=self.data_, **fit_kws)
+            vt, vp = model.predict(data='validation', return_true=True)
+            val_score = getattr(ClassificationMetrics(vt, vp), model.val_metric)()
 
         if view:
-            model.view_model()
+            model.view()
 
         if predict:
-            model.predict('training')
+            tt, tp = model.predict(data='test', return_true=True)
+            tr_t, tr_p = model.predict(data='training', return_true=True)
+            return (tr_t, tr_p), (tt, tp)
 
-        return ClassificationMetrics(t, t).mse()
+        if model.val_metric in ['r2', 'nse', 'kge', 'r2_mod', 'accuracy', 'f1_score']:
+            val_score = 1.0 - val_score
+
+        return val_score
 
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
@@ -250,10 +259,10 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
 
         self.path = "sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis"
-        self.param_space = self.classification_space["QuadraticDiscriminantAnalysi"]["param_space"]
-        self.x0 = self.classification_space["QuadraticDiscriminantAnalysi"]["x0"]
+        self.param_space = self.classification_space["QuadraticDiscriminantAnalysis"]["param_space"]
+        self.x0 = self.classification_space["QuadraticDiscriminantAnalysis"]["x0"]
 
-        return {'model': {'QuadraticDiscriminantAnalysi': kwargs}}
+        return {'model': {'QuadraticDiscriminantAnalysis': kwargs}}
 
     def model_RandomForestClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html

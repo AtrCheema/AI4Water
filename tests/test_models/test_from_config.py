@@ -28,7 +28,11 @@ def _test_from_config_basic(
 ):
 
     for m in models:
-        model = _model(model=m, data=arg_beach(), lookback=1, verbosity=0)
+        model = _model(model=m,
+                       lookback=1,
+                       verbosity=0,
+                       input_features=data.columns.tolist()[0:-1],
+                       output_features=data.columns.tolist()[-1:])
         model.fit(x, y)
         ini_y = model.predict(np.arange(13).reshape(-1, 13)).item()
 

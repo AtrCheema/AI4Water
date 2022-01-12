@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from .converter import Temp, Speed, Pressure
 from .global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA
 from .global_variables import default_constants, SB_CONS
-from ai4water.utils.utils import process_axis
+from ai4water.utils.easy_mpl import process_axis
 
 
 class AttributeChecker:
@@ -76,7 +76,9 @@ class PlotData(AttributeChecker):
                 yl = ' '
 
             data = self.input[col]
-            process_axis(ax, data, label=col, show_xaxis=show_xaxis, y_label=yl, leg_ms=8, max_xticks=4)
+            process_axis(ax, data, label=col, show_xaxis=show_xaxis, ylabel=yl,
+                         legend_kws={'markerscale':8},
+                         max_xticks=4)
 
             idx += 1
 
@@ -120,8 +122,8 @@ class PlotData(AttributeChecker):
                 show_xaxis = True
 
             data = self.output[col]
-            process_axis(ax, data, ms=marker_scale(col), label=col, show_xaxis=show_xaxis, y_label='mm',
-                         leg_ms=8, max_xticks=4)
+            process_axis(ax, data, ms=marker_scale(col), label=col, show_xaxis=show_xaxis, ylabel='mm',
+                         legend_kws={'markerscale': 8}, max_xticks=4)
             idx += 1
 
         plt.subplots_adjust(wspace=0.001, hspace=0.001)

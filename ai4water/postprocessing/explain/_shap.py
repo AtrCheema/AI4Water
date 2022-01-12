@@ -12,15 +12,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 try:
-    from tensorflow.keras.layers import Flatten
-    from tensorflow.keras.models import Model
     import tensorflow.keras.backend as K
 except ModuleNotFoundError:
-    Flatten, Model, K = None, None, None
+    K = None
 
-from ai4water.utils.utils import imshow
-from ai4water.backend import get_sklearn_models
+from ai4water.utils.easy_mpl import imshow
+from ai4water.backend import sklearn_models
 from ._explain import ExplainerMixin
+from .utils import convert_ai4water_model
 
 
 class ShapExplainer(ExplainerMixin):
@@ -117,8 +116,10 @@ class ShapExplainer(ExplainerMixin):
         else:
             self._check_data(train_data, test_data)
 
+        model, framework, explainer = convert_ai4water_model(model, framework, explainer)
+
         self.is_sklearn = True
-        if model.__class__.__name__ not in get_sklearn_models():
+        if model.__class__.__name__ not in sklearn_models:
             if model.__class__.__name__ in ["XGBRegressor",
                                             "LGBMRegressor",
                                             "CatBoostRegressor",
@@ -130,10 +131,7 @@ class ShapExplainer(ExplainerMixin):
 
         self._framework = self.infer_framework(model, framework, layer, explainer)
 
-        if self._framework == "DL" and infer_framework(model) == "tensorflow":
-            self.model = make_keras_model(model)
-        else:
-            self.model = model
+        self.model = model
         self.data = test_data
         self.layer = layer
         self.features = features
@@ -258,7 +256,7 @@ class ShapExplainer(ExplainerMixin):
                                              "XGBRFRegressor"]:
             explainer = shap.TreeExplainer(self.model)
 
-        elif self.model.__class__.__name__ in get_sklearn_models():
+        elif self.model.__class__.__name__ in sklearn_models:
             explainer = self._get_kernel_explainer(train_data, num_means)
 
         elif self._framework == "DL":
@@ -856,7 +854,11 @@ class ShapExplainer(ExplainerMixin):
 
             plt.close('all')
             fig, axis = plt.subplots()
-            im = axis.imshow(_shap_vals.T, aspect='auto', interpolation=interpolation, cmap=cmap)
+            im = axis.imshow(_shap_vals.T,
+                             aspect='auto',
+                             interpolation=interpolation,
+                             cmap=cmap
+                             )
             if _features is not None:  # if imshow is successful then don't worry if features are None
                 axis.set_yticks(np.arange(len(_features)))
                 axis.set_yticklabels(_features)
@@ -954,14 +956,23 @@ def imshow_3d(values,
         fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
 
         yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis, im = imshow(data[:, :, idx].transpose(), yticklabels=yticklabels,
-                          axis=ax1, vmin=vmin, vmax=vmax,
-                          title=feat, cmap=cmap)
+        axis, im = imshow(data[:, :, idx].transpose(),
+                          yticklabels=yticklabels,
+                          axis=ax1, vmin=vmin,
+                          vmax=vmax,
+                          title=feat,
+                          cmap=cmap,
+                          show=False
+                          )
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        axis, im = imshow(values[:, :, idx].transpose(), yticklabels=yticklabels,
-                          vmin=vmin, vmax=vmax, xlabel="Examples",
-                          title=f"SHAP Values", cmap=cmap,
+        axis, im = imshow(values[:, :, idx].transpose(),
+                          yticklabels=yticklabels,
+                          vmin=vmin, vmax=vmax,
+                          xlabel="Examples",
+                          title=f"SHAP Values",
+                          cmap=cmap,
+                          show=False,
                           axis=ax2)
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
@@ -993,25 +1004,6 @@ def infer_framework(model):
             framework = 'tensorflow'
 
     return framework
-
-
-def make_keras_model(old_model):
-
-    old_m_outputs = old_model.outputs
-    if isinstance(old_m_outputs, list):
-        assert len(old_m_outputs) == 1
-        old_m_outputs = old_m_outputs[0]
-
-    if len(old_m_outputs.shape) > 2:  # (None, ?, ?)
-        new_outputs = Flatten()(old_m_outputs)  # (None, ?)
-        assert new_outputs.shape.as_list()[-1] == 1  # (None, 1)
-        new_model = Model(old_model.inputs, new_outputs)
-
-    else:  # (None, ?)
-        assert old_m_outputs.shape.as_list()[-1] == 1  # (None, 1)
-        new_model = old_model
-
-    return new_model
 
 
 def maybe_to_dataframe(data, features=None) -> pd.DataFrame:

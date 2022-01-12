@@ -98,6 +98,15 @@ def get_sklearn_models():
         skl_models.update(get_attributes(sklearn, "kernel_ridge", case_sensitive=True))
         skl_models.update(get_attributes(sklearn, "isotonic", case_sensitive=True))
 
+        from sklearn.calibration import CalibratedClassifierCV
+        skl_models.update(get_attributes(sklearn, "calibration", case_sensitive=True))
+
+        from sklearn.semi_supervised import LabelPropagation
+        skl_models.update(get_attributes(sklearn, "semi_supervised", case_sensitive=True))
+
+        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+        skl_models.update(get_attributes(sklearn, "discriminant_analysis", case_sensitive=True))
+
         skl_models.update({"HistGradientBoostingRegressor": HistGradientBoostingRegressor,
                            "HistGradientBoostingClassifier": HistGradientBoostingClassifier})
     else:

@@ -7,7 +7,7 @@ from scipy.stats import gmean, kendalltau
 import numpy as np
 
 from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
-from ._SeqMetrics import Metrics, EPS
+from ._main import Metrics, EPS
 
 
 class RegressionMetrics(Metrics):
@@ -799,10 +799,6 @@ class RegressionMetrics(Metrics):
     def mrae(self, benchmark: np.ndarray = None):
         """ Mean Relative Absolute Error """
         return float(np.mean(np.abs(self._relative_error(benchmark))))
-
-    def mse(self, weights=None) -> float:
-        """ mean square error """
-        return float(np.average((self.true - self.predicted) ** 2, axis=0, weights=weights))
 
     def msle(self, weights=None) -> float:
         """

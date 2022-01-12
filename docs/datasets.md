@@ -1,4 +1,4 @@
-::: ai4water.datasets.arg_beach
+::: ai4water.datasets.busan_beach
     handler: python
     rendering:
         show_root_heading: true

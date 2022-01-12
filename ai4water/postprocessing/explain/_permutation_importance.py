@@ -40,8 +40,9 @@ class PermutationImportance(ExplainerMixin):
 
         Arguments:
             model:
-                the trained model object which is callable e.g. if you have Keras' model then you
-                should pass `model.predict` instead of `model`.
+                the trained model object which is callable e.g. if you have Keras
+                or sklearn model then you should pass `model.predict` instead
+                of `model`.
             inputs:
                 arrays or list of arrays which will be given as input to `model`
             target:
@@ -129,7 +130,7 @@ class PermutationImportance(ExplainerMixin):
         if callable(self.scoring):
             return self.scoring(self.y, pred)
         else:
-            if self.scoring in RegressionMetrics.__dict__:
+            if hasattr(RegressionMetrics, self.scoring):
                 errors = RegressionMetrics(self.y, pred)
             else:
                 errors = ClassificationMetrics(self.y, pred)
@@ -150,7 +151,9 @@ class PermutationImportance(ExplainerMixin):
             else:
                 results = {}
                 for lb in range(self.x.shape[1]):
-                    results[lb] = self._permute_importance_2d(self.x, time_step=lb, **kwargs)
+                    results[lb] = self._permute_importance_2d(self.x,
+                                                              time_step=lb,
+                                                              **kwargs)
 
         else:
             results = {}
@@ -169,7 +172,10 @@ class PermutationImportance(ExplainerMixin):
 
                     _results = {}
                     for lb in range(self.x[idx].shape[1]):
-                        _results[lb] = self._permute_importance_2d(self.x, inp_idx=idx, time_step=lb, **kwargs)
+                        _results[lb] = self._permute_importance_2d(self.x,
+                                                                   inp_idx=idx,
+                                                                   time_step=lb,
+                                                                   **kwargs)
 
                     results[idx] = _results
 
@@ -202,19 +208,22 @@ class PermutationImportance(ExplainerMixin):
 
         imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
 
-        from ai4water.utils.utils import imshow
+        from ai4water.utils.easy_mpl import imshow
 
         fig, axis = plt.subplots()
 
         lookback = imp.shape[0]
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
         axis, im = imshow(
-            imp, axis=axis,
+            imp,
+            axis=axis,
             yticklabels=ytick_labels,
             xticklabels=self.features if len(self.features) <= 10 else None,
-            ylabel="Looback steps", xlabel="Input Features",
+            ylabel="Looback steps",
+            xlabel="Input Features",
             annotate=annotate,
             title=f"Base Score {round(self._base_score(), 3)} with {ERROR_LABELS[self.scoring]}",
+            show=False,
             **kwargs
         )
 
@@ -245,14 +254,16 @@ class PermutationImportance(ExplainerMixin):
 
         if isinstance(self.importances, np.ndarray):
             fig, ax = plt.subplots()
-            self._plot_importance(self.importances, self.features, ax, show=show, save=save)
+            self._plot_importance(self.importances, self.features, ax,
+                                  show=show, save=save)
         else:
             for idx,  importance in enumerate(self.importances.values()):
                 if self.data_is_3d:
                     features = self.features
                 else:
                     features = self.features[idx]
-                ax = self._plot_importance(importance, features, show=show, save=save, name=idx)
+                ax = self._plot_importance(importance, features, show=show,
+                                           save=save, name=idx)
 
         return ax
 
@@ -283,7 +294,8 @@ class PermutationImportance(ExplainerMixin):
         # empty container to keep results
         results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)  # (num_features, n_repeats)
 
-        # todo, instead of having two for loops, we can perturb the inputs at once and concatenate
+        # todo, instead of having two for loops, we can perturb the
+        #  inputs at once and concatenate
         # them as one input and thus call the `model` only once
 
         for col_index in range(permuted_x.shape[feat_dim]):
@@ -297,9 +309,12 @@ class PermutationImportance(ExplainerMixin):
                 # the results from this function will not be reproducible with
                 # sklearn and vice versa
                 if time_step is None:
-                    perturbed_feature = np.random.permutation(permuted_x[:, col_index])
+                    perturbed_feature = np.random.permutation(
+                        permuted_x[:, col_index])
                 else:
-                    perturbed_feature = np.random.permutation(permuted_x[:, time_step, col_index])
+                    perturbed_feature = np.random.permutation(
+                        permuted_x[:, time_step, col_index]
+                    )
 
                 if self.noise is not None:
                     if self.use_noise_only:
@@ -375,7 +390,10 @@ class PermutationImportance(ExplainerMixin):
 
         return results
 
-    def _plot_importance(self, imp,  features, axes=None, show=False, save=False, name=None):
+    def _plot_importance(self, imp,
+                         features, axes=None, show=False,
+                         save=False,
+                         name=None):
         if axes is None:
             axes = plt.gca()
 
@@ -387,15 +405,16 @@ class PermutationImportance(ExplainerMixin):
             labels=np.array(features)[perm_sorted_idx],
         )
 
-        axes.set_xlabel(ERROR_LABELS[self.scoring])
+        axes.set_xlabel(ERROR_LABELS.get(self.scoring, self.scoring))
 
         axes.set_title(f"Base Score {round(self._base_score(), 3)}")
 
+        if save:
+            name = name or ''
+            fname = os.path.join(self.path, f"box_plot_{name}_{self.n_repeats}_{self.scoring}")
+            plt.savefig(fname, bbox_inches="tight")
+
         if show:
             plt.show()
-
-        if save:
-            fname = os.path.join(self.path, f"box_plot_{name}")
-            plt.savefig(fname, bbox_inches="tight")
 
         return axes

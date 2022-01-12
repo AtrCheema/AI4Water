@@ -14,13 +14,13 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.models.tensorflow.private_layers import ConditionalRNN
 
 inputs = ["tide_cm", "wat_temp_c", "sal_psu", "air_temp_c", "pcp_mm", "pcp3_mm", "pcp6_mm" ,"pcp12_mm"]
 outputs = ['tetx_coppml']
 
-data = arg_beach(inputs, outputs)
+data = busan_beach(inputs, outputs)
 
 
 def build_model(layers, lookback):
@@ -28,7 +28,6 @@ def build_model(layers, lookback):
         input_features=inputs,
         output_features=outputs,
         lookback=lookback,
-        data=data,
         verbosity=0
     )
     return model
@@ -49,7 +48,7 @@ class TestBuiltTFConfig(unittest.TestCase):
 
 
         assert model.trainable_parameters() == 3201
-        assert model.nn_layers().__len__() == 8
+        assert model.nn_layers().__len__() == 7
         return
 
     def test_lstm(self):
@@ -63,7 +62,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             12)
 
         assert model.trainable_parameters() == 31137
-        assert model.nn_layers().__len__() == 6
+        assert model.nn_layers().__len__() == 5
 
     def test_1dcnn(self):
 
@@ -78,7 +77,7 @@ class TestBuiltTFConfig(unittest.TestCase):
                   },
         12)
         assert model.trainable_parameters() == 5377
-        assert model.nn_layers().__len__() == 9
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_lstmcnn(self):
@@ -95,7 +94,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
             12)
         assert model.trainable_parameters() == 31233
-        assert model.nn_layers().__len__() == 10
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_convlstm(self):
@@ -110,7 +109,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
             12)
         assert model.trainable_parameters() == 187265
-        assert model.nn_layers().__len__() == 7
+        assert model.nn_layers().__len__() == 6
 
     def test_cnnlstm(self):
         sub_sequences = 3
@@ -142,7 +141,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         15)
 
         assert model.trainable_parameters() == 39697
-        assert model.nn_layers().__len__() == 15
+        assert model.nn_layers().__len__() == 14
         return
 
     def test_lstm_autoenc(self):
@@ -156,7 +155,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         }, 12)
         assert model.trainable_parameters() == 124101
-        assert model.nn_layers().__len__() == 8
+        assert model.nn_layers().__len__() == 7
         return
 
     def test_tcn(self):
@@ -173,7 +172,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             'Dense': 1
         }, 12)
         assert model.trainable_parameters() == 92545
-        assert model.nn_layers().__len__() == 4
+        assert model.nn_layers().__len__() == 3
 
     def test_multi_inputs(self):
 
@@ -197,7 +196,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense_2": 1
         }, 5)
         assert model.trainable_parameters() == 20857
-        assert model.nn_layers().__len__() == 10
+        assert model.nn_layers().__len__() == 9
 
     def test_multi_output(self):
 
@@ -222,7 +221,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
         15)
         assert model.trainable_parameters() == 31491
-        assert model.nn_layers().__len__() == 9
+        assert model.nn_layers().__len__() == 8
         return
 
     def test_add_args(self):
@@ -253,7 +252,7 @@ class TestBuiltTFConfig(unittest.TestCase):
             "Dense": 1
         }, 15)
         assert model.trainable_parameters() == 50243
-        assert model.nn_layers().__len__() == 10
+        assert model.nn_layers().__len__() == 9
         return
 
     def test_custom_layer(self):
@@ -310,7 +309,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         },
         10)
         assert model.trainable_parameters() == 5281
-        assert model.nn_layers().__len__() == 5
+        assert model.nn_layers().__len__() == 4
         return
 
 

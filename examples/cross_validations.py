@@ -1,31 +1,30 @@
 
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
+
+data = busan_beach()
 
 model = Model(
     model={'RandomForestRegressor': {}},
-    data=arg_beach(),
     cross_validator={'TimeSeriesSplit': {'n_splits': 5}},
     val_metric="r2"
 )
 
-tssplit_score = model.cross_val_score()
+tssplit_score = model.cross_val_score(data=data)
 
 model = Model(
     model={'RandomForestRegressor': {}},
-    data=arg_beach(),
     cross_validator={'KFold': {'n_splits': 5}},
     val_metric="r2"
 )
 
-kfold_score = model.cross_val_score()
+kfold_score = model.cross_val_score(data=data)
 
 model = Model(
     model={'RandomForestRegressor': {}},
-    data=arg_beach(),
     cross_validator={'LeaveOneOut': {}},
     val_metric="mse"
 )
 
-loo_score = model.cross_val_score()
+loo_score = model.cross_val_score(data=data)

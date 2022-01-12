@@ -21,18 +21,18 @@ else:
     from ai4water import Model
 
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 
 
 def test_evaluation(model):
 
-    model.evaluate('training')
+    model.evaluate(data='training')
     train_x, train_y = model.training_data()
 
-    model.evaluate('validation')
+    model.evaluate(data='validation')
     val_data = model.validation_data()
 
-    model.evaluate('test')
+    model.evaluate(data='test')
     test_data = model.test_data()
     if not isinstance(test_data, tf.data.Dataset):
         test_x, test_y = test_data
@@ -62,18 +62,18 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation
 
     df = pd.DataFrame(np.concatenate([X, y], axis=1), columns=input_features + outputs)
 
-    model = Model(data=df,
-                  model={'layers': {
-                      'Dense_0': 10,
-                      'Flatten': {},
-                      'Dense_1': n_classes,
-                      'Activation': activation}},
-                  input_features=input_features,
-                  loss=loss,
-                  output_features=outputs,
-                  verbosity=0,
-                  )
-    model.fit()
+    model = Model(
+        model={'layers': {
+            'Dense_0': 10,
+            'Flatten': {},
+            'Dense_1': n_classes,
+            'Activation': activation}},
+        input_features=input_features,
+        loss=loss,
+        output_features=outputs,
+        verbosity=0,
+    )
+    model.fit(data=df)
     test_evaluation(model)
 
     assert model.mode == 'classification'
@@ -149,15 +149,15 @@ class TestClassifications(unittest.TestCase):
         model = Model(
             model= {'layers': {'LSTM': {'units': 32},
                                'Dense': {'units': 2},
-                               'Reshape': {'target_shape': (2,1)}}},
+                               }},
             lookback=5,
+            input_features=busan_beach().columns.tolist()[0:-1],
             output_features = ['blaTEM_coppml', 'tetx_coppml'],
-            data=arg_beach(target=['blaTEM_coppml', 'tetx_coppml']),
             verbosity=0
         )
 
-        model.fit()
-        t,p = model.predict(return_true=True)
+        model.fit(data=busan_beach(target=['blaTEM_coppml', 'tetx_coppml']))
+        t,p = model.predict(data='test', return_true=True)
 
         assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
 

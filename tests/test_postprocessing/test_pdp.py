@@ -1,10 +1,16 @@
+import time
 import unittest
 
 import matplotlib.pyplot as plt
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing.explain import PartialDependencePlot
+
+
+data = busan_beach()
+input_features = data.columns.tolist()[0:-1]
+output_features = data.columns.tolist()[-1:]
 
 
 def test_plot_1d_plots(pdp):
@@ -22,40 +28,43 @@ class TestPDP(unittest.TestCase):
 
     def test_2d_data_single_input(self):
         model = Model(model="XGBRegressor",
-                      data=arg_beach(), verbosity=0)
+                      verbosity=0)
 
-        model.fit()
+        model.fit(data=data)
         x, _ = model.training_data()
 
-        pdp = PartialDependencePlot(model.predict, x, model.dh.input_features, num_points=14)
+        pdp = PartialDependencePlot(model.predict, x, model.input_features, num_points=14)
 
         test_plot_1d_plots(pdp)
 
         return
 
     def test_3d_single_input(self):
-        model = Model(model={"layers": {"LSTM": 32}},
+        time.sleep(1)
+        model = Model(model={"layers": {"LSTM": 32, "Dense": 1}},
                       lookback=4,
+                      input_features=input_features,
+                      output_features=output_features,
                       verbosity=0,
-                      data=arg_beach())
+                      )
+
+        model.fit(data=data)
 
         x, _ = model.training_data()
 
-        pdp = PartialDependencePlot(model.predict, x, model.dh.input_features, verbose=0, num_points=14)
+        pdp = PartialDependencePlot(model.predict, x, model.input_features, verbose=0, num_points=14)
         test_plot_1d_plots(pdp)
         return
 
     def test_interactions_2d_single_data(self):
-        model = Model(model="XGBRegressor",
-                      data=arg_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu',
-                                             'air_temp_c', 'pcp_mm', 'pcp3_mm',
-                                             'rel_hum']),
-                      verbosity=0)
+        model = Model(model="XGBRegressor", verbosity=0)
 
-        model.fit()
+        model.fit(data=busan_beach(inputs=['tide_cm', 'wat_temp_c', 'sal_psu',
+                                             'air_temp_c', 'pcp_mm', 'pcp3_mm',
+                                             'rel_hum']))
         x, _ = model.training_data()
 
-        pdp = PartialDependencePlot(model.predict, x, model.dh.input_features, num_points=14)
+        pdp = PartialDependencePlot(model.predict, x, model.input_features, num_points=14)
 
         pdp.nd_interactions(show_dist=True, show=False)
 

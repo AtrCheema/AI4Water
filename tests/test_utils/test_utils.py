@@ -18,7 +18,7 @@ else:
     from ai4water import Model
 
 from ai4water.functional import Model as FModel
-from ai4water.datasets import load_nasdaq, arg_beach
+from ai4water.datasets import load_nasdaq, busan_beach
 from ai4water.utils.utils import TrainTestSplit, ts_features, prepare_data, Jsonize
 
 
@@ -42,6 +42,7 @@ data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).tra
 
 lookback=7
 batch_size=16
+busan_beach = busan_beach()
 
 
 def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None, input_cols=None):
@@ -67,11 +68,14 @@ def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=N
 
 def get_layers(o=1, forecast_len=1):
 
-    return {
+    _layers = {
             "LSTM": {"units": 1},
-            "Dense": {"units": o*forecast_len },
-            "Reshape": {"target_shape": (o, forecast_len)}
+            "Dense": {"units": o*forecast_len }
         }
+
+    if forecast_len>1:
+        _layers.update({"Reshape": {"target_shape": (o, forecast_len)}})
+    return _layers
 
 
 default_model = {
@@ -79,18 +83,15 @@ default_model = {
         "Dense_0": {'units': 64, 'activation': 'relu'},
         "Flatten": {},
         "Dense_3": 1,
-        "Reshape": {"target_shape": (1, 1)}
     }
 }
 
 def build_model(**kwargs):
 
     model = Model(
-        data=data1.astype(np.float32),
         verbosity=0,
         batch_size=batch_size,
         lookback=lookback,
-        transformation=None,  # todo, test with transformation
         epochs=1,
         **kwargs
     )
@@ -100,10 +101,8 @@ def build_model(**kwargs):
 
 def train_predict(model):
 
+    model.fit(data=data1.astype(np.float32))
     x, y = model.training_data()
-
-    model.fit()
-    model.predict()
 
     test_evaluation(model)
 
@@ -114,15 +113,16 @@ def test_train_val_test_data(data, val_data, **kwargs):
 
     model = Model(
         model=default_model,
-        data=data,
         val_data=val_data,
         test_fraction=0.2,
+        input_features=data.columns.to_list()[0:-1],
+        output_features=data.columns.to_list()[-1:],
         epochs=2,
         verbosity=0,
         **kwargs
     )
 
-    model.fit()
+    model.fit(data=data)
 
     train_x, train_y = model.training_data()
     _val_data = model.validation_data()
@@ -152,13 +152,13 @@ def test_train_val_test_data(data, val_data, **kwargs):
 
 def test_evaluation(model):
 
-    model.evaluate('training')
+    model.evaluate(data='training')
     train_x, train_y = model.training_data()
 
-    model.evaluate('validation')
+    model.evaluate(data='validation')
     val_data = model.validation_data()
 
-    model.evaluate('test')
+    model.evaluate(data='test')
     test_x, test_y = model.test_data()
 
     if model.config['val_data'] == "same":
@@ -175,7 +175,7 @@ def test_evaluation(model):
 class TestUtils(unittest.TestCase):
 
     """
-    I also build, train and predict from the model so that it is confirmed that everything works
+    I also build the model so that it is confirmed that everything works
     with different input/output shapes.
     """
 
@@ -210,7 +210,7 @@ class TestUtils(unittest.TestCase):
         x, y = train_predict(model)
 
         self.assertEqual(model.num_outs, 5)
-        self.assertEqual(model.ins, 1)
+        self.assertEqual(model.num_ins, 1)
         self.assertEqual(model.forecast_step, 0)
 
         self.assertEqual(int(x[0].sum()), 91)
@@ -402,20 +402,20 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_same_val_data_with_st_en_defined(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data=np.arange(165).tolist(), val_data="same")
+        x, y = test_train_val_test_data(data=busan_beach, train_data=np.arange(165).tolist(), val_data="same")
         return
 
     def test_same_val_data_with_random(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data='random', val_data="same")
+        x, y = test_train_val_test_data(data=busan_beach, train_data='random', val_data="same")
         return
 
     def test_with_st_en_defined(self):
         time.sleep(1)
-        test_train_val_test_data(data=arg_beach(), train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
+        test_train_val_test_data(data=busan_beach, train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
         return
 
     def test_with_random(self):
-        x, y = test_train_val_test_data(data=arg_beach(), train_data='random', val_data=None, val_fraction=0.0)
+        x, y = test_train_val_test_data(data=busan_beach, train_data='random', val_data=None, val_fraction=0.0)
         return
 
     def test_train_val_split(self):
@@ -487,43 +487,10 @@ class TestUtils(unittest.TestCase):
         assert tr_x.shape[-1] == x1.shape[-1]
         return
 
-    def test_stats(self):
-        d = ts_features(np.random.random(10))
-        self.assertGreater(len(d), 1)
-        return
-
-    def test_stats_pd(self):
-        d = ts_features(pd.Series(np.random.random(10)))
-        self.assertGreater(len(d), 1)
-        return
-
-    def test_stats_list(self):
-        d = ts_features(np.random.random(10).tolist())
-        self.assertGreater(len(d), 1)
-        return
-
-    def test_stats_slice(self):
-        d = ts_features(np.random.random(100), st=10, en=50)
-        self.assertEqual(d['Counts'], 40)
-        return
-
-    def test_ts_features_numbers(self):
-        # test that all the features are calculated
-        d = ts_features(np.random.random(100))
-        self.assertEqual(len(d), 21)
-        return
-
-    def test_ts_features_single_feature(self):
-        # test that only one feature can be calculated
-        d = ts_features(np.random.random(10), features=['Shannon entropy'])
-        self.assertEqual(len(d), 1)
-        return
-
     def test_datetimeindex(self):
         # makes sure that using datetime_index=True during prediction, the returned values are in correct order
         time.sleep(1)
         model = Model(
-            data=data1.astype(np.float32),
             input_features=in_cols,
             output_features=out_cols,
             epochs=2,
@@ -534,11 +501,10 @@ class TestUtils(unittest.TestCase):
             train_data='random',
             verbosity=0)
 
-        model.fit()
-        t,p = model.predict(return_true=True)
+        t,p = model.predict(data=data1.astype(np.float32),return_true=True)
         # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
         for i in range(100):
-            idx = model.dh.test_indices[i] + model.lookback - 1
+            idx = model.dh_.test_indices[i] + model.lookback - 1
             true = int(round(t[i].item()))
             self.assertEqual(true, idx + 10000)
         test_evaluation(model)
@@ -552,18 +518,16 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       output_features=['out1'],
                       model=default_model,
-                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
-                      data=df,
                       train_data='random',
                       verbosity=0
                       )
 
-        model.fit()
+        model.fit(data=df)
         idx5 = [50,   0,  72, 153,  39,  31, 170,   8]  # last 8 train indices
-        self.assertTrue(np.allclose(idx5, model.dh.train_indices[-8:]))
+        self.assertTrue(np.allclose(idx5, model.dh_.train_indices[-8:]))
 
         x, y = model.training_data()
 
@@ -582,8 +546,12 @@ class TestUtils(unittest.TestCase):
         #self.assertAlmostEqual(float(yy[2]), df['out1'][df['out1'].notnull()].iloc[10]) # todo
         #self.assertTrue(np.allclose(xx[2, -1], df[['in1', 'in2']][df['out1'].notnull()].iloc[10])) # todo
 
-        assert np.max(model.dh.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.dh.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        test_indices = model.dh_.test_indices
+        train_indices = model.dh_.train_indices
+        _data = model.dh_.data
+
+        assert np.max(test_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        assert np.max(train_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
 
         test_evaluation(model)
 
@@ -599,23 +567,20 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       model=default_model,
                       output_features=['out1'],
-                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
-                      data=df,
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
                       train_data = 'random',
                       verbosity=0)
 
-        model.fit()
-
+        model.fit(data=df)
         x, y = model.training_data()
 
         test_evaluation(model)
 
         for i in range(100):
-            idx = model.dh.train_indices[i]
+            idx = model.dh_.train_indices[i]
             df_x = df[['in1', 'in2']].iloc[idx]
             if idx > model.lookback and int(df_x.isna().sum()) == 0:
                 self.assertAlmostEqual(float(df['out1'].iloc[idx+14]), y[i], 6)
@@ -633,16 +598,14 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       output_features=['out1'],
                       model=default_model,
-                      transformation=None,
                       val_data='same',
                       test_fraction=0.3,
                       epochs=1,
-                      data=df,
                       train_data='random',
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
                       verbosity=0)
 
-        model.fit()
+        model.fit(data=df)
 
         x, y = model.training_data()
 
@@ -655,8 +618,12 @@ class TestUtils(unittest.TestCase):
         #         self.assertAlmostEqual(float(df['out1'].iloc[idx]), y[i], 6)
         #         self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1]))
 
-        assert np.max(model.dh.test_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
-        assert np.max(model.dh.train_indices) < (model.data.shape[0] - int(model.data[model.output_features].isna().sum()))
+        test_indices = model.dh_.test_indices
+        train_indices = model.dh_.train_indices
+        _data = model.dh_.data
+
+        assert np.max(test_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        assert np.max(train_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
 
         return
 
@@ -681,9 +648,9 @@ class TestUtils(unittest.TestCase):
                           output_features=['out1', 'out2'],
                           epochs=10,
                           verbosity=0,
-                          data=df)
+                          )
 
-            history = model.fit()
+            history = model.fit(data=df)
 
             self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
@@ -704,7 +671,6 @@ class TestUtils(unittest.TestCase):
                 "Reshape": {"target_shape": (2 ,1)}}
 
             model = FModel(allow_nan_labels=1,  # todo, make sure that model-subclassing also work
-                          transformation=None,
                           model={'layers': layers},
                           input_features=['in1', 'in2'],
                           output_features=['out1', 'out2'],
@@ -712,9 +678,9 @@ class TestUtils(unittest.TestCase):
                           verbosity=0,
                           batch_size=4,
                           train_data = 'random',
-                          data=df.copy())
+                          )
 
-            history = model.fit()
+            history = model.fit(data=df.copy())
 
             self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
             self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
@@ -754,26 +720,42 @@ class TestUtils(unittest.TestCase):
     #         np.allclose(testy[4][0], df[['out1']].iloc[29])
     #         return
 
-    def test_jsonize(self):
-        a = [np.array([2.0])]
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, list))
-        self.assertTrue(isinstance(b[0], float))
+class TestTSFeatures(unittest.TestCase):
+
+    def test_stats(self):
+        d = ts_features(np.random.random(10))
+        self.assertGreater(len(d), 1)
         return
 
-    def test_jsonize_nested_dict(self):
-        a = {'a': {'b': {'c': {'d': {'e': np.array([2])}}}}}
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, dict))
-        self.assertTrue(isinstance(b['a']['b']['c']['d']['e'], int))
+    def test_stats_pd(self):
+        d = ts_features(pd.Series(np.random.random(10)))
+        self.assertGreater(len(d), 1)
         return
 
-    def test_jsonize_none(self):
-        a = [None]
-        b = Jsonize(a)()
-        self.assertTrue(isinstance(b, list))
-        self.assertTrue(isinstance(b[0], type(None)))
+    def test_stats_list(self):
+        d = ts_features(np.random.random(10).tolist())
+        self.assertGreater(len(d), 1)
         return
+
+    def test_stats_slice(self):
+        d = ts_features(np.random.random(100), st=10, en=50)
+        self.assertEqual(d['Counts'], 40)
+        return
+
+    def test_ts_features_numbers(self):
+        # test that all the features are calculated
+        d = ts_features(np.random.random(100))
+        self.assertEqual(len(d), 21)
+        return
+
+    def test_ts_features_single_feature(self):
+        # test that only one feature can be calculated
+        d = ts_features(np.random.random(10), features=['Shannon entropy'])
+        self.assertEqual(len(d), 1)
+        return
+
+
+class TestPrepareData(unittest.TestCase):
 
     def test_prepare_data0(self):
         # vanilla case of time series forecasting
@@ -857,6 +839,29 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(x), 33)
         return
 
+
+class TestJsonize(unittest.TestCase):
+
+    def test_jsonize(self):
+        a = [np.array([2.0])]
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, list))
+        self.assertTrue(isinstance(b[0], float))
+        return
+
+    def test_jsonize_nested_dict(self):
+        a = {'a': {'b': {'c': {'d': {'e': np.array([2])}}}}}
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, dict))
+        self.assertTrue(isinstance(b['a']['b']['c']['d']['e'], int))
+        return
+
+    def test_jsonize_none(self):
+        a = [None]
+        b = Jsonize(a)()
+        self.assertTrue(isinstance(b, list))
+        self.assertTrue(isinstance(b[0], type(None)))
+        return
 
 if __name__ == "__main__":
     unittest.main()

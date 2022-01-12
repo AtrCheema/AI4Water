@@ -12,7 +12,8 @@ from ai4water.backend import tf, keras
 
 import ai4water.keract_mod as keract
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import maybe_three_outputs, imshow
+from ai4water.utils.utils import maybe_three_outputs
+from ai4water.utils.easy_mpl import imshow
 
 from ..utils import choose_examples
 
@@ -49,25 +50,28 @@ RNN_INFO = {"LSTM": {'rnn_type': 'LSTM',
 
 CMAPS = [
     'jet_r', 'ocean_r', 'viridis_r', 'BrBG',
-    'GnBu', 'crest_r', 'Blues_r', 'bwr_r',
-    'flare', 'YlGnBu'
+    'GnBu',
+    #'crest_r',
+    'Blues_r', 'bwr_r',
+    #'flare',
+    'YlGnBu'
 ]
 
 
 TREE_BASED_MODELS = [
-    "DECISIONTREEREGRESSOR",
-    "EXTRATREEREGRESSOR",
-    "XGBOOSTRFREGRESSOR",
-    "XGBOOSTREGRESSOR",
-    "CATBOOSTREGRESSOR",
-    "LGBMREGRESSOR",
+    "DecisionTreeRegressor",
+    "ExtraTreeRegressor",
+    "XGBRFRegressor",
+    "XGBRegressor",
+    "CatBoostRegressor",
+    "LGBMRegressor",
 
-    "DECISIONTREECLASSIFIER",
-    "EXTRATREECLASSIFIER",
-    "XGBOOSTCLASSIFIER",
-    "XGBOOSTRFCLASSIFIER",
-    "CATBOOSTCLASSIFIER",
-    "LGBMCLASSIFIER"
+    "DecisionTreeClassifier",
+    "ExtraTreeClassifier",
+    "XGBClassifier",
+    "XGBRFClassifier",
+    "CatBoostClassifier",
+    "LGBMClassifier"
 
 ]
 
@@ -118,7 +122,7 @@ class Visualize(Plots):
 
         Plots.__init__(self,
                        self.vis_path,
-                       model.problem,
+                       model.mode,
                        model.category,
                        config=model.config)
 
@@ -134,7 +138,8 @@ class Visualize(Plots):
 
         if self.model.category == "DL":
             self.activations(layer_name, data, x, examples_to_use, show=show)
-            self.activation_gradients(layer_name, x=x, y=y, examples_to_use=examples_to_use, show=show)
+            self.activation_gradients(layer_name, x=x, y=y,
+                                      examples_to_use=examples_to_use, show=show)
             self.weights(layer_name, show=show)
             self.weight_gradients(layer_name, data=data, x=x, y=y, show=show)
         else:
@@ -146,7 +151,8 @@ class Visualize(Plots):
     def get_activations(self,
                         layer_names: Union[list, str] = None,
                         x=None,
-                        data: str = 'training'
+                        data: str = 'training',
+                        batch_size=None,
                         ) -> dict:
         """gets the activations/outputs of any layer of the Keras Model.
 
@@ -162,16 +168,37 @@ class Visualize(Plots):
             of those layers as numpy arrays
         """
         if x is None:
-            # if layer names are not specified, this will get get activations of allparameters
-            data = getattr(self.model, f'{data}_data')()
-            x, _ = maybe_three_outputs(data, self.model.dh.teacher_forcing)
+            # if layer names are not specified, this will get get activations
+            # of allparameters
+            x, _ = getattr(self.model, f'{data}_data')()
+            #x, _ = maybe_three_outputs(data, self.model.teacher_forcing)
 
         if self.model.api == "subclassing":
             dl_model = self.model
         else:
             dl_model = self.model._model
 
-        activations = keract.get_activations(dl_model, x, layer_names=layer_names, auto_compile=True)
+        if isinstance(x, list):
+            num_examples = len(x[0])
+        elif isinstance(x, np.ndarray):
+            num_examples = len(x)
+        else:
+            raise ValueError
+
+        if batch_size:
+            # feed each batch and get activations per batch
+            assert isinstance(layer_names, str)
+            _activations = []
+            for batch in range(num_examples // batch_size):
+                batch_x = _get_batch_input(x, batch, batch_size)
+                batch_activations = keract.get_activations(dl_model, batch_x, layer_names=layer_names,
+                                                 auto_compile=True)
+                assert len(batch_activations) == 1  # todo
+                _activations.append(list(batch_activations.values())[0])
+            activations = {layer_names: np.concatenate(_activations)}
+        else:
+            activations = keract.get_activations(dl_model, x, layer_names=layer_names,
+                                             auto_compile=True)
 
         return activations
 
@@ -193,8 +220,6 @@ class Visualize(Plots):
             examples_to_use : If integer, it will be the number of examples to use.
                 If array like, it will be the indices of examples to use.
             show :
-            save:
-                whether to save the plot or not
         """
         activations = self.get_activations(x=x, data=data)
 
@@ -214,13 +239,15 @@ class Visualize(Plots):
         for lyr_name, activation in activations.items():
 
             if lyr_name in layer_names:
-                # activation may be tuple e.g if input layer receives more than 1 input
+                # activation may be tuple e.g if input layer receives more than
+                # 1 input
                 if isinstance(activation, np.ndarray):
 
                     if activation.ndim == 2 and examples_to_use is None:
                         examples_to_use = len(activation)
 
-                    self._plot_activations(activation, lyr_name, examples_to_use, show)
+                    self._plot_activations(activation, lyr_name, examples_to_use,
+                                           show)
 
                 elif isinstance(activation, tuple):
                     for act in activation:
@@ -252,18 +279,20 @@ class Visualize(Plots):
                                  vmax=1
                                  )
             else:
-                self._imshow(activation, f"{lyr_name} Activations", fname=lyr_name, show=show,
+                self._imshow(activation, f"{lyr_name} Activations", fname=lyr_name,
+                             show=show,
                              ylabel="Examples", xlabel="LSTM units",
                              cmap=random.choice(CMAPS))
 
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             if "lstm" in lyr_name.lower():
                 kwargs['xlabel'] = "LSTM units"
-            self._imshow(activation, lyr_name + " Activations", show=show, fname=lyr_name, **kwargs)
+            self._imshow(activation, lyr_name + " Activations", show=show,
+                         fname=lyr_name, **kwargs)
 
         elif np.ndim(activation) == 3:
             if "input" in lyr_name.lower():
-                kwargs['xticklabels'] = self.model.dh.input_features
+                kwargs['xticklabels'] = self.model.input_features
             self._imshow_3d(activation, lyr_name, save=show, **kwargs, where='')
         elif np.ndim(activation) == 2:  # this is now 1d
             # shape= (?, 1)
@@ -323,7 +352,8 @@ class Visualize(Plots):
 
                     if np.ndim(weight) == 2 and weight.shape[1] > 1:
 
-                        self._imshow(weight, title, show=show, fname=fname, rnn_args=rnn_args)
+                        self._imshow(weight, title, show=show, fname=fname,
+                                     rnn_args=rnn_args)
 
                     elif len(weight) > 1 and np.ndim(weight) < 3:
                         self.plot1d(weight, title, show, fname, rnn_args=rnn_args)
@@ -332,7 +362,8 @@ class Visualize(Plots):
                         _name = _name.replace("/", "_")
                         _name = _name.replace(":", "_")
                         self.features_2d(data=weight, save=show, name=_name,
-                                         slices=64, slice_dim=2, tight=True, borderwidth=1,
+                                         slices=64, slice_dim=2, tight=True,
+                                         borderwidth=1,
                                          vmin=-.1, vmax=.1)
                     else:
                         print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
@@ -363,7 +394,8 @@ class Visualize(Plots):
             data = getattr(self.model, f'{data}_data')()
             x, y = maybe_three_outputs(data)
 
-        return keract.get_gradients_of_activations(self.model, x, y, layer_names=layer_names)
+        return keract.get_gradients_of_activations(self.model, x, y,
+                                                   layer_names=layer_names)
 
     def activation_gradients(
             self,
@@ -378,19 +410,22 @@ class Visualize(Plots):
         """Plots the gradients o activations/outputs of layers
 
         Arguments:
-            layer_names : the layer name for which the gradients of its outputs are to be plotted.
+            layer_names : the layer name for which the gradients of its outputs
+                are to be plotted.
             data : the data to be used for calculating gradients
             x : alternative to data
             y : alternative to data
-            examples_to_use : the examples from the data to use. If None, then all examples
-                will be used, which is equal to the length of data.
+            examples_to_use : the examples from the data to use. If None, then all
+                examples will be used, which is equal to the length of data.
             plot_type :
             show :
         """
         if plot_type == "2D":
-            return self.activation_gradients_2D(layer_names, data, x, y, examples_to_use, show)
+            return self.activation_gradients_2D(layer_names, data, x, y,
+                                                examples_to_use, show)
 
-        return self.activation_gradients_1D(layer_names, data, x, y, examples_to_use, show)
+        return self.activation_gradients_1D(layer_names, data, x, y, examples_to_use,
+                                            show)
 
     def activation_gradients_2D(self,
                                 layer_names=None,
@@ -412,7 +447,8 @@ class Visualize(Plots):
             show :
         """
 
-        gradients = self.get_activation_gradients(layer_names=layer_names, data=data, x=x, y=y)
+        gradients = self.get_activation_gradients(layer_names=layer_names,
+                                                  data=data, x=x, y=y)
 
         return self._plot_act_grads(gradients, examples_to_use, show=show)
 
@@ -433,7 +469,8 @@ class Visualize(Plots):
             y :
             show :
         """
-        gradients = self.get_activation_gradients(layer_names=layer_names, data=data, x=x, y=y)
+        gradients = self.get_activation_gradients(layer_names=layer_names,
+                                                  data=data, x=x, y=y)
 
         for lyr_name, gradient in gradients.items():
             fname = lyr_name + "_output_grads"
@@ -469,7 +506,8 @@ class Visualize(Plots):
             if "LSTM" in lyr_name.upper() and np.ndim(gradient) in (2, 3):
 
                 if gradient.ndim == 2:
-                    self._imshow(gradient, fname=fname, label=title, show=show, xlabel="LSTM units")
+                    self._imshow(gradient, fname=fname, label=title, show=show,
+                                 xlabel="LSTM units")
                 else:
                     self.features_2d(gradient, name=fname,
                                      title=indices, show=show,
@@ -560,7 +598,8 @@ class Visualize(Plots):
 
             for lyr_name, gradient in gradients.items():
 
-                if lyr_to_plot in lyr_name:  # because lyr_name is most likely larger
+                # because lyr_name is most likely larger
+                if lyr_to_plot in lyr_name:
 
                     title = lyr_name + "Weight Gradients"
                     fname = lyr_name + '_weight_grads'
@@ -571,13 +610,16 @@ class Visualize(Plots):
                                     'gate_names_str': "(input, forget, cell, output)"}
 
                         if np.ndim(gradient) == 3:
-                            self.rnn_histogram(gradient, name=fname, title=title, show=show)
+                            self.rnn_histogram(gradient, name=fname, title=title,
+                                               show=show)
 
                     if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                        self._imshow(gradient, title, show=show, fname=fname, rnn_args=rnn_args)
+                        self._imshow(gradient, title, show=show, fname=fname,
+                                     rnn_args=rnn_args)
 
                     elif len(gradient) and np.ndim(gradient) < 3:
-                        self.plot1d(gradient, title, show=show, fname=fname, rnn_args=rnn_args)
+                        self.plot1d(gradient, title, show=show, fname=fname,
+                                    rnn_args=rnn_args)
                     else:
                         print(f"""ignoring weight gradients for {lyr_name} because it has
                          shape {gradient.shape} {np.ndim(gradient)}""")
@@ -661,7 +703,8 @@ class Visualize(Plots):
         if rnn_histogram is None:
             warnings.warn("install see-rnn to plot rnn_histogram plot", UserWarning)
         else:
-            rnn_histogram(data, RNN_INFO["LSTM"], bins=400, savepath=save, show=show, **kwargs)
+            rnn_histogram(data, RNN_INFO["LSTM"], bins=400, savepath=save,
+                          show=show, **kwargs)
 
         return
 
@@ -672,26 +715,27 @@ class Visualize(Plots):
         if self.model.category == "ML":
             model_name = list(self.model.config['model'].keys())[0]
 
-            if model_name.upper() in TREE_BASED_MODELS:
+            if model_name in TREE_BASED_MODELS:
 
                 _fig, axis = plt.subplots(figsize=kwargs.get('figsize', (10, 10)))
 
-                if model_name.upper().startswith("XGB"):
+                if model_name.startswith("XGB"):
                     # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.plot_tree
                     xgboost.plot_tree(self.model._model, ax=axis, **kwargs)
 
-                elif model_name.upper().startswith("CATBOOST"):
+                elif model_name.startswith("Cat"):
 
                     gv_object = self.model._model.plot_tree(0, **kwargs)
                     if show:
                         gv_object.view()
                     gv_object.save(filename="decision_tree", directory=self.path)
 
-                elif model_name.upper().startswith("LGBM"):
+                elif model_name.startswith("LGBM"):
                     lightgbm.plot_tree(self.model._model, ax=axis, **kwargs)
 
                 else:  # sklearn types
-                    plot_tree(self.model._model, feature_names=self.model.dh.input_features,
+                    plot_tree(self.model._model,
+                              feature_names=self.model.input_features,
                               ax=axis, **kwargs)
 
                 plt.savefig(fname, dpi=500)
@@ -706,8 +750,8 @@ class Visualize(Plots):
     def decision_tree_leaves(self, save=True, data='training'):
         """Plots dtreeviz related plots if dtreeviz is installed"""
 
-        model = list(self.config['model'].keys())[0].upper()
-        if model in ["DECISIONTREEREGRESSON", "DECISIONTREECLASSIFIER"]:
+        model = list(self.config['model'].keys())[0]
+        if model in ["DecisionTreeRegressor", "DecisionTreeClassifier"]:
 
             if trees is None:
                 print("dtreeviz related plots can not be plotted")
@@ -720,7 +764,8 @@ class Visualize(Plots):
                 trees.viz_leaf_samples(self.model._model, x, self.in_cols)
                 self.save_or_show(save, fname="viz_leaf_samples", where="plots")
 
-                trees.ctreeviz_leaf_samples(self.model._model, x, y, self.in_cols)
+                trees.ctreeviz_leaf_samples(self.model._model, x, y,
+                                            self.in_cols)
                 self.save_or_show(save, fname="ctreeviz_leaf_samples", where="plots")
         return
 
@@ -801,13 +846,17 @@ def features_2D(data,
         title = np.arange(num_subplots)
 
     for idx, ax in enumerate(axis.flat):
-        axis, im = imshow(data[idx], axis=ax, cmap=cmap, vmin=vmin, vmax=vmax, title=title[idx])
+        axis, im = imshow(data[idx],
+                          axis=ax, cmap=cmap, vmin=vmin, vmax=vmax,
+                          title=title[idx],
+                          show=False)
 
     if sup_xlabel:
         fig.text(0.5, 0.04, sup_xlabel, ha='center', fontsize=20)
 
     if sup_ylabel:
-        fig.text(0.04, 0.5, sup_ylabel, va='center', rotation='vertical', fontsize=20)
+        fig.text(0.04, 0.5, sup_ylabel, va='center', rotation='vertical',
+                 fontsize=20)
 
     fig.subplots_adjust(hspace=0.2)
 
@@ -865,3 +914,15 @@ def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, title=
     if show:
         plt.show()
     return
+
+
+def _get_batch_input(inp, batch_idx, batch_size):
+    if isinstance(inp, list):
+        batch_inp = []
+        for x in inp:
+            st = batch_idx*batch_size
+            batch_inp.append(x[st: st+batch_size])
+    else:
+        st = batch_idx * batch_size
+        batch_inp = inp[st: st+batch_size]
+    return batch_inp

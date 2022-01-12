@@ -1,3 +1,4 @@
+import time
 import unittest
 import os
 import sys
@@ -18,7 +19,7 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.postprocessing import Interpret
 from ai4water import InputAttentionModel, DualAttentionModel
 
@@ -27,7 +28,6 @@ default_model = {
         "Dense_0": {'units': 64, 'activation': 'relu'},
         "Flatten": {},
         "Dense_3": 1,
-        "Reshape": {"target_shape": (1, 1)}
     }
 }
 
@@ -43,49 +43,49 @@ data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).tra
                     index=pd.date_range("20110101", periods=examples, freq="D"))
 
 
+beach_data = busan_beach()
+input_features=beach_data.columns.tolist()[0:-1]
+output_features=beach_data.columns.tolist()[-1:]
+
+
 def build_model(**kwargs):
 
     model = Model(
         verbosity=0,
         batch_size=16,
-        transformation=None,  # todo, test with transformation
         epochs=1,
         **kwargs
     )
 
     return model
 
-def da_lstm_model(**kwargs):
+
+def da_lstm_model(data,
+                  **kwargs):
 
     model = DualAttentionModel(
-        data = 'CAMELS_AUS',
-        input_features = ['precipitation_AWAP',
-                           'evap_pan_SILO'],
-        output_features = ['streamflow_MLd_inclInfilled'],
-        intervals =  [("20000101", "20011231")],
-        dataset_args = {'stations': 1},
         train_data='random',
         verbosity=0,
         **kwargs
     )
 
-    _ = model.fit()
+    _ = model.fit(data=data)
 
     return model
+
 
 def ia_lstm_model(**kwargs):
-    model = InputAttentionModel(
-        data = arg_beach(),
-        verbosity=0,
-        **kwargs
-    )
 
-    _ = model.fit()
+    model = InputAttentionModel(verbosity=0, **kwargs)
+
+    _ = model.fit(data=beach_data)
 
     return model
+
 
 def lstm_with_SelfAtten(**kwargs):
     return
+
 
 def tft_model(**kwargs):
     num_encoder_steps = 30
@@ -112,11 +112,9 @@ def tft_model(**kwargs):
         "TemporalFusionTransformer": {"config": params},
         "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
         "Dense": {"config": {"units": output_size * 1}},
-        'Reshape': {'target_shape': (1, 1)},
     }
 
     model = Model(model={'layers': layers},
-                  data='CAMELS_AUS',
                   input_features=['et_morton_point_SILO',
                                   'precipitation_AWAP',
                                   'tmax_AWAP',
@@ -137,42 +135,63 @@ class TestInterpret(unittest.TestCase):
 
     def test_plot_feature_importance(self):
 
+        time.sleep(1)
         model = build_model(
             lookback=7,
-            data=data1.astype(np.float32),
             input_features=in_cols,
             output_features=out_cols,
             model=default_model
         )
+
+        model.fit(data=data1.astype(np.float32))
 
         Interpret(model).plot_feature_importance(np.random.randint(1, 10, 5))
 
         return
 
     def test_da_interpret(self):
-        m = da_lstm_model()
+        m = da_lstm_model(data='CAMELS_AUS',
+                          input_features = ['precipitation_AWAP',
+                          'evap_pan_SILO'],
+        output_features = ['streamflow_MLd_inclInfilled'],
+        intervals =  [("20000101", "20011231")],
+        dataset_args = {'stations': 1},)
         m.interpret()
         return
 
+    def test_da_without_prevy_interpret(self):
+        m = da_lstm_model(teacher_forcing=False, drop_remainder=True,
+                          data=beach_data,
+                          input_features=input_features,
+                          batch_size=8,
+                          lookback=14,
+                          output_features=output_features)
+        x,y = m.training_data()
+
+
+        m.interpret(data='training')
+        return
+
     def test_ia_interpret(self):
-        m = ia_lstm_model()
+        m = ia_lstm_model(input_features=input_features,
+                          output_features=output_features)
         m.interpret()
         return
 
     def test_ml(self):
+        time.sleep(1)
         for m in ['XGBRegressor', 'RandomForestRegressor',
                   'GradientBoostingRegressor', 'LinearRegression']:
 
-            model = build_model(model=m,
-                                data=arg_beach())
-            model.fit()
+            model = build_model(model=m)
+            model.fit(data=beach_data)
             model.interpret()
         return
 
     def test_tft(self):
 
         model = tft_model()
-        model.fit()
+        model.fit(data='CAMELS_AUS')
 
         i = Interpret(model)
 
@@ -182,12 +201,12 @@ class TestInterpret(unittest.TestCase):
         return
 
     def test_xgb_f_imp_comparison(self):
-        model = Model(model="XGBRegressor",
-                      data=arg_beach(inputs=["tide_cm", "rel_hum"]))
-        model.fit()
+        model = Model(model="XGBRegressor")
+        model.fit(data=busan_beach(inputs=["tide_cm", "rel_hum"]))
         interpreter = Interpret(model)
         interpreter.compare_xgb_f_imp()
         return
+
 
 if __name__ == "__main__":
     unittest.main()

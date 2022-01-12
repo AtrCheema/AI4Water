@@ -1,2 +1,2 @@
 """Exploratory data analysis module."""
-from ._eda import EDA
+from ._main import EDA

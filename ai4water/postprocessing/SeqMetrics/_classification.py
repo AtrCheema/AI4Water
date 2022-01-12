@@ -6,7 +6,7 @@ from sklearn.metrics import balanced_accuracy_score
 import sklearn
 
 from .utils import list_subclass_methods
-from ._SeqMetrics import Metrics
+from ._main import Metrics
 
 from ai4water.backend import get_attributes
 

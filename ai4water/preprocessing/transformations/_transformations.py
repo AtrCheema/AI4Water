@@ -1,4 +1,5 @@
 
+from scipy.special import boxcox
 
 from sklearn.preprocessing import MinMaxScaler as SKMinMaxScaler
 from sklearn.preprocessing import StandardScaler as SKStandardScaler
@@ -88,17 +89,101 @@ class RobustScaler(SKRobustScaler, ScalerWithConfig):
 
 
 class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
+    """This transformation enhances scikit-learn's PowerTransformer by allowing
+    the user to define `lambdas` parameter for each input feature. The default
+    behaviour of this transformer is same as that of scikit-learn's.
+    """
+    def __init__(self, method='yeo-johnson', *, standardize=True, copy=True,
+                 lambdas=None):
+        """
+        lambdas: float or 1d array like for each feature. If not given, it is
+            calculated from scipy.stats.boxcox(X, lmbda=None). Only available
+            if method is box-cox.
+        For complete documentation see [scikit-learn's documentation](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html)
+        """
+        if lambdas is not None:
+            if isinstance(lambdas, float):
+                lambdas = np.array([lambdas])
+            lambdas = np.array(lambdas)
+            # if given lambdas must be a 1d array
+            assert lambdas.size == len(lambdas)
+            lambdas = lambdas.reshape(-1,)
+            assert method != "yeo-johnson"
+
+        self.lambdas = lambdas
+
+        super(PowerTransformer, self).__init__(method=method, standardize=standardize,
+                                               copy=copy)
 
     @property
     def config_paras(self):
-        return ['lambdas_']
+        return ['lambdas_', 'scaler_to_standardize_']
 
+    @classmethod
+    def from_config(cls, config: dict):
+        """Build the scaler/transformer from config
+
+        Arguments:
+            config : dictionary of parameters which can be used to build transformer/scaler.
+
+        Returns :
+            An instance of scaler/transformer
+        """
+        scaler = cls(**config['params'])
+        setattr(scaler, '_config', config['config'])
+        setattr(scaler, '_from_config', True)
+
+        _scaler_config = config['config'].pop('scaler_to_standardize_')
+        setattr(scaler, '_scaler', StandardScaler.from_config(_scaler_config))
+
+        for attr, attr_val in config['config'].items():
+            setattr(scaler, attr, attr_val)
+        return scaler
+
+    def _fit(self, X, y=None, force_transform=False):
+        """copying from sklearn because we want to use our own StandardScaler
+        which can be serialzied. and optionally with user provided with lambda
+        parameter."""
+        X = self._check_input(X, in_fit=True, check_positive=True,
+                              check_method=True)
+
+        if not self.copy and not force_transform:  # if call from fit()
+            X = X.copy()  # force copy so that fit does not change X inplace
+
+        optim_function = {'box-cox': self._box_cox_optimize,
+                          'yeo-johnson': self._yeo_johnson_optimize
+                          }[self.method]
+        if self.lambdas is None:
+            with np.errstate(invalid='ignore'):  # hide NaN warnings
+                self.lambdas_ = np.array([optim_function(col) for col in X.T])
+        else:  # take user defined lambdas
+            self.lambdas_ = self.lambdas
+
+        if self.standardize or force_transform:
+            transform_function = {'box-cox': boxcox,
+                                  'yeo-johnson': self._yeo_johnson_transform
+                                  }[self.method]
+            for i, lmbda in enumerate(self.lambdas_):
+                with np.errstate(invalid='ignore'):  # hide NaN warnings
+                    X[:, i] = transform_function(X[:, i], lmbda)
+
+        setattr(self, 'scaler_to_standardize_', None)
+        if self.standardize:
+            self._scaler = StandardScaler(copy=False)
+            if force_transform:
+                X = self._scaler.fit_transform(X)
+            else:
+                self._scaler.fit(X)
+
+            setattr(self, 'scaler_to_standardize_', self._scaler.config())
+
+        return X
 
 class QuantileTransformer(SKQuantileTransformer, ScalerWithConfig):
 
     @property
     def config_paras(self):
-        return ['n_quantiles_', 'references_']
+        return ['n_quantiles_', 'references_', 'quantiles_']
 
 
 class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):
@@ -107,6 +192,202 @@ class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):
     def config_paras(self):
         return ['scale_', 'n_samples_seen_', 'max_abs_']
 
+
+class Center(ScalerWithConfig):
+
+    def __init__(
+            self,
+            feature_dim="2d"
+    ):
+        self.feature_dim = feature_dim
+
+    def fit(self): pass
+
+    def fit_transform(self, x:np.ndarray)->np.ndarray:
+        dim = x.ndim
+        assert dim == 2
+
+        mean = np.mean(x, axis=0)
+
+        setattr(self, 'mean_', mean)
+        setattr(self, 'data_dim_', dim)
+
+        return x - mean
+
+    def inverse_transform(self, x:np.ndarray)->np.ndarray:
+
+        assert x.ndim == self.data_dim_
+        return x + self.mean_
+
+    @property
+    def config_paras(self):
+        return ['data_dim_', 'mean_']
+
+    def get_params(self):
+        return {'feature_dim': self.feature_dim}
+
+
+class FuncTransformer(ScalerWithConfig):
+
+    def __init__(
+            self,
+            feature_dim: str = "2d"
+    ):
+        """
+        Arguments:
+            feature_dim:
+                whether the features are 2 dimensional or 1 dimensional. Only
+                relevant if the `x` to `fit_transform` is 3D. In such as case
+                if feature_dim is `1D`, it will be considered that the x consists
+                of following shape (num_examples, time_steps, num_features)
+
+        """
+        assert feature_dim in ("1d", "2d")
+        self.feature_dim = feature_dim
+
+    @property
+    def func(self):
+        raise NotImplementedError
+
+    @property
+    def inv_func(self):
+        raise NotImplementedError
+
+    def fit(self):
+        return
+
+    def _get_dim(self, x:np.ndarray):
+        dim = x.ndim
+        setattr(self, 'data_dim_', dim)
+
+        if dim > 3:
+            raise ValueError(f" dimension {dim} not allowed")
+        return dim
+
+    def fit_transform(self, x:np.ndarray)-> np.ndarray:
+
+        dim = self._get_dim(x)
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = self.func(x[:, time_step])
+        else:
+            _x = self.func(x)
+
+        return _x
+
+    def inverse_transform(self, x):
+
+        dim = x.ndim
+        assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = self.inv_func(x[:, time_step])
+
+        elif 2 <= dim < 4:
+            _x = self.inv_func(x)
+        else:
+            raise  ValueError(f" dimension {dim} not allowed")
+
+        return _x
+
+    @property
+    def config_paras(self):
+        return ['data_dim_']
+
+    def get_params(self):
+        return {'feature_dim': self.feature_dim}
+
+
+class SqrtScaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.sqrt
+
+    @property
+    def inv_func(self):
+        return np.square
+
+
+class LogScaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.log
+
+    @property
+    def inv_func(self):
+        return np.exp
+
+
+class Log2Scaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.log2
+
+    @property
+    def inv_func(self):
+        return lambda x: np.power(2, x)
+
+
+class Log10Scaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.log10
+
+    @property
+    def inv_func(self):
+        return lambda x: np.power(10, x)
+
+
+class TanScaler(FuncTransformer):
+
+    @property
+    def func(self):
+        return np.tan
+
+    @property
+    def inv_func(self):
+        return np.tanh
+
+
+class CumsumScaler(FuncTransformer):
+
+    def fit_transform(self, x:np.ndarray) -> np.ndarray:
+
+        dim = self._get_dim(x)
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = self.func(x[:, time_step], axis=0)
+        else:
+            _x = np.cumsum(x, axis=0)
+
+        return _x
+
+    def inverse_transform(self, x):
+
+        dim = x.ndim
+        assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
+
+        if dim == 3 and self.feature_dim == "1d":
+            _x = np.full(x.shape, np.nan)
+            for time_step in range(x.shape[1]):
+                _x[:, time_step] = np.diff(x[:, time_step], axis=0, append=0)
+
+        elif 2 <= dim < 4:
+            _x = np.diff(x, axis=0, append=0)
+        else:
+            raise  ValueError(f" dimension {dim} not allowed")
+
+        return _x
 
 class FunctionTransformer(SKFunctionTransformer):
     """Serializing a custom func/inverse_func is difficult. Therefore

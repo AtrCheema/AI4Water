@@ -5,22 +5,17 @@ import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
 
-
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 
-if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
-    from ai4water.functional import Model
-    print(f"Switching to functional API due to tensorflow version {tf.__version__}")
-else:
-    from ai4water import Model
+from ai4water.datasets import busan_beach
+from ai4water.preprocessing import DataHandler
 
-from ai4water.datasets import arg_beach
 
-beach_data:pd.DataFrame = arg_beach()
+beach_data:pd.DataFrame = busan_beach()
+input_features = beach_data.columns.to_list()[0:-2]
+output_features = beach_data.columns.to_list()[-2:]
 
-inputs = beach_data.columns.to_list()[0:-1]
 
 def run_plots(model):
     model.plot_train_data()
@@ -36,18 +31,20 @@ def run_plots(model):
 class TestPlots(unittest.TestCase):
 
     def test_basic(self):
-        model = Model(
+        model = DataHandler(
             data=beach_data,
+            input_features=input_features,
+            output_features=output_features,
             verbosity=0
         )
 
         run_plots(model)
 
     def test_basic_with_2_outputs(self):
-        model = Model(
+        model = DataHandler(
             data=beach_data,
-            input_features=beach_data.columns.to_list()[0:-2],
-            output_features=beach_data.columns.to_list()[-2:],
+            input_features=input_features,
+            output_features=output_features,
             verbosity=0
         )
 
@@ -62,7 +59,7 @@ class TestPlots(unittest.TestCase):
         df2 = pd.DataFrame(np.array([5,6]).repeat(40, axis=0).reshape(40, -1), columns=['len', 'dep'],
                            index=pd.date_range('20110101', periods=40, freq='D'))
 
-        model = Model(
+        model = DataHandler(
             data=[df1, df2],
             input_features=[['a', 'b'], ['len', 'dep']],
             output_features=[['c', 'd'], []],
@@ -73,7 +70,7 @@ class TestPlots(unittest.TestCase):
         run_plots(model)
 
         # as dictionary
-        model = Model(
+        model = DataHandler(
             data={'cont_data': df1, 'static_data': df2},
             input_features={'cont_data': ['a', 'b'], 'static_data': ['len', 'dep']},
             output_features={'cont_data': ['c', 'd'], 'static_data': []},

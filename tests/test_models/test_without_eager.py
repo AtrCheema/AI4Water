@@ -9,11 +9,19 @@ import tensorflow as tf
 
 tf.compat.v1.disable_eager_execution()
 
-from ai4water.datasets import arg_beach, load_nasdaq
+from ai4water.datasets import busan_beach, load_nasdaq
 from ai4water import InputAttentionModel, DualAttentionModel
 
+arg_busan = busan_beach()
+arg_input_features = arg_busan.columns.tolist()[0:-1]
+arg_output_features = arg_busan.columns.tolist()[-1:]
 
-def make_and_run(input_model, _layers=None, lookback=12, batch_size=64, epochs=3, **kwargs):
+nasdaq= load_nasdaq(inputs=['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK'])
+nasdaq_input_features = nasdaq.columns.tolist()[0:-1]
+nasdaq_output_features = nasdaq.columns.tolist()[-1:]
+
+
+def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, epochs=3, **kwargs):
 
     model = input_model(
         verbosity=0,
@@ -25,8 +33,10 @@ def make_and_run(input_model, _layers=None, lookback=12, batch_size=64, epochs=3
         **kwargs
     )
 
-    _ = model.fit()
+    _ = model.fit(data=data)
 
+    pred_y = model.predict(data='training')
+    eval_score = model.evaluate(data='training')
     pred_y = model.predict()
 
     return pred_y
@@ -37,7 +47,10 @@ class TestModels(unittest.TestCase):
 
     def test_InputAttentionModel(self):
 
-        prediction = make_and_run(InputAttentionModel, data=arg_beach())
+        prediction = make_and_run(InputAttentionModel,
+                                  data=arg_busan,
+                                  input_features=arg_input_features,
+                                  output_features=arg_output_features)
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
@@ -51,19 +64,25 @@ class TestModels(unittest.TestCase):
 
         prediction = make_and_run(
             DualAttentionModel,
-            data=load_nasdaq(inputs=['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK'])
+            data=nasdaq,
+            input_features=nasdaq_input_features,
+            output_features=nasdaq_output_features
         )
+
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
     def test_da_without_prev_y(self):
         prediction = make_and_run(
             DualAttentionModel,
-            data=arg_beach(),
+            data=arg_busan,
             teacher_forcing=False,
             batch_size=8,
-            drop_remainder=True
+            drop_remainder=True,
+            input_features=arg_input_features,
+            output_features=arg_output_features
         )
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
 
 

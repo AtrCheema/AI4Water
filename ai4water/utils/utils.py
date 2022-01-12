@@ -6,16 +6,14 @@ import datetime
 import warnings
 from typing import Union
 from shutil import rmtree
-from copy import deepcopy
-from typing import Any, Dict, Tuple, List
 from collections import OrderedDict
+from typing import Tuple, List
 import collections.abc as collections_abc
 
 import scipy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
 try:
@@ -27,11 +25,14 @@ except ModuleNotFoundError:
 MATRIC_TYPES = {
     "r2": "max",
     "nse": "max",
+    "r2_score": "max",
+    "kge": "max",
+    "corr_coeff": "max",
+    'accuracy': "max",
+    'f1_score': 'max',
     "mse": "min",
     "rmse": "min",
     "mape": "min",
-    "kge": "max",
-    "corr_coeff": "max",
     "nrmse": "min",
 }
 
@@ -238,11 +239,11 @@ def _make_model(**kwargs):
         such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
+
     kwargs = process_io(**kwargs)
 
     kwargs = check_kwargs(**kwargs)
 
-    def_mode = "regression"  # default mode
     model = kwargs.get('model', None)
     def_cat = None
 
@@ -251,21 +252,7 @@ def _make_model(**kwargs):
             def_cat = "DL"
             # for DL, the default mode case will be regression
         else:
-            if list(model.keys())[0].upper().endswith("CLASSIFIER"):
-                def_mode = "classification"
             def_cat = "ML"
-
-    if 'loss' in kwargs:
-        if callable(kwargs['loss']) and hasattr(kwargs['loss'], 'name'):
-            loss_name = kwargs['loss'].name
-        else:
-            loss_name = kwargs['loss']
-        if loss_name in [
-            'sparse_categorical_crossentropy',
-            'categorical_crossentropy',
-            'binary_crossentropy'
-        ]:
-            def_mode = 'classification'
 
     accept_additional_args = False
     if 'accept_additional_args' in kwargs:
@@ -274,6 +261,11 @@ def _make_model(**kwargs):
     model_args = {
 
         'model': {'type': dict, 'default': None, 'lower': None, 'upper': None, 'between': None},
+        # can be None or any of the method defined in ai4water.utils.transformatinos.py
+        'x_transformation': {"type": [str, type(None), dict, list], "default": None, 'lower': None,
+                             'upper': None, 'between': None},
+        'y_transformation': {"type": [str, type(None), dict, list], "default": None, 'lower': None,
+                             'upper': None, 'between': None},
         # for auto-encoders
         'composite':    {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': None},
         'lr':           {'type': float, 'default': 0.001, 'lower': None, 'upper': None, 'between': None},
@@ -302,8 +294,6 @@ def _make_model(**kwargs):
         'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
         # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
         'metrics': {"type": list, "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
-        # if true, model will use previous predictions as input  # todo, where it is used?
-        'use_predicted_output': {"type": bool, "default": True, 'lower': None, 'upper': None, 'between': None},
         # todo, is it  redundant?
         # If the model takes one kind of input_features that is it consists of
         # only 1 Input layer, then the shape of the batches
@@ -318,7 +308,7 @@ def _make_model(**kwargs):
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
         'wandb_config': {'type': dict, 'default': None, 'between': None},
-        'val_metric': {'type': str, 'default': 'mse'}
+        'val_metric': {'type': str, 'default': None}
     }
 
     data_args = {
@@ -327,13 +317,10 @@ def _make_model(**kwargs):
         # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'mode': {'type': str, 'default': def_mode, 'lower': None, 'upper': None,
+        'mode': {'type': str, 'default': None, 'lower': None, 'upper': None,
                  'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # can be None or any of the method defined in ai4water.utils.transformatinos.py
-        'transformation':         {"type": [str, type(None), dict, list],   "default": None, 'lower': None,
-                                   'upper': None, 'between': None},
         # The term lookback has been adopted from Francois Chollet's
         # "deep learning with keras" book. This means how many
         # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
@@ -409,6 +396,9 @@ def _make_model(**kwargs):
 
         elif arg_name in config:
             update_dict(arg_name, val, data_args, config)
+
+        elif arg_name in ['x_transformer_', 'y_transformer_', 'val_x_transformer_', 'val_y_transformer_']:
+            pass
 
         # config may contain additional user defined args which will not be checked
         elif not accept_additional_args:
@@ -1062,40 +1052,6 @@ data must be 1 dimensional array but it has shape {np.shape(data)}
     return Jsonize(stats)()
 
 
-def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
-    """
-    Modified after https://github.com/akanz1/klib/blob/main/klib/utils.py#L197
-     Gives metrics of missing values in the dataset.
-    Parameters
-    ----------
-    data : pd.DataFrame
-        2D dataset that can be coerced into Pandas DataFrame
-    Returns
-    -------
-    Dict[str, float]
-        mv_total: float, number of missing values in the entire dataset
-        mv_rows: float, number of missing values in each row
-        mv_cols: float, number of missing values in each column
-        mv_rows_ratio: float, ratio of missing values for each row
-        mv_cols_ratio: float, ratio of missing values for each column
-    """
-
-    data = pd.DataFrame(data).copy()
-    mv_rows = data.isna().sum(axis=1)
-    mv_cols = data.isna().sum(axis=0)
-    mv_total = data.isna().sum().sum()
-    mv_rows_ratio = mv_rows / data.shape[1]
-    mv_cols_ratio = mv_cols / data.shape[0]
-
-    return {
-        "mv_total": mv_total,
-        "mv_rows": mv_rows,
-        "mv_cols": mv_cols,
-        "mv_rows_ratio": mv_rows_ratio,
-        "mv_cols_ratio": mv_cols_ratio,
-    }
-
-
 def prepare_data(
         data: np.ndarray,
         lookback_steps: int,
@@ -1417,189 +1373,6 @@ def find_tot_plots(features, max_subplots):
     return tot_plots
 
 
-def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
-    """Initializes the fig for subplots"""
-    plt.close('all')
-    fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
-    if width is not None:
-        fig.set_figwidth(width)
-    if height is not None:
-        fig.set_figheight(height)
-    return fig, axis
-
-
-def process_axis(axis,
-                 data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
-                 x: Union[list, np.ndarray] = None,  # array to plot as x
-                 marker='',
-                 fillstyle=None,
-                 linestyle='-',
-                 c=None,
-                 ms=6.0,  # markersize
-                 label=None,  # legend
-                 leg_pos="best",
-                 bbox_to_anchor=None,  # will take priority over leg_pos
-                 leg_fs=12,
-                 leg_ms=1,  # legend scale
-                 ylim=None,  # limit for y axis
-                 x_label=None,
-                 xl_fs=None,
-                 y_label=None,
-                 yl_fs=12,  # ylabel font size
-                 yl_c='k',  # y label color, if 'same', c will be used else black
-                 xtp_ls=None,  # x tick_params labelsize
-                 ytp_ls=None,  # x tick_params labelsize
-                 xtp_c='k',  # x tick colors if 'same' c will be used else black
-                 ytp_c='k',  # y tick colors, if 'same', c will be used else else black
-                 log=False,
-                 show_xaxis=True,
-                 top_spine=True,
-                 bottom_spine=True,
-                 invert_yaxis=False,
-                 max_xticks=None,
-                 min_xticks=None,
-                 title=None,
-                 title_fs=None,  # title fontszie
-                 log_nz=False,
-                 ):
-
-    """Purpose to act as a middle man between axis.plot/plt.plot.
-    Returns:
-        axis
-        """
-    # TODO
-    # default fontsizes should be same as used by matplotlib
-    # should not complicate plt.plot or axis.plto
-    # allow multiple plots on same axis
-
-    if log and log_nz:
-        raise ValueError
-
-    use_third = False
-    if x is not None:
-        if isinstance(x, str):  # the user has not specified x so x is currently plot style.
-            style = x
-            x = None
-            if marker == '.':
-                use_third = True
-
-    if log_nz:
-        data = deepcopy(data)
-        _data = data.values
-        d_nz_idx = np.where(_data > 0.0)
-        data_nz = _data[d_nz_idx]
-        d_nz_log = np.log(data_nz)
-        _data[d_nz_idx] = d_nz_log
-        _data = np.where(_data < 0.0, 0.0, _data)
-        data = pd.Series(_data, index=data.index)
-
-    if log:
-        data = deepcopy(data)
-        _data = np.where(data.values < 0.0, 0.0, data.values)
-        print(len(_data[np.where(_data < 0.0)]))
-        data = pd.Series(_data, index=data.index)
-
-    if x is not None:
-        axis.plot(x, data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
-    elif use_third:
-        axis.plot(data, style, color=c, ms=ms, label=label)
-    else:
-        axis.plot(data, fillstyle=fillstyle, color=c, marker=marker, linestyle=linestyle, ms=ms, label=label)
-
-    ylc = c
-    if yl_c != 'same':
-        ylc = 'k'
-
-    _kwargs = {}
-    if label is not None:
-        if label != "__nolabel__":
-            if leg_fs is not None:
-                _kwargs.update({'fontsize': leg_fs})
-            if leg_ms is not None:
-                _kwargs.update({'markerscale': leg_ms})
-            if bbox_to_anchor is not None:
-                _kwargs['bbox_to_anchor'] = bbox_to_anchor
-            else:
-                _kwargs['loc'] = leg_pos
-            axis.legend(**_kwargs)
-
-    if y_label is not None:
-        axis.set_ylabel(y_label, fontsize=yl_fs, color=ylc)
-
-    if log:
-        axis.set_yscale('log')
-
-    if invert_yaxis:
-        axis.set_ylim(axis.get_ylim()[::-1])
-
-    if ylim is not None:
-        if not isinstance(ylim, tuple):
-            raise TypeError("ylim must be tuple {} provided".format(ylim))
-        axis.set_ylim(ylim)
-
-    xtpc = c
-    if xtp_c != 'same':
-        xtpc = 'k'
-
-    ytpc = c
-    if ytp_c != 'same':
-        ytpc = 'k'
-
-    _kwargs = {'colors': xtpc}
-    if x_label is not None or xtp_ls is not None:  # better not change these paras if user has not defined any x_label
-        if xtp_ls is not None:
-            _kwargs.update({'labelsize': xtp_ls})
-        axis.tick_params(axis="x", which='major', **_kwargs)
-
-    _kwargs = {'colors': ytpc}
-    if y_label is not None or ytp_ls is not None:
-        if ytp_ls is not None:
-            _kwargs.update({'labelsize': ytp_ls})
-        axis.tick_params(axis="y", which='major', **_kwargs)
-
-    axis.get_xaxis().set_visible(show_xaxis)
-
-    _kwargs = {}
-    if x_label is not None:
-        if xl_fs is not None:
-            _kwargs.update({'fontsize': xl_fs})
-        axis.set_xlabel(x_label, **_kwargs)
-
-    axis.spines['top'].set_visible(top_spine)
-    axis.spines['bottom'].set_visible(bottom_spine)
-
-    if min_xticks is not None:
-        assert isinstance(min_xticks, int)
-        assert isinstance(max_xticks, int)
-        loc = mdates.AutoDateLocator(minticks=min_xticks, maxticks=max_xticks)
-        axis.xaxis.set_major_locator(loc)
-        fmt = mdates.AutoDateFormatter(loc)
-        axis.xaxis.set_major_formatter(fmt)
-
-    if title_fs is None:
-        title_fs = plt.rcParams['axes.titlesize']
-
-    if title is not None:
-        axis.set_title(title, fontsize=title_fs)
-
-    return axis
-
-
-def plot(*args, show=True, **kwargs):
-    """
-    One liner plot function. It should not be more complex than axis.plot() or
-    plt.plot() yet it must accomplish all in one line what requires multiple
-    lines in matplotlib. args and kwargs can be anything which goes into plt.plot()
-    or axis.plot(). They can also be anything which goes into `process_axis`.
-    """
-    _, axis = init_subplots()
-    axis = process_axis(axis, *args, **kwargs)
-    if kwargs.get('save', False):
-        plt.savefig(f"{kwargs.get('name', 'fig.png')}")
-    if show:
-        plt.show()
-    return axis
-
 
 class JsonEncoder(json.JSONEncoder):
 
@@ -1632,6 +1405,8 @@ def plot_activations_along_inputs(
         vmax=None,
         show=False
 ):
+    from .easy_mpl import imshow  # at the top will make circular import
+
     # activation must be of shape (num_examples, lookback, input_features)
     assert activations.shape[1] == lookback
     assert activations.shape[2] == len(in_cols), f'{activations.shape}, {len(in_cols)}'
@@ -1678,60 +1453,6 @@ def plot_activations_along_inputs(
     return
 
 
-def imshow(values,
-           axis=None,
-           vmin=None,
-           vmax=None,
-           xlabel=None,
-           aspect=None,
-           interpolation=None,
-           title=None,
-           cmap=None, ylabel=None, yticklabels=None, xticklabels=None,
-           show=False,
-           annotate=False,
-           annotate_kws=None
-           ):
-    """One stop shop for imshow
-    Example:
-        >>> import numpy as np
-        >>> from ai4water.utils.utils import imshow
-        >>> x = np.random.random((10, 5))
-        >>> imshow(x, annotate=True)
-    """
-
-    if axis is None:
-        axis = plt.gca()
-
-    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax, cmap=cmap, interpolation=interpolation)
-
-    if annotate:
-        annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}
-        for i in range(values.shape[0]):
-            for j in range(values.shape[1]):
-                _ = axis.text(j, i, round(values[i, j], 2),
-                            **annotate_kws)
-
-    if yticklabels is not None:
-        axis.set_yticks(np.arange(len(yticklabels)))
-        axis.set_yticklabels(yticklabels)
-
-    if xticklabels is not None:
-        axis.set_xticks(np.arange(len(xticklabels)))
-        axis.set_xticklabels(xticklabels)
-
-    if xlabel:
-        axis.set_xlabel(xlabel)
-    if ylabel:
-        axis.set_ylabel(ylabel)
-    if title:
-        axis.set_title(title)
-
-    if show:
-        plt.show()
-
-    return axis, im
-
-
 def print_something(something, prefix=''):
     """prints shape of some python object"""
     if isinstance(something, np.ndarray):
@@ -1761,7 +1482,10 @@ def maybe_three_outputs(data, teacher_forcing=False):
         elif len(data) == 3:
             return data[0], data[2]
     else:
-        return [data[0], data[1]], data[2]
+        if len(data)==3:
+            return [data[0], data[1]], data[2]
+        # DA, IA-LSTM models return [x,prevy],y even when teacher_forcing is on!
+        return data
 
 
 def get_version_info(

@@ -1,3 +1,4 @@
+import copy
 import importlib
 from typing import Union
 
@@ -21,19 +22,24 @@ class ModelOptimizerMixIn(object):
         self.num_iterations = num_iterations
         self.process_results = process_results
         self.prefix = prefix
-        if data is not None:
-            if not isinstance(data, tuple):
-                assert isinstance(data, list) and len(data) == 2
+
+        if isinstance(data, tuple) or isinstance(data, list):
+            assert len(data) == 2
+            self.xy = True
+        else:
+            self.xy = False
+
         self.data = data
 
     def fit(self):
 
         PREFIX = f"{self.prefix}_{dateandtime_now()}"
+        self.iter = 0
+        print("{:<15} {:<20}".format("Iteration No.",  "Validation Score"))
 
         hpo = importlib.import_module("ai4water.hyperopt")
 
-        data = self.model.data
-        val_metric = self.model.config['val_metric']
+        val_metric = self.model.val_metric
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
         config = jsonize(self.model.config)
@@ -50,33 +56,36 @@ class ModelOptimizerMixIn(object):
 
             _model = self.model.from_config(
                 config.copy(),
-                data=data,
                 make_new_path=True,
             )
 
-            if self.data is not None:  # todo, it is better to split data outside objective_fn
-                splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
-                train_x, test_x, train_y, test_y = splitter.split_by_slicing()
-                _model.fit(x=train_x, y=train_y)
-            else:
-                _model.fit()
-
             if cross_validator is None:
 
-                if self.data is not None:
-
+                if self.xy:  # todo, it is better to split data outside objective_fn
+                    splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
+                    train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+                    _model.fit(x=train_x, y=train_y)
                     p = _model.predict(test_x)
                 else:
-                    test_y, p = _model.predict(return_true=True, process_results=False)
+                    _model.fit(data=self.data)
+                    test_y, p = _model.predict(data='validation', return_true=True,
+                                               process_results=False)
+
                 metrics = RegressionMetrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
-                val_score = self.model.cross_val_score(data=self.data)
+                if self.xy:
+                    val_score = _model.cross_val_score(*self.data)
+                else:
+                    val_score = _model.cross_val_score(data=self.data)
+
+            del _model
 
             if metric_type != "min":
                 val_score = 1.0 - val_score
 
-            print("val_score", val_score)
+            print("{:<15} {:<20.3f}".format(self.iter, val_score))
+            self.iter += 1
 
             return val_score
 
@@ -157,35 +166,57 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             data=data
         )
 
-        self.space = make_space(self.model.data.columns.to_list(),
-                                include=include, exclude=exclude, append=append,
+        self.space = make_space(self.model.input_features,
+                                include=include,
+                                exclude=exclude,
+                                append=append,
                                 categories=categories)
 
-    def update(self, config, suggestions):
+        self.input_features = model.input_features
+        assert isinstance(self.input_features, list)
+        self.output_features = model.output_features
+        if isinstance(self.output_features, str):
+            self.output_features = [self.output_features]
+        assert len(self.output_features) == 1
 
+
+    def update(self, config, suggestions):
+        """updates `x_transformation` and `y_transformation` keys in config
+        based upon `suggestions`."""
         transformations = []
+        y_transformations = []
 
         for feature, method in suggestions.items():
 
             if method == "none":
                 pass
             else:
-
                 t = {"method": method, "features": [feature]}
 
                 if method.startswith("log"):
-                    t["replace_nans"] = True
-                    t["replace_zeros"] = True
                     t["treat_negatives"] = True
-                transformations.append(t)
+                    t["replace_zeros"] = True
+                elif method in ["box-cox", "yeo-johnson", "power"]:
+                    t["treat_negatives"] = True
+                    t["replace_zeros"] = True
+                elif method == "sqrt":
+                    t['treat_negatives'] = True
+                    t["replace_zeros"] = True
+
+                if feature in self.input_features:
+                    transformations.append(t)
+                else:
+                    y_transformations.append(t)
 
         # following parameters must be overwritten even if they were provided by the user.
-        config['transformation'] = transformations
+        config['x_transformation'] = transformations
+        config['y_transformation'] = y_transformations or None
+
         return
 
 
 def make_space(
-        features: list,
+        input_features: list,
         categories: list,
         include: Union[str, list, dict] = None,
         exclude: Union[str, list] = None,
@@ -193,11 +224,11 @@ def make_space(
 ) -> list:
     """
     Arguments:
-        features :
+        input_features :
         categories :
-        include: the names of features to include
-        exclude: the name/names of features to exclude
-        append: the features with custom candidate transformations
+        include: the names of input features to include
+        exclude: the name/names of input features to exclude
+        append: the input features with custom candidate transformations
     """
     hpo = importlib.import_module("ai4water.hyperopt")
     Categorical = hpo.Categorical
@@ -205,7 +236,7 @@ def make_space(
     # although we need space as list at the end, it is better to create a dictionary of it
     # because manipulating dictionary is easier
     space = {
-        name: Categorical(categories, name=name) for name in features
+        name: Categorical(categories, name=name) for name in input_features
     }
 
     if include is not None:
@@ -214,6 +245,7 @@ def make_space(
         elif isinstance(include, list):
             _include = {}
             for feat in include:
+                assert feat in input_features, f"{feat} is not in input_features but is used in include"
                 if isinstance(feat, str):
                     _include[feat] = categories
                 else:

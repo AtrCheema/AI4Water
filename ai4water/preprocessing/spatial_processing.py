@@ -19,6 +19,8 @@ from .spatial_utils import plot_shapefile
 from .spatial_utils import get_total_area, GifUtil
 from .spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
 
+from ai4water.utils.easy_mpl import pie
+
 
 M2ToAcre = 0.0002471     # meter square to Acre
 COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F',
@@ -517,7 +519,8 @@ class MakeHRUs(object):
         plt.show()
         return
 
-    def draw_pie(self, year:int,
+    def draw_pie(self,
+                 year:int,
                  n_merge:int=0,
                  title:bool=False,
                  save:bool=False,
@@ -536,6 +539,7 @@ class MakeHRUs(object):
             title :
             save :
             name :
+            show :
             kwargs : Following keyword arguments are allowed
                 shadow
                 strartangle
@@ -571,17 +575,14 @@ class MakeHRUs(object):
         for l in labels:
             labels_n.append(l.replace('lu_', ''))
 
-        _, ax1 = plt.subplots()
-        ax1.pie(vals, explode=tuple(explode), labels=labels_n, autopct=autopct,
-                shadow=shadow, startangle=startangle,
-                textprops=textprops)
-        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
         if title:
-            plt.title('Areas of HRUs for year {}'.format(year), fontsize=20)
-        if save:
-            if name is None: name = self.hru_definition
-            plt.savefig(f'{len(self.hru_names)}hrus_for_{year}_{name}.png', dpi=300)
+            title = 'Areas of HRUs for year {}'.format(year)
 
-        if show:
-            plt.show()
-        return
+        if name is None: name = self.hru_definition
+        name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
+
+        return pie(fractions=vals,
+                   labels=labels_n,
+                   explode=tuple(explode),
+                   autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,
+                   title=title, name=name, save=save, show=show)

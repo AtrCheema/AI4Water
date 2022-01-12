@@ -117,6 +117,17 @@ class Model(BaseModel):
     def predict_fn(self):
         return self._model.predict
 
+    def _get_dummy_input_shape(self):
+        shape = ()
+        if self.config['backend'] == 'tensorflow' and self.category == "DL":
+            if isinstance(self.model_.inputs, list):
+                if len(self.model_.inputs) == 1:
+                    shape = self.model_.inputs[0].shape
+                else:
+                    shape = [inp.shape for inp in self.model_.inputs]
+
+        return shape
+
     def first_layer_shape(self):
         """ instead of tuple, returning a list so that it can be moified if needed"""
         if self.num_input_layers > 1:
@@ -206,7 +217,7 @@ class Model(BaseModel):
                         assign_dummy_name(layer_outputs, 'input')
                     else:
                         # for simple dense layer based models, lookback will not be used
-                        def_shape = (self.ins,) if self.lookback == 1 else (self.lookback, self.ins)
+                        def_shape = (self.num_ins,) if self.lookback == 1 else (self.lookback, self.num_ins)
                         layer_outputs = LAYERS["Input"](shape=def_shape)
 
                     # first layer is built so next iterations will not be for first layer
@@ -299,7 +310,7 @@ class Model(BaseModel):
             self.update_cache(lyr_cache, lyr_config['name'], layer_outputs)
             first_layer = False
 
-        layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
+        #layer_outputs = self.maybe_add_output_layer(layer_outputs, lyr_cache)
 
         inputs = []
         for k, v in lyr_cache.items():
@@ -341,7 +352,7 @@ class Model(BaseModel):
         self.plot_model(k_model)
         return k_model
 
-    def build(self):
+    def build(self, input_shape=None):
 
         self.print_info()
 
@@ -373,17 +384,6 @@ class Model(BaseModel):
         self.update_info()
 
         return
-
-    def _do_predict(self, inputs):
-
-        if self.category == "DL":
-            predicted = self._model.predict(x=inputs,
-                                            batch_size=self.config['batch_size'],
-                                            verbose=self.verbosity)
-        else:
-            predicted = self._model.predict(*inputs)
-
-        return predicted
 
     def loss_name(self):
         if isinstance(self._model.loss, str):

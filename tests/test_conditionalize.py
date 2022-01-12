@@ -7,8 +7,8 @@ site.addsitedir(ai4_dir)
 
 from tensorflow.keras.layers import Input, Dense, LSTM
 from tensorflow.keras.models import Model
-from ai4water.private_layers import Conditionalize
-from ai4water.datasets import arg_beach
+from ai4water.models.tensorflow.private_layers import Conditionalize
+from ai4water.datasets import busan_beach
 
 
 
@@ -50,6 +50,7 @@ class TestConditionalize(unittest.TestCase):
         #               data=arg_beach()
         #               )
         return
+
 
 if __name__ == "__main__":
 

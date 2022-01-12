@@ -10,6 +10,7 @@
             - interpret
             - view
             - eda
+            - score
             - from_config
             - from_config_file
             - update_weights

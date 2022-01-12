@@ -1,2 +1,2 @@
 
-from ._visualize import Visualize
+from ._main import Visualize

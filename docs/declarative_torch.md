@@ -9,8 +9,9 @@ All the examples presented here are similar which were shown for [tensorflow's c
 
 ```python
 
-from ai4water.utils.datasets import arg_beach
+from ai4water.datasets import arg_beach
 from ai4water import Model
+data=arg_beach()
 
 layers = {
     "Linear_0": {"in_features": 13, "out_features": 64},
@@ -25,7 +26,9 @@ layers = {
 
 model = Model(
     model={'layers': layers},
-    data=arg_beach())
+    input_features=data.columns.tolist()[0:-1],
+    output_features=data.columns.tolist()[-1:],
+)
 ```
 
 If we want to do slicing of the outputs of one layer, we can use pythons's `lambda` function. 

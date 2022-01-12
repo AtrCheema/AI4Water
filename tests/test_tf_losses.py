@@ -22,6 +22,7 @@ p = tf.convert_to_tensor(pred, dtype=tf.float32)
 
 np_errors = RegressionMetrics(_true, pred)
 
+
 class test_errors(unittest.TestCase):
 
     def test_corr_coeff(self):
@@ -37,7 +38,7 @@ class test_errors(unittest.TestCase):
         self.assertAlmostEqual(np_errors.kge(), 1.0 - K.eval(tf_losses.tf_kge(t, p)), 4)
 
     def test_r2_mod(self):
-        self.assertAlmostEqual(np_errors.r2_mod(), 1.0 - K.eval(tf_losses.tf_r2_mod(t, p)), 4)
+        self.assertAlmostEqual(np_errors.r2_score(), 1.0 - K.eval(tf_losses.tf_r2_mod(t, p)), 4)
 
     def nse_beta(self):
         self.assertAlmostEqual(np_errors.nse_beta(), 1.0 - K.eval(tf_losses.tf_nse_beta(t, p)), 4)
@@ -47,6 +48,7 @@ class test_errors(unittest.TestCase):
 
     def nse_pbias(self):
         self.assertAlmostEqual(np_errors.pbias(), K.eval(tf_losses.pbias(t, p)), 4)
+
 
 if __name__ == "__main__":
     unittest.main()

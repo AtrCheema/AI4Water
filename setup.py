@@ -11,7 +11,7 @@ with open('version.py') as fv:
     exec(fv.read())
 
 min_requirements = [
-    'numpy<=1.19.2',
+    'numpy<=1.19.5',
     'scikit-learn',
     'pandas',
     'matplotlib',
@@ -27,7 +27,6 @@ extra_requires = [
 #'pytorch',  # only if you want to use pytorch-based models
 'h5py<2.11.0', # only if you want to save batches
 'xgboost',
-'EMD-signal',  # for emd transformation
 'lightgbm',
 'catboost',
 'tpot',
@@ -52,7 +51,11 @@ extra_requires = [
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
 post_process_requirements = ['lime', 'shap']
-exp_requirements = ['catboost', 'lightgbm', 'xgboost', 'tpot']
+exp_requirements = ['catboost', 'lightgbm', 'xgboost',
+                    'tpot',
+                    'optuna', 'hyperopt', 'scikit-optimize',
+                    'h5py<2.11.0'
+                    ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
 
 all_requirements = min_requirements + extra_requires
@@ -96,6 +99,8 @@ setup(
 
     packages=['ai4water',
               'ai4water/models',
+              'ai4water/models/tensorflow',
+              'ai4water/models/torch',
               'ai4water/hyperopt',
               'ai4water/utils',
               'ai4water/preprocessing',

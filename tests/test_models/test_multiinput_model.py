@@ -14,8 +14,10 @@ else:
 
 
 from ai4water.functional import Model as FModel
-from ai4water.datasets import load_nasdaq, arg_beach
+from ai4water.datasets import load_nasdaq, busan_beach
 
+nasdaq_input_features = load_nasdaq().columns.tolist()[0:-1],
+nasdaq_output_features = load_nasdaq().columns.tolist()[-1:],
 
 examples = 200
 lookback = 10
@@ -25,10 +27,12 @@ w = 5
 h = 5
 
 # input for 2D data, radar images
-pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h)  # 5 rows 5 columns, and 100 images
+# 5 rows 5 columns, and 100 images
+pcp = np.random.randint(0, 5, examples*w*h).reshape(examples, w, h)
 lai = np.random.randint(6, 10, examples*w*h).reshape(examples, w, h)
 
-data_2d = np.full((len(pcp), len(inp_2d), w, h), np.nan) #np.shape(data)==(100,5,5,5); 5 rows, 5 columns, 5 variables, and 100 images in each variable
+# np.shape(data)==(100,5,5,5); 5 rows, 5 columns, 5 variables, and 100 images in each variable
+data_2d = np.full((len(pcp), len(inp_2d), w, h), np.nan)
 
 ##output
 flow = np.full((len(pcp), 1), np.nan)  # np.shape(flow)==(100,1)
@@ -62,27 +66,26 @@ def make_layers(outs):
         "Concatenate": {"config": {},
                    "inputs": ["LSTM_1d", "Flatten"]},
         "Dense": {"units": outs},
-        "Reshape": {"target_shape": (outs, 1)}
+        #"Reshape": {"target_shape": (outs, 1)}
     }
     return layers
 
 
-def build_and_run(outputs, transformation=None, indices=None):
+def build_and_run(outputs, x_transformation=None, indices=None):
     model = Model(
         model={"layers": make_layers(len(outputs['inp_1d']))},
         lookback=lookback,
         input_features = {"inp_1d": inp_1d, "inp_2d": inp_2d},
         output_features=outputs,
-        data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d},
-        transformation = transformation,
+        x_transformation = x_transformation,
         train_data=indices,
         epochs=2,
         verbosity=0
     )
 
-    model.fit()
+    model.fit(data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d})
 
-    return model.predict()
+    return model.predict(data='test')
 
 
 class test_MultiInputModels(unittest.TestCase):
@@ -90,13 +93,13 @@ class test_MultiInputModels(unittest.TestCase):
     def test_with_no_transformation(self):
         time.sleep(1)
         outputs = {"inp_1d": ['flow']}
-        build_and_run(outputs, transformation=None)
+        build_and_run(outputs, x_transformation=None)
         return
 
     def test_with_transformation(self):
         outputs = {"inp_1d": ['flow']}
         transformation={'inp_1d': 'minmax', 'inp_2d': None}
-        build_and_run(outputs, transformation=transformation)
+        build_and_run(outputs, x_transformation=transformation)
         return
 
     def test_with_random_sampling(self):
@@ -112,8 +115,9 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_output_layer1(self):
         # check if it adds both dense and reshapes it correctly or not
-        model = Model(model={'layers': {'LSTM': 64}},
-                      data=load_nasdaq(),
+        model = Model(model={'layers': {'LSTM': 64, "Dense": 1}},
+                      input_features=nasdaq_input_features,
+                      output_features=nasdaq_output_features,
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -125,7 +129,8 @@ class test_MultiInputModels(unittest.TestCase):
         # check if it reshapes the output correctly
         model = Model(model={'layers': {'LSTM': 64,
                                         'Dense': 1}},
-                      data=load_nasdaq(),
+                      input_features=nasdaq_input_features,
+                      output_features=nasdaq_output_features,
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -134,10 +139,10 @@ class test_MultiInputModels(unittest.TestCase):
 
     def test_add_no_output_layer(self):
         # check if it does not add layers when it does not have to
-        model = Model(model={'layers': {'LSTM': 64,
-                                        'Dense': 1,
-                                        'Reshape': {'target_shape': (1,1)}}},
-                      data=load_nasdaq(),
+        model = Model(model={'layers': {'LSTM': 64, 'Dense': 1,
+                             }},
+                      input_features=nasdaq_input_features,
+                      output_features=nasdaq_output_features,
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -163,7 +168,7 @@ class test_MultiInputModels(unittest.TestCase):
                 conc2 = tf.keras.layers.Concatenate()([inp3, inp4])
                 s = tf.keras.layers.Concatenate()([out1, conc2])
                 out = Dense(1, name='output')(s)
-                out = tf.keras.layers.Reshape((1,1))(out)
+                #out = tf.keras.layers.Reshape((1,1))(out)
                 return [inp1, inp2, inp3, inp4], out
 
             def training_data(self, data=None, data_keys=None, **kwargs):
@@ -172,7 +177,7 @@ class test_MultiInputModels(unittest.TestCase):
                 in2 = np.random.random((_examples, 10, 4))
                 in3 = np.random.random((_examples, 10))
                 in4 = np.random.random((_examples, 9))
-                o = np.random.random((_examples, 1, 1))
+                o = np.random.random((_examples, 1))
                 return [in1, in2, in3, in4], o
 
             def validation_data(self, *args, **kwargs):
@@ -191,15 +196,6 @@ class test_MultiInputModels(unittest.TestCase):
     def test_customize_loss(self):
         class QuantileModel(Model):
 
-            def denormalize_data(self,
-                                 inputs: np.ndarray,
-                                 predicted: np.ndarray,
-                                 true: np.ndarray,
-                                 in_cols, out_cols,
-                                 scaler_key: str,
-                                 transformation=None):
-                return predicted, true
-
             def loss(self):
                 return qloss
 
@@ -214,50 +210,51 @@ class test_MultiInputModels(unittest.TestCase):
         # Define a dummy dataset consisting of 6 time-series.
         cols = 6
         data = np.arange(int(2000 * cols)).reshape(-1, 2000).transpose()
-        data = pd.DataFrame(data, columns=['input_' + str(i) for i in range(cols)],
+        data = pd.DataFrame(data, columns=['input_' + str(col) for col in range(cols)],
                             index=pd.date_range('20110101', periods=len(data), freq='H'))
 
         # Define Model
-        layers = {'Dense_0': {'units': 64, 'activation': 'relu'},
-                  'Dense_3': {'units': 3}}
+        layers = {'Dense_0': {'units': 8, 'activation': 'relu'},
+                  'Dense_3': {'units': 3},
+                  }
 
         # Define Quantiles
         quantiles = [0.005, 0.025,   0.995]
 
         # Initiate Model
         model = QuantileModel(
-            input_features=['input_' + str(i) for i in range(cols - 1)],
-            output_features=['input_' + str(cols - 1)],
+            input_features=data.columns.tolist()[0:-1],
+            output_features=data.columns.tolist()[-1:],
             lookback=1,
             verbosity=0,
             model={'layers': layers},
             epochs=2,
-            data=data.astype(np.float32),
+            y_transformation='log10',
             train_data = np.arange(1500),
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation
-        model.fit()
+        model.fit(data=data.astype(np.float32))
 
+        t,p = model.predict(return_true=True)
+        assert p.shape[1]==3
         return
 
     def test_predict_without_y(self):
         # make sure that .predict method can be called without `y`.
 
         model = Model(model='RandomForestRegressor',
-                      data=arg_beach(),
                       verbosity=0
                       )
-        model.fit()
+        model.fit(data=busan_beach())
         y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 
         # check also for functional model
         model = FModel(model='RandomForestRegressor',
-                      data=arg_beach(),
                       verbosity=0
                       )
-        model.fit()
+        model.fit(data=busan_beach())
         y = model.predict(x=np.random.random((10, model.num_ins)))
         assert len(y) == 10
 

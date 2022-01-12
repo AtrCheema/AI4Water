@@ -1229,7 +1229,17 @@ class MtropicsLaos(Datasets):
         and water quality data of Huoay pano.
 
         Arguments:
-            input_features : names of inputs to use.
+            input_features : names of inputs to use. By default following features
+                are used as input
+
+                    - `temp`
+                    - `rel_hum`
+                    - `wind_speed`
+                    - `sol_rad`
+                    - `water_level`
+                    - `pcp`
+                    - `susp_pm'
+
             output_features : feature/features to consdier as target/output/label
             st : starting date of data
             en : end date of data

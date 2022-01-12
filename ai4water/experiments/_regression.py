@@ -2,7 +2,7 @@
 
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.utils import get_version_info
-from .experiments import Experiments, Model
+from ._main import Experiments, Model
 from .utils import regression_space
 
 
@@ -48,7 +48,6 @@ class MLRegressionExperiments(Experiments):
     def __init__(self,
                  param_space=None,
                  x0=None,
-                 data=None,
                  cases=None,
                  ai4water_model=None,
                  exp_name='MLExperiments',
@@ -63,40 +62,38 @@ class MLRegressionExperiments(Experiments):
                 can be overwritten in `models`.
             x0 list: initial values of the parameters which are to be optimized.
                 These can be overwritten in `models`
-            data: this will be passed to `Model`.
             exp_name str: name of experiment, all results will be saved within this folder
             model_kwargs dict: keyword arguments which are to be passed to `Model`
                 and are not optimized.
 
         Examples:
-            >>> from ai4water.datasets import arg_beach
+            >>> from ai4water.datasets import busan_beach
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> # first compare the performance of all available models without optimizing their parameters
-            >>> data = arg_beach()  # read data file, in this case load the default data
+            >>> data = busan_beach()  # read data file, in this case load the default data
             >>> inputs = list(data.columns)[0:-1]  # define input and output columns in data
             >>> outputs = list(data.columns)[-1]
-            >>> comparisons = MLRegressionExperiments(data=data,
+            >>> comparisons = MLRegressionExperiments(
             ...       input_features=inputs, output_features=outputs,
             ...       nan_filler= {'method': 'KNNImputer', 'features': inputs} )
-            >>> comparisons.fit(run_type="dry_run")
+            >>> comparisons.fit(data=data,run_type="dry_run")
             >>> comparisons.compare_errors('r2')
             >>> # find out the models which resulted in r2> 0.5
             >>> best_models = comparisons.compare_errors('r2', cutoff_type='greater',
             ...                                                cutoff_val=0.3)
             >>> best_models = [m[1] for m in best_models.values()]
             >>> # now build a new experiment for best models and otpimize them
-            >>> comparisons = MLRegressionExperiments(data=data,
+            >>> comparisons = MLRegressionExperiments(
             ...     inputs_features=inputs, output_features=outputs,
             ...     nan_filler= {'method': 'KNNImputer', 'features': inputs},
             ...     exp_name="BestMLModels")
-            >>> comparisons.fit(run_type="optimize", include=best_models)
+            >>> comparisons.fit(data=data, run_type="optimize", include=best_models)
             >>> comparisons.compare_errors('r2')
             >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
         ```
         """
         self.param_space = param_space
         self.x0 = x0
-        self.data = data
         self.model_kws = model_kwargs
         self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
@@ -105,7 +102,7 @@ class MLRegressionExperiments(Experiments):
         self.regression_space = regression_space(num_samples=num_samples)
 
         if catboost is None:
-            self.models.remove('model_CATBoostRegressor')
+            self.models.remove('model_CatBoostRegressor')
         if lightgbm is None:
             self.models.remove('model_LGBMRegressor')
         if xgboost is None:
@@ -124,6 +121,10 @@ class MLRegressionExperiments(Experiments):
         except (ModuleNotFoundError, ImportError):
             TPOTRegressor = None
         return TPOTRegressor
+
+    @property
+    def mode(self):
+        return "regression"
 
     def build_and_run(self,
                       predict=True,
@@ -147,7 +148,6 @@ class MLRegressionExperiments(Experiments):
             verbosity = self.model_kws.pop('verbosity')
 
         model = self.ai4water_model(
-            data=self.data,
             prefix=title,
             verbosity=verbosity,
             **self.model_kws,
@@ -157,19 +157,19 @@ class MLRegressionExperiments(Experiments):
         setattr(self, '_model', model)
 
         if cross_validate:
-            val_score = model.cross_val_score(model.config['val_metric'])
+            val_score = model.cross_val_score(data=self.data_, scoring=model.config['val_metric'])
         else:
-            model.fit(**fit_kws)
-            vt, vp = model.predict('validation', return_true=True)
-            val_score = getattr(RegressionMetrics(vt, vp), model.config['val_metric'])()
+            model.fit(data=self.data_, **fit_kws)
+            vt, vp = model.predict(data='validation', return_true=True)
+            val_score = getattr(RegressionMetrics(vt, vp), model.val_metric)()
 
-        tt, tp = model.predict('test', return_true=True)
+        tt, tp = model.predict(data='test', return_true=True)
 
         if view:
-            model.view_model()
+            model.view()
 
         if predict:
-            t, p = model.predict('training', return_true=True)
+            t, p = model.predict(data='training', return_true=True)
 
             return (t, p), (tt, tp)
 
@@ -213,7 +213,7 @@ class MLRegressionExperiments(Experiments):
 
         return {'model': {'BayesianRidge': kwargs}}
 
-    def model_CATBoostRegressor(self, **kwargs):
+    def model_CatBoostRegressor(self, **kwargs):
         # https://catboost.ai/docs/concepts/python-reference_parameters-list.html
 
         self.path = "catboost.CatBoostRegressor"

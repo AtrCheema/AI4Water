@@ -30,7 +30,6 @@ print("{} nan values created in NDX column".format(out.isna().sum()))
 print(df[98:108])
 
 model = DualAttentionModel(
-    data=df,
     intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)],
     batch_size=32,
     lookback=5,
@@ -38,7 +37,7 @@ model = DualAttentionModel(
     train_data='random',
 )
 
-history = model.fit()
+history = model.fit(data=df)
 
 y = model.predict()
 # tr_y, tr_obs = model.predict(data='test)

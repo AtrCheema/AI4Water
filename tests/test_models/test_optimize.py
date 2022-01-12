@@ -1,26 +1,30 @@
 
 import os
+import time
 import unittest
 
 from ai4water import Model
 from ai4water.preprocessing import DataHandler
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water._optimize import make_space
 from ai4water.utils.utils import process_config_dict
 from ai4water.utils.utils import find_opt_paras_from_model_config
 from ai4water.hyperopt import Categorical, Real, Integer
 
 
-data = arg_beach()
-
+data = busan_beach()
+input_features = data.columns.to_list()[0:-1]
+output_features = data.columns.to_list()[-1:]
 
 def get_lstm():
 
-    return {"layers": {"LSTM": {"config": {"units": Integer(2, 5, num_samples=10)}},
-                       "relu": {},
-                       "Dense_0": {"units": Integer(2, 5, name="dense1_units", num_samples=10),
-                                   "activation": Categorical(["relu", "tanh"], name="dense1_act")},
-                       "Dense_1": {"config": {"units": 1, "activation": "relu"}}}}
+    return {"layers": {
+        "LSTM": {"config": {"units": Integer(2, 5, num_samples=10)}},
+        "relu": {},
+        "Dense_0": {"units": Integer(2, 5, name="dense1_units", num_samples=10),
+                   "activation": Categorical(["relu", "tanh"], name="dense1_act")},
+        "Dense_1": {"config": {"units": 1, "activation": "relu"}}
+    }}
 
 
 
@@ -28,17 +32,43 @@ class TestOptimize(unittest.TestCase):
 
     def test_optimize_transformations(self):
 
-        df = arg_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum"])
+        df = busan_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum", "sal_psu"])
 
         setattr(Model, 'from_check_point', False)
-        model = Model(model="XGBRegressor", data=df)
+        model = Model(model="XGBRegressor")
 
-        model.optimize_transformations(exclude="tide_cm", algorithm="random", num_iterations=3)
-        assert isinstance(model.config['transformation'], list)
+        model.optimize_transformations(
+            data=df,
+            exclude="tide_cm",
+            algorithm="random",
+            num_iterations=30)
+
+        assert isinstance(model.config['x_transformation'], list)
+        assert model.config['y_transformation'] is None
         return
 
+    def test_optimize_xy_transformations(self):
+
+        df = busan_beach(inputs=["tide_cm", "wat_temp_c", "rel_hum"])
+
+        setattr(Model, 'from_check_point', False)
+        model = Model(model="XGBRegressor")
+
+        model.optimize_transformations(
+            data=df,
+            exclude="tide_cm",
+            algorithm="random",
+            y_transformations=['log', 'sqrt'],
+            num_iterations=3)
+
+        assert isinstance(model.config['x_transformation'], list)
+        assert isinstance(model.config['y_transformation'], list)
+        return
+
+
     def test_make_space(self):
-        space = make_space(data.columns.to_list(), categories=['log', 'log2', 'minmax', 'none'])
+        space = make_space(data.columns.to_list(),
+                           categories=['log', 'log2', 'minmax', 'none'])
         assert len(space) == 14
         # include
         space = make_space(data.columns.to_list(), include="tide_cm",
@@ -68,6 +98,7 @@ class TestOptimize(unittest.TestCase):
                            categories=['log', 'log2', 'minmax', 'none', 'log10'])
         assert len(space) == 1, space
         assert len(space[0].categories) == 3
+
         return
 
 
@@ -91,9 +122,8 @@ class TestOptimizeHyperparas(unittest.TestCase):
     def test_ml(self):
         setattr(Model, 'from_check_point', False)
         model = Model(model=self.config,
-                      verbosity=0,
-                      data=arg_beach())
-        optimizer = model.optimize_hyperparameters()
+                      verbosity=0)
+        optimizer = model.optimize_hyperparameters(data=data)
         s = set([v['n_estimators'] for v in optimizer.xy_of_iterations().values()])
         assert len(s) > 5  # assert that all suggestions are not same
         op = os.path.join(os.getcwd(), optimizer.opt_path)
@@ -109,7 +139,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
         model = Model(model=self.config,
                       verbosity=0)
-        x, y = DataHandler(arg_beach().values).training_data()
+        x, y = DataHandler(data.values).training_data()
         optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)), process_results=False)
 
         # make sure that model's config has been updated
@@ -123,7 +153,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         model = Model(model=self.config,
                       cross_validator={"KFold": {'n_splits': 5}},
                       verbosity=0)
-        x, y = DataHandler(arg_beach().values).training_data()
+        x, y = DataHandler(data.values).training_data()
         optimizer = model.optimize_hyperparameters(
             algorithm="random",
             data=(x, y.reshape(-1, 1)), num_iterations=4)
@@ -139,10 +169,12 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
         # without process results
         model = Model(model=self.config,
-                      verbosity=0,
-                      data=arg_beach())
-        optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=3,
-                                                   process_results=False)
+                      verbosity=0)
+        optimizer = model.optimize_hyperparameters(
+            data=data,
+            algorithm="random",
+            num_iterations=3,
+            process_results=False)
         op = os.path.join(os.getcwd(), optimizer.opt_path)
         fname = os.path.join(op, "convergence.png")
         assert not os.path.exists(fname)
@@ -310,17 +342,24 @@ class TestOptimizeHyperparas(unittest.TestCase):
 
     def test_nn_optimize(self):
 
+        time.sleep(1)
         m_conf = get_lstm()
 
         setattr(Model, 'from_check_point', False)
 
         model = Model(model=m_conf,
-                      data=arg_beach(),
                       verbosity=0,
+                      input_features=input_features,
+                      output_features=output_features,
                       epochs=5)
 
         print(model.path, 'model.path')
-        optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=5, process_results=False)
+        optimizer = model.optimize_hyperparameters(
+            data=data,
+            algorithm="random",
+            num_iterations=5,
+            process_results=False
+        )
         s = set([v['units'] for v in optimizer.xy_of_iterations().values()])
         assert len(s) >= 3  # assert that all suggestions are not same
 
@@ -338,12 +377,17 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
 
         model = Model(model=m_conf,
-                      data=arg_beach(),
                       lookback=Integer(3, 10, num_samples=10),
+                      input_features=input_features,
+                      output_features=output_features,
                       verbosity=0,
                       epochs=5)
 
-        optimizer = model.optimize_hyperparameters(algorithm="random", num_iterations=5, process_results=False)
+        optimizer = model.optimize_hyperparameters(
+            data=data,
+            algorithm="random",
+            num_iterations=5,
+            process_results=False)
         assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
         assert model.config['lookback'] == optimizer.best_paras()['lookback']
         return

@@ -1,2 +1,2 @@
 
-from ._interpret import Interpret
+from ._main import Interpret
