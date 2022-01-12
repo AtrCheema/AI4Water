@@ -581,7 +581,8 @@ class MakeHRUs(object):
         if name is None: name = self.hru_definition
         name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
 
-        return pie(vals, labels=labels_n,
+        return pie(fractions=vals,
+                   labels=labels_n,
                    explode=tuple(explode),
                    autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,
                    title=title, name=name, save=save, show=show)

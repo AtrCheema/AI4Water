@@ -100,5 +100,11 @@ class TestPie(unittest.TestCase):
         assert isinstance(ax, plt.Axes)
         return
 
+    def test_fraction(self):
+        ax = pie([0.1, 0.2, 0.5, 0.2], show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1183,6 +1183,10 @@ class TransformationExperiments(Experiments):
             ...                 param_space=search_space, x0=x0)
     """
 
+    @property
+    def mode(self):
+        return "regression"
+
     def __init__(self,
                  param_space=None,
                  x0=None,

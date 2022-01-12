@@ -46,26 +46,6 @@ The specific purposes of the repository are
 -    All of the above functionalities should be available without complicating keras 
  implementation.
 
-Currently following models are implemented
-
-| Name                          | Name in this repository  | Reference |
-| -------------------------- | ------------- | ---------- |
-| MLP  | `Model` | |
-| LSTM | ٭ | |
-| CNN  | * |  |
-| LSTM CNN | * |  |
-| CNN LSTM |  * |  |
-| Autoencoder  | * |  |
-| ConvLSTM | * | [paper](https://arxiv.org/abs/1506.04214v1) [Code](https://machinelearningmastery.com/how-to-develop-lstm-models-for-multi-step-time-series-forecasting-of-household-power-consumption/) |
-| Temporal Convolutional Networks (TCN)  | * | [paper](https://www.nature.com/articles/s41598-020-65070-5) [code](https://github.com/philipperemy/keras-tcn) |
-| Iterpretable Multivariate LSTM (IMV-LSTM)  | `IMVModel` | [paper](https://arxiv.org/pdf/1905.12034.pdf) [code](https://github.com/KurochkinAlexey/IMV_LSTM) |
-| HARHN  | `HARHNModel` | [paper](https://arxiv.org/abs/1806.00685) [code](https://github.com/KurochkinAlexey/Hierarchical-Attention-Based-Recurrent-Highway-Networks-for-Time-Series-Prediction)|
-| Neural Beats  | `NBeats` | [paper](https://arxiv.org/pdf/1905.10437.pdf) |
-| Dual Attention | `DualAttentionModel` | [paper](https://arxiv.org/pdf/1704.02971.pdf) [code]() |
-| Input Attention  | `InputAttentionModel` | |
-
-`*` These models can be constructed by stacking layers in a python dictionary as shown [here](https://ai4water.readthedocs.io/en/latest/build_dl_models/). The remaining models 
-can be used as shown [here](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
 
 ## Installation
 
@@ -180,6 +160,137 @@ history = model.fit(data=data)
 
 preds, obs = model.predict()
 ```
+
+# Hyperparameter optimization
+For hyperparameter optimization, replace the actual values of hyperparameters
+with the space.
+```python
+from ai4water import Model
+from ai4water.datasets import busan_beach
+from ai4water.hyperopt import Integer, Real
+data = busan_beach()
+model = Model(
+        model = {'layers': {"LSTM": Integer(low=30, high=100,name="units"),
+                            'Dense': 1}},
+        input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
+        output_features = ['tetx_coppml'],     # columns in csv file to be used as output
+        lookback = Integer(low=5, high=15, name="lookback"),
+        lr=Real(low=0.00001, high=0.001, name="lr")
+)
+model.optimize_hyperparameters(data=data,
+                               algorithm="bayes",  # choose between 'random', 'grid' or 'atpe' 
+                               num_iterations=30
+                               )
+```
+
+# API
+[ai4water.Model](https://ai4water.readthedocs.io/en/latest/model/) 
+
+[ai4water.functional.Model](https://ai4water.readthedocs.io/en/latest/model/#ai4water.functional.Model)
+
+[ai4water.DualAttentionModel]()
+
+[ai4water.InputAttentionModel]()
+
+[ai4water.models.torch.Learner](https://ai4water.readthedocs.io/en/dev/pt_learner/#ai4water.models.torch.pytorch_training.Learner)
+
+
+## hyperparameter optimization
+[ai4water.hyperopt.HyperOpt](https://ai4water.readthedocs.io/en/dev/hpo/#ai4water.hyperopt.hyper_opt.HyperOpt)
+
+[ai4water.hyperopt.Integer](https://ai4water.readthedocs.io/en/dev/hpo/#ai4water.hyperopt._space.Integer)
+
+[ai4water.hyperopt.Real](https://ai4water.readthedocs.io/en/dev/hpo/#ai4water.hyperopt._space.Real)
+
+[ai4water.hyperopt.Categorical](https://ai4water.readthedocs.io/en/dev/hpo/#ai4water.hyperopt._space.Categorical)
+
+## experiments
+
+[ai4water.experiments.Experiments](https://ai4water.readthedocs.io/en/dev/experiments/#ai4water.experiments.experiments.Experiments)
+
+[ai4water.experiments.MLRegressionExperiments](https://ai4water.readthedocs.io/en/dev/experiments/#ai4water.experiments._regression.MLRegressionExperiments)
+
+[ai4water.experiments.MLClassificationExperiments](https://ai4water.readthedocs.io/en/dev/experiments/#ai4water.experiments._classification.MLClassificationExperiments)
+
+## preprocessing
+
+[ai4water.preprocessing.DataHandler](https://ai4water.readthedocs.io/en/dev/preprocessing/datahandler/)
+
+[Imputation](https://ai4water.readthedocs.io/en/dev/preprocessing/imputation/)
+
+[ai4water.preprocessing.transformation.Transformation](https://ai4water.readthedocs.io/en/dev/preprocessing/transformation/#ai4water.preprocessing.transformations._main.Transformation)
+
+[ai4water.preprocessing.transformation.Transformations](https://ai4water.readthedocs.io/en/dev/preprocessing/transformation/#ai4water.preprocessing.transformations._transformation_wrapper.Transformations)
+
+[ai4water.preprocessing.MakeHRUs](https://ai4water.readthedocs.io/en/dev/preprocessing/make_hrus/#ai4water.preprocessing.spatial_processing.MakeHRUs)
+
+## postprocessing
+
+[ai4water.postprocessing.explain.ShapExplainer]()
+
+[ai4water.postprocessing.explain.LimeExplainer]()
+
+[ai4water.postprocessing.explain.PartialDependencePlot]()
+
+[ai4water.postprocessing.explain.PermutationImportance](https://ai4water.readthedocs.io/en/dev/postprocessing/explain/#ai4water.postprocessing.explain._permutation_importance.PermutationImportance)
+
+[ai4water.postprocessing.visualize.Interpret](https://ai4water.readthedocs.io/en/dev/postprocessing/interpret/#ai4water.postprocessing.interpret._interpret.Interpret)
+
+[ai4water.postprocessing.visualize.Visualize](https://ai4water.readthedocs.io/en/dev/postprocessing/visualize/#ai4water.postprocessing.visualize._visualize.Visualize)
+
+[ai4water.postprocessing.SeqMetrics.RegressionMetrics]()
+
+[ai4water.postprocessing.SeqMetrics.ClassificationMetrics]()
+
+## datasets
+
+[ai4water.datasts.arg_busan](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.arg_busan)
+
+[ai4water.datasts.MtropicsLaos](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.MtropicsLaos)
+
+[ai4water.datasts.LamaH](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.LamaH)
+
+[ai4water.datasts.CAMELS_AUS](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.CAMELS_AUS)
+
+[ai4water.datasts.CAMELS_GB](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.CAMELS_GB)
+
+[ai4water.datasts.CAMELS_BR](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.CAMELS_BR)
+
+[ai4water.datasts.CAMELS_US](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.CAMELS_US)
+
+[ai4water.datasts.CAMELS_CL](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.CAMELS_CL)
+
+[ai4water.datasts.HYPE](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.HYPE)
+
+[ai4water.datasts.HYSETS](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.HYSETS)
+
+[ai4water.datasts.SWECanada](https://ai4water.readthedocs.io/en/dev/datasets/#ai4water.datasets.SWECanada)
+
+
+## evapotranspiration
+
+[ai4water.et.ETBase](https://ai4water.readthedocs.io/en/dev/evapotranspiration/#ai4water.et.et_methods.ETBase)
+
+[ai4water.et.Abtew](https://ai4water.readthedocs.io/en/dev/evapotranspiration/#ai4water.et.et_methods.Abtew)
+
+[ai4water.et.Albrecht](https://ai4water.readthedocs.io/en/dev/evapotranspiration/#ai4water.et.et_methods.Albrecht)
+
+## utils
+
+[ai4water.utils.prepare_data](https://ai4water.readthedocs.io/en/dev/utils/#ai4water.utils.utils.prepare_data)
+
+[ai4water.utils.taylor_plot](https://ai4water.readthedocs.io/en/dev/utils/#ai4water.utils.taylor_diagram.taylor_plot)
+
+[ai4water.utils.regplot](https://ai4water.readthedocs.io/en/dev/utils/#ai4water.utils.visualizations.regplot)
+
+[ai4water.utils.murphy_diagram](https://ai4water.readthedocs.io/en/dev/utils/#ai4water.utils.visualizations.murphy_diagram)
+
+[ai4water.utils.fdc_plot](https://ai4water.readthedocs.io/en/dev/utils/#ai4water.utils.visualizations.fdc_plot)
+
+## exploratory data analysis
+
+[eda.EDA](https://ai4water.readthedocs.io/en/dev/eda/)
+
 
 ## Disclaimer
 The library is still under development. Fundamental changes are expected without prior notice or
