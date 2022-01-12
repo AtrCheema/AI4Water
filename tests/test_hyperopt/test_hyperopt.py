@@ -78,8 +78,8 @@ prev_xy = {'213026901362135.5_0': {'booster': 'gbtree',
                                     'n_estimators': 17,
                                     'learning_rate': 0.054629143096849984}}
 
-def check_attrs(optimizer, paras, ai4water_args=None):
-    optimizer.eval_with_best(view_model=False)
+def check_attrs(optimizer, paras):
+    optimizer.eval_with_best()
     space = optimizer.space()
     assert isinstance(space, dict)
     assert len(space)==paras
@@ -90,46 +90,10 @@ def check_attrs(optimizer, paras, ai4water_args=None):
     assert isinstance(optimizer.best_paras(False), dict)
     assert len(optimizer.func_vals()) >= optimizer.num_iterations
     assert isinstance(optimizer.skopt_space(), Space)
-    if isinstance(ai4water_args, dict):
-        assert 'model' in ai4water_args
 
     fpath = os.path.join(optimizer.opt_path, 'serialized.json')
     assert os.path.exists(fpath)
 
-    return
-
-def run_ai4water(method):
-    dims = {'n_estimators': [10,  20],
-            'learning_rate': [0.1,  0.0005],
-            'booster': ["gbtree", "dart"]}
-
-    ai4water_args = {"input_features": inputs,
-                   "output_features": outputs,
-                   "lookback": 1,
-                   "batches": "2d",
-                   "val_data": "same",
-                     "val_fraction": 0.0,
-                   "test_fraction": 0.3,
-                   "model": {"XGBRegressor": {}},
-                   }
-
-    opt = HyperOpt(method,
-                   param_space=dims,
-                   ai4water_args=ai4water_args,
-                   data=data,
-                   acq_func='EI',  # Expected Improvement.
-                   n_calls=12,
-                   n_iter=12,
-                   # acq_optimizer='auto',
-                   x0=[10, 0.01, "gbtree"],
-                   n_random_starts=3,  # the number of random initialization points
-                   random_state=2,
-                   verbosity=0
-                   )
-
-    # executes bayesian optimization
-    opt.fit()
-    check_attrs(opt, len(dims), ai4water_args)
     return
 
 
@@ -365,50 +329,6 @@ class TestHyperOpt(unittest.TestCase):
         check_attrs(opt, len(dims))
         return
 
-    def test_ai4water_bayes(self):
-        dims = [Integer(low=10, high=20, name='n_estimators'),
-                #Integer(low=3, high=6, name='max_depth'),
-                Real(low=1e-5, high=0.1, name='learning_rate'),
-                Categorical(categories=["gbtree", "dart"], name="booster")
-                ]
-
-        ai4water_args = {"input_features": inputs,
-                       "output_features": outputs,
-                       "lookback": 1,
-                       "batches": "2d",
-                       "val_data": "same",
-                       "test_fraction": 0.3,
-                         "val_fraction": 0.0,
-                       "model": {"XGBRegressor": {}},
-                       #"ml_model_args": {'objective': 'reg:squarederror'}, TODO
-                       }
-
-        opt = HyperOpt("bayes",
-                       param_space=dims,
-                       ai4water_args=ai4water_args,
-                       data=data,
-                       acq_func='EI',  # Expected Improvement.
-                       n_calls=12,
-                       # acq_optimizer='auto',
-                       x0=[10, 0.01, "gbtree"],
-                       n_random_starts=3,  # the number of random initialization points
-                       random_state=2,
-                       verbosity=0
-                       )
-
-        opt.fit()
-        check_attrs(opt, len(dims), ai4water_args)
-        return
-
-    def test_ai4water_grid(self):
-        run_ai4water("grid")
-        return
-
-    def test_ai4water_random(self):
-        run_ai4water("random")
-
-        return
-
     def test_hyperopt_basic(self):
         # https://github.com/hyperopt/hyperopt/blob/master/tutorial/01.BasicTutorial.ipynb
         def objective(x):
@@ -507,54 +427,6 @@ class TestHyperOpt(unittest.TestCase):
         self.assertIsNotNone(optimizer.skopt_space())
         return
 
-    def test_hp_to_skopt_space(self):
-        """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
-        successfully.
-        """
-        ai4water_args = {'model': 'XGBRegressor',
-                         'input_features': inputs,
-                         'output_features': outputs
-                                     }
-        opt = HyperOpt("tpe",
-                       param_space=[Integer(low=10, high=20, name='n_estimators', num_samples=5),
-                                    Integer(low=3, high=6, name='max_depth', num_samples=5),
-                                    Categorical(['gbtree',  'dart'], name='booster')
-                                    ],
-                       ai4water_args =ai4water_args,
-                       data =data,
-                       backend='hyperopt',
-                       num_iterations =5,
-                       verbosity=0
-                       )
-        opt.fit()
-        check_attrs(opt, 3, ai4water_args)
-        assert isinstance(list(opt.best_paras().values())[-1], str)
-        return
-
-    def test_hp_to_skopt_space1(self):
-        """tests that if we give space as hp.space, then can we get .x_iters and .best_paras
-        successfully.
-        """
-        ai4water_args = {'model': 'XGBRegressor',
-                         'input_features': inputs,
-                         'output_features': outputs
-                                     }
-        opt = HyperOpt("tpe",
-                       param_space=[hp.randint('n_estimators', low=10, high=20),  # todo
-                                    hp.randint('max_depth', low=3, high=5),
-                                    hp.choice('booster', ['gbtree',  'dart']),
-                                    ],
-
-                       ai4water_args =ai4water_args,
-                       data =data,
-                       backend='hyperopt',
-                       num_iterations =5,
-                       verbosity=0
-                       )
-        opt.fit()
-        check_attrs(opt, 3, ai4water_args)
-        assert isinstance(list(opt.best_paras().values())[-1], str)
-        return
 
     def test_unified_interface(self):
 
