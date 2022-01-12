@@ -8,25 +8,25 @@ For tutorial on using this class, see
 [this](https://github.com/AtrCheema/AI4Water/blob/master/examples/hyper_para_opt.ipynb) notebook
 
 **`Categorical`**
-::: ai4water.hyperopt._space.Categorical 
+::: ai4water.hyperopt.Categorical 
     rendering:
         show_root_heading: true
 
 
 **`Real`**
-::: ai4water.hyperopt._space.Real 
+::: ai4water.hyperopt.Real 
     rendering:
         show_root_heading: true
 
 
 **`Integer`**
-::: ai4water.hyperopt._space.Integer 
+::: ai4water.hyperopt.Integer 
     rendering:
         show_root_heading: true
 
 
 **`HyperOpt`**
-::: ai4water.hyperopt.hyper_opt.HyperOpt 
+::: ai4water.hyperopt.HyperOpt 
     handler: python
     rendering:
         show_root_heading: true
