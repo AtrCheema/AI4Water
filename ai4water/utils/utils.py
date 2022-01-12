@@ -7,7 +7,7 @@ import warnings
 from typing import Union
 from shutil import rmtree
 from collections import OrderedDict
-from typing import Any, Dict, Tuple, List
+from typing import Tuple, List
 import collections.abc as collections_abc
 
 import scipy
@@ -239,13 +239,13 @@ def _make_model(**kwargs):
         such as `layers`
       data_config: `dict`, contains parameters for data preparation/pre-processing/post-processing etc.
     """
-    from ..experiments.utils import classification_models
+    # from ..experiments.utils import classification_models
 
     kwargs = process_io(**kwargs)
 
     kwargs = check_kwargs(**kwargs)
 
-    def_mode = "regression"  # default mode
+    #def_mode = "regression"  # default mode
     model = kwargs.get('model', None)
     def_cat = None
 
@@ -254,22 +254,22 @@ def _make_model(**kwargs):
             def_cat = "DL"
             # for DL, the default mode case will be regression
         else:
-            model_name = list(model.keys())[0]
-            if model_name.endswith("Class") or model_name in classification_models():
-                def_mode = "classification"
+            #model_name = list(model.keys())[0]
+            #if model_name.endswith("Class") or model_name in classification_models():
+                #def_mode = "classification"
             def_cat = "ML"
 
-    if 'loss' in kwargs:
-        if callable(kwargs['loss']) and hasattr(kwargs['loss'], 'name'):
-            loss_name = kwargs['loss'].name
-        else:
-            loss_name = kwargs['loss']
-        if loss_name in [
-            'sparse_categorical_crossentropy',
-            'categorical_crossentropy',
-            'binary_crossentropy'
-        ]:
-            def_mode = 'classification'
+    #if 'loss' in kwargs:
+        #if callable(kwargs['loss']) and hasattr(kwargs['loss'], 'name'):
+        #    loss_name = kwargs['loss'].name
+        #else:
+        #    loss_name = kwargs['loss']
+        # if loss_name in [
+        #     'sparse_categorical_crossentropy',
+        #     'categorical_crossentropy',
+        #     'binary_crossentropy'
+        # ]:
+            #def_mode = 'classification'
 
     accept_additional_args = False
     if 'accept_additional_args' in kwargs:
@@ -334,7 +334,7 @@ def _make_model(**kwargs):
         # Useful if we have fixed batch size in our model but the number of samples is not fully divisble by batch size
         'drop_remainder': {"type": bool, "default": False, 'lower': None, 'upper': None, 'between': [True, False]},
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
-        'mode': {'type': str, 'default': def_mode, 'lower': None, 'upper': None,
+        'mode': {'type': str, 'default': None, 'lower': None, 'upper': None,
                  'between': ["regression", "classification"]},
         # how many future values we want to predict
         'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
@@ -1067,40 +1067,6 @@ data must be 1 dimensional array but it has shape {np.shape(data)}
                           elements are greater than or equal to zero""", UserWarning)
 
     return Jsonize(stats)()
-
-
-def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
-    """
-    Modified after https://github.com/akanz1/klib/blob/main/klib/utils.py#L197
-     Gives metrics of missing values in the dataset.
-    Parameters
-    ----------
-    data : pd.DataFrame
-        2D dataset that can be coerced into Pandas DataFrame
-    Returns
-    -------
-    Dict[str, float]
-        mv_total: float, number of missing values in the entire dataset
-        mv_rows: float, number of missing values in each row
-        mv_cols: float, number of missing values in each column
-        mv_rows_ratio: float, ratio of missing values for each row
-        mv_cols_ratio: float, ratio of missing values for each column
-    """
-
-    data = pd.DataFrame(data).copy()
-    mv_rows = data.isna().sum(axis=1)
-    mv_cols = data.isna().sum(axis=0)
-    mv_total = data.isna().sum().sum()
-    mv_rows_ratio = mv_rows / data.shape[1]
-    mv_cols_ratio = mv_cols / data.shape[0]
-
-    return {
-        "mv_total": mv_total,
-        "mv_rows": mv_rows,
-        "mv_cols": mv_cols,
-        "mv_rows_ratio": mv_rows_ratio,
-        "mv_cols_ratio": mv_cols_ratio,
-    }
 
 
 def prepare_data(

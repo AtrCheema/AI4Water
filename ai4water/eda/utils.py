@@ -1,5 +1,8 @@
 
+from typing import Any, Dict
+
 import numpy as np
+import pandas as pd
 from scipy import linalg
 import matplotlib.pyplot as plt
 
@@ -115,3 +118,37 @@ def ccf_np(x, y, unbiased=True):
     """
     cvf = ccovf_np(x, y, unbiased=unbiased, demean=True)
     return cvf / (np.std(x) * np.std(y))
+
+
+def _missing_vals(data: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Modified after https://github.com/akanz1/klib/blob/main/klib/utils.py#L197
+     Gives metrics of missing values in the dataset.
+    Parameters
+    ----------
+    data : pd.DataFrame
+        2D dataset that can be coerced into Pandas DataFrame
+    Returns
+    -------
+    Dict[str, float]
+        mv_total: float, number of missing values in the entire dataset
+        mv_rows: float, number of missing values in each row
+        mv_cols: float, number of missing values in each column
+        mv_rows_ratio: float, ratio of missing values for each row
+        mv_cols_ratio: float, ratio of missing values for each column
+    """
+
+    data = pd.DataFrame(data).copy()
+    mv_rows = data.isna().sum(axis=1)
+    mv_cols = data.isna().sum(axis=0)
+    mv_total = data.isna().sum().sum()
+    mv_rows_ratio = mv_rows / data.shape[1]
+    mv_cols_ratio = mv_cols / data.shape[0]
+
+    return {
+        "mv_total": mv_total,
+        "mv_rows": mv_rows,
+        "mv_cols": mv_cols,
+        "mv_rows_ratio": mv_rows_ratio,
+        "mv_cols_ratio": mv_cols_ratio,
+    }
