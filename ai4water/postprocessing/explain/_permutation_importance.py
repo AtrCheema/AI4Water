@@ -130,7 +130,7 @@ class PermutationImportance(ExplainerMixin):
         if callable(self.scoring):
             return self.scoring(self.y, pred)
         else:
-            if self.scoring in RegressionMetrics.__dict__:
+            if hasattr(RegressionMetrics, self.scoring):
                 errors = RegressionMetrics(self.y, pred)
             else:
                 errors = ClassificationMetrics(self.y, pred)
@@ -390,7 +390,8 @@ class PermutationImportance(ExplainerMixin):
 
         return results
 
-    def _plot_importance(self, imp,  features, axes=None, show=False,
+    def _plot_importance(self, imp,
+                         features, axes=None, show=False,
                          save=False,
                          name=None):
         if axes is None:
@@ -404,15 +405,16 @@ class PermutationImportance(ExplainerMixin):
             labels=np.array(features)[perm_sorted_idx],
         )
 
-        axes.set_xlabel(ERROR_LABELS[self.scoring])
+        axes.set_xlabel(ERROR_LABELS.get(self.scoring, self.scoring))
 
         axes.set_title(f"Base Score {round(self._base_score(), 3)}")
 
+        if save:
+            name = name or ''
+            fname = os.path.join(self.path, f"box_plot_{name}_{self.n_repeats}_{self.scoring}")
+            plt.savefig(fname, bbox_inches="tight")
+
         if show:
             plt.show()
-
-        if save:
-            fname = os.path.join(self.path, f"box_plot_{name}")
-            plt.savefig(fname, bbox_inches="tight")
 
         return axes

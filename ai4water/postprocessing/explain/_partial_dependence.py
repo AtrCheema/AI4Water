@@ -251,8 +251,8 @@ class PartialDependencePlot(ExplainerMixin):
         ind0 = self._feature_to_ind(features[0])
         ind1 = self._feature_to_ind(features[1])
 
-        xs0 = self.xs(self.data, features[0], lookback)
-        xs1 = self.xs(self.data, features[1], lookback)
+        xs0 = self.grid(self.data, features[0], lookback)
+        xs1 = self.grid(self.data, features[1], lookback)
 
         features_tmp = data.copy()
         x0 = np.zeros((self.num_points, self.num_points))
@@ -343,15 +343,15 @@ class PartialDependencePlot(ExplainerMixin):
 
         return xv
 
-    def xs(self, data, feature, lookback=None):
-
+    def grid(self, data, feature, lookback=None):
+        """generates the grid for evaluation of model"""
         xmin, xmax = compute_bounds(self.xmin, self.xmax, self.xv(data, feature, lookback))
         return np.linspace(xmin, xmax, self.num_points)
 
     def _pdp_for_2d(self, data, feature, lookback=None):
         ind = self._feature_to_ind(feature)
 
-        xs = self.xs(data, feature, lookback)
+        xs = self.grid(data, feature, lookback)
 
         data_temp = data.copy()
         pd_vals = np.full(self.num_points, np.nan)
@@ -395,7 +395,7 @@ class PartialDependencePlot(ExplainerMixin):
             fig = plt.figure()
             ax = fig.add_axes((0.1, 0.3, 0.8, 0.6))
 
-        xs = self.xs(data, feature, lookback)
+        xs = self.grid(data, feature, lookback)
 
         ylabel = "E[f(x) | " + feature + "]"
         if ice:
@@ -446,12 +446,13 @@ class PartialDependencePlot(ExplainerMixin):
             minina = self.model(data, **self.kwargs).min()
             ax.axvline(minina, linestyle="--", color="r", lw=1)
 
-        if show:
-            plt.show()
-
         if save:
+            lookback = lookback or ''
             fname = os.path.join(self.path, f"pdp_{feature}_{lookback}")
             plt.savefig(fname, bbox_inches="tight", dpi=400)
+
+        if show:
+            plt.show()
 
         return ax
 
