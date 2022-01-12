@@ -1,6 +1,6 @@
 
 __all__ = ["plot", "bar_chart", "regplot", "imshow", "hist",
-           "process_axis", "init_subplots"]
+           "process_axis", "init_subplots", "pie"]
 
 import random
 from typing import Union
@@ -146,7 +146,7 @@ def regplot(
     Example:
         >>> from ai4water.datasets import busan_beach
         >>> from ai4water.utils.easy_mpl import regplot
-        >>> data = arg_busan()
+        >>> data = busan_beach()
         >>> regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
     """
     x = to_1d_array(x)
@@ -483,6 +483,64 @@ def hist(
     n, bins, patches = ax.hist(x, **hist_kws)
 
     _process_axis(ax, grid=grid, **kwargs)
+
+    if show:
+        plt.show()
+
+    return ax
+
+
+def pie(
+        vals: Union[list, np.ndarray, pd.Series],
+        labels: list = None,
+        ax: plt.Axes = None,
+        title: str = None,
+        name: str = None,
+        save: bool = True,
+        show: bool = True,
+        **kwargs
+)->plt.Axes:
+    """
+    Arguments:
+        vals: array like, unique values and their counts will be inferred from this array
+        labels: labels for unique values in vals, if given, must be equal to unique vals
+             in vals. Otherwise "unique_value (counts)" will be used for labeling.
+        ax: the axes on which to draw, if not given current active axes will be used
+        title:
+        name:
+        save:
+        show:
+        kwargs: any keyword argument will go to axes.pie
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.pie.html
+
+    Example:
+        >>> pie(np.random.randint(0, 3, 100))
+    """
+
+    if ax is None:
+        ax = plt.gca()
+
+    fraction = pd.Series(vals).value_counts(normalize=True).values
+
+    vals = pd.Series(vals).value_counts().to_dict()
+
+    if labels is None:
+        labels = [f"{value} ({count}) " for value,count in vals.items()]
+
+    if 'autopct' not in kwargs:
+        kwargs['autopct'] = '%1.1f%%'
+
+    ax.pie(fraction,
+           labels=labels,
+           **kwargs)
+
+    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    if title:
+        plt.title(title, fontsize=20)
+
+    if save:
+        name = name or "pie.png"
+        plt.savefig(name, dpi=300)
 
     if show:
         plt.show()

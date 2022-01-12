@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ai4water.datasets import busan_beach
-from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow, hist
+from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow, hist, pie
 from ai4water.utils.visualizations import regplot
 
 
@@ -80,6 +80,24 @@ class Testhist(unittest.TestCase):
     def test_hist_with_axes(self):
         _, ax = plt.subplots()
         hist(np.random.random((10, 1)), ax=ax, show=False)
+        return
+
+
+class TestPie(unittest.TestCase):
+
+    def test_binary(self):
+        ax = pie(np.random.randint(0, 2, 100), show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_multiclass(self):
+        ax = pie(np.random.randint(0, 5, 100), show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_string(self):
+        ax = pie(['a'] * 60 + ['b'] * 50, show=False)
+        assert isinstance(ax, plt.Axes)
         return
 
 if __name__ == "__main__":
