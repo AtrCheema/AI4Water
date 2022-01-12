@@ -800,10 +800,6 @@ class RegressionMetrics(Metrics):
         """ Mean Relative Absolute Error """
         return float(np.mean(np.abs(self._relative_error(benchmark))))
 
-    def mse(self, weights=None) -> float:
-        """ mean square error """
-        return float(np.average((self.true - self.predicted) ** 2, axis=0, weights=weights))
-
     def msle(self, weights=None) -> float:
         """
         mean square logrithmic error

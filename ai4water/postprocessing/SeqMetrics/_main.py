@@ -446,3 +446,7 @@ class Metrics(object):
         self.predicted = sim_copy[all_treatment_array]
 
         return
+
+    def mse(self, weights=None) -> float:
+        """ mean square error """
+        return float(np.average((self.true - self.predicted) ** 2, axis=0, weights=weights))
