@@ -1313,7 +1313,8 @@ class BaseModel(NN):
             if np.isnan(old_value) or old_value < 0.001:
                 self._model.set_params(residual_threshold=0.001)
                 if self.verbosity > 0:
-                    print(f"changing residual_threshold from {old_value} to {self._model.residual_threshold}")
+                    print(f"""changing residual_threshold from {old_value} to
+                           {self._model.residual_threshold}""")
         return
 
     def score(self, x=None, y=None, data='test', **kwargs):
@@ -1322,25 +1323,35 @@ class BaseModel(NN):
         before calculating score from sklearn. Currently it just calls the
         `score` function of sklearn by first transforming x and y."""
         if self.category == "ML" and hasattr(self, '_model'):
-            x,y, _, _, _ = self._fetch_data('test', x=x,y=y, data=data)
+            x,y, _, _, _ = self._fetch_data(data, x=x,y=y, data=data)
             x = self._transform_x(x, 'x_score_')
             x = self._transform_x(x, 'y_score_')
             return self._model.score(x, y, **kwargs)
         raise NotImplementedError(f"can not calculate score")
 
     def predict_proba(self, x=None,  data='test', **kwargs):
+        """since preprocesisng is part of Model, so the trained model with
+        sklearn/xgboost/catboost/lgbm as backend must also be able to apply
+        preprocessing on inputs before calling predict_proba from underlying library.
+        Currently it just calls the `predict_proba` function of underlying library
+        by first transforming x
+        """
         if self.category == "ML" and hasattr(self, '_model'):
-            x,y, _, _, _ = self._fetch_data('test', x=x, data=data)
+            x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
             x = self._transform_x(x, 'x_proba_')
-            x = self._transform_x(x, 'y_proba_')
             return self._model.predict_proba(x,  **kwargs)
         raise NotImplementedError(f"can not calculate proba")
 
     def predict_log_proba(self, x=None,  data='test', **kwargs):
+        """since preprocesisng is part of Model, so the trained model with
+        sklearn/xgboost/catboost/lgbm as backend must also be able to apply
+        preprocessing on inputs before calling predict_log_proba from underlying library.
+        Currently it just calls the `log_proba` function of underlying library
+        by first transforming x
+        """
         if self.category == "ML" and hasattr(self, '_model'):
-            x,y, _, _, _ = self._fetch_data('test', x=x, data=data)
+            x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
             x = self._transform_x(x, 'x_log_proba_')
-            x = self._transform_x(x, 'y_log_proba_')
             return self._model.predict_log_proba(x, **kwargs)
         raise NotImplementedError(f"can not calculate log_proba")
 

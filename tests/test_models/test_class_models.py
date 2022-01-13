@@ -20,9 +20,12 @@ if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
 else:
     from ai4water import Model
 
-
+from ai4water.functional import Model as FModel
 from ai4water.datasets import busan_beach
+from ai4water.datasets import MtropicsLaos
 
+laos = MtropicsLaos()
+cls_data = laos.make_classification(lookback_steps=1)
 
 def test_evaluation(model):
 
@@ -83,6 +86,16 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation
 
 
 class TestClassifications(unittest.TestCase):
+
+    def test_ml_cls_model(self):
+        # FModel because tensorflow sucks
+        model = FModel(model="RandomForestClassifier")
+        model.fit(data=cls_data)
+        proba = model.predict_proba()
+        log_proba = model.predict_log_proba()
+        assert proba.shape[1] == 2
+        assert log_proba.shape[1] == 2
+        return
 
     def test_binary_classification(self):
 

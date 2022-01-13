@@ -7,6 +7,8 @@
             - fit
             - evaluate
             - predict
+            - predict_proba
+            - predict_log_proba
             - interpret
             - view
             - eda
