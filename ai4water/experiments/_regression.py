@@ -130,7 +130,6 @@ class MLRegressionExperiments(Experiments):
                       predict=True,
                       view=False,
                       title=None,
-                      fit_kws=None,
                       cross_validate=False,
                       **kwargs):
 
@@ -140,8 +139,6 @@ class MLRegressionExperiments(Experiments):
         Since an experiment consists of many models, this method
         is also run many times.
         """
-        if fit_kws is None:
-            fit_kws = {}
 
         verbosity = max(self.verbosity-1, 0)
         if 'verbosity' in self.model_kws:
@@ -154,12 +151,12 @@ class MLRegressionExperiments(Experiments):
             **kwargs
         )
 
-        setattr(self, '_model', model)
+        setattr(self, 'model_', model)
 
         if cross_validate:
             val_score = model.cross_val_score(data=self.data_, scoring=model.config['val_metric'])
         else:
-            model.fit(data=self.data_, **fit_kws)
+            model.fit(data=self.data_)
             vt, vp = model.predict(data='validation', return_true=True)
             val_score = getattr(RegressionMetrics(vt, vp), model.val_metric)()
 

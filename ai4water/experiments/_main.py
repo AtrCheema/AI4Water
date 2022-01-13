@@ -55,7 +55,7 @@ class Experiments(object):
     - simulations
     - trues
     - exp_path
-    - _model
+    - model_
     - models
 
     Methods
@@ -117,12 +117,12 @@ class Experiments(object):
     def save_config(self):
         dict_to_file(self.exp_path, config=self.config)
 
-    def build_and_run(self, predict=False, title=None, fit_kws=None, **kwargs):
-        setattr(self, '_model', None)
+    def build_and_run(self, predict=False, title=None, **kwargs):
+        setattr(self, 'model_', None)
         raise NotImplementedError
 
-    def build_from_config(self, config_path, weights, fit_kws, **kwargs):
-        setattr(self, '_model', None)
+    def build_from_config(self, config_path, weights, **kwargs):
+        setattr(self, 'model_', None)
         raise NotImplementedError
 
     @property
@@ -151,7 +151,6 @@ class Experiments(object):
             exclude: Union[None, list, str] = '',
             cross_validate: bool = False,
             post_optimize: str = 'eval_best',
-            fit_kws: dict = None,
             hpo_kws: dict = None
     ):
         """
@@ -183,8 +182,6 @@ class Experiments(object):
                 will be evaluated on train, test and all the data. If `train_best`,
                 then a new model will be built and trained using the parameters of
                 the best model.
-            fit_kws :
-                key word arguments that will be passed to ai4water's [fit][ai4water.Model.fit] function
             hpo_kws :
                 keyword arguments for [`HyperOpt`][ai4water.hyperopt.HyperOpt.__init__] class.
         """
@@ -246,7 +243,6 @@ class Experiments(object):
                     return self.build_and_run(predict=predict,
                                               cross_validate=cross_validate,
                                               title=f"{self.exp_name}{SEP}{model_name}",
-                                              fit_kws=fit_kws,
                                               **config)
 
                 if run_type == 'dry_run':
@@ -277,39 +273,39 @@ class Experiments(object):
                     self.config['optimized_models'][model_type] = self.optimizer.opt_path
 
                     if post_optimize == 'eval_best':
-                        self.eval_best(model_name, opt_dir, fit_kws)
+                        self.eval_best(model_name, opt_dir)
                     elif post_optimize == 'train_best':
                         self.train_best(model_name)
 
-                if not hasattr(self, '_model'):  # todo asking user to define this parameter is not good
-                    raise ValueError(f'The `build_and_run` method must set a class level attribute named `_model`.')
-                self.config['eval_models'][model_type] = self._model.path
+                if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
+                    raise ValueError(f'The `build_and_run` method must set a class level attribute named `model_`.')
+                self.config['eval_models'][model_type] = self.model_.path
 
                 if cross_validate:
-                    cv_scoring = self._model.val_metric
-                    self.cv_scores[model_type] = getattr(self._model, f'cross_val_{cv_scoring}')
+                    cv_scoring = self.model_.val_metric
+                    self.cv_scores[model_type] = getattr(self.model_, f'cross_val_{cv_scoring}')
                     setattr(self, '_cv_scoring', cv_scoring)
 
         self.save_config()
         return
 
-    def eval_best(self, model_type, opt_dir, fit_kws, **kwargs):
+    def eval_best(self, model_type, opt_dir, **kwargs):
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
         # TODO for ML, best_models is empty
         if len(best_models) < 1:
-            return self.train_best(model_type, fit_kws)
+            return self.train_best(model_type)
         for mod, props in best_models.items():
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
 
-            train_results, test_results = self.build_from_config(mod_path, mod_weights, fit_kws, **kwargs)
+            train_results, test_results = self.build_from_config(mod_path, mod_weights, **kwargs)
 
             if mod.startswith('1_'):
                 self._populate_results(model_type, train_results, test_results)
         return
 
-    def train_best(self, model_type, fit_kws=None):
+    def train_best(self, model_type):
         """Train the best model."""
         best_paras = self.optimizer.best_paras()
         if best_paras.get('lookback', 1) > 1:
@@ -317,8 +313,6 @@ class Experiments(object):
         else:
             _model = model_type
         train_results, test_results = self.build_and_run(predict=True,
-                                                         # view=True,
-                                                         fit_kws=fit_kws,
                                                          model={_model: self.optimizer.best_paras()},
                                                          title=f"{self.exp_name}{SEP}{model_type}{SEP}best")
 
@@ -1222,7 +1216,6 @@ be used to build ai4water's Model class.
     def build_and_run(self,
                       predict=False,
                       title=None,
-                      fit_kws=None,
                       cross_validate=False,
                       **suggested_paras):
 
@@ -1239,7 +1232,7 @@ be used to build ai4water's Model class.
             **self.model_kws
         )
 
-        setattr(self, '_model', model)
+        setattr(self, 'model_', model)
 
         model = self.process_model_before_fit(model)
 
@@ -1263,7 +1256,7 @@ be used to build ai4water's Model class.
 
         return val_score
 
-    def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
+    def build_from_config(self, config_path, weight_file, **kwargs):
 
         model = self.ai4water_model.from_config_file(config_path=config_path)
         weight_file = os.path.join(model.w_path, weight_file)

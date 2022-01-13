@@ -43,10 +43,7 @@ class MLClassificationExperiments(Experiments):
                       view=False,
                       title=None,
                       cross_validate=False,
-                      fit_kws=None,
                       **kwargs):
-
-        fit_kws = fit_kws or {}
 
         verbosity = 0
         if 'verbosity' in self.model_kws:
@@ -59,12 +56,12 @@ class MLClassificationExperiments(Experiments):
             **kwargs
         )
 
-        setattr(self, '_model', model)
+        setattr(self, 'model_', model)
 
         if cross_validate:
             val_score = model.cross_val_score(data=self.data_, scoring=model.val_metric)
         else:
-            model.fit(data=self.data_, **fit_kws)
+            model.fit(data=self.data_)
             vt, vp = model.predict(data='validation', return_true=True)
             val_score = getattr(ClassificationMetrics(vt, vp), model.val_metric)()
 
