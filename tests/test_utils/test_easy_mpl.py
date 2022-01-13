@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ai4water.datasets import busan_beach
-from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow, hist, pie
+from ai4water.utils.easy_mpl import bar_chart, BAR_CMAPS, get_cmap, imshow, hist, pie, plot
 from ai4water.utils.visualizations import regplot
 
 
@@ -51,25 +51,62 @@ class TestBarChart(unittest.TestCase):
 class TestRegplot(unittest.TestCase):
 
     def test_reg_plot_with_line(self):
-        regplot(data['pcp3_mm'], data['pcp6_mm'], ci=None)
+        regplot(data['pcp3_mm'], data['pcp6_mm'], ci=None, show=False)
         return
 
     def test_regplot_with_line_and_ci(self):
-        regplot(data['pcp3_mm'], data['pcp6_mm'])
+        regplot(data['pcp3_mm'], data['pcp6_mm'], show=False)
         return
+
     def test_regplot_with_line_ci_and_annotation(self):
-        regplot(data['pcp3_mm'], data['pcp6_mm'], annotation_key="MSE", annotation_val=0.2)
+        regplot(data['pcp3_mm'], data['pcp6_mm'], annotation_key="MSE", annotation_val=0.2,
+                show=False)
+        return
 
     def test_with_list_as_inputs(self):
-        regplot(data['pcp3_mm'].values.tolist(), data['pcp6_mm'].values.tolist())
+        regplot(data['pcp3_mm'].values.tolist(), data['pcp6_mm'].values.tolist(),
+                show=False)
         return
 
+
+class TestPlot(unittest.TestCase):
+
+    def test_1array(self):
+        ax = plot(np.random.random(100), '.', show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_2array(self):
+        ax = plot(np.arange(100), np.random.random(100), show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_1array_marker(self):
+        ax = plot(np.random.random(100), '--*', show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_2array_marker(self):
+        ax = plot(np.arange(100), np.random.random(100), '.', show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_1array_marker_label(self):
+        ax = plot(np.random.random(100), '--*', label='label', show=False)
+        assert isinstance(ax, plt.Axes)
+        return
+
+    def test_logy(self):
+        ax = plot(np.arange(100), np.random.random(100), '--.', log=True, show=False)
+        assert isinstance(ax, plt.Axes)
+        return
 
 class TestImshow(unittest.TestCase):
 
     def test_imshow(self):
         imshow(np.random.random((10, 10)), colorbar=True, show=False)
         return
+
 
 class Testhist(unittest.TestCase):
 
@@ -86,22 +123,22 @@ class Testhist(unittest.TestCase):
 class TestPie(unittest.TestCase):
 
     def test_binary(self):
-        ax = pie(np.random.randint(0, 2, 100), show=False)
+        ax = pie(np.random.randint(0, 2, 100), show=False, save=False)
         assert isinstance(ax, plt.Axes)
         return
 
     def test_multiclass(self):
-        ax = pie(np.random.randint(0, 5, 100), show=False)
+        ax = pie(np.random.randint(0, 5, 100), show=False, save=False)
         assert isinstance(ax, plt.Axes)
         return
 
     def test_string(self):
-        ax = pie(['a'] * 60 + ['b'] * 50, show=False)
+        ax = pie(['a'] * 60 + ['b'] * 50, show=False, save=False)
         assert isinstance(ax, plt.Axes)
         return
 
     def test_fraction(self):
-        ax = pie([0.1, 0.2, 0.5, 0.2], show=False)
+        ax = pie([0.1, 0.2, 0.5, 0.2], show=False, save=False)
         assert isinstance(ax, plt.Axes)
         return
 

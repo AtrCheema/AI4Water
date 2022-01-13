@@ -145,9 +145,13 @@ class PlotResults(Plot):
             # color:
         """
 
-        regplot(true, predicted, title=name,
+        regplot(true,
+                predicted,
+                title=name,
                 annotation_key=annotation_key,
-                annotation_val=annotation_val)
+                annotation_val=annotation_val,
+                show=False
+                )
 
         self.save_or_show(save=save, fname=f"{name}_reg", close=False,
                           where=where, show=show)

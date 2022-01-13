@@ -108,10 +108,27 @@ def bar_chart(labels,
 
 def plot(*args, show=True, **kwargs):
     """
-    One liner plot function. It should not be more complex than axis.plot() or
+    One liner plot function. It should not be more complex than axes.plot() or
     plt.plot() yet it must accomplish all in one line what requires multiple
     lines in matplotlib. args and kwargs can be anything which goes into plt.plot()
     or axis.plot(). They can also be anything which goes into `process_axis`.
+
+    Example:
+        >>> from ai4water.utils.easy_mpl import plot
+        >>> import numpy as np
+        >>> plot(np.random.random(100))
+        use x and y
+        >>> plot(np.arange(100), np.random.random(100))
+        use x and y with marker style
+        >>> plot(np.arange(100), np.random.random(100), '.')
+
+        >>> plot(np.random.random(100), '.')
+        use cutom marker
+        >>> plot(np.random.random(100), '--*')
+
+        >>> plot(np.random.random(100), '--*', label='label')
+        log transform data before plotting
+        >>> plot(np.random.random(100), '--*', log=True, label='label')
     """
     _, axis = init_subplots()
     axis = process_axis(axis, *args, **kwargs)
@@ -126,7 +143,7 @@ def regplot(
         x: Union[np.ndarray, pd.DataFrame, pd.Series, list],
         y: Union[np.ndarray, pd.DataFrame, pd.Series, list],
         title: str = None,
-        show: bool = False,
+        show: bool = True,
         annotation_key: str = None,
         annotation_val: float = None,
         line_color=None,
@@ -199,23 +216,30 @@ def regplot(
 
     return axis
 
-
-def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
-
+def _regplot_paras(x, y, ci:int=None):
+    """prepares parameters for regplot"""
     grid = np.linspace(np.min(x), np.max(x), 100)
     x = np.c_[np.ones(len(x)), x]
     grid = np.c_[np.ones(len(grid)), grid]
     yhat = grid.dot(reg_func(x, y))
 
-    ax.plot(grid[:, 1], yhat, color=line_color)
-
+    err_bands = None
     if ci:
         boots = bootdist(reg_func, args=[x, y], n_boot=1000).T
 
         yhat_boots = grid.dot(boots).T
-
         err_bands = _ci(yhat_boots, ci, axis=0)
 
+    return grid, yhat, err_bands
+
+
+def _regplot(x, y, ax, ci=None, line_color=None, fill_color=None):
+
+    grid, yhat, err_bands = _regplot_paras(x, y, ci)
+
+    ax.plot(grid[:, 1], yhat, color=line_color)
+
+    if ci:
         ax.fill_between(grid[:, 1], *err_bands,
                         facecolor=fill_color,
                         alpha=.15)
@@ -283,12 +307,17 @@ def process_axis(axis,
         raise ValueError
 
     use_third = False
+    use_style = False  # # plot(x,y,...)
     if x is not None:
         if isinstance(x, str):  # the user has not specified x so x is currently plot style.
             style = x
             x = None
-            if marker == '.':
+            if marker == '':
                 use_third = True
+        else:
+            if marker != '':
+                style = marker
+                use_style = True
 
     if log_nz:
         data = deepcopy(data)
@@ -302,12 +331,15 @@ def process_axis(axis,
 
     if log:
         data = deepcopy(data)
-        _data = np.where(data.values < 0.0, 0.0, data.values)
-        print(len(_data[np.where(_data < 0.0)]))
-        data = pd.Series(_data, index=data.index)
+        _data = np.where(data < 0.0, 0.0, data)
+        if data.__class__.__name__ in ['Series', 'DataFrame']:
+            data = pd.Series(_data, index=data.index)
 
     if x is not None:
-        axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker,
+        if use_style:
+            axis.plot(x, data, style, color=color, ms=ms, label=label)
+        else:
+            axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker,
                   linestyle=linestyle, ms=ms, label=label)
     elif use_third:
         axis.plot(data, style, color=color, ms=ms, label=label)
@@ -486,7 +518,8 @@ def hist(
         grid: whether to show the grid or not
         show: whether to show the plot or not
         ax: axes on which to draw the plot
-        hist_kws: any keyword arguments for [axes.hist](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.hist.html)
+        hist_kws: any keyword arguments for
+        [axes.hist](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.hist.html)
         kwargs: any keyword arguments for axes manipulation such as title, xlable, ylable etc
     Returns:
         matplotlib Axes
