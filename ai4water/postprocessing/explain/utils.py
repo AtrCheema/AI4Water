@@ -7,6 +7,8 @@ def convert_ai4water_model(old_model, framework=None, explainer=None):
     """
     new_model = old_model
 
+    model_name = old_model.__class__.__name__
+
     if old_model.__class__.__name__ == "Model" and "ai4water" in str(type(old_model)):
         # this is ai4water model class
         if old_model.category == "ML":
@@ -18,7 +20,7 @@ def convert_ai4water_model(old_model, framework=None, explainer=None):
             framework = "DL"
             explainer = explainer or "DeepExplainer"
 
-    return new_model, framework, explainer
+    return new_model, framework, explainer, model_name
 
 
 def to_native(model, model_name:str):

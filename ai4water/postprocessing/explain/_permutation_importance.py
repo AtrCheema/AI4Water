@@ -29,7 +29,7 @@ class PermutationImportance(ExplainerMixin):
             n_repeats: int = 14,
             noise: Union[str, np.ndarray] = None,
             use_noise_only: bool = False,
-            features: list = None,
+            feature_names: list = None,
             path: str = None,
             seed: int = None,
             weights=None,
@@ -64,9 +64,8 @@ class PermutationImportance(ExplainerMixin):
             use_noise_only:
                 If True, the original feature will be replaced by the noise.
             weights:
-            features:
+            feature_names:
                 names of features
-
             seed:
                 random seed for reproducibility. Permutation importance is
                 strongly affected by random seed. Therfore, if you want to
@@ -99,7 +98,7 @@ class PermutationImportance(ExplainerMixin):
 
         self.importances = None
 
-        super().__init__(features=features, data=inputs, path=path or os.getcwd())
+        super().__init__(features=feature_names, data=inputs, path=path or os.getcwd())
 
         self.seed = seed
 

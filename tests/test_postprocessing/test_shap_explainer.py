@@ -78,7 +78,7 @@ def fit_and_interpret(model_name:str,
     explainer = ShapExplainer(model,
                               x_test.values,
                               train_data=x_train.values,
-                              features=model.input_features,
+                              feature_names=model.input_features,
                               path=model.path,
                               framework="ML",
                               **kwargs
@@ -331,7 +331,7 @@ class TestShapExplainers(unittest.TestCase):
 
         m = make_lstm_reg_model()
         train_x, _ = m.training_data()
-        exp = ShapExplainer(model=m, data=train_x, layer=2, features=m.input_features, path=m.path)
+        exp = ShapExplainer(model=m, data=train_x, layer=2, feature_names=m.input_features, path=m.path)
         exp.summary_plot(show=False)
         exp.force_plot_single_example(0, show=False)
         exp.plot_shap_values(show=False)
@@ -343,7 +343,7 @@ class TestShapExplainers(unittest.TestCase):
         train_x, _ = m.training_data()
 
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
-                            features=m.input_features, path=m.path)
+                            feature_names=m.input_features, path=m.path)
         exp.plot_shap_values(show=False)
         exp.force_plot_single_example(0, show=False)
         return
@@ -353,7 +353,7 @@ class TestShapExplainers(unittest.TestCase):
         m = make_lstm_reg_model()
         train_x, _ = m.training_data()
         exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
-                            features=m.input_features, path=m.path)
+                            feature_names=m.input_features, path=m.path)
         exp.force_plot_single_example(0, show=False)
         return
 
@@ -392,7 +392,7 @@ class TestShapExplainers(unittest.TestCase):
         p = model.predict(test_x)
 
         exp = ShapExplainer(model, test_x, layer=2, path=model.path,
-                            features=model.input_features
+                            feature_names=model.input_features
                             )
         exp.force_plot_single_example(np.argmin(p).item(), show=False)
         exp.force_plot_single_example(np.argmax(p).item(), show=False)

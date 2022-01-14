@@ -78,23 +78,26 @@ class ShapExplainer(ExplainerMixin):
             explainer: Union[str, Callable] = None,
             num_means: int = 10,
             path: str = None,
-            features: list = None,
+            feature_names: list = None,
             framework: str = None,
             layer: Union[int, str] = None,
     ):
         """
 
         Args:
-            model: an sklearn/xgboost/catboost/LightGBM Model/regressor
+            model: a Model/regressor/classifier from sklearn/xgboost/catboost/LightGBM/tensorflow/pytorch/ai4water
+                The model must have a `predict` method.
             data: Data on which to make interpretation. Its dimension should be
-                same as that of training data.
-            train_data: training data. It is used to get train_summary. It can a numpy array
-                or a pandas DataFrame. Only required for scikit-learn based models.
+                same as that of training data. It can be either training or test
+                data
+            train_data: The data on which the `model` was trained. It is used to
+                get train_summary. It can a numpy array or a pandas DataFrame.
+                Only required for scikit-learn based models.
             explainer : the explainer to use. If not given, the explainer will be inferred.
             num_means: Numher of means, used in `shap.kmeans` to calculate train_summary
             path: path to save the plots. By default, plots will be saved in current
                 working directory
-            features: Names of features. Should only be given if train/test data is numpy
+            feature_names: Names of features. Should only be given if train/test data is numpy
                 array.
             framework : str
                 either "DL" or "ML", where "DL" represents deep learning or neural
@@ -106,26 +109,32 @@ class ShapExplainer(ExplainerMixin):
                 of neural networks.
 
         """
-        test_data = maybe_to_dataframe(data, features)
-        train_data = maybe_to_dataframe(train_data, features)
+        test_data = maybe_to_dataframe(data, feature_names)
+        train_data = maybe_to_dataframe(train_data, feature_names)
 
-        super(ShapExplainer, self).__init__(path=path or os.getcwd(), data=test_data, features=features)
+        super(ShapExplainer, self).__init__(path=path or os.getcwd(), data=test_data, features=feature_names)
 
         if train_data is None:
             self._check_data(test_data)
         else:
             self._check_data(train_data, test_data)
 
-        model, framework, explainer = convert_ai4water_model(model, framework, explainer)
-
+        model, framework, explainer, model_name = convert_ai4water_model(model,
+                                                                         framework,
+                                                                         explainer)
         self.is_sklearn = True
-        if model.__class__.__name__ not in sklearn_models:
-            if model.__class__.__name__ in ["XGBRegressor",
-                                            "LGBMRegressor",
-                                            "CatBoostRegressor",
-                                            "XGBRFRegressor"
+        if model_name not in sklearn_models:
+            if model_name in ["XGBRegressor",
+                              "XGBClassifier",
+                              "LGBMRegressor",
+                              "LGBMClassifier",
+                              "CatBoostRegressor",
+                              "CatBoostClassifier"  
+                              "XGBRFRegressor"
+                              "XGBRFClassifier"
                                             ]:
                 self.is_sklearn = False
+
             elif not self._is_dl(model):
                 raise ValueError(f"{model.__class__.__name__} is not a valid model model")
 
@@ -134,7 +143,7 @@ class ShapExplainer(ExplainerMixin):
         self.model = model
         self.data = test_data
         self.layer = layer
-        self.features = features
+        self.features = feature_names
 
         self.explainer = self._get_explainer(explainer, train_data=train_data, num_means=num_means)
 

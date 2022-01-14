@@ -106,7 +106,7 @@ def explain_model_with_lime(
     else:
         explainer = "LimeTabularExplainer"
 
-    model, _, _ = convert_ai4water_model(model)
+    model, _, _, _ = convert_ai4water_model(model)
 
     if mode == "classification":
         return
@@ -115,7 +115,7 @@ def explain_model_with_lime(
                               data=test_x,
                               train_data=train_x,
                               path=lime_exp_path,
-                              features=features,
+                              feature_names=features,
                               explainer=explainer,
                               mode=mode,
                               verbosity=verbosity
@@ -171,7 +171,7 @@ def explain_model_with_shap(
 
     features_to_explain = get_features(features, features_to_explain)
 
-    model, framework, _explainer = convert_ai4water_model(model)
+    model, framework, _explainer, _ = convert_ai4water_model(model)
 
     if framework == "DL":
         layer = layer or 2
@@ -186,7 +186,7 @@ def explain_model_with_shap(
                               explainer=explainer,
                               path=shap_exp_path,
                               framework=framework,
-                              features=features_to_explain,
+                              feature_names=features_to_explain,
                               layer=layer
                               )
 

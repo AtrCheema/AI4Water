@@ -156,7 +156,7 @@ class TestInterpret(unittest.TestCase):
         output_features = ['streamflow_MLd_inclInfilled'],
         intervals =  [("20000101", "20011231")],
         dataset_args = {'stations': 1},)
-        m.interpret()
+        m.interpret(show=False)
         return
 
     def test_da_without_prevy_interpret(self):
@@ -169,13 +169,13 @@ class TestInterpret(unittest.TestCase):
         x,y = m.training_data()
 
 
-        m.interpret(data='training')
+        m.interpret(data='training', show=False)
         return
 
     def test_ia_interpret(self):
         m = ia_lstm_model(input_features=input_features,
                           output_features=output_features)
-        m.interpret()
+        m.interpret(show=False)
         return
 
     def test_ml(self):

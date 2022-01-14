@@ -55,7 +55,7 @@ class PartialDependencePlot(ExplainerMixin):
             data:
                 The inputs to the `model`.
             feature_names:
-                Names of features.
+                Names of features. Used for labeling.
             num_points:
                 determines the grid for evaluation of `model`
             path:
