@@ -11,7 +11,7 @@ from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataHandler
 from ai4water.utils.taylor_diagram import taylor_plot
-from ai4water.utils.visualizations import PlotResults
+from ai4water.utils.visualizations import ProcessResults
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.hyperopt import Real, Categorical, Integer
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
@@ -52,8 +52,8 @@ class Experiments(object):
 
     Attributes
     ------------
-    - simulations
-    - trues
+    - simulations_
+    - trues_
     - exp_path
     - model_
     - models
@@ -208,15 +208,15 @@ class Experiments(object):
         elif isinstance(exclude, str):
             exclude = [exclude]
 
-        consider_exclude(exclude, self.models)
+        consider_exclude(exclude, self.models, include)
 
-        self.trues = {'train': {},
+        self.trues_ = {'train': {},
                       'test': {}}
 
-        self.simulations = {'train': {},
+        self.simulations_ = {'train': {},
                             'test': {}}
 
-        self.cv_scores = {}
+        self.cv_scores_ = {}
 
         self.config['eval_models'] = {}
         self.config['optimized_models'] = {}
@@ -283,7 +283,7 @@ class Experiments(object):
 
                 if cross_validate:
                     cv_scoring = self.model_.val_metric
-                    self.cv_scores[model_type] = getattr(self.model_, f'cross_val_{cv_scoring}')
+                    self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_{cv_scoring}')
                     setattr(self, '_cv_scoring', cv_scoring)
 
         self.save_config()
@@ -328,13 +328,13 @@ class Experiments(object):
             model_type = f'model_{model_type}'
 
         # it is possible that different models slightly differ in the number of examples
-        # in training/test sets for example if `lookback` is different, thus trues and simulations
+        # in training/test sets for example if `lookback` is different, thus trues_ and simulations_
         # must be saved for each model.
-        self.trues['train'][model_type] = train_results[0]
-        self.trues['test'][model_type] = test_results[0]
+        self.trues_['train'][model_type] = train_results[0]
+        self.trues_['test'][model_type] = test_results[0]
 
-        self.simulations['train'][model_type] = train_results[1]
-        self.simulations['test'][model_type] = test_results[1]
+        self.simulations_['train'][model_type] = train_results[1]
+        self.simulations_['test'][model_type] = test_results[1]
         return
 
     def taylor_plot(
@@ -362,9 +362,9 @@ class Experiments(object):
         simulations = {'train': {},
                        'test': {}}
         for m in include:
-            if m in self.simulations['train']:
-                simulations['train'][m.split('model_')[1]] = self.simulations['train'][m]
-                simulations['test'][m.split('model_')[1]] = self.simulations['test'][m]
+            if m in self.simulations_['train']:
+                simulations['train'][m.split('model_')[1]] = self.simulations_['train'][m]
+                simulations['test'][m.split('model_')[1]] = self.simulations_['test'][m]
 
         if exclude is not None:
             consider_exclude(exclude, self.models)
@@ -379,12 +379,12 @@ class Experiments(object):
             fname = 'taylor'
         fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
-        train_lenths = [len(self.trues['train'][obj]) for obj in self.trues['train']]
+        train_lenths = [len(self.trues_['train'][obj]) for obj in self.trues_['train']]
         if not len(set(train_lenths)) <= 1:
             warnings.warn(f'{train_lenths}')
 
             trues = {'train': None, 'test': None}
-            for k, v in self.trues.items():
+            for k, v in self.trues_.items():
 
                 for _k, _v in v.items():
 
@@ -393,7 +393,7 @@ class Experiments(object):
             _simulations = {'train': {}, 'test': {}}
             for scen, v in simulations.items():
 
-                for (_tk, _tv), (_pk, _pv) in zip(self.trues[scen].items(), simulations[scen].items()):
+                for (_tk, _tv), (_pk, _pv) in zip(self.trues_[scen].items(), simulations[scen].items()):
 
                     _simulations[scen][_pk] = {
                         'std': np.std(_pv),
@@ -402,7 +402,7 @@ class Experiments(object):
                     }
         else:
             trues = {'train': None, 'test': None}
-            for k, v in self.trues.items():
+            for k, v in self.trues_.items():
 
                 for idx, (_k, _v) in enumerate(v.items()):
                     trues[k] = _v
@@ -513,7 +513,7 @@ Available cases are {self.models} and you wanted to include
             'Improvement': np.array([126, 154, 178]) / 256
         }
 
-        exec_models = list(self.trues['train'].keys())
+        exec_models = list(self.trues_['train'].keys())
 
         data = {k: [] for k in colors.keys()}
 
@@ -848,9 +848,9 @@ Available cases are {self.models} and you wanted to include
                     with open(cv_fname, 'r') as fp:
                         cv_scores[model_name] = json.load(fp)
 
-        cls.trues = trues
-        cls.simulations = simulations
-        cls.cv_scores = cv_scores
+        cls.trues_ = trues
+        cls.simulations_ = simulations
+        cls.cv_scores_ = cv_scores
         cls._cv_scoring = scoring
 
         return cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
@@ -885,11 +885,11 @@ Available cases are {self.models} and you wanted to include
             matplotlib axes if the figure is drawn otherwise None
 
         """
-        if len(self.cv_scores) == 0:
+        if len(self.cv_scores_) == 0:
             return
 
         scoring = self._cv_scoring
-        cv_scores = self.cv_scores
+        cv_scores = self.cv_scores_
 
         consider_exclude(exclude, self.models, cv_scores)
         cv_scores = self._consider_include(include, cv_scores)
@@ -956,13 +956,13 @@ Available cases are {self.models} and you wanted to include
 
         for mod in self.models:
             # find the models which have been run
-            if mod in self.simulations['test']:  # maybe we have not done some models by using include/exclude
-                test_matric = find_matric_array(self.trues['test'][mod], self.simulations['test'][mod])
+            if mod in self.simulations_['test']:  # maybe we have not done some models by using include/exclude
+                test_matric = find_matric_array(self.trues_['test'][mod], self.simulations_['test'][mod])
                 if test_matric is not None:
                     test_matrics.append(test_matric)
                     models[mod.split('model_')[1]] = {'test': test_matric}
 
-                    train_matric = find_matric_array(self.trues['train'][mod], self.simulations['train'][mod])
+                    train_matric = find_matric_array(self.trues_['train'][mod], self.simulations_['train'][mod])
                     if train_matric is None:
                         train_matric = np.nan
                     train_matrics.append(train_matric)
@@ -1049,7 +1049,7 @@ Available cases are {self.models} and you wanted to include
             param_space[m] = {path: {p.name: p.grid for p in ps}}
 
         if isinstance(models, int):
-            trues = getattr(self, 'trues', {})
+            trues = getattr(self, 'trues_', {})
             assert len(trues)>1, f"you must first run .fit() method in order to choose top {models} models"
 
             # sort the models w.r.t their performance
@@ -1112,7 +1112,7 @@ Available cases are {self.models} and you wanted to include
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
-        visualizer = PlotResults(path=self.exp_path)
+        visualizer = ProcessResults(path=self.exp_path)
 
         for idx, data_name in enumerate(['training', 'test']):
 
@@ -1288,7 +1288,7 @@ def sort_array(array):
     return [np.min(results[:i]) for i in iters]
 
 
-def consider_exclude(exclude: [str, list], models, models_to_filer: Union[dict] = None):
+def consider_exclude(exclude: [str, list], models, models_to_filter: Union[list, dict] = None):
 
     if isinstance(exclude, str):
         exclude = [exclude]
@@ -1301,9 +1301,12 @@ def consider_exclude(exclude: [str, list], models, models_to_filer: Union[dict] 
                 Available models are {models} and you wanted to exclude
                 {exclude}"""
 
-            if models_to_filer is not None:
-                assert elem in models_to_filer, f'{elem} is not in models'
-                models_to_filer.pop(elem)
+            if models_to_filter is not None:
+                assert elem in models_to_filter, f'{elem} is not in models'
+                if isinstance(models_to_filter, list):
+                    models_to_filter.remove(elem)
+                else:
+                    models_to_filter.pop(elem)
     return
 
 

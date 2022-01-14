@@ -24,8 +24,8 @@ except ImportError:
 
 from ai4water.nn_tools import NN
 from ai4water.backend import sklearn_models
-from ai4water.utils.visualizations import PlotResults
-from ai4water.utils.utils import ts_features, make_model
+from ai4water.utils.visualizations import ProcessResults
+from ai4water.utils.utils import make_model
 from ai4water.preprocessing.transformations import Transformations
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 from ai4water.models.tensorflow.custom_training import train_step, test_step
@@ -314,6 +314,12 @@ class BaseModel(NN):
         return _mode
 
     @property
+    def _estimator_type(self):
+        if self.mode == "regression":
+            return "regressor"
+        return "classifier"
+
+    @property
     def input_features(self):
         if hasattr(self, 'dh_'):
             return self.dh_.input_features
@@ -358,15 +364,20 @@ class BaseModel(NN):
         raise NotImplementedError
 
     @property
-    def is_multiclass(self):
-        if hasattr(self, 'dh_'):
-            return self.dh_.is_multiclass
-        raise NotImplementedError
+    def is_multiclass(self)->bool:
+        if self.mode == "classification":
+            if hasattr(self, 'dh_'):
+                return self.dh_.is_multiclass
+            if len(self.classes_)>2:
+                return True
+        return False
 
     @property
-    def classes(self):
+    def classes_(self):
         if hasattr(self, 'dh_'):
             return self.dh_.classes
+        elif self.category == "ML" and self.mode == "classification":
+            return self._model.classes_
         raise NotImplementedError
 
     @property
@@ -746,177 +757,6 @@ class BaseModel(NN):
 
         return history
 
-    def maybe_not_3d_data(self, true, predicted, forecast_len):
-
-        if true.ndim < 3:
-            if isinstance(forecast_len, dict):
-                forecast_len = set(list(forecast_len.values()))
-                assert len(forecast_len) == 1
-                forecast_len = forecast_len.pop()
-
-            assert forecast_len == 1, f'{forecast_len}'
-            axis = 2 if true.ndim == 2 else (1, 2)
-            true = np.expand_dims(true, axis=axis)
-
-        if predicted.ndim < 3:
-            assert forecast_len == 1
-            axis = 2 if predicted.ndim == 2 else (1, 2)
-            predicted = np.expand_dims(predicted, axis=axis)
-
-        return true, predicted
-
-    def process_class_results(self,
-                              true: np.ndarray,
-                              predicted: np.ndarray,
-                              metrics="minimal",
-                              prefix=None,
-                              index=None,
-                              user_defined_data: bool = False
-                              ):
-        """post-processes classification results."""
-        if user_defined_data:
-            return
-
-        from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
-
-        if self.is_multiclass:
-            pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
-            true_labels = [f"true_{i}" for i in range(true.shape[1])]
-            fname = os.path.join(self.path, f"{prefix}_prediction.csv")
-            pd.DataFrame(np.concatenate([true, predicted], axis=1),
-                         columns=true_labels + pred_labels, index=index).to_csv(fname)
-            class_metrics = ClassificationMetrics(true, predicted, multiclass=True)
-
-            dict_to_file(self.path,
-                         errors=class_metrics.calculate_all(),
-                         name=f"{prefix}_{dateandtime_now()}.json")
-        else:
-            if predicted.ndim == 1:
-                predicted = predicted.reshape(-1, 1)
-            for idx, _class in enumerate(self.output_features):
-                _true = true[:, idx]
-                _pred = predicted[:, idx]
-
-                fpath = os.path.join(self.path, _class)
-                if not os.path.exists(fpath):
-                    os.makedirs(fpath)
-
-                class_metrics = ClassificationMetrics(_true, _pred, multiclass=False)
-                dict_to_file(fpath,
-                             errors=getattr(class_metrics, f"calculate_{metrics}")(),
-                             name=f"{prefix}_{_class}_{dateandtime_now()}.json"
-                             )
-
-                fname = os.path.join(fpath, f"{prefix}_{_class}.csv")
-                array = np.concatenate([_true.reshape(-1, 1), _pred.reshape(-1, 1)], axis=1)
-                pd.DataFrame(array, columns=['true', 'predicted'],  index=index).to_csv(fname)
-
-        return
-
-    def process_regres_results(
-            self,
-            true: np.ndarray,
-            predicted: np.ndarray,
-            metrics="minimal",
-            prefix=None,
-            index=None,
-            remove_nans=True,
-            user_defined_data: bool = False,
-            annotate_with="r2",
-    ):
-        """
-        predicted, true are arrays of shape (examples, outs, forecast_len).
-        annotate_with : which value to write on regression plot
-        """
-        from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-
-        metric_names = {'r2': "$R^2$"}
-
-        visualizer = PlotResults(path=self.path)
-
-        if user_defined_data:
-            # when data is user_defined, we don't know what out_cols, and forecast_len are
-            if predicted.ndim == 1:
-                out_cols = ['output']
-            else:
-                out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
-            forecast_len = 1
-            true, predicted = self.maybe_not_3d_data(true, predicted, forecast_len)
-        else:
-            # for cases if they are 2D/1D, add the third dimension.
-            true, predicted = self.maybe_not_3d_data(true, predicted, self.forecast_len)
-
-            forecast_len = self.forecast_len
-            if isinstance(forecast_len, dict):
-                forecast_len = np.unique(list(forecast_len.values())).item()
-
-            out_cols = self.output_features
-            if isinstance(out_cols, dict):
-                if len(out_cols)>1:
-                    raise NotImplementedError("can not process results with more than 1 output arrays")
-                else:
-                    out_cols = list(out_cols.values())[0]
-
-        for idx, out in enumerate(out_cols):
-
-            horizon_errors = {metric_name: [] for metric_name in ['nse', 'rmse']}
-            for h in range(forecast_len):
-
-                errs = dict()
-
-                fpath = os.path.join(self.path, out)
-                if not os.path.exists(fpath):
-                    os.makedirs(fpath)
-
-                t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
-                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
-
-                if wandb is not None and self.config['wandb_config'] is not None:
-                    self._wandb_scatter(t.values, p.values, out)
-
-                df = pd.concat([t, p], axis=1)
-                df = df.sort_index()
-                fname = prefix + out + '_' + str(h) + dateandtime_now() + ".csv"
-                df.to_csv(os.path.join(fpath, fname), index_label='index')
-
-                annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
-                visualizer.plot_results(t,
-                                        p,
-                                        name=prefix + out + '_' + str(h),
-                                        where=out,
-                                        annotation_key=metric_names.get(annotate_with, annotate_with),
-                                        annotation_val=annotation_val,
-                                        show=self.verbosity)
-
-                if remove_nans:
-                    nan_idx = np.isnan(t)
-                    t = t.values[~nan_idx]
-                    p = p.values[~nan_idx]
-
-                errors = RegressionMetrics(t, p)
-                errs[out + '_errors_' + str(h)] = getattr(errors, f'calculate_{metrics}')()
-                errs[out + 'true_stats_' + str(h)] = ts_features(t)
-                errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
-
-                dict_to_file(fpath, errors=errs, name=prefix)
-
-                for p in horizon_errors.keys():
-                    horizon_errors[p].append(getattr(errors, p)())
-
-            if forecast_len > 1:
-                visualizer.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
-        return
-
-    def _wandb_scatter(self, true: np.ndarray, predicted: np.ndarray, name: str) -> None:
-        """Adds a scatter plot on wandb."""
-        data = [[x, y] for (x, y) in zip(true.reshape(-1,), predicted.reshape(-1,))]
-        table = wandb.Table(data=data, columns=["true", "predicted"])
-        wandb.log({
-            "scatter_plot": wandb.plot.scatter(table, "true", "predicted",
-                                               title=name)
-                   })
-        return
-
     def build_ml_model(self):
         """Builds ml models
 
@@ -1065,7 +905,7 @@ class BaseModel(NN):
                  callbacks=None,
                  **kwargs):
 
-        visualizer = PlotResults(path=self.path)
+        visualizer = ProcessResults(path=self.path)
         self.is_training = True
 
         source = 'training'
@@ -1615,6 +1455,16 @@ class BaseModel(NN):
         if true_outputs is None:
             process_results = False
 
+        # initialize post-processes
+        pp = ProcessResults(
+            path=self.path,
+            forecast_len=self.forecast_len,
+            output_features=self.output_features,
+            is_multiclass=self.is_multiclass,
+            verbosity=self.verbosity,
+            config=self.config
+        )
+
         if self.quantiles is None:
 
             # it true_outputs and predicted are dictionary of len(1) then just get the values
@@ -1623,32 +1473,36 @@ class BaseModel(NN):
 
             if process_results:
                 if self.mode == 'regression':
-                    self.process_regres_results(true_outputs,
+                    pp.process_regres_results(true_outputs,
                                                 predicted,
                                                 metrics=metrics,
                                                 prefix=prefix + '_',
                                                 index=dt_index,
                                                 user_defined_data=user_defined_data)
                 else:
-                    self.process_class_results(true_outputs,
+                    pp.process_class_results(true_outputs,
                                                predicted,
                                                metrics=metrics,
                                                prefix=prefix,
                                                index=dt_index,
                                                user_defined_data=user_defined_data)
 
+                    pp.confusion_matrx(self, x=inputs, y=true_outputs)
+                    # if model does not have predict_proba method, we can't plot following
+                    if hasattr(self._model, 'predict_proba'):
+                        pp.precision_recall_curve(self, x=inputs, y=true_outputs)
+                        pp.roc_curve(self, x=inputs, y=true_outputs)
         else:
             assert self.num_outs == 1
 
             if true_outputs.ndim == 2:  # todo, this should be avoided
                 true_outputs = np.expand_dims(true_outputs, axis=-1)
 
-            visualizer = PlotResults(path=self.path)
-            visualizer.quantiles = self.quantiles
+            pp.quantiles = self.quantiles
 
-            visualizer.plot_quantiles1(true_outputs, predicted)
-            visualizer.plot_quantiles2(true_outputs, predicted)
-            visualizer.plot_all_qs(true_outputs, predicted)
+            pp.plot_quantiles1(true_outputs, predicted)
+            pp.plot_quantiles2(true_outputs, predicted)
+            pp.plot_all_qs(true_outputs, predicted)
 
         if return_true:
             return true_outputs, predicted
@@ -1775,18 +1629,6 @@ class BaseModel(NN):
         """
         # importing ealier will try to import np types as well again
         from ai4water.postprocessing import Interpret
-
-        matplotlib.rcParams.update(matplotlib.rcParamsDefault)
-        if 'layers' not in self.config['model']:
-
-            if self.mode.lower().startswith("cl"):
-                visualizer = PlotResults(path=self.path)
-
-                data = self.test_data()
-                x, y = maybe_three_outputs(data)
-                visualizer.confusion_matrx(self._model, x=x, y=y)
-                visualizer.precision_recall_curve(self._model, x=x, y=y)
-                visualizer.roc_curve(self._model, x=x, y=y)
 
         return Interpret(self)
 

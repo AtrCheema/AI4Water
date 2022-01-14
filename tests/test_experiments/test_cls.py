@@ -18,7 +18,10 @@ class TestCls(unittest.TestCase):
         exp = MLClassificationExperiments(input_features=inputs,
                                           output_features=outputs)
 
-        exp.fit(data=data)
+        exp.fit(data=data, exclude=[
+            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'  # giving nan predictions
+        ]
+                )
         exp.compare_errors('accuracy', show=False)
         return
 

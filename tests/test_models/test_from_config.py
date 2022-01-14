@@ -6,14 +6,14 @@ import unittest
 import numpy as np
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
+from ai4water.datasets import busan_beach
 from ai4water.preprocessing import DataHandler
 from ai4water.utils.utils import find_best_weight
 
 from ai4water.functional import Model as FModel
 
 
-data = arg_beach()
+data = busan_beach()
 dh = DataHandler(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
 

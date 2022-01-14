@@ -14,9 +14,14 @@ try:
 except ModuleNotFoundError:
     plotly = None
 
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
+
 from .plotting_tools import save_or_show, to_1d_array
-from ai4water.utils.easy_mpl import init_subplots
-from .easy_mpl import regplot
+from .utils import dateandtime_now, ts_features, dict_to_file
+from .easy_mpl import regplot, init_subplots
 
 # TODO add Murphy's plot as shown in MLAir
 # prediction_distribution aka actual_plot of PDPbox
@@ -73,23 +78,30 @@ class Plot(object):
         return save_or_show(self.path, save, fname, where, dpi, bbox_inches, close, show=show)
 
 
-class PlotResults(Plot):
-
+class ProcessResults(Plot):
+    """post processing of results after training"""
     def __init__(self,
-                 data=None,
+                 forecast_len=None,
+                 output_features=None,
+                 is_multiclass=None,
                  config: dict = None,
                  path=None,
                  dpi=300,
                  in_cols=None,
                  out_cols=None,
+                 verbosity=1,
                  backend: str = 'plotly'
                  ):
+
+        self.forecast_len = forecast_len
+        self.output_features = output_features
+        self.is_multiclass = is_multiclass
         self.config = config
-        self.data = data
         self.dpi = dpi
         self.in_cols = in_cols
         self.out_cols = out_cols
         self.quantiles = None
+        self.verbosity = verbosity
 
         super().__init__(path, backend=backend)
 
@@ -100,14 +112,6 @@ class PlotResults(Plot):
     @config.setter
     def config(self, x):
         self._config = x
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, x):
-        self._data = x
 
     @property
     def quantiles(self):
@@ -356,6 +360,168 @@ class PlotResults(Plot):
         plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
+
+    def process_regres_results(
+            self,
+            true: np.ndarray,
+            predicted: np.ndarray,
+            metrics="minimal",
+            prefix=None,
+            index=None,
+            remove_nans=True,
+            user_defined_data: bool = False,
+            annotate_with="r2",
+    ):
+        """
+        predicted, true are arrays of shape (examples, outs, forecast_len).
+        annotate_with : which value to write on regression plot
+        """
+        from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+
+        metric_names = {'r2': "$R^2$"}
+
+        if user_defined_data:
+            # when data is user_defined, we don't know what out_cols, and forecast_len are
+            if predicted.ndim == 1:
+                out_cols = ['output']
+            else:
+                out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
+            forecast_len = 1
+            true, predicted = self.maybe_not_3d_data(true, predicted)
+        else:
+            # for cases if they are 2D/1D, add the third dimension.
+            true, predicted = self.maybe_not_3d_data(true, predicted)
+
+            forecast_len = self.forecast_len
+            if isinstance(forecast_len, dict):
+                forecast_len = np.unique(list(forecast_len.values())).item()
+
+            out_cols = self.output_features
+            if isinstance(out_cols, dict):
+                if len(out_cols)>1:
+                    raise NotImplementedError("can not process results with more than 1 output arrays")
+                else:
+                    out_cols = list(out_cols.values())[0]
+
+        for idx, out in enumerate(out_cols):
+
+            horizon_errors = {metric_name: [] for metric_name in ['nse', 'rmse']}
+            for h in range(forecast_len):
+
+                errs = dict()
+
+                fpath = os.path.join(self.path, out)
+                if not os.path.exists(fpath):
+                    os.makedirs(fpath)
+
+                t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
+                p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
+
+                if wandb is not None and self.config['wandb_config'] is not None:
+                    _wandb_scatter(t.values, p.values, out)
+
+                df = pd.concat([t, p], axis=1)
+                df = df.sort_index()
+                fname = prefix + out + '_' + str(h) + dateandtime_now() + ".csv"
+                df.to_csv(os.path.join(fpath, fname), index_label='index')
+
+                annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
+                self.plot_results(t,
+                                  p,
+                                  name=prefix + out + '_' + str(h),
+                                  where=out,
+                                  annotation_key=metric_names.get(annotate_with, annotate_with),
+                                  annotation_val=annotation_val,
+                                  show=self.verbosity)
+
+                if remove_nans:
+                    nan_idx = np.isnan(t)
+                    t = t.values[~nan_idx]
+                    p = p.values[~nan_idx]
+
+                errors = RegressionMetrics(t, p)
+                errs[out + '_errors_' + str(h)] = getattr(errors, f'calculate_{metrics}')()
+                errs[out + 'true_stats_' + str(h)] = ts_features(t)
+                errs[out + 'predicted_stats_' + str(h)] = ts_features(p)
+
+                dict_to_file(fpath, errors=errs, name=prefix)
+
+                for p in horizon_errors.keys():
+                    horizon_errors[p].append(getattr(errors, p)())
+
+            if forecast_len > 1:
+                self.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
+        return
+
+    def process_class_results(
+            self,
+            true: np.ndarray,
+            predicted: np.ndarray,
+            metrics="minimal",
+            prefix=None,
+            index=None,
+            user_defined_data: bool = False
+    ):
+        """post-processes classification results."""
+        if user_defined_data:
+            return
+
+        from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
+
+        if self.is_multiclass:
+            pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
+            true_labels = [f"true_{i}" for i in range(true.shape[1])]
+            fname = os.path.join(self.path, f"{prefix}_prediction.csv")
+            pd.DataFrame(np.concatenate([true, predicted], axis=1),
+                         columns=true_labels + pred_labels, index=index).to_csv(fname)
+            class_metrics = ClassificationMetrics(true, predicted, multiclass=True)
+
+            dict_to_file(self.path,
+                         errors=class_metrics.calculate_all(),
+                         name=f"{prefix}_{dateandtime_now()}.json")
+        else:
+            if predicted.ndim == 1:
+                predicted = predicted.reshape(-1, 1)
+            for idx, _class in enumerate(self.output_features):
+                _true = true[:, idx]
+                _pred = predicted[:, idx]
+
+                fpath = os.path.join(self.path, _class)
+                if not os.path.exists(fpath):
+                    os.makedirs(fpath)
+
+                class_metrics = ClassificationMetrics(_true, _pred, multiclass=False)
+                dict_to_file(fpath,
+                             errors=getattr(class_metrics, f"calculate_{metrics}")(),
+                             name=f"{prefix}_{_class}_{dateandtime_now()}.json"
+                             )
+
+                fname = os.path.join(fpath, f"{prefix}_{_class}.csv")
+                array = np.concatenate([_true.reshape(-1, 1), _pred.reshape(-1, 1)], axis=1)
+                pd.DataFrame(array, columns=['true', 'predicted'],  index=index).to_csv(fname)
+
+        return
+
+    def maybe_not_3d_data(self, true, predicted):
+
+        forecast_len = self.forecast_len
+
+        if true.ndim < 3:
+            if isinstance(forecast_len, dict):
+                forecast_len = set(list(forecast_len.values()))
+                assert len(forecast_len) == 1
+                forecast_len = forecast_len.pop()
+
+            assert forecast_len == 1, f'{forecast_len}'
+            axis = 2 if true.ndim == 2 else (1, 2)
+            true = np.expand_dims(true, axis=axis)
+
+        if predicted.ndim < 3:
+            assert forecast_len == 1
+            axis = 2 if predicted.ndim == 2 else (1, 2)
+            predicted = np.expand_dims(predicted, axis=axis)
+
+        return true, predicted
 
 
 def linear_model(
@@ -609,3 +775,14 @@ def _data_for_time(s1, s2):
 
 def _data_for_theta(s1, s2):
     return np.mean(s1, axis=1), np.mean(s2, axis=1)
+
+
+def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
+    """Adds a scatter plot on wandb."""
+    data = [[x, y] for (x, y) in zip(true.reshape(-1,), predicted.reshape(-1,))]
+    table = wandb.Table(data=data, columns=["true", "predicted"])
+    wandb.log({
+        "scatter_plot": wandb.plot.scatter(table, "true", "predicted",
+                                           title=name)
+               })
+    return
