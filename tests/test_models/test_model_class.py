@@ -3,6 +3,7 @@ import time
 import unittest
 
 import tensorflow as tf
+from sklearn.ensemble import RandomForestRegressor
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
     from ai4water.functional import Model
@@ -25,6 +26,9 @@ data_cls = laos.make_classification(lookback_steps=2)
 dh_cls = DataHandler(data=data_cls, verbosity=0)
 x_cls, y_cls = dh_cls.training_data()
 
+
+class MyRF(RandomForestRegressor):
+    pass
 
 def test_user_defined_data(_model, x, y):
     # using user defined x
@@ -196,6 +200,60 @@ class TestPermImp(unittest.TestCase):
         model.fit(data=data)
         imp = model.permutation_importance(data="validation")
         assert imp.shape == (13, 5)
+        return
+
+
+class TestCustomModel(unittest.TestCase):
+    """for custom models, user has to tell lookback and loss"""
+    def test_uninitiated(self):
+
+        model = Model(model=MyRF, lookback=1, verbosity=0, mode="regression")
+        model.fit(data=data)
+        test_user_defined_data(model, x_reg, y_reg)
+        model.evaluate()
+        return
+
+    def test_uninitiated_with_kwargs(self):
+        model = Model(model={MyRF: {"n_estimators": 10}},
+                      lookback=1,
+                      verbosity=0,
+                      mode="regression")
+        model.fit(data=data)
+        test_user_defined_data(model, x_reg, y_reg)
+        model.evaluate()
+        return
+
+    def test_initiated(self):
+        model = Model(model=MyRF(), mode="regression", verbosity=0)
+        model.fit(data=data)
+        test_user_defined_data(model, x_reg, y_reg)
+        model.evaluate()
+        return
+
+    def test_initiated_with_kwargs(self):
+        # should raise error
+        self.assertRaises(ValueError, Model,
+                          model={RandomForestRegressor(): {"n_estimators": 10}})
+        return
+
+    def test_without_fit_method(self):
+    #     # should raise error
+        rgr = RandomForestRegressor
+
+        class MyModel:
+            def predict(SELF, *args, **kwargs):
+                return rgr.predict(*args, **kwargs)
+
+        self.assertRaises(ValueError, Model, model=MyModel)
+        return
+
+    def test_without_predict_method(self):
+        rgr = RandomForestRegressor
+        class MyModel:
+            def fit(SELF, *args, **kwargs):
+                return rgr.fit(*args, **kwargs)
+
+        self.assertRaises(ValueError, Model, model=MyModel)
         return
 
 

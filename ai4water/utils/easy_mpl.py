@@ -444,37 +444,56 @@ def _process_axis(
     return axis
 
 
-def imshow(values,
-           axis=None,
-           vmin=None,
-           vmax=None,
-           xlabel=None,
-           aspect=None,
-           interpolation=None,
-           title=None,
-           cmap=None,
-           ylabel=None,
-           yticklabels=None,
-           xticklabels=None,
-           show=True,
-           annotate=False,
-           annotate_kws=None,
-           colorbar:bool=False,
-           colorbar_orientation:str = 'vertical'
-           ):
-    """One stop shop for imshow
+def imshow(
+        values,
+        axis=None,
+        xlabel=None,
+        title=None,
+        ylabel=None,
+        yticklabels=None,
+        xticklabels=None,
+        show=True,
+        annotate=False,
+        annotate_kws=None,
+        colorbar:bool=False,
+        colorbar_orientation:str = 'vertical',
+        **kwargs
+)->tuple:
+    """One stop shop for matplotlib's imshow function
+
+    Arguments:
+        values:
+            2d array
+        axis:
+        xlabel
+        ylabel
+        title
+        show
+        annotate
+        annotate_kws
+        colorbar
+        colorbar_orientation
+        xticklabels
+        yticklabels
+        kwargs:
+            any further keyword arguments for [axes.imshow][https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.imshow.html]
+
+    Returns:
+        a tuple whose first vlaue is matplotlib axes and second argument is AxesImage
+
     Example:
         >>> import numpy as np
         >>> from ai4water.utils.easy_mpl import imshow
         >>> x = np.random.random((10, 5))
         >>> imshow(x, annotate=True)
+
+        >>> imshow(x, colorbar=True)
     """
 
     if axis is None:
         axis = plt.gca()
 
-    im = axis.imshow(values, aspect=aspect, vmin=vmin, vmax=vmax,
-                     cmap=cmap, interpolation=interpolation)
+    im = axis.imshow(values, **kwargs)
 
     if annotate:
         annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}

@@ -184,27 +184,57 @@ def check_min_loss(epoch_losses, epoch, msg: str, save_fg: bool, to_save=None):
 
 def check_kwargs(**kwargs):
 
-    # If learning rate for XGBoost is not provided use same as default for NN
-    lr = kwargs.get("lr", 0.001)
     if kwargs.get('model', None) is not None:
         model = kwargs['model']
-        if 'layers' not in model:
-            # for case when model='randomforestregressor'
-            if isinstance(model, str):
-                model = {model: {}}
-                kwargs['model'] = model
+        if isinstance(model, dict):
+            if 'layers' in model:
+                is_custom_model=False
+                model_name = None
+            else:
+                assert len(model)==1
+                _model = list(model.keys())[0]
+                if hasattr(_model, '__call__'):   # uninitiated class
+                    check_attributes(_model, ['fit', 'predict', '__init__'])
+                    model_name = _model.__name__
+                    is_custom_model = True
+                else:  # custom class is already initiated
+                    check_attributes(_model, ['fit', 'predict'])
+                    is_custom_model = True
+                    model_name = _model.__class__.__name__
 
-            # if list(model.keys())[0].startswith("XGB"):
-            #    if "learning_rate" not in model:
-            #        kwargs["model"]["learning_rate"] = lr
+        # for case when model='randomforestregressor'
+        elif isinstance(model, str):
+            kwargs['model'] = {model: {}}
+            is_custom_model = False
+            model_name = model
 
-            if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
-                kwargs["batches"] = "2d"
+        elif hasattr(model, '__call__'):  # uninitiated class
+            check_attributes(model, ['fit', 'predict', '__init__'])
+            model_name = model.__name__
+            is_custom_model = True
+            kwargs['model'] = {model: {}}
 
-            if "lookback" not in kwargs:
-                kwargs["lookback"] = 1
+        else:
+            check_attributes(model, ['fit', 'predict'])
+            is_custom_model = True
+            model_name = model.__class__.__name__
+            kwargs['model'] = {model: {}}
 
-    return kwargs
+        if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
+            kwargs["batches"] = "2d"
+
+        if "lookback" not in kwargs:
+            kwargs["lookback"] = 1
+    else:
+        is_custom_model = False
+        model_name = None
+
+    if is_custom_model:
+        if 'mode' not in kwargs:
+            raise ValueError("""your must provide 'mode' keyword either as 
+            mode='regression' or mode='classification' for custom models""")
+
+    return kwargs, model_name, is_custom_model
 
 
 class make_model(object):
@@ -242,7 +272,7 @@ def _make_model(**kwargs):
 
     kwargs = process_io(**kwargs)
 
-    kwargs = check_kwargs(**kwargs)
+    kwargs, model_name, is_custom_model = check_kwargs(**kwargs)
 
     model = kwargs.get('model', None)
     def_cat = None
@@ -425,6 +455,9 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
     for key, val in config.items():
         if key in data_args:
             _data_config[key] = val
+
+    config['model_name'] = model_name
+    config['is_custom_model'] = is_custom_model
 
     return config, _data_config, opt_paras, {'model': original_mod_conf, 'other': original_other_conf}
 
@@ -1506,3 +1539,8 @@ def get_version_info(
             info[k] = getattr(v, '__version__', 'NotDefined')
 
     return info
+
+def check_attributes(model, attributes):
+    for method in attributes:
+        if not hasattr(model, method):
+            raise ValueError(f"your custom class does not have {method}")

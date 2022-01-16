@@ -4,6 +4,7 @@ import json
 import time
 import random
 import warnings
+from pickle import PicklingError
 from typing import Union, Callable
 from types import MethodType
 
@@ -272,20 +273,34 @@ class BaseModel(NN):
 
             self.info = {}
 
+    @property
+    def is_custom_model(self):
+        return self.config['is_custom_model']
 
     @property
     def model_name(self)->str:
+        if 'model_name' in self.config:
+            return self.config['model_name']
+
         model_def = self.config['model']
         if isinstance(model_def, str):
             return model_def
         elif isinstance(model_def, dict):
             return list(model_def.keys())[0]
+        raise NotImplementedError
 
     @property
     def mode(self)->str:
         from .experiments.utils import regression_models, classification_models
         if self.config.get('mode', None):
             return self.config['mode']
+        elif self.is_custom_model:
+            if self.config['loss'] in ['sparse_categorical_crossentropy',
+                                       'categorical_crossentropy',
+                                       'binary_crossentropy']:
+                _mode = "classification"
+            else:
+                _mode = None
         elif self.model_name is not None:
             if self.model_name in classification_models():
                 _mode = "classification"
@@ -835,8 +850,17 @@ class BaseModel(NN):
             if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
 
+        if self.is_custom_model:
+            if hasattr(estimator, '__call__'):  # initiate the custom model
+                model = estimator(**kwargs)
+            else:
+                if len(kwargs)>0:
+                    raise ValueError("""Initiating args not allowed because you 
+                                        provided initiated class in dictionary""")
+                model = estimator  # custom model is already instantiated
+
         # initiate the estimator/model class
-        if estimator in ml_models:
+        elif estimator in ml_models:
             model = ml_models[estimator](**kwargs)
         else:
             from .backend import sklearn, lightgbm, catboost, xgboost
@@ -1011,11 +1035,13 @@ class BaseModel(NN):
 
     def _save_ml_model(self):
         """Saves the non-NN/ML models in the disk."""
-        model_name = list(self.config['model'].keys())[0]
-        fname = os.path.join(self.w_path, model_name)
+        fname = os.path.join(self.w_path, self.model_name)
 
-        if "tpot" not in model_name:
-            joblib.dump(self._model, fname)
+        if "tpot" not in self.model_name:
+            try:
+                joblib.dump(self._model, fname)
+            except PicklingError:
+                print(f"could not pickle {self.model_name} model")
 
         return
 
@@ -1685,6 +1711,9 @@ class BaseModel(NN):
         if self.category == "DL":
             config['loss'] = self.loss_name()
 
+        if self.category == "ML" and self.is_custom_model:
+            config['config']['model'] = self.model_name
+
         dict_to_file(config=config, path=self.path)
         return config
 
@@ -2183,7 +2212,7 @@ class BaseModel(NN):
             self.predict, x, y, scoring,
             n_repeats, noise, use_noise_only,
             path=os.path.join(self.path, "explain"),
-            features=self.input_features,
+            feature_names=self.input_features,
             weights=weights,
             seed=self.config['seed']
         )
