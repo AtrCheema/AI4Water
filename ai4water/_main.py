@@ -275,19 +275,18 @@ class BaseModel(NN):
 
     @property
     def is_custom_model(self):
-        return self.config['is_custom_model']
+        return self.config['is_custom_model_']
 
     @property
     def model_name(self)->str:
-        if 'model_name' in self.config:
-            return self.config['model_name']
+        if self.config.get('model_name_', None):
+            return self.config['model_name_']
 
         model_def = self.config['model']
         if isinstance(model_def, str):
             return model_def
         elif isinstance(model_def, dict):
             return list(model_def.keys())[0]
-        raise NotImplementedError
 
     @property
     def mode(self)->str:
@@ -319,13 +318,18 @@ class BaseModel(NN):
                 _mode = "regression"
             else:
                 raise NotImplementedError
-
-            # so that next time don't have to go through all these ifelse statements
-            self.config['mode'] = _mode
-            self.data_config['mode'] = _mode
+        elif self.config['loss'] in ['sparse_categorical_crossentropy',
+                                     'categorical_crossentropy',
+                                     'binary_crossentropy']:
+            _mode = "classification"
+        elif self.model_name == "layers":
+            # todo
+            _mode = "regression"
         else:  # when model_name is None, mode should also be None.
             _mode = None
-
+        # so that next time don't have to go through all these ifelse statements
+        self.config['mode'] = _mode
+        self.data_config['mode'] = _mode
         return _mode
 
     @property
@@ -1497,7 +1501,11 @@ class BaseModel(NN):
             true_outputs = get_values(true_outputs)
             predicted = get_values(predicted)
 
-            if process_results:
+            if process_results: # if mode has not been inferred yet, try to infer it
+                if self.mode is None:  # because metrics cannot be calculated with wrong mode
+                    if len(self.classes_) == 0:
+                        self.config['mode'] = "regression"
+
                 if self.mode == 'regression':
                     pp.process_regres_results(true_outputs,
                                                 predicted,

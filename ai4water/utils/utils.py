@@ -184,16 +184,21 @@ def check_min_loss(epoch_losses, epoch, msg: str, save_fg: bool, to_save=None):
 
 def check_kwargs(**kwargs):
 
+    mode = "ML"
     if kwargs.get('model', None) is not None:
         model = kwargs['model']
         if isinstance(model, dict):
             if 'layers' in model:
                 is_custom_model=False
                 model_name = None
+                mode="DL"
             else:
                 assert len(model)==1
                 _model = list(model.keys())[0]
-                if hasattr(_model, '__call__'):   # uninitiated class
+                if isinstance(_model, str):
+                    model_name = _model
+                    is_custom_model = False
+                elif hasattr(_model, '__call__'):   # uninitiated class
                     check_attributes(_model, ['fit', 'predict', '__init__'])
                     model_name = _model.__name__
                     is_custom_model = True
@@ -220,11 +225,12 @@ def check_kwargs(**kwargs):
             model_name = model.__class__.__name__
             kwargs['model'] = {model: {}}
 
-        if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
-            kwargs["batches"] = "2d"
+        if mode=="ML":
+            if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
+                kwargs["batches"] = "2d"
 
-        if "lookback" not in kwargs:
-            kwargs["lookback"] = 1
+            if "lookback" not in kwargs:
+                kwargs["lookback"] = 1
     else:
         is_custom_model = False
         model_name = None
@@ -338,7 +344,9 @@ def _make_model(**kwargs):
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
         'wandb_config': {'type': dict, 'default': None, 'between': None},
-        'val_metric': {'type': str, 'default': None}
+        'val_metric': {'type': str, 'default': None},
+        'model_name_': {'default': None},
+        'is_custom_model_': {"default": None},
     }
 
     data_args = {
@@ -456,8 +464,8 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
         if key in data_args:
             _data_config[key] = val
 
-    config['model_name'] = model_name
-    config['is_custom_model'] = is_custom_model
+    config['model_name_'] = model_name
+    config['is_custom_model_'] = is_custom_model
 
     return config, _data_config, opt_paras, {'model': original_mod_conf, 'other': original_other_conf}
 

@@ -2,7 +2,7 @@ import copy
 import importlib
 from typing import Union
 
-from .postprocessing.SeqMetrics import RegressionMetrics
+from .postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config, TrainTestSplit
 
 
@@ -44,6 +44,11 @@ class ModelOptimizerMixIn(object):
         cross_validator = self.model.config['cross_validator']
         config = jsonize(self.model.config)
 
+        if self.model.mode == "classification":
+            Metrics = ClassificationMetrics
+        else:
+            Metrics = RegressionMetrics
+
         def objective_fn(
                 seed=None,
                 **suggestions,
@@ -71,7 +76,7 @@ class ModelOptimizerMixIn(object):
                     test_y, p = _model.predict(data='validation', return_true=True,
                                                process_results=False)
 
-                metrics = RegressionMetrics(test_y, p)
+                metrics = Metrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
                 if self.xy:
