@@ -47,11 +47,12 @@ class EDA(Plot):
     - probability_plots
     - lag_plot
     - plot_ecdf
+    - shapiro_ranking
 
     Example:
         >>> from ai4water.datasets import busan_beach
         >>> eda = EDA(data=busan_beach())
-        >>> eda()
+        >>> eda()  # to plot all available plots with single line
     """
 
     def __init__(
@@ -69,8 +70,8 @@ class EDA(Plot):
         Arguments:
             data : either a dataframe, or list of dataframes or a dictionary whose
                 values are dataframes or a numpy array
-            in_cols :
-            out_cols :
+            in_cols : columns to consider as input features
+            out_cols : columns to consider as output features
             path : the path where to save the figures. If not given, plots will be
                 saved in 'data' folder in current working directory.
             save : whether to save the plots or not
@@ -517,6 +518,57 @@ class EDA(Plot):
                     self._save_or_show(fname=f'input_{prefix}_{str(yr)} _{str(week)}')
         return
 
+    def shapiro_ranking(
+            self,
+            cols=None,
+            st=None,
+            en=None,
+            orientation="h",
+            color=None,
+    ):
+        """plots the shapiro-wilk ranking for each feature as bar chart. The rank
+        value for each feature is value of Shapiro-Wilk test. Shapiro-Wilk test
+        is test of [normality](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test)
+
+        Arguments:
+            cols: columns to use
+            st: start of data
+            en: end of data to use
+            orientation: orientation of bars
+            color: color to use
+
+        Example:
+            >>> from ai4water.eda import EDA
+            >>> from ai4water.datasets import busan_beach
+            >>> eda = EDA(data=busan_beach())
+            >>> eda.shapiro_ranking()
+        """
+        return self._call_method(
+            "_shapiro_rank_df",
+            cols=cols,
+            st=st,
+            en=en,
+            orientation=orientation,
+            color=color,
+        )
+
+    def _shapiro_rank_df(
+            self, data, cols=None, st=None, en=None, orientation="h", prefix="",
+            color=None,
+    ):
+        """calculates shapiro rank for a DataFrame"""
+        data = _preprocess_df(data, st, en, cols)
+        ranks = []
+        # calculate stats for each column
+        for col in data.columns:
+            x = data[col].dropna().values
+            ranks.append(stats.shapiro(x)[0])
+
+        bar_chart(data.columns.tolist(), ranks, orient=orientation, show=False,
+                  sort=True, color=color)
+        return self._save_or_show(fname=f"shapiro_normality_test_{prefix}")
+
+
     def correlation(
             self,
             cols=None,
@@ -535,7 +587,7 @@ class EDA(Plot):
             st : starting row/index in data to be used for plotting
             en : end row/index in data to be used for plotting
             method : str, optional
-                     {"pearson", "spearman", "kendall"}, by default "pearson"
+                     {"pearson", "spearman", "kendall", "covariance"}, by default "pearson"
             kwargs :
 
         Example:
@@ -544,7 +596,7 @@ class EDA(Plot):
             >>> vis = EDA(busan_beach())
             >>> vis.correlation()
         """
-        # todo, by default it is using corr_coeff, added other possible correlation methods such as Spearman
+        # todo, by default it is using corr_coeff, added other possible correlation methods such as
         #  rank correlation etc
         if cols is None:
             if remove_targets:
@@ -598,7 +650,11 @@ class EDA(Plot):
 
         data = _preprocess_df(data, st, en)
 
-        corr = data[cols].corr(method=method)
+        if method == "covariance":
+            corr = np.cov(data[cols].values.transpose())
+            corr = pd.DataFrame(corr, columns=cols)
+        else:
+            corr = data[cols].corr(method=method)
 
         if split == "pos":
             corr = corr.where((corr >= threshold) & (corr > 0))

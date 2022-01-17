@@ -35,6 +35,17 @@ class TestEDA(unittest.TestCase):
         eda()
         return
 
+    def test_correlation(self):
+        eda = EDA(data=beach_data, save=False, show=False)
+        for method in ['pearson', 'spearman', 'covariance', 'kendall']:
+            eda.correlation(method=method)
+        return
+
+    def test_shapiro_rank(self):
+        eda = EDA(data=beach_data, save=False, show=False)
+        eda.shapiro_ranking()
+        return
+
     def test_with_input_features(self):
         eda = EDA(
             data=beach_data, in_cols=beach_data.columns.to_list()[0:-1],
