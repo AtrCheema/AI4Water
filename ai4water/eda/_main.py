@@ -47,7 +47,7 @@ class EDA(Plot):
     - probability_plots
     - lag_plot
     - plot_ecdf
-    - shapiro_ranking
+    - normality_test
 
     Example:
         >>> from ai4water.datasets import busan_beach
@@ -518,19 +518,22 @@ class EDA(Plot):
                     self._save_or_show(fname=f'input_{prefix}_{str(yr)} _{str(week)}')
         return
 
-    def shapiro_ranking(
+    def normality_test(
             self,
+            method="shapiro",
             cols=None,
             st=None,
             en=None,
             orientation="h",
             color=None,
     ):
-        """plots the shapiro-wilk ranking for each feature as bar chart. The rank
-        value for each feature is value of Shapiro-Wilk test. Shapiro-Wilk test
-        is test of [normality](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test)
+        """plots the statistics of nromality test as bar charts. The statistics
+        for each feature are calculated either Shapiro-wilke](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test)
+        test or Anderson-Darling test][] or Kolmogorov-Smirnov test using scipy.stats.shapiro or scipy.stats.anderson
+        functions respectively.
 
         Arguments:
+            method: either "shapiro" or "anderson", or "kolmogorov" default is "shapiro"
             cols: columns to use
             st: start of data
             en: end of data to use
@@ -541,10 +544,11 @@ class EDA(Plot):
             >>> from ai4water.eda import EDA
             >>> from ai4water.datasets import busan_beach
             >>> eda = EDA(data=busan_beach())
-            >>> eda.shapiro_ranking()
+            >>> eda.normality_test()
         """
         return self._call_method(
             "_shapiro_rank_df",
+            method=method,
             cols=cols,
             st=st,
             en=en,
@@ -553,21 +557,33 @@ class EDA(Plot):
         )
 
     def _shapiro_rank_df(
-            self, data, cols=None, st=None, en=None, orientation="h", prefix="",
+            self, data, cols=None, st=None, en=None,
+            method="shapiro",
+            orientation="h", prefix="",
             color=None,
     ):
-        """calculates shapiro rank for a DataFrame"""
+        """calculates normality test for each column of a DataFrame"""
+        assert method in ("shapiro", "anderson", "kolmogorov")
         data = _preprocess_df(data, st, en, cols)
         ranks = []
         # calculate stats for each column
         for col in data.columns:
             x = data[col].dropna().values
-            ranks.append(stats.shapiro(x)[0])
+            if method=="shapiro":
+                s, _ = stats.shapiro(x)
+            elif method == "kolmogorov":
+                s, _ = stats.kstest(x, "norm")
+            else:
+                s, _, _ = stats.anderson(x, "norm")
 
-        bar_chart(data.columns.tolist(), ranks, orient=orientation, show=False,
+            ranks.append(s)
+
+        bar_chart(labels=data.columns.tolist(),
+                  values=ranks,
+                  orient=orientation,
+                  show=False,
                   sort=True, color=color)
         return self._save_or_show(fname=f"shapiro_normality_test_{prefix}")
-
 
     def correlation(
             self,

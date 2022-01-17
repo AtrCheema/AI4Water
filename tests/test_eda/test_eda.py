@@ -41,9 +41,10 @@ class TestEDA(unittest.TestCase):
             eda.correlation(method=method)
         return
 
-    def test_shapiro_rank(self):
+    def test_normality_test(self):
         eda = EDA(data=beach_data, save=False, show=False)
-        eda.shapiro_ranking()
+        for method in ["kolmogorov", "shapiro", "anderson"]:
+            eda.normality_test(method)
         return
 
     def test_with_input_features(self):
