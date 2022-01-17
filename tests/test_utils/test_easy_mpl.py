@@ -47,6 +47,11 @@ class TestBarChart(unittest.TestCase):
         bar_chart(values=d, labels=names, color=cm, sort=True, orient='v', show=False)
         return
 
+    def test_without_labels(self):
+        d = np.random.randint(2, 50, 10)
+        bar_chart(values=d, sort=True, show=False)
+        return
+
 
 class TestRegplot(unittest.TestCase):
 
@@ -100,6 +105,7 @@ class TestPlot(unittest.TestCase):
         ax = plot(np.arange(100), np.random.random(100), '--.', log=True, show=False)
         assert isinstance(ax, plt.Axes)
         return
+
 
 class TestImshow(unittest.TestCase):
 

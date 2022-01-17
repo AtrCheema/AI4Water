@@ -518,6 +518,25 @@ class EDA(Plot):
                     self._save_or_show(fname=f'input_{prefix}_{str(yr)} _{str(week)}')
         return
 
+    def parallel_corrdinates(
+            self,
+            cols,
+            st=None,
+            en=100,
+            color=None
+    ):
+        """Plots data as parallel coordinates."""
+        return self._call_method(
+            "_pcorrd_df",
+            cols=cols,
+            st=st,
+            en=en,
+            color=color,
+        )
+
+    def _pcorrd_df(self, data, st=None, en=100, cols=None, color=None, prefix=""):
+        return
+
     def normality_test(
             self,
             method="shapiro",
@@ -547,7 +566,7 @@ class EDA(Plot):
             >>> eda.normality_test()
         """
         return self._call_method(
-            "_shapiro_rank_df",
+            "_normality_test_df",
             method=method,
             cols=cols,
             st=st,
@@ -556,7 +575,7 @@ class EDA(Plot):
             color=color,
         )
 
-    def _shapiro_rank_df(
+    def _normality_test_df(
             self, data, cols=None, st=None, en=None,
             method="shapiro",
             orientation="h", prefix="",
