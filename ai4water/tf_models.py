@@ -1,4 +1,4 @@
-__all__ = ["DualAttentionModel", "InputAttentionModel", "OutputAttentionModel"]
+__all__ = ["DualAttentionModel", "InputAttentionModel"]
 
 import os
 
@@ -48,11 +48,14 @@ class DualAttentionModel(FModel):
         >>> from ai4water import DualAttentionModel
         >>> from ai4water.datasets import busan_beach
         >>> data = busan_beach()
-        >>> model = DualAttentionModel(lookback=5, input_features=data.columns.tolist()[0:-1],
-        >>>                            output_features=data.columns.tolist()[-1:])
-        If you do not wish to feed previous output as input to the model, you can set teacher forcing to False
-        The drop_remainder argument must be set to True in such a case.
-        >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4, drop_remainder=True, lookback=5)
+        >>> model = DualAttentionModel(lookback=5,
+        ...                            input_features=data.columns.tolist()[0:-1],
+        ...                            output_features=data.columns.tolist()[-1:])
+        If you do not wish to feed previous output as input to the model, you
+        can set teacher forcing to False. The drop_remainder argument must be
+        set to True in such a case.
+        >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4,
+        ...                            drop_remainder=True, lookback=5)
         >>> model.fit(data=data)
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
@@ -360,18 +363,25 @@ class DualAttentionModel(FModel):
         if x is not None:
             return x, y
 
+        self._maybe_dh_not_set(data=data)
+        return self.fetch_data(x=x, y=y, source='training', key=key)
+
+    def validation_data(self, x=None, y=None, data='validation', **kwargs):
+        self._maybe_dh_not_set(data=data)
+        return self.fetch_data(x=x, y=y, source='validation', **kwargs)
+
+    def test_data(self, x=None, y=None, data='test',  **kwargs):
+        self._maybe_dh_not_set(data=data)
+        return self.fetch_data(x=x, y=y, source='test', **kwargs)
+
+    def _maybe_dh_not_set(self, data):
+        """if dh_ has not been set yet, try to create it using data argument if
+        possible"""
         if isinstance(data, str) and data not in ['training', 'test', 'validation']:
             self.dh_ = DataHandler(data=data, **self.data_config)
         elif not isinstance(data, str):
             self.dh_ = DataHandler(data=data, **self.data_config)
-
-        return self.fetch_data(x=x, y=y, source='training', key=key)
-
-    def validation_data(self, x=None, y=None, data='validation', **kwargs):
-        return self.fetch_data(data, **kwargs)
-
-    def test_data(self, x=None, y=None, data='test',  **kwargs):
-        return self.fetch_data(data, **kwargs)
+        return
 
     def interpret(self, data='training', **kwargs):
         import matplotlib
@@ -483,9 +493,34 @@ class DualAttentionModel(FModel):
 
         return inputs
 
+    def _transform_x(self, x, name):
+        """transforms x and puts the transformer in config witht he key name"""
+        feature_names = [
+            self.input_features,
+            [f"{i}" for i in range(self.enc_config['n_s'])],
+            [f"{i}" for i in range(self.enc_config['n_h'])],
+            [f"{i}" for i in range(self.dec_config['n_hde0'])],
+            [f"{i}" for i in range(self.dec_config['n_sde0'])],
+        ]
+        transformation = [self.config['x_transformation'], None, None, None, None]
+        if self.teacher_forcing:
+            feature_names.insert(1, self.output_features)
+            transformation.insert(1, self.config['y_transformation'])
+        return self._transform(x, name, transformation, feature_names)
+
 
 class InputAttentionModel(DualAttentionModel):
-
+    """
+    InputAttentionModel is same as DualAttentionModel with output attention/decoder part
+    removed.
+    Example:
+        >>> from ai4water import InputAttentionModel
+        >>> from ai4water.datasets import busan_beach
+        >>> model = InputAttentionModel(
+        ... input_features=busan_beach().columns.tolist()[0:-1],
+        ... output_features=busan_beach().columns.tolist()[-1:])
+        >>> model.fit(data=busan_beach())
+    """
     def __init__(self, *args, teacher_forcing=False, **kwargs):
         super(InputAttentionModel, self).__init__(*args, teacher_forcing=teacher_forcing, **kwargs)
 
@@ -547,86 +582,15 @@ class InputAttentionModel(DualAttentionModel):
         else:
             return x, labels
 
+    def _transform_x(self, x, name):
+        """transforms x and puts the transformer in config witht he key name
+        for conformity we need to add feature names of initial states and their transformations
+        will always be None."""
+        feature_names = [
+            self.input_features,
+            [f"{i}" for i in range(self.enc_config['n_s'])],
+            [f"{i}" for i in range(self.enc_config['n_h'])]
+        ]
+        transformation = [self.config['x_transformation'], None, None]
+        return self._transform(x, name, transformation, feature_names)
 
-class OutputAttentionModel(DualAttentionModel):
-
-    def build(self, input_shape=None):
-        self.config['dec_config'] = self.dec_config
-        self.config['enc_config'] = self.enc_config
-
-        setattr(self, 'method', 'output_attention')
-
-        inputs = layers.Input(shape=(self.lookback, self.num_ins))
-
-        self.de_densor_We = layers.Dense(self.enc_config['m'])
-        h_de0 = layers.Input(shape=(self.dec_config['n_hde0'],), name='dec_1st_hidden_state')
-        s_de0 = layers.Input(shape=(self.dec_config['n_sde0'],), name='dec_1st_cell_state')
-        prev_output = layers.Input(shape=(self.lookback - 1, 1), name='input_y')
-
-        enc_lstm_out = layers.LSTM(self.config['lstm_config']['lstm_units'], return_sequences=True,
-                                   name='starting_LSTM')(inputs)
-        print('Output from LSTM: ', enc_lstm_out)
-        enc_out = layers.Reshape((self.lookback, -1), name='enc_out_eq_11')(enc_lstm_out)  # eq 11 in paper
-        print('output from first LSTM:', enc_out)
-
-        h, context = self.decoder_attention(enc_out, prev_output, s_de0, h_de0)
-        h = layers.Reshape((1, self.dec_config['p']))(h)
-        # concatenation of decoder hidden state and the context vector.
-        concat = layers.Concatenate(axis=2)([h, context])
-        concat = layers.Reshape((-1,))(concat)
-        print('decoder concat:', concat)
-        result = layers.Dense(self.dec_config['p'], name='eq_22')(concat)   # equation 22
-        print('result:', result)
-        predictions = layers.Dense(1)(result)
-
-        self._model = self.compile([inputs, prev_output, s_de0, h_de0], predictions)
-
-        return
-
-    def train(self, st=0, en=None, indices=None, **callbacks):
-
-        train_x, train_y, train_label = self.fetch_data(self.data,
-                                                        st=st,
-                                                        en=en,
-                                                        inps=self.input_features,
-                                                        outs=self.output_features,
-                                                        shuffle=True,
-                                                        write_data=self.config['CACHEDATA'],
-                                                        indices=indices)
-
-        h_de0_train = s_de0_train = np.zeros((train_x.shape[0], self.config['dec_config']['p']))
-
-        inputs = [train_x, train_y, s_de0_train, h_de0_train]
-        history = self.fit(inputs, train_label, **callbacks)
-
-        self.plot_loss(history)
-
-        return history
-
-    def predict(self,
-                st=0,
-                en=None,
-                indices=None,
-                pref: str = "test",
-                scaler_key: str = '5',
-                use_datetime_index=False,
-                **plot_args):
-        setattr(self, 'predict_indices', indices)
-
-        test_x, test_y, test_label = self.fetch_data(self.data,
-                                                     st=st,
-                                                     en=en, shuffle=False,
-                                                     write_data=False,
-                                                     inps=self.input_features,
-                                                     outs=self.output_features,
-                                                     indices=indices)
-
-        h_de0_test = s_de0_test = np.zeros((test_x.shape[0], self.config['dec_config']['p']))
-
-        predicted = self._model.predict([test_x, test_y, s_de0_test, h_de0_test],
-                                        batch_size=test_x.shape[0],
-                                        verbose=1)
-
-        self.process_results(test_label, predicted, pref, **plot_args)
-
-        return predicted, test_label

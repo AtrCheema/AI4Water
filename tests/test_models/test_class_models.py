@@ -80,7 +80,7 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation
     test_evaluation(model)
 
     assert model.mode == 'classification'
-    assert len(model.classes) == n_classes
+    assert len(model.classes_) == n_classes
     assert model.num_classes == n_classes
     return model
 
@@ -108,7 +108,7 @@ class TestClassifications(unittest.TestCase):
         return
 
     def test_multiclass_classification(self):
-
+        time.sleep(1)
         model = build_and_run_class_problem(3, 'binary_crossentropy')
 
         assert not model.is_binary
@@ -176,6 +176,7 @@ class TestClassifications(unittest.TestCase):
 
         for out in model.output_features:
             assert out in os.listdir(model.path)
+        return
 
 
 if __name__ == "__main__":

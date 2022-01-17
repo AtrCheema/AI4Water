@@ -37,10 +37,10 @@ class Transformations(object):
 
         We can also do more complicated stuff as following
         >>> transformer = Transformations({'x1': ['a', 'b'], 'x2': ['a', 'b']},
-                                      config={'x1': ['minmax', 'zscore'],
-                                              'x2': [{'method': 'log', 'features': ['a', 'b']},
-                                                     {'method': 'robust', 'features': ['a', 'b']}]
-                                              })
+        ...                              config={'x1': ['minmax', 'zscore'],
+        ...                                      'x2': [{'method': 'log', 'features': ['a', 'b']},
+        ...                                             {'method': 'robust', 'features': ['a', 'b']}]
+        ...                                      })
         >>> x1 = np.arange(20).reshape(10, 2)
         >>> x2 = np.arange(100, 120).reshape(10, 2)
         >>> x = {'x1': x1, 'x2': x2}
@@ -105,9 +105,9 @@ class Transformations(object):
             feature_names are of type {type(self.names)}"""
 
         elif self.is_list_:
-            for n in self.names:
+            for idx, n in enumerate(self.names):
                 assert isinstance(n, list), f"""
-                feature_names {type(n)} don't match data"""
+                feature_names for {idx} source is {type(n)}. It should be list"""
 
         elif self.is_dict_:
             assert isinstance(self.names, dict), f"""
