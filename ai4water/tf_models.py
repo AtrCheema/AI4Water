@@ -432,7 +432,7 @@ class DualAttentionModel(FModel):
 
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
         _, im = imshow(act_avg_over_examples,
-                       axis=axis,
+                       ax=axis,
                        aspect="auto",
                        yticklabels=ytick_labels,
                        ylabel='lookback steps',
@@ -444,6 +444,7 @@ class DualAttentionModel(FModel):
         fig.colorbar(im, orientation='horizontal', pad=0.3)
         plt.savefig(os.path.join(self.act_path, f'acts_avg_over_examples_{data_name}'),
                     dpi=400, bbox_inches='tight')
+        plt.close('all')
 
         data = self.inputs_for_attention(data)
 
@@ -455,7 +456,7 @@ class DualAttentionModel(FModel):
             in_cols=self.input_features,
             out_cols=self.output_features,
             lookback=lookback,
-            name=name,
+            name=data_name,
             path=self.act_path,
             vmin=vmin,
             vmax=vmax,

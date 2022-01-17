@@ -1828,7 +1828,8 @@ class BaseModel(NN):
             weight_file = find_best_weight(self.w_path)
             weight_file_path = os.path.join(self.w_path, weight_file)
         else:
-            assert os.path.isfile(weight_file), f'weight_file must be complete path of weight file'
+            if not os.path.isfile(weight_file):
+                raise ValueError(f'weight_file must be complete path of weight file but it is {weight_file}')
             weight_file_path = weight_file
             weight_file = os.path.basename(weight_file)  # for printing
 

@@ -630,7 +630,7 @@ Available cases are {self.models} and you wanted to include
         fig.set_figheight(kwargs.get('fig_height', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
-        bar_chart(axis=axis[0],
+        bar_chart(ax=axis[0],
                   labels=names[::-1],
                   values=train_matrics[::-1],
                   color=kwargs.get('color', None),
@@ -641,7 +641,7 @@ Available cases are {self.models} and you wanted to include
                   show=False,
                   )
 
-        bar_chart(axis=axis[1],
+        bar_chart(ax=axis[1],
                   labels=names[::-1],
                   values=test_matrics[::-1],
                   title="Test",

@@ -53,7 +53,6 @@ regplot_combs = [
 def bar_chart(
         values,
         labels=None,
-        axis=None,
         orient='h',
         sort=False,
         color=None,
@@ -64,13 +63,13 @@ def bar_chart(
         show_yaxis=True,
         rotation=0,
         show=True,
+        ax=None,
         **kwargs
 ):
     """plots bar chart
     Arguments:
         values: 1D array like
         labels:
-        axis:
         orient:
         sort:
         color:
@@ -80,6 +79,7 @@ def bar_chart(
         title_fs:
         show_yaxis:
         rotation:
+        ax:
         show:
         kwargs: any additional keyword arguments for Axes.bar or Axes.barh
 
@@ -97,8 +97,8 @@ def bar_chart(
     cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
     color = color if color is not None else cm
 
-    if not axis:
-        _, axis = plt.subplots()
+    if not ax:
+        _, ax = plt.subplots()
 
     if labels is None:
         labels = [f"F{i}" for i in range(len(values))]
@@ -109,28 +109,28 @@ def bar_chart(
         labels = np.array(labels)[sort_idx]
 
     if orient == 'h':
-        axis.barh(np.arange(len(values)), values, color=color, **kwargs)
-        axis.set_yticks(np.arange(len(values)))
-        axis.set_yticklabels(labels, rotation=rotation)
+        ax.barh(np.arange(len(values)), values, color=color, **kwargs)
+        ax.set_yticks(np.arange(len(values)))
+        ax.set_yticklabels(labels, rotation=rotation)
 
     else:
-        axis.bar(np.arange(len(values)), values, color=color, **kwargs)
-        axis.set_xticks(np.arange(len(values)))
-        axis.set_xticklabels(labels, rotation=rotation)
+        ax.bar(np.arange(len(values)), values, color=color, **kwargs)
+        ax.set_xticks(np.arange(len(values)))
+        ax.set_xticklabels(labels, rotation=rotation)
 
     if not show_yaxis:
-        axis.get_yaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
     if xlabel:
-        axis.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
+        ax.set_xlabel(xlabel, fontdict={'fontsize': xlabel_fs})
 
     if title:
-        axis.set_title(title, fontdict={'fontsize': title_fs})
+        ax.set_title(title, fontdict={'fontsize': title_fs})
 
     if show:
         plt.show()
 
-    return axis
+    return ax
 
 
 def plot(*args, show=True, **kwargs):

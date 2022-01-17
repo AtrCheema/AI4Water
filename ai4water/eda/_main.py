@@ -326,7 +326,7 @@ class EDA(Plot):
                             values=np.round(mv_cols_ratio * 100, 2),
                             orient='v',
                             show=False,
-                            axis=ax1)
+                            ax=ax1)
 
             ax1.set(frame_on=True, xlim=(-0.5, len(mv_cols) - 0.5))
             ax1.set_ylim(0, np.max(mv_cols_ratio) * 100)
@@ -601,7 +601,8 @@ class EDA(Plot):
                   values=ranks,
                   orient=orientation,
                   show=False,
-                  sort=True, color=color)
+                  sort=True,
+                  color=color)
         return self._save_or_show(fname=f"shapiro_normality_test_{prefix}")
 
     def correlation(

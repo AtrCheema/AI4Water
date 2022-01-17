@@ -201,7 +201,7 @@ class PermutationImportance(ExplainerMixin):
             show:
                 whether to show the plot or not
             kwargs:
-                any keyword arguments for [imshow][ai4water.utils.utils.imshow] function.
+                any keyword arguments for [imshow][ai4water.utils.easy_mpl.imshow] function.
         """
         assert self.data_is_3d, f"data must be 3d but it is has {self.x.shape}"
 
@@ -215,7 +215,7 @@ class PermutationImportance(ExplainerMixin):
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
         axis, im = imshow(
             imp,
-            axis=axis,
+            ax=axis,
             yticklabels=ytick_labels,
             xticklabels=self.features if len(self.features) <= 10 else None,
             ylabel="Looback steps",

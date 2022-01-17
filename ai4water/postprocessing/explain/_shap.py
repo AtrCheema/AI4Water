@@ -967,7 +967,8 @@ def imshow_3d(values,
         yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
         axis, im = imshow(data[:, :, idx].transpose(),
                           yticklabels=yticklabels,
-                          axis=ax1, vmin=vmin,
+                          ax=ax1,
+                          vmin=vmin,
                           vmax=vmax,
                           title=feat,
                           cmap=cmap,
@@ -982,7 +983,7 @@ def imshow_3d(values,
                           title=f"SHAP Values",
                           cmap=cmap,
                           show=False,
-                          axis=ax2)
+                          ax=ax2)
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 

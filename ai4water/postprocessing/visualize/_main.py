@@ -847,7 +847,8 @@ def features_2D(data,
 
     for idx, ax in enumerate(axis.flat):
         axis, im = imshow(data[idx],
-                          axis=ax, cmap=cmap, vmin=vmin, vmax=vmax,
+                          ax=ax,
+                          cmap=cmap, vmin=vmin, vmax=vmax,
                           title=title[idx],
                           show=False)
 

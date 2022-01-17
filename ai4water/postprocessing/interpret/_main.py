@@ -134,9 +134,9 @@ class Interpret(Plot):
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
-            bar_chart(labels=all_cols,
+            barchart(labels=all_cols,
                       values=imp,
-                      axis=axis,
+                      ax=axis,
                       title="Feature importance",
                       show=False,
                       xlabel_fs=12)
@@ -278,15 +278,19 @@ class Interpret(Plot):
 
         maybe_create_path(model.path)
 
-        if not model.api == 'subclassing':
-            model = model._model
-
         x, _, = getattr(model, f'{data}_data')()
+
+        attentions = model.TemporalFusionTransformer_attentions
+        if model.api == 'subclassing':
+            inputs = model.inputs
+        else:
+            inputs = model._model.inputs
+
         attention_components = {}
 
-        for k, v in model.TemporalFusionTransformer_attentions.items():
+        for k, v in attentions.items():
             if v is not None:
-                temp_model = tf.keras.Model(inputs=model.inputs,
+                temp_model = tf.keras.Model(inputs=inputs,
                                             outputs=v)
                 attention_components[k] = temp_model.predict(x=x, verbose=1, steps=1)
         return attention_components
