@@ -126,7 +126,9 @@ class IMVModel(HARHNModel):
         fig.set_figwidth(16)
         fig.set_figheight(16)
         xticklabels=["t-"+str(i) for i in np.arange(self.lookback, 0, -1)]
-        imshow(alphas, axis=ax, xticklabels=xticklabels,
+        imshow(alphas,
+               ax=ax,
+               xticklabels=xticklabels,
                yticklabels=list(all_cols),
                title="Importance of features and timesteps",
                annotate=annotate,

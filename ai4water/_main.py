@@ -1843,8 +1843,11 @@ class BaseModel(NN):
             # loads the weights of keras model from weight file `w_file`.
             if self.api == 'functional' and self.config['backend'] == 'tensorflow':
                 self._model.load_weights(weight_file_path)
+            elif self.config['backend'] == 'pytorch':
+                self.load_state_dict(torch.load(weight_file_path))
             else:
                 self.load_weights(weight_file_path)
+
         if self.verbosity > 0:
             print("{} Successfully loaded weights from {} file {}".format('*' * 10, weight_file, '*' * 10))
         return
