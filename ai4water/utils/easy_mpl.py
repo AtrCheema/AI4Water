@@ -1,7 +1,8 @@
 
 """
 easy_mpl stands for easy maplotlib. The purpose of this is to ease the use of
-matplotlib while keeping the flexibility intact.
+matplotlib while keeping the flexibility of object oriented programming paradigm
+of matplotlib intact. Using these one liners will save the time and will not hurt.
 """
 
 __all__ = [
@@ -49,26 +50,49 @@ regplot_combs = [
 ]
 
 
-def get_cmap(cm: str, num_cols: int, low=0.0, high=1.0):
+def bar_chart(
+        values,
+        labels=None,
+        axis=None,
+        orient='h',
+        sort=False,
+        color=None,
+        xlabel=None,
+        xlabel_fs=None,
+        title=None,
+        title_fs=None,
+        show_yaxis=True,
+        rotation=0,
+        show=True,
+        **kwargs
+):
+    """plots bar chart
+    Arguments:
+        values: 1D array like
+        labels:
+        axis:
+        orient:
+        sort:
+        color:
+        xlabel:
+        xlabel_fs:
+        title:
+        title_fs:
+        show_yaxis:
+        rotation:
+        show:
+        kwargs: any additional keyword arguments for Axes.bar or Axes.barh
 
-    cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
-    return cols
-
-
-def bar_chart(labels,
-              values,
-              axis=None,
-              orient='h',
-              sort=False,
-              color=None,
-              xlabel=None,
-              xlabel_fs=None,
-              title=None,
-              title_fs=None,
-              show_yaxis=True,
-              rotation=0,
-              show=True,
-              ):
+    Example:
+        >>> from ai4water.utils.easy_mpl import bar_chart
+        >>> bar_chart([1,2,3,4,4,5,3,2,5])
+        specifying labels
+        >>> bar_chart([3,4,2,5,10], ['a', 'b', 'c', 'd', 'e'])
+        sorting the data
+        >>> bar_chart([1,2,3,4,4,5,3,2,5], sort=True)
+    # todo, add labeling of bars as optional parameter
+    """
+    values = np.array(values)
 
     cm = get_cmap(random.choice(BAR_CMAPS), len(values), 0.2)
     color = color if color is not None else cm
@@ -76,18 +100,21 @@ def bar_chart(labels,
     if not axis:
         _, axis = plt.subplots()
 
+    if labels is None:
+        labels = [f"F{i}" for i in range(len(values))]
+
     if sort:
         sort_idx = np.argsort(values)
         values = values[sort_idx]
         labels = np.array(labels)[sort_idx]
 
     if orient == 'h':
-        axis.barh(np.arange(len(values)), values, color=color)
+        axis.barh(np.arange(len(values)), values, color=color, **kwargs)
         axis.set_yticks(np.arange(len(values)))
         axis.set_yticklabels(labels, rotation=rotation)
 
     else:
-        axis.bar(np.arange(len(values)), values, color=color)
+        axis.bar(np.arange(len(values)), values, color=color, **kwargs)
         axis.set_xticks(np.arange(len(values)))
         axis.set_xticklabels(labels, rotation=rotation)
 
@@ -130,8 +157,8 @@ def plot(*args, show=True, **kwargs):
         log transform data before plotting
         >>> plot(np.random.random(100), '--*', log=True, label='label')
     """
-    _, axis = init_subplots()
-    axis = process_axis(axis, *args, **kwargs)
+    _, ax = init_subplots()
+    axis = process_axis(ax, *args, **kwargs)
     if kwargs.get('save', False):
         plt.savefig(f"{kwargs.get('name', 'fig.png')}")
     if show:
@@ -143,7 +170,6 @@ def regplot(
         x: Union[np.ndarray, pd.DataFrame, pd.Series, list],
         y: Union[np.ndarray, pd.DataFrame, pd.Series, list],
         title: str = None,
-        show: bool = True,
         annotation_key: str = None,
         annotation_val: float = None,
         line_color=None,
@@ -153,8 +179,10 @@ def regplot(
         ci: Union[int, None] = 95,
         figsize: tuple = None,
         xlabel: str = 'Observed',
-        ylabel: str = 'Predicted'
-):
+        ylabel: str = 'Predicted',
+        show: bool = True,
+        ax: plt.Axes = None
+)->plt.Axes:
     """
     Regpression plot with regression line and confidence interval
 
@@ -173,23 +201,26 @@ def regplot(
         title : name to be used for title
         xlabel :
         ylabel :
+        ax: matplotlib axes to draw plot on
+    Returns:
+        matplotlib Axes
 
     Example:
         >>> from ai4water.datasets import busan_beach
         >>> from ai4water.utils.easy_mpl import regplot
         >>> data = busan_beach()
-        >>> regplot(data['pcp3_mm'], data['pcp6_mm'], show=True)
+        >>> regplot(data['pcp3_mm'], data['pcp6_mm'])
     """
     x = to_1d_array(x)
     y = to_1d_array(y)
 
     mc, lc, fc = random.choice(regplot_combs)
     _metric_names = {'r2': '$R^2$'}
-    plt.close('all')
 
-    _, axis = plt.subplots(figsize=figsize or (6, 5))
+    if ax is None:
+        _, ax = plt.subplots(figsize=figsize or (6, 5))
 
-    axis.scatter(x, y, c=marker_color or mc,
+    ax.scatter(x, y, c=marker_color or mc,
                  s=marker_size)  # set style options
 
     if annotation_key is not None:
@@ -202,7 +233,7 @@ def regplot(
                      fontsize=16)
     _regplot(x,
              y,
-             ax=axis,
+             ax=ax,
              ci=ci,
              line_color=line_color or lc,
              fill_color=fill_color or fc)
@@ -214,7 +245,203 @@ def regplot(
     if show:
         plt.show()
 
-    return axis
+    return ax
+
+
+def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
+    """Initializes the fig for subplots"""
+    plt.close('all')
+    fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
+    if width is not None:
+        fig.set_figwidth(width)
+    if height is not None:
+        fig.set_figheight(height)
+    return fig, axis
+
+
+def imshow(
+        values,
+        xlabel=None,
+        title=None,
+        ylabel=None,
+        yticklabels=None,
+        xticklabels=None,
+        show=True,
+        annotate=False,
+        annotate_kws=None,
+        colorbar:bool=False,
+        colorbar_orientation:str = 'vertical',
+        ax=None,
+        **kwargs
+)->tuple:
+    """One stop shop for matplotlib's imshow function
+
+    Arguments:
+        values:
+            2d array
+        xlabel
+        ylabel
+        title
+        show
+        annotate
+        annotate_kws
+        colorbar
+        colorbar_orientation
+        xticklabels
+        yticklabels
+        ax:
+        kwargs:
+            any further keyword arguments for [axes.imshow][https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.imshow.html]
+
+    Returns:
+        a tuple whose first vlaue is matplotlib axes and second argument is AxesImage
+
+    Example:
+        >>> import numpy as np
+        >>> from ai4water.utils.easy_mpl import imshow
+        >>> x = np.random.random((10, 5))
+        >>> imshow(x, annotate=True)
+
+        >>> imshow(x, colorbar=True)
+    """
+
+    if ax is None:
+        ax = plt.gca()
+
+    im = ax.imshow(values, **kwargs)
+
+    if annotate:
+        annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}
+        for i in range(values.shape[0]):
+            for j in range(values.shape[1]):
+                _ = ax.text(j, i, round(values[i, j], 2),
+                            **annotate_kws)
+
+    if yticklabels is not None:
+        ax.set_yticks(np.arange(len(yticklabels)))
+        ax.set_yticklabels(yticklabels)
+
+    if xticklabels is not None:
+        ax.set_xticks(np.arange(len(xticklabels)))
+        ax.set_xticklabels(xticklabels)
+
+    _process_axis(ax, xlabel=xlabel, ylabel=ylabel, title=title)
+
+    if colorbar:
+        fig: plt.Figure = plt.gcf()
+        fig.colorbar(im, orientation=colorbar_orientation, pad=0.2)
+
+    if show:
+        plt.show()
+
+    return ax, im
+
+
+def hist(
+        x:Union[list, np.ndarray, pd.Series, pd.DataFrame],
+        hist_kws: dict = None,
+        grid:bool = True,
+        ax: plt.Axes = None,
+        show: bool = True,
+        **kwargs
+)->plt.Axes:
+    """
+    one stop shop for histogram
+    Arguments:
+        x: array like, must not be greader than 1d
+        grid: whether to show the grid or not
+        show: whether to show the plot or not
+        ax: axes on which to draw the plot
+        hist_kws: any keyword arguments for
+        [axes.hist](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.hist.html)
+        kwargs: any keyword arguments for axes manipulation such as title, xlable, ylable etc
+    Returns:
+        matplotlib Axes
+
+    Example:
+        >>> from ai4water.utils.easy_mpl import hist
+        >>> hist(np.random.random((10, 1)))
+    """
+    if not ax:
+        ax = plt.gca()
+    hist_kws = hist_kws or {}
+    n, bins, patches = ax.hist(x, **hist_kws)
+
+    _process_axis(ax, grid=grid, **kwargs)
+
+    if show:
+        plt.show()
+
+    return ax
+
+
+def pie(
+        vals: Union[list, np.ndarray, pd.Series] = None,
+        fractions: Union[list, np.ndarray, pd.Series] = None,
+        labels: list = None,
+        ax: plt.Axes = None,
+        title: str = None,
+        name: str = None,
+        save: bool = True,
+        show: bool = True,
+        **kwargs
+)->plt.Axes:
+    """
+    Arguments:
+        vals: array like, unique values and their counts will be inferred from this array
+        fractions: if given, vals must not be given
+        labels: labels for unique values in vals, if given, must be equal to unique vals
+             in vals. Otherwise "unique_value (counts)" will be used for labeling.
+        ax: the axes on which to draw, if not given current active axes will be used
+        title: if given, will be used for title
+        name:
+        save:
+        show:
+        kwargs: any keyword argument will go to axes.pie
+            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.pie.html
+
+    Returns:
+        a matplotlib axes. This can be used for further processing by making show=False.
+
+    Example:
+        >>> pie(np.random.randint(0, 3, 100))
+        or by directly providing fractions
+        >>> pie([0.2, 0.3, 0.1, 0.4])
+    """
+
+    if ax is None:
+        ax = plt.gca()
+
+    if fractions is None:
+        fractions = pd.Series(vals).value_counts(normalize=True).values
+        vals = pd.Series(vals).value_counts().to_dict()
+        if labels is None:
+            labels = [f"{value} ({count}) " for value, count in vals.items()]
+    else:
+        assert vals is None
+        if labels is None:
+            labels = [f"f{i}" for i in range(len(fractions))]
+
+    if 'autopct' not in kwargs:
+        kwargs['autopct'] = '%1.1f%%'
+
+    ax.pie(fractions,
+           labels=labels,
+           **kwargs)
+
+    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    if title:
+        plt.title(title, fontsize=20)
+
+    if save:
+        name = name or "pie.png"
+        plt.savefig(name, dpi=300)
+
+    if show:
+        plt.show()
+
+    return ax
+
 
 def _regplot_paras(x, y, ci:int=None):
     """prepares parameters for regplot"""
@@ -267,87 +494,6 @@ def bootdist(f, args, n_boot=1000, **func_kwargs):
         boot_dist.append(f(*sample, **func_kwargs))
 
     return np.array(boot_dist)
-
-
-def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
-    """Initializes the fig for subplots"""
-    plt.close('all')
-    fig, axis = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
-    if width is not None:
-        fig.set_figwidth(width)
-    if height is not None:
-        fig.set_figheight(height)
-    return fig, axis
-
-
-def process_axis(axis,
-                 data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
-                 x: Union[list, np.ndarray] = None,  # array to plot as x
-                 marker='',
-                 fillstyle=None,
-                 linestyle='-',
-                 color=None,
-                 ms=6.0,  # markersize
-                 label=None,  # legend
-                 log=False,
-                 log_nz=False,
-                 **kwargs
-                 ):
-
-    """Purpose to act as a middle man between axis.plot/plt.plot.
-    Returns:
-        axis
-        """
-    # TODO
-    # default fontsizes should be same as used by matplotlib
-    # should not complicate plt.plot or axis.plto
-    # allow multiple plots on same axis
-
-    if log and log_nz:
-        raise ValueError
-
-    use_third = False
-    use_style = False  # # plot(x,y,...)
-    if x is not None:
-        if isinstance(x, str):  # the user has not specified x so x is currently plot style.
-            style = x
-            x = None
-            if marker == '':
-                use_third = True
-        else:
-            if marker != '':
-                style = marker
-                use_style = True
-
-    if log_nz:
-        data = deepcopy(data)
-        _data = data.values
-        d_nz_idx = np.where(_data > 0.0)
-        data_nz = _data[d_nz_idx]
-        d_nz_log = np.log(data_nz)
-        _data[d_nz_idx] = d_nz_log
-        _data = np.where(_data < 0.0, 0.0, _data)
-        data = pd.Series(_data, index=data.index)
-
-    if log:
-        data = deepcopy(data)
-        _data = np.where(data < 0.0, 0.0, data)
-        if data.__class__.__name__ in ['Series', 'DataFrame']:
-            data = pd.Series(_data, index=data.index)
-
-    if x is not None:
-        if use_style:
-            axis.plot(x, data, style, color=color, ms=ms, label=label)
-        else:
-            axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker,
-                  linestyle=linestyle, ms=ms, label=label)
-    elif use_third:
-        axis.plot(data, style, color=color, ms=ms, label=label)
-    else:
-        axis.plot(data, fillstyle=fillstyle, color=color, marker=marker,
-                  linestyle=linestyle, ms=ms, label=label)
-
-    return _process_axis(axis=axis, label=label, log=log, **kwargs)
 
 
 def _process_axis(
@@ -444,181 +590,77 @@ def _process_axis(
     return axis
 
 
-def imshow(
-        values,
-        axis=None,
-        xlabel=None,
-        title=None,
-        ylabel=None,
-        yticklabels=None,
-        xticklabels=None,
-        show=True,
-        annotate=False,
-        annotate_kws=None,
-        colorbar:bool=False,
-        colorbar_orientation:str = 'vertical',
-        **kwargs
-)->tuple:
-    """One stop shop for matplotlib's imshow function
+def process_axis(axis,
+                 data: Union[list, np.ndarray, pd.Series, pd.DataFrame],
+                 x: Union[list, np.ndarray] = None,  # array to plot as x
+                 marker='',
+                 fillstyle=None,
+                 linestyle='-',
+                 color=None,
+                 ms=6.0,  # markersize
+                 label=None,  # legend
+                 log=False,
+                 log_nz=False,
+                 **kwargs
+                 ):
 
-    Arguments:
-        values:
-            2d array
-        axis:
-        xlabel
-        ylabel
-        title
-        show
-        annotate
-        annotate_kws
-        colorbar
-        colorbar_orientation
-        xticklabels
-        yticklabels
-        kwargs:
-            any further keyword arguments for [axes.imshow][https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.imshow.html]
-
+    """Purpose to act as a middle man between axis.plot/plt.plot.
     Returns:
-        a tuple whose first vlaue is matplotlib axes and second argument is AxesImage
+        axis
+        """
+    # TODO
+    # default fontsizes should be same as used by matplotlib
+    # should not complicate plt.plot or axis.plto
+    # allow multiple plots on same axis
 
-    Example:
-        >>> import numpy as np
-        >>> from ai4water.utils.easy_mpl import imshow
-        >>> x = np.random.random((10, 5))
-        >>> imshow(x, annotate=True)
+    if log and log_nz:
+        raise ValueError
 
-        >>> imshow(x, colorbar=True)
-    """
+    use_third = False
+    use_style = False  # # plot(x,y,...)
+    if x is not None:
+        if isinstance(x, str):  # the user has not specified x so x is currently plot style.
+            style = x
+            x = None
+            if marker == '':
+                use_third = True
+        else:
+            if marker != '':
+                style = marker
+                use_style = True
 
-    if axis is None:
-        axis = plt.gca()
+    if log_nz:
+        data = deepcopy(data)
+        _data = data.values
+        d_nz_idx = np.where(_data > 0.0)
+        data_nz = _data[d_nz_idx]
+        d_nz_log = np.log(data_nz)
+        _data[d_nz_idx] = d_nz_log
+        _data = np.where(_data < 0.0, 0.0, _data)
+        data = pd.Series(_data, index=data.index)
 
-    im = axis.imshow(values, **kwargs)
+    if log:
+        data = deepcopy(data)
+        _data = np.where(data < 0.0, 0.0, data)
+        if data.__class__.__name__ in ['Series', 'DataFrame']:
+            data = pd.Series(_data, index=data.index)
 
-    if annotate:
-        annotate_kws = annotate_kws or {"color": "w", "ha":"center", "va":"center"}
-        for i in range(values.shape[0]):
-            for j in range(values.shape[1]):
-                _ = axis.text(j, i, round(values[i, j], 2),
-                            **annotate_kws)
-
-    if yticklabels is not None:
-        axis.set_yticks(np.arange(len(yticklabels)))
-        axis.set_yticklabels(yticklabels)
-
-    if xticklabels is not None:
-        axis.set_xticks(np.arange(len(xticklabels)))
-        axis.set_xticklabels(xticklabels)
-
-    _process_axis(axis, xlabel=xlabel, ylabel=ylabel, title=title)
-
-    if colorbar:
-        fig: plt.Figure = plt.gcf()
-        fig.colorbar(im, orientation=colorbar_orientation, pad=0.2)
-
-    if show:
-        plt.show()
-
-    return axis, im
-
-
-def hist(
-        x:Union[list, np.ndarray, pd.Series, pd.DataFrame],
-        hist_kws: dict = None,
-        grid:bool = True,
-        ax: plt.Axes = None,
-        show: bool = True,
-        **kwargs
-)->plt.Axes:
-    """
-    one stop shop for histogram
-    Arguments:
-        x: array like, must not be greader than 1d
-        grid: whether to show the grid or not
-        show: whether to show the plot or not
-        ax: axes on which to draw the plot
-        hist_kws: any keyword arguments for
-        [axes.hist](https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.hist.html)
-        kwargs: any keyword arguments for axes manipulation such as title, xlable, ylable etc
-    Returns:
-        matplotlib Axes
-    """
-    if not ax:
-        ax = plt.gca()
-    hist_kws = hist_kws or {}
-    n, bins, patches = ax.hist(x, **hist_kws)
-
-    _process_axis(ax, grid=grid, **kwargs)
-
-    if show:
-        plt.show()
-
-    return ax
-
-
-def pie(
-        vals: Union[list, np.ndarray, pd.Series] = None,
-        fractions: Union[list, np.ndarray, pd.Series] = None,
-        labels: list = None,
-        ax: plt.Axes = None,
-        title: str = None,
-        name: str = None,
-        save: bool = True,
-        show: bool = True,
-        **kwargs
-)->plt.Axes:
-    """
-    Arguments:
-        vals: array like, unique values and their counts will be inferred from this array
-        fractions: if given, vals must not be given
-        labels: labels for unique values in vals, if given, must be equal to unique vals
-             in vals. Otherwise "unique_value (counts)" will be used for labeling.
-        ax: the axes on which to draw, if not given current active axes will be used
-        title: if given, will be used for title
-        name:
-        save:
-        show:
-        kwargs: any keyword argument will go to axes.pie
-            https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.pie.html
-
-    Returns:
-        a matplotlib axes. This can be used for further processing by making show=False.
-
-    Example:
-        >>> pie(np.random.randint(0, 3, 100))
-        or by directly providing fractions
-        >>> pie([0.2, 0.3, 0.1, 0.4])
-    """
-
-    if ax is None:
-        ax = plt.gca()
-
-    if fractions is None:
-        fractions = pd.Series(vals).value_counts(normalize=True).values
-        vals = pd.Series(vals).value_counts().to_dict()
-        if labels is None:
-            labels = [f"{value} ({count}) " for value, count in vals.items()]
+    if x is not None:
+        if use_style:
+            axis.plot(x, data, style, color=color, ms=ms, label=label)
+        else:
+            axis.plot(x, data, fillstyle=fillstyle, color=color, marker=marker,
+                  linestyle=linestyle, ms=ms, label=label)
+    elif use_third:
+        axis.plot(data, style, color=color, ms=ms, label=label)
     else:
-        assert vals is None
-        if labels is None:
-            labels = [f"f{i}" for i in range(len(fractions))]
+        axis.plot(data, fillstyle=fillstyle, color=color, marker=marker,
+                  linestyle=linestyle, ms=ms, label=label)
 
-    if 'autopct' not in kwargs:
-        kwargs['autopct'] = '%1.1f%%'
+    return _process_axis(axis=axis, label=label, log=log, **kwargs)
 
-    ax.pie(fractions,
-           labels=labels,
-           **kwargs)
 
-    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-    if title:
-        plt.title(title, fontsize=20)
+def get_cmap(cm: str, num_cols: int, low=0.0, high=1.0):
 
-    if save:
-        name = name or "pie.png"
-        plt.savefig(name, dpi=300)
-
-    if show:
-        plt.show()
-
-    return ax
+    cols = getattr(plt.cm, cm)(np.linspace(low, high, num_cols))
+    return cols
