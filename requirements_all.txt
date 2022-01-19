@@ -32,3 +32,5 @@ wrapt
 
 psutil
 SHAP
+
+easy_mpl

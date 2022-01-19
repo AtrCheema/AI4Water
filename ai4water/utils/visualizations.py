@@ -4,9 +4,9 @@ from typing import Union, Callable
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
+from easy_mpl import regplot
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 
 try:
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
 
 from .plotting_tools import save_or_show, to_1d_array
 from .utils import dateandtime_now, ts_features, dict_to_file
-from .easy_mpl import regplot, init_subplots
+
 
 # TODO add Murphy's plot as shown in MLAir
 # prediction_distribution aka actual_plot of PDPbox
@@ -786,3 +786,14 @@ def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
                                            title=name)
                })
     return
+
+
+def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
+    """Initializes the fig for subplots"""
+    plt.close('all')
+    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
+    if width is not None:
+        fig.set_figwidth(width)
+    if height is not None:
+        fig.set_figheight(height)
+    return fig, ax

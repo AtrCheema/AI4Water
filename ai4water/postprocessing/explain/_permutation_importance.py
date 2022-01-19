@@ -2,6 +2,7 @@ import os
 from typing import Union, Callable, List
 
 import numpy as np
+from easy_mpl import imshow
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 
@@ -206,8 +207,6 @@ class PermutationImportance(ExplainerMixin):
         assert self.data_is_3d, f"data must be 3d but it is has {self.x.shape}"
 
         imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
-
-        from ai4water.utils.easy_mpl import imshow
 
         fig, axis = plt.subplots()
 

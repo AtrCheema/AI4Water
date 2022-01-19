@@ -13,6 +13,7 @@ import collections.abc as collections_abc
 import scipy
 import numpy as np
 import pandas as pd
+from easy_mpl import imshow
 import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
@@ -1446,7 +1447,6 @@ def plot_activations_along_inputs(
         vmax=None,
         show=False
 ):
-    from .easy_mpl import imshow  # at the top will make circular import
 
     # activation must be of shape (num_examples, lookback, input_features)
     assert activations.shape[1] == lookback

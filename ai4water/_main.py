@@ -1125,8 +1125,9 @@ class BaseModel(NN):
             self._maybe_change_residual_threshold(train_y)
 
             self.fit(x=train_x, y=train_y.reshape(-1, ))
-
-            pred = self.predict(x=test_x, process_results=False)
+            # since we have access to true y, it is better to provide it
+            # it can be helpful for inverse transformation of y
+            pred = self.predict(x=test_x, y=test_y, process_results=False)
 
             metrics = Metrics(test_y.reshape(-1, 1), pred)
             val_score = getattr(metrics, scoring)()
@@ -1245,10 +1246,9 @@ class BaseModel(NN):
                 outputs/true data corresponding to `x`
             data:
                 Raw unprepared data which will be fed to [DataHandler][ai4water.preprocessing.DataHandler]
-                to prepare x and y.
-                It is is a string then it will identify, which data type to use,
-                valid values are `training`, `test` and `validation`. If `x` and
-                `y` are given, this argument will have no meaning.
+                to prepare x and y. If it is is a string then it will determine,
+                which data type to use. Allowed string values are `training`, `test` and
+                `validation`. If `x` and `y` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
@@ -1462,6 +1462,7 @@ class BaseModel(NN):
                 # in such case either we must have true_outputs or y_transformation should be None.
                 assert self.config['y_transformation'] is None
             else:
+                # todo, if train_y had zeros or negatives then this will be wrong
                 y_transformer = Transformations.from_config(self.config['y_transformer_'])
                 predicted = y_transformer.inverse_transform(predicted)
         elif self.config['y_transformation']:

@@ -10,3 +10,4 @@ scikit-optimize
 plotly
 tensorflow
 torch
+easy_mpl

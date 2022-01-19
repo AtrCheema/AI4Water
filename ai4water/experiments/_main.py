@@ -6,16 +6,18 @@ from typing import Union, Tuple, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from easy_mpl import bar_chart
+from easy_mpl.utils import process_axis
 
 from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataHandler
 from ai4water.utils.taylor_diagram import taylor_plot
-from ai4water.utils.visualizations import ProcessResults
 from ai4water.utils.utils import jsonize, ERROR_LABELS
+from ai4water.utils.visualizations import init_subplots
+from ai4water.utils.visualizations import ProcessResults
 from ai4water.hyperopt import Real, Categorical, Integer
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
-from ai4water.utils.easy_mpl import bar_chart, process_axis, init_subplots
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 if tf is not None:

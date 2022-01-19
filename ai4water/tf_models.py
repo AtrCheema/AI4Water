@@ -4,16 +4,16 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+from easy_mpl import imshow
 
-from ai4water.backend import tf
-from ai4water.functional import Model as FModel
-from ai4water.backend import keras
+from .backend import tf
+from .backend import keras
+from .functional import Model as FModel
 from ai4water.utils.utils import print_something
 from ai4water.nn_tools import check_act_fn
 from ai4water.preprocessing import DataHandler
 from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs
-from ai4water.utils.easy_mpl import imshow
 
 layers = keras.layers
 KModel = keras.models.Model

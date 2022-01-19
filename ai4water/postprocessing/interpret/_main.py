@@ -3,13 +3,13 @@ import os
 import warnings
 
 import numpy as np
+import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import pandas as pd
+from easy_mpl import bar_chart, imshow
 
 from ai4water.backend import xgboost, tf
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.easy_mpl import bar_chart, imshow
 from ai4water.utils.utils import plot_activations_along_inputs
 
 
@@ -134,7 +134,7 @@ class Interpret(Plot):
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
-            barchart(labels=all_cols,
+            bar_chart(labels=all_cols,
                       values=imp,
                       ax=axis,
                       title="Feature importance",

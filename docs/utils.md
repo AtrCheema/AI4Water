@@ -13,12 +13,6 @@ Some utility functions
     rendering:
         show_root_heading: true
 
-**`regression plot`**
-::: ai4water.utils.easy_mpl.regplot
-    handler: python
-    rendering:
-        show_root_heading: true
-
 **`get_attributes`**
 ::: ai4water.backend.get_attributes
     handler: python

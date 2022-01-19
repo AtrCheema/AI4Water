@@ -1,11 +1,11 @@
+
 import os
 from typing import Union
 from collections import OrderedDict
 
-
-
 import numpy as np
 import pandas as pd
+from easy_mpl import pie
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -19,12 +19,11 @@ from .spatial_utils import plot_shapefile
 from .spatial_utils import get_total_area, GifUtil
 from .spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
 
-from ai4water.utils.easy_mpl import pie
-
 
 M2ToAcre = 0.0002471     # meter square to Acre
-COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F',
-          '#FF4040', '#8A360F', '#98F5FF', '#FF9912', '#B23AEE', '#9BCD9B', '#8B8B00']
+COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7',
+          '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F', '#FF4040', '#8A360F',
+          '#98F5FF', '#FF9912', '#B23AEE', '#9BCD9B', '#8B8B00']
 
 
 class MakeHRUs(object):
