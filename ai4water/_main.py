@@ -25,8 +25,8 @@ except ImportError:
 
 from ai4water.nn_tools import NN
 from ai4water.backend import sklearn_models
-from ai4water.utils.visualizations import ProcessResults
 from ai4water.utils.utils import make_model
+from ai4water.postprocessing import ProcessResults
 from ai4water.preprocessing.transformations import Transformations
 from ai4water.utils.utils import maybe_three_outputs, get_version_info
 from ai4water.models.tensorflow.custom_training import train_step, test_step
@@ -2296,7 +2296,9 @@ class BaseModel(NN):
                 if hasattr(self, 'dh_'):
                     data = getattr(self.dh_, f'{data}_data')(key=key)
                 else:
-                    raise AttributeError(f"Unable to get {source} data")
+                    raise AttributeError(f"""
+                    Unable to get {source} data.
+                    You must specify the data either using 'x' or 'data' keywords.""")
             else:
                 # e.g. 'CAMELS_AUS'
                 dh = DataHandler(data=data, **self.data_config)

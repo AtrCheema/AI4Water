@@ -3,6 +3,7 @@ from typing import Union
 
 import numpy as np
 import matplotlib.pyplot as plt
+from easy_mpl import regplot
 
 try:
     import wandb
@@ -27,7 +28,6 @@ else:
 
 from ai4water.utils.utils import dateandtime_now, find_best_weight
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from ai4water.utils.visualizations import regplot
 
 F = {
     'mse': [np.nanmin, np.less],

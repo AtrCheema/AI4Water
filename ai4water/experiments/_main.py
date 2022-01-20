@@ -15,7 +15,7 @@ from ai4water.preprocessing import DataHandler
 from ai4water.utils.taylor_diagram import taylor_plot
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.visualizations import init_subplots
-from ai4water.utils.visualizations import ProcessResults
+from ai4water.postprocessing import ProcessResults
 from ai4water.hyperopt import Real, Categorical, Integer
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics

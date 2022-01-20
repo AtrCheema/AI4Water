@@ -580,9 +580,10 @@ class ShapExplainer(ExplainerMixin):
 
         The waterfall plots are based upon SHAP values and show the
         contribution by each feature in model's prediction. It shows which
-        feature pushed the prediction in which direction. Note that the
-        annotated values in waterfall plot are not SHAP values.
-        Currently only possible with xgboost, catboost, lgbm models
+        feature pushed the prediction in which direction. They answer the
+        question, why the ML model simply did not predict mean of training y
+        instead of what it predicted. The mean of training observations that
+        the ML model saw during training is called base value or expected value.
 
         Arguments:
             example_index : int
@@ -678,10 +679,10 @@ class ShapExplainer(ExplainerMixin):
         Explanation
         ----------
         The upper line plot on the heat map shows $-fx/max(abs(fx))$ where $fx$ is
-        the mean SHAP value of all features for all examples. The length of $fx$
-        is equal to length of data. Thus one point on this line is the mean of
-        SHAP values of all input features for the given/one example normalized
-        by the maximum absolute value of $fx$.
+        the mean SHAP value of all features. The length of $fx$ is equal to length
+        of data/examples. Thus one point on this line is the mean of SHAP values
+        of all input features for the given/one example normalized by the maximum
+        absolute value of $fx$.
         """
 
         # if heat map is drawn with np.ndarray, it throws errors therefore convert

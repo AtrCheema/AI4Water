@@ -11,7 +11,7 @@ import numpy as np
 from ai4water import Model
 from ai4water.datasets import busan_beach
 from ai4water.postprocessing.visualize import Visualize
-from ai4water.utils.visualizations import ProcessResults
+from ai4water.postprocessing import ProcessResults
 
 
 
