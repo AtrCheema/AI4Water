@@ -94,7 +94,7 @@ class NN(AttributeStore):
                 inputs = None
                 outputs = None
                 call_args = None
-            else:
+            else:  # todo, why we can't have inputs/outputs/call_args without config?
                 raise ValueError(f"No config found for layer '{lyr_name}'")
         else:
 
@@ -150,9 +150,9 @@ class NN(AttributeStore):
         layer_name = lyr.split('_')[0]
         if layer_name not in list(LAYERS.keys()) + list(ACTIVATION_LAYERS.keys()):
             raise ValueError(f"""
-                            The layer name '{lyr}' you specified, does not exist.
-                            Is this a user defined layer? If so, make sure your
-                            layer is being considered by AI4Water
+            The layer name '{lyr}' you specified, does not exist.
+            Is this a user defined layer? If so, make sure your
+            layer is being considered by AI4Water
                             """)
 
         return layer_name

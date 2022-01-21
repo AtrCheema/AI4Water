@@ -19,6 +19,8 @@ def convert_ai4water_model(old_model, framework=None, explainer=None):
         else:
             framework = "DL"
             explainer = explainer or "DeepExplainer"
+            if 'functional' in str(type(old_model)):
+                new_model = functional_to_keras(old_model)
 
     return new_model, framework, explainer, model_name
 
@@ -68,3 +70,31 @@ def get_features(features, features_to_explain):
         assert f in features
 
     return features_to_explain
+
+
+def functional_to_keras(old_model):
+    """converts the model of functional api to keras model"""
+    assert old_model.config['x_transformation'] is None
+    assert old_model.config['y_transformation'] is None
+
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Flatten
+
+    # keras model from functional api
+    old_model = old_model._model
+
+    old_m_outputs = old_model.outputs
+    if isinstance(old_m_outputs, list):
+        assert len(old_m_outputs) == 1
+        old_m_outputs = old_m_outputs[0]
+
+    if len(old_m_outputs.shape) > 2:  # (None, ?, ?)
+        new_outputs = Flatten()(old_m_outputs)  # (None, ?)
+        assert new_outputs.shape.as_list()[-1] == 1  # (None, 1)
+        new_model = Model(old_model.inputs, new_outputs)
+
+    else:  # (None, ?)
+        assert old_m_outputs.shape.as_list()[-1] == 1  # (None, 1)
+        new_model = old_model
+
+    return new_model

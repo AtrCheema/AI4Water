@@ -15,6 +15,7 @@ from sklearn import linear_model
 from sklearn.model_selection import train_test_split
 
 from ai4water import Model
+from ai4water.functional import Model as FModel
 from ai4water.datasets import busan_beach, MtropicsLaos
 from ai4water.postprocessing.explain import ShapExplainer, explain_model_with_shap
 
@@ -137,6 +138,29 @@ def get_mlp():
     return model, testx
 
 
+def get_dl_fmodel_for_multi_inputs():
+    model = FModel(
+        model={"layers": {
+            "Input": {"shape": (3, 3, 8)},
+            "Dense": 1,
+            "Flatten": {},
+            "Dense_1": 1,
+
+            "Input_1": {"shape": (2162, 2)},
+            "Dense_2": 1,
+            "Flatten_1": {},
+            "Dense_3": 1,
+
+            "Concatenate": {"config": {},
+                            "inputs": ["Dense_1", "Dense_3"]},
+            "Dense_4": 1
+        }},
+        verbosity=0
+    )
+    inp1 = np.random.random((100, 3, 3, 8))
+    inp2 = np.random.random((100, 2162, 2))
+    return model, [inp1, inp2]
+
 class TestShapExplainers(unittest.TestCase):
 
     def test_doc_example(self):
@@ -225,8 +249,8 @@ class TestShapExplainers(unittest.TestCase):
         def initiate_class():
             return ShapExplainer(model, x_test)
 
-        self.assertRaises(AssertionError,
-                          initiate_class)
+        # self.assertRaises(AssertionError,
+        #                   initiate_class)
         return
 
     def test_xgb(self):
@@ -420,6 +444,23 @@ class TestShapExplainers(unittest.TestCase):
         exp.plot_shap_values(show=False)
         return
 
+    def test_functional_model_gradient(self):
+        """tests functional Model with multi inputs"""
+        model, inputs = get_dl_fmodel_for_multi_inputs()
+        expl = ShapExplainer(model, data=inputs, train_data=inputs,
+                             explainer="GradientExplainer")
+        sv = expl.shap_values
+        assert isinstance(sv, list)
+        return
+
+    def test_functional_model_deep(self):
+        """tests functional Model with multi inputs"""
+        model, inputs = get_dl_fmodel_for_multi_inputs()
+        expl = ShapExplainer(model, data=inputs, train_data=inputs,
+                             explainer="DeepExplainer")
+        sv = expl.shap_values
+        assert isinstance(sv, list)
+        return
 
 if __name__ == "__main__":
 

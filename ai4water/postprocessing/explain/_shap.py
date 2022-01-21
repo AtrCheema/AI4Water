@@ -85,25 +85,34 @@ class ShapExplainer(ExplainerMixin):
         """
 
         Args:
-            model: a Model/regressor/classifier from sklearn/xgboost/catboost/LightGBM/tensorflow/pytorch/ai4water
+            model :
+                a Model/regressor/classifier from sklearn/xgboost/catboost/LightGBM/tensorflow/pytorch/ai4water
                 The model must have a `predict` method.
-            data: Data on which to make interpretation. Its dimension should be
+            data :
+                Data on which to make interpretation. Its dimension should be
                 same as that of training data. It can be either training or test
                 data
-            train_data: The data on which the `model` was trained. It is used to
+            train_data :
+                The data on which the `model` was trained. It is used to
                 get train_summary. It can a numpy array or a pandas DataFrame.
                 Only required for scikit-learn based models.
-            explainer : the explainer to use. If not given, the explainer will be inferred.
-            num_means: Numher of means, used in `shap.kmeans` to calculate train_summary
-            path: path to save the plots. By default, plots will be saved in current
+            explainer : str
+                the explainer to use. If not given, the explainer will be inferred.
+            num_means : int
+                Numher of means, used in `shap.kmeans` to calculate train_summary
+            path : str
+                path to save the plots. By default, plots will be saved in current
                 working directory
-            feature_names: Names of features. Should only be given if train/test data is numpy
+            feature_names : list
+                Names of features. Should only be given if train/test data is numpy
                 array.
             framework : str
                 either "DL" or "ML", where "DL" represents deep learning or neural
                 network based models and "ML" represents other models. For "DL" the explainer
-                will be eihter "DeepExplainer" or "GradientExplainer". If not given, it will
-                be inferred but "DeepExplainer" will be prioritized over "GradientExplainer".
+                will be either "DeepExplainer" or "GradientExplainer". If not given, it will
+                be inferred. In such a case "DeepExplainer" will be prioritized over
+                "GradientExplainer" for DL frameworks and "TreeExplainer" will be prioritized
+                for "ML" frameworks.
             layer : Union[int, str]
                 only relevant when framework is "DL" i.e when the model consits of layers
                 of neural networks.
@@ -196,10 +205,7 @@ class ShapExplainer(ExplainerMixin):
 
         assert inf_framework in ("ML", "DL")
 
-        if inf_framework == "DL":
-            assert layer is not None, f"Inferred framework is {inf_framework}." \
-                                      f"Therefore, you must define layer to explain"
-        else:
+        if inf_framework != "DL":
             assert layer is None
 
         if inf_framework == "DL" and isinstance(explainer, str):
@@ -281,6 +287,9 @@ class ShapExplainer(ExplainerMixin):
 
     def _get_gradient_explainer(self):
 
+        if self.layer is None:
+            # GradientExplainer is also possible without specifying a layer
+            return shap.GradientExplainer(self.model, self.data)
         if isinstance(self.layer, int):
             return shap.GradientExplainer((self.model.layers[self.layer].input, self.model.layers[-1].output),
                                           self.map2layer(self.data, self.layer))
@@ -313,16 +322,20 @@ class ShapExplainer(ExplainerMixin):
     def _shap_values_dl(self, data, ranked_outputs=None, **kwargs):
         """Gets the SHAP values"""
         data = data.values if isinstance(data, pd.DataFrame) else data
-        if self.explainer.__class__.__name__ == "Deep":
-            return self.explainer.shap_values(data)
-        else:
 
+        if self.explainer.__class__.__name__ == "Deep":
+            shap_values = self.explainer.shap_values(data, ranked_outputs=ranked_outputs, **kwargs)
+
+        elif isinstance(self.explainer, shap.GradientExplainer) and self.layer is None:
+            shap_values = self.explainer.shap_values(data, ranked_outputs=ranked_outputs, **kwargs)
+
+        else:
             shap_values = self.explainer.shap_values(self.map2layer(data, self.layer),
                                                      ranked_outputs=ranked_outputs, **kwargs)
             if ranked_outputs:
                 shap_values, indexes = shap_values
 
-            return shap_values
+        return shap_values
 
     def __call__(self,
                  force_plots=True,
@@ -689,18 +702,18 @@ class ShapExplainer(ExplainerMixin):
         # it into pandas DataFrame. It is more interpretable and does not hurt.
         shap_values = self._get_shap_values_locally()
 
-        # by default examples are ordered in such a way that examples with similar
-        # explanations are grouped together.
-        self._heatmap(shap_values, f"{name}_basic",
-                      show=show,
-                      save=save,
-                      max_display=max_display)
-
-        # sort by the maximum absolute value of a feature over all the examples
-        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
-                      max_display=max_display,
-                      save=save,
-                      feature_values=shap_values.abs.max(0))
+        # # by default examples are ordered in such a way that examples with similar
+        # # explanations are grouped together.
+        # self._heatmap(shap_values, f"{name}_basic",
+        #               show=show,
+        #               save=save,
+        #               max_display=max_display)
+        #
+        # # sort by the maximum absolute value of a feature over all the examples
+        # self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
+        #               max_display=max_display,
+        #               save=save,
+        #               feature_values=shap_values.abs.max(0))
 
         # sorting by the sum of the SHAP values over all features gives a complementary perspective on the data
         self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show,
