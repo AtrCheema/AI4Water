@@ -121,7 +121,7 @@ class BaseModel(NN):
                 on how to buld neural networks using such layered API
                 [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
             x_transformation:
-                type of transformation to be applied on x data.
+                type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
                 ai4water.utils.transformations.py. The user can specify more than
                 one transformation. Moreover, the user can also determine which
@@ -140,7 +140,7 @@ class BaseModel(NN):
                 `data`. For more info see [Transformations][ai4water.preprocessing.Transformations]
                 and [Transformation][ai4water.preprocessing.Transformation] classes.
             y_transformation:
-                type of transformation to be applied on y/label data.
+                type of transformation to be applied on y/label/output data.
             lr  float:, default 0.001.
                 learning rate,
             optimizer str/keras.optimizers like:
@@ -1962,7 +1962,7 @@ class BaseModel(NN):
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> from ai4water.hyperopt import Integer, Categorical, Real
-            >>> model_config = {"XGBoostRegressor": {"n_estimators": Integer(low=10, high=20),
+            >>> model_config = {"XGBRegressor": {"n_estimators": Integer(low=10, high=20),
             >>>                 "max_depth": Categorical([10, 20, 30]),
             >>>                 "learning_rate": Real(0.00001, 0.1)}}
             >>> model = Model(model=model_config)
@@ -2028,8 +2028,8 @@ class BaseModel(NN):
             data:
 
             transformations:
-                the transformations to consider. By default, following
-                transformations are considered for input features
+                the transformations to consider for input features. By default,
+                following transformations are considered for input features
 
                 - `minmax`  rescale from 0 to 1
                 - `center`    center the data by subtracting mean from it
@@ -2081,7 +2081,7 @@ class BaseModel(NN):
         Example:
             >>> from ai4water.datasets import busan_beach
             >>> from ai4water import Model
-            >>> model = Model(model="xgboostregressor")
+            >>> model = Model(model="XGBRegressor")
             >>> optimizer_ = model.optimize_transformations(data=busan_beach(), exclude="tide_cm")
             >>> print(optimizer_.best_paras())  # find the best/optimized transformations
             >>> model.fit(data=busan_beach())

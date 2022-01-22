@@ -100,6 +100,7 @@ class ShapExplainer(ExplainerMixin):
                 the explainer to use. If not given, the explainer will be inferred.
             num_means : int
                 Numher of means, used in `shap.kmeans` to calculate train_summary
+                using shap.kmeans. Only used when explainer is "KernelExplainer"
             path : str
                 path to save the plots. By default, plots will be saved in current
                 working directory
@@ -107,12 +108,13 @@ class ShapExplainer(ExplainerMixin):
                 Names of features. Should only be given if train/test data is numpy
                 array.
             framework : str
-                either "DL" or "ML", where "DL" represents deep learning or neural
-                network based models and "ML" represents other models. For "DL" the explainer
-                will be either "DeepExplainer" or "GradientExplainer". If not given, it will
-                be inferred. In such a case "DeepExplainer" will be prioritized over
-                "GradientExplainer" for DL frameworks and "TreeExplainer" will be prioritized
-                for "ML" frameworks.
+                either "DL" or "ML". Here "DL" shows that the `model` is a deep
+                learning or neural network based model and "ML" represents other
+                models. For "DL" the explainer will be either "DeepExplainer" or
+                "GradientExplainer". If not given, it will be inferred. In such
+                a case "DeepExplainer" will be prioritized over "GradientExplainer"
+                for DL frameworks and "TreeExplainer" will be prioritized for "ML"
+                frameworks.
             layer : Union[int, str]
                 only relevant when framework is "DL" i.e when the model consits of layers
                 of neural networks.
@@ -702,18 +704,18 @@ class ShapExplainer(ExplainerMixin):
         # it into pandas DataFrame. It is more interpretable and does not hurt.
         shap_values = self._get_shap_values_locally()
 
-        # # by default examples are ordered in such a way that examples with similar
-        # # explanations are grouped together.
-        # self._heatmap(shap_values, f"{name}_basic",
-        #               show=show,
-        #               save=save,
-        #               max_display=max_display)
-        #
-        # # sort by the maximum absolute value of a feature over all the examples
-        # self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
-        #               max_display=max_display,
-        #               save=save,
-        #               feature_values=shap_values.abs.max(0))
+        # by default examples are ordered in such a way that examples with similar
+        # explanations are grouped together.
+        self._heatmap(shap_values, f"{name}_basic",
+                      show=show,
+                      save=save,
+                      max_display=max_display)
+
+        # sort by the maximum absolute value of a feature over all the examples
+        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
+                      max_display=max_display,
+                      save=save,
+                      feature_values=shap_values.abs.max(0))
 
         # sorting by the sum of the SHAP values over all features gives a complementary perspective on the data
         self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show,
