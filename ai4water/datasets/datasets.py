@@ -843,7 +843,7 @@ class MtropicsLaos(Datasets):
 
                             }
 
-    weather_station_data = ['temp', 'rel_hum', 'wind_speed', 'sol_rad']
+    weather_station_data = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
     inputs = weather_station_data + ['water_level', 'pcp', 'susp_pm']
 
     def __init__(self, **kwargs):
@@ -1232,7 +1232,7 @@ class MtropicsLaos(Datasets):
             input_features : names of inputs to use. By default following features
                 are used as input
 
-                    - `temp`
+                    - `air_temp`
                     - `rel_hum`
                     - `wind_speed`
                     - `sol_rad`
@@ -1255,7 +1255,7 @@ class MtropicsLaos(Datasets):
         Example:
             >>> from ai4water.datasets import MtropicsLaos
             >>> laos = MtropicsLaos()
-            >>> ins = ['pcp', 'temp']
+            >>> ins = ['pcp', 'air_temp']
             >>> out = ['Ecoli_mpn100']
             >>> reg_data = laos.make_regression(ins, out, '20110101', '20181231')
 
@@ -1281,10 +1281,10 @@ class MtropicsLaos(Datasets):
         w = w.bfill()
         assert int(w.isna().sum().sum()) == 0
 
-        w.columns = ['temp', 'rel_hum', 'wind_speed', 'sol_rad']
+        w.columns = ['air_temp', 'rel_hum', 'wind_speed', 'sol_rad']
         w_6min = Resampler(w,
                            freq=freq,
-                           how={'temp': 'linear',
+                           how={'air_temp': 'linear',
                                 'rel_hum': 'linear',
                                 'wind_speed': 'linear',
                                 'sol_rad': 'linear'

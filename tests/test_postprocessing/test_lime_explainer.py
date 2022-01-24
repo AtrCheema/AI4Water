@@ -24,8 +24,8 @@ from ai4water.postprocessing.explain import LimeExplainer, explain_model_with_li
 
 laos = MtropicsLaos()
 
-reg_data = laos.make_regression(input_features=['temp', 'rel_hum'])
-class_data = laos.make_classification(input_features=['temp', 'rel_hum'])
+reg_data = laos.make_regression(input_features=['air_temp', 'rel_hum'])
+class_data = laos.make_classification(input_features=['air_temp', 'rel_hum'])
 
 
 def make_mlp_model():

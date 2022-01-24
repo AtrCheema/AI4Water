@@ -226,11 +226,11 @@ model.optimize_hyperparameters(data=data,
 
 ## postprocessing
 
-[ai4water.postprocessing.explain.ShapExplainer]()
+[ai4water.postprocessing.explain.ShapExplainer](https://ai4water.readthedocs.io/en/dev/postprocessing/explain/#ai4water.postprocessing.explain._shap.ShapExplainer)
 
-[ai4water.postprocessing.explain.LimeExplainer]()
+[ai4water.postprocessing.explain.LimeExplainer](https://ai4water.readthedocs.io/en/dev/postprocessing/explain/#ai4water.postprocessing.explain._lime.LimeExplainer)
 
-[ai4water.postprocessing.explain.PartialDependencePlot]()
+[ai4water.postprocessing.explain.PartialDependencePlot](https://ai4water.readthedocs.io/en/dev/postprocessing/explain/#ai4water.postprocessing.explain._partial_dependence.PartialDependencePlot)
 
 [ai4water.postprocessing.explain.PermutationImportance](https://ai4water.readthedocs.io/en/dev/postprocessing/explain/#ai4water.postprocessing.explain._permutation_importance.PermutationImportance)
 
@@ -238,9 +238,9 @@ model.optimize_hyperparameters(data=data,
 
 [ai4water.postprocessing.visualize.Visualize](https://ai4water.readthedocs.io/en/dev/postprocessing/visualize/#ai4water.postprocessing.visualize._visualize.Visualize)
 
-[ai4water.postprocessing.SeqMetrics.RegressionMetrics]()
+[ai4water.postprocessing.SeqMetrics.RegressionMetrics](https://ai4water.readthedocs.io/en/dev/postprocessing/seqmetrics/#ai4water.postprocessing.SeqMetrics._regression.RegressionMetrics)
 
-[ai4water.postprocessing.SeqMetrics.ClassificationMetrics]()
+[ai4water.postprocessing.SeqMetrics.ClassificationMetrics](https://ai4water.readthedocs.io/en/dev/postprocessing/seqmetrics/#ai4water.postprocessing.SeqMetrics._classification.ClassificationMetrics)
 
 ## datasets
 
