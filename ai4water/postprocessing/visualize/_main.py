@@ -279,8 +279,6 @@ class Visualize(Plots):
                                  sup_xlabel="LSTM units",
                                  sup_ylabel="Lookback steps",
                                  title=indices,
-                                 vmin=-1,
-                                 vmax=1
                                  )
             else:
                 self._imshow(activation, f"{lyr_name} Activations", fname=lyr_name,
@@ -365,10 +363,14 @@ class Visualize(Plots):
                     elif "conv" in _name.lower() and np.ndim(weight) == 3:
                         _name = _name.replace("/", "_")
                         _name = _name.replace(":", "_")
-                        self.features_2d(data=weight, save=show, name=_name,
-                                         slices=64, slice_dim=2, tight=True,
-                                         borderwidth=1,
-                                         vmin=-.1, vmax=.1)
+
+                        self.features_2d(data=weight,
+                                         save=show,
+                                         name=_name,
+                                         slices=64,
+                                         slice_dim=2,
+                                         tight=True,
+                                         borderwidth=1)
                     else:
                         print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
         return
@@ -513,10 +515,13 @@ class Visualize(Plots):
                     self._imshow(gradient, fname=fname, label=title, show=show,
                                  xlabel="LSTM units")
                 else:
-                    self.features_2d(gradient, name=fname,
-                                     title=indices, show=show,
-                                     n_rows=6, vmin=-1e-4,
-                                     vmax=1e-4, sup_title=title,
+
+                    self.features_2d(gradient,
+                                     name=fname,
+                                     title=indices,
+                                     show=show,
+                                     n_rows=6,
+                                     sup_title=title,
                                      sup_xlabel="LSTM units",
                                      sup_ylabel="Lookback steps")
 
@@ -820,11 +825,12 @@ class Visualize(Plots):
 def features_2D(data,
                 n_rows=None,
                 cmap=None,
-                sup_xlabel=None, sup_ylabel=None,
+                sup_xlabel=None,
+                sup_ylabel=None,
                 sup_title=None,
-                vmin=None, vmax=None,
                 title=None,
-                show=False, savepath=None):
+                show=False,
+                savepath=None):
     """
     title: title for individual axis
     sup_title: title for whole plot
@@ -849,8 +855,14 @@ def features_2D(data,
     elif title:
         title = np.arange(num_subplots)
 
+    if isinstance(axis, plt.Axes):
+        axis = np.array([axis])
+
+    vmin = data.min()
+    vmax = data.max()
+
     for idx, ax in enumerate(axis.flat):
-        axis, im = imshow(data[idx],
+        ax, im = imshow(data[idx],
                           ax=ax,
                           cmap=cmap, vmin=vmin, vmax=vmax,
                           title=title[idx],
