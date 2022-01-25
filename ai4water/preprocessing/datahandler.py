@@ -107,10 +107,10 @@ class DataHandler(AttributeContainer, Plots):
                     will be read using xarray to load datasets. If the path refers
                     to a directory, it is supposed that each file in the directory refers to one example.
                 - ai4water dataset : any of dataset name from ai4water.datasets
-            input_features Union[list, dict, str, None]:
+            input_features : Union[list, dict, str, None]
                 features to use as input. If `data` is pandas dataframe
                 then this is list of column names from `data` to be used as input.
-            output_features Union[list, dict, str, None]:
+            output_features : Union[list, dict, str, None]
                 features to use as output. When `data` is dataframe
                 then it is list of column names from `data` to be used as output.
                 If `data` is `dict`, then it must be consistent with `data`.
@@ -119,31 +119,31 @@ class DataHandler(AttributeContainer, Plots):
                 column is not supposed to be one-hot-encoded rather in the form
                 of [0,1,2,0,1,2,1,2,0] for 3 classes. One-hot-encoding is done
                 inside the model.
-            dataset_args dict:
+            dataset_args : dict
                 additional arguments for AI4Water's [datasets][ai4water.datasets]
-            val_fraction float:
+            val_fraction : float
                 The fraction of the training data to be used for validation.
                 Set to 0.0 if no validation data is to be used.
-            test_fraction float:
+            test_fraction : float
                 Fraction of the complete data to be used for test
                 purpose. Must be greater than 0.0. This is also the hold-out data.
-            input_step int:
+            input_step : int
                 step size to keep in input data.
-            lookback int:
+            lookback : int
                 The number of lookback steps. The term lookback has been
                 adopted from Francois Chollet's "deep learning with keras" book.
                 It means how many historical time-steps of data, we want to feed
                 to model at time-step to predict next value. This value must be
                 one for any non timeseries forecasting related problems.
-            forecast_len int:
+            forecast_len : int
                 how many future values/horizons we want to predict.
-            forecast_step int:
+            forecast_step : int
                 how many steps ahead we want to predict. default is
                  0 which means nowcasting.
-            known_future_inputs bool:
-            allow_input_nans bool:
+            known_future_inputs : bool
+            allow_input_nans : bool
                 don't know why it exists todo
-            train_data Union[str, list]:
+            train_data : Union[str, list]
                 Determines sampling strategy of training data. Possible
                 values are
 
@@ -153,7 +153,7 @@ class DataHandler(AttributeContainer, Plots):
                     and `test_fraction`. In this case, the first x fraction of data is
                 is used for training where $x = 1 - (val_fraction + test_fraction)$.
 
-            val_data Union[str, list, np.ndarray, None]:
+            val_data : Union[str, list, np.ndarray, None]
                 Data to be used for validation. If you want to use same data for
                  validation and test purpose, then set this argument to 'same'. This
                  can also be indices to be used for selecting validation data.
@@ -165,8 +165,8 @@ class DataHandler(AttributeContainer, Plots):
                 contains chunks of missing values or when we don't want to consider several
                 rows in input data during data_preparation.
                 For further usage see `examples/using_intervals`
-            shuffle bool:
-            allow_nan_labels bool:
+            shuffle : bool
+            allow_nan_labels : bool
                 whether to allow examples with nan labels or not.
                 if it is > 0, and if target values contain Nans, those examples
                 will not be ignored and will be used as it is.
@@ -183,23 +183,24 @@ class DataHandler(AttributeContainer, Plots):
                 considered/will not be removed. This means for multi-outputs, we can end
                 up having examples whose all labels are nans. if the number of outputs
                 are just one. Then this must be set to 2 in order to use samples with nan labels.
-            nan_filler dict:
-                Determines how to deal with missing values in the data.
+            nan_filler : dict
+                This argument determines the imputation technique used to fill the nans in
+                the data. The imputation is actually performed by [Imputation][ai4water.preprocessing.Imputation]
+                class. Therefore this argument determines the interaction with `Imputation` class.
                 The default value is None, which will raise error if missing/nan values
                 are encountered in the input data. The user can however specify a
-                dictionary whose key must be either `fillna` or `interpolate` the value
-                of this dictionary should be the keyword arguments will be forwarded
-                to pandas .fillna() or .iterpolate() method. For example, to do
-                forward filling, the user can do as following
+                dictionary whose one key must be `method`. The value of 'method'
+                key can be `fillna` or `interpolate`.  For example, to do forward
+                filling, the user can do as following
                 ```python
-                >>>{'fillna': {'method': 'ffill'}}
+                >>>{'method': 'fillna', 'imputer_args': {'method': 'ffill'}}
                 ```
                 For details about fillna keyword options
                  [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
                 For `interpolate`, the user can specify  the type of interpolation
                 for example
                 ```python
-                >>>{'interpolate': {'method': 'spline', 'order': 2}}
+                >>>{'method': 'interpolate', 'imputer_args': {'method': 'spline', 'order': 2}}
                 ```
                 will perform spline interpolation with 2nd order.
                 For other possible options/keyword arguments for interpolate
@@ -209,11 +210,11 @@ class DataHandler(AttributeContainer, Plots):
                 arguments as dictionary or list. The sklearn based imputation methods
                 can also be used in a similar fashion. For KNN
                 ```python
-                >>>{'KNNImputer': {'n_neighbors': 3}}
+                >>>{'method': 'KNNImputer', 'imputer_args': {'n_neighbors': 3}}
                 ```
                 or for iterative imputation
                 ```python
-                >>>{'IterativeImputer': {'n_nearest_features': 2}}
+                >>>{'method': 'IterativeImputer', 'imputer_args': {'n_nearest_features': 2}}
                 ```
                 To pass additional arguments one can make use of `imputer_args`
                 keyword argument
@@ -222,18 +223,18 @@ class DataHandler(AttributeContainer, Plots):
                 ```
                 For more on sklearn based imputation methods
                 [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
-            batch_size int:
+            batch_size : int
                 size of one batch. Only relevent if `drop_remainder` is True.
-            drop_remainder bool:
+            drop_remainder : bool
                 whether to drop the remainder if len(data) % batch_size != 0 or not?
-            teacher_forcing bool:
+            teacher_forcing : bool
                 whether to return previous output/target/ground
                 truth or not. This is useful when the user wants to feed output
                 at t-1 as input at timestep t. For details about this technique
                 see [this article](https://machinelearningmastery.com/teacher-forcing-for-recurrent-neural-networks/)
-            seed int:
+            seed : int
                 random seed for reproducibility
-            save bool:
+            save : bool
                 whether to save the data in an h5 file or not.
 
         Note: If `indices` are given for `train_data` or `val_data` then these
@@ -245,8 +246,8 @@ class DataHandler(AttributeContainer, Plots):
             >>> import pandas as pd
             >>> import numpy as np
             >>> from ai4water.preprocessing import DataHandler
-            >>> data = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
-            >>> data_handler = DataHandler(data=data, lookback=5)
+            >>> data_ = pd.DataFrame(np.random.randint(0, 1000, (50, 2)), columns=['input', 'output'])
+            >>> data_handler = DataHandler(data=data_, lookback=5)
             >>> x,y = data_handler.training_data()
 
         # Note

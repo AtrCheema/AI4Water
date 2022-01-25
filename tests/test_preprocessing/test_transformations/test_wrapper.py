@@ -170,7 +170,6 @@ class TestSingleSource(unittest.TestCase):
 
 class TestMultipleSources(unittest.TestCase):
 
-
     def test_list_2d(self):
         transformer = Transformations([['a', 'b'], ['a', 'b']],
                                       config=['minmax', 'zscore'])
@@ -251,7 +250,6 @@ class TestMultipleSources(unittest.TestCase):
             np.testing.assert_array_almost_equal(i, j)
         return
 
-
     def test_from_config(self):
         for method in ["minmax", "log", "sqrt", "box-cox", "scale", "center", "robust"]:
 
@@ -267,8 +265,6 @@ class TestMultipleSources(unittest.TestCase):
             np.testing.assert_array_almost_equal(x, _x)
         return
 
-
-    #
     def test_model_predict(self):
         # first use transformation and inverse_transformation from fit/predict and
         # then compare with manually doing the same
@@ -305,6 +301,7 @@ class TestMultipleSources(unittest.TestCase):
                 np.testing.assert_array_almost_equal(t, _t2)
                 np.testing.assert_array_almost_equal(p, _p2)
         return
+
 
 class TestWithoutFit(unittest.TestCase):
 

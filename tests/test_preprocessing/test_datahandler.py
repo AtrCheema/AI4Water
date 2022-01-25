@@ -1321,6 +1321,40 @@ def make_cross_validator(**kwargs):
     return dh
 
 
+class TestImputation:
+    """makes sure that DataHandler can interact with Imputation class"""
+    def __call__(self, *args, **kwargs):
+        self.test_fillna()
+        self.test_fillna_imputer_args()
+        self.test_knnimputer()
+        return
+
+    def test_fillna(self):
+        dh = DataHandler(data=beach_data,
+                         nan_filler={'method': 'fillna', 'imputer_args': {'method': 'ffill'}}
+                         )
+        assert dh.data.isna().sum().sum() == 66
+        return
+
+    def test_fillna_imputer_args(self):
+        dh = DataHandler(data=busan_beach(target=['tetx_coppml', 'blaTEM_coppml']),
+                         nan_filler={'method': 'fillna', 'imputer_args': {'method': 'ffill'},
+                                     'features': ['tetx_coppml']}
+                         )
+        assert dh.data['tetx_coppml'].isna().sum() == 66
+        assert dh.data['blaTEM_coppml'].isna().sum() == 1228
+        return
+
+    def test_knnimputer(self):
+        dh = DataHandler(data=busan_beach(target=['tetx_coppml', 'blaTEM_coppml']),
+                         nan_filler={'method': 'KNNImputer', 'imputer_args': {'n_neighbors': 3},
+                                     'features': ['tetx_coppml']}
+                         )
+        assert dh.data['tetx_coppml'].isna().sum() == 0
+        assert dh.data['blaTEM_coppml'].isna().sum() == 1228
+        return
+
+
 class TestCVs(object):
 
     def __call__(self, *args, **kwargs):
@@ -1772,7 +1806,7 @@ test_file_formats(busan_beach())
 
 cv_tester = TestCVs()
 cv_tester()
-
+TestImputation()()
 
 # TestAllCases(input_features = ['a', 'b'],
 #             output_features=['c'], lookback=1, save=False, allow_nan_labels=2)
