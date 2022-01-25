@@ -277,10 +277,13 @@ class FuncTransformer(ScalerWithConfig):
 
         return _x
 
-    def inverse_transform(self, x):
+    def inverse_transform_without_fit(self, x):
+        return self._inverse_transform(x, False)
 
+    def _inverse_transform(self, x, check_dim=True):
         dim = x.ndim
-        assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
+        if check_dim:
+            assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
 
         if dim == 3 and self.feature_dim == "1d":
             _x = np.full(x.shape, np.nan)
@@ -293,6 +296,9 @@ class FuncTransformer(ScalerWithConfig):
             raise  ValueError(f" dimension {dim} not allowed")
 
         return _x
+
+    def inverse_transform(self, x):
+        return self._inverse_transform(x)
 
     @property
     def config_paras(self):

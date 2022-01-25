@@ -1456,19 +1456,7 @@ class BaseModel(NN):
 
             predicted = self.predict_ml_models(inputs, **kwargs)
 
-        if true_outputs is None:  # only x was given, build transformer from the config
-            if self.config.get('y_transformer_', None) is None:
-                # when predict/evaluate is called without fitting the model first
-                # in such case either we must have true_outputs or y_transformation should be None.
-                assert self.config['y_transformation'] is None
-            else:
-                # todo, if train_y had zeros or negatives then this will be wrong
-                y_transformer = Transformations.from_config(self.config['y_transformer_'])
-                predicted = y_transformer.inverse_transform(predicted)
-        elif self.config['y_transformation']:
-            # both x,and true_y were given
-            predicted = self._inverse_transform_y(predicted, y_transformer)
-            true_outputs = self._inverse_transform_y(true_outputs, y_transformer)
+        true_outputs, predicted = self._inverse_transform_y(true_outputs, predicted, y_transformer)
 
         if true_outputs is None:
             if return_true:
@@ -2253,22 +2241,57 @@ class BaseModel(NN):
             self.config[name] = transformer.config()
         return data
 
-    def _inverse_transform_y(self, y, transformer)->np.ndarray:
+    def _inverse_transform_y(self, true_outputs, predicted, y_transformer):
+        """inverse transformation of y/labels for both true and predicted"""
+        if true_outputs is None:  # only x was given, build transformer from the config
+            if self.config.get('y_transformer_', None) is None:
+                # when predict/evaluate is called without fitting the model first
+                # in such case either we must have true_outputs or y_transformation should be None.
+                assert self.config['y_transformation'] is None
+            else:
+                predicted = self._inverse_transform_y_without_fit(predicted)
+        elif self.config['y_transformation']:  # only if we apply transformation on y
+            # both x,and true_y were given
+            true_outputs = self.__inverse_transform_y(true_outputs, y_transformer)
+            # because observed y may have -ves or zeros which would have been
+            # removed during fit and are put back into it during inverse transform, so
+            # in such case predicted y should not be treated by zero indices or negative indices
+            # of true y. In other words, parameters of true y should not have impact on inverse
+            # transformation of predicted y.
+            predicted = self.__inverse_transform_y(predicted, y_transformer, postprocess=False)
+
+        return true_outputs, predicted
+
+    def _inverse_transform_y_without_fit(self, y):
+        """inverse transforms y/predicted array by starting new Transformations class
+        and without calling fit_transform first."""
+        transformer = Transformations(self.output_features, self.config['y_transformation'])
+        return self.__inverse_transform_y(y, transformer, "inverse_transform_without_fit")
+
+    def __inverse_transform_y(self,
+                              y,
+                              transformer,
+                              method="inverse_transform",
+                              postprocess=True
+                              )->np.ndarray:
         """inverse transforms y where y is supposed to be true or predicted output
         from model."""
+        # todo, if train_y had zeros or negatives then this will be wrong
         if isinstance(y, np.ndarray):
             # it is ndarray, either num_outs>1 or quantiles>1 or forecast_len>1 some combination of them
             if y.size > len(y):
                 if y.ndim == 2:
                     for out in range(y.shape[1]):
-                        y[:, out] = transformer.inverse_transform(y[:, out]).reshape(-1, )
+                        y[:, out] = getattr(transformer, method)(y[:, out],
+                                                                 postprocess=postprocess).reshape(-1, )
                 else:
                     # (exs, outs, quantiles) or (exs, outs, forecast_len) or (exs, forecast_len, quantiles)
                     for out in range(y.shape[1]):
                         for q in range(y.shape[2]):
-                            y[:, out, q] = transformer.inverse_transform(y[:, out, q]).reshape(-1, )
+                            y[:, out, q] = getattr(transformer, method)(y[:, out, q],
+                                                                        postprocess=postprocess).reshape(-1, )
             else:  # 1d array
-                y = transformer.inverse_transform(y)
+                y = getattr(transformer, method)(y, postprocess=postprocess)
         else:
             raise ValueError(f"can't inverse transform y of type {type(y)}")
 
@@ -2335,9 +2358,9 @@ class BaseModel(NN):
                 data = getattr(self, f'{source}_data')(x=x, y=y, data=data, key=key)
 
             # data may be tuple/list of three arrays
-            x,y = maybe_three_outputs(data, self.teacher_forcing)
+            x, y = maybe_three_outputs(data, self.teacher_forcing)
 
-        return x,y, prefix, key, user_defined_x
+        return x, y, prefix, key, user_defined_x
 
 
 def get_values(outputs):

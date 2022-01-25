@@ -9,6 +9,7 @@ from ai4water.datasets import busan_beach
 from ai4water.utils.utils import prepare_data
 from ai4water.preprocessing import Transformation
 from ai4water.preprocessing.transformations import Transformations
+from ai4water.preprocessing.transformations.utils import SP_METHODS
 
 
 data = busan_beach()
@@ -303,6 +304,58 @@ class TestMultipleSources(unittest.TestCase):
                 _p2 = log_t.inverse_transform(p2)
                 np.testing.assert_array_almost_equal(t, _t2)
                 np.testing.assert_array_almost_equal(p, _p2)
+        return
+
+class TestWithoutFit(unittest.TestCase):
+
+    def make_config(self, method, to):
+
+        if to=="dict":
+            return {'method': method, 'features': ['a'],
+             'treat_negatives': True, 'replace_zeros': True}
+        elif to=="list":
+            return [{'method': method, 'features': ['a'],
+                                         'treat_negatives': True, 'replace_zeros': True}]
+        else:
+            raise ValueError
+
+    def test_without_fit(self):
+        for method in SP_METHODS:
+            y = np.random.random(100)
+            tr = Transformations(['a'], method)
+            y_ = tr.fit_transform(y)
+            _y = tr.inverse_transform(y_)
+
+            tr1 = Transformations(['a'], method)
+            _y1 = tr1.inverse_transform_without_fit(y_)
+
+            assert np.allclose(_y, _y1)
+        return
+
+    def test_without_fit_dict(self):
+        for method in SP_METHODS:
+            y = np.random.randint(-2, 10, 100)
+            tr = Transformations(['a'], self.make_config(method, "dict"))
+            y_ = tr.fit_transform(y)
+            _y = tr.inverse_transform(y_)
+
+            tr1 = Transformations(['a'], self.make_config(method, "dict"))
+            _y1 = tr1.inverse_transform_without_fit(y_)
+
+            print(np.allclose(_y, _y1), method)
+        return
+
+    def test_without_fit_list(self):
+        for method in SP_METHODS:
+            y = np.random.randint(-2, 10, 100)
+            tr = Transformations(['a'], self.make_config(method, "list"))
+            y_ = tr.fit_transform(y)
+            _y = tr.inverse_transform(y_)
+
+            tr1 = Transformations(['a'], self.make_config(method, "list"))
+            _y1 = tr1.inverse_transform_without_fit(y_)
+
+            print(np.allclose(_y, _y1), method)
         return
 
 

@@ -229,7 +229,7 @@ class TestModels(unittest.TestCase):
             '21_posix_functional': 1522.6872986943176,
             '115_posix': 1549.689167207415,
             '26_posix_functional': 1549.689167207415,
-            '21_nt_functional': 197.26560974121094,
+            '21_nt_functional': 199.88873291015625,
             '27_nt_functional': 197.26560974121094,
             '25_nt': 131,
             '23_nt_functional': 182.70824960252654,

@@ -6,6 +6,7 @@ import pandas as pd
 
 from ai4water.utils.utils import jsonize, deepcopy_dict_without_clone
 from ai4water.preprocessing.transformations import Transformation
+from .utils import TransformerNotFittedError, SP_METHODS
 
 
 class Transformations(object):
@@ -85,6 +86,7 @@ class Transformations(object):
         """
         self.names = feature_names
         self.t_config = config
+        self.without_fit = False
 
     def _fetch_transformation(self, data):
         config = self.t_config
@@ -245,7 +247,7 @@ class Transformations(object):
                                                        f"{key}_{src_name}")
         return _data
 
-    def inverse_transform(self, data):
+    def inverse_transform(self, data, postprocess=True):
         """inverse transforms data where data can be dictionary, list or numpy
         array.
 
@@ -253,19 +255,57 @@ class Transformations(object):
             data:
                 the data which is to be inverse transformed. The output of
                 `fit_transform` method.
+            postprocess : bool
+
         Returns:
             The original data which was given to `fit_transform` method.
         """
         if not hasattr(self, 'scalers_'):
             raise ValueError(f"Transformations class has not been fitted yet")
-        return self._inverse_transform(data)
+        return self._inverse_transform(data, postprocess=postprocess)
 
-    def _inverse_transform(self, data, key="5"):
+    def inverse_transform_without_fit(self, data, postprocess=True):
+        data = np.array(data)
+        if data.ndim == 1:
+            data = data.reshape(-1, 1)
+
+        assert isinstance(self.names, list)
+        assert data.shape[-1] == len(self.names)
+
+        data = pd.DataFrame(data, columns=self.names)
+
+        kwargs = {}
+        if isinstance(self.t_config, str):
+            kwargs['method'] = self.t_config
+        elif isinstance(self.t_config, dict):
+            kwargs = self.t_config
+        elif isinstance(self.t_config, list):
+            assert len(self.t_config) == 1
+            t_config = self.t_config[0]
+            if isinstance(t_config, str):
+                kwargs['method'] = t_config
+            elif isinstance(t_config, dict):
+                kwargs = t_config
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+
+        transformer = Transformation(**kwargs)
+        transformed_data = transformer.inverse_transform(data=data, postprocess=postprocess)
+
+        return transformed_data
+
+    def _inverse_transform(self, data, key="5", postprocess=True):
 
         transformation = self._fetch_transformation(data)
 
         if self.is_numpy_:
-            data = self.__inverse_transform(data, self.names, transformation, key)
+            data = self.__inverse_transform(data,
+                                            self.names,
+                                            transformation,
+                                            key,
+                                            postprocess=postprocess)
 
         elif self.is_list_:
             assert isinstance(data, list)
@@ -274,7 +314,8 @@ class Transformations(object):
                 __data = self.__inverse_transform(src,
                                                  self.names[idx],
                                                  transformation[idx],
-                                                 f'{key}_{idx}')
+                                                 f'{key}_{idx}',
+                                                  postprocess=postprocess)
                 _data.append(__data)
             data = _data
 
@@ -285,26 +326,42 @@ class Transformations(object):
                 _data[src_name] = self.__inverse_transform(src,
                                                           self.names[src_name],
                                                           transformation[src_name],
-                                                          f'{key}_{src_name}')
+                                                          f'{key}_{src_name}',
+                                                           postprocess=postprocess)
             data = _data
 
         return data
 
-    def __inverse_transform(self, data, feature_names, transformation, key="5"):
+    def __inverse_transform(self,
+                            data,
+                            feature_names,
+                            transformation, key="5",
+                            postprocess=True):
         """inverse transforms one data source which may 2d or 3d nd array"""
         if data.ndim == 3:
             _data = np.full(data.shape, np.nan)
             for time_step in range(data.shape[1]):
-                _data[:, time_step] = self._inverse_transform_2d(data[:, time_step],
-                                                        columns=feature_names,
-                                                        transformation=transformation,
-                                                        key=f"{key}_{time_step}")
+                _data[:, time_step] = self._inverse_transform_2d(
+                    data[:, time_step],
+                    columns=feature_names,
+                    transformation=transformation,
+                    key=f"{key}_{time_step}",
+                    postprocess=postprocess)
         else:
-            _data = self._inverse_transform_2d(data, feature_names, key, transformation)
+            _data = self._inverse_transform_2d(data,
+                                               feature_names,
+                                               key,
+                                               transformation,
+                                               postprocess=postprocess)
 
         return _data
 
-    def _inverse_transform_2d(self, data, columns, key, transformation)->np.ndarray:
+    def _inverse_transform_2d(self,
+                              data,
+                              columns,
+                              key,
+                              transformation,
+                              postprocess=True)->np.ndarray:
         """inverse transforms one 2d array"""
         data = pd.DataFrame(data.copy(), columns=columns)
 
@@ -320,7 +377,7 @@ class Transformations(object):
                 original_shape = data.shape
 
                 transformer = Transformation.from_config(scaler)
-                transformed_data = transformer.inverse_transform(data)
+                transformed_data = transformer.inverse_transform(data, postprocess=postprocess)
                 data = transformed_data
 
             elif isinstance(transformation, list):
@@ -330,7 +387,7 @@ class Transformations(object):
                         scaler = self.scalers_[f'{key}_{trans}_{idx}']
                         scaler, shape = scaler, scaler['shape']
                         transformer = Transformation.from_config(scaler)
-                        data = transformer.inverse_transform(data=data)
+                        data = transformer.inverse_transform(data=data, postprocess=postprocess)
 
                     elif trans['method'] is not None:
                         features = trans.get('features', columns)
@@ -342,7 +399,8 @@ class Transformations(object):
                             data, dummy_features = conform_shape(data, shape, features)  # get data to transform
 
                             transformer = Transformation.from_config(scaler)
-                            transformed_data = transformer.inverse_transform(data=data)
+                            transformed_data = transformer.inverse_transform(data=data,
+                                                                             postprocess=postprocess)
                             data = transformed_data[orig_cols]  # remove the dummy data
 
             elif isinstance(transformation, dict):
@@ -355,7 +413,7 @@ class Transformations(object):
                     data, dummy_features = conform_shape(data, shape, features=features)
 
                     transformer = Transformation.from_config(scaler)
-                    transformed_data = transformer.inverse_transform(data=data)
+                    transformed_data = transformer.inverse_transform(data=data, postprocess=postprocess)
                     data = transformed_data[orig_cols]  # remove the dummy data
 
         if data.__class__.__name__ == "DataFrame":

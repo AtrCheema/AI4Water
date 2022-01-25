@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ai4water.preprocessing.transformations import Transformation
+from ai4water.preprocessing.transformations.utils import TransformerNotFittedError
 from ai4water.tf_attributes import tf
 from ai4water.datasets import busan_beach
 
@@ -198,7 +199,7 @@ class test_Scalers(unittest.TestCase):
 
     def test_get_scaler_from_dict_error(self):
         normalized_df1, _ = Transformation()(df, 'fit_transform', return_key=True)
-        self.assertRaises(ValueError, Transformation(), what='inverse', data=normalized_df1)
+        self.assertRaises(TransformerNotFittedError, Transformation(), what='inverse', data=normalized_df1)
         return
 
     def test_log_scaler_with_feat(self):
@@ -473,6 +474,18 @@ class test_Scalers(unittest.TestCase):
             t2 = Transformation.from_config(conf)
             x2 = t2.inverse_transform(data=x1)
             np.testing.assert_array_almost_equal(x, x2.values)
+        return
+
+    def test_without_fit(self):
+        """It is possible to inverse transform some transformations without fit"""
+        for m in ['log', 'log2', 'log10', 'sqrt']:
+            tr = Transformation(m)
+            x = [1, 2, 3]
+            x_ = tr.fit_transform(x)
+            _x = tr.inverse_transform(x_)
+
+            _x1 = Transformation(m).inverse_transform(x_)
+            assert np.allclose(_x, _x1)
         return
 
 

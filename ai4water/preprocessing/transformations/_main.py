@@ -10,7 +10,7 @@ from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransforme
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
 from ._transformations import Center
-from .utils import InvalidTransformation
+from .utils import InvalidTransformation, TransformerNotFittedError, SP_METHODS
 
 
 # TODO add logistic, tanh and more scalers.
@@ -29,9 +29,18 @@ class TransformationsContainer(object):
         self.index = None
 
 
+INITIATED_TRANSFORMERS = {
+    'log': LogScaler(),
+    'log2': Log2Scaler(),
+    'log10': Log10Scaler(),
+    'sqrt': SqrtScaler()
+}
+
 class Transformation(TransformationsContainer):
     """
-    Applies transformation to tabular data.
+    Applies transformation to tabular data. It is also possible to apply transformation
+    on some selected features/columns of data. This class also performs some optional
+    pre-processing on data before applying transformation on it.
     Any new transforming methods should define two methods one starting with
     `transform_with_` and `inverse_transofrm_with_`
     https://developers.google.com/machine-learning/data-prep/transform/normalization
@@ -345,7 +354,11 @@ class Transformation(TransformationsContainer):
             return data, scaler
         return data
 
-    def inverse_transform_with_sklearn(self, data, **kwargs):
+    def inverse_transform_with_sklearn(self,
+                                       data,
+                                       postprocess=True,
+                                       without_fit=False,
+                                       **kwargs):
 
         self.transforming_straight = False
 
@@ -354,13 +367,17 @@ class Transformation(TransformationsContainer):
         original_data = data.copy()
         to_transform = self.get_features(data)
 
-        data = scaler.inverse_transform(to_transform)
+        if without_fit:
+            data = scaler.inverse_transform_without_fit(to_transform)
+        else:
+            data = scaler.inverse_transform(to_transform)
 
         data = pd.DataFrame(data, columns=to_transform.columns)
 
         data = self.maybe_insert_features(original_data, data)
 
-        data = self.post_process_data(data)
+        if postprocess:
+            data = self.post_process_data(data)
 
         return data
 
@@ -388,11 +405,17 @@ class Transformation(TransformationsContainer):
 
         return getattr(self, "fit_transform_with_" + self.method)(data, return_key=return_key, **kwargs)
 
-    def inverse_transform(self, data, **kwargs):
+    def inverse_transform(self,
+                          data,
+                          postprocess=True,
+                          without_fit=False,
+                          **kwargs):
         """
         Inverse transforms the data.
         Arguments:
             data:
+            postprocess : bool
+            without_fit : bool
             kwargs : any of the folliwng keyword arguments
                 data : data on which to apply inverse transformation
                 key : key to fetch scaler
@@ -409,12 +432,21 @@ class Transformation(TransformationsContainer):
             pass
         elif len(self.scalers) == 1:
             kwargs['scaler'] = list(self.scalers.values())[0]
+        elif self.method in SP_METHODS:
+            kwargs['scaler'] = INITIATED_TRANSFORMERS[self.method]
+            without_fit = True
+        else:
+            raise TransformerNotFittedError()
 
         if self.treat_negatives and hasattr(self, "negative_indices_"):
             for col, idx in self.negative_indices_.items():
                 data.iloc[idx, col] = -data.iloc[idx, col]
 
-        return getattr(self, "inverse_transform_with_" + self.method.lower())(data, **kwargs)
+        return getattr(self, "inverse_transform_with_" + self.method.lower())(
+            data,
+            postprocess=postprocess,
+            without_fit=without_fit,
+            **kwargs)
 
     def get_features(self, data) -> pd.DataFrame:
 
@@ -441,7 +473,7 @@ class Transformation(TransformationsContainer):
         elif 'key' in kwargs:
             scaler = self.scalers[kwargs['key']]
         else:
-            raise ValueError("provide scaler which was used to transform or key to fetch the scaler")
+            raise TransformerNotFittedError()
         return scaler
 
     def maybe_insert_features(self, original_df, trans_df):
