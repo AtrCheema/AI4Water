@@ -980,18 +980,17 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def plot_importance(self, raise_error=True):
 
-        msg = "You must have optuna and plotly installed to get hyper-parameter importance."
-        if plotly is None or optuna is None:
+        msg = "You must have optuna installed to get hyper-parameter importance."
+        if optuna is None:
             if raise_error:
                 raise ModuleNotFoundError(msg)
             else:
                 warnings.warn(msg)
 
         else:
-            importances, importance_paras, fig = plot_param_importances(self.optuna_study())
+            importances, importance_paras, ax = plot_param_importances(self.optuna_study())
             if importances is not None:
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'fanova_importance.html'),
-                                    auto_open=False)
+                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'), bbox_inches="tight", dpi=300)
 
                 plt.close('all')
                 df = pd.DataFrame.from_dict(importance_paras)

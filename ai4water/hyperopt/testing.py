@@ -33,12 +33,6 @@ from typing import Optional
 
 import numpy
 
-from optuna.distributions import CategoricalDistribution
-from optuna.distributions import DiscreteUniformDistribution
-from optuna.distributions import IntLogUniformDistribution
-from optuna.distributions import IntUniformDistribution
-from optuna.distributions import LogUniformDistribution
-from optuna.distributions import UniformDistribution
 from optuna.logging import get_logger
 from optuna._transform import _SearchSpaceTransform
 from optuna.study import Study
@@ -50,21 +44,13 @@ from optuna.visualization._utils import _check_plot_args
 from optuna.visualization._plotly_imports import go
 from optuna.importance import get_param_importances
 
-import plotly
+
+from easy_mpl import bar_chart
 
 
 logger = get_logger(__name__)
 
-Blues = plotly.colors.sequential.Blues
 
-_distribution_colors = {
-    UniformDistribution: Blues[-1],
-    LogUniformDistribution: Blues[-1],
-    DiscreteUniformDistribution: Blues[-1],
-    IntUniformDistribution: Blues[-2],
-    IntLogUniformDistribution: Blues[-2],
-    CategoricalDistribution: Blues[-4],
-}
 
 def _get_distributions(study, params):
     # based on supposition that get_distributions only returns an ordered dictionary and requiring `storage` attribute
@@ -191,27 +177,9 @@ def plot_param_importances(
     importance_values = list(importances.values())
     param_names = list(importances.keys())
 
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=importance_values,
-                y=param_names,
-                text=importance_values,
-                texttemplate="%{text:.2f}",
-                textposition="outside",
-                cliponaxis=False,  # Ensure text is not clipped.
-                hovertemplate=[
-                    _make_hovertext(param_name, importance, study)
-                    for param_name, importance in importances.items()
-                ],
-                marker_color=[_get_color(param_name, study) for param_name in param_names],
-                orientation="h",
-            )
-        ],
-        layout=layout,
-    )
+    ax = bar_chart(importance_values, param_names, orient='h', show=False)
 
-    return importances, importance_paras, fig
+    return importances, importance_paras, ax
 
 
 def _get_distribution(param_name: str, study: Study):
@@ -220,13 +188,4 @@ def _get_distribution(param_name: str, study: Study):
             return trial.distributions[param_name]
     assert False
 
-
-def _get_color(param_name: str, study: Study) -> str:
-    return _distribution_colors[type(_get_distribution(param_name, study))]
-
-
-def _make_hovertext(param_name: str, importance: float, study: Study) -> str:
-    return "{} ({}): {}<extra></extra>".format(
-        param_name, _get_distribution(param_name, study).__class__.__name__, importance
-    )
 
