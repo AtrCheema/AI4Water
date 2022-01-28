@@ -47,16 +47,17 @@ class PartialDependencePlot(ExplainerMixin):
     ):
         """Initiates the class
 
-        Arguments:
-            model:
+        Parameters
+        ----------
+            model :
                 the trained/calibrated model which must be callable. It must take the
                 `data` as input and sprout an array of predicted values. For example
-                if you are using Keras/sklearn Model, then you must pass model.predict
-            data:
+                if you are using Keras/sklearn model, then you must pass model.predict
+            data :
                 The inputs to the `model`.
-            feature_names:
+            feature_names :
                 Names of features. Used for labeling.
-            num_points:
+            num_points :
                 determines the grid for evaluation of `model`
             path:
                 path to save the plots. By default the results are saved in current directory

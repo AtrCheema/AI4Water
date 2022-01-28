@@ -130,7 +130,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
     optimizer.fit()
     check_attrs(optimizer, len(search_space))
 
-    for f in ["fanova_importance.html", "convergence.png", "iterations.json", "iterations_sorted.json"]:
+    for f in ["fanova_importance_bar.png", "convergence.png", "iterations.json", "iterations_sorted.json"]:
         fpath = os.path.join(optimizer.opt_path, f)
         assert os.path.exists(fpath)
     return optimizer
