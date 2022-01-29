@@ -1,3 +1,4 @@
+import warnings
 from typing import Union
 
 import numpy as np
@@ -330,9 +331,10 @@ class Categorical(_Categorical):
 
         return f"Categorical(categories={cats}, prior={prior} name='{self.name}')"
 
+
 def check_prior(kwargs: dict):
     prior = kwargs.get('prior', 'uniform')
     if prior in ["log"] and skopt.__version__ in ["0.9.0"]:
-        print(f"chaning prior from {prior} to log-uniform for {kwargs['name']}")
+        # todo see why this will give error
         kwargs['prior'] = "log-uniform"
     return kwargs
