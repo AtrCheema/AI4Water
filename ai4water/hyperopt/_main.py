@@ -49,10 +49,9 @@ try:
     import optuna
     from optuna.study import Study
     from optuna.trial._trial import TrialState
-    from optuna.visualization import plot_edf
     from optuna.visualization import plot_contour
 except ImportError:
-    optuna, plot_contour, plot_edf, = None, None, None
+    optuna, plot_contour = None, None
     Study = None
 
 from ai4water.utils.utils import JsonEncoder
@@ -64,7 +63,7 @@ from .utils import post_process_skopt_results
 from .utils import to_skopt_space
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
-from .utils import loss_histogram, plot_hyperparameters
+from .utils import loss_histogram, plot_hyperparameters, plot_edf
 
 
 try:
@@ -951,6 +950,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
             plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
 
+        plt.close("all")
+        y = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+        plot_edf(y)
+        plt.savefig(os.path.join(self.opt_path, "edf"))
+
         sr = self.skopt_results()
         plt.close('all')
         if sr.x_iters is not None and self.backend != "skopt":
@@ -983,9 +987,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 fig = plot_contour(self.study)
                 plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'), auto_open=False)
 
-                fig = plot_edf(self.study)
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'edf.html'), auto_open=False)
-
         return
 
     def plot_importance(self, raise_error=True):
@@ -1013,7 +1014,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
                 with open(os.path.join(self.opt_path, "fanova_importances.json"), 'w') as fp:
                     json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
-
         return
 
     def to_kw(self, x):
