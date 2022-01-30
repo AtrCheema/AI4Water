@@ -19,7 +19,7 @@ min_requirements = [
     'joblib',
     'requests',
     'plotly',
-    'easy_mpl'
+    'easy_mpl==0.18'
     ]
 
 extra_requires = [

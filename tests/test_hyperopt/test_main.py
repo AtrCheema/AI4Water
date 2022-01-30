@@ -135,6 +135,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
         assert os.path.exists(fpath)
     return optimizer
 
+
 class TestHyperOpt(unittest.TestCase):
 
     def test_real_num_samples(self):
@@ -427,7 +428,6 @@ class TestHyperOpt(unittest.TestCase):
         self.assertIsNotNone(optimizer.skopt_space())
         return
 
-
     def test_unified_interface(self):
 
         run_unified_interface('tpe', 'optuna', 5)
@@ -485,6 +485,7 @@ class TestAddPrevResult(unittest.TestCase):
         assert len(optimizer.xy_of_iterations()) == 15
 
         return
+
 
 if __name__ == "__main__":
     unittest.main()

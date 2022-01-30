@@ -8,4 +8,4 @@ joblib
 requests
 matplotlib
 
-easy_mpl
+easy_mpl==0.18

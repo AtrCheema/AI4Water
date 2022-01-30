@@ -10,6 +10,7 @@ import sklearn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from easy_mpl import parallel_coordinates
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 
@@ -49,9 +50,9 @@ try:
     from optuna.study import Study
     from optuna.trial._trial import TrialState
     from optuna.visualization import plot_edf
-    from optuna.visualization import plot_parallel_coordinate, plot_contour
+    from optuna.visualization import plot_contour
 except ImportError:
-    optuna, plot_parallel_coordinate, plot_contour, plot_edf, = None, None, None, None
+    optuna, plot_contour, plot_edf, = None, None, None
     Study = None
 
 from ai4water.utils.utils import JsonEncoder
@@ -725,7 +726,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if self.process_results:
             post_process_skopt_results(search_result, self.results, self.opt_path)
 
-            self._plot()
+            self._process_results()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -753,7 +754,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self.results[err + idx] = sort_x_iters(para, self.original_para_order())
 
         if self.process_results:
-            self._plot()
+            self._process_results()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -815,7 +816,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         setattr(self, 'study', study)
 
         if self.process_results:
-            self._plot()
+            self._process_results()
 
         return study
 
@@ -862,7 +863,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         setattr(self, 'trials', trials)
         # self.results = trials.results
         if self.process_results:
-            self._plot()
+            self._process_results()
 
         return best
 
@@ -929,9 +930,22 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             raise NotImplementedError
         return paras
 
-    def _plot(self):
-
+    def _process_results(self):
+        """post processing of results"""
         self.save_iterations_as_xy()
+
+        d = self.xy_of_iterations()
+
+        data = pd.DataFrame([list(v.values()) for v in d.values()],
+                            columns=[s for s in self.space()])
+        categories = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+        parallel_coordinates(
+            data=data,
+            categories=categories,
+            show=False
+        )
+        fname = os.path.join(self.opt_path, "parallel_coordinates")
+        plt.savefig(fname, dpi=500, bbox_inches="tight")
 
         if self.objective_fn_is_dl:
             plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
@@ -965,10 +979,6 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         if plotly is not None:
 
             if self.backend == 'optuna':
-
-                fig = plot_parallel_coordinate(self.study)
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'parallel_coordinates.html'),
-                                    auto_open=False)
 
                 fig = plot_contour(self.study)
                 plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'), auto_open=False)
