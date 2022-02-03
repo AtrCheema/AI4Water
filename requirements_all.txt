@@ -33,4 +33,4 @@ wrapt
 psutil
 SHAP
 
-easy_mpl==0.18
+easy_mpl>=0.20.2

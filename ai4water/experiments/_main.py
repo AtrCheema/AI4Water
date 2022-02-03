@@ -6,13 +6,12 @@ from typing import Union, Tuple, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from easy_mpl import bar_chart
 from easy_mpl.utils import process_axis
+from easy_mpl import bar_chart, taylor_plot
 
 from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataHandler
-from ai4water.utils.taylor_diagram import taylor_plot
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.visualizations import init_subplots
 from ai4water.postprocessing import ProcessResults
@@ -411,7 +410,7 @@ class Experiments(object):
             _simulations = simulations
 
         taylor_plot(
-            trues=trues,
+            observations=trues,
             simulations=_simulations,
             figsize=figsize,
             name=fname,
