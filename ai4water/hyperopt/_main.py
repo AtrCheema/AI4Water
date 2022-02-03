@@ -48,7 +48,6 @@ except ImportError:
 try:
     import optuna
     from optuna.study import Study
-    from optuna.trial._trial import TrialState
     from optuna.visualization import plot_contour
 except ImportError:
     optuna, plot_contour = None, None
@@ -1107,6 +1106,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         Attempts to create an optuna Study instance so that
         optuna based plots can be generated.
         Returns None, if not possible."""
+
+        from optuna.trial import TrialState
 
         if self.backend == 'optuna':
             return self.study
