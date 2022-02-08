@@ -36,7 +36,7 @@ class TestActivations(unittest.TestCase):
         layers["Dense"] = {'config': {'units': 1}}
 
         model = Model(epochs=2,
-                      lookback=1,
+                      ts_args={'lookback':1},
                       model={'layers': layers},
                       x_transformation='minmax',
                       y_transformation="minmax",
@@ -60,7 +60,7 @@ class TestActivations(unittest.TestCase):
             '23_nt_functional': [0.049483511596918106, 0.043167594820261],
             '25_nt_subclassing': [0.049483511596918106, 0.04080097749829292],
             '26_nt_subclassing': [0.049483511596918106, 0.04080097749829292],
-            '27_nt_subclassing': [0.06556053459644318, 0.06386799365282059],
+            '27_nt_subclassing': [0.058194104582071304, 0.058194104582071304],
             '25_nt_functional': [0.049483511596918106, 0.04080097749829292],
             '24_nt_functional': [0.049483511596918106, 0.04080097749829292],
         }
@@ -80,7 +80,7 @@ class TestActivations(unittest.TestCase):
             layers["Dense_" + str(idx)] = {'config': {'units': 1, 'activation': act_fn}}
 
         model = Model(epochs=2,
-                      lookback=1,
+                      ts_args={'lookback':1},
                       model={'layers': layers},
                       input_features=input_features,
                       output_features=output_features,
@@ -99,12 +99,12 @@ class TestActivations(unittest.TestCase):
             '26_posix_functional': [0.025749117136001587, 0.037755679339170456],
             '27_posix_functional': [0.05165727809071541, 0.0561603344976902],
 
-            '21_nt_subclassing': [0.05147925189205478, 0.05596162420866124],
+            '21_nt_subclassing': [0.12329380346623173, 0.05596162420866124],
             '23_nt_functional': [0.025749117136001587, 0.037755679339170456],
             '24_nt': [0.10781528055667877, 0.09552989155054092],
             '25_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
             '26_nt_subclassing': [0.025749117136001587, 0.040039800107479095],
-            '27_nt_subclassing': [0.05165727809071541, 0.0561603344976902],
+            '27_nt_subclassing': [0.12464610487222672, 0.0561603344976902],
             '25_nt_functional': [0.025749117136001587, 0.040039800107479095],
             '24_nt_functional': [0.025749117136001587, 0.040802694857120514],
         }

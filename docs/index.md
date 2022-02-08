@@ -75,7 +75,7 @@ model = Model(
         model = {'layers': {"LSTM": 64}},
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],     # columns in csv file to be used as output
-        lookback = 12
+        ts_args={'lookback': 12}  # only if you want to feed historical data to model
 )
 ```
 
@@ -106,7 +106,7 @@ model = Model(
             model = {'layers': {"LSTM": 64,
                                 'Dense': 1}},
             batch_size=batch_size,
-            lookback=lookback,
+            ts_args={'lookback':lookback},
             input_features=inputs,
             output_features=outputs,
             lr=0.001
@@ -131,7 +131,6 @@ data = busan_beach()  # path for data file
 model = Model(
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],  
-        lookback=1,
         val_fraction=0.0,
         #  any regressor from https://scikit-learn.org/stable/modules/classes.html
         model={"RandomForestRegressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,

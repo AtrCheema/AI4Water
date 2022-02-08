@@ -11,7 +11,7 @@ from easy_mpl import bar_chart, taylor_plot
 
 from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
-from ai4water.preprocessing import DataHandler
+from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.visualizations import init_subplots
 from ai4water.postprocessing import ProcessResults
@@ -1109,7 +1109,7 @@ Available cases are {self.models} and you wanted to include
             if arg in model_kws:
                 model_kws.pop(arg)
 
-        dh = DataHandler(data, **model_kws)
+        dh = DataSet(data, **model_kws)
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 

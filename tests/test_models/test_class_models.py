@@ -40,26 +40,30 @@ def test_evaluation(model):
     if not isinstance(test_data, tf.data.Dataset):
         test_x, test_y = test_data
 
-    if model.config['val_data'] == 'same' and not isinstance(val_data, tf.data.Dataset):
+    if not isinstance(val_data, tf.data.Dataset):
         val_x, y = val_data
         assert test_x[0].shape == val_x[0].shape
 
     return
 
 
-def build_and_run_class_problem(n_classes, loss, is_multilabel=False, activation='softmax'):
+def build_and_run_class_problem(n_classes, loss, is_multilabel=False,
+                                activation='softmax'):
 
     input_features = [f'input_{n}' for n in range(10)]
 
     if is_multilabel:
         outputs = [f'target_{n}' for n in range(n_classes)]
-        X, y = make_multilabel_classification(n_samples=100, n_features=len(input_features), n_classes=n_classes,
+        X, y = make_multilabel_classification(n_samples=100,
+                                              n_features=len(input_features),
+                                              n_classes=n_classes,
                                               n_labels=2, random_state=0)
         y = y.reshape(-1, n_classes)
 
     else:
         outputs = ['target']
-        X, y = make_classification(n_samples=100, n_features=len(input_features), n_informative=n_classes, n_classes=n_classes,
+        X, y = make_classification(n_samples=100, n_features=len(input_features),
+                                   n_informative=n_classes, n_classes=n_classes,
                                random_state=1)
         y = y.reshape(-1, 1)
 
@@ -119,7 +123,8 @@ class TestClassifications(unittest.TestCase):
 
     def test_multilabel_classification(self):
 
-        model = build_and_run_class_problem(5, 'binary_crossentropy', is_multilabel=True)
+        model = build_and_run_class_problem(5, 'binary_crossentropy',
+                                            is_multilabel=True)
 
         assert not model.is_binary
         assert not model.is_multiclass
@@ -129,7 +134,8 @@ class TestClassifications(unittest.TestCase):
 
     def test_multilabel_classification_with_categorical(self):
 
-        model = build_and_run_class_problem(5, 'categorical_crossentropy', is_multilabel=True)
+        model = build_and_run_class_problem(5, 'categorical_crossentropy',
+                                            is_multilabel=True)
 
         assert not model.is_binary
         assert not model.is_multiclass
@@ -139,7 +145,9 @@ class TestClassifications(unittest.TestCase):
 
     def test_multilabel_classification_with_binary_sigmoid(self):
 
-        model = build_and_run_class_problem(5, 'binary_crossentropy', is_multilabel=True, activation='sigmoid')
+        model = build_and_run_class_problem(5, 'binary_crossentropy',
+                                            is_multilabel=True,
+                                            activation='sigmoid')
 
         assert not model.is_binary
         assert not model.is_multiclass
@@ -149,7 +157,9 @@ class TestClassifications(unittest.TestCase):
 
     def test_multilabel_classification_with_categorical_sigmoid(self):
 
-        model = build_and_run_class_problem(5, 'categorical_crossentropy', is_multilabel=True, activation='sigmoid')
+        model = build_and_run_class_problem(5, 'categorical_crossentropy',
+                                            is_multilabel=True,
+                                            activation='sigmoid')
 
         assert not model.is_binary
         assert not model.is_multiclass
@@ -163,16 +173,18 @@ class TestClassifications(unittest.TestCase):
             model= {'layers': {'LSTM': {'units': 32},
                                'Dense': {'units': 2},
                                }},
-            lookback=5,
+            ts_args={'lookback':5},
             input_features=busan_beach().columns.tolist()[0:-1],
             output_features = ['blaTEM_coppml', 'tetx_coppml'],
-            verbosity=0
+            verbosity=0,
+            train_fraction=0.8,
+            shuffle=False
         )
 
         model.fit(data=busan_beach(target=['blaTEM_coppml', 'tetx_coppml']))
         t,p = model.predict(data='test', return_true=True)
 
-        assert np.allclose(t[0:2, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
+        assert np.allclose(t[3:5, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
 
         for out in model.output_features:
             assert out in os.listdir(model.path)

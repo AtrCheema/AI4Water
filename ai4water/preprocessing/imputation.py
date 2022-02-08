@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 from ai4water.backend import imputations
 
 seed = 313
-
+# use LGBM imputation method
+# https://www.kaggle.com/robikscube/handling-with-missing-data-youtube-stream#Level-4:-LightGBM-Imputer!!
+# plot imputation distribution
 
 class Imputation(object):
 

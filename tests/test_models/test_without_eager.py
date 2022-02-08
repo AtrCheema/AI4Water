@@ -26,10 +26,10 @@ def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, ep
     model = input_model(
         verbosity=0,
         batch_size=batch_size,
-        lookback=lookback,
+        ts_args = {'lookback': lookback},
         lr=0.001,
         epochs=epochs,
-        train_data='random',
+        split_random=True,
         **kwargs
     )
 
@@ -59,6 +59,7 @@ class TestModels(unittest.TestCase):
         model = InputAttentionModel(
             input_features=arg_input_features,
             output_features=arg_output_features,
+            ts_args={"lookback": 15},
             verbosity=0,
         )
         model.predict(data=arg_busan)
@@ -119,7 +120,6 @@ class TestModels(unittest.TestCase):
         )
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
-
 
 
 if __name__ == "__main__":

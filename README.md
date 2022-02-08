@@ -86,7 +86,7 @@ model = Model(
                             'Dense': 1}},
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],     # columns in csv file to be used as output
-        lookback = 12
+        ts_args={'lookback': 12}  # how much historical data we want to feed to model
 )
 ```
 
@@ -124,7 +124,7 @@ model = Model(
             model = {'layers': {"LSTM": 64,
                                 'Dense': 1}},
             batch_size=batch_size,
-            lookback=lookback,
+            ts_args={'lookback':lookback},
             input_features=inputs,
             output_features=outputs,
             lr=0.001
@@ -149,7 +149,6 @@ data = busan_beach()  # path for data file
 model = Model(
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],  
-        lookback=1,
         val_fraction=0.0,
         #  any regressor from https://scikit-learn.org/stable/modules/classes.html
         model={"RandomForestRegressor": {"n_estimators":1000}},  # set any of regressor's parameters. e.g. for RandomForestRegressor above used,
@@ -174,7 +173,7 @@ model = Model(
                             'Dense': 1}},
         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
         output_features = ['tetx_coppml'],     # columns in csv file to be used as output
-        lookback = Integer(low=5, high=15, name="lookback"),
+        ts_args={'lookback': Integer(low=5, high=15, name="lookback")},
         lr=Real(low=0.00001, high=0.001, name="lr")
 )
 model.optimize_hyperparameters(data=data,
@@ -214,7 +213,7 @@ model.optimize_hyperparameters(data=data,
 
 ## preprocessing
 
-[ai4water.preprocessing.DataHandler](https://ai4water.readthedocs.io/en/dev/preprocessing/datahandler/)
+[ai4water.preprocessing.DataSet](https://ai4water.readthedocs.io/en/dev/preprocessing/datahandler/)
 
 [ai4water.preprocessing.Imputation](https://ai4water.readthedocs.io/en/dev/preprocessing/imputation/)
 

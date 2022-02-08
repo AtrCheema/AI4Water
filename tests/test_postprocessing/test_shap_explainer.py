@@ -228,7 +228,8 @@ class TestShapExplainers(unittest.TestCase):
 
         explainer = ShapExplainer(model,
                                   train_data=x_train.values, data=x_test.values,
-                                  num_means=10, path=model.path, explainer="KernelExplainer")
+                                  num_means=10, path=model.path,
+                                  explainer="KernelExplainer")
         explainer(plot_force_all=False)
         #explainer.heatmap()
         return
@@ -239,10 +240,12 @@ class TestShapExplainers(unittest.TestCase):
             model={"layers": {"LSTM":{"units": 4}}},
             input_features=['wat_temp_c', 'tide_cm'],
             output_features=['tetx_coppml', "ecoli", "16s", "inti1"],
-            verbosity=0
+            verbosity=0,
+            ts_args={'lookback':15},
         )
         model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm'],
-                                 target=['tetx_coppml', "ecoli", "16s", "inti1"]))
+                                 target=['tetx_coppml', "ecoli", "16s",
+                                         "inti1"]))
 
         x_test, y_test = model.test_data()
 
@@ -255,7 +258,8 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_xgb(self):
 
-        fit_and_interpret("XGBRegressor", data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
+        fit_and_interpret("XGBRegressor", data=busan_beach(inputs=['wat_temp_c',
+                                                                   'tide_cm']),
                           draw_heatmap=True, explainer="TreeExplainer")
 
         return
@@ -276,14 +280,16 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_waterfall_with_xgb(self):
 
-        fit_and_draw_plots("XGBRegressor", busan_beach(inputs=['wat_temp_c', 'tide_cm']),
+        fit_and_draw_plots("XGBRegressor", busan_beach(inputs=['wat_temp_c',
+                                                               'tide_cm']),
                            draw_heatmap=True)
 
         return
 
     def test_waterfall_with_catboost(self):
 
-        fit_and_draw_plots("CatBoostRegressor", busan_beach(inputs=['wat_temp_c', 'tide_cm']))
+        fit_and_draw_plots("CatBoostRegressor", busan_beach(inputs=['wat_temp_c',
+                                                                    'tide_cm']))
 
         return
 
@@ -326,7 +332,8 @@ class TestShapExplainers(unittest.TestCase):
     def test_deepexplainer_mlp(self):
 
         model, testx = get_mlp()
-        ex = ShapExplainer(model, testx, explainer="DeepExplainer", layer=2,
+        ex = ShapExplainer(model, testx, explainer="DeepExplainer",
+                           layer=2,
                              path=model.path)
 
         ex.plot_shap_values(show=False)
@@ -337,7 +344,8 @@ class TestShapExplainers(unittest.TestCase):
 
         model, testx = get_mlp()
 
-        ex = ShapExplainer(model, testx, layer=1, explainer="GradientExplainer",
+        ex = ShapExplainer(model, testx, layer=1,
+                           explainer="GradientExplainer",
                              path=model.path)
         plt.rcParams.update(plt.rcParamsDefault)
         ex.plot_shap_values(show=False)
@@ -346,7 +354,8 @@ class TestShapExplainers(unittest.TestCase):
 
     def test_class_model(self):
 
-        fit_and_interpret("DecisionTreeClassifier", data=class_data, draw_heatmap=False,
+        fit_and_interpret("DecisionTreeClassifier", data=class_data,
+                          draw_heatmap=False,
                           explainer="KernelExplainer")
 
         return
@@ -355,7 +364,9 @@ class TestShapExplainers(unittest.TestCase):
 
         m = make_lstm_reg_model()
         train_x, _ = m.training_data()
-        exp = ShapExplainer(model=m, data=train_x, layer=2, feature_names=m.input_features, path=m.path)
+        exp = ShapExplainer(model=m, data=train_x, layer=2,
+                            feature_names=m.input_features,
+                            path=m.path)
         exp.summary_plot(show=False)
         exp.force_plot_single_example(0, show=False)
         exp.plot_shap_values(show=False)
@@ -366,7 +377,8 @@ class TestShapExplainers(unittest.TestCase):
         m = make_lstm_reg_model()
         train_x, _ = m.training_data()
 
-        exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
+        exp = ShapExplainer(model=m, data=train_x, layer="LSTM",
+                            explainer="GradientExplainer",
                             feature_names=m.input_features, path=m.path)
         exp.plot_shap_values(show=False)
         exp.force_plot_single_example(0, show=False)
@@ -376,7 +388,8 @@ class TestShapExplainers(unittest.TestCase):
         time.sleep(1)
         m = make_lstm_reg_model()
         train_x, _ = m.training_data()
-        exp = ShapExplainer(model=m, data=train_x, layer="LSTM", explainer="GradientExplainer",
+        exp = ShapExplainer(model=m, data=train_x, layer="LSTM",
+                            explainer="GradientExplainer",
                             feature_names=m.input_features, path=m.path)
         exp.force_plot_single_example(0, show=False)
         return
@@ -389,8 +402,10 @@ class TestShapExplainers(unittest.TestCase):
             "GradientBoostingRegressor"
                   ]:
 
-            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c', 'tide_cm']))
-            exp = explain_model_with_shap(model, examples_to_explain=2, explainer="TreeExplainer")
+            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c',
+                                                            'tide_cm']))
+            exp = explain_model_with_shap(model, examples_to_explain=2,
+                                          explainer="TreeExplainer")
             assert isinstance(exp, ShapExplainer)
 
         return
@@ -416,8 +431,7 @@ class TestShapExplainers(unittest.TestCase):
         p = model.predict(test_x)
 
         exp = ShapExplainer(model, test_x, layer=2, path=model.path,
-                            feature_names=model.input_features
-                            )
+                            feature_names=model.input_features)
         exp.force_plot_single_example(np.argmin(p).item(), show=False)
         exp.force_plot_single_example(np.argmax(p).item(), show=False)
         exp.waterfall_plot_single_example(np.argmin(p).item(), show=False)
@@ -427,17 +441,19 @@ class TestShapExplainers(unittest.TestCase):
         return
 
     def test_multiple_inputs(self):
-        model = Model(model={"layers": {"Input_0": {"shape": (10, 2)},
-                                        "LSTM_0": {"config": {"units": 62},
-                                                   "inputs": "Input_0",
-                                                   "outputs": "lstm0_output"},
-                                        "Input_1": {"shape": (5, 3)},
-                                        "LSTM_1": {"config": {"units": 32},
-                                                   "inputs": "Input_1",
-                                                   "outputs": "lstm1_output"},
-                                        "Concatenate": {"config": {}, "inputs": ["lstm0_output", "lstm1_output"]},
-                                        "Dense": {"config": 1}
-                                        }}, verbosity=0)
+        model = Model(model={"layers": {
+            "Input_0": {"shape": (10, 2)},
+            "LSTM_0": {"config": {"units": 62},
+                       "inputs": "Input_0",
+                       "outputs": "lstm0_output"},
+            "Input_1": {"shape": (5, 3)},
+            "LSTM_1": {"config": {"units": 32},
+                       "inputs": "Input_1",
+                       "outputs": "lstm1_output"},
+            "Concatenate": {"config": {},
+                            "inputs": ["lstm0_output", "lstm1_output"]},
+            "Dense": {"config": 1}
+        }}, verbosity=0)
         test_x = [np.random.random((100, 10, 2)), np.random.random((100, 5, 3))]
         exp = ShapExplainer(model, test_x, layer="LSTM_1", path=model.path)
         exp.summary_plot(show=False)

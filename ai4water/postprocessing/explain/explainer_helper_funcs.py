@@ -2,6 +2,7 @@
 import os
 from typing import Union
 
+from ...preprocessing import DataSet
 from ._shap import ShapExplainer, shap
 from ._lime import LimeExplainer, lime
 from ..utils import choose_examples
@@ -166,7 +167,7 @@ def explain_model_with_shap(
 
     shap_exp_path = maybe_make_path(os.path.join(model.path, "explainability", "shap"))
 
-    if not model.dh_.source_is_df:
+    if not isinstance(model.dh_, DataSet):
         raise NotImplementedError
 
     features_to_explain = get_features(features, features_to_explain)

@@ -11,7 +11,7 @@ from .backend import keras
 from .functional import Model as FModel
 from ai4water.utils.utils import print_something
 from ai4water.nn_tools import check_act_fn
-from ai4water.preprocessing import DataHandler
+from ai4water.preprocessing import DataSet
 from ai4water.models.tensorflow.layer_definition import MyTranspose, MyDot
 from ai4water.utils.utils import plot_activations_along_inputs
 
@@ -324,7 +324,7 @@ class DualAttentionModel(FModel):
         _context = self.one_decoder_attention_step(_h, s, _h_en_all, 'final')
         return _h, _context
 
-    def fetch_data(self, source, **kwargs):
+    def fetch_data(self, x, y, source, **kwargs):
 
         if self.teacher_forcing:
             x, prev_y, labels = getattr(self.dh_, f'{source}_data')(**kwargs)
@@ -378,9 +378,9 @@ class DualAttentionModel(FModel):
         """if dh_ has not been set yet, try to create it using data argument if
         possible"""
         if isinstance(data, str) and data not in ['training', 'test', 'validation']:
-            self.dh_ = DataHandler(data=data, **self.data_config)
+            self.dh_ = DataSet(data=data, **self.data_config)
         elif not isinstance(data, str):
-            self.dh_ = DataHandler(data=data, **self.data_config)
+            self.dh_ = DataSet(data=data, **self.data_config)
         return
 
     def interpret(self, data='training', **kwargs):
@@ -420,7 +420,7 @@ class DualAttentionModel(FModel):
         activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data, **kwargs)
 
         data, _ = getattr(self, f'{data}_data')()
-        lookback = self.config['lookback']
+        lookback = self.config['ts_args']['lookback']
 
         activation = activation[layer_name]  # (num_examples, lookback, num_ins)
 
@@ -551,7 +551,7 @@ class InputAttentionModel(DualAttentionModel):
 
         return
 
-    def fetch_data(self, source, **kwargs):
+    def fetch_data(self, x, y, source, **kwargs):
 
         data = getattr(self.dh_, f'{source}_data')(**kwargs)
         if self.teacher_forcing:

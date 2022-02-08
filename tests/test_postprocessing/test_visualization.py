@@ -76,7 +76,7 @@ class TestVisualize(unittest.TestCase):
             "LSTM_1": {"units": 8},
             "Dense": 1,
         }},
-            lookback=12,
+            ts_args={'lookback':12},
             input_features=input_features,
             output_features=output_features,
             epochs=2,

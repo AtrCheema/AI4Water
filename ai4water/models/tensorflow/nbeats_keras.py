@@ -36,7 +36,7 @@ class NBeats(keras.layers.Layer):
             self,
             units: int = 256,
             lookback: int = 10,
-            forecast_length: int = 2,
+            forecast_len: int = 2,
             stack_types=(TREND_BLOCK, SEASONALITY_BLOCK),
             nb_blocks_per_stack=3,
             thetas_dim=(4, 8),
@@ -54,7 +54,7 @@ class NBeats(keras.layers.Layer):
                 Number of units in NBeats layer. It determines the size of NBeats.
             lookback:
                 Number of historical time-steps used to predict next value
-            forecast_length:
+            forecast_len:
             stack_types :
             nb_blocks_per_stack:
             theta_dim :
@@ -74,7 +74,7 @@ class NBeats(keras.layers.Layer):
         self.units = units
         self.share_weights_in_stack = share_weights_in_stack
         self.lookback = lookback
-        self.forecast_length = forecast_length
+        self.forecast_length = forecast_len
         self.input_dim = num_inputs
         self.exo_dim = num_exo_inputs
         self.exo_shape = (self.lookback, self.exo_dim)

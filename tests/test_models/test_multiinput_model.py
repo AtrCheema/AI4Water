@@ -15,6 +15,7 @@ else:
 
 from ai4water.functional import Model as FModel
 from ai4water.datasets import load_nasdaq, busan_beach
+from ai4water.preprocessing import DataSet, DataSetUnion
 
 nasdaq_input_features = load_nasdaq().columns.tolist()[0:-1],
 nasdaq_output_features = load_nasdaq().columns.tolist()[-1:],
@@ -71,19 +72,30 @@ def make_layers(outs):
     return layers
 
 
-def build_and_run(outputs, x_transformation=None, indices=None):
+def build_and_run(outputs, x_transformation=None, indices=None, **kwargs):
     model = Model(
         model={"layers": make_layers(len(outputs['inp_1d']))},
-        lookback=lookback,
+        ts_args={'lookback':lookback},
         input_features = {"inp_1d": inp_1d, "inp_2d": inp_2d},
         output_features=outputs,
         x_transformation = x_transformation,
-        train_data=indices,
+        indices={'training':indices},
         epochs=2,
-        verbosity=0
+        verbosity=0,
+        **kwargs
     )
 
-    model.fit(data={'inp_1d': make_1d(outputs['inp_1d']), 'inp_2d': data_2d})
+    ds1 = DataSet(make_1d(outputs['inp_1d']),
+                  input_features=inp_1d,
+                  ts_args={'lookback':lookback},
+                  verbosity=0)
+    ds2 = DataSet(data_2d,
+                  input_features=inp_2d,
+                  ts_args={'lookback':lookback},
+                  verbosity=0)
+    ds = DataSetUnion(inp_1d=ds1, inp_2d=ds2, verbosity=0)
+
+    model.fit(data=ds)
 
     return model.predict(data='test')
 
@@ -105,7 +117,7 @@ class test_MultiInputModels(unittest.TestCase):
     def test_with_random_sampling(self):
         time.sleep(1)
         outputs = {"inp_1d": ['flow']}
-        build_and_run(outputs, indices="random")
+        build_and_run(outputs, split_random=True)
         return
 
     def test_with_multiple_outputs(self):
@@ -118,6 +130,7 @@ class test_MultiInputModels(unittest.TestCase):
         model = Model(model={'layers': {'LSTM': 64, "Dense": 1}},
                       input_features=nasdaq_input_features,
                       output_features=nasdaq_output_features,
+                      ts_args = {"lookback": 15},
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -131,6 +144,7 @@ class test_MultiInputModels(unittest.TestCase):
                                         'Dense': 1}},
                       input_features=nasdaq_input_features,
                       output_features=nasdaq_output_features,
+                      ts_args={"lookback": 15},
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
@@ -143,13 +157,14 @@ class test_MultiInputModels(unittest.TestCase):
                              }},
                       input_features=nasdaq_input_features,
                       output_features=nasdaq_output_features,
+                      ts_args={"lookback": 15},
                       verbosity=0)
 
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
         self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
         return
 
-    def test_same_val_data(self):
+    def test_same_no_test_data(self):
         # test that we can use val_data="same" with multiple inputs. Execution of model.fit() below means that
         # tf.data was created successfully and keras Model accepted it to train as well.
         _examples = 200
@@ -186,7 +201,7 @@ class test_MultiInputModels(unittest.TestCase):
             def test_data(self, *args, **kwargs):
                 return self.training_data(*args, **kwargs)
 
-        model = MyModel(val_data='same', verbosity=0, category="DL")
+        model = MyModel(train_fraction=1.0, verbosity=0, category="DL")
 
         hist = model.fit()
         self.assertGreater(len(hist.history['loss']), 1)
@@ -225,12 +240,12 @@ class test_MultiInputModels(unittest.TestCase):
         model = QuantileModel(
             input_features=data.columns.tolist()[0:-1],
             output_features=data.columns.tolist()[-1:],
-            lookback=1,
+            ts_args={'lookback':1},
             verbosity=0,
             model={'layers': layers},
             epochs=2,
             y_transformation='log10',
-            train_data = np.arange(1500),
+            indices={'training': np.arange(1500)},
             quantiles=quantiles)
 
         # Train the model on first 1500 examples/points, 0.2% of which will be used for validation

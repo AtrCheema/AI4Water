@@ -42,11 +42,11 @@ class Test3dData(unittest.TestCase):
                 kwargs['treat_negatives'] = True
 
             x = np.arange(-1, 29, dtype='float32').reshape(15, 2)
-            x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
+            x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d, **kwargs)
 
             x2_0 = Transformation(**kwargs).fit_transform(x).values
-            x2, _, _ = prepare_data(x2_0, num_outputs=0, lookback_steps=2)
+            x2, _, _ = prepare_data(x2_0, num_outputs=0, lookback=2)
             # print(x1.sum(), x2.sum())
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
@@ -70,7 +70,7 @@ class Test3dData(unittest.TestCase):
             x = np.arange(10, 30, dtype='float32').reshape(10, 2)
 
             kwargs = {'method': method}
-            x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
+            x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d, **kwargs)
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
@@ -98,7 +98,7 @@ class Test3dData(unittest.TestCase):
                 kwargs['treat_negatives'] = True
 
             x = data[['tide_cm', 'pcp_mm']].values
-            x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
+            x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d.copy(), **kwargs)
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
@@ -277,7 +277,7 @@ class TestMultipleSources(unittest.TestCase):
                               x_transformation = x_trans,
                               y_transformation = y_trans,
                               verbosity=0,
-                              val_fraction=0.0, test_fraction=0.0)
+                              val_fraction=0.0, train_fraction=1.0)
 
                 model.fit(data=df)
                 t,p = model.predict(data='training', return_true=True, process_results=False)
@@ -293,7 +293,7 @@ class TestMultipleSources(unittest.TestCase):
 
                 model2 = Model(model="RandomForestRegressor",
                                verbosity=0,
-                               val_fraction=0.0, test_fraction=0.0,)
+                               val_fraction=0.0, train_fraction=1.0,)
                 model2.fit(data=df2)
                 t2, p2 = model2.predict(data='training', return_true=True, process_results=False)
                 _t2 = log_t.inverse_transform(t2)

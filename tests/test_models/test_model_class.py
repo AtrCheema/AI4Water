@@ -14,16 +14,16 @@ else:
 from ai4water.datasets import busan_beach, MtropicsLaos
 
 from ai4water.functional import Model as FModel
-from ai4water.preprocessing.datahandler import DataHandler
+from ai4water.preprocessing import DataSet
 
 
 data = busan_beach()
-dh = DataHandler(data=data, verbosity=0)
+dh = DataSet(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
 
 laos = MtropicsLaos()
 data_cls = laos.make_classification(lookback_steps=2)
-dh_cls = DataHandler(data=data_cls, verbosity=0)
+dh_cls = DataSet(data=data_cls, verbosity=0)
 x_cls, y_cls = dh_cls.training_data()
 
 
@@ -109,7 +109,7 @@ class TestPredictMethod(unittest.TestCase):
 
     def test_ml_inbuilt_data(self):
         _test_ml_inbuilt_data_reg(Model)
-        _test_ml_inbuilt_data_cls(Model)
+        #_test_ml_inbuilt_data_cls(Model)
         return
 
     def test_ml_inbuilt_data_fn(self):
@@ -178,7 +178,7 @@ class TestFit(unittest.TestCase):
         time.sleep(1)
         model = FModel(
             model={"layers": {"Dense": 1}},
-            lookback=1,
+            ts_args={'lookback':1},
             input_features=data.columns.tolist()[0:-1],
             output_features=data.columns.tolist()[-1:],
             verbosity=0,
@@ -207,7 +207,8 @@ class TestCustomModel(unittest.TestCase):
     """for custom models, user has to tell lookback and loss"""
     def test_uninitiated(self):
 
-        model = Model(model=MyRF, lookback=1, verbosity=0, mode="regression")
+        model = Model(model=MyRF,
+                      ts_args={'lookback':1}, verbosity=0, mode="regression")
         model.fit(data=data)
         test_user_defined_data(model, x_reg, y_reg)
         model.evaluate()
@@ -215,7 +216,7 @@ class TestCustomModel(unittest.TestCase):
 
     def test_uninitiated_with_kwargs(self):
         model = Model(model={MyRF: {"n_estimators": 10}},
-                      lookback=1,
+                      ts_args={'lookback': 1},
                       verbosity=0,
                       mode="regression")
         model.fit(data=data)

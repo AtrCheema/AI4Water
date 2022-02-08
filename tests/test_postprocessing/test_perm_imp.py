@@ -37,6 +37,7 @@ class TestPermImportance(unittest.TestCase):
             }},
             input_features=beach_data.columns.tolist()[0:-1],
             output_features=beach_data.columns.tolist()[-1:],
+            ts_args={"lookback": 5},
             verbosity=0
         )
 
@@ -110,7 +111,7 @@ class TestPermImportance(unittest.TestCase):
             "Dense_0": {"config": 8,
                         "inputs": "Concat"},
             "Dense_1": 1}},
-            lookback=1,
+            ts_args={'lookback':1},
             verbosity=0
         )
         x1 = np.random.random((100, 5))

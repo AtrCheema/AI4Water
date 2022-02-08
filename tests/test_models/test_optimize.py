@@ -4,7 +4,7 @@ import time
 import unittest
 
 from ai4water import Model
-from ai4water.preprocessing import DataHandler
+from ai4water.preprocessing import DataSet
 from ai4water.datasets import busan_beach
 from ai4water._optimize import make_space
 from ai4water.utils.utils import process_config_dict
@@ -139,8 +139,9 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
         model = Model(model=self.config,
                       verbosity=0)
-        x, y = DataHandler(data.values).training_data()
-        optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)), process_results=False)
+        x, y = DataSet(data.values).training_data()
+        optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)),
+                                                   process_results=False)
 
         # make sure that model's config has been updated
         for k, v in optimizer.best_paras().items():
@@ -153,7 +154,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         model = Model(model=self.config,
                       cross_validator={"KFold": {'n_splits': 5}},
                       verbosity=0)
-        x, y = DataHandler(data.values).training_data()
+        x, y = DataSet(data.values).training_data()
         optimizer = model.optimize_hyperparameters(
             algorithm="random",
             data=(x, y.reshape(-1, 1)), num_iterations=4)
@@ -351,6 +352,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
                       verbosity=0,
                       input_features=input_features,
                       output_features=output_features,
+                      ts_args = {"lookback": 15},
                       epochs=5)
 
         print(model.path, 'model.path')
@@ -377,7 +379,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
 
         model = Model(model=m_conf,
-                      lookback=Integer(3, 10, num_samples=10),
+                      ts_args={'lookback':Integer(3, 10, num_samples=10)},
                       input_features=input_features,
                       output_features=output_features,
                       verbosity=0,
@@ -389,7 +391,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
             num_iterations=5,
             process_results=False)
         assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
-        assert model.config['lookback'] == optimizer.best_paras()['lookback']
+        assert model.config['ts_args']['lookback'] == optimizer.best_paras()['lookback']
         return
 
 

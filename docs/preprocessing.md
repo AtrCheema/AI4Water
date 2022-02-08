@@ -1,11 +1,13 @@
 
 The preprocessing sub-module contains classes which handlers preparation of input data.
-The fundamental class is the `DataHandler` class.
+The fundamental class is the `DataSet` class which prepares data from a single data
+source. If you hvae multiple data sources then you can either use `DataSetUnion`
+or `DataSetPipeline` class.
 It can take a data in a variety of commonly found formats such as csv, xlsx and 
 prepares the data so that it can be fed to `Model` for training. This class
 works with modules such as `Imputation`, `Transformation` etc.
 
-# [DataHandler](preprocessing/datahandler.md)
+# [DataSet](preprocessing/datahandler.md)
 
 # [Imputation](preprocessing/imputation.md)
 

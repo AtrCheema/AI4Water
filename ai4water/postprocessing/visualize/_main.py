@@ -125,9 +125,7 @@ class Visualize(Plots):
             os.makedirs(self.vis_path)
 
         Plots.__init__(self,
-                       self.vis_path,
-                       model.mode,
-                       model.category,
+                       path=self.vis_path,
                        config=model.config)
 
     def __call__(

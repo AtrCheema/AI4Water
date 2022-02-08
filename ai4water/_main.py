@@ -13,7 +13,7 @@ try:
 except ModuleNotFoundError:
     h5py = None
 
-import joblib
+import joblib  # since sklearn is required, this will automatically come in
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
@@ -32,7 +32,8 @@ from ai4water.utils.utils import maybe_three_outputs, get_version_info
 from ai4water.models.tensorflow.custom_training import train_step, test_step
 from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
-from ai4water.preprocessing.datahandler import DataHandler, SiteDistributedDataHandler
+from ai4water.preprocessing import DataSet
+from ai4water.preprocessing.dataset._main import _DataSet
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
 
@@ -210,7 +211,7 @@ class BaseModel(NN):
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
             kwargs :
-                keyword arguments for [`DataHandler`][ai4water.preprocessing.datahandler.DataHandler.__init__] class
+                keyword arguments for [`DataSet`][ai4water.preprocessing.DataSet.__init__] class
 
         Note
         -----
@@ -361,8 +362,11 @@ class BaseModel(NN):
     @property
     def forecast_len(self):
         if hasattr(self, 'dh_'):
-            return self.dh_.forecast_len
-        return self.config['forecast_len']
+            if isinstance(self.dh_, DataSet):
+                return self.dh_.ts_args['forecast_len']
+            else:
+                return {k: v['forecast_len'] for k, v in self.dh_.ts_args.items()}
+        return self.config['ts_args']['forecast_len']
 
     @property
     def val_metric(self):
@@ -373,8 +377,8 @@ class BaseModel(NN):
     @property
     def forecast_step(self):
         if hasattr(self, 'dh_'):
-            return self.dh_.forecast_step
-        return self.config['forecast_step']
+            return self.dh_.ts_args['forecast_step']
+        return self.config['ts_args']['forecast_step']
 
     @property
     def is_binary(self):
@@ -888,7 +892,7 @@ class BaseModel(NN):
             self,
             x=None,
             y=None,
-            data: Union[np.ndarray, pd.DataFrame, "DataHandler", str] = 'training',
+            data: Union[np.ndarray, pd.DataFrame, "DataSet", str] = 'training',
             callbacks: Union[list, dict] = None,
             **kwargs
     ):
@@ -902,9 +906,9 @@ class BaseModel(NN):
                 Correct labels/observations/true data corresponding to 'x'.
             data :
                 Raw data fromw which `x`,`y` pairs are prepared. This will be
-                passed to [DataHandler][ai4water.preprocessing.DataHandler].
-                It can also be an instance if [DataHandler][ai4water.preprocessing.DataHandler] or
-                [SiteDistributedDataHandler][ai4water.preprocessing.SiteDistributedDataHandler].
+                passed to [DataSet][ai4water.preprocessing.DataSet].
+                It can also be an instance if [DataSet][ai4water.preprocessing.DataSet] or
+                [DataSetPipeline][ai4water.preprocessing.DataSetPipeline].
                 It can also be name of dataset from [ai4water.datasets][ai4water.datasets.all_datasets]
             callbacks:
                 Any callback compatible with keras. If you want to log the output
@@ -964,7 +968,7 @@ class BaseModel(NN):
                 else:
                     assert model_output_shape == outputs.shape[1:], f"""
     ShapeMismatchError: Shape of model's output is {model_output_shape}
-    while the targets in prepared have shape {outputs.shape[1:]}."""
+    while the prepared targets have shape {outputs.shape[1:]}."""
 
         self.info['training_start'] = dateandtime_now()
 
@@ -978,7 +982,7 @@ class BaseModel(NN):
                 # validation_data keyword argument
                 val_x, val_y = None, None
             else:
-                # either get validation data from DataHandler or maybe the user
+                # either get validation data from DataSet or maybe the user
                 # has overwritten validation_data method, in both cases transformatins
                 # are applied inside validation data.
                 val_x, val_y = self.validation_data()
@@ -1065,7 +1069,7 @@ class BaseModel(NN):
             y:
                 output corresponding to `x`.
             data:
-                raw unprepared data which will be given to [DataHandler][ai4water.preprocessing.DataHandler]
+                raw unprepared data which will be given to [DataSet][ai4water.preprocessing.DataSet]
                 to prepare x,y from it.
             scoring:
                 performance metric to use for cross validation.
@@ -1101,7 +1105,7 @@ class BaseModel(NN):
 
         if data is None:  # prepared data is given
             from .utils.utils import TrainTestSplit
-            splitter = TrainTestSplit(x, y, test_fraction=self.config['test_fraction'])
+            splitter = TrainTestSplit(x, y, test_fraction=1.0 - self.config['train_fraction'])
             splits = splitter.KFold_splits(**cross_validator_args)
 
         else: # we need to prepare data first as x,y
@@ -1109,7 +1113,7 @@ class BaseModel(NN):
             if callable(cross_validator):
                 splits = cross_validator(**cross_validator_args)
             else:
-                dh = DataHandler(data=data, **self.data_config)
+                dh = DataSet(data=data, **self.data_config)
                 setattr(self, 'dh_', dh)
                 splits = getattr(self.dh_, f'{cross_validator}_splits')(**cross_validator_args)
 
@@ -1245,7 +1249,7 @@ class BaseModel(NN):
             y:
                 outputs/true data corresponding to `x`
             data:
-                Raw unprepared data which will be fed to [DataHandler][ai4water.preprocessing.DataHandler]
+                Raw unprepared data which will be fed to [DataSet][ai4water.preprocessing.DataSet]
                 to prepare x and y. If it is is a string then it will determine,
                 which data type to use. Allowed string values are `training`, `test` and
                 `validation`. If `x` and `y` are given, this argument will have no meaning.
@@ -1357,7 +1361,7 @@ class BaseModel(NN):
             self,
             x=None,
             y=None,
-            data: Union[str, pd.DataFrame, np.ndarray, DataHandler] = 'test',
+            data: Union[str, pd.DataFrame, np.ndarray, DataSet] = 'test',
             process_results: bool = True,
             metrics: str = "minimal",
             return_true: bool = False,
@@ -1380,7 +1384,7 @@ class BaseModel(NN):
                     - `validation`.
                 By default, `test` data is used for predictions.
                 It can also be unprepared/raw data which will be given to
-                [DataHandler][ai4water.preprocessing.DataHandler]
+                [DataSet][ai4water.preprocessing.DataSet]
                 to prepare x,y values.
 
             process_results: bool
@@ -1466,7 +1470,8 @@ class BaseModel(NN):
         dt_index = np.arange(len(true_outputs))  # dummy/default index when data is user defined
 
         if not user_defined_data:
-            true_outputs, dt_index = self.dh_.deindexify(true_outputs, key=transformation_key)
+            dt_index = self.dh_.indexes[transformation_key]
+            #true_outputs, dt_index = self.dh_.deindexify(true_outputs, key=transformation_key)
 
         if isinstance(true_outputs, np.ndarray) and true_outputs.dtype.name == 'object':
             true_outputs = true_outputs.astype(predicted.dtype)
@@ -1970,7 +1975,7 @@ class BaseModel(NN):
         if isinstance(data, list) or isinstance(data, tuple):
             pass
         else:
-            setattr(self, 'dh_', DataHandler(data, **self.data_config))
+            setattr(self, 'dh_', DataSet(data, **self.data_config))
 
         _optimizer = OptimizeHyperparameters(
             self,
@@ -1992,6 +1997,11 @@ class BaseModel(NN):
             new_other_config = update_model_config(self._original_model_config['other'],
                                                    _optimizer.best_paras())
             self.config.update(new_other_config)
+
+            # if ts_args are optimized, update them as well
+            for k,v in _optimizer.best_paras().items():
+                if k in self.config['ts_args']:
+                    self.config['ts_args'][k] = v
 
         return _optimizer
 
@@ -2078,7 +2088,7 @@ class BaseModel(NN):
         from ._optimize import OptimizeTransformations  # optimize_transformations
         from .preprocessing.transformations.utils import InvalidTransformation
 
-        setattr(self, 'dh_', DataHandler(data=data, **self.data_config))
+        setattr(self, 'dh_', DataSet(data=data, **self.data_config))
 
         allowed_transforamtions = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
                       "quantile", "robust", "log", "log2", "log10", "sqrt", "none",
@@ -2297,22 +2307,22 @@ class BaseModel(NN):
 
         return y
 
-    def training_data(self, x=None, y=None, data='training', key=None)->tuple:
+    def training_data(self, x=None, y=None, data='training', key='train')->tuple:
         #x,y are not used but only given to be used if user overwrites this method
         return self.__fetch('training', data,key)
 
-    def validation_data(self, x=None, y=None, data='validation', key=None, **kwargs)->tuple:
+    def validation_data(self, x=None, y=None, data='validation', key="val", **kwargs)->tuple:
         """This method should return x,y pairs of validation data"""
-        return self.__fetch('validation', data,key)
+        return self.__fetch('validation', data, key)
 
-    def test_data(self, x=None, y=None, data='test', key=None)->tuple:
+    def test_data(self, x=None, y=None, data='test', key="test")->tuple:
         """This method should return x,y pairs of validation data"""
-        return self.__fetch('test', data,key)
+        return self.__fetch('test', data, key)
 
     def __fetch(self, source, data=None, key=None):
         """if data is string, then it must either be `trianing`, `validation` or
         `test` or name of a valid dataset. Otherwise data is supposed to be raw
-        data which will be given to DataHandler
+        data which will be given to DataSet
         """
         if isinstance(data, str):
             if data in ['training', 'test', 'validation']:
@@ -2324,11 +2334,11 @@ class BaseModel(NN):
                     You must specify the data either using 'x' or 'data' keywords.""")
             else:
                 # e.g. 'CAMELS_AUS'
-                dh = DataHandler(data=data, **self.data_config)
+                dh = DataSet(data=data, **self.data_config)
                 setattr(self, 'dh_', dh)
                 data = getattr(dh, f'{source}_data')(key=key)
         else:
-            dh = DataHandler(data=data, **self.data_config)
+            dh = DataSet(data=data, **self.data_config)
             setattr(self, 'dh_', dh)
             data = getattr(dh, f'{source}_data')(key=key)
 
@@ -2339,7 +2349,7 @@ class BaseModel(NN):
     def _fetch_data(self, source:str, x=None, y=None, data=None):
         """The main idea is that the user should be able to fully customize
         training/test data by overwriting training_data and test_data methods.
-        However, if x is given or data is DataHandler then the training_data/test_data
+        However, if x is given or data is DataSet then the training_data/test_data
         methods of this(Model) class will not be called."""
         user_defined_x = True
         prefix = f'{source}_{dateandtime_now()}'
@@ -2349,8 +2359,8 @@ class BaseModel(NN):
             user_defined_x = False
             key=f"5_{source}"
 
-            # the user has provided DataHandler from which training/test data needs to be extracted
-            if isinstance(data, DataHandler) or isinstance(data, SiteDistributedDataHandler):
+            # the user has provided DataSet from which training/test data needs to be extracted
+            if isinstance(data, _DataSet):
                 setattr(self, 'dh_', data)
                 data = getattr(data, f'{source}_data')(key=key)
 

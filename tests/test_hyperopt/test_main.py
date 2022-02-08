@@ -51,7 +51,7 @@ def objective_func(**suggestion):
     model = Model(
         model={"XGBRegressor": suggestion},
         prefix=f'test_{"bayes"}_xgboost',
-        train_data='random',
+        split_random=True,
         verbosity=0)
 
     model.fit(data=data)
@@ -105,7 +105,7 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
             output_features=outputs,
             model={"XGBRegressor": suggestion},
             prefix=f'test_{algorithm}_xgboost_{backend}',
-            train_data='random',
+            split_random=True,
             verbosity=0)
 
         model.fit(data=data)
@@ -213,7 +213,10 @@ class TestHyperOpt(unittest.TestCase):
     def test_bayes(self):
         # testing for sklearn-based model with gp_min
         # https://scikit-optimize.github.io/stable/modules/generated/skopt.BayesSearchCV.html
-        X, y = load_iris(True)
+        if int(sklearn.__version__.split('.')[0])>=1:
+            X, y = load_iris(return_X_y=True)
+        else:
+            X, y = load_iris(True)
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.75, random_state=0)
         if int(''.join(sklearn.__version__.split('.')[1])) > 22:
             # https://github.com/scikit-optimize/scikit-optimize/issues/978
@@ -297,21 +300,20 @@ class TestHyperOpt(unittest.TestCase):
             model = Model(
                 input_features=inputs,
                 output_features=outputs,
-                lookback=1,
+                #lookback=1,
                 batches="2d",
-                val_data="same",
-                test_fraction=0.3,
+                #val_data="same",
+                #test_fraction=0.3,
                 val_fraction=0.0,
                 model={"XGBRegressor": kwargs},
                 prefix='testing',
-                train_data='random',
+                split_random=True,
                 verbosity=0)
 
             model.fit(data=data)
 
             t, p = model.predict(return_true=True, process_results=False)
             mse = RegressionMetrics(t, p).mse()
-            #print(f"Validation mse {mse}")
 
             return mse
 
@@ -368,7 +370,8 @@ class TestHyperOpt(unittest.TestCase):
             'y': hp.uniform('y', -6, 6)
         }
 
-        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space, backend='hyperopt',
+        optimizer = HyperOpt('tpe', objective_fn=objective, param_space=space,
+                             backend='hyperopt',
                              max_evals=100,
                              verbosity=0
                              )
@@ -402,7 +405,7 @@ class TestHyperOpt(unittest.TestCase):
                 output_features=outputs,
                 model={"XGBRegressor": suggestion},
                 prefix='test_tpe_xgboost',
-                train_data='random',
+                split_random=True,
                 verbosity=0)
 
             model.fit(data=data)

@@ -230,8 +230,13 @@ def check_kwargs(**kwargs):
             if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
                 kwargs["batches"] = "2d"
 
-            if "lookback" not in kwargs:
-                kwargs["lookback"] = 1
+            if "ts_args" not in kwargs:
+                kwargs["ts_args"] = {'lookback': 1,
+                                     'forecast_len': 1,
+                                     'forecast_step': 0,
+                                     'known_future_inputs': False,
+                                     'input_steps': 1,
+                                     'output_steps': 1}
     else:
         is_custom_model = False
         model_name = None
@@ -358,23 +363,16 @@ def _make_model(**kwargs):
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'mode': {'type': str, 'default': None, 'lower': None, 'upper': None,
                  'between': ["regression", "classification"]},
-        # how many future values we want to predict
-        'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # The term lookback has been adopted from Francois Chollet's
-        # "deep learning with keras" book. This means how many
-        # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
-        # for any non timeseries forecasting related problems.
-        'lookback':          {"type": int,   "default": 15, 'lower': 1, 'upper': None, 'between': None},
         'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
-        'train_data': {'type': None, 'default': None, 'lower': None, 'upper': None, 'between': None},
+        'split_random': {'type': bool, 'default': False, 'between': [True, False]},
         # fraction of data to be used for validation
         'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
         # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
         # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
         # If this is not string and not None, this will overwite `val_fraction`
-        'val_data':          {"type": None,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
+        'indices':          {"type": dict,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
         # fraction of data to be used for test
-        'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
+        'train_fraction':     {"type": float, "default": 0.7, 'lower': None, 'upper': None, 'between': None},
         # write the data/batches as hdf5 file
         'save':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
@@ -383,12 +381,6 @@ def _make_model(**kwargs):
 
         # for reproducability
         'seed':              {"type": None, "default": 313, 'lower': None, 'upper': None, 'between': None},
-        # how many steps ahead we want to predict
-        'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},
-        # step size of input data
-        'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # whether to use future input data for multi horizon prediction or not
-        'known_future_inputs': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
         # input features in data_frame
         'input_features':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
@@ -402,7 +394,13 @@ def _make_model(**kwargs):
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
         'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
-        'dataset_args': {'type': dict, 'default': {}}
+        'dataset_args': {'type': dict, 'default': {}},
+        'ts_args': {"type": dict, "default": {'lookback': 1,
+                                              'forecast_len': 1,
+                                              'forecast_step': 0,
+                                              'known_future_inputs': False,
+                                              'input_steps': 1,
+                                              'output_steps': 1}}
     }
 
     model_config = {key: val['default'] for key, val in model_args.items()}
@@ -428,6 +426,10 @@ def _make_model(**kwargs):
 
         if key == 'model':
             val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
+            opt_paras.update(_opt_paras)
+
+        if key == 'ts_args':
+            val, _opt_paras = find_opt_paras_from_ts_args(val)
             opt_paras.update(_opt_paras)
 
         if arg_name in model_config:
@@ -524,6 +526,27 @@ def deepcopy_dict_without_clone(d: dict) -> dict:
             new_d[k] = copy.copy(v)
     return new_d
 
+
+def find_opt_paras_from_ts_args(ts_args:dict)->tuple:
+    opt_paras = {}
+    new_ts_args = {'lookback': 15,
+                   'forecast_len': 1,
+                   'forecast_step': 0,
+                   'known_future_inputs': False,
+                   'input_steps': 1,
+                   'output_steps': 1}
+    new_ts_args.update(ts_args)
+
+    for k,v in ts_args.items():
+
+        if v.__class__.__name__ in ['Integer', 'Real', 'Categorical']:
+            if v.name is None or v.name.startswith("integer_") or v.name.startswith("real_"):
+                v.name = k
+            opt_paras[k] = v
+            v = v.rvs(1)[0]
+            new_ts_args[k] = v
+
+    return new_ts_args, opt_paras
 
 def find_opt_paras_from_model_config(
         config: Union[dict, str, None]
@@ -963,7 +986,7 @@ class TrainTestSplit(object):
                 assert isinstance(d, np.ndarray)
                 _data.append(d[indices])
         else:
-            assert isinstance(array, np.ndarray)
+            assert isinstance(array, np.ndarray) or isinstance(array, pd.DatetimeIndex)
             _data = array[indices]
         return _data
 
@@ -1096,7 +1119,7 @@ data must be 1 dimensional array but it has shape {np.shape(data)}
 
 def prepare_data(
         data: np.ndarray,
-        lookback_steps: int,
+        lookback: int,
         num_inputs: int = None,
         num_outputs: int = None,
         input_steps: int = 1,
@@ -1115,7 +1138,7 @@ def prepare_data(
             of examples and the second dimension represents the number of features.
             Some of those features will be used as inputs and some will be considered
             as outputs depending upon the values of `num_inputs` and `num_outputs`.
-        lookback_steps:
+        lookback:
             number of previous steps/values to be used at one step.
         num_inputs:
             default None, number of input features in data. If None,
@@ -1274,13 +1297,13 @@ def prepare_data(
     | 27 | 37 | 47 |
 
     This means we make use of 'known future inputs'. This can be achieved using following configuration
-    num_inputs=2, num_outputs=3, lookback_steps=4, forecast_len=3, forecast_step=1, known_future_inputs=True
+    num_inputs=2, num_outputs=3, lookback=4, forecast_len=3, forecast_step=1, known_future_inputs=True
 
     The general shape of output/target/label is
     (examples, num_outputs, forecast_len)
 
     The general shape of inputs/x is
-    (examples, lookback_steps+forecast_len-1, ....num_inputs)
+    (examples, lookback + forecast_len-1, ....num_inputs)
 
     ----------
     Example:
@@ -1299,7 +1322,7 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
         ...    input_steps=2, forecast_step=2, forecast_len=4)
         >>>x[0]
         array([[  0.,  50., 100.],
@@ -1310,7 +1333,7 @@ def prepare_data(
         array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
         ...    forecast_len=3, known_future_inputs=True)
         >>>x[0]
         array([[  0,  50, 100],
@@ -1320,7 +1343,7 @@ def prepare_data(
                [  4,  54, 104],
                [  5,  55, 105],
                [  6,  56, 106]])       # (7, 3)
-        >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
+        >>># it is import to note that although lookback=4 but x[0] has shape of 7
         >>>y[0]
 
         array([[154., 155., 156.],
@@ -1350,9 +1373,9 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     if len(data) <= 1:
         raise ValueError(f"Can not create batches from data with shape {data.shape}")
 
-    time_steps = lookback_steps
+    time_steps = lookback
     if known_future_inputs:
-        lookback_steps = lookback_steps + forecast_len
+        lookback = lookback + forecast_len
         assert forecast_len > 1, f"""
             known_futre_inputs should be True only when making predictions at multiple 
             horizons i.e. when forecast length/number of horizons to predict is > 1.
@@ -1365,11 +1388,11 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     prev_y = []
     y = []
 
-    for i in range(examples - lookback_steps * input_steps + 1 - forecast_step - forecast_len + 1):
-        stx, enx = i, i + lookback_steps * input_steps
+    for i in range(examples - lookback * input_steps + 1 - forecast_step - forecast_len + 1):
+        stx, enx = i, i + lookback * input_steps
         x_example = data[stx:enx:input_steps, 0:features - num_outputs]
 
-        st, en = i, i + (lookback_steps - 1) * input_steps
+        st, en = i, i + (lookback - 1) * input_steps
         y_data = data[st:en:input_steps, features - num_outputs:]
 
         sty = (i + time_steps * input_steps) + forecast_step - input_steps

@@ -1,5 +1,5 @@
 **`DataHanlder`**
-::: ai4water.preprocessing.DataHandler
+::: ai4water.preprocessing.DataSet
     handler: python
     selection:
         members:
@@ -14,11 +14,25 @@
             - plot_KFold_splits
             - plot_LeaveOneOut_splits
             - plot_TimeSeriesSplit_splits
+            - from_h5
+            - to_disk
     rendering:
         show_root_heading: true
 
-**`SiteDistributedDataHandler`**
-::: ai4water.preprocessing.SiteDistributedDataHandler
+**`DataSetUnion`**
+::: ai4water.preprocessing.DataSetUnion
+    handler: python
+    selection:
+        members:
+            - __init__
+            - training_data
+            - validation_data
+            - test_data
+    rendering:
+        show_root_heading: true
+
+**`DataSetPipeline`**
+::: ai4water.preprocessing.DataSetPileline
     handler: python
     selection:
         members:

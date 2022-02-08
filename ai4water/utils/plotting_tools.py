@@ -13,11 +13,9 @@ import matplotlib.pyplot as plt
 class Plots(object):
     # TODO initialte this class with at least path
 
-    def __init__(self, path, problem, category, config, model=None):
+    def __init__(self, config, path=None, model=None):
 
         self.path = path or os.path.join(os.getcwd(), "results")
-        self.problem = problem
-        self.category = category
         self.ml_model = model
         self.config = config
 
@@ -41,7 +39,8 @@ class Plots(object):
     def out_cols(self):
         return self.config['output_features']
 
-    def _imshow_3d(self, activation,
+    def _imshow_3d(self,
+                   activation,
                    lyr_name,
                    xticklabels=None,
                    save=True,

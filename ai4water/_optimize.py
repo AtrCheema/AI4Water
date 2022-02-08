@@ -67,7 +67,7 @@ class ModelOptimizerMixIn(object):
             if cross_validator is None:
 
                 if self.xy:  # todo, it is better to split data outside objective_fn
-                    splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
+                    splitter = TrainTestSplit(*self.data, test_fraction=1.0 - config['train_fraction'])
                     train_x, test_x, train_y, test_y = splitter.split_by_slicing()
                     _model.fit(x=train_x, y=train_y)
                     p = _model.predict(test_x)

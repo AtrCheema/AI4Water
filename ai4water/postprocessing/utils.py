@@ -347,10 +347,12 @@ class ProcessResults(Plot):
 
             out_cols = self.output_features
             if isinstance(out_cols, dict):
-                if len(out_cols)>1:
+                _out_cols = []
+                for cols in out_cols.values():
+                    _out_cols = _out_cols + cols
+                out_cols = _out_cols
+                if len(out_cols)>1 and not isinstance(predicted, np.ndarray):
                     raise NotImplementedError("can not process results with more than 1 output arrays")
-                else:
-                    out_cols = list(out_cols.values())[0]
 
         for idx, out in enumerate(out_cols):
 

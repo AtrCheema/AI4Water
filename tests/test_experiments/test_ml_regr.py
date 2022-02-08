@@ -15,8 +15,8 @@ from ai4water.hyperopt import Categorical, Integer, Real
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
 
 
-input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm', 'pcp12_mm',
-                  'air_p_hpa']
+input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm',
+                  'pcp3_mm', 'pcp12_mm', 'air_p_hpa']
 # column in dataframe to bse used as output/target
 outputs = ['blaTEM_coppml']
 
@@ -29,14 +29,17 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(
             input_features=input_features, output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'}, 'features': input_features},
+            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'},
+                        'features': input_features},
             verbosity=0
         )
         exclude = []
 
         comparisons.fit(data=df, run_type="dry_run", exclude=exclude)
         comparisons.compare_errors('r2', show=False)
-        best_models = comparisons.compare_errors('r2', cutoff_type='greater', cutoff_val=0.01, show=False)
+        best_models = comparisons.compare_errors('r2', cutoff_type='greater',
+                                                 cutoff_val=0.01, show=False)
+        comparisons.taylor_plot(show=False)
         self.assertGreater(len(best_models), 1), len(best_models)
         return
 
@@ -50,7 +53,8 @@ class TestExperiments(unittest.TestCase):
 
         comparisons = MLRegressionExperiments(
             input_features=input_features, output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
+            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'},
+                        'features': input_features},
             exp_name="BestMLModels",
         verbosity=0)
         comparisons.num_samples = 2
@@ -66,7 +70,8 @@ class TestExperiments(unittest.TestCase):
         comparisons = MLRegressionExperiments(
             input_features=input_features,
             output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'}, 'features': input_features},
+            nan_filler={'method': 'SimpleImputer', 'imputer_args':  {'strategy': 'mean'},
+                        'features': input_features},
             cross_validator = {"KFold": {"n_splits": 5}},
             exp_name="MLRegrCrossVal",
         verbosity=0)
@@ -78,8 +83,10 @@ class TestExperiments(unittest.TestCase):
         comparisons.compare_errors('r2', show=False)
         comparisons.taylor_plot(show=False)
         comparisons.plot_cv_scores(show=False)
-        comparisons.taylor_plot(show=False, include=['GaussianProcessRegressor', 'XGBRFRegressor'])
-        comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor', 'XGBRFRegressor'])
+        comparisons.taylor_plot(show=False, include=['GaussianProcessRegressor',
+                                                     'XGBRFRegressor'])
+        comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor',
+                                                        'XGBRFRegressor'])
         return
 
     def test_from_config(self):
@@ -87,7 +94,8 @@ class TestExperiments(unittest.TestCase):
         exp = MLRegressionExperiments(
             input_features=input_features,
             output_features=outputs,
-            nan_filler={'method': 'SimpleImputer', 'features': input_features, 'imputer_args': {'strategy': 'mean'}},
+            nan_filler={'method': 'SimpleImputer', 'features': input_features,
+                        'imputer_args': {'strategy': 'mean'}},
             exp_name=f"BestMLModels_{dateandtime_now()}",
         verbosity=0)
         exp.fit(data=df,
@@ -116,7 +124,7 @@ class TestExperiments(unittest.TestCase):
 
                 return {
                     'model': {'layers': _layers},
-                    'lookback': int(kwargs['lookback']),
+                    'ts_args': {'lookback': int(kwargs['lookback'])},
                     'batch_size': int(kwargs['batch_size']),
                     'lr': float(kwargs['lr']),
                     'x_transformation': kwargs['transformation']
@@ -141,7 +149,8 @@ class TestExperiments(unittest.TestCase):
                                                  verbosity=0,
                                                  exp_name = f"testing_{dateandtime_now()}")
         experiment.num_samples = 2
-        experiment.fit(data = df, run_type='optimize', opt_method='random', num_iterations=2)
+        experiment.fit(data = df, run_type='optimize', opt_method='random',
+                       num_iterations=2)
         return
 
     def test_fit_with_tpot(self):
@@ -157,7 +166,8 @@ class TestExperiments(unittest.TestCase):
             "RandomForestRegressor",
             "GradientBoostingRegressor"])
 
-        exp.fit_with_tpot( data=busan_beach(), models=2, generations=1, population_size=1)
+        exp.fit_with_tpot( data=busan_beach(), models=2, generations=1,
+                           population_size=1)
         return
 
     def test_fit_with_tpot1(self):

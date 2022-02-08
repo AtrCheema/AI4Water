@@ -55,7 +55,7 @@ class NN(AttributeStore):
 
         self.config = config
 
-        self.lookback = self.config['lookback']
+        self.lookback = self.config['ts_args']['lookback']
         AttributeStore.__init__(self)
 
     @property

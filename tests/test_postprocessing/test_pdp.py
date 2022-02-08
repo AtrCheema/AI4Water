@@ -18,8 +18,10 @@ def test_plot_1d_plots(pdp):
     pdp.plot_1d("tide_cm", show_dist_as="grid", show=False)
     pdp.plot_1d("tide_cm", show_dist=False, show=False)
     pdp.plot_1d("tide_cm", show_dist=False, ice=False, show=False)
-    pdp.plot_1d("tide_cm", show_dist=False, ice=False, model_expected_value=True, show=False)
-    pdp.plot_1d("tide_cm", show_dist=False, ice=False, feature_expected_value=True, show=False)
+    pdp.plot_1d("tide_cm", show_dist=False, ice=False, model_expected_value=True,
+                show=False)
+    pdp.plot_1d("tide_cm", show_dist=False, ice=False, feature_expected_value=True,
+                show=False)
 
     return
 
@@ -33,7 +35,8 @@ class TestPDP(unittest.TestCase):
         model.fit(data=data)
         x, _ = model.training_data()
 
-        pdp = PartialDependencePlot(model.predict, x, model.input_features, num_points=14)
+        pdp = PartialDependencePlot(model.predict, x, model.input_features,
+                                    num_points=14)
 
         test_plot_1d_plots(pdp)
 
@@ -42,7 +45,7 @@ class TestPDP(unittest.TestCase):
     def test_3d_single_input(self):
         time.sleep(1)
         model = Model(model={"layers": {"LSTM": 32, "Dense": 1}},
-                      lookback=4,
+                      ts_args={'lookback':4},
                       input_features=input_features,
                       output_features=output_features,
                       verbosity=0,
@@ -52,7 +55,8 @@ class TestPDP(unittest.TestCase):
 
         x, _ = model.training_data()
 
-        pdp = PartialDependencePlot(model.predict, x, model.input_features, verbose=0, num_points=14)
+        pdp = PartialDependencePlot(model.predict, x, model.input_features, verbose=0,
+                                    num_points=14)
         test_plot_1d_plots(pdp)
         return
 
@@ -64,7 +68,8 @@ class TestPDP(unittest.TestCase):
                                              'rel_hum']))
         x, _ = model.training_data()
 
-        pdp = PartialDependencePlot(model.predict, x, model.input_features, num_points=14)
+        pdp = PartialDependencePlot(model.predict, x, model.input_features,
+                                    num_points=14)
 
         pdp.nd_interactions(show_dist=True, show=False)
 

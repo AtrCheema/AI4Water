@@ -27,27 +27,27 @@ class TestML(unittest.TestCase):
     def test_xgboost(self):
 
         p = get_model("XGBRegressor")
-        assert p.sum() == 130264.75
+        assert np.allclose(p.sum(), 85075350.0), p.sum()
 
         return
 
     def test_catboost(self):
 
         p = get_model("CatBoostRegressor")
-        assert p.sum() == 2985922.097779183
+        assert np.allclose(p.sum(), 118372625.26412539), p.sum()
 
         return
 
     def test_lgbm(self):
         p = get_model("LGBMRegressor")
-        assert p.sum() == 40543045.42882621
+        assert np.allclose(p.sum(), 276302360.69196635), p.sum()
 
         return
 
     def test_rf(self):
 
         p = get_model("RandomForestRegressor")
-        assert p.sum() == 2706155.5142797576
+        assert np.allclose(p.sum(), 51240889.60922757), p.sum()
 
         return
 
@@ -56,7 +56,7 @@ class TestML(unittest.TestCase):
         p = get_model("RandomForestRegressor",
                       x_transformation="minmax",
                       y_transformation="log")
-        assert np.allclose(p.sum(), 16408591.259831328)
+        assert np.allclose(p.sum(), 19376295.67998046), p.sum()
 
         return
 
@@ -154,7 +154,7 @@ class TestML(unittest.TestCase):
                 "replace_zeros": True
             }
         ])
-        assert np.allclose(p.sum(), 2660953.2773243794), p.sum()
+        assert np.allclose(p.sum(), 5953105.679834714), p.sum()
 
         return
 
