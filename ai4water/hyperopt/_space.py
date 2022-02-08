@@ -33,11 +33,20 @@ class _Ellipsis:
     def __repr__(self):
         return '...'
 
-class Counter:
-    counter = 0  # todo, not upto the mark
+
+class Dummy:
+    def __init__(self, low=None, high=None, *args, **kwargs):
+        self.low = low
+        self.high = high
 
 
-class Real(_Real, Counter):
+if _Real is None:
+    class _Real(Dummy): pass
+    class _Integer(Dummy): pass
+    class _Categorical(Dummy): pass
+
+
+class Real(_Real):
     """
     This class is used for the parameters which have fractional values
     such as real values from 1.0 to 3.5.
@@ -61,6 +70,7 @@ class Real(_Real, Counter):
         >>>from ai4water.hyperopt import Real
         >>>lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
     """
+    counter = 0
     def __init__(self,
                  low: float = None,
                  high: float = None,
@@ -89,7 +99,8 @@ class Real(_Real, Counter):
         if 'name' not in kwargs:
             kwargs['name'] = f'real_{self.counter}'
 
-        kwargs = check_prior(kwargs)
+        if skopt is not None:
+            kwargs = check_prior(kwargs)
 
         self.num_samples = num_samples
         self.step = step
@@ -155,7 +166,7 @@ class Real(_Real, Counter):
                f" prior='{self.prior}', transform='{self.transform_}' name='{self.name}')"
 
 
-class Integer(_Integer, Counter):
+class Integer(_Integer):
     """
     This class is used when the parameter is integer such as integer values from 1 to 10.
     Extends the Real class of Skopt so that it has an attribute grid which then
@@ -179,6 +190,7 @@ class Integer(_Integer, Counter):
         >>> units = Integer(low=16, high=128, name='units')
     ```
     """
+    counter = 0
     def __init__(self,
                  low: int = None,
                  high: int = None,
@@ -213,7 +225,8 @@ class Integer(_Integer, Counter):
         self.num_samples = num_samples
         self.step = step
 
-        kwargs = check_prior(kwargs)
+        if skopt is not None:
+            kwargs = check_prior(kwargs)
 
         super().__init__(low=low, high=high, *args, **kwargs)
         self.grid = grid
