@@ -1,7 +1,12 @@
 *.csv
 *.xlsx
 *.png
-
+*.npz
+*.mat
+*.h5
+*.nc
+*.feather
+*.parquet
 *.npy
 
 *.qgz

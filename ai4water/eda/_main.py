@@ -7,7 +7,7 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from easy_mpl import bar_chart, parallel_coordinates
+from easy_mpl import bar_chart, parallel_coordinates, pie
 
 try:
     import seaborn as sns
@@ -67,16 +67,24 @@ class EDA(Plot):
     ):
         """
 
-        Arguments:
-            data : either a dataframe, or list of dataframes or a dictionary whose
+        Arguments
+        ---------
+            data : DataFrame, array, dict, list
+                either a dataframe, or list of dataframes or a dictionary whose
                 values are dataframes or a numpy array
-            in_cols : columns to consider as input features
-            out_cols : columns to consider as output features
-            path : the path where to save the figures. If not given, plots will be
+            in_cols : str, list, optional
+                columns to consider as input features
+            out_cols : str, optional
+                columns to consider as output features
+            path : str
+                the path where to save the figures. If not given, plots will be
                 saved in 'data' folder in current working directory.
-            save : whether to save the plots or not
-            show : whether to show the plots or not
-            dpi :  the resolution with which to save the image
+            save : bool, optional
+                whether to save the plots or not
+            show : bool, optional
+                whether to show the plots or not
+            dpi : int, optional
+                the resolution with which to save the image
         """
         if isinstance(data, np.ndarray):
             data = pd.DataFrame(data)
@@ -163,26 +171,44 @@ class EDA(Plot):
 
         return
 
-    def heatmap(self, cols=None, st=None, en=None, **kwargs):
+    def heatmap(self,
+                st=None,
+                en=None,
+                cols=None,
+                figsize: tuple = None,
+                **kwargs):
         """
-        Plots a heatmap which depicts missing values.
+        Plots data as heatmap which depicts missing values.
 
-        Arguments:
-            cols : columns to use to draw heatmap
-            kwargs :
-            st : starting row/index in data to be used for plotting
-            en : end row/index in data to be used for plotting
-
-        Return:
+        Arguments
+        ---------
+            st : int, str, optional
+                starting row/index in data to be used for plotting
+            en : int, str, optional
+                end row/index in data to be used for plotting
+            cols : str, list
+                columns to use to draw heatmap
+            figsize : tuple, optional
+                figure size
+            **kwargs :
+                Keyword arguments for sns.heatmap
+        Return
+        ------
             None
 
-        Example:
+        Example
+        -------
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
             >>> vis = EDA(data)
             >>> vis.heatmap()
         """
-        return self._call_method('_heatmap_df', cols=cols, st=st, en=en, **kwargs)
+        return self._call_method('_heatmap_df',
+                                 cols=cols,
+                                 st=st,
+                                 en=en,
+                                 figsize=figsize,
+                                 **kwargs)
 
     def _heatmap_df(
             self,
@@ -194,6 +220,7 @@ class EDA(Plot):
             title=None,
             title_fs=16,
             fname="",
+            figsize= None,
             **kwargs
     ):
         """
@@ -225,8 +252,7 @@ class EDA(Plot):
 
         _kwargs = {
             "xtick_labels_fs": 12,
-            "ytick_labels_fs": 20,
-            "figsize": (5 + len(cols)*0.25, 10 + len(cols)*0.1),
+            "ytick_labels_fs": 20
         }
         for k in _kwargs.keys():
             if k in kwargs:
@@ -236,7 +262,7 @@ class EDA(Plot):
         if isinstance(data.index, pd.DatetimeIndex):
             show_time_on_yaxis = True
 
-        _, axis = plt.subplots(figsize=_kwargs['figsize'])
+        _, axis = plt.subplots(figsize=figsize or (5 + len(cols)*0.25, 10 + len(cols)*0.1))
         # ax2 - Heatmap
         sns.heatmap(data[cols].isna(), cbar=False, cmap="binary", ax=axis, **kwargs)
 
@@ -387,30 +413,40 @@ class EDA(Plot):
         """
         Plots the data.
 
-        Arguments:
-            st : starting row/index in data to be used for plotting
-            en : end row/index in data to be used for plotting
-            cols : columns in data to consider for plotting
-            max_cols_in_plot : Maximum number of columns in one plot. Maximum
-                number of plots depends upon this value and number of columns
+        Arguments
+        ---------
+            st : int, str, optional
+                starting row/index in data to be used for plotting
+            en : int, str, optional
+                end row/index in data to be used for plotting
+            cols : str, list, optional
+                columns in data to consider for plotting
+            max_cols_in_plot : int, optional
+                Maximum number of columns in one plot. Maximum number of plots
+                depends upon this value and number of columns
                 in data.
-            freq : one of 'daily', 'weekly', 'monthly', 'yearly', determines
+            freq : str, optional
+                one of 'daily', 'weekly', 'monthly', 'yearly', determines
                 interval of plot of data. It is valid for only time-series data.
-            ignore_datetime_index:
+            ignore_datetime_index : bool, optional
                 only valid if dataframe's index is `pd.DateTimeIndex`. In such a case, if
                 you want to ignore time index on x-axis, set this to True.
-            kwargs : https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
+            **kwargs :
+                https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
 
-        Rreturn:
-
-        Example:
+        Example
+        -------
             >>> from ai4water.datasets import busan_beach
             >>> eda = EDA(busan_beach())
             >>> eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
             >>> eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
         ```
         """
-        return self._call_method("_plot_df", st=st, en=en, cols=cols, freq=freq,
+        return self._call_method("_plot_df",
+                                 st=st,
+                                 en=en,
+                                 cols=cols,
+                                 freq=freq,
                                  max_cols_in_plot=max_cols_in_plot,
                                  ignore_datetime_index=ignore_datetime_index,
                                  **kwargs)
@@ -549,8 +585,16 @@ class EDA(Plot):
             color=color,
         )
 
-    def _pcorrd_df(self, data, st=None, en=100, cols=None, color=None, prefix=""):
-        return
+    def _pcorrd_df(self,
+                   data,
+                   st=None,
+                   en=100,
+                   cols=None,
+                   color=None,
+                   prefix=""):
+        data = _preprocess_df(data, st, en, cols)
+        parallel_coordinates(data, cmap=color)
+        return self._save_or_show(fname=f"parallel_coord_{prefix}")
 
     def normality_test(
             self,
@@ -566,15 +610,23 @@ class EDA(Plot):
         test or Anderson-Darling test][] or Kolmogorov-Smirnov test using
         scipy.stats.shapiro or scipy.stats.anderson functions respectively.
 
-        Arguments:
-            method: either "shapiro" or "anderson", or "kolmogorov" default is "shapiro"
-            cols: columns to use
-            st: start of data
-            en: end of data to use
-            orientation: orientation of bars
-            color: color to use
+        Arguments
+        ---------
+            method :
+                either "shapiro" or "anderson", or "kolmogorov" default is "shapiro"
+            cols :
+                columns to use
+            st :
+                start of data
+            en :
+                end of data to use
+            orientation :
+                orientation of bars
+            color :
+                color to use
 
-        Example:
+        Example
+        -------
             >>> from ai4water.eda import EDA
             >>> from ai4water.datasets import busan_beach
             >>> eda = EDA(data=busan_beach())
@@ -858,8 +910,10 @@ class EDA(Plot):
             inputs :
             outputs :
             cols :
-            st : starting row/index in data to be used for plotting
-            en : end row/index in data to be used for plotting
+            st :
+                starting row/index in data to be used for plotting
+            en :
+                end row/index in data to be used for plotting
             max_subplots: int, optional
                 it can be set to large number to show all the scatter
             plots on one axis.
@@ -1048,6 +1102,7 @@ class EDA(Plot):
               out_fmt="csv",
               ):
         """Finds the stats of inputs and outputs and puts them in a json file.
+
         inputs: bool
         fpath: str, path like
         out_fmt: str, in which format to save. csv or json"""
@@ -1118,13 +1173,11 @@ class EDA(Plot):
 
     def box_plot(
             self,
-            inputs: bool = True,
-            outputs: bool = True,
             st=None,
             en=None,
+            cols: Union[list, str] = None,
             violen=False,
             normalize=True,
-            cols=None,
             figsize=(12, 8),
             max_features=8,
             show_datapoints=False,
@@ -1136,78 +1189,40 @@ class EDA(Plot):
 
         Arguments
         ---------
-            inputs :
-            outputs :
-            st : starting row/index in data to be used for plotting
-            en : end row/index in data to be used for plotting
-            normalize : If True, then each feature/column is rescaled between 0 and 1.
+            st : optional
+                starting row/index in data to be used for plotting
+            en : optional
+                end row/index in data to be used for plotting
+            cols : list,
+                the name of columns from data to be plotted.
+            normalize :
+                If True, then each feature/column is rescaled between 0 and 1.
             figsize :
-            freq : str, one of 'weekly', 'monthly', 'yearly'. If given, box plot
-                will be plotted for these intervals.
-            max_features : int, maximum number of features to appear in one plot.
-            violen : bool, if True, then violen plot will be plotted else box_whisker plot
-            cols : list, the name of columns from data to be plotted.
-            show_datapoints : if True, sns.swarmplot() will be plotted. Will be time
+                figure size
+            freq : str,
+                one of 'weekly', 'monthly', 'yearly'. If given, box plot will be
+                plotted for these intervals.
+            max_features : int,
+                maximum number of features to appear in one plot.
+            violen : bool,
+                if True, then violen plot will be plotted else box_whisker plot
+            show_datapoints : bool
+                if True, sns.swarmplot() will be plotted. Will be time
                 consuming for bigger data.
-            **kwargs : any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
+            **kwargs :
+                any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
         """
-
-        axis = None
-        data = self.data
         fname = "violen_plot_" if violen else "box_plot_"
 
-        if cols is None:
-            cols = []
-
-            if inputs:
-                cols += self.in_cols
-                fname += "inputs_"
-            if outputs:
-                cols += self.out_cols
-                fname += "outptuts_"
-        else:
-            assert isinstance(cols, list)
-
-        if isinstance(data, list):
-            for idx, d in enumerate(data):
-                if isinstance(self.in_cols, dict):
-                    cols_ = [item for sublist in list(self.in_cols.values()) for item in sublist]
-                    _cols = []
-                    for c in cols_:
-                        if c in d:
-                            cols_.append(c)
-                else:
-                    _cols = cols + [self.out_cols[idx]] if outputs else cols
-
-                self._box_plot(d, _cols, st, en, normalize, figsize, max_features,
-                               show_datapoints, freq,
-                               violen=violen,
-                               prefix=str(idx),
-                               **kwargs)
-
-        elif isinstance(data, dict):
-            for data_name, _data in data.items():
-                self._box_plot(_data,
-                               list(_data.columns),
-                               st=st,
-                               en=en,
-                               normalize=normalize,
-                               figsize=figsize,
-                               max_features=max_features,
-                               show_datapoints=show_datapoints,
-                               freq=freq,
-                               violen=violen,
-                               prefix=data_name,
-                               **kwargs)
-        else:
-            cols = cols + self.out_cols if outputs else cols
-            axis = self._box_plot(data, cols, st=st, en=en,
-                                  normalize=normalize, figsize=figsize,
-                                  max_features=max_features,
-                                  show_datapoints=show_datapoints, freq=freq,
-                                  violen=violen,
-                                  **kwargs)
-        return axis
+        return self._call_method("_box_plot",
+                                 st=st, en=en, cols=cols,
+                                 normalize=normalize,
+                                 max_features=max_features,
+                                 figsize=figsize,
+                                 show_datapoints=show_datapoints,
+                                 freq=freq,
+                                 prefix=fname,
+                                 **kwargs)
 
     def _box_plot(self,
                   data,
@@ -1222,13 +1237,11 @@ class EDA(Plot):
                   violen=False,
                   prefix='',
                   **kwargs):
-        data = data[cols]
+        data = _preprocess_df(data, st, en, cols)
         axis = None
 
         if data.shape[1] <= max_features:
             axis = self._box_plot_df(data,
-                                     st=st,
-                                     en=en,
                                      normalize=normalize,
                                      show_datapoints=show_datapoints,
                                      violen=violen,
@@ -1241,10 +1254,7 @@ class EDA(Plot):
             tot_plots = find_tot_plots(data.shape[1], max_features)
             for i in range(len(tot_plots) - 1):
                 _st, _en = tot_plots[i], tot_plots[i + 1]
-                sub_df = data.iloc[:, _st:_en]
-                self._box_plot_df(sub_df,
-                                  st=st,
-                                  en=en,
+                self._box_plot_df(data.iloc[:, _st:_en],
                                   normalize=normalize,
                                   show_datapoints=show_datapoints,
                                   violen=violen,
@@ -1256,8 +1266,6 @@ class EDA(Plot):
 
     def _box_plot_df(self,
                      data,
-                     st=None,
-                     en=None,
                      normalize=True,
                      show_datapoints=False,
                      violen=False,
@@ -1268,8 +1276,6 @@ class EDA(Plot):
                      ):
 
         data = data.copy()
-
-        data = _preprocess_df(data, st, en)
 
         # if data contains duplicated columns, transformation will not work
         data = data.loc[:, ~data.columns.duplicated()]
@@ -1385,8 +1391,10 @@ class EDA(Plot):
     ):
         """autocorrelation of individual features of data
         Arguments:
-            n_lags : number of lag steps to consider
-            cols : columns to use. If not defined then all the columns are used
+            n_lags :
+                number of lag steps to consider
+            cols :
+                columns to use. If not defined then all the columns are used
         """
         return self._call_method("_autocorr_df", partial=False, n_lags=n_lags,
                                  cols=cols)
@@ -1619,15 +1627,23 @@ class EDA(Plot):
 
         return axes
 
-    def lag_plot(self, n_lags: Union[int, list] = 1, cols=None, figsize=None,
-                 **kwargs):
-        """lag plot between series and its lags
+    def lag_plot(
+            self,
+            n_lags: Union[int, list] = 1,
+            cols=None,
+            figsize=None,
+            **kwargs):
+        """lag plot between an array and its lags
 
-        Arguments:
-            n_lags : lag step against which to plot the data, it can be integer
+        Arguments
+        ---------
+            n_lags :
+                lag step against which to plot the data, it can be integer
                 or a list of integers
-            cols : columns to use
-            figsize : figsize
+            cols :
+                columns to use
+            figsize :
+                figure size
             kwargs : any keyword arguments for axis.scatter
         """
         return self._call_method("_lag_plot_df", n_lags=n_lags, cols=cols,
@@ -1641,10 +1657,13 @@ class EDA(Plot):
     ):
         """plots empirical cummulative distribution function
 
-        Arguments:
-            cols : columns to use
+        Arguments
+        ---------
+            cols :
+                columns to use
             figsize :
-            kwargs : any keyword argument for axis.plot
+            kwargs :
+                any keyword argument for axis.plot
         """
         return self._call_method("_plot_ecdf_df", cols=cols, figsize=figsize,
                                  **kwargs)
@@ -1733,13 +1752,15 @@ def plot_style(df: pd.DataFrame, **kwargs):
 
 
 def validate_freq(df, freq):
-    assert isinstance(df.index, pd.DatetimeIndex), "index of dataframe must be pandas DatetimeIndex"
-    assert freq in ["weekly", "monthly",
-                    "yearly"], f"freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"
+    assert isinstance(df.index, pd.DatetimeIndex), """
+        index of dataframe must be pandas DatetimeIndex"""
+    assert freq in ["weekly", "monthly","yearly"], f"""
+        freq must be one of {'weekly', 'monthly', 'yearly'} but it is {freq}"""
     return
 
 
-def _preprocess_df(df:pd.DataFrame, st=None, en=None, cols=None, ignore_datetime_index=False):
+def _preprocess_df(df:pd.DataFrame, st=None, en=None, cols=None,
+                   ignore_datetime_index=False):
 
     if cols is not None:
         if isinstance(cols, str):
