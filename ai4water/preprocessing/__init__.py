@@ -1,7 +1,7 @@
 
 import warnings
 
-from .dataset import DataSet, DataSetUnion, DataSetPipeLine
+from .dataset import DataSet, DataSetUnion, DataSetPipeline
 from .transformations import Transformation, Transformations
 from .imputation import Imputation
 from .spatial_processing import MakeHRUs

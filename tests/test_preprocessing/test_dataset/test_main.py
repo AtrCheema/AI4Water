@@ -1,4 +1,3 @@
-import gc
 import os.path
 import unittest
 

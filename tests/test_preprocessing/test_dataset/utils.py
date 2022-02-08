@@ -7,7 +7,8 @@ from ai4water.preprocessing import DataSet
 
 def make_df(examples: int, columns: list, add=0) -> pd.DataFrame:
 
-    data = np.arange(int(examples * len(columns)), dtype=np.int32).reshape(-1, examples).transpose()
+    data = np.arange(int(examples * len(columns)),
+                     dtype=np.int32).reshape(-1, examples).transpose()
 
     data = data + add
 
@@ -16,18 +17,21 @@ def make_df(examples: int, columns: list, add=0) -> pd.DataFrame:
                              index=pd.date_range('20110101', periods=examples, freq='D'))
     return dataframe
 
-def _check_xy_equal_len(x, prev_y, y, lookback, num_ins, num_outs, num_examples, data_type='training'):
+
+def _check_xy_equal_len(x, prev_y, y, lookback, num_ins, num_outs, num_examples,
+                        data_type='training'):
 
     feat_dim = 1
     if lookback > 1:
         assert x.shape[1] == lookback
         feat_dim = 2
 
-    assert x.shape[
-               feat_dim] == num_ins, f"for {data_type} x's shape is {x.shape} while num_ins of dataloader are {num_ins}"
+    assert x.shape[feat_dim] == num_ins, f"""
+for {data_type} x's shape is {x.shape} while num_ins of dataloader are {num_ins}"""
 
     if y is not None:
-        assert y.shape[1] == num_outs, f"for {data_type} y's shape is {y.shape} while num_outs of dataloader are {num_outs}"
+        assert y.shape[1] == num_outs, f"""
+for {data_type} y's shape is {y.shape} while num_outs of dataloader are {num_outs}"""
     else:
         assert num_outs == 0
         y = x  # just for next statement to run
@@ -35,12 +39,12 @@ def _check_xy_equal_len(x, prev_y, y, lookback, num_ins, num_outs, num_examples,
     if prev_y is None:
         prev_y = x  # just for next statement to run
 
-    assert x.shape[0] == y.shape[0] == prev_y.shape[
-        0], f"for {data_type} xshape: {x.shape}, yshape: {y.shape}, prevyshape: {prev_y.shape}"
+    assert x.shape[0] == y.shape[0] == prev_y.shape[0], f"""
+    for {data_type} xshape: {x.shape}, yshape: {y.shape}, prevyshape: {prev_y.shape}"""
 
     if num_examples:
-        assert x.shape[
-                   0] == num_examples, f'for {data_type} x contains {x.shape[0]} samples while expected samples are {num_examples}'
+        assert x.shape[0] == num_examples, f"""
+for {data_type} x contains {x.shape[0]} samples while expected samples are {num_examples}"""
     return
 
 
@@ -63,9 +67,9 @@ def assert_xy_equal_len(x, prev_y, y, ds, num_examples=None, data_type='training
 
     elif isinstance(x, dict):
         for key, i in x.items():
-            _check_xy_equal_len(i, prev_y.get(key, None), y.get(key, None), ds.lookback[key], ds.num_ins[key],
-                                ds.num_outs[key], num_examples, data_type=data_type
-                                )
+            _check_xy_equal_len(i, prev_y.get(key, None), y.get(key, None), ds.lookback[key],
+                                ds.num_ins[key], ds.num_outs[key], num_examples,
+                                data_type=data_type)
 
     elif x is None: # all should be None
         assert all(v is None for v in [x, prev_y, y])
@@ -85,7 +89,7 @@ def _check_num_examples(train_x, val_x, test_x, val_ex, test_ex, tot_obs):
     xyz_samples = train_x.shape[0] + val_examples + test_examples
     # todo, whould be equal
     assert xyz_samples == tot_obs, f"""  
-    data_loader has {tot_obs} examples while sum of train/val/test examples are {xyz_samples}."""
+data_loader has {tot_obs} examples while sum of train/val/test examples are {xyz_samples}."""
 
 
 def check_num_examples(train_x, val_x, test_x, val_ex, test_ex, ds):

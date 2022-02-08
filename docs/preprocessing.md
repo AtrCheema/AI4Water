@@ -7,15 +7,18 @@ It can take a data in a variety of commonly found formats such as csv, xlsx and
 prepares the data so that it can be fed to `Model` for training. This class
 works with modules such as `Imputation`, `Transformation` etc.
 
-# [DataSet](preprocessing/datahandler.md)
+# [DataSet](preprocessing/dataset.md)
 
 # [Imputation](preprocessing/imputation.md)
+This sub-module is for handling/imputing missing data.
 
 # [Featurization](preprocessing/featurization.md)
 
 # [HRU Discretization](preprocessing/make_hrus.md)
+Create Hydrologic Response Unit using various HRU definitions.
 
 # [Data Transformations](preprocessing/transformation.md)
+It contains various preprocessing, feature-engineering methods.
 
 It should be noted that transformations applied in ai4water are part of **Model**.
 This means trnasformations are applied, everytime a call to the model is made using

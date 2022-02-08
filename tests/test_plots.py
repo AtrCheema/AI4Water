@@ -35,8 +35,7 @@ class TestPlots(unittest.TestCase):
             data=beach_data,
             input_features=input_features,
             output_features=output_features,
-            verbosity=0
-        )
+            verbosity=0)
 
         run_plots(model)
 
@@ -55,8 +54,9 @@ class TestPlots(unittest.TestCase):
 
         data = np.arange(int(40 * 4), dtype=np.int32).reshape(-1, 40).transpose()
         df1 = pd.DataFrame(data, columns=['a', 'b', 'c', 'd'],
-                                    index=pd.date_range('20110101', periods=40, freq='D'))
-        df2 = pd.DataFrame(np.array([5,6]).repeat(40, axis=0).reshape(40, -1), columns=['len', 'dep'],
+                           index=pd.date_range('20110101', periods=40, freq='D'))
+        df2 = pd.DataFrame(np.array([5,6]).repeat(40, axis=0).reshape(40, -1),
+                           columns=['len', 'dep'],
                            index=pd.date_range('20110101', periods=40, freq='D'))
 
         ds1 = DataSet(df1, input_features=['a', 'b'], output_features=['c', 'd'],
@@ -66,7 +66,6 @@ class TestPlots(unittest.TestCase):
         ds = DataSetUnion(ds1, ds2, verbosity=0)
 
         run_plots(ds)
-
 
         # as keyword arguments
         ds = DataSetUnion(cont_data=ds1, static_data=ds2, verbosity=0)

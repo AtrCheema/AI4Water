@@ -1,6 +1,6 @@
 
 
-__all__ = ['DataSetPipeLine']
+__all__ = ['DataSetPipeline']
 
 import os
 
@@ -9,7 +9,7 @@ import numpy as np
 from ._main import _DataSet
 
 
-class DataSetPipeLine(_DataSet):
+class DataSetPipeline(_DataSet):
     """A collection of DataSets concatenated one after the other. A DataSetPipeLine
     of four DataSets will be as follows:
 

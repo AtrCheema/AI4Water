@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from ai4water.preprocessing import DataSet
-from ai4water.preprocessing import DataSetPipeLine
+from ai4water.preprocessing import DataSetPipeline
 
 
 def call_methods(ds):
@@ -33,7 +33,7 @@ class TestPipeline(unittest.TestCase):
         ds1 = get_ds(100)
         ds2 =  get_ds(100)
 
-        ds = DataSetPipeLine(ds1, ds2)
+        ds = DataSetPipeline(ds1, ds2)
         call_methods(ds)
 
         return
@@ -43,7 +43,7 @@ class TestPipeline(unittest.TestCase):
         ds1 = get_ds(100)
         ds2 =  get_ds(200)
 
-        ds = DataSetPipeLine(ds1, ds2)
+        ds = DataSetPipeline(ds1, ds2)
 
         call_methods(ds)
 
@@ -55,7 +55,7 @@ class TestPipeline(unittest.TestCase):
         ds2 =  get_ds(100)
         ds3 = get_ds(100, val_fraction=0.0)
 
-        ds = DataSetPipeLine(ds1, ds2, ds3)
+        ds = DataSetPipeline(ds1, ds2, ds3)
 
         call_methods(ds)
 
@@ -66,7 +66,7 @@ class TestPipeline(unittest.TestCase):
         ds2 =  get_ds(100)
         ds3 = get_ds(100, train_fraction=1.0)
 
-        ds = DataSetPipeLine(ds1, ds2, ds3)
+        ds = DataSetPipeline(ds1, ds2, ds3)
 
         call_methods(ds)
 
