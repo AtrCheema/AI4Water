@@ -58,6 +58,7 @@ exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     'h5py<2.11.0'
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
+eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl']
 
 all_requirements = min_requirements + extra_requires
 
@@ -124,5 +125,6 @@ setup(
         'hpo': hpo_requirements,
         'post_process': post_process_requirements,
         'exp': exp_requirements,
+        'eda': eda_requires,
     }
 )

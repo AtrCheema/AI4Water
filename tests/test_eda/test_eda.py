@@ -12,15 +12,11 @@ import numpy as np
 
 from ai4water.eda import EDA
 from ai4water.eda.utils import pac_yw, auto_corr, ccovf_np, ccf_np
-from ai4water.datasets import MtropicsLaos, busan_beach
-
+from ai4water.datasets import busan_beach
 
 beach_data = busan_beach()
-laos = MtropicsLaos()
 
-pcp = laos.fetch_pcp(
-    st="20110101", en="20110104"
-)
+pcp = beach_data['pcp_mm']
 
 
 class TestEDA(unittest.TestCase):
@@ -58,12 +54,14 @@ class TestEDA(unittest.TestCase):
 
     def test_autocorr(self):
 
-        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"), save=False, show=False)
+        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"),
+                  save=False, show=False)
         eda.autocorrelation(n_lags=10)
         return
 
     def test_partial_autocorr(self):
-        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"), save=False, show=False)
+        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"),
+                  save=False, show=False)
         eda.partial_autocorrelation(n_lags=10)
         return
 

@@ -7,7 +7,7 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from easy_mpl import bar_chart
+from easy_mpl import bar_chart, parallel_coordinates
 
 try:
     import seaborn as sns
@@ -80,6 +80,8 @@ class EDA(Plot):
         """
         if isinstance(data, np.ndarray):
             data = pd.DataFrame(data)
+        elif isinstance(data, pd.Series):
+            data = pd.DataFrame(data, columns=[data.name], index=data.index)
 
         self.data = data
         self.in_cols = in_cols
@@ -97,6 +99,8 @@ class EDA(Plot):
         if x is None:
             if isinstance(self.data, pd.DataFrame):
                 x = self.data.columns.to_list()
+            elif isinstance(self.data, pd.Series):
+                x = self.data.name
             else:
                 raise ValueError(f"unsupported type of {self.data.__class__.__name__}")
         self._in_cols = x
@@ -108,7 +112,7 @@ class EDA(Plot):
     @out_cols.setter
     def out_cols(self, x):
         if x is None:
-            if isinstance(self.data, pd.DataFrame):
+            if isinstance(self.data, pd.DataFrame) or isinstance(self.data, pd.Series):
                 x = []
             else:
                 raise ValueError
@@ -116,7 +120,8 @@ class EDA(Plot):
 
     def _save_or_show(self, fname, dpi=None):
 
-        return self.save_or_show(where='data', fname=fname, show=self.show, dpi=dpi, close=False)
+        return self.save_or_show(where='data', fname=fname, show=self.show, dpi=dpi,
+                                 close=False)
 
     def __call__(self,
                  methods: Union[str, list] = 'all',
@@ -238,7 +243,8 @@ class EDA(Plot):
         axis.set_yticks(axis.get_yticks()[0::5].astype('int'))
 
         if show_time_on_yaxis:
-            index = pd.date_range(data.index[0], data.index[-1], periods=len(axis.get_yticks()))
+            index = pd.date_range(data.index[0], data.index[-1],
+                                  periods=len(axis.get_yticks()))
             # formatting y-ticklabels
             index = [d.strftime('%Y-%m-%d') for d in index]
             axis.set_yticklabels(index, fontsize="18")
@@ -266,12 +272,19 @@ class EDA(Plot):
         """
         plot data to indicate missingness in data
 
-        Arguments:
-            cols : columns to be used.
-            st : starting row/index in data to be used for plotting
-            en : end row/index in data to be used for plotting
+        Arguments
+        ---------
+            cols : list, str, optional
+                columns to be used.
+            st : int, str, optional
+                starting row/index in data to be used for plotting
+            en : int, str, optional
+                end row/index in data to be used for plotting
+            **kwargs :
+                Keyword Args such as figsize
 
-        Example:
+        Example
+        -------
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
             >>>vis = EDA(data)
@@ -471,7 +484,9 @@ class EDA(Plot):
 
                     self._save_or_show(fname=f'input_{prefix}_{st}_{en}')
                 else:
-                    self._plot_df_with_freq(sub_df, freq, prefix=f'{prefix}_{st}_{en}', **kwargs)
+                    self._plot_df_with_freq(sub_df, freq,
+                                            prefix=f'{prefix}_{st}_{en}',
+                                            **kwargs)
         return
 
     def _plot_df_with_freq(self,
@@ -520,7 +535,7 @@ class EDA(Plot):
 
     def parallel_corrdinates(
             self,
-            cols,
+            cols=None,
             st=None,
             en=100,
             color=None
@@ -548,8 +563,8 @@ class EDA(Plot):
     ):
         """plots the statistics of nromality test as bar charts. The statistics
         for each feature are calculated either Shapiro-wilke](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test)
-        test or Anderson-Darling test][] or Kolmogorov-Smirnov test using scipy.stats.shapiro or scipy.stats.anderson
-        functions respectively.
+        test or Anderson-Darling test][] or Kolmogorov-Smirnov test using
+        scipy.stats.shapiro or scipy.stats.anderson functions respectively.
 
         Arguments:
             method: either "shapiro" or "anderson", or "kolmogorov" default is "shapiro"
@@ -607,26 +622,37 @@ class EDA(Plot):
 
     def correlation(
             self,
-            cols=None,
             remove_targets=False,
             st=None,
             en=None,
-            method="pearson",
+            cols = None,
+            method: str = "pearson",
+            split: str = None,
             **kwargs
     ):
         """
         Plots correlation between features.
 
-        Arguments:
-            cols : columns to use
-            remove_targets :
-            st : starting row/index in data to be used for plotting
-            en : end row/index in data to be used for plotting
+        Arguments
+        ---------
+            remove_targets : bool, optional
+                whether to remove the output/target column or not
+            st :
+                starting row/index in data to be used for plotting
+            en :
+                end row/index in data to be used for plotting
+            cols :
+                columns to use
             method : str, optional
                      {"pearson", "spearman", "kendall", "covariance"}, by default "pearson"
-            kwargs :
+            split : str
+                To plot only positive correlations, set it to "pos" or to plot
+                only negative correlations, set it to "neg".
+            **kwargs : keyword Args
+                Any additional keyword arguments for seaborn.heatmap
 
-        Example:
+        Example
+        -------
             >>> from ai4water.eda import EDA
             >>> from ai4water.datasets import busan_beach
             >>> vis = EDA(busan_beach())
@@ -647,6 +673,7 @@ class EDA(Plot):
                                  st=st,
                                  en=en,
                                  method=method,
+                                 split=split,
                                  **kwargs)
 
     def _feature_feature_corr_df(self,
@@ -674,10 +701,6 @@ class EDA(Plot):
             * vmin: float, default is calculated from the given correlation \
                 coefficients.
                 Value between -1 <= vmin <= 1 or vmax, limits the range of the cbar.
-        To plot positive correlation only:
-        feature_feature_corr_df(model.data, list(model.data.columns), split="pos")
-        To plot negative correlation only
-        feature_feature_corr_df(model.data, list(model.data.columns), split="neg")
         """
         plt.close('all')
 
@@ -713,6 +736,11 @@ class EDA(Plot):
         _kwargs['linewidths'] = kwargs.get('linewidths', 0.5)
         _kwargs['annot_kws'] = kwargs.get('annot_kws', {"size": 10})
         _kwargs['cbar_kws'] = kwargs.get('cbar_kws', {"shrink": 0.95, "aspect": 30})
+
+        # pass any keyword argument provided by the user to sns.heatmap
+        for k, v in kwargs.items():
+            if k not in _kwargs and k not in ['figsize']:
+                _kwargs[k] = v
 
         ax = sns.heatmap(corr, center=0, fmt=".2f", ax=ax, **_kwargs)
         ax.set(frame_on=True)
@@ -825,13 +853,15 @@ class EDA(Plot):
     ):
         """Makes scatter plot for each of feature in data.
 
-        Arguments:
+        Arguments
+        ----------
             inputs :
             outputs :
             cols :
             st : starting row/index in data to be used for plotting
             en : end row/index in data to be used for plotting
-            max_subplots: int, it can be set to large number to show all the scatter
+            max_subplots: int, optional
+                it can be set to large number to show all the scatter
             plots on one axis.
             kwargs :
         """
@@ -912,20 +942,33 @@ class EDA(Plot):
             st=None,
             en=None,
             cols=None,
+            max_subplots: int = 40,
+            figsize: tuple = (20, 14),
             **kwargs
     ):
         """Plots distribution of data as histogram.
         https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
 
-        Arguments:
-            st : starting index of data to use
-            en : end index of data to use
-            cols : columns to use
-            kwargs : anykeyword argument for pandas.DataFrame.hist function
+        Arguments
+        ---------
+            st :
+                starting index of data to use
+            en :
+                end index of data to use
+            cols :
+                columns to use
+            max_subplots : int, optional
+                maximum number of subplots in one figure
+            figsize :
+                figure size
+            **kwargs : anykeyword argument for pandas.DataFrame.hist function
         """
-        return self._call_method("_plot_his_df", st=st, en=en, cols=cols, **kwargs)
+        return self._call_method("_plot_hist_df", st=st, en=en, cols=cols,
+                                 figsize=figsize,
+                                 max_subplots=max_subplots,
+                                 **kwargs)
 
-    def _plot_his_df(self,
+    def _plot_hist_df(self,
                      data: pd.DataFrame,
                      cols=None,
                      st=None,
@@ -933,12 +976,26 @@ class EDA(Plot):
                      prefix='',
                      bins=100,
                      figsize=(20, 14),
+                     max_subplots: int = 40,
                      **kwargs
                      ):
         """Plots histogram of one dataframe"""
 
         data = _preprocess_df(data, st, en, cols)
 
+        if data.shape[1] <= max_subplots:
+            return self._hist_df(data, bins, figsize, prefix, **kwargs)
+
+        tot_plots = find_tot_plots(data.shape[1], max_subplots)
+        for i in range(len(tot_plots) - 1):
+            st, en = tot_plots[i], tot_plots[i + 1]
+            self._hist_df(data.iloc[:, st:en],
+                          bins, figsize,
+                          prefix=f'hist_{prefix}_{i}_{st}_{en}',
+                          **kwargs)
+        return
+
+    def _hist_df(self, data, bins, figsize, prefix, **kwargs):
         axis = data.hist(bins=bins, figsize=figsize, **kwargs)
 
         self._save_or_show(fname=f"hist_{prefix}")
@@ -1075,9 +1132,10 @@ class EDA(Plot):
             **kwargs
     ):
         """
-        Plots box whister or violen plot of data.
+        Plots box whisker or violen plot of data.
 
-        Arguments:
+        Arguments
+        ---------
             inputs :
             outputs :
             st : starting row/index in data to be used for plotting
@@ -1089,9 +1147,9 @@ class EDA(Plot):
             max_features : int, maximum number of features to appear in one plot.
             violen : bool, if True, then violen plot will be plotted else box_whisker plot
             cols : list, the name of columns from data to be plotted.
-            kwargs : any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
             show_datapoints : if True, sns.swarmplot() will be plotted. Will be time
                 consuming for bigger data.
+            **kwargs : any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
         """
 
         axis = None
