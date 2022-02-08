@@ -23,7 +23,7 @@ class NBeats(keras.layers.Layer):
         >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
         >>>                               "Flatten": {},
         >>>                               "Reshape": {"target_shape": (1,1)}}},
-        >>>               lookback=10)
+        >>>               ts_args={'lookback':10})
         ...
         >>> model.fit(x=x, y=y.reshape(-1,1,1))
     ```

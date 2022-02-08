@@ -55,7 +55,7 @@ class DualAttentionModel(FModel):
         can set teacher forcing to False. The drop_remainder argument must be
         set to True in such a case.
         >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4,
-        ...                            drop_remainder=True, lookback=5)
+        ...                            drop_remainder=True, ts_args={'lookback':5})
         >>> model.fit(data=data)
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
