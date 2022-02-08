@@ -32,7 +32,7 @@
         show_root_heading: true
 
 **`DataSetPipeline`**
-::: ai4water.preprocessing.DataSetPileline
+::: ai4water.preprocessing.DataSetPipeline
     handler: python
     selection:
         members:

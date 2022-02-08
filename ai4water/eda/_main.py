@@ -895,8 +895,6 @@ class EDA(Plot):
 
     def grouped_scatter(
             self,
-            inputs: bool = True,
-            outputs: bool = True,
             cols=None,
             st=None,
             en=None,
@@ -907,52 +905,24 @@ class EDA(Plot):
 
         Arguments
         ----------
-            inputs :
-            outputs :
-            cols :
             st :
                 starting row/index in data to be used for plotting
             en :
                 end row/index in data to be used for plotting
+            cols :
             max_subplots: int, optional
-                it can be set to large number to show all the scatter
-            plots on one axis.
+                it can be set to large number to show all the scatter plots on one
+                axis.
             kwargs :
+                keyword arguments for sns.pariplot
         """
-        fname = "scatter_plot_"
 
-        if cols is None:
-            cols = []
-
-            if inputs:
-                cols += self.in_cols
-                fname += "inputs_"
-            if outputs:
-                cols += self.out_cols
-                fname += "outptuts_"
-        else:
-            assert isinstance(cols, list)
-
-        if isinstance(self.data, pd.DataFrame):
-            self._grouped_scatter_plot_df(self.data[cols], max_subplots, st=st,
-                                          en=en,
-                                          **kwargs)
-
-        elif isinstance(self.data, list):
-            for idx, data in enumerate(self.data):
-                if isinstance(data, pd.DataFrame):
-                    _cols = cols + [self.out_cols[idx]] if outputs else cols
-                    self._grouped_scatter_plot_df(data[_cols], max_subplots,
-                                                  st=st, en=en,
-                                                  prefix=str(idx), **kwargs)
-
-        elif isinstance(self.data, dict):
-            for data_name, data in self.data.items():
-                if isinstance(data, pd.DataFrame):
-                    self._grouped_scatter_plot_df(data, max_subplots,
-                                                  st=st, en=en,
-                                                  prefix=data_name,
-                                                  **kwargs)
+        self._call_method('_grouped_scatter_plot_df',
+                          max_subplots=max_subplots,
+                          cols=cols,
+                          st=st,
+                          en=en,
+                          **kwargs)
         return
 
     def _grouped_scatter_plot_df(
@@ -961,6 +931,7 @@ class EDA(Plot):
             max_subplots: int = 10,
             st=None,
             en=None,
+            cols = None,
             prefix='',
             **kwargs):
         """
@@ -969,7 +940,7 @@ class EDA(Plot):
         """
         data = data.copy()
 
-        data = _preprocess_df(data, st, en)
+        data = _preprocess_df(data, st, en, cols=cols)
 
         if data.shape[1] <= max_subplots:
             self._grouped_scatter_plot(data, name=f'grouped_scatter_{prefix}',
