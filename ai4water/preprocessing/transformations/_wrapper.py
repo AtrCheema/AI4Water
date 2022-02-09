@@ -287,9 +287,9 @@ class Transformations(object):
             elif isinstance(t_config, dict):
                 kwargs = t_config
             else:
-                raise ValueError
+                raise ValueError(f"invalid type of t_config {t_config.__class__.__name__}")
         else:
-            raise ValueError
+            raise ValueError(f"invalid type of t_config {self.t_config.__class__.__name__}")
 
         transformer = Transformation(**kwargs)
         transformed_data = transformer.inverse_transform(data=data, postprocess=postprocess)

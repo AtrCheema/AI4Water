@@ -1456,13 +1456,15 @@ class BaseModel(NN):
             predicted = self.predict_fn(x=inputs,  **kwargs)
 
         else:
-            if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
+            if self._model.__class__.__name__.startswith("XGB") and isinstance(inputs, np.ndarray):
                 # since we have changed feature_names of booster,
                 kwargs['validate_features'] = False
 
             predicted = self.predict_ml_models(inputs, **kwargs)
 
-        true_outputs, predicted = self._inverse_transform_y(true_outputs, predicted, y_transformer)
+        true_outputs, predicted = self._inverse_transform_y(true_outputs,
+            predicted, 
+            y_transformer)
 
         if true_outputs is None:
             if return_true:
@@ -1520,9 +1522,11 @@ class BaseModel(NN):
                     if self.category == 'ML':  # todo, also plot for DL
                         pp.confusion_matrx(self, x=inputs, y=true_outputs)
                         # if model does not have predict_proba method, we can't plot following
-                        if hasattr(self._model, 'predict_proba') and self.is_binary:
-                            pp.precision_recall_curve(self, x=inputs, y=true_outputs)
-                            pp.roc_curve(self, x=inputs, y=true_outputs)
+                        if hasattr(self._model, 'predict_proba'):
+                            # if data is user defined, we don't know whether it is binary or not
+                            if not user_defined_data and self.is_binary:
+                                pp.precision_recall_curve(self, x=inputs, y=true_outputs)
+                                pp.roc_curve(self, x=inputs, y=true_outputs)
         else:
             assert self.num_outs == 1
 
@@ -2256,12 +2260,8 @@ class BaseModel(NN):
 
     def _inverse_transform_y(self, true_outputs, predicted, y_transformer):
         """inverse transformation of y/labels for both true and predicted"""
-        if true_outputs is None:  # only x was given, build transformer from the config
-            if self.config.get('y_transformer_', None) is None:
-                # when predict/evaluate is called without fitting the model first
-                # in such case either we must have true_outputs or y_transformation should be None.
-                assert self.config['y_transformation'] is None
-            else:
+        if true_outputs is None and self.config['y_transformation'] is not None:  
+                # only x was given and y was transformed
                 predicted = self._inverse_transform_y_without_fit(predicted)
         elif self.config['y_transformation']:  # only if we apply transformation on y
             # both x,and true_y were given
