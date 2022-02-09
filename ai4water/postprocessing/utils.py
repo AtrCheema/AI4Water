@@ -420,6 +420,9 @@ class ProcessResults(Plot):
         from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
 
         if self.is_multiclass:
+            if len(predicted) == predicted.size:
+                predicted = predicted.reshape(-1, 1)
+
             pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
             true_labels = [f"true_{i}" for i in range(true.shape[1])]
             fname = os.path.join(self.path, f"{prefix}_prediction.csv")

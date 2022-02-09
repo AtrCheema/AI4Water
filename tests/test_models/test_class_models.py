@@ -3,7 +3,8 @@ import unittest
 import os
 import sys
 import site
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+print(ai4_dir, 'hereeee')
 site.addsitedir(ai4_dir)
 
 
@@ -24,13 +25,15 @@ from ai4water.functional import Model as FModel
 from ai4water.datasets import busan_beach
 from ai4water.datasets import MtropicsLaos
 
+
 laos = MtropicsLaos()
 cls_data = laos.make_classification(lookback_steps=1)
+
 
 def test_evaluation(model):
 
     model.evaluate(data='training')
-    train_x, train_y = model.training_data()
+    model.training_data()
 
     model.evaluate(data='validation')
     val_data = model.validation_data()
@@ -46,9 +49,29 @@ def test_evaluation(model):
 
     return
 
+def test_prediction(model):
 
-def build_and_run_class_problem(n_classes, loss, is_multilabel=False,
-                                activation='softmax'):
+    model.predict(data='training', return_true=True, metrics="all")
+    model.predict(data='validation', return_true=True, metrics="all")
+    model.predict(data='test', return_true=True, metrics="all")
+
+    return
+
+
+def make_dl_model(n_classes, activation='softmax'):
+
+    return {'layers': {
+            'Dense_0': 10,
+            'Flatten': {},
+            'Dense_1': n_classes,
+            'Activation': activation}}
+
+
+def build_and_run_class_problem(n_classes,
+                                loss,
+                                model=None,
+                                is_multilabel=False,
+                                ):
 
     input_features = [f'input_{n}' for n in range(10)]
 
@@ -70,11 +93,7 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False,
     df = pd.DataFrame(np.concatenate([X, y], axis=1), columns=input_features + outputs)
 
     model = Model(
-        model={'layers': {
-            'Dense_0': 10,
-            'Flatten': {},
-            'Dense_1': n_classes,
-            'Activation': activation}},
+        model=model,
         input_features=input_features,
         loss=loss,
         output_features=outputs,
@@ -82,6 +101,8 @@ def build_and_run_class_problem(n_classes, loss, is_multilabel=False,
     )
     model.fit(data=df)
     test_evaluation(model)
+
+    test_prediction(model)
 
     assert model.mode == 'classification'
     assert len(model.classes_) == n_classes
@@ -102,71 +123,114 @@ class TestClassifications(unittest.TestCase):
         return
 
     def test_binary_classification(self):
-
-        model = build_and_run_class_problem(2, 'binary_crossentropy')
-
+    
+        model = build_and_run_class_problem(2,
+                                            'binary_crossentropy',
+                                            model=make_dl_model(2))
+    
         assert model.is_binary
         assert not model.is_multiclass
         assert not model.is_multilabel
+    
+        return
+    
+    def test_binary_cls_ml(self):
+    
+        for algo in ["RandomForestClassifier",
+                      "XGBClassifier",
+                      "CatBoostClassifier",
+                      "LGBMClassifier"]:
+    
+            model = build_and_run_class_problem(2,
+                                                'binary_crossentropy',
+                                                model=algo)
+            assert model.is_binary
+            assert not model.is_multiclass
+            assert not model.is_multilabel
+    
+        return
+
+    def test_multicls_cls_ml(self):
+
+        for algo in ["RandomForestClassifier",
+                     "XGBClassifier",
+                     "CatBoostClassifier",
+                     "LGBMClassifier"]:
+            model = build_and_run_class_problem(5,
+                                                'binary_crossentropy',
+                                                model=algo)
+            assert model.is_multiclass
+            assert not model.is_binary
+            assert not model.is_multilabel
 
         return
 
     def test_multiclass_classification(self):
         time.sleep(1)
-        model = build_and_run_class_problem(3, 'binary_crossentropy')
-
+        model = build_and_run_class_problem(3,
+                                            'binary_crossentropy',
+                                            model=make_dl_model(3))
+    
         assert not model.is_binary
         assert model.is_multiclass
         assert not model.is_multilabel
-
+    
         return
-
+    
     def test_multilabel_classification(self):
-
-        model = build_and_run_class_problem(5, 'binary_crossentropy',
-                                            is_multilabel=True)
-
+    
+        model = build_and_run_class_problem(5,
+                                            'binary_crossentropy',
+                                            is_multilabel=True,
+                                            model=make_dl_model(5)
+                                            )
+    
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-
+    
         return
-
+    
     def test_multilabel_classification_with_categorical(self):
-
-        model = build_and_run_class_problem(5, 'categorical_crossentropy',
-                                            is_multilabel=True)
-
+    
+        model = build_and_run_class_problem(5,
+                                            'categorical_crossentropy',
+                                            is_multilabel=True,
+                                            model=make_dl_model(5)
+                                            )
+    
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-
+    
         return
-
+    
     def test_multilabel_classification_with_binary_sigmoid(self):
-
-        model = build_and_run_class_problem(5, 'binary_crossentropy',
-                                            is_multilabel=True,
-                                            activation='sigmoid')
-
+    
+        model = build_and_run_class_problem(5,
+                                            'binary_crossentropy',
+                                            model=make_dl_model(5, "sigmoid"),
+                                            is_multilabel=True)
+    
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-
+    
         return
-
+    
     def test_multilabel_classification_with_categorical_sigmoid(self):
-
-        model = build_and_run_class_problem(5, 'categorical_crossentropy',
-                                            is_multilabel=True,
-                                            activation='sigmoid')
-
+    
+        model = build_and_run_class_problem(5,
+                                            'categorical_crossentropy',
+                                            make_dl_model(5, "sigmoid"),
+                                            is_multilabel=True)
+    
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-
+    
         return
-
+    
     def test_basic_multi_output(self):
         time.sleep(1)
         model = Model(
@@ -180,12 +244,12 @@ class TestClassifications(unittest.TestCase):
             train_fraction=0.8,
             shuffle=False
         )
-
+    
         model.fit(data=busan_beach(target=['blaTEM_coppml', 'tetx_coppml']))
         t,p = model.predict(data='test', return_true=True)
-
+    
         assert np.allclose(t[3:5, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
-
+    
         for out in model.output_features:
             assert out in os.listdir(model.path)
         return

@@ -29,9 +29,9 @@ class ClassificationMetrics(Metrics):
         # self.all_methods = [m for m in all_methods if not m.startswith('_')]
 
     def __getattr__(self, item):
-        val = CLS_METRICS[item](self.true_labels, self.pred_labels)
-        def func():  # because we want .f1_score() and not .f1_score
-            return val
+
+        def func(**kwargs):  # because we want .f1_score() and not .f1_score
+            return CLS_METRICS[item](self.true_labels, self.pred_labels, **kwargs)
         return func
 
 

@@ -437,7 +437,10 @@ class DataSet(_DataSet):
         if self.is_binary or self.is_multiclass:
             if self.num_outs == 1:
                 _defualt = True
-        if self.is_binary and self.category == 'ML':  # todo, don't do for ML algorithms
+        # it seems sklearn can accept one-hot-encoded targets but xgb, lgbm and catboost can't
+        # but since since sklearn can also accept non-one-hot-encoded targets for multiclass
+        # let's not one-hot-encode for all ML algos
+        if self.category == 'ML':
             _defualt = False
 
         return _defualt

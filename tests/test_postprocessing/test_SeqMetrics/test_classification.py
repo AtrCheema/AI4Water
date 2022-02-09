@@ -12,6 +12,8 @@ targets = np.array([[0, 0, 0, 1],
                     [0, 0, 0, 1]])
 
 
+
+
 class TestClassificationMetrics(unittest.TestCase):
 
     def test_ce(self):
@@ -31,18 +33,51 @@ class TestClassificationMetrics(unittest.TestCase):
         p = np.array([True, True, True, True])
         val_score = ClassificationMetrics(t,p).accuracy()
         self.assertAlmostEqual(val_score, 0.25)
-
+    
         t = np.array([1, 0, 0, 0])
         p = np.array([1, 1, 1, 1])
         val_score = ClassificationMetrics(t, p).accuracy()
         self.assertAlmostEqual(val_score, 0.25)
         return
-
+    
     def test_f1_score(self):
         t = np.array([1, 0, 0, 0])
         p = np.array([1, 1, 1, 1])
         f1_score = ClassificationMetrics(t, p).f1_score()
         return
+
+class TestMulticlass1D(unittest.TestCase):
+    true = np.random.randint(1, 4, 100)
+    pred = np.random.randint(1, 4, 100)
+    metrics = ClassificationMetrics(true, pred, multiclass=True)
+
+    def test_all(self):
+        self.metrics.calculate_all()
+        return
+
+    def test_accuracy(self):
+        self.metrics.accuracy()
+        return
+
+    def test_f1_score(self):
+        self.metrics.f1_score(average="micro")
+        return
+
+
+# class TestMulticlassOneHotEncoded(unittest.TestCase):
+
+#     def test_all(self):
+#         self.metrics.calculate_all()
+#         return
+
+#     def test_accuracy(self):
+#         self.metrics.accuracy()
+#         return
+
+#     def test_f1_score(self):
+#         self.metrics.f1_score()
+#         return
+
 
 if __name__ == "__main__":
     unittest.main()

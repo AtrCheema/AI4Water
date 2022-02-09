@@ -23,17 +23,17 @@ try:
 except ImportError:
     from scipy.stats import median_absolute_deviation as mad
 
-from ai4water.nn_tools import NN
-from ai4water.backend import sklearn_models
-from ai4water.utils.utils import make_model
-from ai4water.postprocessing import ProcessResults
-from ai4water.preprocessing.transformations import Transformations
-from ai4water.utils.utils import maybe_three_outputs, get_version_info
-from ai4water.models.tensorflow.custom_training import train_step, test_step
-from ai4water.utils.utils import maybe_create_path, dict_to_file, dateandtime_now
-from ai4water.utils.utils import find_best_weight, reset_seed, update_model_config
-from ai4water.preprocessing import DataSet
-from ai4water.preprocessing.dataset._main import _DataSet
+from .nn_tools import NN
+from .backend import sklearn_models
+from .utils.utils import make_model
+from .postprocessing import ProcessResults
+from .preprocessing.transformations import Transformations
+from .utils.utils import maybe_three_outputs, get_version_info
+from .models.tensorflow.custom_training import train_step, test_step
+from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
+from .utils.utils import find_best_weight, reset_seed, update_model_config
+from .preprocessing import DataSet
+from .preprocessing.dataset._main import _DataSet
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
 
@@ -1335,8 +1335,10 @@ class BaseModel(NN):
             from ai4water.postprocessing.SeqMetrics import RegressionMetrics
             errs = RegressionMetrics(y, p)
         else:
+            if p.size == len(p):  # todo, this should be done in ClassificationMetrics
+                p = p.reshape(-1, 1)
             from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
-            errs = ClassificationMetrics(y, p)
+            errs = ClassificationMetrics(y, p, multiclass=self.is_multiclass)
 
         if isinstance(metrics, str):
 
@@ -1515,11 +1517,12 @@ class BaseModel(NN):
                                                index=dt_index,
                                                user_defined_data=user_defined_data)
 
-                    pp.confusion_matrx(self, x=inputs, y=true_outputs)
-                    # if model does not have predict_proba method, we can't plot following
-                    if hasattr(self._model, 'predict_proba'):
-                        pp.precision_recall_curve(self, x=inputs, y=true_outputs)
-                        pp.roc_curve(self, x=inputs, y=true_outputs)
+                    if self.category == 'ML':  # todo, also plot for DL
+                        pp.confusion_matrx(self, x=inputs, y=true_outputs)
+                        # if model does not have predict_proba method, we can't plot following
+                        if hasattr(self._model, 'predict_proba') and self.is_binary:
+                            pp.precision_recall_curve(self, x=inputs, y=true_outputs)
+                            pp.roc_curve(self, x=inputs, y=true_outputs)
         else:
             assert self.num_outs == 1
 
