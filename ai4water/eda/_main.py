@@ -1,5 +1,6 @@
 import os
 import math
+import warnings
 from typing import Union, List, Dict
 
 import numpy as np
@@ -71,12 +72,12 @@ class EDA(Plot):
         ---------
             data : DataFrame, array, dict, list
                 either a dataframe, or list of dataframes or a dictionary whose
-                values are dataframes or a numpy array
+                values are dataframes or a numpy arrays
             in_cols : str, list, optional
                 columns to consider as input features
             out_cols : str, optional
                 columns to consider as output features
-            path : str
+            path : str, optional
                 the path where to save the figures. If not given, plots will be
                 saved in 'data' folder in current working directory.
             save : bool, optional
@@ -574,15 +575,36 @@ class EDA(Plot):
             cols=None,
             st=None,
             en=100,
-            color=None
+            color=None,
+            **kwargs
     ):
-        """Plots data as parallel coordinates."""
+        """
+        Plots data as parallel coordinates.
+
+        Parameters
+        ----------
+        st :
+            start of data to be considered
+        en :
+            end of data to be considered
+        cols :
+            columns from data to be considered.
+        color :
+            color or colormap to be used.
+        **kwargs :
+            any additional keyword arguments to be passed to `easy_mpl.parallel_coordinates`_
+
+        ..easy_mpl.parallel_coordinates_
+            https://easy-mpl.readthedocs.io/en/latest/#module-9
+
+        """
         return self._call_method(
             "_pcorrd_df",
             cols=cols,
             st=st,
             en=en,
             color=color,
+            **kwargs
         )
 
     def _pcorrd_df(self,
@@ -591,10 +613,26 @@ class EDA(Plot):
                    en=100,
                    cols=None,
                    color=None,
-                   prefix=""):
+                   prefix="",
+                   **kwargs):
         data = _preprocess_df(data, st, en, cols)
-        parallel_coordinates(data, cmap=color)
-        return self._save_or_show(fname=f"parallel_coord_{prefix}")
+        if data.isna().sum().sum() > 0:
+            warnings.warn("Dropping rows from data which contain nans.")
+            data = data.dropna()
+        if data.shape[0]>1:
+            categories = None
+            if self.out_cols and len(self.out_cols)==1:
+                out_col = self.out_cols[0]
+                if out_col in data:
+                    categories = data.pop(out_col)
+                #else:
+                    ... # todo categories = self.data[out_col]
+            parallel_coordinates(data, cmap=color, categories=categories,
+                                 show=False, **kwargs)
+            return self._save_or_show(fname=f"parallel_coord_{prefix}")
+        else:
+            warnings.warn("""
+            Not plotting parallel_coordinates because number of rows are below 2.""")
 
     def normality_test(
             self,
@@ -910,7 +948,7 @@ class EDA(Plot):
             en :
                 end row/index in data to be used for plotting
             cols :
-            max_subplots: int, optional
+            max_subplots : int, optional
                 it can be set to large number to show all the scatter plots on one
                 axis.
             kwargs :
@@ -1193,6 +1231,7 @@ class EDA(Plot):
                                  show_datapoints=show_datapoints,
                                  freq=freq,
                                  prefix=fname,
+                                 violen=violen,
                                  **kwargs)
 
     def _box_plot(self,

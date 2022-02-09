@@ -3,6 +3,7 @@ import sys
 import site
 import unittest
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
@@ -19,50 +20,83 @@ beach_data = busan_beach()
 pcp = beach_data['pcp_mm']
 
 
+def call_methods(eda_obj:EDA):
+
+    eda_obj.plot_histograms()
+    eda_obj.plot_data()
+    eda_obj.plot_ecdf()
+    eda_obj.plot_missing()
+    eda_obj.plot_index()
+    eda_obj.box_plot()
+    eda_obj.box_plot(violen=True)
+    eda_obj.lag_plot(n_lags=2)
+    plt.close('all')
+    eda_obj.probability_plots()
+    plt.close('all')
+    eda_obj.heatmap()
+    eda_obj.grouped_scatter()
+
+    if isinstance(eda_obj.data, pd.DataFrame) and eda_obj.data.shape[1]>1:
+        for method in ['pearson', 'spearman', 'covariance', 'kendall']:
+            eda_obj.correlation(method=method)
+
+    eda_obj.autocorrelation(n_lags=3)
+    eda_obj.partial_autocorrelation(n_lags=3)
+
+    for method in ["kolmogorov", "shapiro", "anderson"]:
+        eda_obj.normality_test(method)
+
+    eda_obj.stats()
+    eda_obj.parallel_corrdinates(st=0, en=100)
+    plt.close('all')
+    return
+
+
 class TestEDA(unittest.TestCase):
 
+    show=False
+    save=False
+
     def test_series(self):
-        eda = EDA(data=pcp, save=False, show=False)
-        eda()
+        eda = EDA(data=pcp, save=self.save, show=self.show)
+        call_methods(eda)
         return
 
     def test_dataframe(self):
-        eda = EDA(data=beach_data, dpi=50, save=False, show=False)
-        eda()
-        return
-
-    def test_correlation(self):
-        eda = EDA(data=beach_data, save=False, show=False)
-        for method in ['pearson', 'spearman', 'covariance', 'kendall']:
-            eda.correlation(method=method)
-        return
-
-    def test_normality_test(self):
-        eda = EDA(data=beach_data, save=False, show=False)
-        for method in ["kolmogorov", "shapiro", "anderson"]:
-            eda.normality_test(method)
+        eda = EDA(data=beach_data.iloc[:-3:], dpi=50, save=self.save,
+                  show=self.show)
+        call_methods(eda)
         return
 
     def test_with_input_features(self):
         eda = EDA(
-            data=beach_data, in_cols=beach_data.columns.to_list()[0:-1],
+            data=beach_data.iloc[:, 0:3], in_cols=beach_data.columns.to_list()[0:3],
             dpi=50,
-            save=False,
-            show=False)
-        eda()
+            save=self.save,
+            show=self.show)
+        call_methods(eda)
         return
 
-    def test_autocorr(self):
-
-        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"),
-                  save=False, show=False)
-        eda.autocorrelation(n_lags=10)
+    def test_with_output_features(self):
+        data = busan_beach(inputs=['tide_cm', 'wat_temp_c'])
+        eda = EDA(
+            data=data, out_cols=data.columns.to_list()[-1:],
+            dpi=50,
+            save=self.save,
+            show=self.show)
+        call_methods(eda)
         return
 
-    def test_partial_autocorr(self):
-        eda = EDA(data=beach_data, path=os.path.join(os.getcwd(), "results"),
-                  save=False, show=False)
-        eda.partial_autocorrelation(n_lags=10)
+    def test_with_input_output_features(self):
+        data = busan_beach(inputs=['tide_cm', 'wat_temp_c'])
+        eda = EDA(
+            data=data,
+            in_cols=data.columns.to_list()[0:-1],
+            out_cols=data.columns.to_list()[-1:],
+            dpi=50,
+            save=self.save,
+            show=self.show)
+        call_methods(eda)
         return
 
     def test_autocorr_against_statsmodels(self):
@@ -96,13 +130,10 @@ class TestEDA(unittest.TestCase):
 
         return
 
-    def test_probplot(self):
-        EDA(data=beach_data, save=False, show=False).probability_plots(cols="pcp_mm")
-        return
-
     def test_ndarray(self):
-        vis = EDA(np.random.random((100, 10)))
-        assert isinstance(vis.data, pd.DataFrame)
+        eda = EDA(np.random.random((100, 3)), save=self.save, show=self.show)
+        call_methods(eda)
+        assert isinstance(eda.data, pd.DataFrame)
         return
 
 
