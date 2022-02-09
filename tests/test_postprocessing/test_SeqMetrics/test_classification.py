@@ -1,17 +1,19 @@
 
+import os
+import site
 import unittest
+site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 import numpy as np
 
 from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
 predictions = np.array([[0.25, 0.25, 0.25, 0.25],
                         [0.01, 0.01, 0.01, 0.96]])
 targets = np.array([[0, 0, 0, 1],
                     [0, 0, 0, 1]])
-
-
 
 
 class TestClassificationMetrics(unittest.TestCase):
@@ -56,11 +58,15 @@ class TestMulticlass1D(unittest.TestCase):
         return
 
     def test_accuracy(self):
-        self.metrics.accuracy()
+        acc = self.metrics.accuracy()
+        acc2 = accuracy_score(self.true, self.pred)
+        self.assertAlmostEqual(acc, acc2)
         return
 
     def test_f1_score(self):
-        self.metrics.f1_score(average="micro")
+        f1_micro = self.metrics.f1_score(average="micro")
+        f1_micro1 = f1_score(self.true, self.pred, average="micro")
+        self.assertAlmostEqual(f1_micro, f1_micro1)
         return
 
 

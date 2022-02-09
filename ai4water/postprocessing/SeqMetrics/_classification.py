@@ -55,6 +55,8 @@ class ClassificationMetrics(Metrics):
     def _true_labels(self):
         """retuned array is 1d"""
         if self.multiclass:
+            if self.true.size == len(self.true):
+                return self.true.reshape(-1,1)
             return np.argmax(self.true.reshape(-1,1), axis=1)
         # it should be 1 dimensional
         assert self.true.size == len(self.true)
@@ -70,6 +72,8 @@ class ClassificationMetrics(Metrics):
     def _pred_labels(self):
         """returns 1d"""
         if self.multiclass:
+            if self.predicted.size == len(self.predicted):
+                return self.predicted.reshape(-1,1)
             return np.argmax(self.predicted.reshape(-1,1), axis=1)
         lb = preprocessing.LabelBinarizer()
         lb.fit(self.true_labels)
