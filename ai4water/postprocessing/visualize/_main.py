@@ -17,7 +17,7 @@ else:
     keract = None
 
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import maybe_three_outputs
+from ai4water.utils.utils import maybe_three_outputs, get_nrows_ncols
 
 from ..utils import choose_examples
 
@@ -834,7 +834,8 @@ def features_2D(data,
     sup_title: title for whole plot
     """
 
-    nrows, ncols = get_nrows_ncols(n_rows, data)
+    n_subplots = len(data) if data.ndim == 3 else 1
+    nrows, ncols = get_nrows_ncols(n_rows, n_subplots)
 
     cmap = cmap or random.choice(CMAPS)
 
@@ -890,22 +891,8 @@ def features_2D(data,
     return
 
 
-def get_nrows_ncols(n_rows, data):
-    n_subplots = len(data) if data.ndim == 3 else 1
-
-    if n_rows is None:
-        n_rows = int(np.sqrt(n_subplots))
-    n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
-    n_rows = int(n_subplots / n_cols)
-
-    while not ((n_subplots / n_cols).is_integer() and
-               (n_subplots / n_rows).is_integer()):
-        n_cols -= 1
-        n_rows = int(n_subplots / n_cols)
-    return n_rows, n_cols
-
-
-def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, title=None):
+def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, 
+        title=None):
 
     assert data.ndim == 2
 

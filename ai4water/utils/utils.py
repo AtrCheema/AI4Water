@@ -1579,3 +1579,17 @@ def check_attributes(model, attributes):
     for method in attributes:
         if not hasattr(model, method):
             raise ValueError(f"your custom class does not have {method}")
+
+
+def get_nrows_ncols(n_rows, n_subplots)->"tuple[int, int]":
+
+    if n_rows is None:
+        n_rows = int(np.sqrt(n_subplots))
+    n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
+    n_rows = int(n_subplots / n_cols)
+
+    while not ((n_subplots / n_cols).is_integer() and
+               (n_subplots / n_rows).is_integer()):
+        n_cols -= 1
+        n_rows = int(n_subplots / n_cols)
+    return n_rows, n_cols

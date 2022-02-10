@@ -6,7 +6,7 @@ import unittest
 import matplotlib.pyplot as plt
 import pandas as pd
 
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(ai4_dir)
 
 import numpy as np
@@ -49,6 +49,7 @@ def call_methods(eda_obj:EDA):
     eda_obj.stats()
     eda_obj.parallel_corrdinates(st=0, en=100)
     plt.close('all')
+    eda_obj.show_unique_vals()
     return
 
 
@@ -134,6 +135,13 @@ class TestEDA(unittest.TestCase):
         eda = EDA(np.random.random((100, 3)), save=self.save, show=self.show)
         call_methods(eda)
         assert isinstance(eda.data, pd.DataFrame)
+        return
+
+    def test_pie(self):
+        data = pd.DataFrame(np.random.randint(1, 11, (100, 3)), columns=['a', 'b', 'c'])
+        eda = EDA(data, save=self.save, show=self.show)
+        #call_methods(eda) todo: fix
+        eda.show_unique_vals(cols=['a'])
         return
 
 

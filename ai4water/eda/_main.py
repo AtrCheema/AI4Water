@@ -1,3 +1,4 @@
+from locale import normalize
 import os
 import math
 import warnings
@@ -18,7 +19,7 @@ except ModuleNotFoundError:
 from .utils import _missing_vals
 from .utils import pac_yw, auto_corr, plot_autocorr
 from ai4water.utils.visualizations import Plot
-from ai4water.utils.utils import find_tot_plots
+from ai4water.utils.utils import find_tot_plots, get_nrows_ncols
 from ai4water.preprocessing import Transformation
 from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
 
@@ -49,6 +50,8 @@ class EDA(Plot):
     - lag_plot
     - plot_ecdf
     - normality_test
+    - parallel_coordinates
+    - show_unique_vals
 
     Example:
         >>> from ai4water.datasets import busan_beach
@@ -138,9 +141,12 @@ class EDA(Plot):
                  ):
         """Shortcut to draw maximum possible plots.
 
-        Arguments:
-            methods :
-            cols :
+        Arguments
+        ---------
+            methods : str, list, optional
+                the methods to call. If 'all', all available methods will be called.
+            cols : str, list, optional
+                columns to use for plotting. If None, all columns will be used.
         """
         all_methods = [
             'heatmap', 'plot_missing', 'plot_histograms', 'plot_data',
@@ -581,7 +587,7 @@ class EDA(Plot):
         """
         Plots data as parallel coordinates.
 
-        Parameters
+        Arguments
         ----------
         st :
             start of data to be considered
@@ -842,7 +848,9 @@ class EDA(Plot):
     def plot_pcs(self, num_pcs=None, st=None, en=None, save_as_csv=False,
                  figsize=(12, 8), **kwargs):
         """Plots principle components.
-        Arguments:
+
+        Arguments
+        ---------
             num_pcs :
             st : starting row/index in data to be used for plotting
             en : end row/index in data to be used for plotting
@@ -1397,10 +1405,12 @@ class EDA(Plot):
     def autocorrelation(
             self,
             n_lags: int = 10,
-            cols: Union[list] = None,
+            cols: Union[list, str] = None,
     ):
         """autocorrelation of individual features of data
-        Arguments:
+
+        Arguments
+        ---------
             n_lags :
                 number of lag steps to consider
             cols :
@@ -1412,12 +1422,16 @@ class EDA(Plot):
     def partial_autocorrelation(
             self,
             n_lags: int = 10,
-            cols: Union[list] = None,
+            cols: Union[list, str] = None,
     ):
         """Partial autocorrelation of individual features of data
-        Arguments:
-            n_lags : number of lag steps to consider
-            cols : columns to use. If not defined then all the columns are used
+
+        Arguments
+        ---------
+            n_lags : int, optional
+                number of lag steps to consider
+            cols : str, list, optional
+                columns to use. If not defined then all the columns are used
         """
         return self._call_method("_autocorr_df", partial=True, n_lags=n_lags,
                                  cols=cols)
@@ -1702,6 +1716,86 @@ class EDA(Plot):
         self._save_or_show(fname=f"ecdf_{fname}")
 
         return axis
+
+    def show_unique_vals(
+            self,
+            threshold: int = 10,
+            st = None,
+            en = None,
+            cols = None,
+            max_subplots: int = 9,
+            figsize: tuple = None,
+            **kwargs
+    ):
+        """
+        Shows percentage of unique/categorical values in data. Only those columns
+        are used in which unique values are below threshold.
+
+        Arguments
+        ----------
+        threshold : int, optional
+        st : int, str, optional
+        en : int, str, optional
+        cols : str, list, optional
+        max_subplots : int, optional
+        figsize : tuple, optional
+        **kwargs :
+            Any keyword arguments for easy_mpl.pie
+
+        """
+        return self._call_method('_pie_df',
+                                 threshold=threshold,
+                                 st=st, en=en, cols=cols,
+                                 max_subplots=max_subplots,
+                                 figsize=figsize,
+                                 **kwargs)
+
+    def _pie_df(self, data,
+                threshold, st, en, cols, 
+                max_subplots=9,
+                fname="",
+                **kwargs):
+        data = _preprocess_df(data, st, en, cols)
+    
+        if data.shape[1] < max_subplots:
+            self._pie(data, 
+                threshold = threshold,
+                fname=fname, 
+                **kwargs)
+        else:
+            tot_plots = find_tot_plots(data.shape[1], max_subplots)
+
+            for i in range(len(tot_plots) - 1):
+                _st, _en = tot_plots[i], tot_plots[i + 1]
+                self._pie(data.iloc[:, _st:_en], threshold=threshold, fname=fname,
+                        **kwargs)
+
+        return
+
+    def _pie(self, data, fname="", figsize=None, threshold=10, **kwargs):
+
+        fractions = {}
+        for col in data.columns:
+            fracts = data[col].value_counts(normalize=True).values
+            if len(fracts) <= threshold:
+                fractions[col] = fracts
+            else:
+                print(f"Ignoring {col} as it contains {len(fracts)} unique values")
+
+        if len(fractions) > 0:
+            nrows, ncols = get_nrows_ncols(3, len(fractions))
+            _, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize or (12, 12))
+
+            if isinstance(axis, plt.Axes):
+                axis = np.array([axis])
+
+            for col, ax in zip(fractions.keys(), axis.flat):            
+                
+                pie(fractions[col], ax=ax, show=False, **kwargs)
+                
+            self._save_or_show(fname=f"pie_{fname}")
+
+        return
 
 
 def plot_ecdf(x: Union[pd.Series, np.ndarray], ax=None, **kwargs):
