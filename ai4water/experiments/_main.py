@@ -418,7 +418,7 @@ class Experiments(object):
         )
         return
 
-    def _consider_include(self, include: [str, list], to_filter):
+    def _consider_include(self, include: Union[str, list], to_filter):
 
         filtered = {}
 
@@ -472,9 +472,16 @@ Available cases are {self.models} and you wanted to include
         fpath_best: str = os.path.join(best_run, output, f"{run_type}_{output}_0.csv")
         best = pd.read_csv(fpath_best, index_col=['index'])
 
-        metrics = Metrics[self.mode]
-        initial_metric: float = getattr(metrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
-        best_metric: float = getattr(metrics(best.values[:, 0], best.values[:, 1]), matric_name)()
+        if self.mode == 'regression':
+            initial_metric: float = getattr(RegressionMetrics(initial.values[:, 0], 
+                initial.values[:, 1]), matric_name)()
+            best_metric: float = getattr(RegressionMetrics(best.values[:, 0], 
+                best.values[:, 1]), matric_name)()
+        else:
+            initial_metric: float = getattr(ClassificationMetrics(initial.values[:, 0], 
+                initial.values[:, 1], multiclass=self.model_.is_multiclass), matric_name)()
+            best_metric: float = getattr(ClassificationMetrics(best.values[:, 0], 
+                best.values[:, 1], multiclass=self.model_.is_multiclass), matric_name)()
 
         # -ve values become difficult to plot, moreover they do not reveal anything significant
         # as compared to when a metric is 0, therefore consider -ve values as zero.
@@ -939,7 +946,12 @@ Available cases are {self.models} and you wanted to include
     ) -> dict:
         """returns the models sorted according to their performance"""
         def find_matric_array(true, sim):
-            errors = Metrics[self.mode](true, sim)
+
+            if self.mode == 'regression':
+                errors = RegressionMetrics(true, sim)
+            else:
+                errors = ClassificationMetrics(true, sim, multiclass=self.model_.is_multiclass)
+
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -1242,8 +1254,13 @@ be used to build ai4water's Model class.
         else:
             model.fit(data=self.data_)
             val_true, val_pred = model.predict(data='validation', return_true=True)
-            metrics = Metrics[self.mode]
-            val_score = getattr(metrics(val_true, val_pred), model.val_metric)()
+
+            if self.mode == "regression":
+                metrics = RegressionMetrics(val_true, val_pred)
+            else:
+                metrics = ClassificationMetrics(val_true, val_pred, multiclass=model.is_multiclass)
+
+            val_score = getattr(metrics, model.val_metric)()
 
         if predict:
             trt, trp = model.predict(data='training', return_true=True)
@@ -1289,7 +1306,9 @@ def sort_array(array):
     return [np.min(results[:i]) for i in iters]
 
 
-def consider_exclude(exclude: [str, list], models, models_to_filter: Union[list, dict] = None):
+def consider_exclude(exclude: Union[str, list], 
+        models, 
+        models_to_filter: Union[list, dict] = None):
 
     if isinstance(exclude, str):
         exclude = [exclude]
