@@ -320,8 +320,8 @@ class EDA(Plot):
         -------
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
-            >>>vis = EDA(data)
-            >>>vis.plot_missing()
+            >>> vis = EDA(data)
+            >>> vis.plot_missing()
         """
         return self._call_method('_plot_missing_df', cols=cols, st=st, en=en, **kwargs)
 
