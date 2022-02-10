@@ -107,6 +107,7 @@ setup(
               'ai4water/utils',
               'ai4water/preprocessing',
               'ai4water/preprocessing/transformations',
+              'ai4water/preprocessing/dataset',
               'ai4water/postprocessing/',
               'ai4water/postprocessing/SeqMetrics',
               'ai4water/postprocessing/explain',

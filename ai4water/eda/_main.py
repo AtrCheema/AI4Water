@@ -589,19 +589,19 @@ class EDA(Plot):
 
         Arguments
         ----------
-        st :
-            start of data to be considered
-        en :
-            end of data to be considered
-        cols :
-            columns from data to be considered.
-        color :
-            color or colormap to be used.
-        **kwargs :
-            any additional keyword arguments to be passed to `easy_mpl.parallel_coordinates`_
+            st :
+                start of data to be considered
+            en :
+                end of data to be considered
+            cols :
+                columns from data to be considered.
+            color :
+                color or colormap to be used.
+            **kwargs :
+                any additional keyword arguments to be passed to `easy_mpl.parallel_coordinates`_
 
-        ..easy_mpl.parallel_coordinates_
-            https://easy-mpl.readthedocs.io/en/latest/#module-9
+            ..easy_mpl.parallel_coordinates_
+                https://easy-mpl.readthedocs.io/en/latest/#module-9
 
         """
         return self._call_method(
@@ -1229,7 +1229,7 @@ class EDA(Plot):
             **kwargs :
                 any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
         """
-        fname = "violen_plot_" if violen else "box_plot_"
+        #name = "violen_plot_" if violen else "box_plot_"
 
         return self._call_method("_box_plot",
                                  st=st, en=en, cols=cols,
@@ -1238,7 +1238,7 @@ class EDA(Plot):
                                  figsize=figsize,
                                  show_datapoints=show_datapoints,
                                  freq=freq,
-                                 prefix=fname,
+                                 #prefix=fname,
                                  violen=violen,
                                  **kwargs)
 
@@ -1733,14 +1733,14 @@ class EDA(Plot):
 
         Arguments
         ----------
-        threshold : int, optional
-        st : int, str, optional
-        en : int, str, optional
-        cols : str, list, optional
-        max_subplots : int, optional
-        figsize : tuple, optional
-        **kwargs :
-            Any keyword arguments for easy_mpl.pie
+            threshold : int, optional
+            st : int, str, optional
+            en : int, str, optional
+            cols : str, list, optional
+            max_subplots : int, optional
+            figsize : tuple, optional
+            **kwargs :
+                Any keyword arguments for easy_mpl.pie
 
         """
         return self._call_method('_pie_df',
