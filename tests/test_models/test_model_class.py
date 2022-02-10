@@ -6,6 +6,7 @@ import site
 site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import tensorflow as tf
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
 if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -41,6 +42,8 @@ def test_user_defined_data(_model, x, y):
 
     # using user defined x and y, post_processing must happen
     t, p = _model.predict(x=x, y=y, return_true=True)
+    assert isinstance(t, np.ndarray)
+    assert isinstance(p, np.ndarray)
     assert len(t) == len(p) == len(y)
 
     return
@@ -54,6 +57,9 @@ def _test_ml_inbuilt_data_reg(_model):
     test_user_defined_data(model, x_reg, y_reg)
 
     t, p = model.predict(data="test", return_true=True)
+    assert isinstance(t, np.ndarray)
+    assert isinstance(p, np.ndarray)
+
     assert len(t) == len(p)
     return
 
@@ -66,6 +72,8 @@ def _test_ml_inbuilt_data_cls(_model):
     test_user_defined_data(model, x_cls, y_cls)
 
     t, p = model.predict(data='test', return_true=True)
+    assert isinstance(t, np.ndarray)
+    assert isinstance(p, np.ndarray)
     assert len(t) == len(p)
     return
 
@@ -94,7 +102,8 @@ def _test_ml_userdefined_non_kw(_model, model_name, x, y):
     model = _model(model=model_name, verbosity=0)
     model.fit(x=x, y=y)
 
-    model.predict(x)
+    p = model.predict(x)
+    assert isinstance(p, np.ndarray)
     return
 
 
@@ -103,7 +112,8 @@ def _test_hydro_metrics(_model, model_name, x, y):
     model.fit(x=x, y=y)
 
     for metrics in ["minimal", "hydro_metrics", "all"]:
-        model.predict(x=x, metrics=metrics)
+        p = model.predict(x=x, metrics=metrics)
+        assert isinstance(p, np.ndarray)
     return
 
 
@@ -168,7 +178,8 @@ class TestPredictMethod(unittest.TestCase):
                     x_transformation="minmax",
                     y_transformation="minmax",
                     verbosity=0)
-        model.predict(data=data)
+        p = model.predict(data=data)
+        assert isinstance(p, np.ndarray)
         return
     
     def test_without_fit_with_xy(self):
@@ -180,7 +191,9 @@ class TestPredictMethod(unittest.TestCase):
                     x_transformation="minmax",
                     y_transformation="minmax",
                     verbosity=0)
-        model.predict(x=x_reg, y=y_reg)
+        t, p = model.predict(x=x_reg, y=y_reg, return_true=True)
+        assert isinstance(t, np.ndarray)
+        assert isinstance(p, np.ndarray)
         return
 
     def test_without_fit_with_only_x(self):
@@ -192,7 +205,8 @@ class TestPredictMethod(unittest.TestCase):
                     x_transformation="minmax",
                     y_transformation="log",
                     verbosity=0)
-        model.predict(x=x_reg)
+        p = model.predict(x=x_reg)
+        assert isinstance(p, np.ndarray)
         return
 
 
@@ -240,7 +254,6 @@ class TestPermImp(unittest.TestCase):
         imp = model.permutation_importance(data="validation")
         assert imp.shape == (13, 5)
         return
-
 
 class TestCustomModel(unittest.TestCase):
     """for custom models, user has to tell lookback and loss"""

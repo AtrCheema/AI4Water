@@ -264,7 +264,7 @@ class Transformations(object):
             raise ValueError(f"Transformations class has not been fitted yet")
         return self._inverse_transform(data, postprocess=postprocess)
 
-    def inverse_transform_without_fit(self, data, postprocess=True):
+    def inverse_transform_without_fit(self, data, postprocess=True)->np.ndarray:
         data = np.array(data)
         if data.ndim == 1:
             data = data.reshape(-1, 1)
@@ -294,7 +294,7 @@ class Transformations(object):
         transformer = Transformation(**kwargs)
         transformed_data = transformer.inverse_transform(data=data, postprocess=postprocess)
 
-        return transformed_data
+        return transformed_data.values
 
     def _inverse_transform(self, data, key="5", postprocess=True):
 

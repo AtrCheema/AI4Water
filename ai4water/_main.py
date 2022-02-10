@@ -2254,6 +2254,8 @@ class BaseModel(NN):
         with config `name`."""
         if data is not None and transformation:
             transformer = Transformations(feature_names, transformation)
+            if isinstance(data, pd.DataFrame):
+                data = data.values
             data = transformer.fit_transform(data)
             self.config[name] = transformer.config()
         return data
