@@ -63,7 +63,8 @@ class MLClassificationExperiments(Experiments):
         else:
             model.fit(data=self.data_)
             vt, vp = model.predict(data='validation', return_true=True)
-            val_score = getattr(ClassificationMetrics(vt, vp), model.val_metric)()
+            val_score = getattr(ClassificationMetrics(vt, vp,
+                multiclass=model.is_multiclass), model.val_metric)()
 
         if view:
             model.view()

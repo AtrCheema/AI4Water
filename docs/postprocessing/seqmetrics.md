@@ -10,7 +10,6 @@
     rendering:
         show_root_heading: true
 
-
 **`ClassificationMetrics`**
 ::: ai4water.postprocessing.SeqMetrics.ClassificationMetrics
     handler: python

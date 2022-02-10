@@ -1,5 +1,8 @@
 
 import unittest
+import site
+import os
+site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from ai4water.experiments import MLClassificationExperiments
 
