@@ -208,7 +208,25 @@ class TestPredictMethod(unittest.TestCase):
         p = model.predict(x=x_reg)
         assert isinstance(p, np.ndarray)
         return
+    
+    def test_with_no_test_data(self):
+        """we have only training and validation data and not test data"""
+        model = Model(model="RandomForestRegressor",
+            train_fraction=1.0, verbosity=0)
+        model.fit(data=data)
+        model.predict()
 
+        return
+
+    def test_with_no_val_and_test_data(self):
+        """we have only training data and no validation and test data"""
+        model = Model(model="RandomForestRegressor",
+            train_fraction=1.0,
+            val_fraction=0.0, verbosity=0)
+        model.fit(data=data)
+        model.predict()
+
+        return
 
 class TestFit(unittest.TestCase):
 

@@ -19,7 +19,7 @@ min_requirements = [
     'joblib',
     'requests',
     'plotly',
-    'easy_mpl>=0.20.2'
+    'easy_mpl>=0.20.3'
     ]
 
 extra_requires = [
@@ -58,7 +58,7 @@ exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     'h5py<2.11.0'
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
-eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl']
+eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.3']
 
 all_requirements = min_requirements + extra_requires
 

@@ -795,8 +795,8 @@ class BaseModel(NN):
         if estimator in ['HistGradientBoostingRegressor', 'SGDRegressor', 'MLPRegressor']:
             if self.config['val_fraction'] > 0.0:
                 kwargs.update({'validation_fraction': self.config['val_fraction']})
-            elif self.config['test_fraction'] > 0.0:
-                kwargs.update({'validation_fraction': self.config['test_fraction']})
+            elif self.config['train_fraction'] < 1.0:
+                kwargs.update({'validation_fraction': 1.0 - self.config['train_fraction']})
 
         # some algorithms allow detailed output during training, this is allowed when self.verbosity is > 1
         if estimator in ['OneClassSVM']:
@@ -1434,6 +1434,29 @@ class BaseModel(NN):
             y=y,
             data=data
         )
+
+        if len(inputs)==0 and source == "test":
+            warnings.warn("No test data found. using validation data instead",
+                          UserWarning)
+            data = "validation"
+            source = data
+            inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+                source=source,
+                x=x,
+                y=y,
+                data=data)
+            # if we still have no data, then we use training data instead
+            if len(inputs)==0:
+                warnings.warn("""
+                No test and validation data found. using training data instead""",
+                              UserWarning)
+                data = "training"
+                source = data
+                inputs, true_outputs, prefix, transformation_key, user_defined_data = self._fetch_data(
+                    source=source,
+                    x=x,
+                    y=y,
+                    data=data)
 
         inputs = self._transform_x(inputs, 'x_transformer_')
 

@@ -1,4 +1,4 @@
-from locale import normalize
+
 import os
 import math
 import warnings
