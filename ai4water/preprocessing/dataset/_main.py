@@ -192,7 +192,13 @@ class DataSet(_DataSet):
                 A dictionary with three possible keys, 'training', 'validation' and 'test'.
                 It determines the indices to be used to select training, validation
                 and test data. If indices are given for training, then train_fraction
-                must not be given.
+                must not be given. If indices are given for validation, then indices
+                for training must also be given and  val_fraction must not be given.
+                Therefore, the possible keys in indices dictionary are follwoing 
+                    'training'
+                    'training' and 'validation'
+                    'training' and 'test' 
+                    'training', 'validation' and 'test'.
             intervals :
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means indices
@@ -294,8 +300,23 @@ class DataSet(_DataSet):
         The word 'index' is not allowed as column name, input_features or output_features
         """
 
+        indices = indices or {}
+
         if indices:
             assert split_random is False, "indices cannot be used with split_random"
+        
+        if 'training' in indices:
+            assert train_fraction == 0.7, f"""
+            You can not set training data using both indices and train_fraction.
+            Use either indices or train_fraction."""
+    
+        if 'validation' in indices:
+            assert val_fraction == 0.2, f"""
+                You can not set validation data using both indices and val_fraction. 
+                Use either indices or val_fraction."""
+            assert 'training' in indices, f"""
+            when defining validation data using indices, training data must also be 
+            defined using indices."""
 
         self.dataset_args = dataset_args
 
@@ -710,14 +731,15 @@ class DataSet(_DataSet):
 
     def get_indices(self):
         """If the data is to be divded into train/test based upon indices,
-        here we create train_indices and test_indices.
+        here we create train_indices and test_indices. The train_indices
+        contain indices for both training and validation data.
         """
 
         tot_obs = self.total_exs(**self.ts_args)
 
         all_indices = np.arange(tot_obs)
 
-        if self.indices is None:
+        if len(self.indices) == 0 :
             if self.train_fraction < 1.0:
                 if self.split_random:
                     train_indices, test_indices = train_test_split(
@@ -732,36 +754,37 @@ class DataSet(_DataSet):
             else:  # no test data
                 train_indices, test_indices = all_indices, []
         else:
-            assert isinstance(self.indices, dict)
             _train_indices = self.indices.get('training', None)
             _val_indices = self.indices.get('validation', None)
             _test_indices = self.indices.get('test', None)
 
             if _train_indices is not None:
                 if _val_indices is None:
-                    if self.val_fraction>0.0:
-                        # get val_indices from train_indices
-                        ...  # todo
-                        #raise NotImplementedError
-                    else:
-                        _val_indices = []   # no validation set
+                    # even if val_fraction is > 0.0, we will separate validation 
+                    # data from training later
+                    _val_indices = np.array([])   # no validation set
                 else:
-                    assert isinstance(_val_indices, list)
-            
+                    assert isinstance(np.array(_val_indices), np.ndarray)
+                    _val_indices = np.array(_val_indices)
+
+                overlap = np.intersect1d(_train_indices, _val_indices)
+                assert len(overlap) == 0, f"""
+                    Training and validation indices must be mutually exclusive.
+                    They contain {len(overlap)} overlaping values."""
+                train_indices = np.sort(np.hstack([_train_indices, _val_indices]))
+
                 if _test_indices is None:
-                    # train_fraction it must be default
-                    assert self.train_fraction == 0.7
                     # get test_indices by subtracting train_indices from all indices
-                    test_indices = np.delete(all_indices, _train_indices)
+                    test_indices = [ind for ind in all_indices if ind not in train_indices]
+                    #_val_indices = np.array([])
                 
-                train_indices = _train_indices
             else:  # todo
                 train_indices = []
                 
         setattr(self, 'train_indices', train_indices)
         setattr(self, 'test_indices', test_indices)
 
-        return train_indices, test_indices
+        return np.array(train_indices).astype("int32"), np.array(test_indices).astype("int32")
 
     def _get_indices_by_seq_split(
         self, 
@@ -777,7 +800,15 @@ class DataSet(_DataSet):
     def _training_data(self, key="_training", **kwargs):
         """training data including validation data"""
 
-        train_indices, _ = self.get_indices()
+        train_indices, test_indices = self.get_indices()
+
+        if 'validation' in self.indices:
+            # when validation indices are given, we first prepare
+            # complete data which contains training, validation and test data
+            # TODO this is agains function definition
+            indices = np.sort(np.hstack([train_indices, test_indices]))
+        else:
+            indices = train_indices
 
         data = self.data.copy()
 
@@ -790,7 +821,7 @@ class DataSet(_DataSet):
         x, prev_y, y = self._make_data(
             data,
             intervals=self.intervals,
-            indices=train_indices,
+            indices= indices,
             **kwargs)
 
         if not isinstance(self.data, np.ndarray):
@@ -811,19 +842,7 @@ class DataSet(_DataSet):
         if self.val_fraction>0.0:
             # when no output is generated, corresponding index will not be saved
             idx = self.indexes.get(key, np.arange(len(x)))  # index also needs to be split
-            if self.split_random:
-                # split x,y randomly
-                splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
-                x, _, y, _ = splitter.split_by_random(seed=self.seed)
-                splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
-                idx, _, prev_y, _ = splitter.split_by_random(seed=self.seed)
-                
-            else:
-                # split x,y sequentially
-                splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
-                x, _, y, _ = splitter.split_by_slicing()
-                splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
-                idx, _, prev_y, _ = splitter.split_by_slicing()
+            x, prev_y, y, idx = self._train_val_split(x, prev_y, y, idx, 'training')
 
             # if drop remainder, we need to
             x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
@@ -845,18 +864,7 @@ class DataSet(_DataSet):
 
         if self.val_fraction>0.0:
             idx = self.indexes.get(key, np.arange(len(x)))
-            if self.split_random:
-                # split x,y randomly
-                splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
-                _, x, _, y = splitter.split_by_random(seed=self.seed)
-                splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
-                _, idx, _, prev_y = splitter.split_by_random(seed=self.seed)
-            else:
-                # split x,y sequentially
-                splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
-                _, x, _, y = splitter.split_by_slicing()
-                splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
-                _, idx, _, prev_y = splitter.split_by_slicing()
+            x, prev_y, y, idx = self._train_val_split(x, prev_y, y, idx, 'validation')
 
             x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
 
@@ -868,6 +876,42 @@ class DataSet(_DataSet):
             return self.return_x_yy(x, prev_y, y, "Validation")
 
         return self.return_xy(x, y, "Validation")
+
+    def _train_val_split(self, x, prev_y, y, idx, return_type):
+        """split x,y,idx,prev_y into training and validation data"""
+
+        if self.split_random:
+            # split x,y randomly
+            splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
+            train_x, val_x, train_y, val_y = splitter.split_by_random(seed=self.seed)
+            splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
+            train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_random(
+                seed=self.seed)
+
+        elif 'validation' in self.indices:
+            # separate indices were provided for validation data
+            # it must be remembered that x,y now contains training+validation+test data
+            # but based upon indices, we will choose either training or validation data
+            val_indices = self.indices['validation']
+            _train_indices, _ = self.get_indices()
+            train_indices = [i for i in _train_indices if i not in val_indices]
+            splitter = TrainTestSplit(x, y)
+            train_x, val_x, train_y, val_y = splitter.split_by_indices(
+                train_indices, val_indices)
+            splitter = TrainTestSplit(idx, prev_y)
+            train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_indices(
+                train_indices, val_indices)
+        else:
+            # split x,y sequentially
+            splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
+            train_x, val_x, train_y, val_y = splitter.split_by_slicing()
+            splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
+            train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_slicing()
+        
+        if return_type=="training":
+            return train_x, train_prev_y, train_y, train_idx
+        
+        return val_x, val_prev_y, val_y, val_idx
 
     def test_data(self, key="test", **kwargs):
         """test data"""
@@ -885,20 +929,24 @@ class DataSet(_DataSet):
 
             _, test_indices = self.get_indices()
 
-            # get x,_y, y
-            x, prev_y, y = self._make_data(
-                data,
-                intervals=self.intervals,
-                indices=test_indices,
-                **kwargs)
+            if len(test_indices) > 0:  # it is possible that training and validation
+                # indices cover whole data
+                # get x,_y, y
+                x, prev_y, y = self._make_data(
+                    data,
+                    intervals=self.intervals,
+                    indices=test_indices,
+                    **kwargs)
 
-            x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
+                x, prev_y, y = self.check_for_batch_size(x, prev_y, y)
 
-            if not isinstance(self.data, np.ndarray):
-                x, self.indexes[key] = self.deindexify(x, key)
+                if not isinstance(self.data, np.ndarray):
+                    x, self.indexes[key] = self.deindexify(x, key)
 
-            if self.mode == 'classification':
-                y = check_for_classification(y, self._to_categorical)
+                if self.mode == 'classification':
+                    y = check_for_classification(y, self._to_categorical)
+            else:
+                x, prev_y, y = np.empty(0), np.empty(0), np.empty(0)    
         else:
             x, prev_y, y = np.empty(0), np.empty(0), np.empty(0)
 
@@ -1057,8 +1105,9 @@ class DataSet(_DataSet):
 
     def _make_data(self, data, indices=None, intervals=None, shuffle=False):
 
-        if indices is not None:
-            assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
+        #if indices is not None:
+        #    indices = np.array(indices).astype("int32")
+            #assert isinstance(np.array(indices), np.ndarray), "indices must be array like"
 
         if isinstance(data, pd.DataFrame):
             data = data[self._input_features + self.output_features].copy()

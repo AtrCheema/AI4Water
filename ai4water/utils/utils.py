@@ -973,8 +973,8 @@ class TrainTestSplit(object):
         """splits the x and y by user defined `train_indices` and `test_indices`"""
 
         return self.slice_with_indices(self.x, train_indices), \
-               self.slice_with_indices(self.y, train_indices), \
                self.slice_with_indices(self.x, test_indices), \
+               self.slice_with_indices(self.y, train_indices), \
                self.slice_with_indices(self.y, test_indices)
 
     @staticmethod

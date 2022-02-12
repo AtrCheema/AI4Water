@@ -164,8 +164,11 @@ def build_and_test_loader(data, config, out_cols,
     if 'train_fraction' not in config:
        config['train_fraction'] = 0.7
 
-    data_loader = DataSet(data=data, save=save, verbosity=0, **config)
+    data_loader = DataSet(data=data, save=save, verbosity=1, **config)
     #dl = DataLoader.from_h5('data.h5')
+    if save:
+        data_loader.verbosity = 0
+
     train_x, prev_y, train_y = data_loader.training_data(key='train')
     assert_xy_equal_len(train_x, prev_y, train_y, data_loader, train_ex)
 
@@ -176,8 +179,11 @@ def build_and_test_loader(data, config, out_cols,
         assert_xy_equal_len(val_x, prev_y, val_y, data_loader, val_ex, data_type='validation')
 
     test_x, prev_y, test_y = data_loader.test_data(key='test')
-    if data_loader.train_fraction < 1.0:
-        assert_xy_equal_len(test_x, prev_y, test_y, data_loader, test_ex, data_type='test')
+    if test_ex is not None and test_ex==0:
+        assert len(test_x) == 0
+    elif data_loader.train_fraction < 1.0:
+        assert_xy_equal_len(test_x, prev_y, test_y, data_loader, test_ex,
+            data_type='test')
     else:
         assert len(test_x) == 0
 
@@ -212,7 +218,13 @@ def build_and_test_loader(data, config, out_cols,
 
 class TestAllCases(object):
 
-    def __init__(self, input_features,  output_features, lookback=3, allow_nan_labels=0, save=True):
+    def __init__(self, 
+        input_features,  
+        output_features, 
+        lookback=3, 
+        allow_nan_labels=0, 
+        save=True):
+
         self.input_features = input_features
         self.output_features = output_features
         self.lookback = lookback
@@ -520,14 +532,15 @@ class TestAllCases(object):
         config = {'input_features':self.input_features,
                   'output_features': self.output_features,
                    'ts_args': {'lookback': self.lookback},
-                  'indices': {'training': [1,2,3,4,5,6,7,8,9,10,11,12],
-                  'val_indices': [0, 12, 14, 16, 5]},
+                  'indices': {'training': [1, 4,5,6, 8,9, 11, 12, 13, 17],
+                  'validation': [0, 3, 7, 10, 14]},
                   'train_fraction': 0.7,
+                  'val_fraction': 0.2
                   }
 
-        train_examples = 10 - (self.lookback - 1) if self.lookback > 1 else 8
-        val_examples = 6 - (self.lookback - 1) if self.lookback > 1 else 4
-        test_examples = 8 - (self.lookback - 1) if self.lookback > 1 else 8
+        train_examples = 12 - (self.lookback - 1) if self.lookback > 1 else 10
+        val_examples = 7 - (self.lookback - 1) if self.lookback > 1 else 5
+        test_examples = 5 - (self.lookback - 1) if self.lookback > 1 else 5
         loader = build_and_test_loader(data, config, self.output_features,
                                        train_examples, val_examples, test_examples,
                                        assert_uniqueness=False,

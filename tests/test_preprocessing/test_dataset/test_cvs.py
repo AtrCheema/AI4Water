@@ -2,7 +2,8 @@
 import unittest
 import os
 import site
-package_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))) 
+cwd = os.path.dirname(os.path.abspath(__file__))
+package_path = os.path.dirname(os.path.dirname(os.path.dirname(cwd)))
 site.addsitedir(package_path)
 
 from ai4water.datasets import busan_beach

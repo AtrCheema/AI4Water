@@ -1,5 +1,10 @@
-import os.path
+import os
 import unittest
+
+import site
+cwd = os.path.abspath(__file__)
+package_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(cwd))))
+site.addsitedir(package_path)
 
 import numpy as np
 import pandas as pd

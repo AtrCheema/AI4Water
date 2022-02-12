@@ -44,6 +44,28 @@ class TestMiscFunctionalities(unittest.TestCase):
 
         return
 
+    def test_with_indices_and_nans_no_test_data(self):
+        # todo, check with two output columns
+        data = beach_data
+        train_idx, test_idx = train_test_split(np.arange(len(data.dropna())),
+                                               test_size=0.25, random_state=332898)
+        out_cols = [list(data.columns)[-1]]
+        config = {
+            'indices': {"training": train_idx, 'validation': test_idx},
+            'input_features': list(data.columns)[0:-1],
+            'output_features': out_cols,
+            'val_fraction': 0.2,
+            'train_fraction': 0.7,
+            'ts_args': {'lookback': 14},
+        }
+
+        build_and_test_loader(data,
+                              config,
+                              out_cols=out_cols, train_ex=163, val_ex=55, test_ex=0,
+                              check_examples=False, save=False)
+
+        return
+
     def test_with_string_index(self):
 
         data = beach_data
