@@ -83,23 +83,26 @@ class BaseModel(NN):
         are applicable in each case. The user must define only the relevant/applicable
         parameters and leave the others as it is.
 
-        Arguments:
+        Parameters
+        ----------
             model :
                 a dictionary defining machine learning model.
                 If you are building a non-tensorflow model
                 then this dictionary must consist of name of name of model as key
                 and the keyword arguments to that model as dictionary. For example
                 to build a decision forest based model
-                ```python
-                model = {'DecisionTreeRegressor': {"max_depth": 3, "criterion": "mae"}}
-                ```
+
+                >>> model = {'DecisionTreeRegressor': {"max_depth": 3,
+                ...                                    "criterion": "mae"}}
+
                 The key 'DecisionTreeRegressor' should exactly match the name of
                 the model from one of following libraries
 
-                    - scikit-learn
-                    - xgboost
-                    - catboost
-                    - lightgbm
+                - `sklearn`_
+                - `xgboost`_
+                - `catboost`_
+                - `lightgbm`_
+
                 The value {"max_depth": 3, "criterion": "mae"} is another dictionary
                 which can be any keyword argument which the `model` (DecisionTreeRegressor
                 in this case) accepts. The user must refer to the documentation
@@ -108,19 +111,19 @@ class BaseModel(NN):
                 If You are building a Deep Learning model using tensorflow, then the key
                 must be 'layers' and the value must itself be a dictionary defining layers
                 of neural networks. For example we can build an MLP as following
-                ```python
-                model = {'layers': {
-                            "Dense_0": {'units': 64, 'activation': 'relu'},
-                             "Flatten": {},
-                             "Dense_3": {'units': 1}
-                            }}
-                ```
+
+                >>> model = {'layers': {
+                ...             "Dense_0": {'units': 64, 'activation': 'relu'},
+                ...              "Flatten": {},
+                ...              "Dense_3": {'units': 1}
+                >>>             }}
+
                 The MLP in this case consists of dense, and flatten layers. The user
                 can define any keyword arguments which is accepted by that layer in
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
-                [see](https://ai4water.readthedocs.io/en/latest/build_dl_models/)
+                see_
             x_transformation:
                 type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
@@ -128,60 +131,62 @@ class BaseModel(NN):
                 one transformation. Moreover, the user can also determine which
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
-                ```python
-                transformation = 'minmax'
-                ```
+
+                >>> transformation = 'minmax'
+
                 To apply different transformations on different input and output features
-                ```python
-                transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
-                                {'method': 'zscore', 'features': ['input3', 'input4']}
-                                ]
-                ```
+
+                >>> transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
+                ...                {'method': 'zscore', 'features': ['input3', 'input4']}
+                ...                 ]
+
                 Here `input1`, `input2`, `input3` and `input4` are the columns in the
-                `data`. For more info see [Transformations][ai4water.preprocessing.Transformations]
-                and [Transformation][ai4water.preprocessing.Transformation] classes.
+                `data`. For more info see :py:class:`ai4water.preprocessing.Transformations`
+                and :py:class:`ai4water.preprocessing.Transformation` classes.
             y_transformation:
                 type of transformation to be applied on y/label/output data.
-            lr  float:, default 0.001.
+            lr :, default 0.001.
                 learning rate,
-            optimizer str/keras.optimizers like:
+            optimizer : str/keras.optimizers like
                 the optimizer to be used for neural network training. Default is 'Adam'
-            loss str/callable:  Default is `mse`.
+            loss : str/callable  Default is `mse`.
                 the cost/loss function to be used for training neural networks.
-            quantiles list: Default is None
+            quantiles : list Default is None
                 quantiles to be used when the problem is quantile regression.
-            epochs int:  Default is 14
+            epochs : int  Default is 14
                 number of epochs to be used.
-            min_val_loss float:  Default is 0.0001.
+            min_val_loss : float   Default is 0.0001.
                 minimum value of validatin loss/error to be used for early stopping.
-            patience int:
+            patience : int
                 number of epochs to wait before early stopping. Set this value to None
                 if you don't want to use EarlyStopping.
-            save_model bool:,
+            save_model : bool
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
                 Otherwise model is not saved.
-            subsequences int: Default is 3.
+            subsequences :  int Default is 3.
                 The number of sub-sequences. Relevent for building CNN-LSTM based models.
-            metrics str/list:
+            metrics : str/list
                 metrics to be monitored. e.g. ['nse', 'pbias']
-            val_metric str:
+            val_metric : str
                 performance metric to be used for validation/cross_validation.
                 This metric will be used for hyper-parameter optimizationa and
-                experiment comparison. If not defined then [r2_score][ai4water.postprocessing.SeqMetrics.RegressionMetrics.r2_score]
-                will be used for regression and [accuracy][r2_score][ai4water.postprocessing.SeqMetrics.ClassificationMetrics.accuracy]
+                experiment comparison. If not defined then
+                r2_score :py:meth:`ai4water.postprocessing.SeqMetrics.RegressionMetrics.r2_score`
+                will be used for regression and
+                accuracy :py:meth:`ai4water.postprocessing.SeqMetrics.ClassificationMetrics.accuracy`
                 will be used for classification.
-            cross_validator dict:
+            cross_validator : dict
                 selects the type of cross validation to be applied. It can be any
                 cross validator from sklear.model_selection. Default is None, which
                 means validation will be done using `validation_data`. To use
                 kfold cross validation,
-                ```python
-                cross_validator = {'kfold': {'n_splits': 5}}
-                ```
-            batches str:
+
+                >>> cross_validator = {'kfold': {'n_splits': 5}}
+
+            batches : str
                 either `2d` or 3d`.
-            wandb_config dict:
+            wandb_config : dict
                 Only valid if wandb package is installed.  Default value is None,
                 which means, wandb will not be utilized. For simplest case, pass
                 a dictionary with at least two keys namely `project` and `entity`.
@@ -189,45 +194,65 @@ class BaseModel(NN):
                 arugments for wandb.init, wandb.log and WandbCallback. For
                 `training_data` and `validation_data` in `WandbCallback`, pass
                 `True` instead of providing a tuple as shown below
-                ```python
-                wandb_config = {'entity': 'entity_name', 'project': 'project_name',
-                                'training_data':True, 'validation_data': True}
-                ```
-            seed int:
+
+                >>> wandb_config = {'entity': 'entity_name', 'project': 'project_name',
+                ...                 'training_data':True, 'validation_data': True}
+
+            seed : int
                 random seed for reproducibility. This can be set to None. The seed
                 is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
-            prefix str:
+            prefix : str
                 prefix to be used for the folder in which the results are saved.
                 default is None, which means within
                 ./results/model_path
-            path str/path like:
+            path : str/path like
                 if not given, new model_path path will not be created.
-            verbosity int: default is 1.
+            verbosity : int default is 1
                 determines the amount of information being printed. 0 means no
                 print information. Can be between 0 and 3. Setting this value to 0
                 will also reqult in not showing some plots such as loss curve or
                 regression plot. These plots will only be saved in self.path.
-            accept_additional_args bool:  Default is False
+            accept_additional_args : bool  Default is False
                 If you want to pass any additional argument, then this argument
                 must be set to True, otherwise an error will be raise.
-            kwargs :
-                keyword arguments for [`DataSet`][ai4water.preprocessing.DataSet.__init__] class
+            **kwargs:
+                keyword arguments for :py:meth:`ai4water.preprocessing.DataSet.__init__`
 
         Note
         -----
             The transformations applied on `x` and `y` data using `x_transformation`
-            and `y_transformations` are part of **model**. See [this](https://stats.stackexchange.com/q/555839/314919)
-        Example:
-            >>>from ai4water import Model
-            >>>from ai4water.datasets import busan_beach
-            >>>df = busan_beach()
-            >>>model_ = Model(input_features=df.columns.tolist()[0:-1],
+            and `y_transformations` are part of **model**. See `transformation`_
+
+        Examples
+        -------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> df = busan_beach()
+            >>> model_ = Model(input_features=df.columns.tolist()[0:-1],
             ...              batch_size=16,
             ...              output_features=df.columns.tolist()[-1:],
             ...              model={'layers': {'LSTM': 64, 'Dense': 1}},
-            ...)
-            >>>history = model_.fit(data=df)
-            >>>y, obs = model_.predict()
+            ... )
+            >>> history = model_.fit(data=df)
+            >>> y, obs = model_.predict()
+
+        .. _sklearn:
+            https://scikit-learn.org/stable/modules/classes.html
+
+        .. _xgboost:
+            https://xgboost.readthedocs.io/en/stable/python/index.html
+
+        .. _catboost:
+            https://catboost.ai/en/docs/concepts/python-quickstart
+
+        .. _lightgbm:
+            https://lightgbm.readthedocs.io/en/latest/
+
+        .. _transformation:
+            https://stats.stackexchange.com/q/555839/314919
+
+        .. _see:
+            https://ai4water.readthedocs.io/en/latest/build_dl_models/
         """
         if self._go_up:
             maker = make_model(
@@ -906,17 +931,17 @@ class BaseModel(NN):
                 Correct labels/observations/true data corresponding to 'x'.
             data :
                 Raw data fromw which `x`,`y` pairs are prepared. This will be
-                passed to [DataSet][ai4water.preprocessing.DataSet].
-                It can also be an instance if [DataSet][ai4water.preprocessing.DataSet] or
-                [DataSetPipeline][ai4water.preprocessing.DataSetPipeline].
-                It can also be name of dataset from [ai4water.datasets][ai4water.datasets.all_datasets]
+                passed to :py:class:`ai4water.preprocessing.DataSet`.
+                It can also be an instance if :py:class:`ai4water.preprocessing.DataSet` or
+                :py:class:`ai4water.preprocessing.DataSetPipeline`.
+                It can also be name of dataset from :py:attr:`ai4water.datasets.all_datasets`
             callbacks:
                 Any callback compatible with keras. If you want to log the output
                 to tensorboard, then just use `callbacks={'tensorboard':{}}` or
                 to provide additional arguments
-                ```python
+
                 >>> callbacks={'tensorboard': {'histogram_freq': 1}}
-                ```
+
             kwargs :
                 Any keyword argument for the `fit` method of the underlying algorithm.
                 if 'x' is present in kwargs, that will take precedent over `data`.
@@ -1256,14 +1281,15 @@ class BaseModel(NN):
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
-                name from [RegressionMetrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics]
-                or [ClassificationMetrics][ai4water.postprocessing.SeqMetrics.ClassificationMetrics]
+                name from RegressionMetrics :py:class:`ai4water.postprocessing.SeqMetrics.RegressionMetrics`
+                or ClassificationMetrics :py:class:`ai4water.postprocessing.SeqMetrics.ClassificationMetrics`
                 can be given. It can also be name of group of metrics to evaluate.
                 Following groups are available
 
                     - `minimal`
                     - `all`
                     - `hydro_metrics`
+
                 If this argument is given, the `evaluate` function of the underlying class
                 is not called. Rather the model is evaluated for given metrics.
             kwargs:
@@ -1274,30 +1300,34 @@ class BaseModel(NN):
             by `evaluate` method of underlying model. Otherwise the model is evaluated
             for given metric or group of metrics and the result is returned
 
-        Example:
+        Example
+        -------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> model = Model(model={"layers": {"Dense": 1}})
             >>> model.fit(data=busan_beach())
 
             for evaluation on test data
-            >>> model.evaluate()
 
-            for evaluation on training data
+            >>> model.evaluate()
+            ...
+            ... #for evaluation on training data
             >>> model.evaluate(data='training')
 
-            evaluate on any metric from [Metrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics]
+            evaluate on any metric from Metrics :py:class:`ai4water.postprocessing.SeqMetrics.RegressionMetrics`
             module
-            >>> model.evaluate(metrics='pbias')
 
-            to evaluate on custom data, the user can provide its own x and y
+            >>> model.evaluate(metrics='pbias')
+            ...
+            ... # to evaluate on custom data, the user can provide its own x and y
             >>> x = np.random.random((10, 13))
             >>> y = np.random.random((10, 1, 1))
             >>> model.evaluate(x, y)
 
-            # backward compatability
+            backward compatability
             Since the ai4water's Model is supposed to behave same as Keras' Model
             the following expressions are equally valid.
+
             >>> model.evaluate(x, y=y)
             >>> model.evaluate(x=x, y=y)
         """
@@ -1381,12 +1411,14 @@ class BaseModel(NN):
             data:
                 It can either be a string indicating which data to use. In this
                 case, possible values are
-                    - `training`
-                    - `test`
-                    - `validation`.
+
+                - `training`
+                - `test`
+                - `validation`.
+
                 By default, `test` data is used for predictions.
                 It can also be unprepared/raw data which will be given to
-                [DataSet][ai4water.preprocessing.DataSet]
+                :py:class:`ai4water.preprocessing.DataSet
                 to prepare x,y values.
 
             process_results: bool
@@ -1398,6 +1430,7 @@ class BaseModel(NN):
                 whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
             kwargs : any keyword argument for `predict` method.
+
         Returns:
             An numpy array of predicted values.
             If return_true is True then a tuple of arrays. The first is true
@@ -1652,7 +1685,7 @@ class BaseModel(NN):
                 whether to show the plot or not!
 
         Returns:
-            An isntance of [Visualize][ai4water.postprocessing.visualize.Visualize] class.
+            An isntance of Visualize :py:class:`ai4water.postprocessing.visualize.Visualize` class.
         """
         from ai4water.postprocessing.visualize import Visualize
 
@@ -1675,7 +1708,7 @@ class BaseModel(NN):
         Interprets the underlying model. Call it after training.
 
         Returns:
-            An instance of [Interpret][ai4water.postprocessing.interpret.Interpret] class
+            An instance of :py:class:`ai4water.postprocessing.interpret.Interpret` class
 
         Example:
             >>> from ai4water import Model
@@ -1683,7 +1716,7 @@ class BaseModel(NN):
             >>> model = Model(model=...)
             >>> model.fit(data=busan_beach())
             >>> model.interpret()
-        ```
+
         """
         # importing ealier will try to import np types as well again
         from ai4water.postprocessing import Interpret
@@ -1879,15 +1912,18 @@ class BaseModel(NN):
     def eda(self, data, freq: str = None):
         """Performs comprehensive Exploratory Data Analysis.
 
-        Arguments:
-            data:
-            freq:
+        Parameters
+        ----------
+            data :
+            freq :
                 if specified, small chunks of data will be plotted instead of
                 whole data at once. The data will NOT be resampled. This is valid
                 only `plot_data` and `box_plot`. Possible values are `yearly`,
-                    weekly`, and  `monthly`.
-        Returns:
-            an instance of [EDA][ai4water.eda.EDA] class
+                weekly`, and  `monthly`.
+
+        Returns
+        -------
+            an instance of EDA :py:class:`ai4water.eda.EDA` class
         """
         # importing EDA earlier will import numpy etc as well
         from ai4water.eda import EDA
@@ -1938,10 +1974,9 @@ class BaseModel(NN):
                 model_name = self.config['model'].__class__.__name__
 
         if self.verbosity > 0:
-            print('building {} model for {} {} problem using {}'.format(self.category,
-                                                                        class_type,
-                                                                        self.mode,
-                                                                        model_name))
+            print(f"""
+            building {self.category} model for {class_type} 
+            {self.mode} problem using {model_name}""")
         return
 
     def get_optimizer(self):
@@ -1992,6 +2027,7 @@ class BaseModel(NN):
             >>> optimizer = model.optimize_hyperparameters(data=busan_beach())
 
             Same can be done if a model is defined using neural networks
+
             >>> model_conf = {"layers": {
             ...     "Input": {"input_shape": (15, 13)},
             ...     "LSTM":  {"config": {"units": Integer(32, 64), "activation": "relu"}},
@@ -2078,23 +2114,23 @@ class BaseModel(NN):
                 the input features with custom candidate transformations. For example
                 if we want to try only `minmax` and `zscore` on feature `tide_cm`, then
                 it can be done as following
-                ```python
+
                 >>> append={"tide_cm": ["minmax", "zscore"]}
-                ```
+
             y_transformations:
                 It can either be a list of transformations to be considered for
                 output features for example
-                ```
+
                 >>> y_transformations = ['log', 'log10', 'log2', 'sqrt']
-                ```
+
                 would mean that consider `log`, `log10`, `log2` and `sqrt` are
                 to be considered for output transformations during optimization.
                 It can also be a dictionary whose keys are names of output features
                 and whose values are lists of transformations to be considered for output
                 features. For example
-                ```
+
                 >>> y_transformations = {'output1': ['log2', 'log10'], 'output2': ['log', 'sqrt']}
-                ```
+
                 Default is None, which means do not optimize transformation for output
                 features.
             algorithm: str
@@ -2104,7 +2140,8 @@ class BaseModel(NN):
             update_config: whether to update the config of model or not.
 
         Returns:
-            an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] class which is used for optimization
+            an instance of HyperOpt :py:class:`ai4water.hyperopt.HyperOpt` class
+            which is used for optimization
 
         Example:
             >>> from ai4water.datasets import busan_beach
@@ -2213,8 +2250,7 @@ class BaseModel(NN):
         Arguments:
             data:
                 one of `training`, `test` or `validation`. By default test data is
-                used based upon recommendations of
-                [Christoph Molnar's book](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data)
+                used based upon recommendations of Christoph Molnar's book_
             x:
                 inputs for the model. alternative to data
             y:
@@ -2241,6 +2277,9 @@ class BaseModel(NN):
             >>> model = Model(model="XGBRegressor")
             >>> model.fit(data=busan_beach())
             >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
+
+        .. _book:
+            https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data
         """
         assert data in ("training", "validation", "test")
 

@@ -42,18 +42,18 @@ class ShapExplainer(ExplainerMixin):
     - force_plot_all
 
     Examples:
-        >>>from ai4water.postprocessing.explain import ShapExplainer
-        >>>from sklearn.model_selection import train_test_split
-        >>>from sklearn import linear_model
-        >>>import shap
+        >>> from ai4water.postprocessing.explain import ShapExplainer
+        >>> from sklearn.model_selection import train_test_split
+        >>> from sklearn import linear_model
+        >>> import shap
         ...
-        >>>X,y = shap.datasets.diabetes()
-        >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-        >>>lin_regr = linear_model.LinearRegression()
-        >>>lin_regr.fit(X_train, y_train)
-        >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
-        >>>explainer()
-    ```
+        >>> X,y = shap.datasets.diabetes()
+        >>> X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+        >>> lin_regr = linear_model.LinearRegression()
+        >>> lin_regr.fit(X_train, y_train)
+        >>> explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
+        >>> explainer()
+
     """
 
     allowed_explainers = [
@@ -449,7 +449,7 @@ class ShapExplainer(ExplainerMixin):
             save=False,
             **force_kws
     ):
-        """Draws [force_plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.force.html)
+        """Draws force_plot_
         for a single example/row/sample/instance/data point.
 
         If the data is 3d and shap values are 3d then they are unrolled/flattened
@@ -468,6 +468,9 @@ class ShapExplainer(ExplainerMixin):
 
         Returns:
             plotter object
+
+        .. _force_plot:
+            https://shap.readthedocs.io/en/latest/generated/shap.plots.force.html
         """
 
         shap_vals = self.shap_values
@@ -523,9 +526,12 @@ class ShapExplainer(ExplainerMixin):
         return
 
     def dependence_plot_single_feature(self, feature, name="dependence_plot", show=False, save=True, **kwargs):
-        """dependence plot for a single feature.
-        https://slundberg.github.io/shap/notebooks/plots/dependence_plot.html
-        https://shap-lrjball.readthedocs.io/en/docs_update/generated/shap.dependence_plot.html
+        """dependence_ plot for a single feature. See this_ .
+
+        .. _dependence:
+            https://slundberg.github.io/shap/notebooks/plots/dependence_plot.html
+        .. _this:
+            https://shap-lrjball.readthedocs.io/en/docs_update/generated/shap.dependence_plot.html
         """
         plt.close('all')
 
@@ -572,10 +578,12 @@ class ShapExplainer(ExplainerMixin):
             show=False,
             **waterfall_kws
     ):
-        """Plots the [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
-         of SHAP package
+        """Plots the waterfall_ plot of SHAP package
 
         It plots for all the examples/instances from test_data.
+
+        .. _waterfall:
+            https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
         """
         for i in range(len(self.data)):
             self.waterfall_plot_single_example(i, name=name, save=save, show=show, **waterfall_kws)
@@ -590,7 +598,7 @@ class ShapExplainer(ExplainerMixin):
             save=True,
             max_display: int = 10,
     ):
-        """draws and saves [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
+        """draws and saves waterfall_ plot
          for one example.
 
         The waterfall plots are based upon SHAP values and show the
@@ -612,6 +620,8 @@ class ShapExplainer(ExplainerMixin):
             show : bool
                 whether to show the plot or now
 
+        .. _waterfall:
+            https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
         """
         if self.explainer.__class__.__name__ in ["Deep"]:
             shap_vals_as_exp = None
@@ -686,8 +696,8 @@ class ShapExplainer(ExplainerMixin):
         return
 
     def heatmap(self, name: str = 'heatmap', show: bool = False, save=False, max_display=10):
-        """Plots the heat map and saves it
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
+        """Plots the heatmap_ and saves it
+
         This can be drawn for xgboost/lgbm as well as for randomforest type models
         but not for CatBoostRegressor which is todo.
 
@@ -698,6 +708,9 @@ class ShapExplainer(ExplainerMixin):
         of data/examples. Thus one point on this line is the mean of SHAP values
         of all input features for the given/one example normalized by the maximum
         absolute value of $fx$.
+
+        .. _heatmap:
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
         """
 
         # if heat map is drawn with np.ndarray, it throws errors therefore convert
@@ -758,8 +771,7 @@ class ShapExplainer(ExplainerMixin):
             **kwargs
     ):
         """
-        Draws the [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
-        of shap.
+        Draws the beeswarm_ plot of shap.
 
         Arguments:
             name : str
@@ -772,6 +784,9 @@ class ShapExplainer(ExplainerMixin):
                 maximum
             kwargs :
                 any keyword arguments for shap.beeswarm plot
+
+        .. _beeswarm:
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
         """
 
         shap_values = self._get_shap_values_locally()
@@ -810,9 +825,13 @@ class ShapExplainer(ExplainerMixin):
             show=False,
             save=True,
             **decision_kwargs):
-        """decision plot
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/decision_plot.html
-        https://towardsdatascience.com/introducing-shap-decision-plots-52ed3b4a1cba
+        """decision_ plot. For details see this blog.
+
+        .. _decision:
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/decision_plot.html
+
+        .. _blog:
+            https://towardsdatascience.com/introducing-shap-decision-plots-52ed3b4a1cba
         """
         shap_values = self.shap_values
         legend_location = "best"

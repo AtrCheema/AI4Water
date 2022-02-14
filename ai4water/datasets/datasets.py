@@ -792,21 +792,28 @@ class ETPTelesinaItaly(Datasets):
 class MtropicsLaos(Datasets):
     """
     Downloads and prepares hydrological, climate and land use data for Laos from
-    [Mtropics](https://mtropics.obs-mip.fr/catalogue-m-tropics/) website and
-    [ird](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
-    data servers.
+    Mtropics_ website and ird_ data servers.
 
-    For exploratory data analysis of this data see
-    [here](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb)
+    See the notebook_ for exploratory data analysis of this data
+
     Methods
     -------
-    - fetch_lu
-    - fetch_ecoli
-    - fetch_rain_gauges
-    - fetch_weather_station_data
-    - fetch_pcp
-    - fetch_hydro
-    - make_regression
+        - fetch_lu
+        - fetch_ecoli
+        - fetch_rain_gauges
+        - fetch_weather_station_data
+        - fetch_pcp
+        - fetch_hydro
+        - make_regression
+
+    .. _Mtropics:
+        https://mtropics.obs-mip.fr/catalogue-m-tropics/
+
+    .. _notebook:
+        https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb
+
+    .. _ird:
+        https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
     """
     target = ['Ecoli_mpn100']
 
@@ -869,8 +876,10 @@ class MtropicsLaos(Datasets):
             _process_laos_shpfiles(shp_file, op)
 
     def fetch_lu(self, processed=False):
-        """returns landuse data as list of shapefiles.
-        doi: https://doi.org/10.1038/s41598-017-04385-2"""
+        """returns landuse_ data as list of shapefiles.
+
+        .. _landuse:
+            https://doi.org/10.1038/s41598-017-04385-2"""
         lu_dir = os.path.join(self.ds_dir, f"{'lu1' if processed else 'lu'}")
         files = glob.glob(f'{lu_dir}/*.shp')
         return files
@@ -881,12 +890,14 @@ class MtropicsLaos(Datasets):
             st: Union[str, pd.Timestamp] = '20110525 10:00:00',
             en: Union[str, pd.Timestamp] = '20210406 15:05:00',
     ) -> pd.DataFrame:
-        """Fetches physio-chemical features of Huoy Pano catchment Laos.
+        """
+        Fetches physio-chemical features of Huoy Pano catchment Laos.
 
         Arguments:
             st : start of data.
             en :end of data.
-            features : The physio-chemical features to fetch. Following features
+            features :
+                The physio-chemical features to fetch. Following features
                 are available
 
                 - 'T',
@@ -900,7 +911,7 @@ class MtropicsLaos(Datasets):
 
         Returns:
             a pandas dataframe
-            """
+        """
 
         if isinstance(features, list):
             _features = []
@@ -934,18 +945,21 @@ class MtropicsLaos(Datasets):
             en: Union[str, pd.Timestamp] = '20210406 15:05:00',
             remove_duplicates: bool = True,
     ) -> pd.DataFrame:
-        """Fetches E. coli data collected at the outlet.
-        ([Ribolzi et al., 2021](https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK)
-        ;[Boithias et al., 2021](https://doi.org/10.1002/hyp.14126)).
-         NaNs represent missing values. The data is randomly sampled between 2011
-         to 2021 during rainfall events. Total 368 E. coli observation points are available now.
+        """
+        Fetches E. coli data collected at the outlet. See Ribolzi_ et al., 2021
+        and Boithias_ et al., 2021 for reference.
+        NaNs represent missing values. The data is randomly sampled between 2011
+        to 2021 during rainfall events. Total 368 E. coli observation points are available now.
 
         Arguments:
-            st : start of data. By default the data is fetched from the point it
+            st :
+                start of data. By default the data is fetched from the point it
                 is available.
-            en : end of data. By default the data is fetched til the point it is
+            en :
+                end of data. By default the data is fetched til the point it is
                 available.
-            features : E. coli concentration data. Following data are available
+            features :
+                E. coli concentration data. Following data are available
 
                 - Ecoli_LL_mpn100: Lower limit of the confidence interval
                 - Ecoli_mpn100: Stream water Escherichia coli concentration
@@ -954,6 +968,13 @@ class MtropicsLaos(Datasets):
                 some values were recorded within a minute,
         Returns:
             a pandas dataframe consisting of features as columns.
+
+        .. _Ribolzi:
+            https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
+
+        .. _Boithias:
+            https://doi.org/10.1002/hyp.14126
+
         """
         fname = os.path.join(self.ds_dir, 'ecoli_data.csv')
         df = pd.read_csv(fname, sep='\t')
@@ -996,8 +1017,8 @@ class MtropicsLaos(Datasets):
             en: Union[str, pd.Timestamp] = "20191231",
     ) -> pd.DataFrame:
         """
-        fetches data from 7 rain gauges which is collected at daily time step
-        from 2001 to 2019. [doi](https://doi.org/10.1038/s41598-017-04385-2)
+        fetches data from 7 rain gauges_ which is collected at daily time step
+        from 2001 to 2019.
 
         Arguments:
             st : start of data. By default the data is fetched from the point it
@@ -1008,6 +1029,9 @@ class MtropicsLaos(Datasets):
             a dataframe of 7 columns, where each column represnets a rain guage
             observations. The length of dataframe depends upon range defined by
             `st` and `en` arguments.
+
+        .. _gauges:
+            https://doi.org/10.1038/s41598-017-04385-2
         """
         # todo, does nan means 0 rainfall?
         fname = os.path.join(self.ds_dir, 'rain_guage', 'rain_guage.nc')
@@ -1035,14 +1059,17 @@ class MtropicsLaos(Datasets):
             freq: str = 'H'
     ) -> pd.DataFrame:
         """
-        fetches hourly weather station data which consits of air temperature,
-        humidity, wind speed and solar radiation. [doi](https://doi.org/10.1038/s41598-017-04385-2)
+        fetches hourly weather_ station data which consits of air temperature,
+        humidity, wind speed and solar radiation.
         Arguments:
             st : start of data to be feteched.
             en : end of data to be fetched.
             freq : frequency at which the data is to be fetched.
         Returns:
             a pandas dataframe consisting of 4 columns
+
+        .. _weather:
+            https://doi.org/10.1038/s41598-017-04385-2
         """
 
         fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.f')
@@ -1070,14 +1097,17 @@ class MtropicsLaos(Datasets):
                   freq: str = '6min'
                   ) -> pd.DataFrame:
         """
-        Fetches the precipication data which is collected at 6 minutes time-step
-        from 2001 to 2020. [doi](https://doi.org/10.1038/s41598-017-04385-2)
+        Fetches the precipitation_ data which is collected at 6 minutes time-step
+        from 2001 to 2020.
         Arguments:
             st : starting point of data to be fetched.
             en : end point of data to be fetched.
             freq : frequency at which the data is to be returned.
         Returns:
             pandas dataframe of precipitation data
+
+        .. _precipitation:
+            https://doi.org/10.1038/s41598-017-04385-2
         """
         # todo allow change in frequency
 
@@ -1228,28 +1258,33 @@ class MtropicsLaos(Datasets):
         Makes a regression problem using hydrological, environmental,
         and water quality data of Huoay pano.
 
-        Arguments:
-            input_features : names of inputs to use. By default following features
+        Arguments
+        ---------
+            input_features :
+                names of inputs to use. By default following features
                 are used as input
 
-                    - `air_temp`
-                    - `rel_hum`
-                    - `wind_speed`
-                    - `sol_rad`
-                    - `water_level`
-                    - `pcp`
-                    - `susp_pm'
+                - `air_temp`
+                - `rel_hum`
+                - `wind_speed`
+                - `sol_rad`
+                - `water_level`
+                - `pcp`
+                - `susp_pm'
 
             output_features : feature/features to consdier as target/output/label
-            st : starting date of data
-            en : end date of data
+            st :
+                starting date of data
+            en :
+                end date of data
             freq : frequency of data
             lookback_steps:
                 the number of previous steps to use. If this argument is used,
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.
 
-        returns:
+        returns
+        -------
             a dataframe of shape `(inputs+target, st:en)`
 
         Example:

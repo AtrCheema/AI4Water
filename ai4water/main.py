@@ -242,7 +242,9 @@ class Model(MODEL, BaseModel):
         """
         Initializes the layers/weights/variables which are to be used in `forward`
         or `call` method.
-        Arguments:
+
+        Parameters
+        ---------
             layers_config : python dictionary to define neural network. For details
                 [see](https://ai4water.readthedocs.io/en/latest/build_dl_models.html)
 

@@ -174,7 +174,7 @@ class DataSet(_DataSet):
                 additional arguments for AI4Water's [datasets][ai4water.datasets]
             ts_args : dict, optional
                 This argument should only be used if the data is time series data.
-                It must be a dictionary which is then passed to [prepare_data][ai4water.utils.prepare_data]
+                It must be a dictionary which is then passed to :py:func:`ai4water.utils.prepare_data`
                 for data preparation. Possible keys in dictionay are:
                     - lookback
                     - forecast_len
@@ -195,10 +195,10 @@ class DataSet(_DataSet):
                 must not be given. If indices are given for validation, then indices
                 for training must also be given and  val_fraction must not be given.
                 Therefore, the possible keys in indices dictionary are follwoing 
-                    'training'
-                    'training' and 'validation'
-                    'training' and 'test' 
-                    'training', 'validation' and 'test'.
+                    - 'training'
+                    - 'training' and 'validation'
+                    - 'training' and 'test'
+                    - 'training', 'validation' and 'test'.
             intervals :
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means indices
@@ -227,44 +227,43 @@ class DataSet(_DataSet):
                 are just one. Then this must be set to 2 in order to use samples with nan labels.
             nan_filler : dict
                 This argument determines the imputation technique used to fill the nans in
-                the data. The imputation is actually performed by [Imputation][ai4water.preprocessing.Imputation]
+                the data. The imputation is actually performed by :py:class:`ai4water.preprocessing.Imputation`
                 class. Therefore this argument determines the interaction with `Imputation` class.
                 The default value is None, which will raise error if missing/nan values
                 are encountered in the input data. The user can however specify a
                 dictionary whose one key must be `method`. The value of 'method'
                 key can be `fillna` or `interpolate`.  For example, to do forward
                 filling, the user can do as following
-                ```python
-                >>>{'method': 'fillna', 'imputer_args': {'method': 'ffill'}}
-                ```
-                For details about fillna keyword options
-                 [see](https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html)
+
+                >>> {'method': 'fillna', 'imputer_args': {'method': 'ffill'}}
+
+                For details about fillna keyword options see fillna_
+
                 For `interpolate`, the user can specify  the type of interpolation
                 for example
-                ```python
-                >>>{'method': 'interpolate', 'imputer_args': {'method': 'spline', 'order': 2}}
-                ```
+
+                >>> {'method': 'interpolate', 'imputer_args': {'method': 'spline', 'order': 2}}
+
                 will perform spline interpolation with 2nd order.
-                For other possible options/keyword arguments for interpolate
-                [see](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html)
+                For other possible options/keyword arguments for interpolate_
+                [see]()
                 The filling or interpolation is done columnwise, however, the user
                 can specify how to do for each column by providing the above mentioned
                 arguments as dictionary or list. The sklearn based imputation methods
                 can also be used in a similar fashion. For KNN
-                ```python
-                >>>{'method': 'KNNImputer', 'imputer_args': {'n_neighbors': 3}}
-                ```
+
+                >>> {'method': 'KNNImputer', 'imputer_args': {'n_neighbors': 3}}
+
                 or for iterative imputation
-                ```python
-                >>>{'method': 'IterativeImputer', 'imputer_args': {'n_nearest_features': 2}}
-                ```
+
+                >>> {'method': 'IterativeImputer', 'imputer_args': {'n_nearest_features': 2}}
+
                 To pass additional arguments one can make use of `imputer_args`
                 keyword argument
-                ```python
-                >>>{'method': 'KNNImputer', 'features': ['b'], 'imputer_args': {'n_neighbors': 4}},
-                ```
-                For more on sklearn based imputation methods
-                [see](https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py)
+
+                >>> {'method': 'KNNImputer', 'features': ['b'], 'imputer_args': {'n_neighbors': 4}},
+
+                For more on sklearn based imputation methods see this blog_
             batch_size : int
                 size of one batch. Only relevent if `drop_remainder` is True.
             drop_remainder : bool
@@ -273,7 +272,7 @@ class DataSet(_DataSet):
                 whether to return previous output/target/ground
                 truth or not. This is useful when the user wants to feed output
                 at t-1 as input at timestep t. For details about this technique
-                see [this article](https://machinelearningmastery.com/teacher-forcing-for-recurrent-neural-networks/)
+                see this article_
             allow_input_nans : bool, optional
                 If False, the examples containing nans in inputs will be removed.
                 Setting this to True will result in feeding nan containing data
@@ -296,7 +295,17 @@ class DataSet(_DataSet):
             >>> data_set = DataSet(data=data_, ts_args={'lookback':5})
             >>> x,y = data_set.training_data()
 
-        # Note
+        .. _fillna:
+            https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
+        .. _article:
+            https://machinelearningmastery.com/teacher-forcing-for-recurrent-neural-networks/
+        .. _interpolate:
+            https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
+        .. _blog:
+            https://scikit-learn.org/stable/auto_examples/impute/plot_missing_values.html#sphx-glr-auto-examples-impute-plot-missing-values-py
+
+        Note
+        ----
         The word 'index' is not allowed as column name, input_features or output_features
         """
 

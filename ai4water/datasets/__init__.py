@@ -43,7 +43,9 @@ from .datasets import MtropcsThailand
 from .datasets import MtropicsVietnam
 
 
-def busan_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -> pd.DataFrame:
+def busan_beach(inputs: list = None,
+                target: Union[list, str] = 'tetx_coppml'
+                ) -> pd.DataFrame:
     """
     Loads the Antibiotic resitance genes (ARG) data from a recreational beach
     in Busan, South Korea along with environment variables.
@@ -52,10 +54,12 @@ def busan_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -
     mutlivariate time series and was collected over the period of 2 years during
     several precipitation events. The frequency of environmental data is 30 mins
     while the ARG is discontinuous. The data and its pre-processing is described
-    in detail in [Jang et al., 2021](https://doi.org/10.1016/j.watres.2021.117001)
+    in detail in Jang_ et al., 2021
 
-    Arguments:
-        inputs : features to use as input. By default all environmental data
+    Arguments
+    ---------
+        inputs :
+            features to use as input. By default all environmental data
             is used which consists of following parameters
 
             - tide_cm
@@ -72,7 +76,8 @@ def busan_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -
             - mslp_hpa
             - rel_hum
 
-        target : feature/features to use as target/output. By default
+        target :
+            feature/features to use as target/output. By default
             `tetx_coppml` is used as target.
             Logically one or more from following can be considered as target
 
@@ -88,13 +93,18 @@ def busan_beach(inputs: list = None, target: Union[list, str] = 'tetx_coppml') -
             - otu_5575
             - otu_273
             - otu_94
-    Returns:
+
+    Returns
+    -------
         a pandas dataframe with inputs and target and indexed
             with pandas.DateTimeIndex
 
     Example:
         >>> from ai4water.datasets import busan_beach
         >>> dataframe = busan_beach()
+
+    .. _Jang:
+        https://doi.org/10.1016/j.watres.2021.117001
     """
     fpath = os.path.join(os.path.dirname(__file__), "arg_busan.csv")
     df = pd.read_csv(fpath, index_col="index")

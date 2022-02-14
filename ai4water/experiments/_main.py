@@ -1006,28 +1006,29 @@ Available cases are {self.models} and you wanted to include
             **tpot_args
     ):
         """
-        Fits the [tpot's](http://epistasislab.github.io/tpot/) fit  method which
+        Fits the tpot_'s fit  method which
         finds out the best pipline for the given data.
 
-        Arguments:
+        Arguments
+        ---------
             data:
             models:
                 It can be of three types.
 
                 - If list, it will be the names of machine learning models/
-                algorithms to consider.
+                    algorithms to consider.
                 - If integer, it will be the number of top
-                algorithms to consider for tpot. In such a case, you must have
-                first run `.fit` method before running this method. If you run
-                the tpot using all available models, it will take hours to days
-                for medium sized data (consisting of few thousand examples). However,
-                if you run first .fit and see for example what are the top 5 models,
-                then you can set this argument to 5. In such a case, tpot will search
-                pipeline using only the top 5 algorithms/models that have been found
-                using .fit method.
+                    algorithms to consider for tpot. In such a case, you must have
+                    first run `.fit` method before running this method. If you run
+                    the tpot using all available models, it will take hours to days
+                    for medium sized data (consisting of few thousand examples). However,
+                    if you run first .fit and see for example what are the top 5 models,
+                    then you can set this argument to 5. In such a case, tpot will search
+                    pipeline using only the top 5 algorithms/models that have been found
+                    using .fit method.
                 - if dictionary, then the keys should be the names of algorithms/models
-                and values shoudl be the parameters for each model/algorithm to be
-                optimized.
+                    and values shoudl be the parameters for each model/algorithm to be
+                    optimized.
                 - You can also set it to `all` consider all models available in ai4water's
                     Experiment module.
                 - default is None, which means, the `tpot_config` argument will be None
@@ -1036,19 +1037,30 @@ Available cases are {self.models} and you wanted to include
                 the models will be choosen. By default the models will be selected
                 based upon their mse values on test data.
             scoring : the performance metric to use for finding the pipeline.
-            tpot_args : any keyword argument for tpot's [Regressor](http://epistasislab.github.io/tpot/api/#regression)
-                or [Classifier](http://epistasislab.github.io/tpot/api/#classification) class.
+            tpot_args : any keyword argument for tpot's Regressor_
+                or Classifier_ class.
                 This can include arguments like `generations`, `population_size` etc.
 
-        Returns:
+        Returns
+        -------
             the tpot object
 
-        Example:
+        Example
+        -------
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> from ai4water.datasets import busan_beach
             >>> exp = MLRegressionExperiments(exp_name=f"tpot_reg_{dateandtime_now()}")
             >>> exp.fit(data=busan_beach())
             >>> tpot_regr = exp.fit_with_tpot(busan_beach(), 2, generations=1, population_size=2)
+
+        .. _tpot:
+            http://epistasislab.github.io/tpot/
+
+        .. _Regressor:
+            http://epistasislab.github.io/tpot/api/#regression
+
+        .. _Classifier:
+            http://epistasislab.github.io/tpot/api/#classification
         """
         tpot_caller = self.tpot_estimator
         assert tpot_caller is not None, f"tpot must be installed"

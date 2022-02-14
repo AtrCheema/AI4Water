@@ -40,9 +40,8 @@ class DALSTM(keras.layers.Layer):
 
 class DualAttentionModel(FModel):
     """
-    This is Dual-Attention LSTM model of [Qin et al., 2017](https://arxiv.org/abs/1704.02971).
-    The code is adopted from [this](https://github.com/chensvm/A-Dual-Stage-Attention-Based-Recurrent-Neural-Network-for-Time-Series-Prediction)
-    repository
+    This is Dual-Attention LSTM model of Qin_ et al., 2017. The code is adopted
+    from this_ repository
 
     Example:
         >>> from ai4water import DualAttentionModel
@@ -57,6 +56,12 @@ class DualAttentionModel(FModel):
         >>> model = DualAttentionModel(teacher_forcing=False, batch_size=4,
         ...                            drop_remainder=True, ts_args={'lookback':5})
         >>> model.fit(data=data)
+
+    .. _Qin:
+        https://arxiv.org/abs/1704.02971
+
+    .. _this:
+        https://github.com/chensvm/A-Dual-Stage-Attention-Based-Recurrent-Neural-Network-for-Time-Series-Prediction
     """
     _enc_config = {'n_h': 20,  # length of hidden state m
                    'n_s': 20,  # length of hidden state m

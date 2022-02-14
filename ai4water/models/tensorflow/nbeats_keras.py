@@ -9,9 +9,9 @@ Model = keras.models.Model
 
 class NBeats(keras.layers.Layer):
     """
-    This implementation is same as that of [Philip pemy](https://github.com/philipperemy/n-beats/tree/master/nbeats_keras)
-    except that here NBeats can be used as a layer.
-    The output shape will be (batch_size, self.forecast_length, self.input_dim)
+    This implementation is same as that of Philip peremy_ with few modifications.
+    Here NBeats can be used as a layer. The output shape will be
+    (batch_size, self.forecast_length, self.input_dim)
     Some other changes have also been done to make this layer compatable with ai4water.
 
     Example:
@@ -19,14 +19,16 @@ class NBeats(keras.layers.Layer):
         >>> y = np.random.random((100, 1))
         ...
         >>> model = Model(model={"layers":
-        >>>                              {"Input": {"shape": (10, 3)},
-        >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
-        >>>                               "Flatten": {},
-        >>>                               "Reshape": {"target_shape": (1,1)}}},
-        >>>               ts_args={'lookback':10})
+        >>>            {"Input": {"shape": (10, 3)},
+        >>>             "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
+        >>>             "Flatten": {},
+        >>>             "Reshape": {"target_shape": (1,1)}}},
+        >>>           ts_args={'lookback':10})
         ...
         >>> model.fit(x=x, y=y.reshape(-1,1,1))
-    ```
+
+    .. _peremy:
+        https://github.com/philipperemy/n-beats/tree/master/nbeats_keras)
     """
     GENERIC_BLOCK = 'generic'
     TREND_BLOCK = 'trend'

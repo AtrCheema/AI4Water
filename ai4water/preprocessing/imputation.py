@@ -19,53 +19,64 @@ class Imputation(object):
     Imputation Methods
     -----------------
 
-        - pandas:
-            Pandas library provides two methods for filling input data.
-            `interpolate`: filling by interpolation
-              Example of imputer_args can be
-                  {'method': 'spline': 'order': 2}
-              For detailed args to be passed see
-              https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
-            `fillna`:
-              example of imputer_args can be
-                 {'method': 'ffill'}
-              For detailed args to be passed see
-              https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
-        - sklearn:
-            scikit-learn library provides 3 different imputation methods.
-            `SimplteImputer`:
-              For details see https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer
-            `IterativeImputer`:
-              imputer_args example: {'n_nearest_features': 2}
-              For details see https://scikit-learn.org/stable/modules/generated/sklearn.impute.IterativeImputer.html#sklearn.impute.IterativeImputer
-            `KNNIMputer`:
-              All the args accepted by KNNImputer of sklearn can be passed as in imputer_args.
-              imputer_args example: {'n_neighbors': 3}.
-              For details see https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html
-        - fancyimpute:
-            knn:
-            NuclearnNormMinimization
-            SoftImpute
-            Biscaler
-        transdim:
+    - pandas:
+        Pandas library provides two methods for filling input data.
+        `interpolate`: filling by interpolation
+          Example of imputer_args can be
+              {'method': 'spline': 'order': 2}
+          For detailed args to be passed see interpolate_
+
+        `fillna`:
+          example of imputer_args can be
+             {'method': 'ffill'}
+          For detailed args to be passed see fillna_
+
+    - sklearn:
+        scikit-learn library provides 3 different imputation methods.
+        `SimplteImputer`:
+          For details see SimpleImputer_
+        `IterativeImputer`:
+          imputer_args example: {'n_nearest_features': 2}
+          For details see IterativeImputer_
+        `KNNIMputer`:
+          All the args accepted by KNNImputer of sklearn can be passed as in imputer_args.
+          imputer_args example: {'n_neighbors': 3}.
+          For details KNNImputer_
+    - fancyimpute:
+        knn:
+        NuclearnNormMinimization
+        SoftImpute
+        Biscaler
+    transdim:
 
     Methods
     --------
-    - [plot][ai4water.preprocessing.imputation.Imputation.plot] plots the imputed values.
+    - :py:meth:`ai4water.preprocessing.imputation.Imputation.plot` plots the imputed values.
 
-    - [missing_indices][ai4water.preprocessing.imputation.Imputation.missing_indices] indices of missing data.
+    - :py:meth:`ai4water.preprocessing.imputation.Imputation.missing_indices` indices of missing data.
 
-    --------
+
     Examples:
-        >>>df = pd.DataFrame([1,3,np.nan,  np.nan, 9, np.nan, 11])
-        >>>imputer = Imputation(df, method='fillna', imputer_args={'method': 'ffill'})
-        >>>imputer()
+        >>> df = pd.DataFrame([1,3,np.nan,  np.nan, 9, np.nan, 11])
+        >>> imputer = Imputation(df, method='fillna', imputer_args={'method': 'ffill'})
+        >>> imputer()
         # change the imputation method
-        >>>imputer.method = 'interpolate'
-        >>>imputer(method='cubic')
+        >>> imputer.method = 'interpolate'
+        >>> imputer(method='cubic')
         # Now try with KNN imputation
-        >>>imputer.method = 'KNNImputer'
-        >>>imputer(n_neighbors=3)
+        >>> imputer.method = 'KNNImputer'
+        >>> imputer(n_neighbors=3)
+
+    .. _fillna:
+        https://pandas.pydata.org/pandas-docs/version/0.22.0/generated/pandas.DataFrame.fillna.html
+    .. _interpolate:
+        https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.interpolate.html
+    .. _SimpleImputer:
+        https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer
+    .. _IterativeImputer:
+        https://scikit-learn.org/stable/modules/generated/sklearn.impute.IterativeImputer.html#sklearn.impute.IterativeImputer
+    .. _KNNImputer:
+        https://scikit-learn.org/stable/modules/generated/sklearn.impute.KNNImputer.html
     """
     def __init__(
             self,

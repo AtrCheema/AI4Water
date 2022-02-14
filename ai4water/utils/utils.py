@@ -1132,35 +1132,37 @@ def prepare_data(
     """
     converts a numpy nd array into a supervised machine learning problem.
 
-    Arguments:
-        data:
+    Parameters
+    ----------
+        data :
             nd numpy array whose first dimension represents the number
             of examples and the second dimension represents the number of features.
             Some of those features will be used as inputs and some will be considered
             as outputs depending upon the values of `num_inputs` and `num_outputs`.
-        lookback:
+        lookback :
             number of previous steps/values to be used at one step.
-        num_inputs:
+        num_inputs :
             default None, number of input features in data. If None,
             it will be calculated as features-outputs. The input data will be all
             from start till num_outputs in second dimension.
-        num_outputs:
+        num_outputs :
             number of columns (from last) in data to be used as output.
             If None, it will be caculated as features-inputs.
         input_steps:
             strides/number of steps in input data
-        forecast_step:
+        forecast_step :
             must be greater than equal to 0, which t+ith value to
             use as target where i is the horizon. For time series prediction, we
             can say, which horizon to predict.
-        forecast_len:
+        forecast_len :
             number of horizons/future values to predict.
-        known_future_inputs: Only useful if `forecast_len`>1. If True, this
+        known_future_inputs :
+            Only useful if `forecast_len`>1. If True, this
             means, we know and use 'future inputs' while making predictions at t>0
-        output_steps:
+        output_steps :
             step size in outputs. If =2, it means we want to predict
             every second value from the targets
-        mask:
+        mask :
             If int, then the examples with these values in
             the output will be skipped. If array then it must be a boolean mask
             indicating which examples to include/exclude. The length of mask should
@@ -1170,7 +1172,8 @@ def prepare_data(
             which values in outputs are to be considered as invalid. Default is
             None, which indicates all the generated examples will be returned.
 
-    Returns:
+    Returns
+    -------
         x : numpy array of shape (examples, lookback, ins) consisting of
         input examples
         prev_y : numpy array consisting of previous outputs
@@ -1178,123 +1181,176 @@ def prepare_data(
 
     Given following data consisting of input/output pairs
 
-    |input1 | input2 | output1 | output2 | output 3 |
-    |-------|--------|---------|---------|----------|
-    |   1  |   11  |   21   |    31  |   41 |
-    |   2  |   12  |   22   |    32  |   42 |
-    |   3  |   13  |   23   |    33  |   43 |
-    |   4  |   14  |   24   |    34  |   44 |
-    |   5  |   15  |   25   |    35  |   45 |
-    |   6  |   16  |   26   |    36  |   46 |
-    |   7  |   17  |   27   |    37  |   47 |
+    +--------+--------+---------+---------+----------+
+    | input1 | input2 | output1 | output2 | output 3 |
+    +========+========+=========+=========+==========+
+    |   1    |   11   |   21    |    31   |   41     |
+    +--------+--------+---------+---------+----------+
+    |   2    |   12   |   22    |    32   |   42     |
+    +--------+--------+---------+---------+----------+
+    |   3    |   13   |   23    |    33   |   43     |
+    +--------+--------+---------+---------+----------+
+    |   4    |   14   |   24    |    34   |   44     |
+    +--------+--------+---------+---------+----------+
+    |   5    |   15   |   25    |    35   |   45     |
+    +--------+--------+---------+---------+----------+
+    |   6    |   16   |   26    |    36   |   46     |
+    +--------+--------+---------+---------+----------+
+    |   7    |   17   |   27    |    37   |   47     |
+    +--------+--------+---------+---------+----------+
 
     If we use following 2 time series as input
 
-    |input1 | input2 |
-    |----|-----|
-    | 1  |  11 |
-    | 2  |  12 |
-    | 3  |  13 |
-    | 4  |  14 |
-    | 5  |  15 |
-    | 6  |  16 |
-    | 7  |  17 |
+    +--------+--------+
+    | input1 | input2 |
+    +========+========+
+    |  1     |  11    |
+    +--------+--------+
+    |     2  |  12    |
+    +--------+--------+
+    | 3      |  13    |
+    +--------+--------+
+    | 4      |  14    |
+    +--------+--------+
+    | 5      |  15    |
+    +--------+--------+
+    | 6      |  16    |
+    +--------+--------+
+    | 7      |  17    |
+    +--------+--------+
 
     then  `num_inputs`=2, `lookback`=7, `input_steps`=1
 
     and if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
+    +=========+=========+==========+
     |   27    |   37    |   47     |
+    +---------+---------+----------+
 
     then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=0,
 
     if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    |28 | 38 | 48 |
+    +=========+=========+==========+
+    | 28      | 38      | 48       |
+    +---------+---------+----------+
 
     then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=1,
 
-    if we want to predict predict
+    if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    | 27 | 37 | 47 |
-    | 28 | 38 | 48 |
+    +=========+=========+==========+
+    |  27     |  37     |  47      |
+    +---------+---------+----------+
+    |  28     |  38     |  48      |
+    +---------+---------+----------+
 
     then `num_outputs`=3, forecast_len=2,  horizon/forecast_step=0,
 
     if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    | 28 | 38 | 48 |
-    | 29 | 39 | 49 |
-    | 30 | 40 | 50 |
+    +=========+=========+==========+
+    |   28    |   38    |   48     |
+    +---------+---------+----------+
+    |   29    |   39    |   49     |
+    +---------+---------+----------+
+    |   30    |   40    |   50     |
+    +---------+---------+----------+
 
     then `num_outputs`=3, `forecast_len`=3,  `forecast_step`=1,
 
     if we want to predict
 
+    +---------+
     | output2 |
-    |----------|
-    | 38 |
-    | 39 |
-    | 40 |
+    +=========+
+    |   38    |
+    +---------+
+    |   39    |
+    +---------+
+    |   40    |
 
     then `num_outputs`=1, `forecast_len`=3, `forecast_step`=0
 
     if we predict
 
+    +---------+
     | output2 |
-    |----------|
-    | 39 |
+    +=========+
+    | 39      |
+    +---------+
 
     then `num_outputs`=1, `forecast_len`=1, `forecast_step`=2
 
     if we predict
 
+    +---------+
     | output2 |
-    |----------|
-    | 39 |
-    | 40 |
-    | 41 |
+    +=========+
+    | 39      |
+    +---------+
+    | 40      |
+    +---------+
+    | 41      |
+    +---------+
 
      then `num_outputs`=1, `forecast_len`=3, `forecast_step`=2
 
     If we use following two time series as input
 
-    |input1 | input2 |
-    |-------|--------|
-    |1 |  11 |
-    |3 |  13 |
-    |5 |  15 |
-    |7 |  17 |
+    +--------+--------+
+    |input1  | input2 |
+    +========+========+
+    |   1    |  11    |
+    +--------+--------+
+    |   3    |  13    |
+    +--------+--------+
+    |   5    |  15    |
+    +--------+--------+
+    |   7    |  17    |
+    +--------+--------+
 
     then   `num_inputs`=2, `lookback`=4, `input_steps`=2
 
     If the input is
 
-    |input1 | input2 |
-    |----|-----|
-    | 1 |  11 |
-    | 2 |  12 |
-    | 3 |  13 |
-    | 4 |  14 |
-    | 5 |  15 |
-    | 6 |  16 |
-    | 7 |  17 |
+    +--------+--------+
+    | input1 | input2 |
+    +========+========+
+    |    1   |  11    |
+    +--------+--------+
+    |    2   |  12    |
+    +--------+--------+
+    |    3   |  13    |
+    +--------+--------+
+    |    4   |  14    |
+    +--------+--------+
+    |    5   |  15    |
+    +--------+--------+
+    |    6   |  16    |
+    +--------+--------+
+    |   7    |  17    |
+    +--------+--------+
 
     and target/output is
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    | 25 | 35 | 45 |
-    | 26 | 36 | 46 |
-    | 27 | 37 | 47 |
+    +=========+=========+==========+
+    |    25   |    35   |    45    |
+    +---------+---------+----------+
+    |    26   |    36   |    46    |
+    +---------+---------+----------+
+    |    27   |    37   |    47    |
+    +---------+---------+----------+
 
     This means we make use of 'known future inputs'. This can be achieved using following configuration
     num_inputs=2, num_outputs=3, lookback=4, forecast_len=3, forecast_step=1, known_future_inputs=True
@@ -1305,13 +1361,13 @@ def prepare_data(
     The general shape of inputs/x is
     (examples, lookback + forecast_len-1, ....num_inputs)
 
-    ----------
-    Example:
-        >>>import numpy as np
-        >>>from ai4water.utils.utils import prepare_data
-        >>>num_examples = 50
-        >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
-        >>>dataframe[0:10]
+
+    Examples:
+        >>> import numpy as np
+        >>> from ai4water.utils.utils import prepare_data
+        >>> num_examples = 50
+        >>> dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
+        >>> dataframe[0:10]
         array([[  0,  50, 100, 150, 200],
                [  1,  51, 101, 151, 201],
                [  2,  52, 102, 152, 202],
@@ -1322,20 +1378,20 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
+        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
         ...    input_steps=2, forecast_step=2, forecast_len=4)
-        >>>x[0]
+        >>> x[0]
         array([[  0.,  50., 100.],
               [  2.,  52., 102.],
               [  4.,  54., 104.],
               [  6.,  56., 106.]], dtype=float32)
-        >>>y[0]
+        >>> y[0]
         array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
+        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
         ...    forecast_len=3, known_future_inputs=True)
-        >>>x[0]
+        >>> x[0]
         array([[  0,  50, 100],
                [  1,  51, 101],
                [  2,  52, 102],
@@ -1343,8 +1399,8 @@ def prepare_data(
                [  4,  54, 104],
                [  5,  55, 105],
                [  6,  56, 106]])       # (7, 3)
-        >>># it is import to note that although lookback=4 but x[0] has shape of 7
-        >>>y[0]
+        >>> # it is import to note that although lookback=4 but x[0] has shape of 7
+        >>> y[0]
 
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)

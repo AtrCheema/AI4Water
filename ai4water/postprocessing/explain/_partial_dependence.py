@@ -33,8 +33,10 @@ def compute_bounds(xmin, xmax, xv):
 
 class PartialDependencePlot(ExplainerMixin):
     """
-    Partial dependence plots as introduced by [Friedman et al., 2001](https://doi.org/10.1214/aos/1013203451)
+    Partial dependence plots as introduced by Friedman_ et al., 2001
 
+    .. _Friedman:
+        https://doi.org/10.1214/aos/1013203451
     """
     def __init__(
             self,

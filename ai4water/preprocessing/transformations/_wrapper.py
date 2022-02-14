@@ -20,33 +20,34 @@ class Transformations(object):
     algorithm and `inverse_transform` method should be called after algorithm has
     worked with data.
 
-    Examples:
+    Examples
+    --------
         >>> import numpy as np
         >>> from ai4water.preprocessing.transformations import Transformations
         >>> x = np.arange(50).reshape(25, 2)
         >>> transformer = Transformations(['a', 'b'], config=['minmax', 'zscore'])
         >>> x_ = transformer.fit_transform(x)
         >>> _x = transformer.inverse_transform(x_)
-
-        Apply multiple transformations on multiple arrays which are passed as list
+        ...
+        ... # Apply multiple transformations on multiple arrays which are passed as list
         >>> transformer = Transformations([['a', 'b'], ['a', 'b']],
-                                      config=['minmax', 'zscore'])
+        ...                              config=['minmax', 'zscore'])
         >>> x1 = np.arange(50).reshape(25, 2)
         >>> x2 = np.arange(50, 100).reshape(25, 2)
-        >>> x1_ = transformer.fit_transform([x1, x2])
-        >>> _x1 = transformer.inverse_transform(x1_)
-
-        We can also do more complicated stuff as following
+        >>> x1_transformed = transformer.fit_transform([x1, x2])
+        >>> _x1 = transformer.inverse_transform(x1_transformed)
+        ...
+        ... # We can also do more complicated stuff as following
         >>> transformer = Transformations({'x1': ['a', 'b'], 'x2': ['a', 'b']},
-        ...                              config={'x1': ['minmax', 'zscore'],
-        ...                                      'x2': [{'method': 'log', 'features': ['a', 'b']},
-        ...                                             {'method': 'robust', 'features': ['a', 'b']}]
+        ...        config={'x1': ['minmax', 'zscore'],
+        ...                'x2': [{'method': 'log', 'features': ['a', 'b']},
+        ...                       {'method': 'robust', 'features': ['a', 'b']}]
         ...                                      })
         >>> x1 = np.arange(20).reshape(10, 2)
         >>> x2 = np.arange(100, 120).reshape(10, 2)
         >>> x = {'x1': x1, 'x2': x2}
-        >>> x_ = transformer.fit_transform(x)
-        >>> _x = transformer.inverse_transform(x_)
+        >>> x_transformed = transformer.fit_transform(x)
+        >>> _x = transformer.inverse_transform(x_transformed)
 
         In above example we apply `minmax` and `zscore` transformations on x1
         and `log` and `robust` transformations on x2 array

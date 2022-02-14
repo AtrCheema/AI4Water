@@ -13,9 +13,9 @@ from ._main import _DataSet
 class DataSetUnion(_DataSet):
     """A Union of datasets concatenated in parallel. A DataSetUnion of four DataSets will be as follows:
 
-        ||  DataSet1  ||  DataSet2  ||  DataSet3  ||  DataSet4  ||
-
-
+        ===========  ===========  ===========  ===========
+        DataSet1     DataSet2     DataSet3     DataSet4
+        ===========  ===========  ===========  ===========
 
     """
     def __init__(

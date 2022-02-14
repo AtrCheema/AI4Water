@@ -66,9 +66,10 @@ class Real(_Real):
     - to_optuna
     - serialize
 
-    Example:
-        >>>from ai4water.hyperopt import Real
-        >>>lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
+    Example
+    -------
+        >>> from ai4water.hyperopt import Real
+        >>> lr = Real(low=0.0005, high=0.01, prior='log', name='lr')
     """
     counter = 0
     def __init__(self,
@@ -188,7 +189,7 @@ class Integer(_Integer):
     Example:
         >>> from ai4water.hyperopt import Integer
         >>> units = Integer(low=16, high=128, name='units')
-    ```
+
     """
     counter = 0
     def __init__(self,
@@ -292,8 +293,7 @@ class Categorical(_Categorical):
     This class is used when parameter has distinct group/class of values such
     as [1,2,3] or ['a', 'b', 'c']. This class overrides skopt's `Categorical` class.
     It Can be converted to optuna's distribution or hyper_opt's choice. It uses
-    same input arguments as received by skopt's
-    [`Categorical` class](https://scikit-optimize.github.io/stable/modules/generated/skopt.space.space.Categorical.html)
+    same input arguments as received by skopt's `Categorical`_ class
 
     Methods
     ----------
@@ -303,10 +303,14 @@ class Categorical(_Categorical):
     - to_optuna
     - serialize
 
-    Example:
+    Example
+    -------
         >>> from ai4water.hyperopt import Categorical
         >>> activations = Categorical(categories=['relu', 'tanh', 'sigmoid'], name='activations')
-    ```
+
+
+    .. _Categorical:
+        https://scikit-optimize.github.io/stable/modules/generated/skopt.space.space.Categorical.html
     """
     @property
     def grid(self):

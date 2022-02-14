@@ -439,7 +439,10 @@ class EDA(Plot):
                 only valid if dataframe's index is `pd.DateTimeIndex`. In such a case, if
                 you want to ignore time index on x-axis, set this to True.
             **kwargs :
-                https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
+                ary arguments for pandas plot method_
+
+        .. _method:
+            https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.plot.html
 
         Example
         -------
@@ -598,10 +601,10 @@ class EDA(Plot):
             color :
                 color or colormap to be used.
             **kwargs :
-                any additional keyword arguments to be passed to `easy_mpl.parallel_coordinates`_
+                any additional keyword arguments to be passed to easy_mpl.parallel_coordinates_
 
-            ..easy_mpl.parallel_coordinates_
-                https://easy-mpl.readthedocs.io/en/latest/#module-9
+        .. _easy_mpl.parallel_coordinates:
+            https://easy-mpl.readthedocs.io/en/latest/#module-9
 
         """
         return self._call_method(
@@ -650,7 +653,7 @@ class EDA(Plot):
             color=None,
     ):
         """plots the statistics of nromality test as bar charts. The statistics
-        for each feature are calculated either Shapiro-wilke](https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test)
+        for each feature are calculated either Shapiro-wilke_
         test or Anderson-Darling test][] or Kolmogorov-Smirnov test using
         scipy.stats.shapiro or scipy.stats.anderson functions respectively.
 
@@ -675,6 +678,9 @@ class EDA(Plot):
             >>> from ai4water.datasets import busan_beach
             >>> eda = EDA(data=busan_beach())
             >>> eda.normality_test()
+
+        .. _Shapiro-wilke:
+            https://en.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test
         """
         return self._call_method(
             "_normality_test_df",
@@ -1017,8 +1023,8 @@ class EDA(Plot):
             figsize: tuple = (20, 14),
             **kwargs
     ):
-        """Plots distribution of data as histogram.
-        https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
+        """Plots distribution of data as histogram_.
+
 
         Arguments
         ---------
@@ -1033,6 +1039,9 @@ class EDA(Plot):
             figsize :
                 figure size
             **kwargs : anykeyword argument for pandas.DataFrame.hist function
+
+        .. _histogram:
+            https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.hist.html
         """
         return self._call_method("_plot_hist_df", st=st, en=en, cols=cols,
                                  figsize=figsize,
@@ -1508,10 +1517,13 @@ class EDA(Plot):
             cols: Union[str, list] = None
     ):
         """
-        draws prbability plot using scipy.stats.probplot
-        https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.probplot.html
-        https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions
+        draws prbability plot using scipy.stats.probplot_ . See `scipy distributions`_
 
+        .. _scipy.stats.probplot:
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.probplot.html
+
+        .. _scipy distributions:
+            https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions
         """
         return self._call_method("_plot_prob_df", cols=cols)
 

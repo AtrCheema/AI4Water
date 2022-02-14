@@ -43,28 +43,28 @@ class Transformation(TransformationsContainer):
     pre-processing on data before applying transformation on it.
     Any new transforming methods should define two methods one starting with
     `transform_with_` and `inverse_transofrm_with_`
-    https://developers.google.com/machine-learning/data-prep/transform/normalization
+
 
     Currently following methods are available for transformation and inverse transformation
 
-    Methods
-    -------
-    - `minmax`
-    - `maxabs`
-    - `robust`
-    - `power` same as yeo-johnson
-    - `yeo-johnson`
-    - `box-cox`
-    - `zscore`    also known as standard scalers
-    - `scale`    division by standard deviation
-    - 'center'   by subtracting mean
-    - `quantile`
-    - `log`      natural logrithmic
-    - `log10`    log with base 10
-    - `log2`  log with base 2
-    - `sqrt` square root
-    - `tan`      tangent
-    - `cumsum`   cummulative sum
+    Transformation methods
+
+        - `minmax`
+        - `maxabs`
+        - `robust`
+        - `power` same as yeo-johnson
+        - `yeo-johnson`
+        - `box-cox`
+        - `zscore`    also known as standard scalers
+        - `scale`    division by standard deviation
+        - 'center'   by subtracting mean
+        - `quantile`
+        - `log`      natural logrithmic
+        - `log10`    log with base 10
+        - `log2`  log with base 2
+        - `sqrt` square root
+        - `tan`      tangent
+        - `cumsum`   cummulative sum
 
     To transform a datafrmae using any of the above methods use
 
@@ -73,6 +73,7 @@ class Transformation(TransformationsContainer):
         >>> transformer.fit_transform(data=[1,2,3,5])
 
         or
+
         >>> transformer = Transformation(method='minmax')
         >>> normalized_df = transformer.fit_transform_with_minmax(data=pd.DataFrame([1,2,3]))
 
@@ -80,15 +81,19 @@ class Transformation(TransformationsContainer):
         >>> normalized_df, scaler_dict = transformer(data=pd.DataFrame([1,2,3]))
 
         or using one liner
+
         >>> normalized_df = Transformation(method='minmax',
         ...                       features=['a'])(data=pd.DataFrame([[1,2],[3,4], [5,6]],
         ...                                       columns=['a', 'b']))
 
     where `method` can be any of the above mentioned methods.
 
-    Note:
+    Note
     ------
      `tan` and `cumsum` do not return original data upon inverse transformation.
+
+    .. _google:
+        https://developers.google.com/machine-learning/data-prep/transform/normalization
     """
 
     available_transformers = {
@@ -412,15 +417,18 @@ class Transformation(TransformationsContainer):
                           **kwargs):
         """
         Inverse transforms the data.
-        Arguments:
+
+        Parameters
+        ---------
             data:
             postprocess : bool
             without_fit : bool
             kwargs : any of the folliwng keyword arguments
-                data : data on which to apply inverse transformation
-                key : key to fetch scaler
-                scaler : scaler to use for inverse transformation. If not given, then
-                    the available scaler is used.
+
+            - data: data on which to apply inverse transformation
+            - key : key to fetch scaler
+            - scaler : scaler to use for inverse transformation. If not given, then
+                the available scaler is used.
         """
         self.transforming_straight = False
 

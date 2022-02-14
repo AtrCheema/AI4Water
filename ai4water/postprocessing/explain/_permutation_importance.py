@@ -15,10 +15,13 @@ class PermutationImportance(ExplainerMixin):
     permutation importance answers the question, how much the model's prediction
     performance is influenced by a feature? It defines the feature importance as
     the decrease in model performance when one feature is corrupted
-    ([Molnar et al., 2021](https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance))
+    Molnar_ et al., 2021
 
     Attributes:
         importances
+
+    .. _Molnar:
+        https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance
 
     """
     def __init__(
@@ -51,8 +54,8 @@ class PermutationImportance(ExplainerMixin):
                 It must be a numpy array
             scoring:
                 the peformance metric to use. It can be any metric from
-                [RegressionMetrics][ai4water.postprocessing.SeqMetrics.RegressionMetrics],
-                [ClassificationMetrics][ai4water.postprocessing.SeqMetrics.ClassificationMetrics]
+                :py:class:`ai4water.postprocessing.SeqMetrics.RegressionMetrics`, or
+                :py:class:`ai4water.postprocessing.SeqMetrics.ClassificationMetrics`
                 or a callable. If callable, then this must take true and predicted
                 as input and sprout a float as output
             n_repeats:
@@ -60,8 +63,7 @@ class PermutationImportance(ExplainerMixin):
                 of calls to the `model` will be `num_features * n_repeats`
             noise:
                 The noise to add in the feature. It should be either an array of noise
-                or a string of [scipy distribution name](https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions)
-                defining noise.
+                or a string of scipy distribution name_ defining noise.
             use_noise_only:
                 If True, the original feature will be replaced by the noise.
             weights:
@@ -76,6 +78,8 @@ class PermutationImportance(ExplainerMixin):
             kwargs:
                 any additional keyword arguments for `model`
 
+        .. _name:
+            https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions
         """
         assert callable(model), f"model must be callable"
         self.model = model
@@ -202,7 +206,10 @@ class PermutationImportance(ExplainerMixin):
             show:
                 whether to show the plot or not
             kwargs:
-                any keyword arguments for [imshow][ai4water.utils.easy_mpl.imshow] function.
+                any keyword arguments for imshow_ function.
+
+        .. _imshow:
+            https://easy-mpl.readthedocs.io/en/latest/#module-4
         """
         assert self.data_is_3d, f"data must be 3d but it is has {self.x.shape}"
 

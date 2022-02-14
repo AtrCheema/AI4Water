@@ -13,10 +13,15 @@ class DataSetPipeline(_DataSet):
     """A collection of DataSets concatenated one after the other. A DataSetPipeLine
     of four DataSets will be as follows:
 
-        ||     DataSet1   ||
-        ||     DataSet2   ||
-        ||     DataSet3   ||
-        ||     DataSet4   ||
+        +----------+
+        | DataSet1 |
+        +----------+
+        | DataSet2 |
+        +----------+
+        | DataSet3 |
+        +----------+
+        | DataSet4 |
+        +----------+
 
     The only condition for different datasets is that they have the same output dimension.
 
@@ -27,6 +32,12 @@ class DataSetPipeline(_DataSet):
             verbosity=1
     ) -> None:
         """
+        Parameters
+        ----------
+        *datasets :
+            the datasets to be combined
+        verbosity :
+            controls the output information being printed.
 
         """
         self.verbosity = verbosity

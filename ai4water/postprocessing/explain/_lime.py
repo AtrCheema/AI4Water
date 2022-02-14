@@ -19,15 +19,15 @@ class LimeExplainer(ExplainerMixin):
     Wrapper around LIME module.
 
     Example:
-        >>>from ai4water import Model
-        >>>from ai4water.datasets import busan_beach
-        >>>model = Model(model="GradientBoostingRegressor")
-        >>>model.fit(data=busan_beach())
-        >>>lime_exp = LimeExplainer(model=model,
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> model = Model(model="GradientBoostingRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> lime_exp = LimeExplainer(model=model,
         ...                       train_data=model.training_data()[0],
         ...                       data=model.test_data()[0],
         ...                       mode="regression")
-        >>>lime_exp.explain_example(0)
+        >>> lime_exp.explain_example(0)
 
     Attributes:
         explaination_objects : location explaination objects for each individual example/instance
@@ -158,7 +158,7 @@ class LimeExplainer(ExplainerMixin):
             show=False,
             save=True,
             **kwargs
-    ):
+    )->plt.Figure:
         """
         Draws and saves plot for a single example of test_data.
 
