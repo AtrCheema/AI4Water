@@ -144,7 +144,9 @@ class Abtew(ETBase):
 class Albrecht(ETBase):
     """
      Developed in Germany by Albrecht, 1950. Djaman et al., 2016 Wrote the formula as
-      eto = (0.1005 + 0.297 * u2) * (es - ea)
+
+     eto = (0.1005 + 0.297 * u2) * (es - ea)
+
     """
     def __call__(self, *args, **kwargs):
 
@@ -173,12 +175,13 @@ class Albrecht(ETBase):
 
 class BlaneyCriddle(ETBase):
     """
-    using formulation of Blaney-Criddle for daily reference crop ETP using monthly mean tmin and tmax.
-    Inaccurate under extreme climates. underestimates in windy, dry and sunny conditions and overestimates under
-    calm, humid and clouded conditions.
-    
-    Doorenbos, J., & Pruitt, W. O. (1977). Crop water requirements, FAO Irrigation and Drainage.
-    Paper 24, 2a ed., Roma, Italy.
+    using formulation of Blaney-Criddle for daily reference crop ETP using monthly
+    mean tmin and tmax. Inaccurate under extreme climates. underestimates in
+    windy, dry and sunny conditions and overestimates under calm, humid and
+    clouded conditions.
+
+    Doorenbos, J., & Pruitt, W. O. (1977). Crop water requirements, FAO
+    Irrigation and Drainage. Paper 24, 2a ed., Roma, Italy.
     """
     def __call__(self, *args, **kwargs):
         # TODO include modified BlaneyCriddle as introduced  in [3]
@@ -211,7 +214,8 @@ class BrutsaertStrickler(ETBase):
     """
     using formulation given by BrutsaertStrickler
 
-    :param `alpha_pt` Priestley-Taylor coefficient = 1.26 for Priestley-Taylor_ model (Priestley and Taylor, 1972)
+    :param `alpha_pt` Priestley-Taylor coefficient = 1.26 for Priestley-Taylor_
+        model (Priestley and Taylor, 1972)
     :param `a_s` fraction of extraterrestrial radiation reaching earth on sunless days
     :param `b_s` difference between fracion of extraterrestrial radiation reaching full-sun days
              and that on sunless days.
@@ -246,12 +250,13 @@ class BrutsaertStrickler(ETBase):
 
 class Camargo(ETBase):
     """
-    Originally presented by Camargo, 1971. Following formula is presented in Fernandes et al., 2012 quoting
-    Sedyiama et al., 1997.
+    Originally presented by Camargo, 1971. Following formula is presented in
+    Fernandes et al., 2012 quoting Sedyiama et al., 1997.
+
          eto = f * Tmean * ra * nd
 
-    Gurski et al., 2018 has not written nd in formula. He expressed formula to convert extra-terresterial radiation
-    into equivalent mm/day as
+    Gurski et al., 2018 has not written nd in formula. He expressed formula to
+    convert extra-terresterial radiation into equivalent mm/day as
         ra[mm/day] = ra[MegaJoulePerMeterSquare PerDay] / 2.45
         where 2.45 is constant.
 

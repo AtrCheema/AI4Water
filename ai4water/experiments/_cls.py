@@ -181,6 +181,33 @@ class MLClassificationExperiments(Experiments):
 
         return {'model': {'ExtraTreesClassifier': kwargs}}
 
+    def model_GaussianProcessClassifier(self, **kwargs):
+        #  https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html
+
+        self.path = "sklearn.gaussian_process.GaussianProcessClassifier"
+        self.param_space = self.classification_space["GaussianProcessClassifier"]["param_space"]
+        self.x0 = self.classification_space["GaussianProcessClassifier"]["x0"]
+
+        return {'model': {'GaussianProcessClassifier': kwargs}}
+
+    def model_GradientBoostingClassifier(self, **kwargs):
+        # https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeClassifier.html
+
+        self.path = "sklearn.ensemble.GradientBoostingClassifier"
+        self.param_space = self.classification_space["GradientBoostingClassifier"]["param_space"]
+        self.x0 = self.classification_space["GradientBoostingClassifier"]["x0"]
+
+        return {'model': {'GradientBoostingClassifier': kwargs}}
+
+    def model_HistGradientBoostingClassifier(self, **kwargs):
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html
+
+        self.path = "sklearn.ensemble.HistGradientBoostingClassifier"
+        self.param_space = self.classification_space["HistGradientBoostingClassifier"]["param_space"]
+        self.x0 = self.classification_space["HistGradientBoostingClassifier"]["x0"]
+
+        return {'model': {'HistGradientBoostingClassifier': kwargs}}
+
     def model_KNeighborsClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
 
@@ -244,6 +271,15 @@ class MLClassificationExperiments(Experiments):
 
         return {'model': {'LogisticRegression': kwargs}}
 
+    def model_MLPClassifier(self, **kwargs):
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+
+        self.path = "sklearn.neural_network.MLPClassifier"
+        self.param_space = self.classification_space["MLPClassifier"]["param_space"]
+        self.x0 = self.classification_space["MLPClassifier"]["x0"]
+
+        return {'model': {'MLPClassifier': kwargs}}
+
     def model_NearestCentroid(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestCentroid.html
 
@@ -288,6 +324,15 @@ class MLClassificationExperiments(Experiments):
         self.x0 = self.classification_space["QuadraticDiscriminantAnalysis"]["x0"]
 
         return {'model': {'QuadraticDiscriminantAnalysis': kwargs}}
+
+    # def model_RadiusNeighborsClassifier(self, **kwargs):
+    #     # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
+    #
+    #     self.path = "sklearn.neighbors.RadiusNeighborsClassifier"
+    #     self.param_space = self.classification_space["RadiusNeighborsClassifier"]["param_space"]
+    #     self.x0 = self.classification_space["RadiusNeighborsClassifier"]["x0"]
+    #
+    #     return {'model': {'RadiusNeighborsClassifier': kwargs}}
 
     def model_RandomForestClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html

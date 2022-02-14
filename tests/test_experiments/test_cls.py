@@ -56,7 +56,7 @@ class TestCls(unittest.TestCase):
 
         exp = MLClassificationExperiments(input_features=inputs,
                                     output_features=outputs)
-        
+
         exp.fit(data=data, exclude=[
             'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'  # giving nan predictions
         ]
