@@ -1201,12 +1201,18 @@ class MtropicsLaos(Datasets):
         Makes a classification problem.
 
         Arguments:
-            input_features : names of inputs to use.
-            output_features : feature/features to consdier as target/output/label
-            st : starting date of data
-            en : end date of data
-            freq : frequency of data
-            threshold : threshold to use to determine classes. Values greater than
+            input_features :
+                names of inputs to use.
+            output_features :
+                feature/features to consdier as target/output/label
+            st :
+                starting date of data
+            en :
+                end date of data
+            freq :
+                frequency of data
+            threshold :
+                threshold to use to determine classes. Values greater than
                 equal to threshold are set to 1 while values smaller than threshold
                 are set to 0. The value of 400 is chosen for E. coli to make the
                 the number 0s and 1s balanced. It should be noted that US-EPA recommends
@@ -1215,7 +1221,8 @@ class MtropicsLaos(Datasets):
                 the number of previous steps to use. If this argument is used,
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.
-        returns:
+
+        returns :
             a dataframe of shape `(inputs+target, st:en)`
 
         Example:
@@ -1258,8 +1265,8 @@ class MtropicsLaos(Datasets):
         Makes a regression problem using hydrological, environmental,
         and water quality data of Huoay pano.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
             input_features :
                 names of inputs to use. By default following features
                 are used as input
@@ -1283,11 +1290,12 @@ class MtropicsLaos(Datasets):
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.
 
-        returns
+        Returns
         -------
-            a dataframe of shape `(inputs+target, st:en)`
+            a dataframe of shape (inputs+target, st - en)
 
-        Example:
+        Example
+        -------
             >>> from ai4water.datasets import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> ins = ['pcp', 'air_temp']

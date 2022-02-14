@@ -159,7 +159,8 @@ class Imputation(object):
         en: int
 
         Example
-            >>>imputer.plot(cols=['in1', 'in2'], st=0, en=25)
+        -------
+            >>> imputer.plot(cols=['in1', 'in2'], st=0, en=25)
         """
 
         if cols is not None:

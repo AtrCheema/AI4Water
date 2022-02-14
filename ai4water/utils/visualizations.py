@@ -89,8 +89,8 @@ def murphy_diagram(
         fill_color: str = "lightgray",
         show: bool = True
 ) -> plt.Axes:
-    """Murphy diagram as introducted by [Ehm et al., 2015](https://arxiv.org/pdf/1503.08195.pdf)
-     and illustrated by [Rob Hyndman](https://robjhyndman.com/hyndsight/murphy-diagrams/)
+    """Murphy diagram as introducted by Ehm_ et al., 2015
+     and illustrated by Rob Hyndman_
 
     Arguments:
         observed:
@@ -102,8 +102,7 @@ def murphy_diagram(
         reference_model:
              The model for reference prediction. Only relevent if `reference` is
              None and `plot_type` is `diff`. It can be callable or a string. If it is a
-             string, then it can be any model name from
-             [sklearn.linear_model](https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model)
+             string, then it can be any model name from sklearn.linear_model_
         inputs:
              inputs for reference model. Only relevent if `reference_model` is not
              None and `plot_type` is `diff`
@@ -132,6 +131,15 @@ def murphy_diagram(
         >>> murphy_diagram(yy, ff1, ff2)
         ...
         >>> murphy_diagram(yy, ff1, ff2, plot_type="diff")
+
+    .. _Ehm:
+        https://arxiv.org/pdf/1503.08195.pdf
+
+    .. _Hyndman:
+        https://robjhyndman.com/hyndsight/murphy-diagrams/
+
+    .. _sklearn.linear_model:
+        https://scikit-learn.org/stable/modules/classes.html#module-sklearn.linear_model
     """
     assert plot_type in ("scores", "diff")
     assert xaxis in ("theta", "time")

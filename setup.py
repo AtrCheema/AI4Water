@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# some rights may be reserved by 2020  Ather Abbas
+# Don't know which rights should be reserved  Ather Abbas
 from setuptools import setup
 from version import __version__ as ver
 
@@ -25,7 +25,7 @@ min_requirements = [
 extra_requires = [
 'tensorflow', # only if you want to use tensorflow-based models, >=1.15, 2.4 having trouble with see-rnn
 'scikit-optimize',  # only if you want to use file hyper_opt.py for hyper-parameter optimization
-#'pytorch',  # only if you want to use pytorch-based models
+
 'h5py<2.11.0', # only if you want to save batches
 'xgboost',
 'lightgbm',
@@ -49,6 +49,16 @@ extra_requires = [
 # eda
 'seaborn'
 ]
+
+tf_requires = ['h5py', 'numpy',
+               'easy_mpl',
+               'tensorflow',
+               'pandas', 'matplotlib', 'scikit-learn']
+
+torch_requires = ['h5py<2.11.0',
+                  'numpy<=1.19.5',
+                  'easy_mpl>=0.20.3',
+                  'pytorch', 'pandas', 'matplotlib', 'scikit-learn']
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
 post_process_requirements = ['lime', 'shap']
@@ -127,5 +137,7 @@ setup(
         'post_process': post_process_requirements,
         'exp': exp_requirements,
         'eda': eda_requires,
+        'tf': tf_requires,
+        'torch': torch_requires,
     }
 )

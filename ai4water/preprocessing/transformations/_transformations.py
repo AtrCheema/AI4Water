@@ -99,7 +99,10 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
         lambdas: float or 1d array like for each feature. If not given, it is
             calculated from scipy.stats.boxcox(X, lmbda=None). Only available
             if method is box-cox.
-        For complete documentation see [scikit-learn's documentation](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html)
+        For complete documentation see scikit-learn's documentation_
+
+        .. documentation:
+            https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html
         """
         if lambdas is not None:
             if isinstance(lambdas, float):
@@ -410,14 +413,14 @@ class FunctionTransformer(SKFunctionTransformer):
 
     Example
     -------
-    ```python
-    >>> array = np.random.randint(1, 100, (20, 2))
-    >>> transformer = FunctionTransformer(func=np.log2, inverse_func="lambda _x: 2**_x", validate=True)
-    >>> t_array = transformer.fit_transform(array)
-    >>> transformer.config()
-    >>> new_transformer = FunctionTransformer.from_config(transformer.config())
-    >>> original_array = new_transformer.inverse_transform(t_array)
-    ```
+        >>> array = np.random.randint(1, 100, (20, 2))
+        >>> transformer = FunctionTransformer(func=np.log2,
+        >>>                inverse_func="lambda _x: 2**_x", validate=True)
+        >>> t_array = transformer.fit_transform(array)
+        >>> transformer.config()
+        >>> new_transformer = FunctionTransformer.from_config(transformer.config())
+        >>> original_array = new_transformer.inverse_transform(t_array)
+
     """
     def __init__(self, func=None, inverse_func=None, validate=False,
                  accept_sparse=False, check_inverse=True, kw_args=None,

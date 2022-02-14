@@ -141,7 +141,7 @@ class Transformation(TransformationsContainer):
                 define the method with which to replace nans for exaple by setting
                 this argument to 'mean' will replace zeros with 'mean' of the
                 array/column which contains zeros. Allowed string values are
-                'mean', 'max', 'min'. see https://stats.stackexchange.com/a/222237/338323
+                'mean', 'max', 'min'. see_
             treat_negatives:
                 If true, and if data contains negative values, then the absolute
                 values of these negative values will be considered for transformation.
@@ -167,6 +167,9 @@ class Transformation(TransformationsContainer):
             >>> transformed_data = transformer.fit_transform([1,2,3,0.0, 5, np.nan, 7])
             ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
             >>> original_data = transformer.inverse_transform(data=transformed_data)
+
+        .. _see:
+            https://stats.stackexchange.com/a/222237/338323
 
         """
         super().__init__()

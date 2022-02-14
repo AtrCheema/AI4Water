@@ -3,7 +3,7 @@
 Welcome to ai4water's documentation!
 ====================================
 
-.. image:: images/favicon.png
+.. image:: imgs/monogram.png
 
 .. toctree::
    :maxdepth: 2

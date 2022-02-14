@@ -36,8 +36,9 @@ class Transformations(object):
         >>> x2 = np.arange(50, 100).reshape(25, 2)
         >>> x1_transformed = transformer.fit_transform([x1, x2])
         >>> _x1 = transformer.inverse_transform(x1_transformed)
-        ...
-        ... # We can also do more complicated stuff as following
+
+        We can also do more complicated stuff as following
+
         >>> transformer = Transformations({'x1': ['a', 'b'], 'x2': ['a', 'b']},
         ...        config={'x1': ['minmax', 'zscore'],
         ...                'x2': [{'method': 'log', 'features': ['a', 'b']},
@@ -66,23 +67,23 @@ class Transformations(object):
                 It can be one of the following types
 
                 - `string` when you want to apply single transformation
-                ```python
+
                 >>> config='minmax'
-                ```
-                - `dict`: to pass additional arguments to the [Transformation][ai4water.preprocessing.Transformation]
+
+                - `dict`: to pass additional arguments to the :py:class:`ai4water.preprocessing.Transformation`
                    class
-                ```python
+
                 >>> config = {"method": 'log', 'treat_negatives': True, 'features': ['features']}
-                ```
+
                 - `list` when we want to apply multiple transformations
-                ```python
+
                 >>> ['minmax', 'zscore']
-                ```
+
                 or
-                ```python
+
                 >>> [{"method": 'log', 'treat_negatives': True, 'features': ['features']},
-                >>>  {'method': 'sqrt', 'treat_negatives': True}]
-                ```
+                >>> {'method': 'sqrt', 'treat_negatives': True}]
+
 
         """
         self.names = feature_names

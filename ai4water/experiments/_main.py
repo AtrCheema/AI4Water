@@ -875,7 +875,7 @@ Available cases are {self.models} and you wanted to include
         Plots the box whisker plots of the cross validation scores.
 
         This plot is only available if cross_validation was set to True during
-        [fit()][ai4water.experiments.experiments.Experiments.fit].
+        :py:meth:`ai4water.experiments.Experiments.fit`.
 
         Arguments:
             show : whether to show the plot or not
@@ -1011,8 +1011,8 @@ Available cases are {self.models} and you wanted to include
 
         Arguments
         ---------
-            data:
-            models:
+            data :
+            models :
                 It can be of three types.
 
                 - If list, it will be the names of machine learning models/
@@ -1032,6 +1032,7 @@ Available cases are {self.models} and you wanted to include
                 - You can also set it to `all` consider all models available in ai4water's
                     Experiment module.
                 - default is None, which means, the `tpot_config` argument will be None
+
             selection_criteria :
                 If `models` is integer, then according to which criteria
                 the models will be choosen. By default the models will be selected

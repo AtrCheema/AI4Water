@@ -7,20 +7,48 @@ from .utils import classification_space
 
 class MLClassificationExperiments(Experiments):
     """Runs classification models for comparison, with or without
-    optimization of hyperparameters."""
+    optimization of hyperparameters. It compares around 30 classification
+    algorithms from sklearn, xgboost, catboost and lightgbm.
+
+    Examples
+    --------
+    >>> from ai4water.datasets import MtropicsLaos
+    >>> from ai4water.experiments import MLClassificationExperiments
+    >>> data = MtropicsLaos().make_classification(lookback_steps=2)
+    >>> inputs = data.columns.tolist()[0:-1]
+    >>> outputs = data.columns.tolist()[-1:]
+    >>> exp = MLClassificationExperiments(input_features=inputs,
+    >>>                                       output_features=outputs)
+
+    >>> exp.fit(data=data, include=["CatBoostClassifier", "LGBMClassifier",
+    >>>             'RandomForestClassifier', 'XGBClassifier'])
+    >>> exp.compare_errors('accuracy', show=False)
+    """
 
     def __init__(self,
                  param_space=None,
                  x0=None,
                  cases=None,
                  exp_name='MLExperiments',
-                 dl4seq_model=None,
                  num_samples=5,
                  **model_kwargs):
+        """
+
+        Parameters
+        ----------
+            param_space : list, optional
+            x0 : list, optional
+            cases : dict, optional
+            exp_name : str, optional
+                name of experiment
+            num_samples :
+            **model_kwargs :
+                keyword arguments for :py:class:`ai4water.Model` class
+        """
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kwargs
-        self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
+        #self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
         self.classification_space = classification_space(num_samples=num_samples)
 
@@ -44,12 +72,12 @@ class MLClassificationExperiments(Experiments):
                       title=None,
                       cross_validate=False,
                       **kwargs):
-
+        """builds the Model, trains it and makes predictions from it"""
         verbosity = 0
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
-        model = self.dl4seq_model(
+        model = Model(
             prefix=title,
             verbosity=verbosity,
             **self.model_kws,

@@ -100,6 +100,29 @@ However, integration of ML based models is not complete yet.
     >>> preds = model.predict()
 
 
+Using your own (custom) model
+============================
+If you don't want to use sklearn/xgboost/catboost/lgbm's Models and you
+have your own model. You can use this model seamlessley as far as this
+model has .fit, .evaluate and .predict methods.
+
+.. code-block:: python
+
+    >>> from ai4water import Model
+    >>> from ai4water.datasets import busan_beach
+    >>> from sklearn.ensemble import RandomForestRegressor
+    >>> class MyRF(RandomForestRegressor):
+    >>>     pass  # your own customized random forest model
+    >>> data = busan_beach()
+    >>> model = Model(model=MyRF, mode="regression")
+    >>> model.fit(data=data)
+
+    you can initialize your Model with arguments as well
+    >>> model = Model(model={MyRF: {"n_estimators": 10}},
+    >>>               mode="regression")
+    >>> model.fit(data=data)
+
+
 Hyperparameter optimization
 =============================
 For hyperparameter optimization, replace the actual values of hyperparameters
@@ -125,3 +148,21 @@ with the space.
     ...                                )
 
 
+Experiments
+===========
+The experiments module can be used to compare a large range of  regression
+and classification algorithms. For example, to compare performance of
+regression algorithms on your data
+
+.. code-block:: python
+
+    >>> from ai4water.datasets import busan_beach
+    >>> from ai4water.experiments import MLRegressionExperiments
+    # first compare the performance of all available models without optimizing their parameters
+    >>> data = busan_beach()  # read data file, in this case load the default data
+    >>> inputs = list(data.columns)[0:-1]  # define input and output columns in data
+    >>> outputs = list(data.columns)[-1]
+    >>> comparisons = MLRegressionExperiments(
+    >>>       input_features=inputs, output_features=outputs)
+    >>> comparisons.fit(data=data,run_type="dry_run")
+    >>> comparisons.compare_errors('r2')
