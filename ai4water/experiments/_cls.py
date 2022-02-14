@@ -19,7 +19,6 @@ class MLClassificationExperiments(Experiments):
     >>> outputs = data.columns.tolist()[-1:]
     >>> exp = MLClassificationExperiments(input_features=inputs,
     >>>                                       output_features=outputs)
-
     >>> exp.fit(data=data, include=["CatBoostClassifier", "LGBMClassifier",
     >>>             'RandomForestClassifier', 'XGBClassifier'])
     >>> exp.compare_errors('accuracy', show=False)

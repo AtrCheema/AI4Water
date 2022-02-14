@@ -7,11 +7,14 @@ from .global_variables import LAMBDA
 # TODO, classify methods which require wind_speed, or which require solar_rad.
 
 class ETBase(Utils):
-    """This is the base class for evapotranspiration calculation. It calculates
-     etp according to [Jensen and Haise](https://doi.org/10.1061/JRCEA4.0000287)
-     method. Any new ETP calculation must inherit from it and must implement
-     the `__call__` method.
+    """
+    This is the base class for evapotranspiration calculation. It calculates
+    etp according to Jensen and Haise_ method. Any new ETP calculation must
+    inherit from it and must implement
+    the ``__call__`` method.
 
+    .. _Haise:
+        https://doi.org/10.1061/JRCEA4.0000287
     """
     def __init__(self,
                  input_df: pd.DataFrame,
@@ -20,7 +23,8 @@ class ETBase(Utils):
                  **kwargs
                  ):
         """
-        Arguments:
+        Parameters
+        ---------
             input_df :
             units :
             constants :
@@ -67,14 +71,15 @@ class ETBase(Utils):
                  transform: bool=False,
                  **kwargs):
         """
-        as given (eq 9) in Xu and Singh, 2000 and implemented in [1]
+        as given (eq 9) in Xu and Singh, 2000 and implemented here_
 
         uses:  a_s, b_s, ct=0.025, tx=-3
         Arguments:
             transform : whether to transform the calculated etp to frequecies
                 other than at which it is calculated.
 
-    [1] https://github.com/DanluGuo/Evapotranspiration/blob/8efa0a2268a3c9fedac56594b28ac4b5197ea3fe/R/Evapotranspiration.R#L2734
+        .. _here:
+            https://github.com/DanluGuo/Evapotranspiration/blob/8efa0a2268a3c9fedac56594b28ac4b5197ea3fe/R/Evapotranspiration.R#L2734
         """
         self.requirements(constants=['lat_dec_deg', 'altitude', 'ct', 'tx'],
                           ts=['temp'])
@@ -113,7 +118,7 @@ class ETBase(Utils):
 
 class Abtew(ETBase):
     """
-    daily etp using equation 3 in [1]. `k` is a dimentionless coefficient.
+    daily etp using equation 3 in Abtew_ 1996. `k` is a dimentionless coefficient.
 
      uses: , k=0.52, a_s=0.23, b_s=0.5
     :param `k` coefficient, default value taken from [1]
@@ -121,9 +126,8 @@ class Abtew(ETBase):
     :param `b_s` difference between fracion of extraterrestrial radiation reaching full-sun days
              and that on sunless days.
 
-     [1] Abtew, W. (1996). EVAPOTRANSPIRATION MEASUREMENTS AND MODELING FOR THREE WETLAND SYSTEMS IN
-         SOUTH FLORIDA 1. JAWRA Journal of the American Water Resources Association, 32(3),
-         465-473. https://doi.org/10.1111/j.1752-1688.1996.tb04044.x
+    .. _Abtew:
+        https://doi.org/10.1111/j.1752-1688.1996.tb04044.x
 
      """
     def __call__(self, *args, **kwargs):
@@ -172,6 +176,7 @@ class BlaneyCriddle(ETBase):
     using formulation of Blaney-Criddle for daily reference crop ETP using monthly mean tmin and tmax.
     Inaccurate under extreme climates. underestimates in windy, dry and sunny conditions and overestimates under
     calm, humid and clouded conditions.
+    
     Doorenbos, J., & Pruitt, W. O. (1977). Crop water requirements, FAO Irrigation and Drainage.
     Paper 24, 2a ed., Roma, Italy.
     """
@@ -206,7 +211,7 @@ class BrutsaertStrickler(ETBase):
     """
     using formulation given by BrutsaertStrickler
 
-    :param `alpha_pt` Priestley-Taylor coefficient = 1.26 for Priestley-Taylor model (Priestley and Taylor, 1972)
+    :param `alpha_pt` Priestley-Taylor coefficient = 1.26 for Priestley-Taylor_ model (Priestley and Taylor, 1972)
     :param `a_s` fraction of extraterrestrial radiation reaching earth on sunless days
     :param `b_s` difference between fracion of extraterrestrial radiation reaching full-sun days
              and that on sunless days.
@@ -214,7 +219,9 @@ class BrutsaertStrickler(ETBase):
             representing the portion of the incident radiation that is reflected back at the surface.
             Default is 0.23 for surface covered with short reference crop.
     :return: et
-     https://doi.org/10.1029/WR015i002p00443
+
+    .. _Priestley-Taylor:
+        https://doi.org/10.1029/WR015i002p00443
     """
     def __call__(self, *args, **kwargs):
         self.requirements(constants=['alphaPT'])  # check that all constants are present
@@ -281,10 +288,12 @@ class Caprio(ETBase):
 
 
 class ChapmanAustralia(ETBase):
-    """using formulation of Chapman, 2001,
+    """using formulation of Chapman_, 2001,
 
     uses: a_s=0.23, b_s=0.5, ap=2.4, alphaA=0.14, albedo=0.23
-    https://116.90.59.164/MODSIM03/Volume_01/A03/04_Chapman.pdf
+
+    .. _Chapman:
+        https://116.90.59.164/MODSIM03/Volume_01/A03/04_Chapman.pdf
     """
     def __call__(self, *args, **kwargs):
         self.requirements(constants=['lat_dec_deg', 'altitude', 'alphaA', 'pan_ap', 'albedo'],
@@ -314,7 +323,7 @@ class Copais(ETBase):
 
 class Dalton(ETBase):
     """
-    using Dalton formulation as mentioned in [1] in mm/dday
+    using Dalton formulation as mentioned here_ in mm/dday
 
     uses:
       es: mean saturation vapour pressure
@@ -322,8 +331,8 @@ class Dalton(ETBase):
       u2: wind speed
 
 
-    References:
-    [1] https://water-for-africa.org/en/dalton.html
+    .. _here:
+        https://water-for-africa.org/en/dalton.html
     """
     def __call__(self, *args, **kwargs):
 
@@ -385,6 +394,7 @@ class GrangerGray(ETBase):
             representing the portion of the incident radiation that is reflected back at the surface.
             Default is 0.23 for surface covered with short reference crop.
     :return:
+
     https://doi.org/10.1016/0022-1694(89)90249-7
 
     """
@@ -445,8 +455,11 @@ class Hamon(ETBase):
                  WDMUtil. It should be also noted that 0.0055 is to be used when pet is in inches. So I am dividing
                  the whole pet by 24.5 in order to convert from inches to mm while still using 0.0055.
 
+    References
+    ----------
     Hamon, W. R. (1963). Computation of direct runoff amounts from storm rainfall. International Association of
     Scientific Hydrology Publication, 63, 52-62.
+
     Lu et al. (2005).  A comparison of six potential evaportranspiration methods for regional use in the
         southeastern United States.  Journal of the American Water Resources Association, 41, 621-633.
      """
@@ -492,7 +505,7 @@ class Hamon(ETBase):
 
 class HargreavesSamani(ETBase):
     """
-    estimates daily ETo using Hargreaves method Hargreaves and Samani, 1985.
+    estimates daily ETo using Hargreaves method Hargreaves and Samani_, 1985.
     :uses
       temp
       tmin
@@ -504,8 +517,8 @@ class HargreavesSamani(ETBase):
     Note: Current test passes for 1985 method.
     There is a variation of Hargreaves introduced by Trajkovic 2007 as mentioned in Alexandris 2008.
 
-    [1] https://rdrr.io/cran/Evapotranspiration/man/ET.HargreavesSamani.html
-    doi.org/10.13031/2013.26773
+    .. _Samani:
+        https://rdrr.io/cran/Evapotranspiration/man/ET.HargreavesSamani.html
     """
 
     def __call__(self, method='1985', **kwargs):
@@ -533,8 +546,12 @@ class HargreavesSamani(ETBase):
 
 class Haude(ETBase):
     """
-    only requires air temp and relative humidity at 2:00 pm. Good for moderate zones despite being simple [1].
-    Haude, W. (1954). Zur praktischen Bestimmung der aktuellen und potentiellen Evaporation und Evapotranspiration.
+    only requires air temp and relative humidity at 2:00 pm. Good for moderate
+    zones despite being simple
+
+    References
+    ----------
+    [1]. Haude, W. (1954). Zur praktischen Bestimmung der aktuellen und potentiellen Evaporation und Evapotranspiration.
      Schweinfurter Dr. und Verlag-Ges..
     """
     def __call__(self, *args, **kwargs):

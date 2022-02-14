@@ -1399,9 +1399,8 @@ def prepare_data(
                [  4,  54, 104],
                [  5,  55, 105],
                [  6,  56, 106]])       # (7, 3)
-        >>> # it is import to note that although lookback=4 but x[0] has shape of 7
+        >>> # it is important to note that although lookback=4 but x[0] has shape of 7
         >>> y[0]
-
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)
     """

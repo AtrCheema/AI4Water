@@ -1,5 +1,5 @@
 declarative model definition for tensorflow
-******************************************
+*******************************************
 
 
 
@@ -40,6 +40,9 @@ multi-layer perceptron
 
 
 .. image:: imgs/mlp.png
+    :align: center
+    :height: 500
+
 
 LSTM based model
 =================
@@ -66,6 +69,8 @@ second `LSTM` layer.
     ...               model={'layers':layers})
 
 .. image:: imgs/lstm.png
+    :align: center
+    :height: 500
 
 1d CNN based model
 ====================
@@ -84,6 +89,8 @@ Activation functions can also be used as a separate layer.
     ...           }
 
 .. image:: imgs/cnn.png
+    :align: center
+    :height: 600
 
 LSTM -> CNN based model
 ========================
@@ -101,6 +108,8 @@ LSTM -> CNN based model
     ...           }
 
 .. image:: imgs/lstm_cnn.png
+    :align: center
+    :height: 700
 
 ConvLSTM based model
 =====================
@@ -118,6 +127,8 @@ when the input is > 3d or the number of inputs are more than one.
     ...           }
 
 .. image:: imgs/convlstm.png
+    :align: center
+    :height: 500
 
 CNN -> LSTM
 ==========================
@@ -155,6 +166,7 @@ wrapped in `TimeDistributed` layer.
     >>> }
 
 .. image:: imgs/cnn_lstm.png
+    :height: 1200
 
 LSTM based auto-encoder
 ========================
@@ -171,6 +183,8 @@ LSTM based auto-encoder
     >>> }
 
 .. image:: imgs/lstm_autoenc.png
+    :align: center
+    :height: 500
 
 TCN layer
 =========
@@ -192,6 +206,8 @@ installed `tcn`, the layer along with its arguments can be used as following
 
 
 .. image:: imgs/tcn.png
+    :align: center
+    :height: 400
 
 Multiple Inputs
 ===============
