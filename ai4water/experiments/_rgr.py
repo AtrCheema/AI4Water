@@ -1,8 +1,8 @@
 
+__all__ = ["MLRegressionExperiments"]
 
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 from ai4water.utils.utils import get_version_info
-from ._main import Experiments, Model
+from ._main import Experiments
 from .utils import regression_space
 
 
@@ -30,17 +30,15 @@ class MLRegressionExperiments(Experiments):
     """
     Compares peformance of 40+ machine learning models for a regression problem.
     The experiment consists of `models` which are run using `fit()` method. A `model`
-    is one experiment. This class consists of its own `build_and_run` method which
-    is run everytime for each `model` and is executed after calling  `model`. The
-    `build_and_run` method takes the output of `model` and streams it to `Model` class.
+    is one experiment. 
 
     The user can define new `models` by subclassing this class. In fact any new
-    method in the sub-class which does not starts with `model_` wll be considered
+    method in the sub-class which starts with `model_` wll be considered
     as a new `model`. Otherwise the user has to overwite the attribute `models` to
-    redefine, which methods are to be used as models and which should not. The
+    redefine, which methods (of class) are to be used as models and which should not. The
     method which is a `model` must only return key word arguments which will be
     streamed to the `Model` using `build_and_run` method. Inside this new method
-    the user can define, which parameters to optimize, their param_space for optimization
+    the user must define, which parameters to optimize, their param_space for optimization
     and the initial values to use for optimization.
 
     """
@@ -49,7 +47,6 @@ class MLRegressionExperiments(Experiments):
                  param_space=None,
                  x0=None,
                  cases=None,
-                 ai4water_model=None,
                  exp_name='MLExperiments',
                  num_samples=5,
                  verbosity=1,
@@ -90,12 +87,11 @@ class MLRegressionExperiments(Experiments):
             >>> comparisons.fit(data=data, run_type="optimize", include=best_models)
             >>> comparisons.compare_errors('r2')
             >>> comparisons.taylor_plot()  # see help(comparisons.taylor_plot()) to tweak the taylor plot
-        ```
+
         """
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kwargs
-        self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples, verbosity=verbosity)
 
@@ -125,55 +121,6 @@ class MLRegressionExperiments(Experiments):
     @property
     def mode(self):
         return "regression"
-
-    def build_and_run(self,
-                      predict=True,
-                      view=False,
-                      title=None,
-                      cross_validate=False,
-                      **kwargs):
-
-        """
-        Builds and run one 'model' of the experiment.
-
-        Since an experiment consists of many models, this method
-        is also run many times.
-        """
-
-        verbosity = max(self.verbosity-1, 0)
-        if 'verbosity' in self.model_kws:
-            verbosity = self.model_kws.pop('verbosity')
-
-        model = self.ai4water_model(
-            prefix=title,
-            verbosity=verbosity,
-            **self.model_kws,
-            **kwargs
-        )
-
-        setattr(self, 'model_', model)
-
-        if cross_validate:
-            val_score = model.cross_val_score(data=self.data_, scoring=model.config['val_metric'])
-        else:
-            model.fit(data=self.data_)
-            vt, vp = model.predict(data='validation', return_true=True)
-            val_score = getattr(RegressionMetrics(vt, vp), model.val_metric)()
-
-        tt, tp = model.predict(data='test', return_true=True)
-
-        if view:
-            model.view()
-
-        if predict:
-            t, p = model.predict(data='training', return_true=True)
-
-            return (t, p), (tt, tp)
-
-        if model.config['val_metric'] in ['r2', 'nse', 'kge', 'r2_mod']:
-            val_score = 1.0 - val_score
-
-        return val_score
 
     def model_AdaBoostRegressor(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html

@@ -1,7 +1,7 @@
 
+__all__ = ["MLClassificationExperiments"]
 
-from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
-from ._main import Experiments, Model
+from ._main import Experiments
 from .utils import classification_space
 
 
@@ -47,7 +47,6 @@ class MLClassificationExperiments(Experiments):
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kwargs
-        #self.dl4seq_model = Model if dl4seq_model is None else dl4seq_model
 
         self.classification_space = classification_space(num_samples=num_samples)
 
@@ -64,47 +63,6 @@ class MLClassificationExperiments(Experiments):
     @property
     def mode(self):
         return "classification"
-
-    def build_and_run(self,
-                      predict=False,
-                      view=False,
-                      title=None,
-                      cross_validate=False,
-                      **kwargs):
-        """builds the Model, trains it and makes predictions from it"""
-        verbosity = 0
-        if 'verbosity' in self.model_kws:
-            verbosity = self.model_kws.pop('verbosity')
-
-        model = Model(
-            prefix=title,
-            verbosity=verbosity,
-            **self.model_kws,
-            **kwargs
-        )
-
-        setattr(self, 'model_', model)
-
-        if cross_validate:
-            val_score = model.cross_val_score(data=self.data_, scoring=model.val_metric)
-        else:
-            model.fit(data=self.data_)
-            vt, vp = model.predict(data='validation', return_true=True)
-            val_score = getattr(ClassificationMetrics(vt, vp,
-                multiclass=model.is_multiclass), model.val_metric)()
-
-        if view:
-            model.view()
-
-        if predict:
-            tt, tp = model.predict(data='test', return_true=True)
-            tr_t, tr_p = model.predict(data='training', return_true=True)
-            return (tr_t, tr_p), (tt, tp)
-
-        if model.val_metric in ['r2', 'nse', 'kge', 'r2_mod', 'accuracy', 'f1_score']:
-            val_score = 1.0 - val_score
-
-        return val_score
 
     def model_AdaBoostClassifier(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
