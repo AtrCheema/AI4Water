@@ -840,7 +840,7 @@ class BaseModel(NN):
                 kwargs['random_seed'] = self.config['seed']
 
         if estimator in ["XGBRegressor", "XGBClassifier"]:
-            if 'seed' not in kwargs:
+            if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
 
         # following sklearn based models accept random_state argument
@@ -907,7 +907,7 @@ class BaseModel(NN):
                 if sk_maj_ver < 1 and sk_min_ver < 23:
                     raise ValueError(
                         f"{estimator} is available with sklearn version >= 0.23 but you have {version_info['sklearn']}")
-            raise ValueError(f"model {estimator} not found. {version_info}")
+            raise ValueError(f"model '{estimator}' not found. {version_info}")
 
         self._model = model
 
@@ -2090,25 +2090,35 @@ class BaseModel(NN):
 
         Arguments:
             data:
-
+                It can be one of following
+                    - raw unprepared data in the form of a numpy array or pandas dataframe
+                    - a tuple of x,y pairs
+                If it is unprepared data, it is passed to :py:class:`ai4water.datasets.DataSet`.
+                which prepares x,y pairs from it. The ``DataSet`` class also 
+                splits the data into training, validation and tests sets. If it 
+                is a tuple of x,y pairs, it is split into training and validation.
+                In both cases, the loss on validation set is used as objective function.
+                The loss calculated using ``val_metric``.
             transformations:
                 the transformations to consider for input features. By default,
                 following transformations are considered for input features
 
-                - `minmax`  rescale from 0 to 1
+                - ``minmax`  rescale from 0 to 1
                 - `center`    center the data by subtracting mean from it
-                - `scale`     scale the data by dividing it with its standard deviation
-                - `zscore`    first performs centering and then scaling
-                - `box-cox`
-                - `yeo-johnson`
-                - `quantile`
-                - `robust`
-                - `log`
-                - `log2`
-                - `log10`
-                - `sqrt`    square root
+                - `scale``     scale the data by dividing it with its standard deviation
+                - ``zscore``    first performs centering and then scaling
+                - ``box-cox``
+                - ``yeo-johnson``
+                - ``quantile``
+                - ``robust``
+                - ``log``
+                - ``log2``
+                - ``log10``
+                - ``sqrt``    square root
 
-            include: the names of input features to include
+            include : list, dict, str, optional
+                the name/names of input features to include. If you don't want 
+                to include any feature. Set this to an empty list
             exclude: the name/names of input features to exclude
             append:
                 the input features with custom candidate transformations. For example
@@ -2155,7 +2165,10 @@ class BaseModel(NN):
         from ._optimize import OptimizeTransformations  # optimize_transformations
         from .preprocessing.transformations.utils import InvalidTransformation
 
-        setattr(self, 'dh_', DataSet(data=data, **self.data_config))
+        if isinstance(data, list) or isinstance(data, tuple):
+            pass
+        else:
+            setattr(self, 'dh_', DataSet(data=data, **self.data_config))
 
         allowed_transforamtions = ["minmax", "center", "scale", "zscore", "box-cox", "yeo-johnson",
                       "quantile", "robust", "log", "log2", "log10", "sqrt", "none",

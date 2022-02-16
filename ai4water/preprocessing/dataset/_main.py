@@ -326,6 +326,10 @@ class DataSet(_DataSet):
             assert 'training' in indices, f"""
             when defining validation data using indices, training data must also be 
             defined using indices."""
+        
+        assert val_fraction < 1.0, f"""
+            val_fraction must be less than 1.0 but it is {val_fraction}.
+            """
 
         self.dataset_args = dataset_args
 

@@ -71,7 +71,8 @@ class RegressionMetrics(Metrics):
     def _minimal() -> list:
         """some minimal and basic metrics"""
 
-        return ['r2', 'mape', 'nrmse', 'corr_coeff', 'rmse', 'mae', 'mse', 'mpe', 'mase']
+        return ['r2', 'mape', 'nrmse', 'corr_coeff', 'rmse', 'mae', 'mse', 'mpe', 
+            'mase', 'r2_score']
 
     def abs_pbias(self) -> float:
         """Absolute Percent bias"""

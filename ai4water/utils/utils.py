@@ -945,14 +945,15 @@ class TrainTestSplit(object):
                 random seed for reproducibility
         """
 
-        reset_seed(seed, np=np)
+        
+        state = np.random.RandomState(seed=seed)
 
         if isinstance(self.x, list):
             indices = np.arange(len(self.x[0]))
         else:
             indices = np.arange(len(self.x))
 
-        indices = np.random.permutation(indices)
+        indices = state.permutation(indices)
 
         split_at = int(len(indices) * (1. - self.test_fraction))
         train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
