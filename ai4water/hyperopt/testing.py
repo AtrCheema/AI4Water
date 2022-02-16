@@ -2,6 +2,7 @@
 # I was unable to create an Optuna Study instance without `Storage` attribute. But it appears that
 # we can calculate parameter importance without Storage attribute from Study instance. Thus
 # the importance is calculated from Study instance without it having Storage attribute.
+# also support to handle nan values in target array is added.
 # The optuna library comes with following MIT licence.
 """
 MIT License
@@ -26,12 +27,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+
+import warnings
+
 from collections import OrderedDict
 from typing import Callable
 from typing import List
 from typing import Optional
 
-import numpy
+import numpy as np
 
 from optuna.logging import get_logger
 from optuna._transform import _SearchSpaceTransform
@@ -91,12 +95,20 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         trans = _SearchSpaceTransform(distributions, transform_log=False, transform_step=False)
 
         n_trials = len(trials)
-        trans_params = numpy.empty((n_trials, trans.bounds.shape[0]), dtype=numpy.float64)
-        trans_values = numpy.empty(n_trials, dtype=numpy.float64)
+        trans_params = np.empty((n_trials, trans.bounds.shape[0]), dtype=np.float64)
+        trans_values = np.empty(n_trials, dtype=np.float64)
 
         for trial_idx, trial in enumerate(trials):
             trans_params[trial_idx] = trans.transform(trial.params)
             trans_values[trial_idx] = trial.value if target is None else target(trial)
+
+        # if nan values are present in target, use mean to fill them
+        nan_idx = np.isnan(trans_values)
+        if nan_idx.any():
+            warnings.warn("Invalid value encountered in target values",
+                UserWarning)
+            # fill nan values with mean
+            trans_values[nan_idx] = np.nanmean(trans_values)
 
         trans_bounds = trans.bounds
         column_to_encoded_columns = trans.column_to_encoded_columns

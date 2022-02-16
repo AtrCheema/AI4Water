@@ -2,9 +2,8 @@ import os
 import time
 import pickle
 import unittest
-import sys
 import site
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(ai4_dir)
 
 import warnings
