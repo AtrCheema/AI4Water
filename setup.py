@@ -4,11 +4,13 @@ from setuptools import setup
 from version import __version__ as ver
 
 
-with open("README.md", "r") as fd:
-    long_desc = fd.read()
-
-with open('version.py') as fv:
-    exec(fv.read())
+import os
+fpath = os.path.join(os.getcwd(), "README.md")
+if os.path.exists(fpath):
+    with open(fpath, "r") as fd:
+        long_desc = fd.read()
+else:
+    long_desc = "https://github.com/AtrCheema/AI4Water"
 
 min_requirements = [
     'numpy<=1.19.5',
@@ -50,15 +52,23 @@ extra_requires = [
 'seaborn'
 ]
 
-tf_requires = ['h5py', 'numpy',
-               'easy_mpl',
-               'tensorflow',
-               'pandas', 'matplotlib', 'scikit-learn']
+tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
+               'matplotlib', 'scikit-learn']
 
-torch_requires = ['h5py<2.11.0',
-                  'numpy<=1.19.5',
-                  'easy_mpl>=0.20.3',
-                  'pytorch', 'pandas', 'matplotlib', 'scikit-learn']
+tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
+                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna']
+
+torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
+                  'matplotlib', 'scikit-learn']
+
+torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
+                  'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna']
+
+ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost'
+               'lightgbm', 'easy_mpl>=0.20.3']
+
+ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost'
+               'lightgbm', 'easy_mpl>=0.20.3', 'hyperopt', 'scikit-optimize', 'optuna']
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
 post_process_requirements = ['lime', 'shap']
@@ -76,7 +86,7 @@ setup(
 
     name='AI4Water',
 
-    version=ver,
+    version="1.0b2",
 
     description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,
@@ -107,6 +117,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 
     packages=['ai4water',
@@ -139,5 +150,9 @@ setup(
         'eda': eda_requires,
         'tf': tf_requires,
         'torch': torch_requires,
+        'tf_hpo': tf_hpo_requires,
+        'torch_hpo_requires': torch_hpo_requires,
+        'ml': ml_requires,
+        'ml_hpo': ml_hpo_requires,
     }
 )
