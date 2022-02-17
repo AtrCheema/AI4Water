@@ -9,24 +9,27 @@ Model = keras.models.Model
 
 class NBeats(keras.layers.Layer):
     """
-    This implementation is same as that of [Philip pemy](https://github.com/philipperemy/n-beats/tree/master/nbeats_keras)
-    except that here NBeats can be used as a layer.
-    The output shape will be (batch_size, self.forecast_length, self.input_dim)
+    This implementation is same as that of Philip peremy_ with few modifications.
+    Here NBeats can be used as a layer. The output shape will be
+    (batch_size, forecast_length, input_dim)
     Some other changes have also been done to make this layer compatable with ai4water.
 
-    Example:
+    Example
+    -------
         >>> x = np.random.random((100, 10, 3))
         >>> y = np.random.random((100, 1))
         ...
         >>> model = Model(model={"layers":
-        >>>                              {"Input": {"shape": (10, 3)},
-        >>>                               "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
-        >>>                               "Flatten": {},
-        >>>                               "Reshape": {"target_shape": (1,1)}}},
-        >>>               lookback=10)
+        >>>            {"Input": {"shape": (10, 3)},
+        >>>             "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
+        >>>             "Flatten": {},
+        >>>             "Reshape": {"target_shape": (1,1)}}},
+        >>>           ts_args={'lookback':10})
         ...
         >>> model.fit(x=x, y=y.reshape(-1,1,1))
-    ```
+
+    .. _peremy:
+        https://github.com/philipperemy/n-beats/tree/master/nbeats_keras)
     """
     GENERIC_BLOCK = 'generic'
     TREND_BLOCK = 'trend'
@@ -36,7 +39,7 @@ class NBeats(keras.layers.Layer):
             self,
             units: int = 256,
             lookback: int = 10,
-            forecast_length: int = 2,
+            forecast_len: int = 2,
             stack_types=(TREND_BLOCK, SEASONALITY_BLOCK),
             nb_blocks_per_stack=3,
             thetas_dim=(4, 8),
@@ -50,15 +53,15 @@ class NBeats(keras.layers.Layer):
         Initiates the Nbeats layer
 
         Arguments:
-            units:
+            units :
                 Number of units in NBeats layer. It determines the size of NBeats.
             lookback:
                 Number of historical time-steps used to predict next value
-            forecast_length:
+            forecast_len :
             stack_types :
-            nb_blocks_per_stack:
+            nb_blocks_per_stack :
             theta_dim :
-            share_weights_in_stack:
+            share_weights_in_stack :
             nb_harmonics :
             num_inputs:
             num_exo_inputs:
@@ -74,7 +77,7 @@ class NBeats(keras.layers.Layer):
         self.units = units
         self.share_weights_in_stack = share_weights_in_stack
         self.lookback = lookback
-        self.forecast_length = forecast_length
+        self.forecast_length = forecast_len
         self.input_dim = num_inputs
         self.exo_dim = num_exo_inputs
         self.exo_shape = (self.lookback, self.exo_dim)

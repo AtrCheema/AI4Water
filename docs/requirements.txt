@@ -1,12 +1,17 @@
-mkdocs
-mkdocstrings
-mkdocs-material
-mkdocs-autorefs
-matplotlib
-numpy<=1.19.5
-scikit-learn>=0.22, <=0.24.2
+
 pandas
+numpy
+matplotlib
+sphinx
+sphinx-prompt
+sphinx_copybutton
+sphinx_toggleprompt
+sphinx_rtd_theme
+sphinx_issues
+scipy
+scikit-learn
 scikit-optimize
 plotly
 tensorflow
 torch
+easy_mpl

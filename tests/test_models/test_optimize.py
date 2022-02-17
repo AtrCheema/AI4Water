@@ -3,14 +3,24 @@ import os
 import time
 import unittest
 
+import warnings
+
+def warn(*args, **kwargs):
+    pass
+
+warnings.warn = warn
+
+import site
+site.addsitedir(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from ai4water import Model
-from ai4water.preprocessing import DataHandler
+from ai4water.preprocessing import DataSet
 from ai4water.datasets import busan_beach
 from ai4water._optimize import make_space
 from ai4water.utils.utils import process_config_dict
 from ai4water.utils.utils import find_opt_paras_from_model_config
 from ai4water.hyperopt import Categorical, Real, Integer
-
+from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
 data = busan_beach()
 input_features = data.columns.to_list()[0:-1]
@@ -99,6 +109,8 @@ class TestOptimize(unittest.TestCase):
         assert len(space) == 1, space
         assert len(space[0].categories) == 3
 
+        space = make_space(data.columns.to_list(), include=[],
+                    categories=['log', 'log2', 'minmax', 'none'])
         return
 
 
@@ -139,8 +151,9 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
         model = Model(model=self.config,
                       verbosity=0)
-        x, y = DataHandler(data.values).training_data()
-        optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)), process_results=False)
+        x, y = DataSet(data.values).training_data()
+        optimizer = model.optimize_hyperparameters(data=(x, y.reshape(-1, 1)),
+                                                   process_results=False)
 
         # make sure that model's config has been updated
         for k, v in optimizer.best_paras().items():
@@ -153,7 +166,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         model = Model(model=self.config,
                       cross_validator={"KFold": {'n_splits': 5}},
                       verbosity=0)
-        x, y = DataHandler(data.values).training_data()
+        x, y = DataSet(data.values).training_data()
         optimizer = model.optimize_hyperparameters(
             algorithm="random",
             data=(x, y.reshape(-1, 1)), num_iterations=4)
@@ -351,6 +364,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
                       verbosity=0,
                       input_features=input_features,
                       output_features=output_features,
+                      ts_args = {"lookback": 15},
                       epochs=5)
 
         print(model.path, 'model.path')
@@ -377,7 +391,7 @@ class TestOptimizeHyperparas(unittest.TestCase):
         setattr(Model, 'from_check_point', False)
 
         model = Model(model=m_conf,
-                      lookback=Integer(3, 10, num_samples=10),
+                      ts_args={'lookback':Integer(3, 10, num_samples=10)},
                       input_features=input_features,
                       output_features=output_features,
                       verbosity=0,
@@ -389,7 +403,196 @@ class TestOptimizeHyperparas(unittest.TestCase):
             num_iterations=5,
             process_results=False)
         assert model.config['model']['layers']['LSTM']['config']['units'] == optimizer.best_paras()['units']
-        assert model.config['lookback'] == optimizer.best_paras()['lookback']
+        assert model.config['ts_args']['lookback'] == optimizer.best_paras()['lookback']
+        return
+
+
+class TestOptimizeTransformationReproducibility(unittest.TestCase):
+    """The model trained with with optimized transformations should
+    give same results as were obtained during optimization."""
+    # TODO, currently yeo-johnson, and quantile are not tested
+
+    def test_ml_ytransformation_RandomSplit_Holdout(self):
+        """ML model with only y transformations"""
+        model = Model(
+            model={"XGBRegressor": {
+                "random_state": 25398
+            }},
+            input_features=input_features,
+            output_features=output_features,
+            seed=25398,
+            split_random=True,
+            verbosity=0
+            )
+        
+        optimizer = model.optimize_transformations(
+            include=[],
+            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            data=data,
+            num_iterations=12,)
+        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+
+        # train model with optimized transformations
+        model.fit()
+
+        t, p = model.predict(data='validation', return_true=True, process_results=False)
+
+        val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
+
+        print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
+        self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
+        return
+
+    def test_ml_ytransformation_RandomSplit_Holdout_no_test_data(self):
+            """ML model with only y transformations.
+            No test data."""
+            model = Model(
+                model={"XGBRegressor": {
+                    "random_state": 57420
+                }},
+                input_features=input_features,
+                output_features=output_features,
+                train_fraction=1.0,
+                val_fraction=0.3,
+                seed=57420,
+                split_random=True,
+                verbosity=0)
+            
+            optimizer = model.optimize_transformations(
+                include=[],
+                y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+                data=data,
+                num_iterations=12,)
+            best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+            best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+
+            # train model with optimized transformations
+            model.fit()
+
+            t, p = model.predict(data='validation', return_true=True, process_results=False)
+
+            val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
+
+            print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
+            self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
+            return
+
+    def test_ml_ytransformation_SeqSplit_Holdout(self):
+        """ML model with only y transformations"""
+        model = Model(
+            model="XGBRegressor",
+            input_features=input_features,
+            output_features=output_features,
+            verbosity=0)
+        
+        optimizer = model.optimize_transformations(
+            include=[],
+            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            data=data)
+        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+
+        # train model with optimized transformations
+        model.fit()
+
+        t, p = model.predict(data='validation', return_true=True, process_results=False)
+
+        val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
+        self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
+        return
+
+    def test_ml_xytransformation_SeqSplit_Holdout(self):
+        """ML model with only y transformations
+        """
+        model = Model(
+            model="XGBRegressor",
+            input_features=input_features,
+            output_features=output_features,
+            verbosity=0
+            )
+        
+        optimizer = model.optimize_transformations(
+            transformations=['log', 'log2', 'sqrt', 'none', 'log10',
+                'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
+            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            data=data,
+            num_iterations=25
+            )
+        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+
+        # train model with optimized transformations
+        model.fit()
+
+        t, p = model.predict(data='validation', return_true=True, process_results=False)
+
+        val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
+        print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
+        self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
+        return
+
+    def test_ml_xytransformation_RandomSplit_Holdout(self):
+        """ML model with only y transformations
+        """
+        model = Model(
+            model="XGBRegressor",
+            input_features=input_features,
+            output_features=output_features,
+            seed=25398,
+            split_random=True,
+            verbosity=0
+            )
+        
+        optimizer = model.optimize_transformations(
+            transformations=['log', 'log2', 'sqrt', 'none', 'log10',
+                'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
+            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            data=data,
+            num_iterations=25
+            )
+        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+
+        # train model with optimized transformations
+        model.fit()
+
+        t, p = model.predict(data='validation', return_true=True, process_results=False)
+
+        val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
+        print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
+        self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
+        return
+
+    def test_ml_xytransformation_RandomSplit_Holdout_NoTestData(self):
+        """ML model with only y transformations
+        """
+        model = Model(
+            model="XGBRegressor",
+            input_features=input_features,
+            output_features=output_features,
+            seed=25398,
+            split_random=True,
+            verbosity=0
+            )
+        
+        optimizer = model.optimize_transformations(
+            transformations=['log', 'log2', 'sqrt', 'none', 'log10',
+                'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
+            y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
+            data=data,
+            num_iterations=25
+            )
+        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        best_val_iter = list(optimizer.best_xy().keys())[0].split('_')[1]
+
+        # train model with optimized transformations
+        model.fit()
+
+        t, p = model.predict(data='validation', return_true=True, process_results=False)
+
+        val_metric_post_train = getattr(RegressionMetrics(t,p), model.val_metric)()
+        print(f"{best_val_score} at {best_val_iter} {val_metric_post_train}")
+        self.assertAlmostEqual(val_metric_post_train, 1.0-best_val_score, places=2)
         return
 
 

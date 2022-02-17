@@ -479,6 +479,36 @@ def classification_space(num_samples:int, verbosity=0):
                 Real(low=0.0, high=0.5, name='min_weight_fraction_leaf', num_samples=num_samples),
                 Categorical(categories=['auto', 'sqrt', 'log2'], name='max_features')],
             "x0": [10, 5, 0.4, 0.1, 'auto']},
+        "GaussianProcessClassifier": {
+            "param_space": [
+                Integer(low=0, high=5, name='n_restarts_optimizer', num_samples=num_samples)],
+            "x0":
+                [1]},
+        "GradientBoostingClassifier": {
+            "param_space": [
+                # number of boosting stages to perform
+                Integer(low=5, high=500, name='n_estimators', num_samples=num_samples),
+                #  shrinks the contribution of each tree
+                Real(low=0.001, high=1.0, prior='log', name='learning_rate', num_samples=num_samples),
+                # fraction of samples to be used for fitting the individual base learners
+                Real(low=0.1, high=1.0, name='subsample', num_samples=num_samples),
+                Real(low=0.1, high=0.9, name='min_samples_split', num_samples=num_samples),
+                Integer(low=2, high=30, name='max_depth', num_samples=num_samples)],
+            "x0":
+                [5, 0.001, 1, 0.1, 3]},
+        "HistGradientBoostingClassifier": {
+            "param_space": [
+                # Used for reducing the gradient step.
+                Real(low=0.0001, high=0.9, prior='log', name='learning_rate', num_samples=num_samples),
+                Integer(low=50, high=500, name='max_iter', num_samples=num_samples),  # maximum number of trees.
+                Integer(low=2, high=100, name='max_depth', num_samples=num_samples),  # maximum number of trees.
+                # maximum number of leaves for each tree
+                Integer(low=10, high=100, name='max_leaf_nodes', num_samples=num_samples),
+                # minimum number of samples per leaf
+                Integer(low=10, high=100, name='min_samples_leaf', num_samples=num_samples),
+                # Used for reducing the gradient step.
+                Real(low=00, high=0.5, name='l2_regularization', num_samples=num_samples)],
+            "x0": [0.1, 100, 10, 31, 20, 0.0]},
         "KNeighborsClassifier": {
             "param_space": [
                 Integer(low=3, high=5, name='n_neighbors', num_samples=num_samples),
@@ -512,7 +542,7 @@ def classification_space(num_samples:int, verbosity=0):
                 Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
                 Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
                 Real(low=0.0001, high=0.1, prior='log', name='learning_rate', num_samples=num_samples),
-                Real(low=10, high=100, name='min_child_samples', num_samples=num_samples),
+                Integer(low=10, high=100, name='min_child_samples', num_samples=num_samples),
                 Integer(low=20, high=500, name='n_estimators', num_samples=num_samples)],
             "x0":
                 ['rf', 10, 0.001, 10, 20]},
@@ -542,6 +572,16 @@ def classification_space(num_samples:int, verbosity=0):
             ],
             "x0":
                 [True, 1e-6, 1.0, True, 100]},
+        "MLPClassifier": {
+            "param_space": [
+                Integer(low=10, high=500, name='hidden_layer_sizes', num_samples=num_samples),
+                Categorical(categories=['identity', 'logistic', 'tanh', 'relu'], name='activation'),
+                Categorical(categories=['lbfgs', 'sgd', 'adam'], name='solver'),
+                Real(low=1e-6, high=1e-3, name='alpha', num_samples=num_samples),
+                # Real(low=1e-6, high=1e-3, name='learning_rate')
+                Categorical(categories=['constant', 'invscaling', 'adaptive'], name='learning_rate'), ],
+            "x0":
+                [10, 'relu', 'adam', 1e-6, 'constant']},
         "NearestCentroid": {
             "param_space": [
                 Real(low=1, high=50, name='shrink_threshold', num_samples=num_samples)],
@@ -579,6 +619,14 @@ def classification_space(num_samples:int, verbosity=0):
                 Categorical(categories=[True, False], name='store_covariance')],
             "x0":
                 [0.1, 1e-3, True]},
+        "RadiusNeighborsClassifier": {
+            "param_space": [
+                Categorical(categories=['uniform', 'distance'], name='weights'),
+                Categorical(categories=['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
+                Integer(low=10, high=300, name='leaf_size', num_samples=num_samples),
+                Integer(low=1, high=5, name='p', num_samples=num_samples)],
+            "x0":
+                ['uniform', 'auto', 10, 1]},
         "RandomForestClassifier": {
             "param_space": [
                 Integer(low=50, high=1000, name='n_estimators', num_samples=num_samples),
@@ -632,7 +680,7 @@ def classification_space(num_samples:int, verbosity=0):
                 # Minimum loss reduction required to make a further partition on a leaf node of the tree.
                 Real(low=0.1, high=0.9, name='min_child_weight', num_samples=num_samples),
                 # Minimum sum of instance weight(hessian) needed in a child.
-                Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=num_samples),
+                Real(low=0.1, high=0.9, name='max_delta_step', num_samples=num_samples),
                 # Maximum delta step we allow each tree’s weight estimation to be.
                 # Subsample ratio of the training instance.
                 Real(low=0.1, high=0.9, name='subsample', num_samples=num_samples),
@@ -655,7 +703,7 @@ def classification_space(num_samples:int, verbosity=0):
                 # Minimum loss reduction required to make a further partition on a leaf node of the tree.
                 Real(low=0.1, high=0.9, name='min_child_weight', num_samples=num_samples),
                 # Minimum sum of instance weight(hessian) needed in a child.
-                Real(low=0.1, high=0.9, name='max_delta_step ', num_samples=num_samples),
+                Real(low=0.1, high=0.9, name='max_delta_step', num_samples=num_samples),
                 # Maximum delta step we allow each tree’s weight estimation to be.
                 # Subsample ratio of the training instance.
                 Real(low=0.1, high=0.9, name='subsample', num_samples=num_samples),
@@ -669,11 +717,12 @@ def classification_space(num_samples:int, verbosity=0):
         "CatBoostClassifier": {
             "param_space": [
                 # maximum number of trees that can be built
-                Integer(low=500, high=5000, name='iterations', num_samples=num_samples),
+                Integer(low=50, high=5000, name='iterations', num_samples=num_samples),
                 # Used for reducing the gradient step.
                 Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),
                 # depth
-                Integer(0, 1000, name="depth", num_samples=num_samples),
+                # https://stackoverflow.com/q/67299869/5982232
+                Integer(1, 15, name="depth", num_samples=num_samples),
                 # Coefficient at the L2 regularization term of the cost function.
                 Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=num_samples),
                 # arger the value, the smaller the model size.
@@ -686,7 +735,7 @@ def classification_space(num_samples:int, verbosity=0):
                 Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
                                             'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')],
             "x0":
-                [1000, 0.01, 5, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']}
+                [100, 0.01, 5, 3.0, 0.5, 0.5, 32, 'GreedyLogSum']}
     }
     # remove the estimators from those libraries which are not available/installed
     libraries_to_models = {

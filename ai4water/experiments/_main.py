@@ -1,22 +1,24 @@
 import os
 import json
+import math
 import warnings
 from typing import Union, Tuple, List
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from easy_mpl.utils import process_axis
+from easy_mpl import bar_chart, taylor_plot
 
 from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
-from ai4water.preprocessing import DataHandler
-from ai4water.utils.taylor_diagram import taylor_plot
-from ai4water.utils.visualizations import PlotResults
+from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import jsonize, ERROR_LABELS
-from ai4water.hyperopt import Real, Categorical, Integer
+from ai4water.utils.visualizations import init_subplots
+from ai4water.postprocessing import ProcessResults 
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
-from ai4water.utils.easy_mpl import bar_chart, process_axis, init_subplots
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
+
 
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
@@ -35,9 +37,11 @@ SEP = os.sep
 # paired ttest 5x2cv
 
 
+# in order to unify the use of metrics
 Metrics = {
-    'regression': RegressionMetrics,
-    'classification': ClassificationMetrics
+    'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(t, p, **kwargs),
+    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p, 
+        multiclass=multiclass, **kwargs)
 }
 
 
@@ -46,16 +50,20 @@ class Experiments(object):
     Base class for all the experiments.
 
     All the expriments must be subclasses of this class.
-    The core idea of of `Experiments` is `model`. An experiment consists of one
-    or more models. The models differ from each other in their structure/idea/concept.
-    When [fit][ai4water.experiments.Experiments.fit] is called, each model is trained.
+    The core idea of ``Experiments`` is based upon ``model``. An experiment 
+    consists of one or more models. The models differ from each other in their 
+    structure/idea/concept/configuration. When :py:meth:`ai4water.experiments.Experiments.fit` 
+    is called, each ``model`` is built and trained. The user can customize, building 
+    and training process by subclassing this class and customizing 
+    :py:meth:`ai4water.experiments.Experiments._build` and 
+    :py:meth:`ai4water.experiments.Experiments._fit` methods.
 
     Attributes
     ------------
-    - simulations
-    - trues
+    - simulations_
+    - trues_
     - exp_path
-    - _model
+    - model_
     - models
 
     Methods
@@ -94,6 +102,7 @@ class Experiments(object):
         self.verbosity = verbosity
 
         self.models = [method for method in dir(self) if callable(getattr(self, method)) if method.startswith('model_')]
+
         if cases is None:
             cases = {}
         self.cases = {'model_'+key if not key.startswith('model_') else key: val for key, val in cases.items()}
@@ -103,26 +112,26 @@ class Experiments(object):
         if not os.path.exists(self.exp_path):
             os.makedirs(self.exp_path)
 
-        self.update_config(models=self.models, exp_path=self.exp_path, exp_name=self.exp_name, cases=self.cases)
+        self.update_config(models=self.models, exp_path=self.exp_path,
+            exp_name=self.exp_name, cases=self.cases)
 
     def update_and_save_config(self, **kwargs):
         self.update_config(**kwargs)
         self.save_config()
+        return
 
     def update_config(self, **kwargs):
         if not hasattr(self, 'config'):
             setattr(self, 'config', {})
         self.config.update(kwargs.copy())
+        return
 
     def save_config(self):
         dict_to_file(self.exp_path, config=self.config)
+        return
 
-    def build_and_run(self, predict=False, title=None, fit_kws=None, **kwargs):
-        setattr(self, '_model', None)
-        raise NotImplementedError
-
-    def build_from_config(self, config_path, weights, fit_kws, **kwargs):
-        setattr(self, '_model', None)
+    def build_from_config(self, data, config_path, weights, **kwargs):
+        setattr(self, 'model_', None)
         raise NotImplementedError
 
     @property
@@ -141,6 +150,19 @@ class Experiments(object):
     def num_samples(self, x):
         self._num_samples = x
 
+    def _reset(self):
+        self.trues_ = {'train': {},
+                      'test': {}}
+
+        self.simulations_ = {'train': {},
+                            'test': {}}
+
+        self.cv_scores_ = {}
+
+        self.config['eval_models'] = {}
+        self.config['optimized_models'] = {}
+        return
+
     def fit(
             self,
             data,
@@ -151,48 +173,46 @@ class Experiments(object):
             exclude: Union[None, list, str] = '',
             cross_validate: bool = False,
             post_optimize: str = 'eval_best',
-            fit_kws: dict = None,
             hpo_kws: dict = None
     ):
         """
-        Runs the fit loop for the specified models.
+        Runs the fit loop for all the ``models`` of experiment. The user can
+        however, specify the models by making use of ``include`` and ``exclud``
+        keywords.
+
         todo, post_optimize not working for 'eval_best' with ML methods.
 
         Arguments:
-            data: this will be passed to `Model`.
+            data: this will be passed to :py:meth:`ai4water.Model.fit`.
             run_type :
-                One of `dry_run` or `optimize`. If `dry_run`, the all
-                the `models` will be trained only once. if `optimize`, then
+                One of ``dry_run`` or ``optimize``. If ``dry_run``, the all
+                the `models` will be trained only once. if ``optimize``, then
                 hyperparameters of all the models will be optimized.
             opt_method :
-                which optimization method to use. options are `bayes`,
-                `random`, `grid`. ONly valid if `run_type` is `optimize`
+                which optimization method to use. options are ``bayes``,
+                ``random``, ``grid``. ONly valid if ``run_type`` is ``optimize``
             num_iterations : number of iterations for optimization. Only valid
-                if `run_type` is `optimize`.
+                if ``run_type`` is ``optimize``.
             include :
                 name of models to included. If None, all the models found
                 will be trained and or optimized.
             exclude :
-                name of `models` to be excluded
+                name of ``models`` to be excluded
             cross_validate :
                 whether to cross validate the model or not. This
                 depends upon `cross_validator` agrument to the `Model`.
             post_optimize :
-                one of `eval_best` or `train_best`. If eval_best,
+                one of ``eval_best`` or ``train_best``. If eval_best,
                 the weights from the best models will be uploaded again and the model
-                will be evaluated on train, test and all the data. If `train_best`,
+                will be evaluated on train, test and all the data. If ``train_best``,
                 then a new model will be built and trained using the parameters of
                 the best model.
-            fit_kws :
-                key word arguments that will be passed to ai4water's [fit][ai4water.Model.fit] function
             hpo_kws :
-                keyword arguments for [`HyperOpt`][ai4water.hyperopt.HyperOpt.__init__] class.
+                keyword arguments for :py:class:`ai4water.hyperopt.HyperOpt` class.
         """
         assert run_type in ['optimize', 'dry_run']
 
         assert post_optimize in ['eval_best', 'train_best']
-
-        self.data_ = data
 
         if exclude == '':
             exclude = []
@@ -211,18 +231,9 @@ class Experiments(object):
         elif isinstance(exclude, str):
             exclude = [exclude]
 
-        consider_exclude(exclude, self.models)
+        consider_exclude(exclude, self.models, include)
 
-        self.trues = {'train': {},
-                      'test': {}}
-
-        self.simulations = {'train': {},
-                            'test': {}}
-
-        self.cv_scores = {}
-
-        self.config['eval_models'] = {}
-        self.config['optimized_models'] = {}
+        self._reset()
 
         for model_type in include:
 
@@ -243,11 +254,12 @@ class Experiments(object):
                     else:
                         raise TypeError
 
-                    return self.build_and_run(predict=predict,
-                                              cross_validate=cross_validate,
-                                              title=f"{self.exp_name}{SEP}{model_name}",
-                                              fit_kws=fit_kws,
-                                              **config)
+                    return self._build_and_run(
+                        data=data,
+                        predict=predict,
+                        cross_validate=cross_validate,
+                        title=f"{self.exp_name}{SEP}{model_name}",
+                        **config)
 
                 if run_type == 'dry_run':
                     if self.verbosity >= 0: print(f"running  {model_type} model")
@@ -259,68 +271,77 @@ class Experiments(object):
                     if hasattr(self, model_type):
                         getattr(self, model_type)()
 
-                    opt_dir = os.path.join(os.getcwd(), f"results{SEP}{self.exp_name}{SEP}{model_name}")
-                    if self.verbosity > 0: print(f"optimizing  {model_type} using {opt_method} method")
-                    self.optimizer = HyperOpt(opt_method,
-                                              objective_fn=objective_fn,
-                                              param_space=self.param_space,
-                                              # use_named_args=True,
-                                              opt_path=opt_dir,
-                                              num_iterations=num_iterations,  # number of iterations
-                                              x0=self.x0,
-                                              verbosity=self.verbosity,
-                                              **hpo_kws
-                                              )
+                    opt_dir = os.path.join(os.getcwd(),
+                        f"results{SEP}{self.exp_name}{SEP}{model_name}")
+
+                    if self.verbosity > 0: 
+                        print(f"optimizing  {model_type} using {opt_method} method")
+
+                    self.optimizer = HyperOpt(
+                        opt_method,
+                        objective_fn=objective_fn,
+                        param_space=self.param_space, 
+                        opt_path=opt_dir,
+                        num_iterations=num_iterations,  # number of iterations
+                        x0=self.x0,
+                        verbosity=self.verbosity,
+                        **hpo_kws
+                        )
 
                     self.opt_results = self.optimizer.fit()
 
                     self.config['optimized_models'][model_type] = self.optimizer.opt_path
 
                     if post_optimize == 'eval_best':
-                        self.eval_best(model_name, opt_dir, fit_kws)
+                        self.eval_best(data, model_name, opt_dir)
                     elif post_optimize == 'train_best':
-                        self.train_best(model_name)
+                        self.train_best(data, model_name)
 
-                if not hasattr(self, '_model'):  # todo asking user to define this parameter is not good
-                    raise ValueError(f'The `build_and_run` method must set a class level attribute named `_model`.')
-                self.config['eval_models'][model_type] = self._model.path
+                if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
+                    raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
+                self.config['eval_models'][model_type] = self.model_.path
 
                 if cross_validate:
-                    cv_scoring = self._model.val_metric
-                    self.cv_scores[model_type] = getattr(self._model, f'cross_val_{cv_scoring}')
+                    cv_scoring = self.model_.val_metric
+                    self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_{cv_scoring}')
                     setattr(self, '_cv_scoring', cv_scoring)
 
         self.save_config()
         return
 
-    def eval_best(self, model_type, opt_dir, fit_kws, **kwargs):
+    def eval_best(self, data, model_type, opt_dir, **kwargs):
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
         # TODO for ML, best_models is empty
         if len(best_models) < 1:
-            return self.train_best(model_type, fit_kws)
+            return self.train_best(data, model_type)
         for mod, props in best_models.items():
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
 
-            train_results, test_results = self.build_from_config(mod_path, mod_weights, fit_kws, **kwargs)
+            train_results, test_results = self.build_from_config(
+                data,
+                mod_path, 
+                mod_weights, 
+                **kwargs)
 
             if mod.startswith('1_'):
                 self._populate_results(model_type, train_results, test_results)
         return
 
-    def train_best(self, model_type, fit_kws=None):
+    def train_best(self, data, model_type):
         """Train the best model."""
         best_paras = self.optimizer.best_paras()
         if best_paras.get('lookback', 1) > 1:
             _model = 'layers'
         else:
             _model = model_type
-        train_results, test_results = self.build_and_run(predict=True,
-                                                         # view=True,
-                                                         fit_kws=fit_kws,
-                                                         model={_model: self.optimizer.best_paras()},
-                                                         title=f"{self.exp_name}{SEP}{model_type}{SEP}best")
+        train_results, test_results = self._build_and_run(
+            data=data,
+            predict=True,
+            model={_model: self.optimizer.best_paras()},
+            title=f"{self.exp_name}{SEP}{model_type}{SEP}best"
+            )
 
         self._populate_results(model_type, train_results, test_results)
         return
@@ -334,13 +355,13 @@ class Experiments(object):
             model_type = f'model_{model_type}'
 
         # it is possible that different models slightly differ in the number of examples
-        # in training/test sets for example if `lookback` is different, thus trues and simulations
+        # in training/test sets for example if `lookback` is different, thus trues_ and simulations_
         # must be saved for each model.
-        self.trues['train'][model_type] = train_results[0]
-        self.trues['test'][model_type] = test_results[0]
+        self.trues_['train'][model_type] = train_results[0]
+        self.trues_['test'][model_type] = test_results[0]
 
-        self.simulations['train'][model_type] = train_results[1]
-        self.simulations['test'][model_type] = test_results[1]
+        self.simulations_['train'][model_type] = train_results[1]
+        self.simulations_['test'][model_type] = test_results[1]
         return
 
     def taylor_plot(
@@ -368,9 +389,9 @@ class Experiments(object):
         simulations = {'train': {},
                        'test': {}}
         for m in include:
-            if m in self.simulations['train']:
-                simulations['train'][m.split('model_')[1]] = self.simulations['train'][m]
-                simulations['test'][m.split('model_')[1]] = self.simulations['test'][m]
+            if m in self.simulations_['train']:
+                simulations['train'][m.split('model_')[1]] = self.simulations_['train'][m]
+                simulations['test'][m.split('model_')[1]] = self.simulations_['test'][m]
 
         if exclude is not None:
             consider_exclude(exclude, self.models)
@@ -385,12 +406,12 @@ class Experiments(object):
             fname = 'taylor'
         fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
-        train_lenths = [len(self.trues['train'][obj]) for obj in self.trues['train']]
+        train_lenths = [len(self.trues_['train'][obj]) for obj in self.trues_['train']]
         if not len(set(train_lenths)) <= 1:
             warnings.warn(f'{train_lenths}')
 
             trues = {'train': None, 'test': None}
-            for k, v in self.trues.items():
+            for k, v in self.trues_.items():
 
                 for _k, _v in v.items():
 
@@ -399,7 +420,7 @@ class Experiments(object):
             _simulations = {'train': {}, 'test': {}}
             for scen, v in simulations.items():
 
-                for (_tk, _tv), (_pk, _pv) in zip(self.trues[scen].items(), simulations[scen].items()):
+                for (_tk, _tv), (_pk, _pv) in zip(self.trues_[scen].items(), simulations[scen].items()):
 
                     _simulations[scen][_pk] = {
                         'std': np.std(_pv),
@@ -408,14 +429,14 @@ class Experiments(object):
                     }
         else:
             trues = {'train': None, 'test': None}
-            for k, v in self.trues.items():
+            for k, v in self.trues_.items():
 
                 for idx, (_k, _v) in enumerate(v.items()):
                     trues[k] = _v
             _simulations = simulations
 
         taylor_plot(
-            trues=trues,
+            observations=trues,
             simulations=_simulations,
             figsize=figsize,
             name=fname,
@@ -423,7 +444,7 @@ class Experiments(object):
         )
         return
 
-    def _consider_include(self, include: [str, list], to_filter):
+    def _consider_include(self, include: Union[str, list], to_filter):
 
         filtered = {}
 
@@ -477,9 +498,10 @@ Available cases are {self.models} and you wanted to include
         fpath_best: str = os.path.join(best_run, output, f"{run_type}_{output}_0.csv")
         best = pd.read_csv(fpath_best, index_col=['index'])
 
-        metrics = Metrics[self.mode]
-        initial_metric: float = getattr(metrics(initial.values[:, 0], initial.values[:, 1]), matric_name)()
-        best_metric: float = getattr(metrics(best.values[:, 0], best.values[:, 1]), matric_name)()
+        initial_metric: float = getattr(Metrics[self.mode](initial.values[:, 0], 
+            initial.values[:, 1], multiclass=self.model_.is_multiclass), matric_name)()
+        best_metric: float = getattr(Metrics[self.mode](best.values[:, 0], 
+            best.values[:, 1], multiclass=self.model_.is_multiclass), matric_name)()
 
         # -ve values become difficult to plot, moreover they do not reveal anything significant
         # as compared to when a metric is 0, therefore consider -ve values as zero.
@@ -494,8 +516,8 @@ Available cases are {self.models} and you wanted to include
             **kwargs
     ) -> dict:
         """Shows how much improvement was observed after hyperparameter
-        optimization. This plot is only available if `run_type` was set to
-        `optimize` in [`fit`][ai4water.experiments.Experiments.fit].
+        optimization. This plot is only available if ``run_type`` was set to
+        `optimize` in :py:meth:`ai4water.experiments.Experiments.fit`.
 
         Arguments:
             matric_name : the peformance metric to compare
@@ -519,7 +541,7 @@ Available cases are {self.models} and you wanted to include
             'Improvement': np.array([126, 154, 178]) / 256
         }
 
-        exec_models = list(self.trues['train'].keys())
+        exec_models = list(self.trues_['train'].keys())
 
         data = {k: [] for k in colors.keys()}
 
@@ -585,7 +607,7 @@ Available cases are {self.models} and you wanted to include
                  if provided, only those models will be plotted for whome the matric is greater/smaller
                  than this value. This works in conjuction with `cutoff_type`.
             cutoff_type:
-                 one of `greater`, `greater_equal`, `less` or `less_equal`.
+                 one of ``greater``, ``greater_equal``, ``less`` or ``less_equal``.
                  Criteria to determine cutoff_val. For example if we want to
                  show only those models whose r2 is > 0.5, it will be 'max'.
             save:
@@ -636,7 +658,7 @@ Available cases are {self.models} and you wanted to include
         fig.set_figheight(kwargs.get('fig_height', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
-        bar_chart(axis=axis[0],
+        bar_chart(ax=axis[0],
                   labels=names[::-1],
                   values=train_matrics[::-1],
                   color=kwargs.get('color', None),
@@ -647,7 +669,7 @@ Available cases are {self.models} and you wanted to include
                   show=False,
                   )
 
-        bar_chart(axis=axis[1],
+        bar_chart(ax=axis[1],
                   labels=names[::-1],
                   values=test_matrics[::-1],
                   title="Test",
@@ -744,7 +766,7 @@ Available cases are {self.models} and you wanted to include
     ) -> Union[plt.Axes, None]:
         """
         Plots the convergence plots of hyperparameter optimization runs.
-        Only valid if `run_type=optimize` during [`fit`][ai4water.experiments.experiments.Experiments.fit]
+        Only valid if `run_type=optimize` during :py:meth:`ai4water.experiments.experiments.Experiments.fit`
         call.
 
         Arguments:
@@ -854,9 +876,9 @@ Available cases are {self.models} and you wanted to include
                     with open(cv_fname, 'r') as fp:
                         cv_scores[model_name] = json.load(fp)
 
-        cls.trues = trues
-        cls.simulations = simulations
-        cls.cv_scores = cv_scores
+        cls.trues_ = trues
+        cls.simulations_ = simulations
+        cls.cv_scores_ = cv_scores
         cls._cv_scoring = scoring
 
         return cls(exp_name=config['exp_name'], cases=config['cases'], **kwargs)
@@ -873,7 +895,7 @@ Available cases are {self.models} and you wanted to include
         Plots the box whisker plots of the cross validation scores.
 
         This plot is only available if cross_validation was set to True during
-        [fit()][ai4water.experiments.experiments.Experiments.fit].
+        :py:meth:`ai4water.experiments.Experiments.fit`.
 
         Arguments:
             show : whether to show the plot or not
@@ -891,11 +913,11 @@ Available cases are {self.models} and you wanted to include
             matplotlib axes if the figure is drawn otherwise None
 
         """
-        if len(self.cv_scores) == 0:
+        if len(self.cv_scores_) == 0:
             return
 
         scoring = self._cv_scoring
-        cv_scores = self.cv_scores
+        cv_scores = self.cv_scores_
 
         consider_exclude(exclude, self.models, cv_scores)
         cv_scores = self._consider_include(include, cv_scores)
@@ -944,7 +966,9 @@ Available cases are {self.models} and you wanted to include
     ) -> dict:
         """returns the models sorted according to their performance"""
         def find_matric_array(true, sim):
-            errors = Metrics[self.mode](true, sim)
+
+            errors = Metrics[self.mode](true, sim, multiclass=self.model_.is_multiclass)
+
             matric_val = getattr(errors, matric_name)()
             if matric_name in ['nse', 'kge']:
                 if matric_val < 0.0:
@@ -962,20 +986,24 @@ Available cases are {self.models} and you wanted to include
 
         for mod in self.models:
             # find the models which have been run
-            if mod in self.simulations['test']:  # maybe we have not done some models by using include/exclude
-                test_matric = find_matric_array(self.trues['test'][mod], self.simulations['test'][mod])
+            if mod in self.simulations_['test']:
+                  # maybe we have not done some models by using include/exclude
+                test_matric = find_matric_array(self.trues_['test'][mod], self.simulations_['test'][mod])
                 if test_matric is not None:
                     test_matrics.append(test_matric)
                     models[mod.split('model_')[1]] = {'test': test_matric}
 
-                    train_matric = find_matric_array(self.trues['train'][mod], self.simulations['train'][mod])
+                    train_matric = find_matric_array(self.trues_['train'][mod], 
+                        self.simulations_['train'][mod])
+
                     if train_matric is None:
                         train_matric = np.nan
                     train_matrics.append(train_matric)
                     models[mod.split('model_')[1]] = {'train': train_matric, 'test': test_matric}
 
         if len(models) <= 1:
-            warnings.warn(f"Comparison can not be plotted because the obtained models are <=1 {models}", UserWarning)
+            warnings.warn(
+                f"""Comparison can not be plotted because the obtained models are <=1 {models}""", UserWarning)
             return models
 
         if sort_by == 'test':
@@ -999,49 +1027,62 @@ Available cases are {self.models} and you wanted to include
             **tpot_args
     ):
         """
-        Fits the [tpot's](http://epistasislab.github.io/tpot/) fit  method which
+        Fits the tpot_'s fit  method which
         finds out the best pipline for the given data.
 
-        Arguments:
-            data:
-            models:
+        Arguments
+        ---------
+            data :
+            models :
                 It can be of three types.
 
                 - If list, it will be the names of machine learning models/
-                algorithms to consider.
+                    algorithms to consider.
                 - If integer, it will be the number of top
-                algorithms to consider for tpot. In such a case, you must have
-                first run `.fit` method before running this method. If you run
-                the tpot using all available models, it will take hours to days
-                for medium sized data (consisting of few thousand examples). However,
-                if you run first .fit and see for example what are the top 5 models,
-                then you can set this argument to 5. In such a case, tpot will search
-                pipeline using only the top 5 algorithms/models that have been found
-                using .fit method.
+                    algorithms to consider for tpot. In such a case, you must have
+                    first run `.fit` method before running this method. If you run
+                    the tpot using all available models, it will take hours to days
+                    for medium sized data (consisting of few thousand examples). However,
+                    if you run first .fit and see for example what are the top 5 models,
+                    then you can set this argument to 5. In such a case, tpot will search
+                    pipeline using only the top 5 algorithms/models that have been found
+                    using .fit method.
                 - if dictionary, then the keys should be the names of algorithms/models
-                and values shoudl be the parameters for each model/algorithm to be
-                optimized.
+                    and values shoudl be the parameters for each model/algorithm to be
+                    optimized.
                 - You can also set it to `all` consider all models available in ai4water's
                     Experiment module.
                 - default is None, which means, the `tpot_config` argument will be None
+
             selection_criteria :
-                If `models` is integer, then according to which criteria
+                If ``models`` is integer, then according to which criteria
                 the models will be choosen. By default the models will be selected
                 based upon their mse values on test data.
             scoring : the performance metric to use for finding the pipeline.
-            tpot_args : any keyword argument for tpot's [Regressor](http://epistasislab.github.io/tpot/api/#regression)
-                or [Classifier](http://epistasislab.github.io/tpot/api/#classification) class.
-                This can include arguments like `generations`, `population_size` etc.
+            tpot_args : any keyword argument for tpot's Regressor_
+                or Classifier_ class.
+                This can include arguments like ``generations``, ``population_size`` etc.
 
-        Returns:
+        Returns
+        -------
             the tpot object
 
-        Example:
+        Example
+        -------
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> from ai4water.datasets import busan_beach
             >>> exp = MLRegressionExperiments(exp_name=f"tpot_reg_{dateandtime_now()}")
             >>> exp.fit(data=busan_beach())
             >>> tpot_regr = exp.fit_with_tpot(busan_beach(), 2, generations=1, population_size=2)
+
+        .. _tpot:
+            http://epistasislab.github.io/tpot/
+
+        .. _Regressor:
+            http://epistasislab.github.io/tpot/api/#regression
+
+        .. _Classifier:
+            http://epistasislab.github.io/tpot/api/#classification
         """
         tpot_caller = self.tpot_estimator
         assert tpot_caller is not None, f"tpot must be installed"
@@ -1055,7 +1096,7 @@ Available cases are {self.models} and you wanted to include
             param_space[m] = {path: {p.name: p.grid for p in ps}}
 
         if isinstance(models, int):
-            trues = getattr(self, 'trues', {})
+            trues = getattr(self, 'trues_', {})
             assert len(trues)>1, f"you must first run .fit() method in order to choose top {models} models"
 
             # sort the models w.r.t their performance
@@ -1114,11 +1155,11 @@ Available cases are {self.models} and you wanted to include
             if arg in model_kws:
                 model_kws.pop(arg)
 
-        dh = DataHandler(data, **model_kws)
+        dh = DataSet(data, **model_kws)
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
-        visualizer = PlotResults(path=self.exp_path)
+        visualizer = ProcessResults(path=self.exp_path)
 
         for idx, data_name in enumerate(['training', 'test']):
 
@@ -1144,15 +1185,104 @@ Available cases are {self.models} and you wanted to include
             json.dump(tpot.evaluated_individuals_, fp, indent=True)
         return tpot
 
+    def _build_and_run(self,
+        data,
+        predict=True,
+        view=False,
+        title=None,
+        cross_validate=False,
+        **kwargs):
+
+        """
+        Builds and run one 'model' of the experiment.
+
+        Since an experiment consists of many models, this method
+        is also run many times.
+        """
+        model = self._build(title=title, **kwargs)
+
+        self._fit(data=data, cross_validate=cross_validate)
+
+        if view:
+            model.view()
+
+        if predict:
+            return self._predict()
+
+        # return the validation score
+        return self._evaluate()
+
+    def _build(self, title=None, **suggested_paras):
+        """Builds the ai4water Model class"""
+
+        suggested_paras = jsonize(suggested_paras)
+
+        verbosity = max(self.verbosity-1, 0)
+        if 'verbosity' in self.model_kws:
+            verbosity = self.model_kws.pop('verbosity')
+
+        model = Model(
+            prefix=title,
+            verbosity=verbosity,
+            **self.model_kws,
+            **suggested_paras
+        )
+
+        setattr(self, 'model_', model)
+        return
+
+    def _fit(self, data, cross_validate=False):
+        """Trains the model"""
+
+        if cross_validate:
+            return self.model_.cross_val_score(data=data,
+                scoring = self.model_.config['val_metric'])
+
+        return self.model_.fit(data=data)
+
+    def _evaluate(self, data="validation")->float:
+        """Evaluates the model"""
+
+        t, p = self.model_.predict(
+            data=data,
+            return_true=True,
+            process_results=False)
+
+        metrics = Metrics[self.mode](t, p,
+            remove_zero=True, remove_neg=True,
+            multiclass=self.model_.is_multiclass)
+
+        val_score = getattr(metrics, self.model_.val_metric)()
+
+        if self.model_.config['val_metric'] in [
+            'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score', 'accuracy', 'f1_score']:
+            val_score = 1.0 - val_score
+        
+        if not math.isfinite(val_score):
+            val_score = 9999  # TODO, find a better way to handle this
+
+        print(f"val_score: {val_score}")
+        return val_score
+
+    def _predict(self):
+        """Makes predictions on training and test data from the model.
+        It is supposed that the model has been trained before."""
+        train_true, train_pred = self.model_.predict(data='training', return_true=True)
+
+        test_true, test_pred = self.model_.predict(data='test', return_true=True)
+
+        return (train_true, train_pred), (test_true, test_pred)
+
 
 class TransformationExperiments(Experiments):
-    """Helper to conduct experiments with different transformations
+    """Helper class to conduct experiments with different transformations
 
         Example:
             >>> from ai4water.datasets import busan_beach
-            >>>from ai4water.experiments import TransformationExperiments
-            ...# Define your experiment
-            >>>class MyTransformationExperiments(TransformationExperiments):
+            >>> from ai4water.experiments import TransformationExperiments
+            >>> from ai4water.hyperopt import Integer, Categorical, Real
+            ... # Define your experiment
+            >>> class MyTransformationExperiments(TransformationExperiments):
             ...
             ...    def update_paras(self, **kwargs):
             ...        _layers = {
@@ -1165,20 +1295,20 @@ class TransformationExperiments(Experiments):
             ...                'batch_size': int(kwargs['batch_size']),
             ...                'lr': float(kwargs['lr']),
             ...                'transformation': kwargs['transformation']}
-            >>>data = busan_beach()
-            >>>inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
-            >>>outputs = ['tetx_coppml']
-            >>>cases = {'model_minmax': {'transformation': 'minmax'},
+            >>> data = busan_beach()
+            >>> inputs = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
+            >>> outputs = ['tetx_coppml']
+            >>> cases = {'model_minmax': {'transformation': 'minmax'},
             ...         'model_zscore': {'transformation': 'zscore'}}
-            >>>search_space = [
+            >>> search_space = [
             ...            Integer(low=16, high=64, name='lstm_units', num_samples=2),
             ...            Integer(low=3, high=15, name="lookback", num_samples=2),
             ...            Categorical(categories=[4, 8, 12, 16, 24, 32], name='batch_size'),
             ...            Real(low=1e-6, high=1.0e-3, name='lr', prior='log', num_samples=2),
             ...            Categorical(categories=['relu', 'elu'], name='dense_actfn'),
             ...        ]
-            >>>x0 = [20, 14, 12, 0.00029613, 'relu']
-            >>>experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
+            >>> x0 = [20, 14, 12, 0.00029613, 'relu']
+            >>> experiment = MyTransformationExperiments(cases=cases, input_features=inputs,
             ...                output_features=outputs, exp_name="testing"
             ...                 param_space=search_space, x0=x0)
     """
@@ -1192,14 +1322,12 @@ class TransformationExperiments(Experiments):
                  x0=None,
                  cases: dict = None,
                  exp_name: str = None,
-                 num_samples: int = 5,
-                 ai4water_model=None,
+                 num_samples: int = 5, 
                  verbosity: int = 1,
                  **model_kws):
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kws
-        self.ai4water_model = Model if ai4water_model is None else ai4water_model
 
         exp_name = exp_name or 'TransformationExperiments' + f'_{dateandtime_now()}'
 
@@ -1219,59 +1347,34 @@ and return the keyword arguments including `model`. These keyword arguments will
 be used to build ai4water's Model class.
 """)
 
-    def build_and_run(self,
-                      predict=False,
-                      title=None,
-                      fit_kws=None,
-                      cross_validate=False,
-                      **suggested_paras):
+    def _build(self, title=None, **suggested_paras):
+        """Builds the ai4water Model class"""
 
         suggested_paras = jsonize(suggested_paras)
 
-        verbosity = self.verbosity
+        verbosity = max(self.verbosity-1, 0)
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
-        model = self.ai4water_model(
+        model = Model(
             prefix=title,
             verbosity=verbosity,
             **self.update_paras(**suggested_paras),
             **self.model_kws
         )
 
-        setattr(self, '_model', model)
+        setattr(self, 'model_', model)
+        return
 
-        model = self.process_model_before_fit(model)
+    def build_from_config(self, data, config_path, weight_file, **kwargs):
 
-        if cross_validate:
-            val_score = model.cross_val_score(data=self.data_)
-        else:
-            model.fit(data=self.data_)
-            val_true, val_pred = model.predict(data='validation', return_true=True)
-            metrics = Metrics[self.mode]
-            val_score = getattr(metrics(val_true, val_pred), model.val_metric)()
-
-        if predict:
-            trt, trp = model.predict(data='training', return_true=True)
-
-            testt, testp = model.predict(return_true=True)
-
-            model.config['allow_nan_labels'] = 2
-            model.predict()
-            # model.plot_train_data()
-            return (trt, trp), (testt, testp)
-
-        return val_score
-
-    def build_from_config(self, config_path, weight_file, fit_kws, **kwargs):
-
-        model = self.ai4water_model.from_config_file(config_path=config_path)
+        model = Model.from_config_file(config_path=config_path)
         weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
 
         model = self.process_model_before_fit(model)
 
-        train_true, train_pred = model.predict(data=self.data_, return_true=True)
+        train_true, train_pred = model.predict(data=data, return_true=True)
 
         test_true, test_pred = model.predict(data='test', return_true=True)
 
@@ -1295,7 +1398,9 @@ def sort_array(array):
     return [np.min(results[:i]) for i in iters]
 
 
-def consider_exclude(exclude: [str, list], models, models_to_filer: Union[dict] = None):
+def consider_exclude(exclude: Union[str, list], 
+        models, 
+        models_to_filter: Union[list, dict] = None):
 
     if isinstance(exclude, str):
         exclude = [exclude]
@@ -1308,9 +1413,12 @@ def consider_exclude(exclude: [str, list], models, models_to_filer: Union[dict] 
                 Available models are {models} and you wanted to exclude
                 {exclude}"""
 
-            if models_to_filer is not None:
-                assert elem in models_to_filer, f'{elem} is not in models'
-                models_to_filer.pop(elem)
+            if models_to_filter is not None:
+                assert elem in models_to_filter, f'{elem} is not in models'
+                if isinstance(models_to_filter, list):
+                    models_to_filter.remove(elem)
+                else:
+                    models_to_filter.pop(elem)
     return
 
 

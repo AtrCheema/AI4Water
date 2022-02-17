@@ -2,6 +2,7 @@
 import os
 from typing import Union
 
+from ...preprocessing import DataSet
 from ._shap import ShapExplainer, shap
 from ._lime import LimeExplainer, lime
 from ..utils import choose_examples
@@ -106,7 +107,7 @@ def explain_model_with_lime(
     else:
         explainer = "LimeTabularExplainer"
 
-    model, _, _ = convert_ai4water_model(model)
+    model, _, _, _ = convert_ai4water_model(model)
 
     if mode == "classification":
         return
@@ -115,7 +116,7 @@ def explain_model_with_lime(
                               data=test_x,
                               train_data=train_x,
                               path=lime_exp_path,
-                              features=features,
+                              feature_names=features,
                               explainer=explainer,
                               mode=mode,
                               verbosity=verbosity
@@ -166,12 +167,12 @@ def explain_model_with_shap(
 
     shap_exp_path = maybe_make_path(os.path.join(model.path, "explainability", "shap"))
 
-    if not model.dh_.source_is_df:
+    if not isinstance(model.dh_, DataSet):
         raise NotImplementedError
 
     features_to_explain = get_features(features, features_to_explain)
 
-    model, framework, _explainer = convert_ai4water_model(model)
+    model, framework, _explainer, _ = convert_ai4water_model(model)
 
     if framework == "DL":
         layer = layer or 2
@@ -186,7 +187,7 @@ def explain_model_with_shap(
                               explainer=explainer,
                               path=shap_exp_path,
                               framework=framework,
-                              features=features_to_explain,
+                              feature_names=features_to_explain,
                               layer=layer
                               )
 

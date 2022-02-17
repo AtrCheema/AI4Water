@@ -33,11 +33,11 @@ ins = 5
 outs = 1
 in_cols = ['input_'+str(i) for i in range(5)]
 out_cols = ['output']
-cols=  in_cols + out_cols
+columns=  in_cols + out_cols
 
 data2 = np.arange(int(50 * 5)).reshape(-1, 50).transpose()
-data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).transpose(),
-                    columns=cols,
+data1 = pd.DataFrame(np.arange(int(examples*len(columns))).reshape(-1,examples).transpose(),
+                    columns=columns,
                     index=pd.date_range("20110101", periods=examples, freq="D"))
 
 lookback=7
@@ -45,7 +45,8 @@ batch_size=16
 busan_beach = busan_beach()
 
 
-def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None, input_cols=None):
+def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=None,
+                     input_cols=None):
     np.random.seed(seed)
 
     if output_cols is None:
@@ -59,7 +60,8 @@ def get_df_with_nans(n=1000, inputs=True, outputs=False, frac=0.8, output_cols=N
     if outputs:
         cols += output_cols
 
-    df = pd.DataFrame(np.random.random((n, len(input_cols) + len(output_cols))), columns=input_cols + output_cols)
+    df = pd.DataFrame(np.random.random((n, len(input_cols) + len(output_cols))),
+                      columns=input_cols + output_cols)
     for col in cols:
         df.loc[df.sample(frac=frac).index, col] = np.nan
 
@@ -91,7 +93,6 @@ def build_model(**kwargs):
     model = Model(
         verbosity=0,
         batch_size=batch_size,
-        lookback=lookback,
         epochs=1,
         **kwargs
     )
@@ -109,12 +110,10 @@ def train_predict(model):
     return x,y
 
 
-def test_train_val_test_data(data, val_data, **kwargs):
+def test_train_val_test_data(data, **kwargs):
 
     model = Model(
         model=default_model,
-        val_data=val_data,
-        test_fraction=0.2,
         input_features=data.columns.to_list()[0:-1],
         output_features=data.columns.to_list()[-1:],
         epochs=2,
@@ -127,25 +126,17 @@ def test_train_val_test_data(data, val_data, **kwargs):
     train_x, train_y = model.training_data()
     _val_data = model.validation_data()
 
-    if val_data is None:
-        assert _val_data[0] is None, f'val_data is of type {_val_data[0].size}'
-    elif isinstance(_val_data, tf.data.Dataset):
-        pass
-    else:
-        val_x, val_y = model.validation_data()
+    _, _ = model.validation_data()
 
     test_x, test_y = model.test_data()
 
-    if val_data == 'same' and not isinstance(_val_data, tf.data.Dataset):
-        assert test_x.shape == val_x.shape
-
     if kwargs.get('indices', None) is not None:
-        assert train_x.shape == (162, model.lookback, data.shape[1]-1)
-        assert test_x.shape == (41, model.lookback, data.shape[1]-1)
+        assert train_x.shape[1:] == (model.lookback, data.shape[1]-1), train_x.shape
+        assert test_x.shape[1:] == (model.lookback, data.shape[1]-1), test_x.shape
 
     elif kwargs.get('en', 0) == 400:
-        assert train_x.shape == (19, model.lookback, data.shape[1]-1)
-        assert test_x.shape == (199, model.lookback, data.shape[1]-1)
+        assert train_x.shape[1:] == (model.lookback, data.shape[1]-1), train_x.shape
+        assert test_x.shape[1:] == (model.lookback, data.shape[1]-1), test_x.shape
 
     return train_x, train_y
 
@@ -153,21 +144,13 @@ def test_train_val_test_data(data, val_data, **kwargs):
 def test_evaluation(model):
 
     model.evaluate(data='training')
-    train_x, train_y = model.training_data()
+    _, _ = model.training_data()
 
     model.evaluate(data='validation')
-    val_data = model.validation_data()
+    _, _ = model.validation_data()
 
     model.evaluate(data='test')
-    test_x, test_y = model.test_data()
-
-    if model.config['val_data'] == "same":
-        if isinstance(val_data, tf.data.Dataset):
-            # check that val_data and test_data are same
-            pass
-        else:
-            val_x, y = val_data
-            assert test_x[0].shape == val_x[0].shape
+    _, _ = model.test_data()
 
     return
 
@@ -186,7 +169,8 @@ class TestUtils(unittest.TestCase):
             input_features = in_cols,
             output_features = out_cols,
             model={'layers':get_layers()},
-            train_data=np.arange(10, 500).tolist(),
+            ts_args={'lookback': lookback},
+            indices={'training': np.arange(10, 500)},
         )
 
         x, y = train_predict(model)
@@ -198,13 +182,15 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_ForecastStep0_Outs5(self):
-        # test x, y when output is fom t not t+1 and number of inputs are 1 and outputs > 1
+        # test x, y when output is fom t not t+1 and number of inputs are
+        # 1 and outputs > 1
         # forecast_len = 1 i.e we are predicting one horizon
         model = build_model(
             input_features = ['input_0'],
             output_features= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
             model={'layers':get_layers(5)},
-            train_data=np.arange(10, 500).tolist(),
+            ts_args={'lookback': lookback},
+            indices={'training': np.arange(10, 500).tolist()},
         )
 
         x, y = train_predict(model)
@@ -224,17 +210,17 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             input_features = ['input_0', 'input_1', 'input_2',  'input_3', 'input_4'],
             output_features= ['output'],
-            forecast_step=1,
+            ts_args={'lookback': lookback, 'forecast_step': 1},
             model={'layers':get_layers()},
-            train_data=np.arange(3, 615).tolist(),  # todo, before it was st=10, en=500
+            indices={'training': np.arange(3, 615).tolist()},
         )
 
         x, y = train_predict(model)
 
         self.assertEqual(model.num_outs, 1)
         self.assertEqual(model.forecast_step, 1)
-        self.assertEqual(int(x[-1].sum()), 157325)
-        self.assertEqual(int(y[-1].sum()), 10499)
+        self.assertEqual(int(x[-1].sum()), 157290)
+        self.assertEqual(int(y[-1].sum()), 10498)
         return
 
     def test_ForecastStep10_Outs1(self):
@@ -244,37 +230,37 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             input_features = in_cols,
             output_features= out_cols,
-            forecast_step=10,
+            ts_args={'lookback': lookback, 'forecast_step': 10},
             model={'layers':{"LSTM": 1}},
-            train_data=np.arange(10, 602).tolist(),
-        )
+            indices={'training': np.arange(10, 602)})
 
         x, y = train_predict(model)
 
         self.assertEqual(model.forecast_step, 10)
-        self.assertEqual(int(x[-1].sum()), 157010)
-        self.assertEqual(int(y[-1].sum()), 10499)
+        self.assertEqual(int(x[-1].sum()), 156975)
+        self.assertEqual(int(y[-1].sum()), 10498)
         self.assertEqual(int(x[0].sum()), 140455)
         self.assertEqual(int(y[0].sum()), 10026)
         return
 
     def test_ForecastStep10_Outs5(self):
-        # when we want to predict t+10 given number of input_features are 1 and outputs are > 1
+        # when we want to predict t+10 given number of input_features are 1
+        # and outputs are > 1
         # forecast_len = 1 i.e we are predicting one horizon
         model = build_model(
             input_features = ['input_0'],
             output_features= ['input_1', 'input_2',  'input_3', 'input_4', 'output'],
-            forecast_step=10,
+            ts_args={'lookback': lookback, 'forecast_step': 10},
             model={'layers':get_layers(5)},
-            train_data=np.arange(10, 602).tolist(),
+            indices={'training': np.arange(10, 602)},
         )
 
         x, y = train_predict(model)
 
         self.assertEqual(model.forecast_step, 10)
         self.assertEqual(model.num_outs, 5)
-        self.assertEqual(int(x[-1].sum()), 3402)
-        self.assertEqual(int(y[-1].sum()), 32495)
+        self.assertEqual(int(x[-1].sum()), 3395)
+        self.assertEqual(int(y[-1].sum()), 32490)
         self.assertEqual(int(x[0].sum()), 91)
         self.assertEqual(int(y[0].sum()), 30130)
         return
@@ -288,10 +274,10 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             input_features = in_cols,
             output_features= out_cols,
-            forecast_step=2,
-            forecast_len = 3,
+            ts_args={'lookback': lookback, 'forecast_step': 2,
+                     'forecast_len': 3},
             model={'layers':get_layers(1, 3)},
-            train_data=np.arange(10, 610).tolist(),
+            indices={'training': np.arange(10, 610)},
         )
 
         x, y = train_predict(model)
@@ -317,10 +303,9 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             input_features = ['input_0', 'input_1', 'input_2'],
             output_features= ['input_3', 'input_4', 'output'],
-            forecast_step=1,
-            forecast_len = 3,
+            ts_args={'lookback': lookback, 'forecast_step':1, 'forecast_len': 3},
             model={'layers':get_layers(3,3)},
-            train_data=np.arange(10, 611).tolist(),
+            indices={'training': np.arange(10, 611)},
         )
 
         x, y = train_predict(model)
@@ -328,8 +313,8 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(model.num_outs, 3)
         self.assertEqual(model.forecast_step, 1)
         self.assertEqual(model.forecast_len, 3)
-        self.assertEqual(int(x[-1].sum()), 52353)
-        self.assertEqual(int(y[-1].sum()), 76482)
+        self.assertEqual(int(x[-1].sum()), 52332)
+        self.assertEqual(int(y[-1].sum()), 76473)
         self.assertEqual(int(x[0].sum()), 42273)
         self.assertEqual(int(y[0].sum()), 72162)
         return
@@ -345,19 +330,21 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             input_features = ['input_0', 'input_1', 'input_2'],
             output_features= ['input_3', 'input_4', 'output'],
-            forecast_step=2,
-            forecast_len = 3,
-            input_step=3,
+            ts_args = {'lookback': lookback,
+                       'forecast_step': 2,
+                       'forecast_len': 3,
+                       'input_steps': 3,
+        },
             model={'layers':get_layers(3,3)},
-            train_data=np.arange(10, 592).tolist()
+            indices={'training': np.arange(10, 592)}
         )
 
         x, y = train_predict(model)
 
         self.assertEqual(int(x[0].sum()), 42399)
         self.assertEqual(int(y[0].sum()), 72279)
-        self.assertEqual(int(x[-1].sum()), 52164)
-        self.assertEqual(int(y[-1].sum()), 76464)
+        self.assertEqual(int(x[-1].sum()), 52143)
+        self.assertEqual(int(y[-1].sum()), 76455)
         return
 
     def test_HighDim(self):
@@ -371,11 +358,14 @@ class TestUtils(unittest.TestCase):
         model = build_model(
             input_features = ['input_0', 'input_1', 'input_2'],
             output_features= ['input_3', 'input_4', 'output'],
-            forecast_step=10,
-            forecast_len = 10,
-            input_step=10,
+
+            ts_args={'lookback': lookback,
+                     'forecast_step': 10,
+                     'forecast_len': 10,
+                     'input_steps': 10,
+        },
             model={'layers':get_layers(3,10)},
-            train_data=np.arange(10, 513).tolist()
+            indices={'training': np.arange(10, 513)}
         )
 
         x,y = train_predict(model)
@@ -387,9 +377,12 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_same_test_val_data_with_chunk(self):
-        #TODO not a good test, must check that individual elements in returned arrayare correct
+        #TODO not a good test, must check that individual elements in returned
+        # arrayare correct
 
-        x, y = test_train_val_test_data(data=nasdaq_df, train_data=np.arange(3000).tolist(), val_data="same")
+        x, y = test_train_val_test_data(data=nasdaq_df,
+                                        indices={'training': np.arange(3000)},
+                                        ts_args={'lookback': lookback})
 
         self.assertEqual(len(x), len(y))
 
@@ -397,25 +390,36 @@ class TestUtils(unittest.TestCase):
 
     def test_same_test_val_data(self):  # todo, failing in plotting
         time.sleep(1)
-        x,y = test_train_val_test_data(data=nasdaq_df, val_data="same")
+        x,y = test_train_val_test_data(data=nasdaq_df,
+                                       ts_args={'lookback': lookback})
         self.assertEqual(len(x), len(y))
         return
 
     def test_same_val_data_with_st_en_defined(self):
-        x, y = test_train_val_test_data(data=busan_beach, train_data=np.arange(165).tolist(), val_data="same")
+        test_train_val_test_data(data=busan_beach,
+                                        indices={'training': np.arange(165)},
+                                        ts_args={'lookback': lookback})
         return
 
     def test_same_val_data_with_random(self):
-        x, y = test_train_val_test_data(data=busan_beach, train_data='random', val_data="same")
+        test_train_val_test_data(data=busan_beach,
+                                        split_random=True,
+                                        ts_args={'lookback': lookback})
         return
 
     def test_with_st_en_defined(self):
         time.sleep(1)
-        test_train_val_test_data(data=busan_beach, train_data=np.arange(165).tolist(), val_data=None, val_fraction=0.0)
+        test_train_val_test_data(data=busan_beach,
+                                 indices={'training': np.arange(165)},
+                                 ts_args={'lookback': lookback},
+                                 val_fraction=0.0)
         return
 
     def test_with_random(self):
-        x, y = test_train_val_test_data(data=busan_beach, train_data='random', val_data=None, val_fraction=0.0)
+        test_train_val_test_data(data=busan_beach,
+                                        split_random=True,
+                                        ts_args={'lookback': lookback},
+                                        val_fraction=0.0)
         return
 
     def test_train_val_split(self):
@@ -488,7 +492,8 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_datetimeindex(self):
-        # makes sure that using datetime_index=True during prediction, the returned values are in correct order
+        # makes sure that using datetime_index=True during prediction, the returned
+        # values are in correct order
         time.sleep(1)
         model = Model(
             input_features=in_cols,
@@ -497,12 +502,13 @@ class TestUtils(unittest.TestCase):
             model={'layers':
                        {"LSTM": 2, "Dense": 1}
                    },
-            lookback=lookback,
-            train_data='random',
+            ts_args={'lookback':lookback},
+            split_random=True,
             verbosity=0)
 
         t,p = model.predict(data=data1.astype(np.float32),return_true=True)
-        # the values in t must match the corresponding indices after adding 10000, because y column starts from 100000
+        # the values in t must match the corresponding indices after adding 10000,
+        # because y column starts from 100000
         for i in range(100):
             idx = model.dh_.test_indices[i] + model.lookback - 1
             true = int(round(t[i].item()))
@@ -511,17 +517,16 @@ class TestUtils(unittest.TestCase):
         return
 
     def test_random_idx_with_nan_in_outputs(self):
-        # testing that if output contains nans and we use random indices, then correct examples are assinged
+        # testing that if output contains nans and we use random indices, then correct
+        # examples are assinged
         # for training and testing given val_data is 'same'.
         df = get_df_with_nans(inputs=False, outputs=True, frac=0.8)
 
         model = Model(input_features=['in1', 'in2'],
                       output_features=['out1'],
                       model=default_model,
-                      val_data='same',
-                      test_fraction=0.3,
                       epochs=1,
-                      train_data='random',
+                      split_random=True,
                       verbosity=0
                       )
 
@@ -550,8 +555,10 @@ class TestUtils(unittest.TestCase):
         train_indices = model.dh_.train_indices
         _data = model.dh_.data
 
-        assert np.max(test_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
-        assert np.max(train_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        exp_train_idx = (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        exp_test_idx = (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        assert np.max(test_indices) < exp_test_idx
+        assert np.max(train_indices) < exp_train_idx
 
         test_evaluation(model)
 
@@ -559,7 +566,8 @@ class TestUtils(unittest.TestCase):
 
     def test_random_idx_with_nan_inputs(self):
         """
-        Test that when nans are present in inputs and we use random indices, then x,y data is correctly made.
+        Test that when nans are present in inputs and we use random indices, then
+        x,y data is correctly made.
         """
 
         df = get_df_with_nans(inputs=True, frac=0.1)
@@ -567,30 +575,31 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       model=default_model,
                       output_features=['out1'],
-                      val_data='same',
-                      test_fraction=0.3,
+                      #val_data='same',
+                      #test_fraction=0.3,
                       epochs=1,
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
-                      train_data = 'random',
+                      split_random = True,
                       verbosity=0)
 
         model.fit(data=df)
-        x, y = model.training_data()
+        _, _ = model.training_data()
 
         test_evaluation(model)
 
-        for i in range(100):
-            idx = model.dh_.train_indices[i]
-            df_x = df[['in1', 'in2']].iloc[idx]
-            if idx > model.lookback and int(df_x.isna().sum()) == 0:
-                self.assertAlmostEqual(float(df['out1'].iloc[idx+14]), y[i], 6)
+        # for i in range(100):
+        #     idx = model.dh_.train_indices[i]
+        #     df_x = df[['in1', 'in2']].iloc[idx]
+        #     if idx > model.lookback and int(df_x.isna().sum()) == 0:
+        #         self.assertAlmostEqual(float(df['out1'].iloc[idx+14]), float(y[i]), 6)
                 #self.assertTrue(np.allclose(df[['in1', 'in2']].iloc[idx], x[0][i, -1])) # todo
 
         return
 
     def test_random_idx_with_nan_inputs_outputs(self):
         """
-        Test that when nans are present in inputs and outputs and we use random indices, then x,y data is correctly made.
+        Test that when nans are present in inputs and outputs and we use random
+        indices, then x,y data is correctly made.
         """
 
         df = get_df_with_nans(inputs=True, outputs=True, frac=0.1)
@@ -598,10 +607,10 @@ class TestUtils(unittest.TestCase):
         model = Model(input_features=['in1', 'in2'],
                       output_features=['out1'],
                       model=default_model,
-                      val_data='same',
-                      test_fraction=0.3,
+                      #val_data='same',
+                      #test_fraction=0.3,
                       epochs=1,
-                      train_data='random',
+                      split_random=True,
                       nan_filler={'method': 'fillna', 'imputer_args': {'method': 'bfill'}},
                       verbosity=0)
 
@@ -622,20 +631,24 @@ class TestUtils(unittest.TestCase):
         train_indices = model.dh_.train_indices
         _data = model.dh_.data
 
-        assert np.max(test_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
-        assert np.max(train_indices) < (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        exp_test_idx = (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        exp_train_idx = (_data.shape[0] - int(_data[model.output_features].isna().sum()))
+        assert np.max(test_indices) < exp_test_idx
+        assert np.max(train_indices) < exp_train_idx
 
         return
 
     def test_multi_out_nans(self):
         """
-        Test that when multiple outputs are the target and they contain nans, then we ignore these nans during
-        loss calculation.
+        Test that when multiple outputs are the target and they contain nans, then we
+        ignore these nans during loss calculation.
         """
         if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
-            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf "
+                          f"version {tf.__version__}")
         else:
-            df = get_df_with_nans(200, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.5)
+            df = get_df_with_nans(200, inputs=False, outputs=True,
+                                  output_cols=['out1', 'out2'], frac=0.5)
 
             layers = {
                 "Flatten": {},
@@ -661,23 +674,26 @@ class TestUtils(unittest.TestCase):
 
     def test_nan_labels1(self):
         if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
-            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf "
+                          f"version {tf.__version__}")
         else:
-            df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+            df = get_df_with_nans(500, inputs=False, outputs=True,
+                                  output_cols=['out1', 'out2'], frac=0.9)
 
             layers = {
                 "Flatten": {},
                 "Dense": 2,
                 "Reshape": {"target_shape": (2 ,1)}}
 
-            model = FModel(allow_nan_labels=1,  # todo, make sure that model-subclassing also work
+            # todo, make sure that model-subclassing also work
+            model = FModel(allow_nan_labels=1,
                           model={'layers': layers},
                           input_features=['in1', 'in2'],
                           output_features=['out1', 'out2'],
                           epochs=10,
                           verbosity=0,
                           batch_size=4,
-                          train_data = 'random',
+                          split_random = True,
                           )
 
             history = model.fit(data=df.copy())
@@ -689,36 +705,37 @@ class TestUtils(unittest.TestCase):
 
             return
 
-    # def test_ignore_nan1_and_data(self):  # todo failing on linux
-    #     if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
-    #         warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
-    #     else:
-    #         df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
-    #
-    #         layers = {
-    #             "Flatten": {"config": {}},
-    #             "Dense": {"config": {"units": 2}},
-    #             "Reshape": {"config": {"target_shape": (2, 1)}}}
-    #
-    #         model = Model(allow_nan_labels=1,
-    #                       transformation=None,
-    #                       val_data="same",
-    #                       val_fraction=0.0,
-    #                       model={'layers':layers},
-    #                       inputs=['in1', 'in2'],
-    #                       outputs=['out1', 'out2'],
-    #                       epochs=10,
-    #                       verbosity=1,
-    #                       data=df.copy())
-    #
-    #         history = model.fit(indices='random')
-    #
-    #         self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
-    #
-    #         testx, _, testy = model.test_data(indices=model.test_indices)
-    #
-    #         np.allclose(testy[4][0], df[['out1']].iloc[29])
-    #         return
+    def test_ignore_nan1_and_data(self):  # todo failing on linux
+        if int(''.join(tf.__version__.split('.')[0:2])) < 23 or int(tf.__version__[0])<2:
+            warnings.warn(f"test with ignoring nan in labels can not be done in tf version {tf.__version__}")
+        else:
+            df = get_df_with_nans(500, inputs=False, outputs=True, output_cols=['out1', 'out2'], frac=0.9)
+
+            layers = {
+                "Flatten": {"config": {}},
+                "Dense": {"config": {"units": 2}},
+                "Reshape": {"config": {"target_shape": (2, 1)}}}
+
+            model = Model(allow_nan_labels=1,
+                          #transformation=None,
+                          #val_data="same",
+                          val_fraction=0.0,
+                          model={'layers':layers},
+                          inputs=['in1', 'in2'],
+                          outputs=['out1', 'out2'],
+                          ts_args={'lookback': 15},
+                          epochs=10,
+                          verbosity=1,
+                          data=df.copy())
+
+            history = model.fit(indices='random')
+
+            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+
+            testx, testy = model.test_data()
+
+            np.allclose(testy[4][0], df[['out1']].iloc[29])
+            return
 
 class TestTSFeatures(unittest.TestCase):
 
@@ -761,7 +778,7 @@ class TestPrepareData(unittest.TestCase):
         # vanilla case of time series forecasting
         x, _, y = prepare_data(data2,
                                num_outputs=2,
-                               lookback_steps=4,
+                               lookback=4,
                                forecast_step=1)
         self.assertAlmostEqual(y[0].sum(), 358.0, 6)
         return
@@ -770,7 +787,7 @@ class TestPrepareData(unittest.TestCase):
         # multi_step ahead at multiple horizons with known future inputs
         x, prevy, y = prepare_data(data2,
                                    num_outputs=2,
-                                   lookback_steps=4,
+                                   lookback=4,
                                    forecast_len=3,
                                    forecast_step=1,
                                    known_future_inputs = True)
@@ -781,7 +798,7 @@ class TestPrepareData(unittest.TestCase):
         # multi_step ahead at multiple horizons without known_future_inputs
         x, prevy, y = prepare_data(data2,
                                    num_outputs=2,
-                                   lookback_steps=4,
+                                   lookback=4,
                                    forecast_len=3,
                                    forecast_step=1,
                                    known_future_inputs=False)
@@ -792,17 +809,18 @@ class TestPrepareData(unittest.TestCase):
         # multistep ahead at single horizon
         x, prevy, y = prepare_data(data2,
                                    num_outputs=2,
-                                   lookback_steps=4,
+                                   lookback=4,
                                    forecast_len=1,
                                    forecast_step=3)
         self.assertAlmostEqual(y[0].sum(), 362.0, 6)
         return
 
     def test_prepare_data4(self):
-        # multi output, with strides in input, multi step ahead at multiple horizons without future inputs
+        # multi output, with strides in input, multi step ahead at multiple horizons
+        # without future inputs
         x, prevy, label = prepare_data(data2,
                                        num_outputs=2,
-                                       lookback_steps=4,
+                                       lookback=4,
                                        input_steps=2,
                                        forecast_step=2,
                                        forecast_len=4)
@@ -813,10 +831,12 @@ class TestPrepareData(unittest.TestCase):
         return
 
     def test_prepare_data_no_outputs(self):
-        """Test when all the columns are used as inputs and thus make_3d_batches does not produce any label data."""
+        """Test when all the columns are used as inputs and thus make_3d_batches does
+        not produce any label data."""
         exs = 100
         d = np.arange(int(exs * 5)).reshape(-1, exs).transpose()
-        x, prevy, label = prepare_data(d, num_inputs=5, lookback_steps=4, input_steps=2, forecast_step=2,
+        x, prevy, label = prepare_data(d, num_inputs=5, lookback=4, input_steps=2,
+                                       forecast_step=2,
                                        forecast_len=4)
         self.assertEqual(label.sum(), 0.0)
         return
@@ -825,7 +845,8 @@ class TestPrepareData(unittest.TestCase):
         data = np.arange(int(50 * 5)).reshape(-1, 50).transpose()
         idx = random.choices(np.arange(49), k=20)
         data[idx, -1] = -99
-        x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=-99)
+        x, prevy, y = prepare_data(data, num_outputs=1, lookback=4,
+                                   mask=-99)
         self.assertEqual(len(x),  len(y))
         self.assertGreater(len(data)-len(idx) + 4, len(x))
         return
@@ -834,7 +855,8 @@ class TestPrepareData(unittest.TestCase):
         data = np.arange(int(50 * 5), dtype=np.float32).reshape(-1, 50).transpose()
         idx = [9, 14, 24, 36, 36, 43, 0, 3, 24, 11, 48, 25, 46, 40, 42, 2, 42, 37, 2, 38]
         data[idx, -1] = np.nan
-        x, prevy, y = prepare_data(data, num_outputs=1, lookback_steps=4, mask=np.nan)
+        x, prevy, y = prepare_data(data, num_outputs=1, lookback=4,
+                                   mask=np.nan)
         self.assertEqual(len(x), len(y))
         self.assertEqual(len(x), 33)
         return

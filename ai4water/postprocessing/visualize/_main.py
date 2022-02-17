@@ -5,15 +5,19 @@ import warnings
 from typing import Union
 
 import numpy as np
+from easy_mpl import imshow
 import matplotlib.pyplot as plt
 from sklearn.tree import plot_tree
 
 from ai4water.backend import tf, keras
 
-import ai4water.keract_mod as keract
+if tf is not None:
+    import ai4water.keract_mod as keract
+else:
+    keract = None
+
 from ai4water.utils.plotting_tools import Plots
-from ai4water.utils.utils import maybe_three_outputs
-from ai4water.utils.easy_mpl import imshow
+from ai4water.utils.utils import maybe_three_outputs, get_nrows_ncols
 
 from ..utils import choose_examples
 
@@ -121,9 +125,7 @@ class Visualize(Plots):
             os.makedirs(self.vis_path)
 
         Plots.__init__(self,
-                       self.vis_path,
-                       model.mode,
-                       model.category,
+                       path=self.vis_path,
                        config=model.config)
 
     def __call__(
@@ -275,8 +277,6 @@ class Visualize(Plots):
                                  sup_xlabel="LSTM units",
                                  sup_ylabel="Lookback steps",
                                  title=indices,
-                                 vmin=-1,
-                                 vmax=1
                                  )
             else:
                 self._imshow(activation, f"{lyr_name} Activations", fname=lyr_name,
@@ -361,10 +361,14 @@ class Visualize(Plots):
                     elif "conv" in _name.lower() and np.ndim(weight) == 3:
                         _name = _name.replace("/", "_")
                         _name = _name.replace(":", "_")
-                        self.features_2d(data=weight, save=show, name=_name,
-                                         slices=64, slice_dim=2, tight=True,
-                                         borderwidth=1,
-                                         vmin=-.1, vmax=.1)
+
+                        self.features_2d(data=weight,
+                                         save=show,
+                                         name=_name,
+                                         slices=64,
+                                         slice_dim=2,
+                                         tight=True,
+                                         borderwidth=1)
                     else:
                         print("ignoring weight for {} because it has shape {}".format(_name, weight.shape))
         return
@@ -509,10 +513,13 @@ class Visualize(Plots):
                     self._imshow(gradient, fname=fname, label=title, show=show,
                                  xlabel="LSTM units")
                 else:
-                    self.features_2d(gradient, name=fname,
-                                     title=indices, show=show,
-                                     n_rows=6, vmin=-1e-4,
-                                     vmax=1e-4, sup_title=title,
+
+                    self.features_2d(gradient,
+                                     name=fname,
+                                     title=indices,
+                                     show=show,
+                                     n_rows=6,
+                                     sup_title=title,
                                      sup_xlabel="LSTM units",
                                      sup_ylabel="Lookback steps")
 
@@ -816,17 +823,19 @@ class Visualize(Plots):
 def features_2D(data,
                 n_rows=None,
                 cmap=None,
-                sup_xlabel=None, sup_ylabel=None,
+                sup_xlabel=None,
+                sup_ylabel=None,
                 sup_title=None,
-                vmin=None, vmax=None,
                 title=None,
-                show=False, savepath=None):
+                show=False,
+                savepath=None):
     """
     title: title for individual axis
     sup_title: title for whole plot
     """
 
-    nrows, ncols = get_nrows_ncols(n_rows, data)
+    n_subplots = len(data) if data.ndim == 3 else 1
+    nrows, ncols = get_nrows_ncols(n_rows, n_subplots)
 
     cmap = cmap or random.choice(CMAPS)
 
@@ -845,9 +854,16 @@ def features_2D(data,
     elif title:
         title = np.arange(num_subplots)
 
+    if isinstance(axis, plt.Axes):
+        axis = np.array([axis])
+
+    vmin = data.min()
+    vmax = data.max()
+
     for idx, ax in enumerate(axis.flat):
-        axis, im = imshow(data[idx],
-                          axis=ax, cmap=cmap, vmin=vmin, vmax=vmax,
+        ax, im = imshow(data[idx],
+                          ax=ax,
+                          cmap=cmap, vmin=vmin, vmax=vmax,
                           title=title[idx],
                           show=False)
 
@@ -875,22 +891,8 @@ def features_2D(data,
     return
 
 
-def get_nrows_ncols(n_rows, data):
-    n_subplots = len(data) if data.ndim == 3 else 1
-
-    if n_rows is None:
-        n_rows = int(np.sqrt(n_subplots))
-    n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
-    n_rows = int(n_subplots / n_cols)
-
-    while not ((n_subplots / n_cols).is_integer() and
-               (n_subplots / n_rows).is_integer()):
-        n_cols -= 1
-        n_rows = int(n_subplots / n_cols)
-    return n_rows, n_cols
-
-
-def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, title=None):
+def features_1D(data, xlabel=None, ylabel=None, savepath=None, show=None, 
+        title=None):
 
     assert data.ndim == 2
 

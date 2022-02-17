@@ -26,17 +26,17 @@ def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, ep
     model = input_model(
         verbosity=0,
         batch_size=batch_size,
-        lookback=lookback,
+        ts_args = {'lookback': lookback},
         lr=0.001,
         epochs=epochs,
-        train_data='random',
+        split_random=True,
         **kwargs
     )
 
     _ = model.fit(data=data)
 
-    pred_y = model.predict(data='training')
-    eval_score = model.evaluate(data='training')
+    _ = model.predict(data='training')
+    _ = model.evaluate(data='training')
     pred_y = model.predict()
 
     return pred_y
@@ -50,6 +50,42 @@ class TestModels(unittest.TestCase):
         prediction = make_and_run(InputAttentionModel,
                                   data=arg_busan,
                                   input_features=arg_input_features,
+                                  output_features=arg_output_features)
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
+
+    def test_IA_predict_without_fit(self):
+
+        model = InputAttentionModel(
+            input_features=arg_input_features,
+            output_features=arg_output_features,
+            ts_args={"lookback": 15},
+            verbosity=0,
+        )
+        model.predict(data=arg_busan)
+        return
+
+    def test_IA_with_transformation(self):
+
+        prediction = make_and_run(InputAttentionModel,
+                                  data=arg_busan,
+                                  input_features=arg_input_features,
+                                  x_transformation='minmax',
+                                  y_transformation='zscore',
+                                  output_features=arg_output_features)
+        self.assertGreater(float(abs(prediction[0].sum())), 0.0)
+        return
+
+    def test_DA_with_transformation(self):
+
+        prediction = make_and_run(DualAttentionModel,
+                                  data=arg_busan,
+                                  teacher_forcing=False,
+                                  batch_size=8,
+                                  drop_remainder=True,
+                                  input_features=arg_input_features,
+                                  x_transformation='minmax',
+                                  y_transformation='zscore',
                                   output_features=arg_output_features)
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
@@ -84,7 +120,6 @@ class TestModels(unittest.TestCase):
         )
         self.assertGreater(float(abs(prediction[0].sum())), 0.0)
         return
-
 
 
 if __name__ == "__main__":

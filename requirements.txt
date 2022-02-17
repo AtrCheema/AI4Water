@@ -7,3 +7,5 @@ plotly
 joblib
 requests
 matplotlib
+
+easy_mpl>=0.20.3

@@ -10,7 +10,7 @@ from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransforme
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler
 from ._transformations import FunctionTransformer, RobustScaler, MaxAbsScaler
 from ._transformations import Center
-from .utils import InvalidTransformation
+from .utils import InvalidTransformation, TransformerNotFittedError, SP_METHODS
 
 
 # TODO add logistic, tanh and more scalers.
@@ -29,33 +29,42 @@ class TransformationsContainer(object):
         self.index = None
 
 
+INITIATED_TRANSFORMERS = {
+    'log': LogScaler(),
+    'log2': Log2Scaler(),
+    'log10': Log10Scaler(),
+    'sqrt': SqrtScaler()
+}
+
 class Transformation(TransformationsContainer):
     """
-    Applies transformation to tabular data.
+    Applies transformation to tabular data. It is also possible to apply transformation
+    on some selected features/columns of data. This class also performs some optional
+    pre-processing on data before applying transformation on it.
     Any new transforming methods should define two methods one starting with
     `transform_with_` and `inverse_transofrm_with_`
-    https://developers.google.com/machine-learning/data-prep/transform/normalization
+
 
     Currently following methods are available for transformation and inverse transformation
 
-    Methods
-    -------
-    - `minmax`
-    - `maxabs`
-    - `robust`
-    - `power` same as yeo-johnson
-    - `yeo-johnson`
-    - `box-cox`
-    - `zscore`    also known as standard scalers
-    - `scale`    division by standard deviation
-    - 'center'   by subtracting mean
-    - `quantile`
-    - `log`      natural logrithmic
-    - `log10`    log with base 10
-    - `log2`  log with base 2
-    - `sqrt` square root
-    - `tan`      tangent
-    - `cumsum`   cummulative sum
+    Transformation methods
+
+        - `minmax`
+        - `maxabs`
+        - `robust`
+        - `power` same as yeo-johnson
+        - `yeo-johnson`
+        - `box-cox`
+        - `zscore`    also known as standard scalers
+        - `scale`    division by standard deviation
+        - 'center'   by subtracting mean
+        - `quantile`
+        - `log`      natural logrithmic
+        - `log10`    log with base 10
+        - `log2`  log with base 2
+        - `sqrt` square root
+        - `tan`      tangent
+        - `cumsum`   cummulative sum
 
     To transform a datafrmae using any of the above methods use
 
@@ -64,6 +73,7 @@ class Transformation(TransformationsContainer):
         >>> transformer.fit_transform(data=[1,2,3,5])
 
         or
+
         >>> transformer = Transformation(method='minmax')
         >>> normalized_df = transformer.fit_transform_with_minmax(data=pd.DataFrame([1,2,3]))
 
@@ -71,15 +81,19 @@ class Transformation(TransformationsContainer):
         >>> normalized_df, scaler_dict = transformer(data=pd.DataFrame([1,2,3]))
 
         or using one liner
+
         >>> normalized_df = Transformation(method='minmax',
         ...                       features=['a'])(data=pd.DataFrame([[1,2],[3,4], [5,6]],
         ...                                       columns=['a', 'b']))
 
     where `method` can be any of the above mentioned methods.
 
-    Note:
+    Note
     ------
      `tan` and `cumsum` do not return original data upon inverse transformation.
+
+    .. _google:
+        https://developers.google.com/machine-learning/data-prep/transform/normalization
     """
 
     available_transformers = {
@@ -127,7 +141,7 @@ class Transformation(TransformationsContainer):
                 define the method with which to replace nans for exaple by setting
                 this argument to 'mean' will replace zeros with 'mean' of the
                 array/column which contains zeros. Allowed string values are
-                'mean', 'max', 'min'. see https://stats.stackexchange.com/a/222237/338323
+                'mean', 'max', 'min'. see_
             treat_negatives:
                 If true, and if data contains negative values, then the absolute
                 values of these negative values will be considered for transformation.
@@ -153,6 +167,9 @@ class Transformation(TransformationsContainer):
             >>> transformed_data = transformer.fit_transform([1,2,3,0.0, 5, np.nan, 7])
             ... [0.0, 0.6931, 1.0986, 0.0, 1.609, None, 1.9459]
             >>> original_data = transformer.inverse_transform(data=transformed_data)
+
+        .. _see:
+            https://stats.stackexchange.com/a/222237/338323
 
         """
         super().__init__()
@@ -345,7 +362,11 @@ class Transformation(TransformationsContainer):
             return data, scaler
         return data
 
-    def inverse_transform_with_sklearn(self, data, **kwargs):
+    def inverse_transform_with_sklearn(self,
+                                       data,
+                                       postprocess=True,
+                                       without_fit=False,
+                                       **kwargs):
 
         self.transforming_straight = False
 
@@ -354,13 +375,17 @@ class Transformation(TransformationsContainer):
         original_data = data.copy()
         to_transform = self.get_features(data)
 
-        data = scaler.inverse_transform(to_transform)
+        if without_fit:
+            data = scaler.inverse_transform_without_fit(to_transform)
+        else:
+            data = scaler.inverse_transform(to_transform)
 
         data = pd.DataFrame(data, columns=to_transform.columns)
 
         data = self.maybe_insert_features(original_data, data)
 
-        data = self.post_process_data(data)
+        if postprocess:
+            data = self.post_process_data(data)
 
         return data
 
@@ -388,16 +413,25 @@ class Transformation(TransformationsContainer):
 
         return getattr(self, "fit_transform_with_" + self.method)(data, return_key=return_key, **kwargs)
 
-    def inverse_transform(self, data, **kwargs):
+    def inverse_transform(self,
+                          data,
+                          postprocess=True,
+                          without_fit=False,
+                          **kwargs):
         """
         Inverse transforms the data.
-        Arguments:
+
+        Parameters
+        ---------
             data:
+            postprocess : bool
+            without_fit : bool
             kwargs : any of the folliwng keyword arguments
-                data : data on which to apply inverse transformation
-                key : key to fetch scaler
-                scaler : scaler to use for inverse transformation. If not given, then
-                    the available scaler is used.
+
+            - data: data on which to apply inverse transformation
+            - key : key to fetch scaler
+            - scaler : scaler to use for inverse transformation. If not given, then
+                the available scaler is used.
         """
         self.transforming_straight = False
 
@@ -409,12 +443,21 @@ class Transformation(TransformationsContainer):
             pass
         elif len(self.scalers) == 1:
             kwargs['scaler'] = list(self.scalers.values())[0]
+        elif self.method in SP_METHODS:
+            kwargs['scaler'] = INITIATED_TRANSFORMERS[self.method]
+            without_fit = True
+        else:
+            raise TransformerNotFittedError()
 
         if self.treat_negatives and hasattr(self, "negative_indices_"):
             for col, idx in self.negative_indices_.items():
                 data.iloc[idx, col] = -data.iloc[idx, col]
 
-        return getattr(self, "inverse_transform_with_" + self.method.lower())(data, **kwargs)
+        return getattr(self, "inverse_transform_with_" + self.method.lower())(
+            data,
+            postprocess=postprocess,
+            without_fit=without_fit,
+            **kwargs)
 
     def get_features(self, data) -> pd.DataFrame:
 
@@ -441,7 +484,7 @@ class Transformation(TransformationsContainer):
         elif 'key' in kwargs:
             scaler = self.scalers[kwargs['key']]
         else:
-            raise ValueError("provide scaler which was used to transform or key to fetch the scaler")
+            raise TransformerNotFittedError()
         return scaler
 
     def maybe_insert_features(self, original_df, trans_df):

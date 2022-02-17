@@ -6,15 +6,15 @@ import unittest
 import numpy as np
 
 from ai4water import Model
-from ai4water.datasets import arg_beach
-from ai4water.preprocessing import DataHandler
+from ai4water.datasets import busan_beach
+from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import find_best_weight
 
 from ai4water.functional import Model as FModel
 
 
-data = arg_beach()
-dh = DataHandler(data=data, verbosity=0)
+data = busan_beach()
+dh = DataSet(data=data, verbosity=0)
 x_reg, y_reg = dh.training_data()
 
 mlp_model = {"layers": {"Dense": 8, "Dense_1": 1}}
@@ -29,7 +29,7 @@ def _test_from_config_basic(
 
     for m in models:
         model = _model(model=m,
-                       lookback=1,
+                       ts_args={'lookback':1},
                        verbosity=0,
                        input_features=data.columns.tolist()[0:-1],
                        output_features=data.columns.tolist()[-1:])

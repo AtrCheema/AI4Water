@@ -5,19 +5,18 @@ from typing import Any
 
 import numpy as np
 import matplotlib as mpl
+from easy_mpl import imshow
 import matplotlib.pyplot as plt
 
-from ai4water import Model
-from ai4water.utils.utils import dateandtime_now, plot_activations_along_inputs
-from ai4water.backend import torch
+from .main import Model
+from .utils.utils import dateandtime_now, plot_activations_along_inputs
+from .backend import torch
 
 if torch is not None:
-    from ai4water.models.torch import IMVTensorLSTM
-    from ai4water.models.torch import HARHN
+    from .models.torch import IMVTensorLSTM
+    from .models.torch import HARHN
 else:
     HARHN, IMVTensorLSTM = None, None
-
-from ai4water.utils.easy_mpl import imshow
 
 
 class HARHNModel(Model):
@@ -126,12 +125,13 @@ class IMVModel(HARHNModel):
         fig.set_figwidth(16)
         fig.set_figheight(16)
         xticklabels=["t-"+str(i) for i in np.arange(self.lookback, 0, -1)]
-        imshow(alphas, axis=ax, xticklabels=xticklabels,
+        imshow(alphas,
+               ax=ax,
+               xticklabels=xticklabels,
                yticklabels=list(all_cols),
                title="Importance of features and timesteps",
                annotate=annotate,
                show=False)
-
 
         plt.savefig(os.path.join(path, f'acts_{name}'), dpi=400, bbox_inches='tight')
 

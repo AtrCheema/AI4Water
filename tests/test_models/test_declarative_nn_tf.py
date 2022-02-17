@@ -25,10 +25,10 @@ data = busan_beach(inputs, outputs)
 
 def build_model(layers, lookback):
     model = Model(model={'layers': layers},
-        input_features=inputs,
-        output_features=outputs,
-        lookback=lookback,
-        verbosity=0
+                  input_features=inputs,
+                  output_features=outputs,
+                  ts_args={'lookback':lookback},
+                  verbosity=0
     )
     return model
 

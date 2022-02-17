@@ -40,7 +40,7 @@ class Testcross_val_score(unittest.TestCase):
         return
 
     def test_loocv(self):
-        model = make_cross_validator(cv={'LeaveOneOut': {}}, test_fraction=0.6)
+        model = make_cross_validator(cv={'LeaveOneOut': {}}, train_fraction=0.4)
         cv_score = model.cross_val_score(data=beach_data)
         assert isinstance(cv_score, float)
         assert hasattr(model.cross_val_mse, '__len__')  # cross_val_scores are array like

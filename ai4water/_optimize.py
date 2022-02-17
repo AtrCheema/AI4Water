@@ -1,8 +1,11 @@
+import gc
 import copy
 import importlib
 from typing import Union
 
-from .postprocessing.SeqMetrics import RegressionMetrics
+import numpy as np
+
+from .postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config, TrainTestSplit
 
 
@@ -43,12 +46,19 @@ class ModelOptimizerMixIn(object):
         metric_type = MATRIC_TYPES.get(val_metric, 'min')
         cross_validator = self.model.config['cross_validator']
         config = jsonize(self.model.config)
+        SEED = config['seed']
+
+        if self.model.mode == "classification":
+            Metrics = ClassificationMetrics
+        else:
+            Metrics = RegressionMetrics
 
         def objective_fn(
                 seed=None,
                 **suggestions,
         ):
-            config['seed'] = seed
+           # we must not set the seed here to None
+           # this will cause random splitting unpreproducible (if random splitting is applied)
             config['verbosity'] = -1
             config['prefix'] = PREFIX
 
@@ -62,8 +72,16 @@ class ModelOptimizerMixIn(object):
             if cross_validator is None:
 
                 if self.xy:  # todo, it is better to split data outside objective_fn
-                    splitter = TrainTestSplit(*self.data, test_fraction=config['test_fraction'])
-                    train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+                    splitter = TrainTestSplit(*self.data, 
+                        test_fraction=config['val_fraction'])
+
+                    if config['split_random']:
+                        # for reproducibility, we should use SEED so that at everay optimization
+                        # iteration, we split the data in the same way
+                        train_x, test_x, train_y, test_y = splitter.split_by_random(seed=SEED)
+                    else:
+                        train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+
                     _model.fit(x=train_x, y=train_y)
                     p = _model.predict(test_x)
                 else:
@@ -71,7 +89,7 @@ class ModelOptimizerMixIn(object):
                     test_y, p = _model.predict(data='validation', return_true=True,
                                                process_results=False)
 
-                metrics = RegressionMetrics(test_y, p)
+                metrics = Metrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
                 if self.xy:
@@ -79,13 +97,18 @@ class ModelOptimizerMixIn(object):
                 else:
                     val_score = _model.cross_val_score(data=self.data)
 
-            del _model
+            
+
+            orig_val_score = val_score
 
             if metric_type != "min":
                 val_score = 1.0 - val_score
 
-            print("{:<15} {:<20.3f}".format(self.iter, val_score))
+            print("{:<15} {:<20.5f} {:<20.5f}".format(self.iter, val_score, orig_val_score))
             self.iter += 1
+
+            del _model
+            gc.collect()
 
             return val_score
 

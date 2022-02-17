@@ -51,13 +51,13 @@ def make_and_run(
     model = model(
         verbosity=0,
         batch_size=batch_size,
-        lookback=lookback,
+        ts_args={'lookback':lookback},
         lr=0.001,
         input_features=inputs,
         output_features = outputs,
         epochs=epochs,
         model={'layers': kwargs.pop('layers')},
-        train_data='random',
+        split_random=True,
         x_transformation='minmax',
         y_transformation="minmax",
         **kwargs
@@ -95,10 +95,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1312.3688450753175,
             '115_posix': 1265.676495072539,
             '26_posix': 1312.3688450753175,
-            '21_nt': 267.4595947265625,
+            '21_nt': 429.86236572265625,
             '23_nt': 286.2128473956241,
             '25_nt': 286.21284595900113,
             '26_nt': 286.21284595900113,
+            '27_nt': 439.714111328125,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1405.3555436921633), 3)
         return
@@ -115,10 +116,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1408.9016057021054,
             '115_posix': 1327.6904604995418,
             '26_posix': 1408.9016057021054,
-            '21_nt': 189.02706909179688,
+            '21_nt': 275.37835693359375,
             '23_nt': 195.22941200342964,
             '25_nt': 195.22941257807892,
             '26_nt': 195.22941257807892,
+            '27_nt': 273.4630432128906,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1434.2028425805552), 3)
         return
@@ -135,8 +137,9 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
         }
         trues = {
-            '21_nt': 99.0248794555664,
+            '21_nt': 201.2708740234375,
             '23_nt': 108.09015740001126,
+            '27_nt': 195.22941257807892,
         }
         if int(''.join(tf.__version__.split('.')[0:2])) <= 23:
             prediction = make_and_run(model=Model, layers=lyrs, batch_size=batch_size,
@@ -154,10 +157,11 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
         }
         trues = {
-            '21_nt': 190.25498962402344,
+            '21_nt': 275.72845458984375,
             '23_nt': 204.1259977159385,
             '25_nt': 204.12599872157463,
-            '26_nt': 204.12599872157463
+            '26_nt': 204.12599872157463,
+            '27_nt': 271.5715637207031,
         }
         prediction, _model = make_and_run(Model, layers=lyrs, return_model=True)
 
@@ -177,10 +181,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1361.6870130712944,
             '26_posix': 1361.6870130712944,
             '115_posix':  1443.1860088206834,
-            '21_nt': 209.0729217529297,
+            '21_nt': 281.3543395996094,
             '23_nt': 205.64932981643847,
             '25_nt': 205.64933154038607,
             '26_nt': 205.64933154038607,
+            '27_nt': 273.1344909667969,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1353.11274522034), 4)
@@ -202,10 +207,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1327.5073743917194,
             '26_posix': 1327.5073743917194,
             '115_posix': 1430.7282310875908,
-            '21_nt': 174.8404083251953,
+            '21_nt': 250.7138671875,
             '23_nt': 197.95141420462951,
             '25_nt': 197.95141865816086,
-            '26_nt': 197.95141865816086
+            '26_nt': 197.95141865816086,
+            '27_nt': 252.04019165039062,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1356.0140036362777), 2)  # TODO failing with higher precision
         return
@@ -223,11 +229,13 @@ class TestModels(unittest.TestCase):
             '21_posix_functional': 1522.6872986943176,
             '115_posix': 1549.689167207415,
             '26_posix_functional': 1549.689167207415,
-            '21_nt_functional': 199.88873291015625,
+            '21_nt_functional': 264.7032775878906,
+            '27_nt_functional': 281.42071533203125,
             '25_nt': 131,
             '23_nt_functional': 182.70824960252654,
             '25_nt_functional': 182.7082507518249,
             '26_nt_functional': 182.7082507518249,
+            #'27_nt_nt': 197.26560974121094,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(f'{PLATFORM}_{model.api}', 1409.7687666416527), 4)
         return
@@ -244,10 +252,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1376.5340244296872,
             '26_posix': 1376.5340244296872,
             '115_posix': 1376.5340244296872,
-            '21_nt': 184.6417236328125,
+            '21_nt': 257.56768798828125,
             '23_nt': 197.72353275519052,
             '25_nt': 197.72353304251516,
             '26_nt': 197.72353304251516,
+            '27_nt': 274.42120361328125,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()),  trues.get(PLATFORM, 198.62783813476562), 3)
@@ -269,10 +278,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1347.4325338505837,
             '26_posix': 1347.4325338505837,
             '115_posix': 1272.8471532368762,
-            '21_nt': 185.014892578125,
+            '21_nt': 255.33322143554688,
             '23_nt': 188.44924334159703,
             '25_nt': 188.44923658946897,
             '26_nt': 188.449236,
+            '27_nt': 250.88307189941406,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 193.57937622070312), 4)
         return
@@ -290,10 +300,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1548.395502996973,
             '26_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
-            '21_nt': 196.92721557617188,
+            '21_nt': 271.2632751464844,
             '23_nt': 192.28048198313545,
             '25_nt': 192.28047997186326,
             '26_nt': 192.28047997186326,
+            '27_nt': 270.0838317871094,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1475.2777905818857), 4)
         return
@@ -310,9 +321,10 @@ class TestModels(unittest.TestCase):
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
             trues = {
-                '21_nt': 187.24368286132812,
+                '21_nt': 267.6639404296875,
                 '23_nt': 197.4112326089435,
                 '25_nt': 197.41123361457963,
+                '27_nt': 197.41123361457963,
             }
             self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision
         except ModuleNotFoundError:

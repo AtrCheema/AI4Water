@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from ai4water.preprocessing.transformations import Transformation
+from ai4water.preprocessing.transformations.utils import TransformerNotFittedError
 from ai4water.tf_attributes import tf
 from ai4water.datasets import busan_beach
 
@@ -20,7 +21,9 @@ else:
     from ai4water import Model
 
 
-df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1), np.arange(1001, 1010).reshape(-1, 1)], axis=1),
+df = pd.DataFrame(np.concatenate([np.arange(1, 10).reshape(-1, 1),
+                                  np.arange(1001, 1010).reshape(-1, 1)],
+                                 axis=1),
                   columns=['data1', 'data2'])
 
 
@@ -35,12 +38,13 @@ def build_and_run(x_transformation, y_transformation,
                   verbosity=0)
 
     model.fit(data=data)
-    x, y = model.training_data(key='junk')
+    x, pred = model.training_data(key='junk')
 
     #pred, pred = model.inverse_transform(y, y, key='junk')
 
-    pred, index = model.dh_.deindexify(y, key='junk')
-    pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs), columns=outputs, index=index).sort_index()
+    index = model.dh_.indexes['junk']
+    pred = pd.DataFrame(pred.reshape(len(pred), model.num_outs),
+                        columns=outputs, index=index).sort_index()
     return pred
 
 
@@ -75,7 +79,8 @@ def run_method2(method,
 
     normalized_df, scaler_dict = scaler.fit_transform(data, return_key=True)
 
-    denormalized_df = scaler.inverse_transform(data=normalized_df, key=scaler_dict['key'])
+    denormalized_df = scaler.inverse_transform(data=normalized_df,
+                                               key=scaler_dict['key'])
     return data, normalized_df, denormalized_df
 
 
@@ -92,7 +97,8 @@ def run_method3(method,
 
     normalized_df3, scaler_dict = scaler(data,
                                          return_key=True)
-    denormalized_df3 = scaler(what='inverse', data=normalized_df3, key=scaler_dict['key'])
+    denormalized_df3 = scaler(what='inverse', data=normalized_df3,
+                              key=scaler_dict['key'])
 
     return data, normalized_df3, denormalized_df3
 
@@ -104,12 +110,15 @@ def run_method4(method,data=None, **kwargs):
     normalized_df4, scaler_dict = getattr(scaler, "fit_transform_with_" + method)(
         data=data,
         return_key=True)
-    denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(data=normalized_df4, key=scaler_dict['key'])
+    denormalized_df4 = getattr(scaler, "inverse_transform_with_" + method)(
+        data=normalized_df4,
+        key=scaler_dict['key'])
 
     return normalized_df4, denormalized_df4
 
 
-def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False, assert_equality=True,
+def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=False,
+                    assert_equality=True,
                     insert_ones=False):
     a = np.random.random((10, 4))
     a[0, 0] = np.nan
@@ -151,7 +160,8 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
 
 class test_Scalers(unittest.TestCase):
 
-    def run_method(self, method, cols=None, index=None, assert_equality=False, **kwargs):
+    def run_method(self, method, cols=None, index=None, assert_equality=False,
+                   **kwargs):
 
         cols = ['data1', 'data2'] if cols is None else cols
 
@@ -164,7 +174,8 @@ class test_Scalers(unittest.TestCase):
                                                                    **kwargs
                                                                    )
 
-        orig_data3, normalized_df3, denormalized_df3 = run_method3(method, index=index,
+        orig_data3, normalized_df3, denormalized_df3 = run_method3(method,
+                                                                   index=index,
                                                                    data=df.copy(),
                                                                    **kwargs)
 
@@ -178,13 +189,19 @@ class test_Scalers(unittest.TestCase):
         if len(cols) < 2:
             self.check_features(denormalized_df1)
         else:
-            for i,j,k,l in zip(normalized_df1[cols].values, normalized_df2[cols].values, normalized_df3[cols].values, normalized_df4[cols].values):
+            for i,j,k,l in zip(normalized_df1[cols].values,
+                               normalized_df2[cols].values,
+                               normalized_df3[cols].values,
+                               normalized_df4[cols].values):
                 for x in [0, 1]:
                     self.assertEqual(int(i[x]), int(j[x]))
                     self.assertEqual(int(j[x]), int(k[x]))
                     self.assertEqual(int(k[x]), int(l[x]))
 
-            for a,i,j,k,l in zip(df.values, denormalized_df1[cols].values, denormalized_df2[cols].values, denormalized_df3[cols].values, denormalized_df4[cols].values):
+            for a,i,j,k,l in zip(df.values, denormalized_df1[cols].values,
+                                 denormalized_df2[cols].values,
+                                 denormalized_df3[cols].values,
+                                 denormalized_df4[cols].values):
                 for x in [0, 1]:
                     self.assertEqual(int(round(a[x])), int(round(j[x])))
                     self.assertEqual(int(round(i[x])), int(round(j[x])))
@@ -198,7 +215,8 @@ class test_Scalers(unittest.TestCase):
 
     def test_get_scaler_from_dict_error(self):
         normalized_df1, _ = Transformation()(df, 'fit_transform', return_key=True)
-        self.assertRaises(ValueError, Transformation(), what='inverse', data=normalized_df1)
+        self.assertRaises(TransformerNotFittedError, Transformation(), what='inverse'
+                          , data=normalized_df1)
         return
 
     def test_log_scaler_with_feat(self):
@@ -226,7 +244,8 @@ class test_Scalers(unittest.TestCase):
         self.run_method("maxabs", cols=["data1"], assert_equality=True)
 
     def test_quantile_scaler_with_feat(self):
-        self.run_method("quantile", cols=["data1"], assert_equality=True, n_quantiles=5)
+        self.run_method("quantile", cols=["data1"], assert_equality=True,
+                        n_quantiles=5)
 
     def test_log_scaler(self):
         self.run_method("log", assert_equality=True)
@@ -305,7 +324,8 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_zero_one_log(self):
-        run_log_methods("log", True, insert_nans=True, insert_zeros=True, insert_ones=True)
+        run_log_methods("log", True, insert_nans=True, insert_zeros=True,
+                        insert_ones=True)
         return
 
     def test_zero_log10(self):
@@ -313,7 +333,8 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_zero_one_log10(self):
-        run_log_methods("log10", True, insert_nans=True, insert_zeros=True, insert_ones=True)
+        run_log_methods("log10", True, insert_nans=True, insert_zeros=True,
+                        insert_ones=True)
         return
 
     def test_zero_log2(self):
@@ -321,7 +342,8 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_zero_one_log2(self):
-        run_log_methods("log2", True, insert_nans=True, insert_zeros=True, insert_ones=True)
+        run_log_methods("log2", True, insert_nans=True, insert_zeros=True,
+                        insert_ones=True)
         return
 
     def test_multiple_transformations(self):
@@ -334,7 +356,8 @@ class test_Scalers(unittest.TestCase):
         x_transformation = "minmax"
         y_transformation = ["log", "minmax"]
 
-        pred = build_and_run(x_transformation, y_transformation, data, inputs, outputs)
+        pred = build_and_run(x_transformation, y_transformation, data, inputs,
+                             outputs)
 
         for i in pred.index:
             assert np.allclose(data['out1'].loc[i], pred['out1'].loc[i])
@@ -387,8 +410,8 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_negative(self):
-        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power",
-                  "scale", "center", "sqrt", "yeo-johnson", "box-cox"]:
+        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile",
+                  "power", "scale", "center", "sqrt", "yeo-johnson", "box-cox"]:
             kwargs = {}
             if m=="quantile":
                 kwargs['n_quantiles'] = 2
@@ -398,8 +421,8 @@ class test_Scalers(unittest.TestCase):
             _x = tr.inverse_transform(data=xtr)
             np.testing.assert_array_almost_equal(x, _x.values.reshape(-1,))
 
-        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile", "power",
-                  "scale", "center", "sqrt", "yeo-johnson",
+        for m in ["log", "log2", "log10", "minmax", "zscore", "robust", "quantile",
+                  "power", "scale", "center", "sqrt", "yeo-johnson",
                   "box-cox"]:
             kwargs = {}
             if m=="quantile":
@@ -446,7 +469,8 @@ class test_Scalers(unittest.TestCase):
             if method=="quantile":
                 kwargs['n_quantiles'] = 5
 
-            t = Transformation(method, treat_negatives=True, replace_zeros=True, **kwargs)
+            t = Transformation(method, treat_negatives=True, replace_zeros=True,
+                               **kwargs)
             x = [1., 2., 3., 0.0, -5., 6.]
             x1 = t.fit_transform(data=x)
             conf = t.config()
@@ -473,6 +497,18 @@ class test_Scalers(unittest.TestCase):
             t2 = Transformation.from_config(conf)
             x2 = t2.inverse_transform(data=x1)
             np.testing.assert_array_almost_equal(x, x2.values)
+        return
+
+    def test_without_fit(self):
+        """It is possible to inverse transform some transformations without fit"""
+        for m in ['log', 'log2', 'log10', 'sqrt']:
+            tr = Transformation(m)
+            x = [1, 2, 3]
+            x_ = tr.fit_transform(x)
+            _x = tr.inverse_transform(x_)
+
+            _x1 = Transformation(m).inverse_transform(x_)
+            assert np.allclose(_x, _x1)
         return
 
 

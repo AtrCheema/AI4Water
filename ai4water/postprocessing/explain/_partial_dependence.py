@@ -33,8 +33,23 @@ def compute_bounds(xmin, xmax, xv):
 
 class PartialDependencePlot(ExplainerMixin):
     """
-    Partial dependence plots as introduced by [Friedman et al., 2001](https://doi.org/10.1214/aos/1013203451)
+    Partial dependence plots as introduced by Friedman_ et al., 2001
 
+    Example
+    -------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.postprocessing.explain import PartialDependencePlot
+        >>> data = busan_beach()
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=data)
+        >>> x, _ = model.training_data()
+
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        >>>                            num_points=14)
+
+    .. _Friedman:
+        https://doi.org/10.1214/aos/1013203451
     """
     def __init__(
             self,
@@ -47,16 +62,17 @@ class PartialDependencePlot(ExplainerMixin):
     ):
         """Initiates the class
 
-        Arguments:
-            model:
+        Parameters
+        ----------
+            model :
                 the trained/calibrated model which must be callable. It must take the
                 `data` as input and sprout an array of predicted values. For example
-                if you are using Keras/sklearn Model, then you must pass model.predict
-            data:
+                if you are using Keras/sklearn model, then you must pass model.predict
+            data :
                 The inputs to the `model`.
-            feature_names:
-                Names of features.
-            num_points:
+            feature_names :
+                Names of features. Used for labeling.
+            num_points :
                 determines the grid for evaluation of `model`
             path:
                 path to save the plots. By default the results are saved in current directory

@@ -9,6 +9,7 @@ except ModuleNotFoundError:
 import scipy as sp
 import numpy as np
 import pandas as pd
+from easy_mpl import imshow
 import matplotlib.pyplot as plt
 
 try:
@@ -16,7 +17,6 @@ try:
 except ModuleNotFoundError:
     K = None
 
-from ai4water.utils.easy_mpl import imshow
 from ai4water.backend import sklearn_models
 from ._explain import ExplainerMixin
 from .utils import convert_ai4water_model
@@ -42,18 +42,18 @@ class ShapExplainer(ExplainerMixin):
     - force_plot_all
 
     Examples:
-        >>>from ai4water.postprocessing.explain import ShapExplainer
-        >>>from sklearn.model_selection import train_test_split
-        >>>from sklearn import linear_model
-        >>>import shap
+        >>> from ai4water.postprocessing.explain import ShapExplainer
+        >>> from sklearn.model_selection import train_test_split
+        >>> from sklearn import linear_model
+        >>> import shap
         ...
-        >>>X,y = shap.datasets.diabetes()
-        >>>X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-        >>>lin_regr = linear_model.LinearRegression()
-        >>>lin_regr.fit(X_train, y_train)
-        >>>explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
-        >>>explainer()
-    ```
+        >>> X,y = shap.datasets.diabetes()
+        >>> X_train,X_test,y_train,y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+        >>> lin_regr = linear_model.LinearRegression()
+        >>> lin_regr.fit(X_train, y_train)
+        >>> explainer = ShapExplainer(lin_regr, X_test, X_train, num_means=10)
+        >>> explainer()
+
     """
 
     allowed_explainers = [
@@ -78,54 +78,74 @@ class ShapExplainer(ExplainerMixin):
             explainer: Union[str, Callable] = None,
             num_means: int = 10,
             path: str = None,
-            features: list = None,
+            feature_names: list = None,
             framework: str = None,
             layer: Union[int, str] = None,
     ):
         """
 
         Args:
-            model: an sklearn/xgboost/catboost/LightGBM Model/regressor
-            data: Data on which to make interpretation. Its dimension should be
-                same as that of training data.
-            train_data: training data. It is used to get train_summary. It can a numpy array
-                or a pandas DataFrame. Only required for scikit-learn based models.
-            explainer : the explainer to use. If not given, the explainer will be inferred.
-            num_means: Numher of means, used in `shap.kmeans` to calculate train_summary
-            path: path to save the plots. By default, plots will be saved in current
+            model :
+                a Model/regressor/classifier from sklearn/xgboost/catboost/LightGBM/tensorflow/pytorch/ai4water
+                The model must have a `predict` method.
+            data :
+                Data on which to make interpretation. Its dimension should be
+                same as that of training data. It can be either training or test
+                data
+            train_data :
+                The data on which the `model` was trained. It is used to
+                get train_summary. It can a numpy array or a pandas DataFrame.
+                Only required for scikit-learn based models.
+            explainer : str
+                the explainer to use. If not given, the explainer will be inferred.
+            num_means : int
+                Numher of means, used in `shap.kmeans` to calculate train_summary
+                using shap.kmeans. Only used when explainer is "KernelExplainer"
+            path : str
+                path to save the plots. By default, plots will be saved in current
                 working directory
-            features: Names of features. Should only be given if train/test data is numpy
+            feature_names : list
+                Names of features. Should only be given if train/test data is numpy
                 array.
             framework : str
-                either "DL" or "ML", where "DL" represents deep learning or neural
-                network based models and "ML" represents other models. For "DL" the explainer
-                will be eihter "DeepExplainer" or "GradientExplainer". If not given, it will
-                be inferred but "DeepExplainer" will be prioritized over "GradientExplainer".
+                either "DL" or "ML". Here "DL" shows that the `model` is a deep
+                learning or neural network based model and "ML" represents other
+                models. For "DL" the explainer will be either "DeepExplainer" or
+                "GradientExplainer". If not given, it will be inferred. In such
+                a case "DeepExplainer" will be prioritized over "GradientExplainer"
+                for DL frameworks and "TreeExplainer" will be prioritized for "ML"
+                frameworks.
             layer : Union[int, str]
                 only relevant when framework is "DL" i.e when the model consits of layers
                 of neural networks.
 
         """
-        test_data = maybe_to_dataframe(data, features)
-        train_data = maybe_to_dataframe(train_data, features)
+        test_data = maybe_to_dataframe(data, feature_names)
+        train_data = maybe_to_dataframe(train_data, feature_names)
 
-        super(ShapExplainer, self).__init__(path=path or os.getcwd(), data=test_data, features=features)
+        super(ShapExplainer, self).__init__(path=path or os.getcwd(), data=test_data, features=feature_names)
 
         if train_data is None:
             self._check_data(test_data)
         else:
             self._check_data(train_data, test_data)
 
-        model, framework, explainer = convert_ai4water_model(model, framework, explainer)
-
+        model, framework, explainer, model_name = convert_ai4water_model(model,
+                                                                         framework,
+                                                                         explainer)
         self.is_sklearn = True
-        if model.__class__.__name__ not in sklearn_models:
-            if model.__class__.__name__ in ["XGBRegressor",
-                                            "LGBMRegressor",
-                                            "CatBoostRegressor",
-                                            "XGBRFRegressor"
+        if model_name not in sklearn_models:
+            if model_name in ["XGBRegressor",
+                              "XGBClassifier",
+                              "LGBMRegressor",
+                              "LGBMClassifier",
+                              "CatBoostRegressor",
+                              "CatBoostClassifier"  
+                              "XGBRFRegressor"
+                              "XGBRFClassifier"
                                             ]:
                 self.is_sklearn = False
+
             elif not self._is_dl(model):
                 raise ValueError(f"{model.__class__.__name__} is not a valid model model")
 
@@ -134,7 +154,7 @@ class ShapExplainer(ExplainerMixin):
         self.model = model
         self.data = test_data
         self.layer = layer
-        self.features = features
+        self.features = feature_names
 
         self.explainer = self._get_explainer(explainer, train_data=train_data, num_means=num_means)
 
@@ -187,10 +207,7 @@ class ShapExplainer(ExplainerMixin):
 
         assert inf_framework in ("ML", "DL")
 
-        if inf_framework == "DL":
-            assert layer is not None, f"Inferred framework is {inf_framework}." \
-                                      f"Therefore, you must define layer to explain"
-        else:
+        if inf_framework != "DL":
             assert layer is None
 
         if inf_framework == "DL" and isinstance(explainer, str):
@@ -272,6 +289,9 @@ class ShapExplainer(ExplainerMixin):
 
     def _get_gradient_explainer(self):
 
+        if self.layer is None:
+            # GradientExplainer is also possible without specifying a layer
+            return shap.GradientExplainer(self.model, self.data)
         if isinstance(self.layer, int):
             return shap.GradientExplainer((self.model.layers[self.layer].input, self.model.layers[-1].output),
                                           self.map2layer(self.data, self.layer))
@@ -304,16 +324,20 @@ class ShapExplainer(ExplainerMixin):
     def _shap_values_dl(self, data, ranked_outputs=None, **kwargs):
         """Gets the SHAP values"""
         data = data.values if isinstance(data, pd.DataFrame) else data
-        if self.explainer.__class__.__name__ == "Deep":
-            return self.explainer.shap_values(data)
-        else:
 
+        if self.explainer.__class__.__name__ == "Deep":
+            shap_values = self.explainer.shap_values(data, ranked_outputs=ranked_outputs, **kwargs)
+
+        elif isinstance(self.explainer, shap.GradientExplainer) and self.layer is None:
+            shap_values = self.explainer.shap_values(data, ranked_outputs=ranked_outputs, **kwargs)
+
+        else:
             shap_values = self.explainer.shap_values(self.map2layer(data, self.layer),
                                                      ranked_outputs=ranked_outputs, **kwargs)
             if ranked_outputs:
                 shap_values, indexes = shap_values
 
-            return shap_values
+        return shap_values
 
     def __call__(self,
                  force_plots=True,
@@ -425,7 +449,7 @@ class ShapExplainer(ExplainerMixin):
             save=False,
             **force_kws
     ):
-        """Draws [force_plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.force.html)
+        """Draws force_plot_
         for a single example/row/sample/instance/data point.
 
         If the data is 3d and shap values are 3d then they are unrolled/flattened
@@ -444,6 +468,9 @@ class ShapExplainer(ExplainerMixin):
 
         Returns:
             plotter object
+
+        .. _force_plot:
+            https://shap.readthedocs.io/en/latest/generated/shap.plots.force.html
         """
 
         shap_vals = self.shap_values
@@ -499,9 +526,12 @@ class ShapExplainer(ExplainerMixin):
         return
 
     def dependence_plot_single_feature(self, feature, name="dependence_plot", show=False, save=True, **kwargs):
-        """dependence plot for a single feature.
-        https://slundberg.github.io/shap/notebooks/plots/dependence_plot.html
-        https://shap-lrjball.readthedocs.io/en/docs_update/generated/shap.dependence_plot.html
+        """dependence_ plot for a single feature. See this_ .
+
+        .. _dependence:
+            https://slundberg.github.io/shap/notebooks/plots/dependence_plot.html
+        .. _this:
+            https://shap-lrjball.readthedocs.io/en/docs_update/generated/shap.dependence_plot.html
         """
         plt.close('all')
 
@@ -548,10 +578,12 @@ class ShapExplainer(ExplainerMixin):
             show=False,
             **waterfall_kws
     ):
-        """Plots the [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
-         of SHAP package
+        """Plots the waterfall_ plot of SHAP package
 
         It plots for all the examples/instances from test_data.
+
+        .. _waterfall:
+            https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
         """
         for i in range(len(self.data)):
             self.waterfall_plot_single_example(i, name=name, save=save, show=show, **waterfall_kws)
@@ -566,14 +598,15 @@ class ShapExplainer(ExplainerMixin):
             save=True,
             max_display: int = 10,
     ):
-        """draws and saves [waterfall plot](https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html)
+        """draws and saves waterfall_ plot
          for one example.
 
         The waterfall plots are based upon SHAP values and show the
         contribution by each feature in model's prediction. It shows which
-        feature pushed the prediction in which direction. Note that the
-        annotated values in waterfall plot are not SHAP values.
-        Currently only possible with xgboost, catboost, lgbm models
+        feature pushed the prediction in which direction. They answer the
+        question, why the ML model simply did not predict mean of training y
+        instead of what it predicted. The mean of training observations that
+        the ML model saw during training is called base value or expected value.
 
         Arguments:
             example_index : int
@@ -587,6 +620,8 @@ class ShapExplainer(ExplainerMixin):
             show : bool
                 whether to show the plot or now
 
+        .. _waterfall:
+            https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
         """
         if self.explainer.__class__.__name__ in ["Deep"]:
             shap_vals_as_exp = None
@@ -661,18 +696,21 @@ class ShapExplainer(ExplainerMixin):
         return
 
     def heatmap(self, name: str = 'heatmap', show: bool = False, save=False, max_display=10):
-        """Plots the heat map and saves it
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
+        """Plots the heatmap_ and saves it
+
         This can be drawn for xgboost/lgbm as well as for randomforest type models
         but not for CatBoostRegressor which is todo.
 
         Explanation
         ----------
         The upper line plot on the heat map shows $-fx/max(abs(fx))$ where $fx$ is
-        the mean SHAP value of all features for all examples. The length of $fx$
-        is equal to length of data. Thus one point on this line is the mean of
-        SHAP values of all input features for the given/one example normalized
-        by the maximum absolute value of $fx$.
+        the mean SHAP value of all features. The length of $fx$ is equal to length
+        of data/examples. Thus one point on this line is the mean of SHAP values
+        of all input features for the given/one example normalized by the maximum
+        absolute value of $fx$.
+
+        .. _heatmap:
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/heatmap.html
         """
 
         # if heat map is drawn with np.ndarray, it throws errors therefore convert
@@ -733,8 +771,7 @@ class ShapExplainer(ExplainerMixin):
             **kwargs
     ):
         """
-        Draws the [beeswarm plot](https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
-        of shap.
+        Draws the beeswarm_ plot of shap.
 
         Arguments:
             name : str
@@ -747,6 +784,9 @@ class ShapExplainer(ExplainerMixin):
                 maximum
             kwargs :
                 any keyword arguments for shap.beeswarm plot
+
+        .. _beeswarm:
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
         """
 
         shap_values = self._get_shap_values_locally()
@@ -785,9 +825,13 @@ class ShapExplainer(ExplainerMixin):
             show=False,
             save=True,
             **decision_kwargs):
-        """decision plot
-        https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/decision_plot.html
-        https://towardsdatascience.com/introducing-shap-decision-plots-52ed3b4a1cba
+        """decision_ plot. For details see this blog.
+
+        .. _decision:
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/decision_plot.html
+
+        .. _blog:
+            https://towardsdatascience.com/introducing-shap-decision-plots-52ed3b4a1cba
         """
         shap_values = self.shap_values
         legend_location = "best"
@@ -958,7 +1002,8 @@ def imshow_3d(values,
         yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
         axis, im = imshow(data[:, :, idx].transpose(),
                           yticklabels=yticklabels,
-                          axis=ax1, vmin=vmin,
+                          ax=ax1,
+                          vmin=vmin,
                           vmax=vmax,
                           title=feat,
                           cmap=cmap,
@@ -973,7 +1018,7 @@ def imshow_3d(values,
                           title=f"SHAP Values",
                           cmap=cmap,
                           show=False,
-                          axis=ax2)
+                          ax=ax2)
 
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 

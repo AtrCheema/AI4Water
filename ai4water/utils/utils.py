@@ -13,6 +13,7 @@ import collections.abc as collections_abc
 import scipy
 import numpy as np
 import pandas as pd
+from easy_mpl import imshow
 import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
@@ -44,7 +45,7 @@ ERROR_LABELS = {
     'msle': 'MSLE',
     'nrmse': 'Normalized RMSE',
     'mape': 'MAPE',
-    'r2_mod': "$R^{2}$ Score"
+    'r2_score': "$R^{2}$ Score"
 }
 
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
@@ -184,27 +185,68 @@ def check_min_loss(epoch_losses, epoch, msg: str, save_fg: bool, to_save=None):
 
 def check_kwargs(**kwargs):
 
-    # If learning rate for XGBoost is not provided use same as default for NN
-    lr = kwargs.get("lr", 0.001)
+    mode = "ML"
     if kwargs.get('model', None) is not None:
         model = kwargs['model']
-        if 'layers' not in model:
-            # for case when model='randomforestregressor'
-            if isinstance(model, str):
-                model = {model: {}}
-                kwargs['model'] = model
+        if isinstance(model, dict):
+            if 'layers' in model:
+                is_custom_model=False
+                model_name = None
+                mode="DL"
+            else:
+                assert len(model)==1
+                _model = list(model.keys())[0]
+                if isinstance(_model, str):
+                    model_name = _model
+                    is_custom_model = False
+                elif hasattr(_model, '__call__'):   # uninitiated class
+                    check_attributes(_model, ['fit', 'predict', '__init__'])
+                    model_name = _model.__name__
+                    is_custom_model = True
+                else:  # custom class is already initiated
+                    check_attributes(_model, ['fit', 'predict'])
+                    is_custom_model = True
+                    model_name = _model.__class__.__name__
 
-            # if list(model.keys())[0].startswith("XGB"):
-            #    if "learning_rate" not in model:
-            #        kwargs["model"]["learning_rate"] = lr
+        # for case when model='randomforestregressor'
+        elif isinstance(model, str):
+            kwargs['model'] = {model: {}}
+            is_custom_model = False
+            model_name = model
 
+        elif hasattr(model, '__call__'):  # uninitiated class
+            check_attributes(model, ['fit', 'predict', '__init__'])
+            model_name = model.__name__
+            is_custom_model = True
+            kwargs['model'] = {model: {}}
+
+        else:
+            check_attributes(model, ['fit', 'predict'])
+            is_custom_model = True
+            model_name = model.__class__.__name__
+            kwargs['model'] = {model: {}}
+
+        if mode=="ML":
             if "batches" not in kwargs:  # for ML, default batches will be 2d unless the user specifies otherwise.
                 kwargs["batches"] = "2d"
 
-            if "lookback" not in kwargs:
-                kwargs["lookback"] = 1
+            if "ts_args" not in kwargs:
+                kwargs["ts_args"] = {'lookback': 1,
+                                     'forecast_len': 1,
+                                     'forecast_step': 0,
+                                     'known_future_inputs': False,
+                                     'input_steps': 1,
+                                     'output_steps': 1}
+    else:
+        is_custom_model = False
+        model_name = None
 
-    return kwargs
+    if is_custom_model:
+        if 'mode' not in kwargs:
+            raise ValueError("""your must provide 'mode' keyword either as 
+            mode='regression' or mode='classification' for custom models""")
+
+    return kwargs, model_name, is_custom_model
 
 
 class make_model(object):
@@ -242,7 +284,7 @@ def _make_model(**kwargs):
 
     kwargs = process_io(**kwargs)
 
-    kwargs = check_kwargs(**kwargs)
+    kwargs, model_name, is_custom_model = check_kwargs(**kwargs)
 
     model = kwargs.get('model', None)
     def_cat = None
@@ -308,7 +350,9 @@ def _make_model(**kwargs):
         'kmodel': {'type': None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'cross_validator': {'default': None, 'between': ['LeaveOneOut', 'kfold']},
         'wandb_config': {'type': dict, 'default': None, 'between': None},
-        'val_metric': {'type': str, 'default': None}
+        'val_metric': {'type': str, 'default': None},
+        'model_name_': {'default': None},
+        'is_custom_model_': {"default": None},
     }
 
     data_args = {
@@ -319,23 +363,16 @@ def _make_model(**kwargs):
         'category': {'type': str, 'default': def_cat, 'lower': None, 'upper': None, 'between': ["ML", "DL"]},
         'mode': {'type': str, 'default': None, 'lower': None, 'upper': None,
                  'between': ["regression", "classification"]},
-        # how many future values we want to predict
-        'forecast_len':   {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # The term lookback has been adopted from Francois Chollet's
-        # "deep learning with keras" book. This means how many
-        # historical time-steps of data, we want to feed to at time-step to predict next value. This value must be one
-        # for any non timeseries forecasting related problems.
-        'lookback':          {"type": int,   "default": 15, 'lower': 1, 'upper': None, 'between': None},
         'batch_size':        {"type": int,   "default": 32, 'lower': None, 'upper': None, 'between': None},
-        'train_data': {'type': None, 'default': None, 'lower': None, 'upper': None, 'between': None},
+        'split_random': {'type': bool, 'default': False, 'between': [True, False]},
         # fraction of data to be used for validation
         'val_fraction':      {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
         # the following argument can be set to 'same' for cases if you want to use same data as validation as well as
         # test data. If it is 'same', then same fraction/amount of data will be used for validation and test.
         # If this is not string and not None, this will overwite `val_fraction`
-        'val_data':          {"type": None,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
+        'indices':          {"type": dict,  "default": None, 'lower': None, 'upper': None, 'between': ["same", None]},
         # fraction of data to be used for test
-        'test_fraction':     {"type": float, "default": 0.2, 'lower': None, 'upper': None, 'between': None},
+        'train_fraction':     {"type": float, "default": 0.7, 'lower': None, 'upper': None, 'between': None},
         # write the data/batches as hdf5 file
         'save':        {"type": bool,  "default": False, 'lower': None, 'upper': None, 'between': None},
         'allow_nan_labels':       {"type": int,  "default": 0, 'lower': 0, 'upper': 2, 'between': None},
@@ -344,12 +381,6 @@ def _make_model(**kwargs):
 
         # for reproducability
         'seed':              {"type": None, "default": 313, 'lower': None, 'upper': None, 'between': None},
-        # how many steps ahead we want to predict
-        'forecast_step':     {"type": int, "default": 0, 'lower': 0, 'upper': None, 'between': None},
-        # step size of input data
-        'input_step':        {"type": int, "default": 1, 'lower': 1, 'upper': None, 'between': None},
-        # whether to use future input data for multi horizon prediction or not
-        'known_future_inputs': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
         # input features in data_frame
         'input_features':            {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         # column in dataframe to bse used as output/target
@@ -363,7 +394,13 @@ def _make_model(**kwargs):
         "intervals":         {"type": None, "default": None, 'lower': None, 'upper': None, 'between': None},
         'verbosity':         {"type": int, "default": 1, 'lower': None, 'upper': None, 'between': None},
         'teacher_forcing': {'type': bool, 'default': False, 'lower': None, 'upper': None, 'between': [True, False]},
-        'dataset_args': {'type': dict, 'default': {}}
+        'dataset_args': {'type': dict, 'default': {}},
+        'ts_args': {"type": dict, "default": {'lookback': 1,
+                                              'forecast_len': 1,
+                                              'forecast_step': 0,
+                                              'known_future_inputs': False,
+                                              'input_steps': 1,
+                                              'output_steps': 1}}
     }
 
     model_config = {key: val['default'] for key, val in model_args.items()}
@@ -389,6 +426,10 @@ def _make_model(**kwargs):
 
         if key == 'model':
             val, _opt_paras, original_mod_conf = find_opt_paras_from_model_config(val)
+            opt_paras.update(_opt_paras)
+
+        if key == 'ts_args':
+            val, _opt_paras = find_opt_paras_from_ts_args(val)
             opt_paras.update(_opt_paras)
 
         if arg_name in model_config:
@@ -425,6 +466,9 @@ However, `allow_nan_labels` should be > 0 only for deep learning models
     for key, val in config.items():
         if key in data_args:
             _data_config[key] = val
+
+    config['model_name_'] = model_name
+    config['is_custom_model_'] = is_custom_model
 
     return config, _data_config, opt_paras, {'model': original_mod_conf, 'other': original_other_conf}
 
@@ -482,6 +526,27 @@ def deepcopy_dict_without_clone(d: dict) -> dict:
             new_d[k] = copy.copy(v)
     return new_d
 
+
+def find_opt_paras_from_ts_args(ts_args:dict)->tuple:
+    opt_paras = {}
+    new_ts_args = {'lookback': 15,
+                   'forecast_len': 1,
+                   'forecast_step': 0,
+                   'known_future_inputs': False,
+                   'input_steps': 1,
+                   'output_steps': 1}
+    new_ts_args.update(ts_args)
+
+    for k,v in ts_args.items():
+
+        if v.__class__.__name__ in ['Integer', 'Real', 'Categorical']:
+            if v.name is None or v.name.startswith("integer_") or v.name.startswith("real_"):
+                v.name = k
+            opt_paras[k] = v
+            v = v.rvs(1)[0]
+            new_ts_args[k] = v
+
+    return new_ts_args, opt_paras
 
 def find_opt_paras_from_model_config(
         config: Union[dict, str, None]
@@ -880,14 +945,15 @@ class TrainTestSplit(object):
                 random seed for reproducibility
         """
 
-        reset_seed(seed, np=np)
+        
+        state = np.random.RandomState(seed=seed)
 
         if isinstance(self.x, list):
             indices = np.arange(len(self.x[0]))
         else:
             indices = np.arange(len(self.x))
 
-        indices = np.random.permutation(indices)
+        indices = state.permutation(indices)
 
         split_at = int(len(indices) * (1. - self.test_fraction))
         train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
@@ -908,8 +974,8 @@ class TrainTestSplit(object):
         """splits the x and y by user defined `train_indices` and `test_indices`"""
 
         return self.slice_with_indices(self.x, train_indices), \
-               self.slice_with_indices(self.y, train_indices), \
                self.slice_with_indices(self.x, test_indices), \
+               self.slice_with_indices(self.y, train_indices), \
                self.slice_with_indices(self.y, test_indices)
 
     @staticmethod
@@ -921,7 +987,7 @@ class TrainTestSplit(object):
                 assert isinstance(d, np.ndarray)
                 _data.append(d[indices])
         else:
-            assert isinstance(array, np.ndarray)
+            assert isinstance(array, np.ndarray) or isinstance(array, pd.DatetimeIndex)
             _data = array[indices]
         return _data
 
@@ -1054,7 +1120,7 @@ data must be 1 dimensional array but it has shape {np.shape(data)}
 
 def prepare_data(
         data: np.ndarray,
-        lookback_steps: int,
+        lookback: int,
         num_inputs: int = None,
         num_outputs: int = None,
         input_steps: int = 1,
@@ -1067,35 +1133,37 @@ def prepare_data(
     """
     converts a numpy nd array into a supervised machine learning problem.
 
-    Arguments:
-        data:
+    Parameters
+    ----------
+        data :
             nd numpy array whose first dimension represents the number
             of examples and the second dimension represents the number of features.
             Some of those features will be used as inputs and some will be considered
             as outputs depending upon the values of `num_inputs` and `num_outputs`.
-        lookback_steps:
+        lookback :
             number of previous steps/values to be used at one step.
-        num_inputs:
+        num_inputs :
             default None, number of input features in data. If None,
             it will be calculated as features-outputs. The input data will be all
             from start till num_outputs in second dimension.
-        num_outputs:
+        num_outputs :
             number of columns (from last) in data to be used as output.
             If None, it will be caculated as features-inputs.
         input_steps:
             strides/number of steps in input data
-        forecast_step:
+        forecast_step :
             must be greater than equal to 0, which t+ith value to
             use as target where i is the horizon. For time series prediction, we
             can say, which horizon to predict.
-        forecast_len:
+        forecast_len :
             number of horizons/future values to predict.
-        known_future_inputs: Only useful if `forecast_len`>1. If True, this
+        known_future_inputs :
+            Only useful if `forecast_len`>1. If True, this
             means, we know and use 'future inputs' while making predictions at t>0
-        output_steps:
+        output_steps :
             step size in outputs. If =2, it means we want to predict
             every second value from the targets
-        mask:
+        mask :
             If int, then the examples with these values in
             the output will be skipped. If array then it must be a boolean mask
             indicating which examples to include/exclude. The length of mask should
@@ -1105,7 +1173,8 @@ def prepare_data(
             which values in outputs are to be considered as invalid. Default is
             None, which indicates all the generated examples will be returned.
 
-    Returns:
+    Returns
+    -------
         x : numpy array of shape (examples, lookback, ins) consisting of
         input examples
         prev_y : numpy array consisting of previous outputs
@@ -1113,140 +1182,193 @@ def prepare_data(
 
     Given following data consisting of input/output pairs
 
-    |input1 | input2 | output1 | output2 | output 3 |
-    |-------|--------|---------|---------|----------|
-    |   1  |   11  |   21   |    31  |   41 |
-    |   2  |   12  |   22   |    32  |   42 |
-    |   3  |   13  |   23   |    33  |   43 |
-    |   4  |   14  |   24   |    34  |   44 |
-    |   5  |   15  |   25   |    35  |   45 |
-    |   6  |   16  |   26   |    36  |   46 |
-    |   7  |   17  |   27   |    37  |   47 |
+    +--------+--------+---------+---------+----------+
+    | input1 | input2 | output1 | output2 | output 3 |
+    +========+========+=========+=========+==========+
+    |   1    |   11   |   21    |    31   |   41     |
+    +--------+--------+---------+---------+----------+
+    |   2    |   12   |   22    |    32   |   42     |
+    +--------+--------+---------+---------+----------+
+    |   3    |   13   |   23    |    33   |   43     |
+    +--------+--------+---------+---------+----------+
+    |   4    |   14   |   24    |    34   |   44     |
+    +--------+--------+---------+---------+----------+
+    |   5    |   15   |   25    |    35   |   45     |
+    +--------+--------+---------+---------+----------+
+    |   6    |   16   |   26    |    36   |   46     |
+    +--------+--------+---------+---------+----------+
+    |   7    |   17   |   27    |    37   |   47     |
+    +--------+--------+---------+---------+----------+
 
     If we use following 2 time series as input
 
-    |input1 | input2 |
-    |----|-----|
-    | 1  |  11 |
-    | 2  |  12 |
-    | 3  |  13 |
-    | 4  |  14 |
-    | 5  |  15 |
-    | 6  |  16 |
-    | 7  |  17 |
+    +--------+--------+
+    | input1 | input2 |
+    +========+========+
+    |  1     |  11    |
+    +--------+--------+
+    |     2  |  12    |
+    +--------+--------+
+    | 3      |  13    |
+    +--------+--------+
+    | 4      |  14    |
+    +--------+--------+
+    | 5      |  15    |
+    +--------+--------+
+    | 6      |  16    |
+    +--------+--------+
+    | 7      |  17    |
+    +--------+--------+
 
     then  `num_inputs`=2, `lookback`=7, `input_steps`=1
 
     and if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
+    +=========+=========+==========+
     |   27    |   37    |   47     |
+    +---------+---------+----------+
 
     then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=0,
 
     if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    |28 | 38 | 48 |
+    +=========+=========+==========+
+    | 28      | 38      | 48       |
+    +---------+---------+----------+
 
     then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=1,
 
-    if we want to predict predict
+    if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    | 27 | 37 | 47 |
-    | 28 | 38 | 48 |
+    +=========+=========+==========+
+    |  27     |  37     |  47      |
+    +---------+---------+----------+
+    |  28     |  38     |  48      |
+    +---------+---------+----------+
 
     then `num_outputs`=3, forecast_len=2,  horizon/forecast_step=0,
 
     if we want to predict
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    | 28 | 38 | 48 |
-    | 29 | 39 | 49 |
-    | 30 | 40 | 50 |
+    +=========+=========+==========+
+    |   28    |   38    |   48     |
+    +---------+---------+----------+
+    |   29    |   39    |   49     |
+    +---------+---------+----------+
+    |   30    |   40    |   50     |
+    +---------+---------+----------+
 
     then `num_outputs`=3, `forecast_len`=3,  `forecast_step`=1,
 
     if we want to predict
 
+    +---------+
     | output2 |
-    |----------|
-    | 38 |
-    | 39 |
-    | 40 |
+    +=========+
+    |   38    |
+    +---------+
+    |   39    |
+    +---------+
+    |   40    |
 
     then `num_outputs`=1, `forecast_len`=3, `forecast_step`=0
 
     if we predict
 
+    +---------+
     | output2 |
-    |----------|
-    | 39 |
+    +=========+
+    | 39      |
+    +---------+
 
     then `num_outputs`=1, `forecast_len`=1, `forecast_step`=2
 
     if we predict
 
+    +---------+
     | output2 |
-    |----------|
-    | 39 |
-    | 40 |
-    | 41 |
+    +=========+
+    | 39      |
+    +---------+
+    | 40      |
+    +---------+
+    | 41      |
+    +---------+
 
      then `num_outputs`=1, `forecast_len`=3, `forecast_step`=2
 
     If we use following two time series as input
 
-    |input1 | input2 |
-    |-------|--------|
-    |1 |  11 |
-    |3 |  13 |
-    |5 |  15 |
-    |7 |  17 |
+    +--------+--------+
+    |input1  | input2 |
+    +========+========+
+    |   1    |  11    |
+    +--------+--------+
+    |   3    |  13    |
+    +--------+--------+
+    |   5    |  15    |
+    +--------+--------+
+    |   7    |  17    |
+    +--------+--------+
 
     then   `num_inputs`=2, `lookback`=4, `input_steps`=2
 
     If the input is
 
-    |input1 | input2 |
-    |----|-----|
-    | 1 |  11 |
-    | 2 |  12 |
-    | 3 |  13 |
-    | 4 |  14 |
-    | 5 |  15 |
-    | 6 |  16 |
-    | 7 |  17 |
+    +--------+--------+
+    | input1 | input2 |
+    +========+========+
+    |    1   |  11    |
+    +--------+--------+
+    |    2   |  12    |
+    +--------+--------+
+    |    3   |  13    |
+    +--------+--------+
+    |    4   |  14    |
+    +--------+--------+
+    |    5   |  15    |
+    +--------+--------+
+    |    6   |  16    |
+    +--------+--------+
+    |   7    |  17    |
+    +--------+--------+
 
     and target/output is
 
+    +---------+---------+----------+
     | output1 | output2 | output 3 |
-    |---------|---------|----------|
-    | 25 | 35 | 45 |
-    | 26 | 36 | 46 |
-    | 27 | 37 | 47 |
+    +=========+=========+==========+
+    |    25   |    35   |    45    |
+    +---------+---------+----------+
+    |    26   |    36   |    46    |
+    +---------+---------+----------+
+    |    27   |    37   |    47    |
+    +---------+---------+----------+
 
     This means we make use of 'known future inputs'. This can be achieved using following configuration
-    num_inputs=2, num_outputs=3, lookback_steps=4, forecast_len=3, forecast_step=1, known_future_inputs=True
+    num_inputs=2, num_outputs=3, lookback=4, forecast_len=3, forecast_step=1, known_future_inputs=True
 
     The general shape of output/target/label is
     (examples, num_outputs, forecast_len)
 
     The general shape of inputs/x is
-    (examples, lookback_steps+forecast_len-1, ....num_inputs)
+    (examples, lookback + forecast_len-1, ....num_inputs)
 
-    ----------
-    Example:
-        >>>import numpy as np
-        >>>from ai4water.utils.utils import prepare_data
-        >>>num_examples = 50
-        >>>dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
-        >>>dataframe[0:10]
+
+    Examples:
+        >>> import numpy as np
+        >>> from ai4water.utils.utils import prepare_data
+        >>> num_examples = 50
+        >>> dataframe = np.arange(int(num_examples*5)).reshape(-1, num_examples).transpose()
+        >>> dataframe[0:10]
         array([[  0,  50, 100, 150, 200],
                [  1,  51, 101, 151, 201],
                [  2,  52, 102, 152, 202],
@@ -1257,20 +1379,20 @@ def prepare_data(
                [  7,  57, 107, 157, 207],
                [  8,  58, 108, 158, 208],
                [  9,  59, 109, 159, 209]])
-        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
         ...    input_steps=2, forecast_step=2, forecast_len=4)
-        >>>x[0]
+        >>> x[0]
         array([[  0.,  50., 100.],
               [  2.,  52., 102.],
               [  4.,  54., 104.],
               [  6.,  56., 106.]], dtype=float32)
-        >>>y[0]
+        >>> y[0]
         array([[158., 159., 160., 161.],
               [208., 209., 210., 211.]], dtype=float32)
 
-        >>>x, prevy, y = prepare_data(data, num_outputs=2, lookback_steps=4,
+        >>> x, prevy, y = prepare_data(data, num_outputs=2, lookback=4,
         ...    forecast_len=3, known_future_inputs=True)
-        >>>x[0]
+        >>> x[0]
         array([[  0,  50, 100],
                [  1,  51, 101],
                [  2,  52, 102],
@@ -1278,9 +1400,8 @@ def prepare_data(
                [  4,  54, 104],
                [  5,  55, 105],
                [  6,  56, 106]])       # (7, 3)
-        >>># it is import to note that although lookback_steps=4 but x[0] has shape of 7
-        >>>y[0]
-
+        >>> # it is important to note that although lookback=4 but x[0] has shape of 7
+        >>> y[0]
         array([[154., 155., 156.],
                [204., 205., 206.]], dtype=float32)  # (2, 3)
     """
@@ -1308,9 +1429,9 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     if len(data) <= 1:
         raise ValueError(f"Can not create batches from data with shape {data.shape}")
 
-    time_steps = lookback_steps
+    time_steps = lookback
     if known_future_inputs:
-        lookback_steps = lookback_steps + forecast_len
+        lookback = lookback + forecast_len
         assert forecast_len > 1, f"""
             known_futre_inputs should be True only when making predictions at multiple 
             horizons i.e. when forecast length/number of horizons to predict is > 1.
@@ -1323,11 +1444,11 @@ num_inputs {num_inputs} + num_outputs {num_outputs} != total features {features}
     prev_y = []
     y = []
 
-    for i in range(examples - lookback_steps * input_steps + 1 - forecast_step - forecast_len + 1):
-        stx, enx = i, i + lookback_steps * input_steps
+    for i in range(examples - lookback * input_steps + 1 - forecast_step - forecast_len + 1):
+        stx, enx = i, i + lookback * input_steps
         x_example = data[stx:enx:input_steps, 0:features - num_outputs]
 
-        st, en = i, i + (lookback_steps - 1) * input_steps
+        st, en = i, i + (lookback - 1) * input_steps
         y_data = data[st:en:input_steps, features - num_outputs:]
 
         sty = (i + time_steps * input_steps) + forecast_step - input_steps
@@ -1405,7 +1526,6 @@ def plot_activations_along_inputs(
         vmax=None,
         show=False
 ):
-    from .easy_mpl import imshow  # at the top will make circular import
 
     # activation must be of shape (num_examples, lookback, input_features)
     assert activations.shape[1] == lookback
@@ -1436,13 +1556,17 @@ def plot_activations_along_inputs(
             ax2.legend()
             ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
             axis, im = imshow(activations[:, :, idx].transpose(),
-                              vmin=vmin, vmax=vmax, aspect="auto",
-                              axis = ax3,
-                              xlabel="Examples", ylabel="lookback steps",
+                              vmin=vmin,
+                              vmax=vmax,
+                              aspect="auto",
+                              ax = ax3,
+                              xlabel="Examples",
+                              ylabel="lookback steps",
+                              show=False,
                               yticklabels=ytick_labels)
             fig.colorbar(im, orientation='horizontal', pad=0.2)
             plt.subplots_adjust(wspace=0.005, hspace=0.005)
-            _name = f'attention_weights_{out_name}_{name}'
+            _name = f'attn_weights_{out_name}_{name}_'
             plt.savefig(os.path.join(path, _name) + in_cols[idx], dpi=400, bbox_inches='tight')
 
             if show:
@@ -1506,3 +1630,22 @@ def get_version_info(
             info[k] = getattr(v, '__version__', 'NotDefined')
 
     return info
+
+def check_attributes(model, attributes):
+    for method in attributes:
+        if not hasattr(model, method):
+            raise ValueError(f"your custom class does not have {method}")
+
+
+def get_nrows_ncols(n_rows, n_subplots)->"tuple[int, int]":
+
+    if n_rows is None:
+        n_rows = int(np.sqrt(n_subplots))
+    n_cols = max(int(n_subplots / n_rows), 1)  # ensure n_cols != 0
+    n_rows = int(n_subplots / n_cols)
+
+    while not ((n_subplots / n_cols).is_integer() and
+               (n_subplots / n_rows).is_integer()):
+        n_cols -= 1
+        n_rows = int(n_subplots / n_cols)
+    return n_rows, n_cols

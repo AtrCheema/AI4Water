@@ -9,6 +9,7 @@ from ai4water.datasets import busan_beach
 from ai4water.utils.utils import prepare_data
 from ai4water.preprocessing import Transformation
 from ai4water.preprocessing.transformations import Transformations
+from ai4water.preprocessing.transformations.utils import SP_METHODS
 
 
 data = busan_beach()
@@ -41,11 +42,11 @@ class Test3dData(unittest.TestCase):
                 kwargs['treat_negatives'] = True
 
             x = np.arange(-1, 29, dtype='float32').reshape(15, 2)
-            x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
+            x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d, **kwargs)
 
             x2_0 = Transformation(**kwargs).fit_transform(x).values
-            x2, _, _ = prepare_data(x2_0, num_outputs=0, lookback_steps=2)
+            x2, _, _ = prepare_data(x2_0, num_outputs=0, lookback=2)
             # print(x1.sum(), x2.sum())
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
@@ -69,7 +70,7 @@ class Test3dData(unittest.TestCase):
             x = np.arange(10, 30, dtype='float32').reshape(10, 2)
 
             kwargs = {'method': method}
-            x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
+            x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d, **kwargs)
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
@@ -97,7 +98,7 @@ class Test3dData(unittest.TestCase):
                 kwargs['treat_negatives'] = True
 
             x = data[['tide_cm', 'pcp_mm']].values
-            x3d, _, _ = prepare_data(x, num_outputs=0, lookback_steps=2)
+            x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d.copy(), **kwargs)
 
             transformer = Transformations(feature_names=['tide_cm', 'pcp_mm'],
@@ -168,7 +169,6 @@ class TestSingleSource(unittest.TestCase):
 
 
 class TestMultipleSources(unittest.TestCase):
-
 
     def test_list_2d(self):
         transformer = Transformations([['a', 'b'], ['a', 'b']],
@@ -250,7 +250,6 @@ class TestMultipleSources(unittest.TestCase):
             np.testing.assert_array_almost_equal(i, j)
         return
 
-
     def test_from_config(self):
         for method in ["minmax", "log", "sqrt", "box-cox", "scale", "center", "robust"]:
 
@@ -266,8 +265,6 @@ class TestMultipleSources(unittest.TestCase):
             np.testing.assert_array_almost_equal(x, _x)
         return
 
-
-    #
     def test_model_predict(self):
         # first use transformation and inverse_transformation from fit/predict and
         # then compare with manually doing the same
@@ -280,7 +277,7 @@ class TestMultipleSources(unittest.TestCase):
                               x_transformation = x_trans,
                               y_transformation = y_trans,
                               verbosity=0,
-                              val_fraction=0.0, test_fraction=0.0)
+                              val_fraction=0.0, train_fraction=1.0)
 
                 model.fit(data=df)
                 t,p = model.predict(data='training', return_true=True, process_results=False)
@@ -296,13 +293,66 @@ class TestMultipleSources(unittest.TestCase):
 
                 model2 = Model(model="RandomForestRegressor",
                                verbosity=0,
-                               val_fraction=0.0, test_fraction=0.0,)
+                               val_fraction=0.0, train_fraction=1.0,)
                 model2.fit(data=df2)
                 t2, p2 = model2.predict(data='training', return_true=True, process_results=False)
                 _t2 = log_t.inverse_transform(t2)
                 _p2 = log_t.inverse_transform(p2)
                 np.testing.assert_array_almost_equal(t, _t2)
                 np.testing.assert_array_almost_equal(p, _p2)
+        return
+
+
+class TestWithoutFit(unittest.TestCase):
+
+    def make_config(self, method, to):
+
+        if to=="dict":
+            return {'method': method, 'features': ['a'],
+             'treat_negatives': True, 'replace_zeros': True}
+        elif to=="list":
+            return [{'method': method, 'features': ['a'],
+                                         'treat_negatives': True, 'replace_zeros': True}]
+        else:
+            raise ValueError
+
+    def test_without_fit(self):
+        for method in SP_METHODS:
+            y = np.random.random(100)
+            tr = Transformations(['a'], method)
+            y_ = tr.fit_transform(y)
+            _y = tr.inverse_transform(y_)
+
+            tr1 = Transformations(['a'], method)
+            _y1 = tr1.inverse_transform_without_fit(y_)
+
+            assert np.allclose(_y, _y1)
+        return
+
+    def test_without_fit_dict(self):
+        for method in SP_METHODS:
+            y = np.random.randint(-2, 10, 100)
+            tr = Transformations(['a'], self.make_config(method, "dict"))
+            y_ = tr.fit_transform(y)
+            _y = tr.inverse_transform(y_)
+
+            tr1 = Transformations(['a'], self.make_config(method, "dict"))
+            _y1 = tr1.inverse_transform_without_fit(y_)
+
+            print(np.allclose(_y, _y1), method)
+        return
+
+    def test_without_fit_list(self):
+        for method in SP_METHODS:
+            y = np.random.randint(-2, 10, 100)
+            tr = Transformations(['a'], self.make_config(method, "list"))
+            y_ = tr.fit_transform(y)
+            _y = tr.inverse_transform(y_)
+
+            tr1 = Transformations(['a'], self.make_config(method, "list"))
+            _y1 = tr1.inverse_transform_without_fit(y_)
+
+            print(np.allclose(_y, _y1), method)
         return
 
 

@@ -324,17 +324,19 @@ class Camels(Datasets):
                                  **kwargs) -> pd.DataFrame:
         """
         Fetches attributes for one station.
+
         Arguments:
             station : station id/gauge id for which the data is to be fetched.
-            dynamic_features
-            static_features
+            dynamic_features:
+            static_features:
             as_ts : whether static attributes are to be converted into a time
                 series or not. If yes then the returned time series will be of
                 same length as that of dynamic attribtues.
             st : starting point from which the data to be fetched. By default
                 the data will be fetched from where it is available.
             en : end point of data to be fetched. By default the dat will be fetched
-        Return:
+
+        Return: DataFrame
             dataframe if as_ts is True else it returns a dictionary of static and
                 dynamic attributes for a station/gauge_id
             """
@@ -530,8 +532,7 @@ class LamaH(Camels):
 class HYSETS(Camels):
     """
     database for hydrometeorological modeling of 14,425 North American watersheds
-    from 1950-2018 following the work of
-    [Arsenault et al., 2020](https://doi.org/10.1038/s41597-020-00583-2)
+    from 1950-2018 following the work of Arsenault_ et al., 2020
     The user must manually download the files, unpack them and provide
     the `path` where these files are saved.
 
@@ -570,11 +571,11 @@ class HYSETS(Camels):
 
     Examples
     --------
-    ```python
     >>> dataset = HYSETS(path="path/to/HYSETS")
     >>> df = dataset.fetch(0.01, as_dataframe=True) # 1% of stations
-    ```
 
+    .. _Arsenault:
+        https://doi.org/10.1038/s41597-020-00583-2
     """
     doi = "https://doi.org/10.1038/s41597-020-00583-2"
     url = "https://osf.io/rpc3w/"
@@ -1163,12 +1164,11 @@ class CAMELS_BR(Camels):
 
         as_ts bool:
 
-        Example:
+        Example
         -------
-        ```python
-        >>>dataset = Camels('CAMELS-BR')
-        >>>df = dataset.fetch_static_features(11500000, 'climate')
-        ```
+        >>> dataset = Camels('CAMELS-BR')
+        >>> df = dataset.fetch_static_features(11500000, 'climate')
+
         """
         if isinstance(station, int):
             station = [str(station)]
@@ -1325,11 +1325,9 @@ class CAMELS_AUS(Camels):
 
     Examples
     --------
-    ```python
     >>> dataset = CAMELS_AUS()
     >>> df = dataset.fetch(stations=1, as_dataframe=True)
     >>> df.unstack() # the returned dataframe is a multi-indexed dataframe so we have to unstack it
-    ```
     """
     url = 'https://doi.pangaea.de/10.1594/PANGAEA.921850'
     urls = {

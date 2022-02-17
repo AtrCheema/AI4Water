@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from .converter import Temp, Speed, Pressure
 from .global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA
 from .global_variables import default_constants, SB_CONS
-from ai4water.utils.easy_mpl import process_axis
+from easy_mpl.utils import process_axis
 
 
 class AttributeChecker:

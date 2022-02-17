@@ -2,6 +2,7 @@
 # I was unable to create an Optuna Study instance without `Storage` attribute. But it appears that
 # we can calculate parameter importance without Storage attribute from Study instance. Thus
 # the importance is calculated from Study instance without it having Storage attribute.
+# also support to handle nan values in target array is added.
 # The optuna library comes with following MIT licence.
 """
 MIT License
@@ -26,19 +27,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+
+import warnings
+
 from collections import OrderedDict
 from typing import Callable
 from typing import List
 from typing import Optional
 
-import numpy
+import numpy as np
 
-from optuna.distributions import CategoricalDistribution
-from optuna.distributions import DiscreteUniformDistribution
-from optuna.distributions import IntLogUniformDistribution
-from optuna.distributions import IntUniformDistribution
-from optuna.distributions import LogUniformDistribution
-from optuna.distributions import UniformDistribution
 from optuna.logging import get_logger
 from optuna._transform import _SearchSpaceTransform
 from optuna.study import Study
@@ -50,21 +48,13 @@ from optuna.visualization._utils import _check_plot_args
 from optuna.visualization._plotly_imports import go
 from optuna.importance import get_param_importances
 
-import plotly
+
+from easy_mpl import bar_chart
 
 
 logger = get_logger(__name__)
 
-Blues = plotly.colors.sequential.Blues
 
-_distribution_colors = {
-    UniformDistribution: Blues[-1],
-    LogUniformDistribution: Blues[-1],
-    DiscreteUniformDistribution: Blues[-1],
-    IntUniformDistribution: Blues[-2],
-    IntLogUniformDistribution: Blues[-2],
-    CategoricalDistribution: Blues[-4],
-}
 
 def _get_distributions(study, params):
     # based on supposition that get_distributions only returns an ordered dictionary and requiring `storage` attribute
@@ -105,12 +95,20 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         trans = _SearchSpaceTransform(distributions, transform_log=False, transform_step=False)
 
         n_trials = len(trials)
-        trans_params = numpy.empty((n_trials, trans.bounds.shape[0]), dtype=numpy.float64)
-        trans_values = numpy.empty(n_trials, dtype=numpy.float64)
+        trans_params = np.empty((n_trials, trans.bounds.shape[0]), dtype=np.float64)
+        trans_values = np.empty(n_trials, dtype=np.float64)
 
         for trial_idx, trial in enumerate(trials):
             trans_params[trial_idx] = trans.transform(trial.params)
             trans_values[trial_idx] = trial.value if target is None else target(trial)
+
+        # if nan values are present in target, use mean to fill them
+        nan_idx = np.isnan(trans_values)
+        if nan_idx.any():
+            warnings.warn("Invalid value encountered in target values",
+                UserWarning)
+            # fill nan values with mean
+            trans_values[nan_idx] = np.nanmean(trans_values)
 
         trans_bounds = trans.bounds
         column_to_encoded_columns = trans.column_to_encoded_columns
@@ -191,27 +189,11 @@ def plot_param_importances(
     importance_values = list(importances.values())
     param_names = list(importances.keys())
 
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=importance_values,
-                y=param_names,
-                text=importance_values,
-                texttemplate="%{text:.2f}",
-                textposition="outside",
-                cliponaxis=False,  # Ensure text is not clipped.
-                hovertemplate=[
-                    _make_hovertext(param_name, importance, study)
-                    for param_name, importance in importances.items()
-                ],
-                marker_color=[_get_color(param_name, study) for param_name in param_names],
-                orientation="h",
-            )
-        ],
-        layout=layout,
-    )
+    ax = bar_chart(importance_values, param_names, orient='h', show=False,
+                   title="fANOVA hyperparameter importance",
+                   xlabel="Relative Importance")
 
-    return importances, importance_paras, fig
+    return importances, importance_paras, ax
 
 
 def _get_distribution(param_name: str, study: Study):
@@ -220,13 +202,4 @@ def _get_distribution(param_name: str, study: Study):
             return trial.distributions[param_name]
     assert False
 
-
-def _get_color(param_name: str, study: Study) -> str:
-    return _distribution_colors[type(_get_distribution(param_name, study))]
-
-
-def _make_hovertext(param_name: str, importance: float, study: Study) -> str:
-    return "{} ({}): {}<extra></extra>".format(
-        param_name, _get_distribution(param_name, study).__class__.__name__, importance
-    )
 

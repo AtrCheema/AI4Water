@@ -24,8 +24,8 @@ from ai4water.postprocessing.explain import LimeExplainer, explain_model_with_li
 
 laos = MtropicsLaos()
 
-reg_data = laos.make_regression(input_features=['temp', 'rel_hum'])
-class_data = laos.make_classification(input_features=['temp', 'rel_hum'])
+reg_data = laos.make_regression(input_features=['air_temp', 'rel_hum'])
+class_data = laos.make_classification(input_features=['air_temp', 'rel_hum'])
 
 
 def make_mlp_model():
@@ -39,7 +39,7 @@ def make_mlp_model():
             "Dense_3": 1,
         }},
         epochs=2,
-        lookback=1,
+        #lookback=1,
         input_features=['wat_temp_c', 'tide_cm'],
         output_features=['tetx_coppml'],
         verbosity=0
@@ -69,6 +69,7 @@ def lstm_model():
             "Dense": 1
         }},
         verbosity=0,
+        ts_args={"lookback": 5},
         input_features=['wat_temp_c', 'tide_cm'],
         output_features=['tetx_coppml'],
     )
@@ -98,6 +99,7 @@ def make_lstm_reg_model():
         }},
         input_features=reg_data.columns.tolist()[0:-1],
         output_features=reg_data.columns.tolist()[-1:],
+        ts_args={"lookback": 5},
         # dropna would be wrong for lstm based models but we are just testing
         verbosity=0
     )
@@ -149,7 +151,7 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
                                train_data=train_x,
                                data=test_x,
                                mode="regression",
-                               features=list(model.input_features),
+                               feature_names=list(model.input_features),
                                path=model.path,
                                verbosity=False,
                                )
@@ -222,7 +224,7 @@ class TestLimeExplainer(unittest.TestCase):
         return
 
     def test_ai4water(self):
-        model = make_class_model(test_fraction=0.1)
+        model = make_class_model(train_fraction=0.9)
         self.assertEqual(model.mode, "classification")
         model.fit()
         model.explain()
@@ -245,7 +247,7 @@ class TestLimeExplainer(unittest.TestCase):
                             mode="regression",
                             path=m.path,
                             explainer="RecurrentTabularExplainer",
-                            features=m.input_features)
+                            feature_names=m.input_features)
         exp.explain_example(0)
         return
 

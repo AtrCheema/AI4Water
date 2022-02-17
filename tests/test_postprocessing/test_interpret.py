@@ -38,9 +38,10 @@ outs = 1
 in_cols = ['input_'+str(i) for i in range(5)]
 out_cols = ['output']
 cols=  in_cols + out_cols
-data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1,examples).transpose(),
+data1 = pd.DataFrame(np.arange(int(examples*len(cols))).reshape(-1, examples).transpose(),
                     columns=cols,
-                    index=pd.date_range("20110101", periods=examples, freq="D"))
+                    index=pd.date_range("20110101", periods=examples,
+                                        freq="D"))
 
 
 beach_data = busan_beach()
@@ -64,7 +65,7 @@ def da_lstm_model(data,
                   **kwargs):
 
     model = DualAttentionModel(
-        train_data='random',
+        split_random=True,
         verbosity=0,
         **kwargs
     )
@@ -108,9 +109,12 @@ def tft_model(**kwargs):
 
     output_size = 1
     layers = {
-        "Input": {"config": {"shape": (params['total_time_steps'], params['num_inputs']), 'name': "Model_Input"}},
+        "Input": {"config": {"shape": (params['total_time_steps'],
+                                       params['num_inputs']),
+                             'name': "Model_Input"}},
         "TemporalFusionTransformer": {"config": params},
-        "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
+        "lambda": {
+            "config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
         "Dense": {"config": {"units": output_size * 1}},
     }
 
@@ -124,8 +128,9 @@ def tft_model(**kwargs):
                                   'rh_tmin_SILO'
                                   ],
                   output_features=['streamflow_MLd_inclInfilled'],
-                  dataset_args={'st': '19700101', 'en': '20141231', 'stations': '224206'},
-                  lookback=num_encoder_steps,
+                  dataset_args={'st': '19700101', 'en': '20141231',
+                                'stations': '224206'},
+                  ts_args={'lookback':num_encoder_steps},
                   epochs=2,
                   verbosity=0)
     return model
@@ -137,7 +142,7 @@ class TestInterpret(unittest.TestCase):
 
         time.sleep(1)
         model = build_model(
-            lookback=7,
+            ts_args={'lookback':7},
             input_features=in_cols,
             output_features=out_cols,
             model=default_model
@@ -151,12 +156,13 @@ class TestInterpret(unittest.TestCase):
 
     def test_da_interpret(self):
         m = da_lstm_model(data='CAMELS_AUS',
+                          ts_args={'lookback': 14},
                           input_features = ['precipitation_AWAP',
                           'evap_pan_SILO'],
         output_features = ['streamflow_MLd_inclInfilled'],
         intervals =  [("20000101", "20011231")],
         dataset_args = {'stations': 1},)
-        m.interpret()
+        m.interpret(show=False)
         return
 
     def test_da_without_prevy_interpret(self):
@@ -164,18 +170,19 @@ class TestInterpret(unittest.TestCase):
                           data=beach_data,
                           input_features=input_features,
                           batch_size=8,
-                          lookback=14,
+                          ts_args={'lookback':14},
                           output_features=output_features)
         x,y = m.training_data()
 
 
-        m.interpret(data='training')
+        m.interpret(data='training', show=False)
         return
 
     def test_ia_interpret(self):
         m = ia_lstm_model(input_features=input_features,
+                          ts_args={'lookback': 14},
                           output_features=output_features)
-        m.interpret()
+        m.interpret(show=False)
         return
 
     def test_ml(self):

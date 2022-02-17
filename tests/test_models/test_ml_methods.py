@@ -343,15 +343,14 @@ class TestMLMethods(unittest.TestCase):
         model = Model(
             input_features=data_reg['feature_names'],
             output_features=["target"],
-            lookback=1,
+            ts_args={'lookback':1},
             batches="2d",
             val_fraction=0.0,
-            val_data="same",
-            test_fraction=0.3,
+            train_fraction=0.7,
             category="ML",
             mode="regression",
             model={"XGBRegressor": {}},
-            train_data='random',
+            split_random=True,
             verbosity=0)
 
         model.fit(data=df_reg)

@@ -1,7 +1,5 @@
 [compare machine learning algos](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper/compare_ml.ipynb)
 
-[transformations](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper/transformations.ipynb)
-
 [interpretable_dl](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper/interpretability.ipynb)
 
 [hru discretization laos](https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/dev/examples/paper/hru_discretization_laos.ipynb)

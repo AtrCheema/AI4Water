@@ -7,6 +7,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
+from easy_mpl import plot
 import matplotlib.pyplot as plt
 
 try:
@@ -17,11 +18,11 @@ except ImportError:
     miscs_to_idxs_vals = None
 
 try:
-    from skopt.plots import plot_evaluations, plot_objective, plot_convergence
+    from skopt.plots import plot_evaluations, plot_objective
     import skopt
     from skopt.space.space import Space, Dimension
 except ImportError:
-    plot_evaluations, plot_objective, plot_convergence = None, None, None
+    plot_evaluations, plot_objective = None, None
     Space = None
     Dimension = None
 
@@ -304,6 +305,7 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
     return save_skopt_results(skopt_results, results, opt_path)
 
+
 def save_skopt_results(skopt_results, results, opt_path):
 
     fname = os.path.join(opt_path, 'gp_parameters')
@@ -347,10 +349,37 @@ def skopt_plots(search_result, pref=os.getcwd(), threshold=20):
             _ = plot_objective(search_result)
             plt.savefig(os.path.join(pref, 'objective'), dpi=400, bbox_inches='tight')
 
-    plt.close('all')
-    _ = plot_convergence(search_result)
-    plt.savefig(os.path.join(pref, 'convergence'), dpi=400, bbox_inches='tight')
+    convergence(search_result.func_vals)
+    plt.savefig(os.path.join(pref, 'convergence'), dpi=300, bbox_inches='tight')
+    convergence(search_result.func_vals, show_original=True)
+    plt.savefig(os.path.join(pref, 'convergence_original'), dpi=300, bbox_inches='tight')
+    return
 
+
+def convergence(func_vals, color=None, show_original=False):
+
+    _, ax = plt.subplots()
+    ax.grid()
+
+    n_calls = len(func_vals)
+    mins = [np.min(func_vals[:i])
+            for i in range(1, n_calls + 1)]
+
+    if show_original:
+        data = func_vals
+    else:
+        data = mins
+
+    plot(data,
+         color=color,
+         marker=".", markersize=12, lw=2,
+         title="Convergence plot",
+         xlabel="Number of calls $n$",
+         ylabel=r"$\min f(x)$ after $n$ calls",
+         show=False,
+         ax=ax)
+
+    return
 
 class SerializeSKOptResults(object):
     """
@@ -920,3 +949,26 @@ def space_from_list(v: list, k: str):
         else:
             raise NotImplementedError
     return s
+
+
+def plot_edf(y, num_points=100):
+    """
+    Plots the objective value empirical distribution function on hyperparameter
+    optimization. Implementation is taken from optuna.
+    """
+    x = np.linspace(np.min(y), np.max(y), num_points)
+
+    y_values = np.sum(y[:, np.newaxis] <= x, axis=0) / y.size
+
+    _, ax = plt.subplots()
+    ax.grid()
+    ax = plot(x,
+              y_values,
+              '-',
+              show=False,
+              title="Empirical Distribution Function Plot",
+              ylabel="Cumulative Probability",
+              xlabel="Objective Value",
+              ax=ax)
+
+    return ax

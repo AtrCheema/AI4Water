@@ -3,8 +3,8 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+from easy_mpl import imshow
 import matplotlib.pyplot as plt
-
 
 # TODO
 # rank histogram, reliability diagram, ROC curve
@@ -13,11 +13,9 @@ import matplotlib.pyplot as plt
 class Plots(object):
     # TODO initialte this class with at least path
 
-    def __init__(self, path, problem, category, config, model=None):
+    def __init__(self, config, path=None, model=None):
 
         self.path = path or os.path.join(os.getcwd(), "results")
-        self.problem = problem
-        self.category = category
         self.ml_model = model
         self.config = config
 
@@ -41,7 +39,8 @@ class Plots(object):
     def out_cols(self):
         return self.config['output_features']
 
-    def _imshow_3d(self, activation,
+    def _imshow_3d(self,
+                   activation,
                    lyr_name,
                    xticklabels=None,
                    save=True,
@@ -72,8 +71,6 @@ class Plots(object):
                 cmap=None,
                 show=False,
                 **kwargs):
-
-        from .easy_mpl import imshow
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
@@ -132,7 +129,7 @@ class Plots(object):
         return save_or_show(self.path, *args, **kwargs)
 
     def plot2d_act_for_a_sample(self, activations, sample=0, save: bool = False, name: str = None):
-        from ai4water.utils.easy_mpl import init_subplots
+        from ai4water.utils.visualizations import init_subplots
 
         fig, axis = init_subplots(height=8)
         # for idx, ax in enumerate(axis):

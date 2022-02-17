@@ -3,6 +3,6 @@ The values in a sequence are not necessarily related.
 """
 
 from ._main import Metrics
-from ._regression import RegressionMetrics
-from ._classification import ClassificationMetrics
+from ._rgr import RegressionMetrics
+from ._cls import ClassificationMetrics
 from .utils import plot_metrics

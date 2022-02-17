@@ -41,7 +41,7 @@ class TestNBeats(unittest.TestCase):
 
     def test_as_layer(self):
         inp = Input(shape=(10, 3))
-        nb = NBeats(lookback=10, forecast_length=1,
+        nb = NBeats(lookback=10, forecast_len=1,
                     num_exo_inputs=2)(inp)
         out = Flatten()(nb)
 
@@ -63,14 +63,13 @@ class TestNBeats(unittest.TestCase):
         x = np.random.random((100, 10, 3))
         y = np.random.random((100, 1))
 
-        model = Model(model={"layers":
-                                 {"Input": {"shape": (10, 3)},
-                                 "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 2},
-                                  "Flatten": {},
-                             }},
-                      lookback=10,
-                      verbosity=0
-                      )
+        model = Model(model={"layers":{
+            "Input": {"shape": (10, 3)},
+            "NBeats": {"lookback": 10, "forecast_len": 1, "num_exo_inputs": 2},
+            "Flatten": {},
+        }},
+            ts_args={'lookback': 10},
+            verbosity=0)
 
         model.fit(x=x, y=y)
         return
@@ -78,13 +77,12 @@ class TestNBeats(unittest.TestCase):
 
     def test_ai4water_with_inherent_data(self):
         model = Model(model={"layers": {
-            "NBeats": {"lookback": 10, "forecast_length": 1, "num_exo_inputs": 12},
+            "NBeats": {"lookback": 10, "forecast_len": 1, "num_exo_inputs": 12},
             "Flatten": {},
         }},
-            lookback=10,
+            ts_args={'lookback':10, 'forecast_step':1},
             input_features=input_features,
             output_features=output_features,
-            forecast_step=1,
             epochs=2,
             verbosity=0
         )

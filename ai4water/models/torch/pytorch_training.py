@@ -3,6 +3,7 @@ from typing import Union
 
 import numpy as np
 import matplotlib.pyplot as plt
+from easy_mpl import regplot
 
 try:
     import wandb
@@ -27,7 +28,6 @@ else:
 
 from ai4water.utils.utils import dateandtime_now, find_best_weight
 from ai4water.postprocessing.SeqMetrics import RegressionMetrics
-from ai4water.utils.visualizations import regplot
 
 F = {
     'mse': [np.nanmin, np.less],
@@ -145,9 +145,10 @@ class Learner(AttributeContainer):
             path : path to save results/weights
             wandb_config : config for wandb
 
-        Example:
-            >>>from torch import nn
-            >>>class Net(nn.Module):
+        Example
+        -------
+            >>> from torch import nn
+            >>> class Net(nn.Module):
             >>>    def __init__(self, D_in, H, D_out):
             ...        super(Net, self).__init__()
             ...        # hidden layer
@@ -159,26 +160,25 @@ class Learner(AttributeContainer):
             ...        yhat = sigmoid(self.linear2(a1))
             ...        return yhat
             ...
-            >>>learner = Learner(model=Net(1, 2, 1),
+            >>> learner = Learner(model=Net(1, 2, 1),
             ...                      num_epochs=501,
             ...                      patience=50,
             ...                      batch_size=1,
             ...                      shuffle=False)
             ...
-            >>>learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-            >>>def criterion_cross(labels, outputs):
+            >>> learner.optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+            >>> def criterion_cross(labels, outputs):
             ...    out = -1 * torch.mean(labels * torch.log(outputs) + (1 - labels) * torch.log(1 - outputs))
             ...    return out
-            >>>learner.loss = criterion_cross
+            >>> learner.loss = criterion_cross
             ...
-            >>>X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
-            >>>Y = torch.zeros(X.shape[0])
-            >>>Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
+            >>> X = torch.arange(-20, 20, 1).view(-1, 1).type(torch.FloatTensor)
+            >>> Y = torch.zeros(X.shape[0])
+            >>> Y[(X[:, 0] > -4) & (X[:, 0] < 4)] = 1.0
             ...
-            >>>learner.fit(X, Y)
-            >>>metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
-            >>>t = learner.predict(X, y=Y, name='training')
-        ```
+            >>> learner.fit(X, Y)
+            >>> metrics = learner.evaluate(X, y=Y, metrics=['r2', 'nse', 'mape'])
+            >>> t = learner.predict(X, y=Y, name='training')
         """
         super().__init__(num_epochs, to_monitor, path=path, use_cuda=use_cuda)
 
@@ -201,32 +201,38 @@ class Learner(AttributeContainer):
     ):
         """Runs the training loop for pytorch model.
 
-        Arguments:
-            x : Can be one of following
+        Arguments
+        ---------
+            x :
+                Can be one of following
 
                 - an instance of torch.Dataset, y will be ignored
                 - an instance of torch.DataLoader, y will be ignored
                 - a torch tensor containing input data for each example
                 - a numpy array
                 - a list of torch tensors or numpy arrays
-            y : if `x` is torch tensor, then `y` is the label/target for
+            y :
+                if `x` is torch tensor, then `y` is the label/target for
                 each corresponding example.
-            validation_data : can be one of following:
+            validation_data :
+                can be one of following:
                 - an instance of torch.Dataset
                 - an instance of torch.DataLoader
                 - a tuple of x,y pairs where x and y are tensors
                 Default is None, which means no validation is performed.
-            kwargs : can be `callbacks` For example to use a callable
+            kwargs :
+                can be `callbacks` For example to use a callable
                 as callback use following
-                ```python
-                callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
-                ```
+
+                >>> callbacks = [{'after_epochs': 300, 'func': PlotStuff}]
+
                 where `PlotStuff` is a callable.
                 Each `callable` is provided with following keyword arguments
-                    - epoch : the current epoch at which callable is called.
-                    - model : the model
-                    - train_data : training data_loader
-                    - val_data : validation data_loader
+
+                - epoch : the current epoch at which callable is called.
+                - model : the model
+                - train_data : training data_loader
+                - val_data : validation data_loader
 
         """
         self.on_train_begin(x, y=y, validation_data=validation_data, **kwargs)
@@ -278,7 +284,7 @@ class Learner(AttributeContainer):
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
         if reg_plot and true.size > 0.0:
-            regplot(true, pred)
+            regplot(true, pred, show=False)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
         return pred
@@ -643,7 +649,9 @@ class Learner(AttributeContainer):
             path='tensorboard/tensorboard'
     ):
         """Plots the neural network on tensorboard
-        Arguments:
+
+        Arguments
+        ---------
             x : torch.Tensor
                 input to the model
             path : str
@@ -661,7 +669,9 @@ class Learner(AttributeContainer):
 
     def plot_model(self, y=None):
         """Helper function to plot dot diagram of model using torchviz module.
-        Arguments:
+
+        Arguments
+        ---------
             y : torch.Tensor
                 output tensor
         """

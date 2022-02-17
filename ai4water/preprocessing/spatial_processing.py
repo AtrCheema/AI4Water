@@ -1,11 +1,11 @@
+
 import os
 from typing import Union
 from collections import OrderedDict
 
-
-
 import numpy as np
 import pandas as pd
+from easy_mpl import pie
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -19,12 +19,11 @@ from .spatial_utils import plot_shapefile
 from .spatial_utils import get_total_area, GifUtil
 from .spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
 
-from ai4water.utils.easy_mpl import pie
-
 
 M2ToAcre = 0.0002471     # meter square to Acre
-COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7', '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F',
-          '#FF4040', '#8A360F', '#98F5FF', '#FF9912', '#B23AEE', '#9BCD9B', '#8B8B00']
+COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7',
+          '#8B7D6B', '#0000FF', '#8A2BE2', '#9C661F', '#FF4040', '#8A360F',
+          '#98F5FF', '#FF9912', '#B23AEE', '#9BCD9B', '#8B8B00']
 
 
 class MakeHRUs(object):
@@ -34,17 +33,17 @@ class MakeHRUs(object):
     with time.
 
     Example:
-        >>>import os
-        >>>from ai4water.preprocessing.spatial_processing import MakeHRUs
+        >>> import os
+        >>> from ai4water.preprocessing.spatial_processing import MakeHRUs
         >>> # shapefile_paths is the path where shapefiles are located. todo
-        >>>SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
-        >>>shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
-        >>>hru_object = MakeHRUs('unique_lu_sub',
+        >>> SubBasin_shp = os.path.join(shapefile_paths, 'sub_basins.shp')
+        >>> shapefile_paths = os.path.join(os.getcwd(), 'shapefiles')
+        >>> hru_object = MakeHRUs('unique_lu_sub',
         ...     index={2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
         ...     2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}},
         ...                  subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
         ...                 )
-        >>>hru_object.call()
+        >>> hru_object.call()
     """
 
     HRU_DEFINITIONS = [
@@ -72,29 +71,34 @@ class MakeHRUs(object):
                  ):
         """
         Arguments:
-            hru_definition : hru definition. For valid hru_definitions check `MakeHRUs.HRU_DEFINITIONS`
-            index : dictionary defining shapefiles of landuse which change with time.
+            hru_definition :
+                hru definition. For valid hru_definitions check `MakeHRUs.HRU_DEFINITIONS`
+            index :
+                dictionary defining shapefiles of landuse which change with time.
                 For example in following a land use shapefile for two years is defined.
                 All attributes in land use shapefiles must have the feature `NAME`.
-                ```python
-                {2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
-                2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}}
-                ```
-            soil_shape : only applicable if `soil` exists in hru_definition.
+
+                >>> {2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'feature': 'NAME'},
+                ... 2012: {'shapefile': os.path.join(shapefile_paths, 'lu2012.shp'), 'feature': 'NAME'}}
+
+            soil_shape :
+                only applicable if `soil` exists in hru_definition.
                 All attributes in land use soil.shp must have the feature `NAME`.
-                ```python
-                {'shapefile': os.path.join(shapefile_paths, 'soil.shp'), 'feature': 'NAME'}
-                ```
-            slope_shape : only applicable if `slope` exists in hru_definition.
+
+                >>> {'shapefile': os.path.join(shapefile_paths, 'soil.shp'), 'feature': 'NAME'}
+
+            slope_shape :
+                only applicable if `slope` exists in hru_definition.
                 All attributes in slope.shp shapefiles must have the feature `percent`.
-                ```python
-                {'shapefile': os.path.join(shapefile_paths, 'slope.shp'), 'feature': 'percent'}
-                ```
-            subbasins_shape : only applicable if `sub` exists in hru_definition.
+
+                >>> {'shapefile': os.path.join(shapefile_paths, 'slope.shp'), 'feature': 'percent'}
+
+            subbasins_shape :
+                only applicable if `sub` exists in hru_definition.
                 All attributes in land use shapefiles must have the feature `id`.
-                ```python
-                {'shapefile': os.path.join(shapefile_paths, 'subbasins.shp'), 'feature': 'id'}
-                ```
+
+                >>> {'shapefile': os.path.join(shapefile_paths, 'subbasins.shp'), 'feature': 'id'}
+
             verbosity : Determines verbosity.
         """
 
