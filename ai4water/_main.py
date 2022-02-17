@@ -1847,15 +1847,30 @@ class BaseModel(NN):
     ):
         """Loads the model from config dictionary i.e. model.config
 
-        Arguments:
+        Arguments
+        ---------
             config: dict
                 dictionary containing model's parameters i.e. model.config
-            make_new_path:
+            make_new_path : bool, optional
                 whether to make new path or not?
-            kwargs:
+            **kwargs:
                 any additional keyword arguments to Model class.
-        Returns:
-            an instalnce of Model
+
+        Returns
+        -------
+            an instalnce of :py:class:`ai4water.Model`
+
+        Example
+        -------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> old_model = Model(model="XGBRegressor")
+            >>> old_model.fit(data=data)
+            ... # now construct a new model instance from config dictionary
+            >>> model = Model.from_config(old_model.config)
+            >>> x = np.random.random((100, 14))
+            >>> prediction = model.predict(x=x)
         """
         config, path = cls._get_config_and_path(cls, config=config, make_new_path=make_new_path)
 
@@ -1872,19 +1887,31 @@ class BaseModel(NN):
         """
         Loads the model from a config file.
 
-        Arguments:
-            config_path:
+        Arguments
+        ----------
+            config_path :
                 complete path of config file
-            make_new_path:
+            make_new_path : bool, optional
                 If true, then it means we want to use the config
                 file, only to build the model and a new path will be made. We
                 would not normally update the weights in such a case.
-            kwargs :
-                any additional keyword arguments for the `Model`
-        Return:
-            an instance of `Model` class
+            **kwargs :
+                any additional keyword arguments for the :py:class:`ai4water.Model`
+
+        Return
+        ------
+            an instance of :py:class:`ai4water.Model` class
+
+        Example
+        -------
+            >>> from ai4water import Model
+            >>> config_file_path = "../file/to/config.json"
+            >>> model = Model.from_config_file(config_file_path)
+            >>> x = np.random.random((100, 14))
+            >>> prediction = model.predict(x=x)
         """
-        config, path = cls._get_config_and_path(cls, config_path=config_path, make_new_path=make_new_path)
+        config, path = cls._get_config_and_path(cls, config_path=config_path,
+                                                make_new_path=make_new_path)
 
         return cls(**config,
                    path=path,
