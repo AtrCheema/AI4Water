@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Don't know which rights should be reserved  Ather Abbas
 from setuptools import setup
-from version import __version__ as ver
 
 
 import os

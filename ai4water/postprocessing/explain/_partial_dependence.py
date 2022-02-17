@@ -35,6 +35,19 @@ class PartialDependencePlot(ExplainerMixin):
     """
     Partial dependence plots as introduced by Friedman_ et al., 2001
 
+    Example
+    -------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.postprocessing.explain import PartialDependencePlot
+        >>> data = busan_beach()
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=data)
+        >>> x, _ = model.training_data()
+
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        >>>                            num_points=14)
+
     .. _Friedman:
         https://doi.org/10.1214/aos/1013203451
     """

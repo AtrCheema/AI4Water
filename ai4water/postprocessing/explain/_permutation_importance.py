@@ -20,6 +20,19 @@ class PermutationImportance(ExplainerMixin):
     Attributes:
         importances
 
+    Example
+    -------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.postprocessing.explain import PermutationImportance
+        >>> data = busan_beach()
+        >>> model = Model(model="XGBRegressor", verbosity=0)
+        >>> model.fit(data=data)
+        >>> x_val, y_val = model.validation_data()
+
+        >>> pimp = PermutationImportance(model.predict, x_val, y_val.reshape(-1,))
+        >>> fig = pimp.plot_as_boxplot(show=False)
+
     .. _Molnar:
         https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance
 
