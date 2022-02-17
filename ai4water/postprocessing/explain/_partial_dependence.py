@@ -43,8 +43,8 @@ class PartialDependencePlot(ExplainerMixin):
         >>> data = busan_beach()
         >>> model = Model(model="XGBRegressor")
         >>> model.fit(data=data)
+        # get the data to explain
         >>> x, _ = model.training_data()
-
         >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
         >>>                            num_points=14)
 
@@ -209,6 +209,23 @@ class PartialDependencePlot(ExplainerMixin):
 
         Returns:
               matplotlib Axes
+
+        Examples
+        --------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> from ai4water.postprocessing.explain import PartialDependencePlot
+        >>> data = busan_beach()
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> x, _ = model.training_data()
+        >>> pdp = PartialDependencePlot(model.predict, x, model.input_features,
+        ...                            num_points=14)
+        >>> pdp.nd_interactions(show_dist=True)
+
+        specifying features whose interaction is to be calculated and plotted.
+
+        >>> axis = pdp.plot_interaction(["tide_cm", "wat_temp_c"])
         """
 
         if not self.data_is_2d:

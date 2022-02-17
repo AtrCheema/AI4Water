@@ -63,10 +63,10 @@ torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
 torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna']
 
-ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost'
+ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
                'lightgbm', 'easy_mpl>=0.20.3']
 
-ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost'
+ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
                'lightgbm', 'easy_mpl>=0.20.3', 'hyperopt', 'scikit-optimize', 'optuna']
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
