@@ -1451,7 +1451,7 @@ class BaseModel(NN):
                 post processing of results
             metrics: str
                 only valid if process_results is True. The metrics to calculate.
-                Valid values are ``minimal``, 'all``, ``hydro_metrics``
+                Valid values are ``minimal``, ``all``, ``hydro_metrics``
             return_true: bool
                 whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
@@ -2169,7 +2169,7 @@ class BaseModel(NN):
                 the transformations to consider for input features. By default,
                 following transformations are considered for input features
 
-                - ``minmax`  rescale from 0 to 1
+                - ``minmax``  rescale from 0 to 1
                 - ``center``    center the data by subtracting mean from it
                 - ``scale``     scale the data by dividing it with its standard deviation
                 - ``zscore``    first performs centering and then scaling
