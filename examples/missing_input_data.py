@@ -32,9 +32,9 @@ print(df[98:108])
 model = DualAttentionModel(
     intervals=[(0, 99), (200, 999), (8000, 9999), (31000, 40560)],
     batch_size=32,
-    lookback=5,
+    ts_args={'lookback':5},
     lr=0.0001,
-    train_data='random',
+    split_random=True,
 )
 
 history = model.fit(data=df)
@@ -42,7 +42,7 @@ history = model.fit(data=df)
 y = model.predict()
 # tr_y, tr_obs = model.predict(data='test)
 
-model.view_model(save=True)  # takes a lot of time to save all plots
+model.view()  # takes a lot of time to save all plots
 
 # Since we are using DualAttentionModel which requires observations at previous steps, we can not make
 # predictions at steps which are skipped from `intervals`. However, for a model which does not require previous

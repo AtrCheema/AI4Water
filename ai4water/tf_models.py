@@ -397,6 +397,46 @@ class DualAttentionModel(FModel):
                                    **kwargs)
         return
 
+    def get_attention_weights(
+            self,
+            layer_name: str=None,
+            data = 'training',
+    )->np.ndarray:
+        """
+        Parameters
+        ----------
+            layer_name : str, optional
+                the name of attention layer. If not given, the final attention
+                layer will be used.
+            data : str, optional
+                the data to make forward pass to get attention weghts. Possible
+                values are
+
+                - ``training``
+                - ``validation``
+                - ``test``
+
+        Returns
+        -------
+            a numpy array of shape (num_examples, lookback, num_ins)
+        """
+        layer_name = layer_name or f'attn_weight_{self.lookback - 1}_1'
+
+        assert isinstance(layer_name, str), f"""
+            layer_name must be a string, not of {layer_name.__class__.__name__} type
+            """
+
+        from ai4water.postprocessing.visualize import Visualize
+
+        kwargs = {}
+        if self.config['drop_remainder']:
+            kwargs['batch_size'] = self.config['batch_size']
+        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data, **kwargs)
+
+        activation = activation[layer_name]  # (num_examples, lookback, num_ins)
+
+        return activation
+
     def plot_act_along_inputs(
             self,
             layer_name: str,
@@ -412,24 +452,14 @@ class DualAttentionModel(FModel):
 
         data_name = name or data
 
-        assert isinstance(layer_name, str), "layer_name must be a string, not of " \
-                                            "{} type".format(layer_name.__class__.__name__)
-
-        predictions, observations = self.predict(process_results=False, data=data, return_true=True)
-
-        from ai4water.postprocessing.visualize import Visualize
-
-        kwargs = {}
-        if self.config['drop_remainder']:
-            kwargs['batch_size'] = self.config['batch_size']
-        activation = Visualize(model=self).get_activations(layer_names=layer_name, data=data, **kwargs)
-
-        data, _ = getattr(self, f'{data}_data')()
-        lookback = self.config['ts_args']['lookback']
-
-        activation = activation[layer_name]  # (num_examples, lookback, num_ins)
+        activation = self.get_attention_weights(layer_name=layer_name, data=data)
 
         act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
+
+        lookback = self.config['ts_args']['lookback']
+        data, _ = getattr(self, f'{data}_data')()
+
+        predictions, observations = self.predict(process_results=False, data=data, return_true=True)
 
         plt.close('all')
 

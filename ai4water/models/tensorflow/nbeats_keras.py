@@ -11,10 +11,11 @@ class NBeats(keras.layers.Layer):
     """
     This implementation is same as that of Philip peremy_ with few modifications.
     Here NBeats can be used as a layer. The output shape will be
-    (batch_size, self.forecast_length, self.input_dim)
+    (batch_size, forecast_length, input_dim)
     Some other changes have also been done to make this layer compatable with ai4water.
 
-    Example:
+    Example
+    -------
         >>> x = np.random.random((100, 10, 3))
         >>> y = np.random.random((100, 1))
         ...
@@ -52,15 +53,15 @@ class NBeats(keras.layers.Layer):
         Initiates the Nbeats layer
 
         Arguments:
-            units:
+            units :
                 Number of units in NBeats layer. It determines the size of NBeats.
             lookback:
                 Number of historical time-steps used to predict next value
-            forecast_len:
+            forecast_len :
             stack_types :
-            nb_blocks_per_stack:
+            nb_blocks_per_stack :
             theta_dim :
-            share_weights_in_stack:
+            share_weights_in_stack :
             nb_harmonics :
             num_inputs:
             num_exo_inputs:
