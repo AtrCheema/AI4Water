@@ -882,6 +882,11 @@ class BaseModel(NN):
         if estimator in ["LGBMRegressor", 'LGBMClassifier']:
             if 'random_state' not in kwargs:
                 kwargs['random_state'] = self.config['seed']
+            if kwargs.get('boosting_type', None) == "rf" and 'bagging_freq' not in kwargs:
+                # https://github.com/microsoft/LightGBM/issues/1333
+                print('entering')
+                kwargs['bagging_freq'] = 1
+                kwargs['bagging_fraction'] = 0.5
 
         if self.is_custom_model:
             if hasattr(estimator, '__call__'):  # initiate the custom model
@@ -930,7 +935,7 @@ class BaseModel(NN):
             y:
                 Correct labels/observations/true data corresponding to 'x'.
             data :
-                Raw data fromw which `x`,`y` pairs are prepared. This will be
+                Raw data fromw which ``x``,``y`` pairs are prepared. This will be
                 passed to :py:class:`ai4water.preprocessing.DataSet`.
                 It can also be an instance if :py:class:`ai4water.preprocessing.DataSet` or
                 :py:class:`ai4water.preprocessing.DataSetPipeline`.
@@ -948,6 +953,19 @@ class BaseModel(NN):
         Returns:
             A keras history object in case of deep learning model with tensorflow
             as backend or anything returned by `fit` method of underlying model.
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> model = Model(model="XGBRegressor")
+            >>> model.fit(data=busan_beach())
+
+            using your own data for training
+
+            >>> new_inputs = np.random.random((100, 10))
+            >>> new_outputs = np.random.random(100)
+            >>> model.fit(x=new_inputs, y=new_outputs)
         """
 
         if x is not None:
@@ -1092,9 +1110,9 @@ class BaseModel(NN):
             x:
                 input data
             y:
-                output corresponding to `x`.
+                output corresponding to ``x``.
             data:
-                raw unprepared data which will be given to [DataSet][ai4water.preprocessing.DataSet]
+                raw unprepared data which will be given to :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y from it.
             scoring:
                 performance metric to use for cross validation.
@@ -1104,6 +1122,14 @@ class BaseModel(NN):
                 data after calculating cross validation score.
         Returns:
             cross validation score
+
+        Example
+        -------
+            >>> from ai4water.datasets import busan_beach
+            >>> from ai4water import Model
+            >>> model = Model(model="XGBRegressor",
+            >>>               cross_validator={"KFold": {"n_splits": 5}})
+            >>> model.cross_val_score(data=busan_beach())
 
         Note
         ----
@@ -1320,9 +1346,9 @@ class BaseModel(NN):
             >>> model.evaluate(metrics='pbias')
             ...
             ... # to evaluate on custom data, the user can provide its own x and y
-            >>> x = np.random.random((10, 13))
-            >>> y = np.random.random((10, 1, 1))
-            >>> model.evaluate(x, y)
+            >>> new_inputs = np.random.random((10, 13))
+            >>> new_outputs = np.random.random((10, 1, 1))
+            >>> model.evaluate(new_inputs, new_outputs)
 
             backward compatability
             Since the ai4water's Model is supposed to behave same as Keras' Model
@@ -1436,6 +1462,35 @@ class BaseModel(NN):
             If return_true is True then a tuple of arrays. The first is true
             and the second is predicted. If ``x`` is given but ``y`` is not given,
             then, first array which is returned is None.
+
+        Examples
+        --------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> model = Model(model="XGBRegressor")
+        >>> model.fit(data=busan_beach())
+        >>> pred = model.predict()
+
+        make predictions on training data
+
+        >>> pred = model.predict(data="training")
+
+        get true values
+
+        >>> true, pred = model.predict(return_true=True)
+
+        postprocessing of results
+
+        >>> pred = model.predict(process_results=True)
+
+        calculate all metrics during postprocessing
+
+        >>> pred = model.predict(process_results=True, metrics="all")
+
+        using your own data
+
+        >>> new_input = np.random.random(10, 14)
+        >>> pred = model.predict(x = new_input)
         """
 
         assert metrics in ("minimal", "all", "hydro_metrics")
@@ -1673,8 +1728,8 @@ class BaseModel(NN):
                 networks.
             data:
                 the data to use when making calls to model for activation calculation
-                or for gradient calculation. It can either 'training', 'validation' or
-                'test'.
+                or for gradient calculation. It can either ``training``, ``validation`` or
+                ``test``.
             x:
                 input, alternative to data. If given it will override `data` argument.
             y:

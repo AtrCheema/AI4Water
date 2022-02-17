@@ -12,7 +12,9 @@ from ai4water.experiments import MLClassificationExperiments
 from ai4water.datasets import MtropicsLaos
 
 
-data = MtropicsLaos().make_classification(lookback_steps=2)
+data = MtropicsLaos().make_classification(
+    input_features=['air_temp', 'rel_hum'],
+    lookback_steps=1)
 
 inputs = data.columns.tolist()[0:-1]
 outputs = data.columns.tolist()[-1:]
@@ -27,6 +29,7 @@ def make_multiclass_classification(
     y = np.random.randint(0, n_classes, size=(n_samples, 1))
     return x, y
 
+
 class TestCls(unittest.TestCase):
 
     def test_basic(self):
@@ -34,12 +37,34 @@ class TestCls(unittest.TestCase):
                                           output_features=outputs)
 
         exp.fit(data=data, exclude=[
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'  # giving nan predictions
+            # giving nan predictions
+            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
         ]
                 )
         exp.compare_errors('accuracy', show=False)
         return
-    
+
+    def test_binary_optimize(self):
+        """run MLClassificationExperiments for binary classification with optimization"""
+        exp = MLClassificationExperiments(
+            input_features=inputs,
+            output_features=outputs,
+            train_fraction=1.0,
+            val_fraction=0.3,
+        )
+
+        exp.fit(data=data,
+                include=[
+                    # "model_AdaBoostClassifier", TODO
+                    "model_CatBoostClassifier",
+                    "model_LGBMClassifier",
+                    "model_XGBClassifier",
+                    "RandomForestClassifier"
+                ],
+                run_type="optimize",
+                )
+        return
+
     def test_multiclass(self):
         """multiclass classification"""
 
@@ -58,7 +83,8 @@ class TestCls(unittest.TestCase):
                                     output_features=outputs)
 
         exp.fit(data=data, exclude=[
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'  # giving nan predictions
+            # giving nan predictions
+            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
         ]
                 )
 

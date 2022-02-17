@@ -1240,20 +1240,22 @@ Available cases are {self.models} and you wanted to include
 
         return self.model_.fit(data=data)
 
-
-    def _evaluate(self):
+    def _evaluate(self, data="validation")->float:
         """Evaluates the model"""
 
-        vt, vp = self.model_.predict(data='validation', return_true=True)
+        t, p = self.model_.predict(
+            data=data,
+            return_true=True,
+            process_results=False)
 
-        metrics = Metrics[self.mode](vt, vp,
+        metrics = Metrics[self.mode](t, p,
             remove_zero=True, remove_neg=True,
             multiclass=self.model_.is_multiclass)
 
         val_score = getattr(metrics, self.model_.val_metric)()
 
-        if self.model_.config['val_metric'] in ['r2', 'nse', 'kge', 'r2_mod', 'r2_adj',
-                                                'r2_score', 'accuracy', 'f1_score']:
+        if self.model_.config['val_metric'] in [
+            'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score', 'accuracy', 'f1_score']:
             val_score = 1.0 - val_score
         
         if not math.isfinite(val_score):

@@ -171,8 +171,8 @@ class TestPredictMethod(unittest.TestCase):
     
     def test_without_fit_with_data(self):
         """call to predict method without training/fit"""
-        model = Model(model={"layers": {"Dense": 8,
-                                        "Dense": 1}},
+        model = Model(model={"layers": {"Dense_0": 8,
+                                        "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
                     x_transformation="minmax",
@@ -184,8 +184,8 @@ class TestPredictMethod(unittest.TestCase):
     
     def test_without_fit_with_xy(self):
         """call to predict method without training/fit by provided x and y keywords"""
-        model = Model(model={"layers": {"Dense": 8,
-                                        "Dense": 1}},
+        model = Model(model={"layers": {"Dense_0": 8,
+                                        "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
                     x_transformation="minmax",
@@ -198,8 +198,8 @@ class TestPredictMethod(unittest.TestCase):
 
     def test_without_fit_with_only_x(self):
         """call to predict method without training/fit by providing only x"""
-        model = Model(model={"layers": {"Dense": 8,
-                                        "Dense": 1}},
+        model = Model(model={"layers": {"Dense_0": 8,
+                                        "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
                     x_transformation="minmax",

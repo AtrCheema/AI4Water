@@ -542,7 +542,7 @@ def classification_space(num_samples:int, verbosity=0):
                 Categorical(categories=['gbdt', 'dart', 'goss', 'rf'], name='boosting_type'),
                 Integer(low=10, high=200, name='num_leaves', num_samples=num_samples),
                 Real(low=0.0001, high=0.1, prior='log', name='learning_rate', num_samples=num_samples),
-                Real(low=10, high=100, name='min_child_samples', num_samples=num_samples),
+                Integer(low=10, high=100, name='min_child_samples', num_samples=num_samples),
                 Integer(low=20, high=500, name='n_estimators', num_samples=num_samples)],
             "x0":
                 ['rf', 10, 0.001, 10, 20]},
@@ -721,7 +721,8 @@ def classification_space(num_samples:int, verbosity=0):
                 # Used for reducing the gradient step.
                 Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),
                 # depth
-                Integer(0, 1000, name="depth", num_samples=num_samples),
+                # https://stackoverflow.com/q/67299869/5982232
+                Integer(1, 15, name="depth", num_samples=num_samples),
                 # Coefficient at the L2 regularization term of the cost function.
                 Real(low=0.5, high=5.0, name='l2_leaf_reg', num_samples=num_samples),
                 # arger the value, the smaller the model size.

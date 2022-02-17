@@ -200,11 +200,13 @@ class ProcessResults(Plot):
                 m_name = '_'.join(m_name)
             if m_name in list(axis_cache.keys()):
                 axis = axis_cache[m_name]
-                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886], label='Validation ')
+                axis.plot(epochs, val, color=[0.96707953, 0.46268314, 0.45772886],
+                          label='Validation ')
                 axis.legend()
             else:
                 axis = fig.add_subplot(*sub_plots[len(history)]['axis'], i)
-                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859], label='Training ')
+                axis.plot(epochs, val, color=[0.13778617, 0.06228198, 0.33547859],
+                          label='Training ')
                 axis.legend()
                 axis.set_xlabel("Epochs")
                 axis.set_ylabel(legends.get(key, key))
@@ -245,7 +247,8 @@ class ProcessResults(Plot):
             st_q = "{:.1f}".format(self.quantiles[q] * 100)
             en_q = "{:.1f}".format(self.quantiles[-q] * 100)
 
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True",
+                     color='navy')
             plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
                              predicted[st:en, -q].reshape(-1,), alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
@@ -253,7 +256,8 @@ class ProcessResults(Plot):
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
         return
 
-    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None, save=True):
+    def plot_quantiles2(self, true_outputs, predicted, st=0, en=None,
+                        save=True):
         plt.close('all')
         plt.style.use('ggplot')
 
@@ -263,23 +267,27 @@ class ProcessResults(Plot):
             st_q = "{:.1f}".format(self.quantiles[q] * 100)
             en_q = "{:.1f}".format(self.quantiles[q + 1] * 100)
 
-            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
+            plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True",
+                     color='navy')
             plt.fill_between(np.arange(st, en),
                              predicted[st:en, q].reshape(-1,),
                              predicted[st:en, q + 1].reshape(-1,),
                              alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
-            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png", where='results')
+            self.save_or_show(save, fname='q' + st_q + '_' + en_q + ".png",
+                              where='results')
         return
 
-    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0, en=None, save=False):
+    def plot_quantile(self, true_outputs, predicted, min_q: int, max_q, st=0,
+                      en=None, save=False):
         plt.close('all')
         plt.style.use('ggplot')
 
         if en is None:
             en = true_outputs.shape[0]
-        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100, self.quantiles[max_q] * 100, str(st),
+        q_name = "{:.1f}_{:.1f}_{}_{}".format(self.quantiles[min_q] * 100,
+                                              self.quantiles[max_q] * 100, str(st),
                                               str(en))
 
         plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
@@ -294,6 +302,10 @@ class ProcessResults(Plot):
 
     def roc_curve(self, estimator, x, y, save=True):
 
+        if hasattr(estimator, '_model'):
+            if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x, np.ndarray):
+                x = pd.DataFrame(x, columns=estimator.input_features)
+
         plot_roc_curve(estimator, x, y.reshape(-1, ))
         self.save_or_show(save, fname="roc", where="results")
         return
@@ -306,6 +318,9 @@ class ProcessResults(Plot):
 
     def precision_recall_curve(self, estimator, x, y, save=True):
 
+        if hasattr(estimator, '_model'):
+            if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x, np.ndarray):
+                x = pd.DataFrame(x, columns=estimator.input_features)
         plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
@@ -352,7 +367,8 @@ class ProcessResults(Plot):
                     _out_cols = _out_cols + cols
                 out_cols = _out_cols
                 if len(out_cols)>1 and not isinstance(predicted, np.ndarray):
-                    raise NotImplementedError("can not process results with more than 1 output arrays")
+                    raise NotImplementedError("""
+                    can not process results with more than 1 output arrays""")
 
         for idx, out in enumerate(out_cols):
 

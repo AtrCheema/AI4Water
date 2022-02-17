@@ -1271,13 +1271,13 @@ class MtropicsLaos(Datasets):
                 names of inputs to use. By default following features
                 are used as input
 
-                - `air_temp`
-                - `rel_hum`
-                - `wind_speed`
-                - `sol_rad`
-                - `water_level`
-                - `pcp`
-                - `susp_pm'
+                - ``air_temp`
+                - ``rel_hum``
+                - ``wind_speed`
+                - ``sol_rad`
+                - ``water_level`
+                - ``pcp``
+                - ``susp_pm`'
 
             output_features : feature/features to consdier as target/output/label
             st :
