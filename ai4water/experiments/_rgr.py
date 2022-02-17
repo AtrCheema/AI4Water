@@ -131,7 +131,7 @@ class MLRegressionExperiments(Experiments):
 
         return {'model': {'AdaBoostRegressor': kwargs}}
 
-    def model_ARDRegressor(self, **kwargs):
+    def model_ARDRegression(self, **kwargs):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html
 
         self.path = "sklearn.linear_model.ARDRegression"

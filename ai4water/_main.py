@@ -1412,29 +1412,29 @@ class BaseModel(NN):
                 It can either be a string indicating which data to use. In this
                 case, possible values are
 
-                - `training`
-                - `test`
-                - `validation`.
+                - ``training``
+                - ``test``
+                - ``validation``
 
-                By default, `test` data is used for predictions.
+                By default, ``test`` data is used for predictions.
                 It can also be unprepared/raw data which will be given to
-                :py:class:`ai4water.preprocessing.DataSet
+                :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y values.
 
             process_results: bool
                 post processing of results
             metrics: str
                 only valid if process_results is True. The metrics to calculate.
-                Valid values are 'minimal', 'all', 'hydro_metrics'
+                Valid values are ``minimal``, 'all``, ``hydro_metrics``
             return_true: bool
                 whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
-            kwargs : any keyword argument for `predict` method.
+            kwargs : any keyword argument for ``predict`` method.
 
         Returns:
             An numpy array of predicted values.
             If return_true is True then a tuple of arrays. The first is true
-            and the second is predicted. If `x` is given but `y` is not given,
+            and the second is predicted. If ``x`` is given but ``y`` is not given,
             then, first array which is returned is None.
         """
 
@@ -1609,7 +1609,8 @@ class BaseModel(NN):
             kwargs['dpi'] = 300
 
         try:
-            keras.utils.plot_model(nn_model, to_file=os.path.join(self.path, "model.png"), show_shapes=True, **kwargs)
+            keras.utils.plot_model(nn_model, to_file=os.path.join(self.path, "model.png"), 
+                show_shapes=True, **kwargs)
         except (AssertionError, ImportError) as e:
             print(f"dot plot of model could not be plotted due to {e}")
         return
@@ -1849,7 +1850,8 @@ class BaseModel(NN):
                 config = config['config']
                 path = os.path.dirname(config_path)
         else:
-            assert isinstance(config, dict), f"config must be dictionary but it is of type {config.__class__.__name__}"
+            assert isinstance(config, dict), f"""
+                config must be dictionary but it is of type {config.__class__.__name__}"""
             path = config['path']
 
         # todo
@@ -1872,8 +1874,9 @@ class BaseModel(NN):
         """
         Updates the weights of the underlying model.
 
-        Arguments:
-            weight_file:
+        Parameters
+        ----------
+            weight_file : str, optional
                 complete path of weight file. If not given, the
                 weights are updated from model.w_path directory. For neural
                 network based models, the best weights are updated if more
@@ -2000,11 +2003,17 @@ class BaseModel(NN):
         The parameaters that needs to be optimized, must be given as space.
 
         Arguments:
-            data:
+            data :
                 It can be one of following
 
-                    - tuple of x,y pairs
-                    - a list of
+                    - raw unprepared data in the form of a numpy array or pandas dataframe
+                    - a tuple of x,y pairs
+                If it is unprepared data, it is passed to :py:class:`ai4water.preprocessing.DataSet`.
+                which prepares x,y pairs from it. The ``DataSet`` class also 
+                splits the data into training, validation and tests sets. If it 
+                is a tuple of x,y pairs, it is split into training and validation.
+                In both cases, the loss on validation set is used as objective function.
+                The loss calculated using ``val_metric``.
             algorithm:
                 the algorithm to use for optimization
             num_iterations:
@@ -2081,6 +2090,7 @@ class BaseModel(NN):
             y_transformations: Union[list, dict] = None,
             algorithm: str = "bayes",
             num_iterations: int = 12,
+            process_results: bool = True,
             update_config: bool = True
     ):
         """optimizes the transformations for the input/output features
@@ -2089,23 +2099,24 @@ class BaseModel(NN):
         function for optimization problem.
 
         Arguments:
-            data:
+            data :
                 It can be one of following
+
                     - raw unprepared data in the form of a numpy array or pandas dataframe
                     - a tuple of x,y pairs
-                If it is unprepared data, it is passed to :py:class:`ai4water.datasets.DataSet`.
+                If it is unprepared data, it is passed to :py:class:`ai4water.preprocessing.DataSet`.
                 which prepares x,y pairs from it. The ``DataSet`` class also 
                 splits the data into training, validation and tests sets. If it 
                 is a tuple of x,y pairs, it is split into training and validation.
                 In both cases, the loss on validation set is used as objective function.
                 The loss calculated using ``val_metric``.
-            transformations:
+            transformations :
                 the transformations to consider for input features. By default,
                 following transformations are considered for input features
 
                 - ``minmax`  rescale from 0 to 1
-                - `center`    center the data by subtracting mean from it
-                - `scale``     scale the data by dividing it with its standard deviation
+                - ``center``    center the data by subtracting mean from it
+                - ``scale``     scale the data by dividing it with its standard deviation
                 - ``zscore``    first performs centering and then scaling
                 - ``box-cox``
                 - ``yeo-johnson``
@@ -2147,6 +2158,8 @@ class BaseModel(NN):
                 The algorithm to use for optimizing transformations
             num_iterations: int
                 The number of iterations for optimizatino algorithm.
+            process_results :
+                whether to perform postprocessing of optimization results or not
             update_config: whether to update the config of model or not.
 
         Returns:
@@ -2213,6 +2226,7 @@ class BaseModel(NN):
             exclude=exclude,
             append=append,
             categories=categories,
+            process_results=process_results,
             data=data,
         ).fit()
 

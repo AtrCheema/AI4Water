@@ -4,7 +4,6 @@ import os
 import sys
 import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-print(ai4_dir, 'hereeee')
 site.addsitedir(ai4_dir)
 
 

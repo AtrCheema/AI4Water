@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import warnings
 from typing import Union, Tuple, List
 
@@ -38,8 +39,9 @@ SEP = os.sep
 
 # in order to unify the use of metrics
 Metrics = {
-    'regression': lambda t, p, multiclass=False: RegressionMetrics(t, p),
-    'classification': lambda t, p, multiclass=False: ClassificationMetrics(t, p, multiclass=multiclass)
+    'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(t, p, **kwargs),
+    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p, 
+        multiclass=multiclass, **kwargs)
 }
 
 
@@ -148,6 +150,19 @@ class Experiments(object):
     def num_samples(self, x):
         self._num_samples = x
 
+    def _reset(self):
+        self.trues_ = {'train': {},
+                      'test': {}}
+
+        self.simulations_ = {'train': {},
+                            'test': {}}
+
+        self.cv_scores_ = {}
+
+        self.config['eval_models'] = {}
+        self.config['optimized_models'] = {}
+        return
+
     def fit(
             self,
             data,
@@ -182,7 +197,7 @@ class Experiments(object):
                 name of models to included. If None, all the models found
                 will be trained and or optimized.
             exclude :
-                name of `models` to be excluded
+                name of ``models`` to be excluded
             cross_validate :
                 whether to cross validate the model or not. This
                 depends upon `cross_validator` agrument to the `Model`.
@@ -218,16 +233,7 @@ class Experiments(object):
 
         consider_exclude(exclude, self.models, include)
 
-        self.trues_ = {'train': {},
-                      'test': {}}
-
-        self.simulations_ = {'train': {},
-                            'test': {}}
-
-        self.cv_scores_ = {}
-
-        self.config['eval_models'] = {}
-        self.config['optimized_models'] = {}
+        self._reset()
 
         for model_type in include:
 
@@ -1240,7 +1246,9 @@ Available cases are {self.models} and you wanted to include
 
         vt, vp = self.model_.predict(data='validation', return_true=True)
 
-        metrics = Metrics[self.mode](vt, vp, multiclass=self.model_.is_multiclass)
+        metrics = Metrics[self.mode](vt, vp,
+            remove_zero=True, remove_neg=True,
+            multiclass=self.model_.is_multiclass)
 
         val_score = getattr(metrics, self.model_.val_metric)()
 
@@ -1248,6 +1256,10 @@ Available cases are {self.models} and you wanted to include
                                                 'r2_score', 'accuracy', 'f1_score']:
             val_score = 1.0 - val_score
         
+        if not math.isfinite(val_score):
+            val_score = 9999  # TODO, find a better way to handle this
+
+        print(f"val_score: {val_score}")
         return val_score
 
     def _predict(self):
