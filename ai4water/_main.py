@@ -2171,6 +2171,11 @@ class BaseModel(NN):
                 if k in self.config['ts_args']:
                     self.config['ts_args'][k] = v
 
+            # for ml models, we must build them again
+            # TODO, why not for DL models
+            if self.category == "ML":
+                self.build_ml_model()
+
         return _optimizer
 
     def optimize_transformations(
