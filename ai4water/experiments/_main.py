@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from easy_mpl.utils import process_axis
 from easy_mpl import bar_chart, taylor_plot
+from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
@@ -17,7 +18,6 @@ from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.utils.visualizations import init_subplots
 from ai4water.postprocessing import ProcessResults 
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 
 if tf is not None:

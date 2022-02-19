@@ -122,15 +122,15 @@ class TestClassifications(unittest.TestCase):
         return
 
     def test_binary_classification(self):
-    
+
         model = build_and_run_class_problem(2,
                                             'binary_crossentropy',
                                             model=make_dl_model(2))
-    
+
         assert model.is_binary
         assert not model.is_multiclass
         assert not model.is_multilabel
-    
+
         return
     
     def test_binary_cls_ml(self):
@@ -139,7 +139,7 @@ class TestClassifications(unittest.TestCase):
                       "XGBClassifier",
                       "CatBoostClassifier",
                       "LGBMClassifier"]:
-    
+
             model = build_and_run_class_problem(2,
                                                 'binary_crossentropy',
                                                 model=algo)
@@ -169,67 +169,67 @@ class TestClassifications(unittest.TestCase):
         model = build_and_run_class_problem(3,
                                             'binary_crossentropy',
                                             model=make_dl_model(3))
-    
+
         assert not model.is_binary
         assert model.is_multiclass
         assert not model.is_multilabel
-    
+
         return
-    
+
     def test_multilabel_classification(self):
-    
+
         model = build_and_run_class_problem(5,
                                             'binary_crossentropy',
                                             is_multilabel=True,
                                             model=make_dl_model(5)
                                             )
-    
+
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-    
+
         return
-    
+
     def test_multilabel_classification_with_categorical(self):
-    
+
         model = build_and_run_class_problem(5,
                                             'categorical_crossentropy',
                                             is_multilabel=True,
                                             model=make_dl_model(5)
                                             )
-    
+
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-    
+
         return
-    
+
     def test_multilabel_classification_with_binary_sigmoid(self):
-    
+
         model = build_and_run_class_problem(5,
                                             'binary_crossentropy',
                                             model=make_dl_model(5, "sigmoid"),
                                             is_multilabel=True)
-    
+
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-    
+
         return
-    
+
     def test_multilabel_classification_with_categorical_sigmoid(self):
-    
+
         model = build_and_run_class_problem(5,
                                             'categorical_crossentropy',
                                             make_dl_model(5, "sigmoid"),
                                             is_multilabel=True)
-    
+
         assert not model.is_binary
         assert not model.is_multiclass
         assert model.is_multilabel
-    
+
         return
-    
+
     def test_basic_multi_output(self):
         time.sleep(1)
         model = Model(
@@ -243,12 +243,12 @@ class TestClassifications(unittest.TestCase):
             train_fraction=0.8,
             shuffle=False
         )
-    
+
         model.fit(data=busan_beach(target=['blaTEM_coppml', 'tetx_coppml']))
         t,p = model.predict(data='test', return_true=True)
-    
+
         assert np.allclose(t[3:5, 1].reshape(-1,).tolist(), [14976057.52, 3279413.328])
-    
+
         for out in model.output_features:
             assert out in os.listdir(model.path)
         return

@@ -3,9 +3,8 @@ import copy
 import importlib
 from typing import Union
 
-import numpy as np
+from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from .postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config, TrainTestSplit
 
 

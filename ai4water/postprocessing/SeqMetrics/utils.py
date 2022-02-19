@@ -395,3 +395,11 @@ def list_subclass_methods(cls, is_narrow, ignore_underscore=True, additional_ign
         methods = set(cls for cls in methods if not cls.startswith('_'))
 
     return methods
+
+def msg(module, module_type="class"):
+    return f"""
+    {module} {module_type} has been moved to its own repository called SeqMetrics
+    Please install it using 'pip install SeqMetrics' and then import {module}
+    as
+    from SeqMetrics import {module}
+    """

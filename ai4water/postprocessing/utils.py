@@ -7,6 +7,7 @@ from easy_mpl import regplot
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
+from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.utils import dateandtime_now, ts_features, dict_to_file
@@ -340,7 +341,6 @@ class ProcessResults(Plot):
         predicted, true are arrays of shape (examples, outs, forecast_len).
         annotate_with : which value to write on regression plot
         """
-        from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
         metric_names = {'r2': "$R^2$"}
 
@@ -432,8 +432,6 @@ class ProcessResults(Plot):
         """post-processes classification results."""
         if user_defined_data:
             return
-
-        from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
 
         if self.is_multiclass:
             if len(predicted) == predicted.size:

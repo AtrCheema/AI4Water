@@ -40,7 +40,7 @@ class MLClassificationExperiments(Experiments):
             cases : dict, optional
             exp_name : str, optional
                 name of experiment
-            num_samples :
+            num_samples : int, optional
             **model_kwargs :
                 keyword arguments for :py:class:`ai4water.Model` class
         """

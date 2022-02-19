@@ -1,5 +1,6 @@
-"""SeqMetrics, the module to calculate performance related to tabular/structured and sequential data.
-The values in a sequence are not necessarily related.
+"""
+SeqMetrics has been moved to its own dedicated repository. This will save us
+many sleepless nights later.
 """
 
 from ._main import Metrics
