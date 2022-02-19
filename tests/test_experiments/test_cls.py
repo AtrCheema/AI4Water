@@ -25,10 +25,20 @@ def make_multiclass_classification(
     n_features,
     n_classes
 ):
+    input_features = [f'input_{n}' for n in range(n_features)]
+
     x = np.random.random((n_samples, n_features))
     y = np.random.randint(0, n_classes, size=(n_samples, 1))
-    return x, y
 
+    df = pd.DataFrame(
+        np.concatenate([x, y], axis=1),
+        columns=input_features + ['target']
+    )
+
+    return df, input_features
+
+
+data_multiclass, input_features_cls = make_multiclass_classification(100, 10, 5)
 
 class TestCls(unittest.TestCase):
 
@@ -42,6 +52,26 @@ class TestCls(unittest.TestCase):
         ]
                 )
         exp.compare_errors('accuracy', show=False)
+        return
+
+    def test_binary_cv(self):
+        """run MLClassificationExperiments for binary classification with optimization"""
+        exp = MLClassificationExperiments(
+            input_features=inputs,
+            output_features=outputs,
+            train_fraction=1.0,
+            val_fraction=0.3,
+            cross_validator = {"KFold": {"n_splits": 3}}
+        )
+
+        exp.fit(data=data,
+                exclude=[
+                    'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
+                ],
+                cross_validate=True,
+                )
+
+        exp.plot_cv_scores(show=False)
         return
 
     def test_binary_optimize(self):
@@ -68,25 +98,39 @@ class TestCls(unittest.TestCase):
     def test_multiclass(self):
         """multiclass classification"""
 
-        n_classes = 5
-        input_features = [f'input_{n}' for n in range(10)]
-        #outputs = [f'target_{n}' for n in range(n_classes)]
-        x, y = make_multiclass_classification(n_samples=100,
-                                              n_features=len(input_features),
-                                              n_classes=n_classes)
-        df = pd.DataFrame(
-            np.concatenate([x, y], axis=1),
-            columns=input_features + ['target']
+        exp = MLClassificationExperiments(
+            input_features=input_features_cls,
+            output_features=['target']
         )
 
-        exp = MLClassificationExperiments(input_features=inputs,
-                                    output_features=outputs)
-
-        exp.fit(data=data, exclude=[
+        exp.fit(data=data_multiclass,
+                exclude=[
             # giving nan predictions
             'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
         ]
                 )
+        return
+
+    def test_multiclass_cv(self):
+        """multiclass classification with cross validation"""
+
+        exp = MLClassificationExperiments(
+            input_features=input_features_cls,
+            cross_validator={"KFold": {"n_splits": 3}},
+            output_features=['target']
+        )
+
+        exp.fit(data=data_multiclass, exclude=[
+            # giving nan predictions
+            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
+            'NuSVC',  # ValueError: specified nu is infeasible
+        ],
+                cross_validate=True
+                )
+
+        exp.plot_cv_scores(show=False)
+
+        return
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,7 +7,7 @@ from typing import Union, Tuple, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from easy_mpl.utils import process_axis
+from easy_mpl import plot
 from easy_mpl import bar_chart, taylor_plot
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
@@ -23,7 +23,9 @@ from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
         from ai4water.functional import Model
-        print(f"Switching to functional API due to tensorflow version {tf.__version__} for experiments")
+        print(f"""
+        Switching to functional API due to tensorflow version {tf.__version__} 
+        for experiments""")
     else:
         from ai4water import Model
 else:
@@ -190,7 +192,7 @@ class Experiments(object):
                 hyperparameters of all the models will be optimized.
             opt_method :
                 which optimization method to use. options are ``bayes``,
-                ``random``, ``grid``. ONly valid if ``run_type`` is ``optimize``
+                ``random``, ``grid``. Only valid if ``run_type`` is ``optimize``
             num_iterations : number of iterations for optimization. Only valid
                 if ``run_type`` is ``optimize``.
             include :
@@ -209,6 +211,38 @@ class Experiments(object):
                 the best model.
             hpo_kws :
                 keyword arguments for :py:class:`ai4water.hyperopt.HyperOpt` class.
+
+        Examples
+        ---------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> exp = MLRegressionExperiments()
+        >>> exp.fit(data=busan_beach())
+
+        If you want to compare only RandomForest, XGBRegressor, CatBoostRegressor
+        and LGBMRegressor, use the ``include`` keyword
+
+        >>> exp.fit(data=busan_beach(), include=['RandomForestRegressor', 'XGBRegressor',
+        >>>    'CatBoostRegressor', 'LGBMRegressor'])
+
+        Similarly, if you want to exclude certain models from comparison, you can
+        use ``exclude`` keyword
+
+        >>> exp.fit(data=busan_beach(), exclude=["SGDRegressor"])
+
+        if you want to perform cross validation for each model, we must give
+        the ``cross_validator`` argument which will be passed to ai4water Model
+
+        >>> exp = MLRegressionExperiments(cross_validator={"KFold": {"n_splits": 10}})
+        >>> exp.fit(data=busan_beach(), cross_validate=True)
+
+        Setting ``cross_validate`` to True will populate `cv_scores_` dictionary
+        which can be accessed as ``exp.cv_scores_``
+
+        if you want to optimize the hyperparameters of each model,
+
+        >>> exp.fit(data=busan_beach(), run_type="optimize", num_iterations=20)
+
         """
         assert run_type in ['optimize', 'dry_run']
 
@@ -604,21 +638,23 @@ Available cases are {self.models} and you wanted to include
             matric_name:
                  performance matric whose value to plot for all the models
             cutoff_val:
-                 if provided, only those models will be plotted for whome the matric is greater/smaller
-                 than this value. This works in conjuction with `cutoff_type`.
+                 if provided, only those models will be plotted for whome the
+                 matric is greater/smaller than this value. This works in conjuction
+                 with `cutoff_type`.
             cutoff_type:
                  one of ``greater``, ``greater_equal``, ``less`` or ``less_equal``.
                  Criteria to determine cutoff_val. For example if we want to
-                 show only those models whose r2 is > 0.5, it will be 'max'.
+                 show only those models whose $R^2$ is > 0.5, it will be 'max'.
             save:
                 whether to save the plot or not
             sort_by:
-                either 'test' or 'train'. How to sort the results for plotting. If 'test', then test
-                performance matrics will be sorted otherwise train performance matrics will be sorted.
+                either ``test`` or ``train``. How to sort the results for plotting.
+                If 'test', then test performance matrics will be sorted otherwise
+                train performance matrics will be sorted.
             ignore_nans:
-                default True, if True, then performance matrics with nans are ignored otherwise
-                nans/empty bars will be shown to depict which models have resulted in nans for the given
-                performance matric.
+                default True, if True, then performance matrics with nans are ignored
+                otherwise nans/empty bars will be shown to depict which models have
+                resulted in nans for the given performance matric.
             name:
                 name of the saved file.
             show : whether to show the plot at the end or not?
@@ -700,7 +736,8 @@ Available cases are {self.models} and you wanted to include
             **kwargs
     ) -> plt.Axes:
         """
-        Plots the loss curves of the evaluated models.
+        Plots the loss curves of the evaluated models. This method is only available
+        if the models which are being compared are deep leanring mdoels.
 
         Arguments:
             loss_name:
@@ -746,7 +783,7 @@ Available cases are {self.models} and you wanted to include
         for _model, _loss in loss_curves.items():
             if _model.startswith('model_'):
                 _model = _model.split('model_')[1]
-            axis = process_axis(axis=axis, data=_loss, label=_model, **_kwargs)
+            axis = plot(_loss, axis=axis, label=_model, **_kwargs)
 
         if save:
             fname = os.path.join(self.exp_path, f'{name}_{loss_name}.png')
@@ -791,12 +828,13 @@ Available cases are {self.models} and you wanted to include
                 iterations = json.load(fp)
 
             convergence = sort_array(list(iterations.keys()))
-            process_axis(axis=axis,
-                         data=convergence,
-                         label=_model.split('model_')[1],
-                         linestyle='--',
-                         xlabel='Number of iterations $n$',
-                         ylabel=r"$\min f(x)$ after $n$ calls")
+            plot(
+                convergence,
+                ax=axis,
+                label=_model.split('model_')[1],
+                linestyle='--',
+                xlabel='Number of iterations $n$',
+                ylabel=r"$\min f(x)$ after $n$ calls")
         if save:
             fname = os.path.join(self.exp_path, f'{name}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
@@ -897,7 +935,8 @@ Available cases are {self.models} and you wanted to include
         This plot is only available if cross_validation was set to True during
         :py:meth:`ai4water.experiments.Experiments.fit`.
 
-        Arguments:
+        Arguments
+        ---------
             show : whether to show the plot or not
             name : name of the plot
             include : models to include
@@ -909,8 +948,17 @@ Available cases are {self.models} and you wanted to include
                 - figsize
                 - bbox_inches
 
-        Returns:
+        Returns
+        -------
             matplotlib axes if the figure is drawn otherwise None
+
+        Example
+        -------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> exp = MLRegressionExperiments(cross_validator={"KFold": {"n_splits": 10}})
+        >>> exp.fit(data=busan_beach(), cross_validate=True)
+        >>> exp.plot_cv_scores()
 
         """
         if len(self.cv_scores_) == 0:
@@ -1050,8 +1098,8 @@ Available cases are {self.models} and you wanted to include
                 - if dictionary, then the keys should be the names of algorithms/models
                     and values shoudl be the parameters for each model/algorithm to be
                     optimized.
-                - You can also set it to `all` consider all models available in ai4water's
-                    Experiment module.
+                - You can also set it to ``all`` consider all models available in
+                    ai4water's Experiment module.
                 - default is None, which means, the `tpot_config` argument will be None
 
             selection_criteria :
@@ -1059,8 +1107,8 @@ Available cases are {self.models} and you wanted to include
                 the models will be choosen. By default the models will be selected
                 based upon their mse values on test data.
             scoring : the performance metric to use for finding the pipeline.
-            tpot_args : any keyword argument for tpot's Regressor_
-                or Classifier_ class.
+            tpot_args :
+                any keyword argument for tpot's Regressor_ or Classifier_ class.
                 This can include arguments like ``generations``, ``population_size`` etc.
 
         Returns
