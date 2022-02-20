@@ -1381,6 +1381,20 @@ class BaseModel(NN):
 
         x, y, _, _, _ = self._fetch_data(source, x, y, data)
 
+        if len(x) == 0 and source == "test":
+            warnings.warn("No test data found. using validation data instead",
+                          UserWarning)
+            data = "validation"
+            source = data
+            x, y, _, _, _ = self._fetch_data(source=source, x=x, y=y, data=data)
+
+            if len(x) == 0:
+                warnings.warn("No test and validation data found. using training data instead",
+                              UserWarning)
+                data = "training"
+                source = data
+                x, y, _, _, _ = self._fetch_data(source=source, x=x, y=y, data=data)
+
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
         if metrics is not None:
@@ -1627,14 +1641,14 @@ class BaseModel(NN):
                         self.config['mode'] = "regression"
 
                 if self.mode == 'regression':
-                    pp.process_regres_results(true_outputs,
+                    pp.process_rgr_results(true_outputs,
                                                 predicted,
                                                 metrics=metrics,
                                                 prefix=prefix + '_',
                                                 index=dt_index,
                                                 user_defined_data=user_defined_data)
                 else:
-                    pp.process_class_results(true_outputs,
+                    pp.process_cls_results(true_outputs,
                                                predicted,
                                                metrics=metrics,
                                                prefix=prefix,

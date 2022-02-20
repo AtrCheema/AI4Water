@@ -326,7 +326,7 @@ class ProcessResults(Plot):
         self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
         return
 
-    def process_regres_results(
+    def process_rgr_results(
             self,
             true: np.ndarray,
             predicted: np.ndarray,
@@ -389,13 +389,13 @@ class ProcessResults(Plot):
 
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
-                fname = prefix + out + '_' + str(h) + dateandtime_now() + ".csv"
+                fname = f"{prefix + out}_{h}.csv"
                 df.to_csv(os.path.join(fpath, fname), index_label='index')
 
                 annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
                 self.plot_results(t,
                                   p,
-                                  name=prefix + out + '_' + str(h),
+                                  name=fname,
                                   where=out,
                                   annotation_key=metric_names.get(annotate_with, annotate_with),
                                   annotation_val=annotation_val,
@@ -420,7 +420,7 @@ class ProcessResults(Plot):
                 self.horizon_plots(horizon_errors, f'{prefix}_{out}_horizons.png')
         return
 
-    def process_class_results(
+    def process_cls_results(
             self,
             true: np.ndarray,
             predicted: np.ndarray,
