@@ -17,6 +17,7 @@ import joblib  # since sklearn is required, this will automatically come in
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
+from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 try:
     from scipy.stats import median_abs_deviation as mad
@@ -172,17 +173,15 @@ class BaseModel(NN):
                 performance metric to be used for validation/cross_validation.
                 This metric will be used for hyper-parameter optimizationa and
                 experiment comparison. If not defined then
-                r2_score :py:meth:`ai4water.postprocessing.SeqMetrics.RegressionMetrics.r2_score`
-                will be used for regression and
-                accuracy :py:meth:`ai4water.postprocessing.SeqMetrics.ClassificationMetrics.accuracy`
-                will be used for classification.
+                r2_score_ will be used for regression and accuracy_ will be used
+                for classification.
             cross_validator : dict
                 selects the type of cross validation to be applied. It can be any
                 cross validator from sklear.model_selection. Default is None, which
                 means validation will be done using `validation_data`. To use
                 kfold cross validation,
 
-                >>> cross_validator = {'kfold': {'n_splits': 5}}
+                >>> cross_validator = {'KFold': {'n_splits': 5}}
 
             batches : str
                 either `2d` or 3d`.
@@ -253,6 +252,15 @@ class BaseModel(NN):
 
         .. _see:
             https://ai4water.readthedocs.io/en/latest/build_dl_models/
+
+        .. _RegressionMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/rgr.html#regressionmetrics
+
+        .. _r2_score:
+            https://seqmetrics.readthedocs.io/en/latest/rgr.html#SeqMetrics.RegressionMetrics.r2_score
+
+        .. _accuracy:
+            https://seqmetrics.readthedocs.io/en/latest/cls.html#SeqMetrics.ClassificationMetrics.accuracy
         """
         if self._go_up:
             maker = make_model(
@@ -1136,7 +1144,6 @@ class BaseModel(NN):
             Currently not working for deep learning models.
 
         """
-        from ai4water.postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 
         if self.mode == "classification":
             Metrics = ClassificationMetrics
@@ -1307,9 +1314,8 @@ class BaseModel(NN):
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
-                name from RegressionMetrics :py:class:`ai4water.postprocessing.SeqMetrics.RegressionMetrics`
-                or ClassificationMetrics :py:class:`ai4water.postprocessing.SeqMetrics.ClassificationMetrics`
-                can be given. It can also be name of group of metrics to evaluate.
+                name from RegressionMetrics_ or ClassificationMetrics_ can be given.
+                It can also be name of group of metrics to evaluate.
                 Following groups are available
 
                     - `minimal`
@@ -1340,8 +1346,7 @@ class BaseModel(NN):
             ... #for evaluation on training data
             >>> model.evaluate(data='training')
 
-            evaluate on any metric from Metrics :py:class:`ai4water.postprocessing.SeqMetrics.RegressionMetrics`
-            module
+            evaluate on any metric from SeqMetrics_ library
 
             >>> model.evaluate(metrics='pbias')
             ...
@@ -1356,6 +1361,15 @@ class BaseModel(NN):
 
             >>> model.evaluate(x, y=y)
             >>> model.evaluate(x=x, y=y)
+
+        .. _SeqMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/index.html
+
+        .. _RegressionMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/rgr.html#regressionmetrics
+
+        .. _ClassificationMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/cls.html#classificationmetrics
         """
         return self.call_evaluate(x=x, y=y, data=data, **kwargs)
 
@@ -1366,6 +1380,20 @@ class BaseModel(NN):
             source = data
 
         x, y, _, _, _ = self._fetch_data(source, x, y, data)
+
+        if len(x) == 0 and source == "test":
+            warnings.warn("No test data found. using validation data instead",
+                          UserWarning)
+            data = "validation"
+            source = data
+            x, y, _, _, _ = self._fetch_data(source=source, data=data)
+
+            if len(x) == 0:
+                warnings.warn("No test and validation data found. using training data instead",
+                              UserWarning)
+                data = "training"
+                source = data
+                x, y, _, _, _ = self._fetch_data(source=source, x=x, y=y, data=data)
 
         # dont' make call to underlying evaluate function rather manually
         # evaluate the given metrics
@@ -1388,12 +1416,9 @@ class BaseModel(NN):
         p = self.predict(x=x, return_true=False, process_results=False)
 
         if self.mode == "regression":
-            from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+
             errs = RegressionMetrics(y, p)
         else:
-            if p.size == len(p):  # todo, this should be done in ClassificationMetrics
-                p = p.reshape(-1, 1)
-            from ai4water.postprocessing.SeqMetrics import ClassificationMetrics
             errs = ClassificationMetrics(y, p, multiclass=self.is_multiclass)
 
         if isinstance(metrics, str):
@@ -1616,14 +1641,14 @@ class BaseModel(NN):
                         self.config['mode'] = "regression"
 
                 if self.mode == 'regression':
-                    pp.process_regres_results(true_outputs,
+                    pp.process_rgr_results(true_outputs,
                                                 predicted,
                                                 metrics=metrics,
                                                 prefix=prefix + '_',
                                                 index=dt_index,
                                                 user_defined_data=user_defined_data)
                 else:
-                    pp.process_class_results(true_outputs,
+                    pp.process_cls_results(true_outputs,
                                                predicted,
                                                metrics=metrics,
                                                prefix=prefix,
@@ -2159,6 +2184,11 @@ class BaseModel(NN):
             for k,v in _optimizer.best_paras().items():
                 if k in self.config['ts_args']:
                     self.config['ts_args'][k] = v
+
+            # for ml models, we must build them again
+            # TODO, why not for DL models
+            if self.category == "ML":
+                self.build_ml_model()
 
         return _optimizer
 

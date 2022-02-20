@@ -1,13 +1,19 @@
 import gc
 import copy
+import math
 import importlib
 from typing import Union
 
-import numpy as np
+from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from .postprocessing.SeqMetrics import RegressionMetrics, ClassificationMetrics
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config, TrainTestSplit
 
+
+DEFAULTS = {
+    'r2': 1.0,
+    'nse': 1.0,
+    'r2_score': 1.0
+}
 
 class ModelOptimizerMixIn(object):
 
@@ -103,6 +109,9 @@ class ModelOptimizerMixIn(object):
 
             if metric_type != "min":
                 val_score = 1.0 - val_score
+
+            if not math.isfinite(val_score):
+                val_score = DEFAULTS.get(val_metric, 1.0)
 
             print("{:<15} {:<20.5f} {:<20.5f}".format(self.iter, val_score, orig_val_score))
             self.iter += 1

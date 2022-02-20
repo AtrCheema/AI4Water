@@ -87,6 +87,10 @@ class TestExperiments(unittest.TestCase):
                                                      'XGBRFRegressor'])
         comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor',
                                                         'XGBRFRegressor'])
+
+        sorted_models = comparisons.sort_models_by_metric('r2')
+        assert isinstance(sorted_models, dict)
+
         return
 
     def test_from_config(self):

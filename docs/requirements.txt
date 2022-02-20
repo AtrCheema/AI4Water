@@ -15,3 +15,4 @@ plotly
 tensorflow
 torch
 easy_mpl
+SeqMetrics

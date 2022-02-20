@@ -145,7 +145,7 @@ class HyperOpt(object):
         >>> from ai4water import Model
         >>> from ai4water.hyperopt import HyperOpt, Categorical, Integer, Real
         >>> from ai4water.datasets import busan_beach
-        >>> from ai4water.postprocessing.SeqMetrics import RegressionMetrics
+        >>> from SeqMetrics import RegressionMetrics
         >>> data = busan_beach()
         >>> input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'pcp3_mm']
         >>> output_features = ['tetx_coppml']

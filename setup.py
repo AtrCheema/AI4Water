@@ -20,7 +20,8 @@ min_requirements = [
     'joblib',
     'requests',
     'plotly',
-    'easy_mpl>=0.20.3'
+    'easy_mpl>=0.20.3',
+    'SeqMetrics>=1.3.2'
     ]
 
 extra_requires = [
@@ -52,32 +53,38 @@ extra_requires = [
 ]
 
 tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
-               'matplotlib', 'scikit-learn']
+               'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.2']
 
 tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
-                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna']
+                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
+                   'SeqMetrics>=1.3.2']
 
 torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn']
+                  'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.2']
 
 torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
-                  'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna']
+                  'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
+                      'SeqMetrics>=1.3.2']
 
-ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost'
-               'lightgbm', 'easy_mpl>=0.20.3']
+ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
+               'lightgbm', 'easy_mpl>=0.20.3', 'SeqMetrics>=1.3.2']
 
-ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost'
-               'lightgbm', 'easy_mpl>=0.20.3', 'hyperopt', 'scikit-optimize', 'optuna']
+ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
+               'lightgbm', 'easy_mpl>=0.20.3', 'hyperopt', 'scikit-optimize', 'optuna',
+                   'SeqMetrics>=1.3.2']
 
-hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize']
-post_process_requirements = ['lime', 'shap']
+hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize', 'SeqMetrics>=1.3.2']
+
+post_process_requirements = ['lime', 'shap', 'SeqMetrics>=1.3.2']
+
 exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     'tpot',
                     'optuna', 'hyperopt', 'scikit-optimize',
-                    'h5py<2.11.0'
+                    'h5py<2.11.0', 'SeqMetrics>=1.3.2'
                     ]
-pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp']
-eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.3']
+pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', 'SeqMetrics>=1.3.2']
+
+eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.3', 'SeqMetrics>=1.3.2']
 
 all_requirements = min_requirements + extra_requires
 
@@ -85,7 +92,7 @@ setup(
 
     name='AI4Water',
 
-    version="1.0b2",
+    version="1.0b3",
 
     description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,

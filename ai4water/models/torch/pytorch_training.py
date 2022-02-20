@@ -4,6 +4,7 @@ from typing import Union
 import numpy as np
 import matplotlib.pyplot as plt
 from easy_mpl import regplot
+from SeqMetrics import RegressionMetrics
 
 try:
     import wandb
@@ -27,7 +28,6 @@ else:
     LOSSES = {}
 
 from ai4water.utils.utils import dateandtime_now, find_best_weight
-from ai4water.postprocessing.SeqMetrics import RegressionMetrics
 
 F = {
     'mse': [np.nanmin, np.less],

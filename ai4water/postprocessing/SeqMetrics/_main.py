@@ -5,6 +5,8 @@ from typing import Union
 
 from ai4water.utils.utils import ts_features
 
+from .utils import msg
+
 
 # TODO remove repeated calculation of mse, std, mean etc
 # TODO make weights, class attribute
@@ -40,6 +42,7 @@ EPS = 1e-10  # epsilon
 
 
 class Metrics(object):
+    warnings.warn(msg("Metrics"), UserWarning)
     """
     This class does some pre-processign and handles metadata regaring true and
     predicted arrays.

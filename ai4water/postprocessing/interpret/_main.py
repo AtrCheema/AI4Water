@@ -18,8 +18,10 @@ class Interpret(Plot):
 
     def __init__(self, model):
         """
-        Arguments:
-            model : an instance of ai4water's Model
+        Arguments
+        ---------
+            model :
+                an instance of ai4water's Model
         """
         self.model = model
 
@@ -255,36 +257,42 @@ class Interpret(Plot):
 
     def tft_attention_components(
             self,
-            model=None,
             data='test'
-    ) -> dict:
+    ):
         """
         Gets attention components of tft layer from ai4water's Model.
 
         Arguments:
-            model : a ai4water's Model instance.
             data : the data to use to calculate attention components
 
-        Returns:
+        Returns
+        -------
+        dict
             dictionary containing attention components of tft as numpy arrays.
             Following four attention components are present in the dictionary
                 - decoder_self_attn: (attention_heads, ?, total_time_steps, 22)
                 - static_variable_selection_weights:
                 - encoder_variable_selection_weights: (?, encoder_steps, input_features)
                 - decoder_variable_selection_weights: (?, decoder_steps, input_features)
+        str
+            a string indicating which data was used
         """
-        if model is None:
-            model = self.model
 
-        maybe_create_path(model.path)
+        maybe_create_path(self.model.path)
 
-        x, _, = getattr(model, f'{data}_data')()
+        x, _, = getattr(self.model, f'{data}_data')()
 
-        attentions = model.TemporalFusionTransformer_attentions
-        if model.api == 'subclassing':
-            inputs = model.inputs
+        if len(x) == 0 and data == "test":
+            warnings.warn("No test data found. using validation data instead",
+                          UserWarning)
+            data = 'validation'
+            x, _, = getattr(self.model, f'{data}_data')()
+
+        attentions = self.model.TemporalFusionTransformer_attentions
+        if self.model.api == 'subclassing':
+            inputs = self.model.inputs
         else:
-            inputs = model._model.inputs
+            inputs = self.model._model.inputs
 
         attention_components = {}
 
@@ -293,33 +301,44 @@ class Interpret(Plot):
                 temp_model = tf.keras.Model(inputs=inputs,
                                             outputs=v)
                 attention_components[k] = temp_model.predict(x=x, verbose=1, steps=1)
-        return attention_components
+
+        return attention_components, data
+
+    def get_enc_var_selection_weights(self, data='test'):
+        """Returns encoder variable selection weights of TFT model"""
+
+        mpl.rcParams.update(mpl.rcParamsDefault)
+
+        ac, data = self.tft_attention_components(data=data)
+        return ac['encoder_variable_selection_weights']
+
 
     def interpret_example_tft(self, example_index, model=None, data='test',
                               show=False):
         """interprets a single example using TFT model.
 
-        Arguments:
-            example_index : index of example to be explained
-            model : the ai4water model
-            data : the data whose example to interpret.
-            show : whether to show the plot or not
+        Parameters
+        ---------
+            example_index :
+                index of example to be explained
+            model : t
+                he ai4water model
+            data :
+                the data whose example to interpret.
+            show :
+                whether to show the plot or not
         """
-        model = model or self.model
-
         if isinstance(data, str):
             assert data in ("training", "test", "validation")
             data_name = data
         else:
             data_name = "data"
-        mpl.rcParams.update(mpl.rcParamsDefault)
 
-        ac = self.tft_attention_components(model=model, data=data)
-        encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
+        enc_var_selection_weights = self.get_enc_var_selection_weights(data=data)
 
         plt.close('all')
 
-        axis, im = imshow(encoder_variable_selection_weights[example_index],
+        axis, im = imshow(enc_var_selection_weights[example_index],
                           aspect="auto",
                           ylabel="lookback steps",
                           title=example_index,
@@ -334,19 +353,18 @@ class Interpret(Plot):
             plt.show()
         return
 
-    def interpret_tft(self, model=None, data="test"):
+    def interpret_tft(self, data="test"):
         """global interpretation of TFT model.
 
         Arguments:
-            model : the ai4water Model
             data : the data to use to interpret model
         """
-        model = model or self.model
 
         true, predictions = model.predict(data=data, return_true=True,
                                           process_results=False)
 
-        ac = self.tft_attention_components(model=model, data=data)
+        ac, data = self.tft_attention_components(data=data)
+
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
 
         train_x, train_y = getattr(model, f'{data}_data')()

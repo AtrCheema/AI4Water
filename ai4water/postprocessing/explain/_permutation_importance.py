@@ -5,6 +5,7 @@ import numpy as np
 from easy_mpl import imshow
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 from ._explain import ExplainerMixin
 from ai4water.utils.utils import reset_seed, ERROR_LABELS
@@ -66,11 +67,9 @@ class PermutationImportance(ExplainerMixin):
                 the true outputs or labels for corresponding `inputs`
                 It must be a numpy array
             scoring:
-                the peformance metric to use. It can be any metric from
-                :py:class:`ai4water.postprocessing.SeqMetrics.RegressionMetrics`, or
-                :py:class:`ai4water.postprocessing.SeqMetrics.ClassificationMetrics`
-                or a callable. If callable, then this must take true and predicted
-                as input and sprout a float as output
+                the peformance metric to use. It can be any metric from RegressionMetrics_ or
+                ClassificationMetrics_ or a callable. If callable, then this must take
+                true and predicted as input and sprout a float as output
             n_repeats:
                 number of times the permutation for each feature is performed. Number
                 of calls to the `model` will be `num_features * n_repeats`
@@ -93,6 +92,13 @@ class PermutationImportance(ExplainerMixin):
 
         .. _name:
             https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions
+
+        .. _RegressionMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/rgr.html#regressionmetrics
+
+        .. _ClassificationMetrics:
+            https://seqmetrics.readthedocs.io/en/latest/cls.html#classificationmetrics
+
         """
         assert callable(model), f"model must be callable"
         self.model = model
@@ -142,7 +148,6 @@ class PermutationImportance(ExplainerMixin):
 
     def _score(self, pred) -> float:
         """given the prediction, it calculates the score"""
-        from ..SeqMetrics import RegressionMetrics, ClassificationMetrics
 
         if callable(self.scoring):
             return self.scoring(self.y, pred)

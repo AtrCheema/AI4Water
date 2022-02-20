@@ -406,6 +406,38 @@ class TestOptimizeHyperparas(unittest.TestCase):
         assert model.config['ts_args']['lookback'] == optimizer.best_paras()['lookback']
         return
 
+    def test_reproducibility(self):
+
+        num_samples = 10
+
+        model = Model(
+            model={"HistGradientBoostingRegressor":
+                {"min_samples_leaf": Integer(low=5, high=100, name="min_samples_leaf", num_samples=num_samples),
+                "max_iter": Integer(low=50, high=500, name='max_iter', num_samples=num_samples),
+                "learning_rate": Real(low=0.05, high=0.95, name="learning_rate", num_samples=num_samples),
+                "max_leaf_nodes": Integer(low=5, high=100, name="max_leaf_nodes", num_samples=num_samples),
+                "max_depth": Integer(low=5, high=500, name="max_depth", num_samples=num_samples),
+                },
+            },
+            input_features=input_features[0:3],
+            output_features=output_features,
+            split_random=True,
+            seed=891,
+            train_fraction=1.0,
+            val_fraction=0.3,
+            val_metric="r2",
+            verbosity=0
+
+        )
+
+        optimizer = model.optimize_hyperparameters(data=data, num_iterations=30)
+
+        best_val_score = float(list(optimizer.best_xy().keys())[0].split('_')[0])
+        model.fit()
+        val_metric_post_train = model.evaluate(data='validation', metrics='r2')
+        self.assertAlmostEqual(val_metric_post_train, 1.0 - best_val_score, places=2)
+        return
+
 
 class TestOptimizeTransformationReproducibility(unittest.TestCase):
     """The model trained with with optimized transformations should
@@ -424,7 +456,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             split_random=True,
             verbosity=0
             )
-        
+
         optimizer = model.optimize_transformations(
             include=[],
             y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
@@ -458,7 +490,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
                 seed=57420,
                 split_random=True,
                 verbosity=0)
-            
+
             optimizer = model.optimize_transformations(
                 include=[],
                 y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
@@ -485,7 +517,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             input_features=input_features,
             output_features=output_features,
             verbosity=0)
-        
+
         optimizer = model.optimize_transformations(
             include=[],
             y_transformations=['log', 'log2', 'sqrt', 'none', 'log10'],
@@ -510,7 +542,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             output_features=output_features,
             verbosity=0
             )
-        
+
         optimizer = model.optimize_transformations(
             transformations=['log', 'log2', 'sqrt', 'none', 'log10',
                 'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
@@ -542,7 +574,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             split_random=True,
             verbosity=0
             )
-        
+
         optimizer = model.optimize_transformations(
             transformations=['log', 'log2', 'sqrt', 'none', 'log10',
                 'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],
@@ -574,7 +606,7 @@ class TestOptimizeTransformationReproducibility(unittest.TestCase):
             split_random=True,
             verbosity=0
             )
-        
+
         optimizer = model.optimize_transformations(
             transformations=['log', 'log2', 'sqrt', 'none', 'log10',
                 'minmax', 'scale', 'center', 'zscore', 'robust', 'box-cox'],

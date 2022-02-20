@@ -6,7 +6,7 @@ from typing import Union
 from scipy.stats import gmean, kendalltau
 import numpy as np
 
-from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods
+from .utils import _geometric_mean, _mean_tweedie_deviance, _foo, list_subclass_methods, msg
 from ._main import Metrics, EPS
 
 
@@ -22,6 +22,7 @@ class RegressionMetrics(Metrics):
         >>>errors = RegressionMetrics(t,p)
         >>>all_errors = errors.calculate_all()
     """
+    warnings.warn(msg("RegressionMetrics"), UserWarning)
 
     def __init__(self, *args, **kwargs):
         """

@@ -34,3 +34,4 @@ psutil
 SHAP
 
 easy_mpl>=0.20.3
+SeqMetrics>=1.3.2
