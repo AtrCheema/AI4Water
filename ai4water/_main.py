@@ -1386,7 +1386,7 @@ class BaseModel(NN):
                           UserWarning)
             data = "validation"
             source = data
-            x, y, _, _, _ = self._fetch_data(source=source, x=x, y=y, data=data)
+            x, y, _, _, _ = self._fetch_data(source=source, data=data)
 
             if len(x) == 0:
                 warnings.warn("No test and validation data found. using training data instead",
