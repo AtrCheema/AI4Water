@@ -1,6 +1,9 @@
 Performance Metrics
 *******************
 
+Please note that the `SeqMetrics` sub-module has been deprecated. 
+Please use `SeqMetrics <SeqMetrics.readthedocs.io>`_ library instead.
+
 SeqMetrics
 =========
 .. autoclass:: ai4water.postprocessing.SeqMetrics.Metrics

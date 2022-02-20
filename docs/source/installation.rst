@@ -7,6 +7,13 @@ The most easy way to install ai4water is using ``pip``
 ::
     pip install ai4water
 
+If you are interested in using only specific module of ai4water, you can
+choose to install dependencies related to that module only. For example
+to use only machine learning based models use can use ``ml`` option as Following
+::
+    pip install ai4water[ml]
+
+For list of all options see :ref:`installation_options` options
 
 using github link
 =================
@@ -23,11 +30,12 @@ To install the latest branch (`dev`) with all requirements use ``all`` keyword
     python -m pip install "AI4Water[all] @ git+https://github.com/AtrCheema/AI4Water.git@dev"
 
 using setup.py file
-=================
+===================
 go to folder where repository is downloaded
 ::
     python setup.py install
 
+.. _installation_options:
 
 installation options
 =====================

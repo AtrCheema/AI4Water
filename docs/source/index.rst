@@ -32,6 +32,7 @@ AI4Water v1.0: An open source python package for modeling hydrological time seri
 
 https://doi.org/10.5194/gmd-2021-139
 
+If you use ai4water in your research, consider citing it using following
 BibTeX entry
 ::
     @article{atr2022GMD,
