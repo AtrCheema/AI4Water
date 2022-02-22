@@ -1,7 +1,6 @@
 import os
 import json
 import math
-import warnings
 from typing import Union, Tuple, List
 
 import numpy as np
@@ -46,6 +45,13 @@ Metrics = {
         multiclass=multiclass, **kwargs)
 }
 
+Monitor = {
+    'regression': ['r2', 'corr_coeff', 'mse', 'rmse', 'r2_score',
+                'nse', 'kge', 'mape', 'pbias', 'bias', 'mae', 'nrmse',
+                'mase'],
+
+    'classification': ['accuracy', 'precision', 'recall', 'mse']
+}
 
 class Experiments(object):
     """
@@ -62,8 +68,7 @@ class Experiments(object):
 
     Attributes
     ------------
-    - simulations_
-    - trues_
+    - metrics
     - exp_path
     - model_
     - models
@@ -83,19 +88,28 @@ class Experiments(object):
             exp_name: str = None,
             num_samples: int = 5,
             verbosity: int = 1,
+            monitor: Union[str, list] = None,
     ):
         """
 
-        Arguments:
-            cases:
+        Arguments
+        ---------
+            cases :
                 python dictionary defining different cases/scenarios
-            exp_name:
+            exp_name :
                 name of experiment, used to define path in which results are saved
-            num_samples:
+            num_samples :
                 only relevent when you wan to optimize hyperparameters of models
-                using `grid` method
-            verbosity:
+                using ``grid`` method
+            verbosity : bool, optional
                 determines the amount of information
+            monitor : str, list, optional
+                list of performance metrics to monitor. It can be any performance
+                metric `SeqMetrics_ <https://seqmetrics.readthedocs.io>` library.
+                By default ``r2``, ``corr_coeff, ``mse``, ``rmse``, ``r2_score``,
+                ``nse``, ``kge``, ``mape``, ``pbias``, ``bias`` ``mae``, ``nrmse``
+                ``mase`` are considered for regression and ``accuracy``, ``precision``
+                ``recall`` are considered for classification.
         """
         self.opt_results = None
         self.optimizer = None
@@ -116,6 +130,9 @@ class Experiments(object):
 
         self.update_config(models=self.models, exp_path=self.exp_path,
             exp_name=self.exp_name, cases=self.cases)
+
+        if monitor is None:
+            self.monitor = Monitor[self.mode]
 
     def update_and_save_config(self, **kwargs):
         self.update_config(**kwargs)
@@ -153,16 +170,15 @@ class Experiments(object):
         self._num_samples = x
 
     def _reset(self):
-        self.trues_ = {'train': {},
-                      'test': {}}
-
-        self.simulations_ = {'train': {},
-                            'test': {}}
 
         self.cv_scores_ = {}
 
         self.config['eval_models'] = {}
         self.config['optimized_models'] = {}
+
+        self.metrics = {}
+        self.features = {}
+
         return
 
     def fit(
@@ -341,6 +357,10 @@ class Experiments(object):
                     setattr(self, '_cv_scoring', cv_scoring)
 
         self.save_config()
+
+        save_json_file(os.path.join(self.exp_path, 'features.json'), self.features)
+        save_json_file(os.path.join(self.exp_path, 'metrics.json'), self.metrics)
+
         return
 
     def eval_best(self, data, model_type, opt_dir, **kwargs):
@@ -388,14 +408,37 @@ class Experiments(object):
         if not model_type.startswith('model_'):  # internally we always use model_ at the start.
             model_type = f'model_{model_type}'
 
-        # it is possible that different models slightly differ in the number of examples
-        # in training/test sets for example if `lookback` is different, thus trues_ and simulations_
-        # must be saved for each model.
-        self.trues_['train'][model_type] = train_results[0]
-        self.trues_['test'][model_type] = test_results[0]
+        # save standard deviation on true and predicted arrays of train and test
+        self.features[model_type] = {
+            'train': {
+                'true': {
+                    'std': np.std(train_results[0])},
+                'simulation':{
+                    'std': np.std(train_results[1])}},
 
-        self.simulations_['train'][model_type] = train_results[1]
-        self.simulations_['test'][model_type] = test_results[1]
+            'test': {
+                'true': {
+                    'std': np.std(test_results[0])},
+                'simulation': {
+                    'std': np.std(test_results[1])}}}
+
+        # save performance metrics of train and test
+        metrics = Metrics[self.mode](train_results[0],
+                                     train_results[1],
+                                     multiclass=self.model_.is_multiclass)
+        train_metrics = {}
+        for metric in self.monitor:
+            train_metrics[metric] = getattr(metrics, metric)()
+
+        metrics = Metrics[self.mode](test_results[0],
+                                     test_results[1],
+                                     multiclass=self.model_.is_multiclass)
+        test_metrics = {}
+        for metric in self.monitor:
+            test_metrics[metric] = getattr(metrics, metric)()
+
+        self.metrics[model_type] = {'train': train_metrics,
+                                    'test': test_metrics}
         return
 
     def taylor_plot(
@@ -404,35 +447,46 @@ class Experiments(object):
             exclude: Union[None, list] = None,
             figsize: tuple = (9, 7),
             **kwargs
-    ):
+    )->plt.Figure:
         """
-        Compares the models using [taylor plot][ai4water.utils.taylor_plot].
+        Compares the models using taylor_plot_.
 
-        Arguments:
-            include :
+        Parameters
+        ----------
+            include : str, list, optional
                 if not None, must be a list of models which will be included.
                 None will result in plotting all the models.
-            exclude :
+            exclude : str, list, optional
                 if not None, must be a list of models which will excluded.
                 None will result in no exclusion
-            figsize :
-            kwargs :  all the keyword arguments for [taylor_plot][ai4water.utils.taylor_plot] function.
+            figsize : tuple, optional
+            **kwargs :
+                all the keyword arguments for taylor_plot_ function.
+
+        Returns
+        -------
+        plt.Figure
+
+        Example
+        -------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
+        >>> inputs = list(data.columns)[0:-1]
+        >>> outputs = list(data.columns)[-1]
+        >>> experiment = MLRegressionExperiments(input_features=inputs, output_features=outputs)
+        >>> experiment.fit(data=data)
+        >>> experiment.taylor_plot()
+
+        .. _taylor_plot:
+            https://easy-mpl.readthedocs.io/en/latest/#module-10
         """
+        metrics = self.metrics.copy()
 
         include = self._check_include_arg(include)
-        simulations = {'train': {},
-                       'test': {}}
-        for m in include:
-            if m in self.simulations_['train']:
-                simulations['train'][m.split('model_')[1]] = self.simulations_['train'][m]
-                simulations['test'][m.split('model_')[1]] = self.simulations_['test'][m]
 
         if exclude is not None:
-            consider_exclude(exclude, self.models)
-
-            for m in exclude:
-                simulations['train'].pop(m[0])
-                simulations['test'].pop(m[0])
+            consider_exclude(exclude, self.models, metrics)
 
         if 'name' in kwargs:
             fname = kwargs.pop('name')
@@ -440,43 +494,39 @@ class Experiments(object):
             fname = 'taylor'
         fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{fname}.png')
 
-        train_lenths = [len(self.trues_['train'][obj]) for obj in self.trues_['train']]
-        if not len(set(train_lenths)) <= 1:
-            warnings.warn(f'{train_lenths}')
+        train_std = [_model['train']['true']['std'] for _model in self.features.values()]
+        train_std = list(set(train_std))[0]
+        test_std = [_model['test']['true']['std'] for _model in self.features.values()]
+        test_std = list(set(test_std))[0]
 
-            trues = {'train': None, 'test': None}
-            for k, v in self.trues_.items():
+        observations = {'train': {'std': train_std},
+                        'test': {'std': test_std}}
 
-                for _k, _v in v.items():
+        simulations = {'train': None, 'test': None}
 
-                    trues[k] = {'std': np.std(_v)}
+        for scen in ['train', 'test']:
 
-            _simulations = {'train': {}, 'test': {}}
-            for scen, v in simulations.items():
+            scen_stats = {}
+            for model, _metrics in metrics.items():
+                model_stats = {'std': self.features[model][scen]['simulation']['std'],
+                               'corr_coeff': _metrics[scen]['corr_coeff'],
+                               'pbias': _metrics[scen]['pbias']
+                               }
 
-                for (_tk, _tv), (_pk, _pv) in zip(self.trues_[scen].items(), simulations[scen].items()):
+                if model in include:
+                    key = model[6:] if model.startswith('model_') else model
+                    key = key[0:-9] if key.endswith("Regressor") else key
+                    scen_stats[key] = model_stats
 
-                    _simulations[scen][_pk] = {
-                        'std': np.std(_pv),
-                        'corr_coeff': RegressionMetrics(_tv, _pv).corr_coeff(),
-                        'pbias': RegressionMetrics(_tv, _pv).pbias()
-                    }
-        else:
-            trues = {'train': None, 'test': None}
-            for k, v in self.trues_.items():
+            simulations[scen] = scen_stats
 
-                for idx, (_k, _v) in enumerate(v.items()):
-                    trues[k] = _v
-            _simulations = simulations
-
-        taylor_plot(
-            observations=trues,
-            simulations=_simulations,
+        return taylor_plot(
+            observations=observations,
+            simulations=simulations,
             figsize=figsize,
             name=fname,
             **kwargs
         )
-        return
 
     def _consider_include(self, include: Union[str, list], to_filter):
 
@@ -526,10 +576,22 @@ Available cases are {self.models} and you wanted to include
         assert len(output_features) == 1
         output = output_features[0]
 
-        fpath_initial = os.path.join(initial_run, output, f"{run_type}_{output}_0.csv")
+        dpath_initial = os.path.join(initial_run, output)
+        #if not os.path.exists(dpath_initial):
+            #build_predict_model_from_config(initial_run, data)
+        files = os.listdir(dpath_initial)
+        file = [f for f in files if run_type in f]
+        if len(file)>1:
+            file = file[0]
+        fpath_initial = os.path.join(dpath_initial, file)
         initial = pd.read_csv(fpath_initial, index_col=['index'])
 
-        fpath_best: str = os.path.join(best_run, output, f"{run_type}_{output}_0.csv")
+        dpath_best: str = os.path.join(best_run, output) #, f"{run_type}_{output}_0.csv")
+        files = os.listdir(dpath_best)
+        file = [f for f in files if run_type in f]
+        if len(file)>1:
+            file = file[0]
+        fpath_best = os.path.join(dpath_best, file)
         best = pd.read_csv(fpath_best, index_col=['index'])
 
         initial_metric: float = getattr(Metrics[self.mode](initial.values[:, 0], 
@@ -544,31 +606,46 @@ Available cases are {self.models} and you wanted to include
     def plot_improvement(
             self,
             matric_name: str,
+            data: str = 'test',
             save: bool = True,
-            run_type: str = 'test',
             orient: str = 'horizontal',
             **kwargs
     ) -> dict:
-        """Shows how much improvement was observed after hyperparameter
+        """
+        Shows how much improvement was observed after hyperparameter
         optimization. This plot is only available if ``run_type`` was set to
         `optimize` in :py:meth:`ai4water.experiments.Experiments.fit`.
 
-        Arguments:
-            matric_name : the peformance metric to compare
-            save : whether to save the plot or not
-            run_type : which run to use, valid values are `training`, `test` and `validation`.
-            orient : valid values are `horizontal` or `vertical`
-            kwargs : any of the following keyword arguments
+        Arguments
+        ---------
+            matric_name :
+                the peformance metric to compare
+            data :
+                which data to use, valid values are `training``, ``test`` and ``validation``.
+            save :
+                whether to save the plot or not
+            orient :
+                valid values are ``horizontal`` or ``vertical``
+            kwargs :
+                any of the following keyword arguments
 
                 - rotation :
                 - name :
                 - dpi :
+
+        Returns
+        -------
+        dict
+
         """
+
+        raise NotImplementedError
+        
         rotation = kwargs.get('rotation', 0)
         name = kwargs.get('name', '')
         dpi = kwargs.get('dpi', 200)
 
-        assert run_type in ['training', 'test', 'validation']
+        assert data in ['training', 'test', 'validation']
 
         colors = {
             'Initial': np.array([0, 56, 104]) / 256,
@@ -577,17 +654,18 @@ Available cases are {self.models} and you wanted to include
 
         exec_models = list(self.trues_['train'].keys())
 
-        data = {k: [] for k in colors.keys()}
+        results = {k: [] for k in colors.keys()}
 
         for model in exec_models:
-            initial, best = self._get_inital_best_results(model, run_type=run_type, matric_name=matric_name)
+            initial, best = self._get_inital_best_results(model, run_type=data,
+                                                          matric_name=matric_name)
 
-            data['Initial'].append(initial)
-            data['Improvement'].append(best)
+            results['Initial'].append(initial)
+            results['Improvement'].append(best)
 
-        if np.isnan(np.array(data['Improvement'], dtype=np.float32)).sum() == len(data['Improvement']):
+        if np.isnan(np.array(results['Improvement'], dtype=np.float32)).sum() == len(results['Improvement']):
             print("No best results not found")
-            return data
+            return results
 
         plt.close('all')
         fig, axis = plt.subplots()
@@ -600,11 +678,11 @@ Available cases are {self.models} and you wanted to include
         names = [m.split('model_')[1] for m in exec_models]
         for key in order:
             if orient == "horizontal":
-                axis.barh(range(len(exec_models)), data[key], color=colors[key], label=key)
+                axis.barh(range(len(exec_models)), results[key], color=colors[key], label=key)
                 plt.xlabel("{}".format(ERROR_LABELS.get(matric_name, matric_name)))
                 plt.yticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
             else:
-                axis.bar(range(len(exec_models)), data[key], color=colors[key], label=key)
+                axis.bar(range(len(exec_models)), results[key], color=colors[key], label=key)
                 plt.ylabel("{}".format(ERROR_LABELS.get(matric_name, matric_name)))
                 plt.xticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
 
@@ -612,11 +690,13 @@ Available cases are {self.models} and you wanted to include
         plt.title('Improvement after tuning')
 
         if save:
-            fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{name}_improvement_{matric_name}.png')
+            fname = os.path.join(
+                os.getcwd(),
+                f'results{SEP}{self.exp_name}{SEP}{name}_improvement_{matric_name}.png')
             plt.savefig(fname, dpi=dpi, bbox_inches=kwargs.get('bbox_inches', 'tight'))
         plt.show()
 
-        return data
+        return results
 
     def compare_errors(
             self,
@@ -629,12 +709,13 @@ Available cases are {self.models} and you wanted to include
             name: str = 'ErrorComparison',
             show: bool = True,
             **kwargs
-    ) -> dict:
+    ) -> pd.DataFrame:
         """
         Plots a specific performance matric for all the models which were
         run during [fit][ai4water.experiments.Experiments.fit] call.
 
-        Arguments:
+        Parameters
+        ----------
             matric_name:
                  performance matric whose value to plot for all the models
             cutoff_val:
@@ -667,8 +748,12 @@ Available cases are {self.models} and you wanted to include
                 - xlabel_fs :
                 - color :
 
-        returns:
-            dictionary whose keys are models and values are performance metrics.
+        returns
+        -------
+        pd.DataFrame
+            pandas dataframe whose index is models and has two columns with name
+            'train' and 'test' These columns contain performance metrics for the
+            models..
 
         Example:
             >>> from ai4water.experiments import MLRegressionExperiments
@@ -685,18 +770,14 @@ Available cases are {self.models} and you wanted to include
         models = self.sort_models_by_metric(matric_name, cutoff_val, cutoff_type,
                                             ignore_nans, sort_by)
 
-        names = [i[1] for i in models.values()]
-        test_matrics = list(models.keys())
-        train_matrics = [i[0] for i in models.values()]
-
         plt.close('all')
         fig, axis = plt.subplots(1, 2, sharey='all')
         fig.set_figheight(kwargs.get('fig_height', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
         bar_chart(ax=axis[0],
-                  labels=names[::-1],
-                  values=train_matrics[::-1],
+                  labels=models.index.tolist(),
+                  values=models['train'],
                   color=kwargs.get('color', None),
                   title="Train",
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
@@ -706,8 +787,8 @@ Available cases are {self.models} and you wanted to include
                   )
 
         bar_chart(ax=axis[1],
-                  labels=names[::-1],
-                  values=test_matrics[::-1],
+                  labels=models.index.tolist(),
+                  values=models['test'],
                   title="Test",
                   color=kwargs.get('color', None),
                   xlabel=ERROR_LABELS.get(matric_name, matric_name),
@@ -719,7 +800,9 @@ Available cases are {self.models} and you wanted to include
 
         appendix = f"{cutoff_val or ''}{cutoff_type or ''}{len(models)}"
         if save:
-            fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}_{appendix}.png')
+            fname = os.path.join(
+                os.getcwd(),
+                f'results{SEP}{self.exp_name}{SEP}{name}_{matric_name}_{appendix}.png')
             plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
 
         if show:
@@ -803,7 +886,7 @@ Available cases are {self.models} and you wanted to include
     ) -> Union[plt.Axes, None]:
         """
         Plots the convergence plots of hyperparameter optimization runs.
-        Only valid if `run_type=optimize` during :py:meth:`ai4water.experiments.experiments.Experiments.fit`
+        Only valid if `run_type=optimize` during :py:meth:`ai4water.experiments.Experiments.fit`
         call.
 
         Arguments:
@@ -868,12 +951,6 @@ Available cases are {self.models} and you wanted to include
         cls.config = config
         cls._from_config = True
 
-        trues = {'train': {},
-                 'test': {}}
-
-        simulations = {'train': {},
-                       'test': {}}
-
         cv_scores = {}
         scoring = "mse"
 
@@ -881,28 +958,6 @@ Available cases are {self.models} and you wanted to include
 
             with open(os.path.join(model_path, 'config.json'), 'r') as fp:
                 model_config = json.load(fp)
-
-            output_features = model_config['config']['output_features']
-
-            if len(output_features) > 1:
-                raise NotImplementedError
-
-            fpath = os.path.join(model_path, output_features[0])
-            fname = [f for f in os.listdir(fpath) if f.startswith('training') and f.endswith('.csv')]
-            assert len(fname) == 1, f'{model_name} does not have training results'
-            fname = fname[0]
-            train_df = pd.read_csv(os.path.join(fpath, fname), index_col='index')
-
-            fname = [f for f in os.listdir(fpath) if f.startswith('test') and f.endswith('.csv')]
-            assert len(fname) == 1, f'{model_name} does not have training results'
-            fname = fname[0]
-            test_df = pd.read_csv(os.path.join(fpath, fname), index_col='index')
-
-            trues['train'][model_name] = train_df[f'true_{output_features[0]}']
-            trues['test'][model_name] = test_df[f'true_{output_features[0]}']
-
-            simulations['train'][model_name] = train_df[f'pred_{output_features[0]}']
-            simulations['test'][model_name] = test_df[f'pred_{output_features[0]}']
 
             # if cross validation was performed, then read those results.
             cross_validator = model_config['config']['cross_validator']
@@ -914,8 +969,10 @@ Available cases are {self.models} and you wanted to include
                     with open(cv_fname, 'r') as fp:
                         cv_scores[model_name] = json.load(fp)
 
-        cls.trues_ = trues
-        cls.simulations_ = simulations
+        cls.metrics = load_json_file(
+            os.path.join(os.path.dirname(config_path), "metrics.json"))
+        cls.features = load_json_file(
+            os.path.join(os.path.dirname(config_path), "features.json"))
         cls.cv_scores_ = cv_scores
         cls._cv_scoring = scoring
 
@@ -996,7 +1053,8 @@ Available cases are {self.models} and you wanted to include
         axis.set_xlabel("Models", fontsize=16)
         axis.set_ylabel(ERROR_LABELS.get(scoring, scoring), fontsize=16)
 
-        fname = os.path.join(os.getcwd(), f'results{SEP}{self.exp_name}{SEP}{name}_{len(model_names)}.png')
+        fname = os.path.join(os.getcwd(),
+                             f'results{SEP}{self.exp_name}{SEP}{name}_{len(model_names)}.png')
         plt.savefig(fname, dpi=300, bbox_inches=kwargs.get('bbox_inches', 'tight'))
 
         if show:
@@ -1006,65 +1064,34 @@ Available cases are {self.models} and you wanted to include
 
     def sort_models_by_metric(
             self,
-            matric_name,
+            metric_name,
             cutoff_val=None,
             cutoff_type=None,
             ignore_nans: bool = True,
             sort_by="test"
-    ) -> dict:
+    ) -> pd.DataFrame:
         """returns the models sorted according to their performance"""
-        def find_matric_array(true, sim):
 
-            errors = Metrics[self.mode](true, sim, multiclass=self.model_.is_multiclass)
+        idx = list(self.metrics.keys())
+        train_metrics = [v['train'][metric_name] for v in self.metrics.values()]
+        test_metrics = [v['test'][metric_name] for v in self.metrics.values()]
 
-            matric_val = getattr(errors, matric_name)()
-            if matric_name in ['nse', 'kge']:
-                if matric_val < 0.0:
-                    matric_val = 0.0
+        df = pd.DataFrame(np.vstack((train_metrics, test_metrics)).T,
+                          index=idx,
+                          columns=['train', 'test'])
+        if ignore_nans:
+            df = df.dropna()
 
-            if cutoff_type is not None:
-                assert cutoff_val is not None
-                if not getattr(np, cutoff_type)(matric_val, cutoff_val):
-                    return None
-            return matric_val
+        df = df.sort_values(by=[sort_by], ascending=False)
 
-        train_matrics = []
-        test_matrics = []
-        models = {}
+        if cutoff_type is not None:
+            assert cutoff_val is not None
+            if cutoff_type=="greater":
+                df = df.loc[df[sort_by]>cutoff_val]
+            else:
+                df = df.loc[df[sort_by]<cutoff_val]
 
-        for mod in self.models:
-            # find the models which have been run
-            if mod in self.simulations_['test']:
-                  # maybe we have not done some models by using include/exclude
-                test_matric = find_matric_array(self.trues_['test'][mod], self.simulations_['test'][mod])
-                if test_matric is not None:
-                    test_matrics.append(test_matric)
-                    models[mod.split('model_')[1]] = {'test': test_matric}
-
-                    train_matric = find_matric_array(self.trues_['train'][mod], 
-                        self.simulations_['train'][mod])
-
-                    if train_matric is None:
-                        train_matric = np.nan
-                    train_matrics.append(train_matric)
-                    models[mod.split('model_')[1]] = {'train': train_matric, 'test': test_matric}
-
-        if len(models) <= 1:
-            warnings.warn(
-                f"""Comparison can not be plotted because the obtained models are <=1 {models}""", UserWarning)
-            return models
-
-        if sort_by == 'test':
-            d = sort_metric_dicts(ignore_nans, test_matrics, train_matrics, list(models.keys()))
-
-        elif sort_by == 'train':
-            d = sort_metric_dicts(ignore_nans, train_matrics, test_matrics, list(models.keys()))
-        else:
-            raise ValueError(f'sort_by must be either train or test but it is {sort_by}')
-
-        sorted_models = dict(sorted(d.items(), reverse=True))
-
-        return sorted_models
+        return df
 
     def fit_with_tpot(
             self,
@@ -1103,9 +1130,10 @@ Available cases are {self.models} and you wanted to include
                 - default is None, which means, the `tpot_config` argument will be None
 
             selection_criteria :
-                If ``models`` is integer, then according to which criteria
-                the models will be choosen. By default the models will be selected
-                based upon their mse values on test data.
+                The name of performance metric. If ``models`` is integer, then
+                according to this performance metric the models will be choosen.
+                By default the models will be selected based upon their mse values
+                on test data.
             scoring : the performance metric to use for finding the pipeline.
             tpot_args :
                 any keyword argument for tpot's Regressor_ or Classifier_ class.
@@ -1144,18 +1172,19 @@ Available cases are {self.models} and you wanted to include
             param_space[m] = {path: {p.name: p.grid for p in ps}}
 
         if isinstance(models, int):
-            trues = getattr(self, 'trues_', {})
-            assert len(trues)>1, f"you must first run .fit() method in order to choose top {models} models"
+
+            assert len(self.metrics)>1, f"""
+            you must first run .fit() method in order to choose top {models} models"""
 
             # sort the models w.r.t their performance
             sorted_models = self.sort_models_by_metric(selection_criteria)
 
             # get names of models
-            models = [v[1] for idx, v in enumerate(sorted_models.values()) if idx < models]
+            models = sorted_models.index.tolist()[0:models]
 
             tpot_config = {}
             for m in models:
-                c: dict = param_space[f"model_{m}"]
+                c: dict = param_space[f"{m}"]
                 tpot_config.update(c)
 
         elif isinstance(models, list):
@@ -1255,7 +1284,7 @@ Available cases are {self.models} and you wanted to include
             model.view()
 
         if predict:
-            return self._predict()
+            return self._predict(data=data)
 
         # return the validation score
         return self._evaluate()
@@ -1312,12 +1341,13 @@ Available cases are {self.models} and you wanted to include
         print(f"val_score: {val_score}")
         return val_score
 
-    def _predict(self):
+    def _predict(self, data):
         """Makes predictions on training and test data from the model.
         It is supposed that the model has been trained before."""
-        train_true, train_pred = self.model_.predict(data='training', return_true=True)
 
-        test_true, test_pred = self.model_.predict(data='test', return_true=True)
+        test_true, test_pred = self.model_.predict(data=data, return_true=True)
+
+        train_true, train_pred = self.model_.predict(data='training', return_true=True)
 
         return (train_true, train_pred), (test_true, test_pred)
 
@@ -1470,12 +1500,14 @@ def consider_exclude(exclude: Union[str, list],
     return
 
 
-def sort_metric_dicts(ignore_nans, first, second, model_names):
+def load_json_file(fpath):
 
-    if ignore_nans:
-        d = {key: [a, _name] for key, a, _name in zip(first, second, model_names) if
-             not np.isnan(key)}
-    else:
-        d = {key: [a, _name] for key, a, _name in zip(first, second, model_names)}
+    with open(fpath, 'r') as fp:
+        result = json.load(fp)
+    return result
 
-    return d
+
+def save_json_file(fpath, obj):
+
+    with open(fpath, 'w') as fp:
+        json.dump(jsonize(obj), fp)

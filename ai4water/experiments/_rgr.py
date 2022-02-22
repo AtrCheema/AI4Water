@@ -1,7 +1,7 @@
 
 __all__ = ["MLRegressionExperiments"]
 
-from ai4water.utils.utils import get_version_info
+from ai4water.utils.utils import get_version_info, dateandtime_now
 from ._main import Experiments
 from .utils import regression_space
 
@@ -47,7 +47,7 @@ class MLRegressionExperiments(Experiments):
                  param_space=None,
                  x0=None,
                  cases=None,
-                 exp_name='MLExperiments',
+                 exp_name='MLRegressionExperiments',
                  num_samples=5,
                  verbosity=1,
                  **model_kwargs):
@@ -92,6 +92,9 @@ class MLRegressionExperiments(Experiments):
         self.param_space = param_space
         self.x0 = x0
         self.model_kws = model_kwargs
+
+        if exp_name == "MLRegressionExperiments":
+            exp_name = f"{exp_name}_{dateandtime_now()}"
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples, verbosity=verbosity)
 

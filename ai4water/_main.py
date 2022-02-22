@@ -1171,9 +1171,8 @@ class BaseModel(NN):
             if callable(cross_validator):
                 splits = cross_validator(**cross_validator_args)
             else:
-                dh = DataSet(data=data, **self.data_config)
-                setattr(self, 'dh_', dh)
-                splits = getattr(self.dh_, f'{cross_validator}_splits')(**cross_validator_args)
+                ds = DataSet(data=data, **self.data_config)
+                splits = getattr(ds, f'{cross_validator}_splits')(**cross_validator_args)
 
         for fold, ((train_x, train_y), (test_x, test_y)) in enumerate(splits):
 

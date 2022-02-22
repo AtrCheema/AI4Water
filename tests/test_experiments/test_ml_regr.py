@@ -1,8 +1,10 @@
 import unittest
 import os
-import sys
 import site
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+
+import pandas as pd
+
+ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(ai4_dir)
 
 import warnings
@@ -88,8 +90,8 @@ class TestExperiments(unittest.TestCase):
         comparisons.plot_cv_scores(show=False, include=['GaussianProcessRegressor',
                                                         'XGBRFRegressor'])
 
-        sorted_models = comparisons.sort_models_by_metric('r2')
-        assert isinstance(sorted_models, dict)
+        models = comparisons.sort_models_by_metric('r2')
+        assert isinstance(models, pd.DataFrame)
 
         return
 
@@ -112,6 +114,8 @@ class TestExperiments(unittest.TestCase):
 
         self.assertEqual(exp2.exp_name, exp.exp_name)
         self.assertEqual(exp2.exp_path, exp.exp_path)
+        self.assertEqual(len(exp.metrics), len(exp2.metrics))
+        self.assertEqual(len(exp.features), len(exp2.features))
 
         return
 

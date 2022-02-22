@@ -106,7 +106,8 @@ class TestCls(unittest.TestCase):
         exp.fit(data=data_multiclass,
                 exclude=[
             # giving nan predictions
-            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis'
+            'LabelPropagation', 'LabelSpreading', 'QuadraticDiscriminantAnalysis',
+                    'NuSVC',
         ]
                 )
         return
