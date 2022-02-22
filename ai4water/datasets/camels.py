@@ -415,7 +415,8 @@ class LamaH(Camels):
             self.time_step = time_step
             self.data_type = data_type
 
-        self.dyn_fname = os.path.join(self.ds_dir, f'lamah_{data_type}_{time_step}_dyn.nc')
+        self.dyn_fname = os.path.join(self.ds_dir,
+                                      f'lamah_{data_type}_{time_step}_dyn.nc')
 
     @property
     def dynamic_features(self):
@@ -425,7 +426,8 @@ class LamaH(Camels):
 
     @property
     def static_features(self) -> list:
-        fname = os.path.join(self.data_type_dir, f'1_attributes{SEP}Catchment_attributes.csv')
+        fname = os.path.join(self.data_type_dir,
+                             f'1_attributes{SEP}Catchment_attributes.csv')
         df = pd.read_csv(fname, sep=';', index_col='ID')
         return df.columns.to_list()
 
@@ -445,7 +447,8 @@ class LamaH(Camels):
 
     def stations(self) -> list:
         # assuming file_names of the format ID_{stn_id}.csv
-        _dirs = os.listdir(os.path.join(self.data_type_dir, f'2_timeseries{SEP}{self.time_step}'))
+        _dirs = os.listdir(os.path.join(self.data_type_dir,
+                                        f'2_timeseries{SEP}{self.time_step}'))
         s = [f.split('_')[1].split('.csv')[0] for f in _dirs]
         return s
 
@@ -478,7 +481,8 @@ class LamaH(Camels):
                               features=None
                               ) -> pd.DataFrame:
 
-        fname = os.path.join(self.data_type_dir, f'1_attributes{SEP}Catchment_attributes.csv')
+        fname = os.path.join(self.data_type_dir,
+                             f'1_attributes{SEP}Catchment_attributes.csv')
 
         df = pd.read_csv(fname, sep=';', index_col='ID')
 
@@ -509,11 +513,13 @@ class LamaH(Camels):
         df = pd.read_csv(fname, sep=';')
 
         if self.time_step == 'daily':
-            periods = pd.PeriodIndex(year=df["YYYY"], month=df["MM"], day=df["DD"], freq="D")
+            periods = pd.PeriodIndex(year=df["YYYY"], month=df["MM"], day=df["DD"],
+                                     freq="D")
             df.index = periods.to_timestamp()
         else:
             periods = pd.PeriodIndex(year=df["YYYY"],
-                                     month=df["MM"], day=df["DD"], hour=df["hh"], minute=df["mm"], freq="H")
+                                     month=df["MM"], day=df["DD"], hour=df["hh"],
+                                     minute=df["mm"], freq="H")
             df.index = periods.to_timestamp()
 
         # remove the cols specifying index
@@ -539,35 +545,58 @@ class HYSETS(Camels):
     This data comes with multiple sources. Each source having one or more dynamic_features
     Following data_source are available.
 
-    |sources        | dynamic_features |
-    |---------------|------------------|
-    |SNODAS_SWE     | dscharge, swe|
+    +---------------+------------------------------+
+    |sources        | dynamic_features             |
+    |===============|==============================|
+    |SNODAS_SWE     | dscharge, swe                |
+    +---------------+------------------------------+
     |SCDNA          | discharge, pr, tasmin, tasmax|
+    +---------------+------------------------------+
     |nonQC_stations | discharge, pr, tasmin, tasmax|
+    +---------------+------------------------------+
     |Livneh         | discharge, pr, tasmin, tasmax|
+    +---------------+------------------------------+
     |ERA5           | discharge, pr, tasmax, tasmin|
-    |ERAS5Land_SWE  | discharge, swe|
+    +---------------+------------------------------+
+    |ERAS5Land_SWE  | discharge, swe               |
+    +---------------+------------------------------+
     |ERA5Land       | discharge, pr, tasmax, tasmin|
+    +---------------+------------------------------+
 
     all sources contain one or more following dynamic_features
     with following shapes
-    
-    |dynamic_features            |      shape |
-    |----------------------------|------------|
-    |time                        |   (25202,) |
-    |watershedID                 |   (14425,) |
-    |drainage_area               |   (14425,) |
-    |drainage_area_GSIM          |   (14425,) |
-    |flag_GSIM_boundaries        |   (14425,) |
-    |flag_artificial_boundaries  |   (14425,) |
-    |centroid_lat                |   (14425,) |
-    |centroid_lon                |   (14425,) |
-    |elevation                   |   (14425,) |
-    |slope                       |   (14425,) |
+
+    +----------------------------+------------------+
+    |dynamic_features            |      shape       |
+    |============================|==================|
+    |time                        |   (25202,)       |
+    +----------------------------+------------------+
+    |watershedID                 |   (14425,)       |
+    +----------------------------+------------------+
+    |drainage_area               |   (14425,)       |
+    +----------------------------+------------------+
+    |drainage_area_GSIM          |   (14425,)       |
+    +----------------------------+------------------+
+    |flag_GSIM_boundaries        |   (14425,)       |
+    +----------------------------+------------------+
+    |flag_artificial_boundaries  |   (14425,)       |
+    +----------------------------+------------------+
+    |centroid_lat                |   (14425,)       |
+    +----------------------------+------------------+
+    |centroid_lon                |   (14425,)       |
+    +----------------------------+------------------+
+    |elevation                   |   (14425,)       |
+    +----------------------------+------------------+
+    |slope                       |   (14425,)       |
+    +----------------------------+------------------+
     |discharge                   |   (14425, 25202) |
+    +----------------------------+------------------+
     |pr                          |   (14425, 25202) |
+    +----------------------------+------------------+
     |tasmax                      |   (14425, 25202) |
+    +----------------------------+------------------+
     |tasmin                      |   (14425, 25202) |
+    +----------------------------+------------------+
 
     Examples
     --------

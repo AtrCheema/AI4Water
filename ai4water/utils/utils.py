@@ -1220,7 +1220,7 @@ def prepare_data(
     | 7      |  17    |
     +--------+--------+
 
-    then  `num_inputs`=2, `lookback`=7, `input_steps`=1
+    then  ``num_inputs``=2, ``lookback``=7, ``input_steps``=1
 
     and if we want to predict
 
@@ -1230,7 +1230,7 @@ def prepare_data(
     |   27    |   37    |   47     |
     +---------+---------+----------+
 
-    then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=0,
+    then ``num_outputs``=3, ``forecast_len``=1,  ``forecast_step``=0,
 
     if we want to predict
 
@@ -1240,7 +1240,7 @@ def prepare_data(
     | 28      | 38      | 48       |
     +---------+---------+----------+
 
-    then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=1,
+    then ``num_outputs``=3, ``forecast_len``=1,  ``forecast_step``=1,
 
     if we want to predict
 
@@ -1252,7 +1252,7 @@ def prepare_data(
     |  28     |  38     |  48      |
     +---------+---------+----------+
 
-    then `num_outputs`=3, forecast_len=2,  horizon/forecast_step=0,
+    then ``num_outputs``=3, forecast_len=2,  horizon/forecast_step=0,
 
     if we want to predict
 
@@ -1266,7 +1266,7 @@ def prepare_data(
     |   30    |   40    |   50     |
     +---------+---------+----------+
 
-    then `num_outputs`=3, `forecast_len`=3,  `forecast_step`=1,
+    then ``num_outputs``=3, ``forecast_len``=3,  ``forecast_step``=1,
 
     if we want to predict
 
@@ -1279,7 +1279,7 @@ def prepare_data(
     +---------+
     |   40    |
 
-    then `num_outputs`=1, `forecast_len`=3, `forecast_step`=0
+    then ``num_outputs``=1, ``forecast_len``=3, ``forecast_step``=0
 
     if we predict
 
@@ -1289,7 +1289,7 @@ def prepare_data(
     | 39      |
     +---------+
 
-    then `num_outputs`=1, `forecast_len`=1, `forecast_step`=2
+    then ``num_outputs``=1, ``forecast_len``=1, ``forecast_step``=2
 
     if we predict
 
@@ -1303,7 +1303,7 @@ def prepare_data(
     | 41      |
     +---------+
 
-     then `num_outputs`=1, `forecast_len`=3, `forecast_step`=2
+     then ``num_outputs``=1, ``forecast_len``=3, ``forecast_step``=2
 
     If we use following two time series as input
 
@@ -1319,7 +1319,7 @@ def prepare_data(
     |   7    |  17    |
     +--------+--------+
 
-    then   `num_inputs`=2, `lookback`=4, `input_steps`=2
+    then   ``num_inputs``=2, ``lookback``=4, ``input_steps``=2
 
     If the input is
 

@@ -7,7 +7,7 @@ The most easy way to install ai4water is using ``pip``
 ::
     pip install ai4water
 
-If you are interested in using only specific module of ai4water, you can
+However, if you are interested in using only specific module of ai4water, you can
 choose to install dependencies related to that module only. For example
 to use only machine learning based models use can use ``ml`` option as Following
 ::
@@ -39,13 +39,13 @@ go to folder where repository is downloaded
 
 installation options
 =====================
-In above command ``all`` keyword will install all the dependencies. You can choose the dependencies of particular sub-module
-by using the specific keyword. Following keywords are available
+The ``all`` option will install all the dependencies. You can choose the dependencies
+of particular sub-module by using the specific keyword. Following keywords are available
 
  - ``hpo`` if you want hyperparameter optimization
  - ``post_process`` if you want postprocessing
  - ``exp`` for experiments sub-module
  - ``eda`` for exploratory data analysis sub-module
- - ``ml`` for classifical machine learning models
+ - ``ml`` for classical machine learning models
  - ``tf`` for using tensorflow
  - ``torch``  for using pytorch
