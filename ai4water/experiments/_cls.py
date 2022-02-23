@@ -361,7 +361,7 @@ class MLClassificationExperiments(Experiments):
     def model_CatBoostClassifier(self, **suggestions):
         # https://catboost.ai/en/docs/concepts/python-reference_catboostclassifier
 
-        self.path = "xgboost.CatBoostClassifier"
+        self.path = "catboost.CatBoostClassifier"
         self.param_space = self.classification_space["CatBoostClassifier"]["param_space"]
         self.x0 = self.classification_space["CatBoostClassifier"]["x0"]
 

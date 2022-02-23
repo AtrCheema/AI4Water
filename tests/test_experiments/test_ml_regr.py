@@ -67,6 +67,7 @@ class TestExperiments(unittest.TestCase):
         comparisons.taylor_plot(show=False)
         comparisons.plot_improvement('r2', save=False)
         comparisons.plot_improvement('mse', save=False)
+        comparisons.compare_convergence()
         return
 
     def test_cross_val(self):

@@ -485,7 +485,7 @@ class Experiments(object):
         >>> experiment.taylor_plot()
 
         .. _taylor_plot:
-            https://easy-mpl.readthedocs.io/en/latest/#module-10
+            https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.taylor_plot
         """
         metrics = self.metrics.copy()
 
@@ -520,8 +520,7 @@ class Experiments(object):
                                }
 
                 if model in include:
-                    key = model[6:] if model.startswith('model_') else model
-                    key = key[0:-9] if key.endswith("Regressor") else key
+                    key = shred_model_name(model)
                     scen_stats[key] = model_stats
 
             simulations[scen] = scen_stats
@@ -564,51 +563,6 @@ Available cases are {self.models} and you wanted to include
 """
         return include
 
-    def _get_inital_best_results(self, model_name, run_type, matric_name):
-
-        initial_run = os.listdir(os.path.join(self.exp_path, model_name.split('model_')[1]))[0]
-        initial_run = os.path.join(self.exp_path, model_name.split('model_')[1],  initial_run)
-
-        if "best" in os.listdir(os.path.join(self.exp_path, model_name.split('model_')[1])):
-            best_folder = os.path.join(self.exp_path, model_name.split('model_')[1], "best")
-            best_run = os.path.join(best_folder, os.listdir(best_folder)[0])
-        else:
-            return None, None
-
-        cpath = os.path.join(best_run, 'config.json')
-        with open(cpath, 'r') as fp:
-            conf = json.load(fp)
-        output_features = conf['config']['output_features']
-        assert len(output_features) == 1
-        output = output_features[0]
-
-        dpath_initial = os.path.join(initial_run, output)
-        #if not os.path.exists(dpath_initial):
-            #build_predict_model_from_config(initial_run, data)
-        files = os.listdir(dpath_initial)
-        file = [f for f in files if run_type in f]
-        if len(file)>1:
-            file = file[0]
-        fpath_initial = os.path.join(dpath_initial, file)
-        initial = pd.read_csv(fpath_initial, index_col=['index'])
-
-        dpath_best: str = os.path.join(best_run, output) #, f"{run_type}_{output}_0.csv")
-        files = os.listdir(dpath_best)
-        file = [f for f in files if run_type in f]
-        if len(file)>1:
-            file = file[0]
-        fpath_best = os.path.join(dpath_best, file)
-        best = pd.read_csv(fpath_best, index_col=['index'])
-
-        initial_metric: float = getattr(Metrics[self.mode](initial.values[:, 0], 
-            initial.values[:, 1], multiclass=self.model_.is_multiclass), matric_name)()
-        best_metric: float = getattr(Metrics[self.mode](best.values[:, 0], 
-            best.values[:, 1], multiclass=self.model_.is_multiclass), matric_name)()
-
-        # -ve values become difficult to plot, moreover they do not reveal anything significant
-        # as compared to when a metric is 0, therefore consider -ve values as zero.
-        return np.max([initial_metric, 0.0]), np.max([best_metric, 0.0])
-
     def plot_improvement(
             self,
             metric_name: str,
@@ -635,8 +589,8 @@ Available cases are {self.models} and you wanted to include
             dpi : int, optional
             **kwargs :
                 any additional keyword arguments for
-                `dumbell plot_ <https://easy-mpl.readthedocs.io/en/latest/#module-7>_`
-                 or `bar_chart <https://easy-mpl.readthedocs.io/en/latest/#module-1>_`
+                `dumbell plot <https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.dumbbell_plot>`_
+                 or `bar_chart <https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.bar_chart>`_
 
         Returns
         -------
@@ -666,8 +620,7 @@ Available cases are {self.models} and you wanted to include
             initial = model_iter_metrics[0][metric_name]
             final = self.metrics[model]['test'][metric_name]
 
-            key = model[6:] if model.startswith('model_') else model
-            key = key[0:-9] if key.endswith("Regressor") else key
+            key = shred_model_name(model)
 
             improvement.loc[key] = [initial, final]
 
@@ -769,7 +722,8 @@ Available cases are {self.models} and you wanted to include
             'train' and 'test' These columns contain performance metrics for the
             models..
 
-        Example:
+        Example
+        -------
             >>> from ai4water.experiments import MLRegressionExperiments
             >>> from ai4water.datasets import busan_beach
             >>> data = busan_beach()
@@ -878,9 +832,8 @@ Available cases are {self.models} and you wanted to include
         _, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
 
         for _model, _loss in loss_curves.items():
-            if _model.startswith('model_'):
-                _model = _model.split('model_')[1]
-            axis = plot(_loss, axis=axis, label=_model, **_kwargs)
+            label = shred_model_name(_model)
+            axis = plot(_loss, axis=axis, label=label, **_kwargs)
 
         if save:
             fname = os.path.join(self.exp_path, f'{name}_{loss_name}.png')
@@ -891,7 +844,7 @@ Available cases are {self.models} and you wanted to include
 
         return axis
 
-    def plot_convergence(
+    def compare_convergence(
             self,
             show: bool = True,
             save: bool = False,
@@ -899,20 +852,35 @@ Available cases are {self.models} and you wanted to include
             **kwargs
     ) -> Union[plt.Axes, None]:
         """
-        Plots the convergence plots of hyperparameter optimization runs.
+        Plots and compares the convergence plots of hyperparameter optimization runs.
         Only valid if `run_type=optimize` during :py:meth:`ai4water.experiments.Experiments.fit`
         call.
 
-        Arguments:
-            show:
+        Parameters
+        ----------
+            show :
                 whether to show the plot or now
-            save : whether to save the plot or not
-            name : name of file to save the plot
-            kwargs : keyword arguments like:
-                bbox_inches :
-        Returns:
+            save :
+                whether to save the plot or not
+            name :
+                name of file to save the plot
+            kwargs :
+                keyword arguments to plot_ function
+        Returns
+        -------
             if the optimized models are >1 then it returns the maplotlib axes
             on which the figure is drawn otherwise it returns None.
+
+        Examples
+        --------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> experiment = MLRegressionExperiments()
+        >>> experiment.fit(data=busan_beach(), run_type="optimize", num_iterations=30)
+        >>> experiment.plot_convergence()
+
+        .. _plot:
+            https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.plot
         """
         if len(self.config['optimized_models']) < 1:
             print('No model was optimized')
@@ -925,16 +893,21 @@ Available cases are {self.models} and you wanted to include
                 iterations = json.load(fp)
 
             convergence = sort_array(list(iterations.keys()))
+
+            label = shred_model_name(_model)
             plot(
                 convergence,
                 ax=axis,
-                label=_model.split('model_')[1],
+                label=label,
                 linestyle='--',
                 xlabel='Number of iterations $n$',
-                ylabel=r"$\min f(x)$ after $n$ calls")
+                ylabel=r"$\min f(x)$ after $n$ calls",
+                show=False,
+                **kwargs
+            )
         if save:
             fname = os.path.join(self.exp_path, f'{name}.png')
-            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+            plt.savefig(fname, dpi=100, bbox_inches='tight')
 
         if show:
             plt.show()
@@ -1531,3 +1504,9 @@ def save_json_file(fpath, obj):
 
     with open(fpath, 'w') as fp:
         json.dump(jsonize(obj), fp)
+
+
+def shred_model_name(model_name):
+    key = model_name[6:] if model_name.startswith('model_') else model_name
+    key = key[0:-9] if key.endswith("Regressor") else key
+    return key
