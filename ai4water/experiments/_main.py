@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from easy_mpl import plot
-from easy_mpl import bar_chart, taylor_plot
+from easy_mpl import bar_chart, taylor_plot, dumbbell_plot
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 from ai4water.backend import tf
@@ -178,6 +178,7 @@ class Experiments(object):
 
         self.metrics = {}
         self.features = {}
+        self.iter_metrics = {}
 
         return
 
@@ -291,6 +292,9 @@ class Experiments(object):
 
             if model_type not in exclude:
 
+                self.model_iter_metric = {}
+                self.iter_ = 0
+
                 def objective_fn(**suggested_paras):
                     # the config must contain the suggested parameters by the hpo algorithm
                     if model_type in self.cases:
@@ -355,6 +359,8 @@ class Experiments(object):
                     cv_scoring = self.model_.val_metric
                     self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_{cv_scoring}')
                     setattr(self, '_cv_scoring', cv_scoring)
+
+                self.iter_metrics[model_type] = self.model_iter_metric
 
         self.save_config()
 
@@ -605,12 +611,13 @@ Available cases are {self.models} and you wanted to include
 
     def plot_improvement(
             self,
-            matric_name: str,
-            data: str = 'test',
+            metric_name: str,
+            plot_type: str = 'dumbell',
             save: bool = True,
-            orient: str = 'horizontal',
+            name : str = '',
+            dpi : int = 200,
             **kwargs
-    ) -> dict:
+    ) -> pd.DataFrame:
         """
         Shows how much improvement was observed after hyperparameter
         optimization. This plot is only available if ``run_type`` was set to
@@ -618,85 +625,92 @@ Available cases are {self.models} and you wanted to include
 
         Arguments
         ---------
-            matric_name :
-                the peformance metric to compare
-            data :
-                which data to use, valid values are `training``, ``test`` and ``validation``.
-            save :
+            metric_name :
+                the peformance metric for comparison
+            plot_type : str, optional
+                the kind of plot to draw. Either ``dumbell`` or ``bar``
+            save : bool
                 whether to save the plot or not
-            orient :
-                valid values are ``horizontal`` or ``vertical``
-            kwargs :
-                any of the following keyword arguments
-
-                - rotation :
-                - name :
-                - dpi :
+            name : str, optional
+            dpi : int, optional
+            **kwargs :
+                any additional keyword arguments for
+                `dumbell plot_ <https://easy-mpl.readthedocs.io/en/latest/#module-7>_`
+                 or `bar_chart <https://easy-mpl.readthedocs.io/en/latest/#module-1>_`
 
         Returns
         -------
-        dict
+        pd.DataFrame
+
+        Examples
+        --------
+        >>> from ai4water.experiments import MLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> experiment = MLRegressionExperiments()
+        >>> experiment.fit(data=busan_beach(), run_type="optimize", num_iterations=30)
+        >>> experiment.plot_improvement('r2')
+
+        or draw dumbell plot
+
+        >>> experiment.plot_improvement('r2', plot_type='bar')
 
         """
 
-        raise NotImplementedError
-        
-        rotation = kwargs.get('rotation', 0)
-        name = kwargs.get('name', '')
-        dpi = kwargs.get('dpi', 200)
+        data: str = 'test'
 
         assert data in ['training', 'test', 'validation']
 
-        colors = {
-            'Initial': np.array([0, 56, 104]) / 256,
-            'Improvement': np.array([126, 154, 178]) / 256
-        }
+        improvement = pd.DataFrame(columns=['start', 'end'])
 
-        exec_models = list(self.trues_['train'].keys())
+        for model, model_iter_metrics in self.iter_metrics.items():
+            initial = model_iter_metrics[0][metric_name]
+            final = self.metrics[model]['test'][metric_name]
 
-        results = {k: [] for k in colors.keys()}
+            key = model[6:] if model.startswith('model_') else model
+            key = key[0:-9] if key.endswith("Regressor") else key
 
-        for model in exec_models:
-            initial, best = self._get_inital_best_results(model, run_type=data,
-                                                          matric_name=matric_name)
+            improvement.loc[key] = [initial, final]
 
-            results['Initial'].append(initial)
-            results['Improvement'].append(best)
-
-        if np.isnan(np.array(results['Improvement'], dtype=np.float32)).sum() == len(results['Improvement']):
-            print("No best results not found")
-            return results
-
-        plt.close('all')
-        fig, axis = plt.subplots()
-
-        if matric_name in ['r2', 'nse', 'kge', 'corr_coeff', 'r2_mod']:
-            order = ['Improvement', 'Initial']
+        if plot_type == "dumbell":
+            ax = dumbbell_plot(
+                improvement['start'], improvement['end'],
+                improvement.index.tolist(),
+                xlabel=ERROR_LABELS.get(metric_name, metric_name),
+                show=False,
+                **kwargs
+            )
+            ax.set_xlabel(ERROR_LABELS.get(metric_name, metric_name))
         else:
-            order = list(colors.keys())
 
-        names = [m.split('model_')[1] for m in exec_models]
-        for key in order:
-            if orient == "horizontal":
-                axis.barh(range(len(exec_models)), results[key], color=colors[key], label=key)
-                plt.xlabel("{}".format(ERROR_LABELS.get(matric_name, matric_name)))
-                plt.yticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
-            else:
-                axis.bar(range(len(exec_models)), results[key], color=colors[key], label=key)
-                plt.ylabel("{}".format(ERROR_LABELS.get(matric_name, matric_name)))
-                plt.xticks(ticks=range(len(exec_models)), labels=names, rotation=rotation)
+            colors = {
+                'start': np.array([0, 56, 104]) / 256,
+                'end': np.array([126, 154, 178]) / 256
+            }
 
-        axis.legend()
-        plt.title('Improvement after tuning')
+            order = ['start', 'end']
+            if metric_name in ['r2', 'nse', 'kge', 'corr_coeff', 'r2_mod', 'r2_score']:
+                order = ['end', 'start']
+
+            fig, ax = plt.subplots()
+
+            for ordr in order:
+                bar_chart(improvement[ordr], improvement.index.tolist(),
+                          ax=ax, color=colors[ordr], show=False,
+                          xlabel=ERROR_LABELS.get(metric_name, metric_name),
+                          label=ordr, **kwargs)
+
+            ax.legend()
+            plt.title('Improvement after Optimization')
 
         if save:
             fname = os.path.join(
                 os.getcwd(),
-                f'results{SEP}{self.exp_name}{SEP}{name}_improvement_{matric_name}.png')
+                f'results{SEP}{self.exp_name}{SEP}{name}_improvement_{metric_name}.png')
             plt.savefig(fname, dpi=dpi, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+
         plt.show()
 
-        return results
+        return improvement
 
     def compare_errors(
             self,
@@ -1328,6 +1342,12 @@ Available cases are {self.models} and you wanted to include
         metrics = Metrics[self.mode](t, p,
             remove_zero=True, remove_neg=True,
             multiclass=self.model_.is_multiclass)
+
+        test_metrics = {}
+        for metric in self.monitor:
+            test_metrics[metric] = getattr(metrics, metric)()
+        self.model_iter_metric[self.iter_] = test_metrics
+        self.iter_ += 1
 
         val_score = getattr(metrics, self.model_.val_metric)()
 

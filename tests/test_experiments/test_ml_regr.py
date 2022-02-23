@@ -65,6 +65,8 @@ class TestExperiments(unittest.TestCase):
                         include=best_models, post_optimize='train_best')
         comparisons.compare_errors('r2', show=False)
         comparisons.taylor_plot(show=False)
+        comparisons.plot_improvement('r2', save=False)
+        comparisons.plot_improvement('mse', save=False)
         return
 
     def test_cross_val(self):
