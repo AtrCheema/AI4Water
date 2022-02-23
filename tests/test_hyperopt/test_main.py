@@ -130,7 +130,9 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
     check_attrs(optimizer, len(search_space))
 
     for f in ["fanova_importance_bar.png", "convergence.png", "iterations.json",
-              "edf.png", "parallel_coordinates.png", "iterations_sorted.json"]:
+              "edf.png", "parallel_coordinates.png", "iterations_sorted.json",
+              'distributions.png', "fanova_importance_hist.png"
+              ]:
         fpath = os.path.join(optimizer.opt_path, f)
         assert os.path.exists(fpath)
     return optimizer

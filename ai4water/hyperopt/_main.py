@@ -10,7 +10,7 @@ import sklearn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from easy_mpl import parallel_coordinates
+from easy_mpl import parallel_coordinates, hist
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 
@@ -939,12 +939,15 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return SR()
 
     def best_xy(self) -> dict:
-        if self.backend == 'skopt':
-            d = self.xy_of_iterations()
-            k = list(dict(sorted(d.items())).keys())[0]
-            paras = {k: d[k]}
-        else:
-            raise NotImplementedError
+        """Returns best (optimized) parameters as dictionary.
+        The key of the dictionary is the value of the objective function with
+        best parameters. The value of the dictionary is again a dictionay of
+        optimized parameters.
+        """
+        d = self.xy_of_iterations()
+        k = list(dict(sorted(d.items())).keys())[0]
+        paras = {k: d[k]}
+
         return paras
 
     def _process_results(self):
@@ -1045,6 +1048,32 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def _plot_distributions(self):
         """plot distributions of explored hyperparameters"""
+        from pandas.plotting._matplotlib.tools import create_subplots
+
+        # name of hyperparameters
+        h_paras = list(list(self.best_xy().values())[0].keys())
+
+        # container with a list for each hyperparameter
+        h_para_lists = {k: [] for k in h_paras}
+
+        for score, x_iter in self.xy_of_iterations().items():
+            for para, val in x_iter.items():
+                h_para_lists[para].append(val)
+
+        fig, axes = create_subplots(naxes=len(h_paras),
+                                    figsize=(6+len(h_paras), 6+len(h_paras)))
+
+        if not isinstance(axes, np.ndarray):
+            axes = np.array([axes])
+
+        for ax, col in zip(axes.flat, h_paras):
+
+            hist(h_para_lists[col], ax=ax, show=False,
+                 title=col,
+                 ylabel="Number of iterations")
+
+        fname = os.path.join(self.opt_path, "distributions.png")
+        plt.savefig(fname, bbox_inches="tight")
         return
 
     def to_kw(self, x):
