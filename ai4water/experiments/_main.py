@@ -14,7 +14,6 @@ from ai4water.backend import tf
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import jsonize, ERROR_LABELS
-from ai4water.utils.visualizations import init_subplots
 from ai4water.postprocessing import ProcessResults 
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 
@@ -777,21 +776,24 @@ Available cases are {self.models} and you wanted to include
             plt.show()
         return models
 
-    def plot_losses(
+    def loss_comparison(
             self,
             loss_name: Union[str, list] = 'loss',
             include: list = None,
             save: bool = True,
-            name: str = 'loss_comparison',
             show: bool = True,
+            figsize: int = None,
+            start: int = 0,
+            end: int = None,
             **kwargs
     ) -> plt.Axes:
         """
         Plots the loss curves of the evaluated models. This method is only available
         if the models which are being compared are deep leanring mdoels.
 
-        Arguments:
-            loss_name:
+        Parameters
+        ----------
+            loss_name : str, optional
                 the name of loss value, must be recorded during training
             include:
                 name of models to include
@@ -801,13 +803,34 @@ Available cases are {self.models} and you wanted to include
                 name of saved file
             show:
                 whether to show the plot or now
-            kwargs : following keyword arguments can be used
-
-                - width:
-                - height:
-                - bbox_inches:
+            figsize : tuple
+                size of the figure
+            **kwargs :
+                any other keyword arguments to be passed to the 
+                `plot <https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.plot>`_
         Returns:
             matplotlib axes
+
+        Example
+        -------
+        >>> from ai4water.experiments import DLRegressionExperiments
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
+        >>> exp = DLExperiments(
+        >>> input_features = data.columns.tolist()[0:-1],
+        >>> output_features = data.columns.tolist()[-1:],
+        >>> epochs=300,
+        >>> train_fraction=1.0,
+        >>> y_transformation="log",
+        >>> x_transformation="minmax",
+        >>> )
+
+        >>> exp.fit(data=data)
+        >>> exp.loss_comparison()
+
+        you may wish to plot on log scale
+
+        >>> exp.loss_comparison(logy=True)
         """
 
         if not isinstance(loss_name, list):
@@ -820,7 +843,7 @@ Available cases are {self.models} and you wanted to include
         for _model, _path in self.config['eval_models'].items():
             if _model in include:
                 df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
-                loss_curves[_model] = df
+                loss_curves[_model] = df.values
 
         _kwargs = {'linestyle': '-',
                    'xlabel': "Epochs",
@@ -829,15 +852,17 @@ Available cases are {self.models} and you wanted to include
         if len(loss_curves) > 5:
             _kwargs['legend_kws'] = {'bbox_to_anchor': (1.1, 0.99)}
 
-        _, axis = init_subplots(kwargs.get('width', None), kwargs.get('height', None))
+        end = end or len(df)
+
+        _, axis = plt.subplots(figsize=figsize)
 
         for _model, _loss in loss_curves.items():
             label = shred_model_name(_model)
-            axis = plot(_loss, axis=axis, label=label, **_kwargs)
+            plot(_loss[start:end], ax=axis, label=label, show=False, **_kwargs, **kwargs)
 
         if save:
-            fname = os.path.join(self.exp_path, f'{name}_{loss_name}.png')
-            plt.savefig(fname, dpi=100, bbox_inches=kwargs.get('bbox_inches', 'tight'))
+            fname = os.path.join(self.exp_path, f'loss_comparison_{loss_name}.png')
+            plt.savefig(fname, dpi=100, bbox_inches='tight')
 
         if show:
             plt.show()
@@ -877,7 +902,7 @@ Available cases are {self.models} and you wanted to include
         >>> from ai4water.datasets import busan_beach
         >>> experiment = MLRegressionExperiments()
         >>> experiment.fit(data=busan_beach(), run_type="optimize", num_iterations=30)
-        >>> experiment.plot_convergence()
+        >>> experiment.compare_convergence()
 
         .. _plot:
             https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.plot

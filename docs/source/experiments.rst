@@ -3,7 +3,11 @@ Experiments
 
 The purpose of this module is to compare more than one models. Furthermore,
 this module can also optimize the hyper-parameters of these models and compare
-them. 
+them. The Experiments class provides the basic building block for conducting
+experiments. The MLRegressionExperiments and MLClassificationExperiments compare
+several classical machine learning regression and classification models respectively.
+The DLRegressionExperiments class compares some common basic deep learning algorithms
+for a given data.
 
 Experiments
 ===========
@@ -21,6 +25,13 @@ RegressionExperiments
 
    .. automethod:: __init__
 
+.. autoclass:: ai4water.experiments.DLRegressionExperiments
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 ClassificationExperiments
 =========================
 .. autoclass:: ai4water.experiments.MLClassificationExperiments
@@ -28,3 +39,6 @@ ClassificationExperiments
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+
