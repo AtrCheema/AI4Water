@@ -173,6 +173,12 @@ class Camels(Datasets):
             attributes and dataframes.
             Otherwise either dynamic or static features are returned.
 
+        Examples
+        --------
+        >>> aus = CAMELS_AUS()
+        >>> # get data of 10% of stations
+        >>> df = aus.fetch(stations=0.1, static_features=None, as_dataframe=True)
+
         """
         if isinstance(stations, int):
             # the user has asked to randomly provide data for some specified number of stations
@@ -1113,9 +1119,13 @@ class CAMELS_BR(Camels):
         return stations
 
     def stations(self, to_exclude=None) -> list:
-        """Returns a list of station ids which are common among all dynamic attributes.
-        >>>dataset = CAMELS_BR()
-        >>>stations = dataset.stations()
+        """Returns a list of station ids which are common among all dynamic 
+        attributes.
+        
+        Example
+        -------
+        >>> dataset = CAMELS_BR()
+        >>> stations = dataset.stations()
         """
         if to_exclude is not None:
             if not isinstance(to_exclude, list):
@@ -1140,12 +1150,14 @@ class CAMELS_BR(Camels):
                                ):
         """
         returns the dynamic/time series attribute/attributes for one station id.
-        ```python
-        >>>dataset = CAMELS_BR()
-        >>>pcp = dataset.fetch_dynamic_features('10500000', 'precipitation_cpc')
-        ...# fetch all time series data associated with a station.
-        >>>x = dataset.fetch_dynamic_features('51560000', dataset.dynamic_features)
-        ```
+        
+        Example
+        -------
+        >>> dataset = CAMELS_BR()
+        >>> pcp = dataset.fetch_dynamic_features('10500000', 'precipitation_cpc')
+        ... # fetch all time series data associated with a station.
+        >>> x = dataset.fetch_dynamic_features('51560000', dataset.dynamic_features)
+        
         """
 
         attributes = check_attributes(attributes, self.dynamic_features)

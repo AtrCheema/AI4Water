@@ -5,7 +5,8 @@ import random
 import warnings
 import unittest
 import site   # so that ai4water directory is in path
-ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
+cwd = os.path.dirname(os.path.abspath(__file__))
+ai4_dir = os.path.dirname(os.path.dirname(cwd))
 site.addsitedir(ai4_dir)
 
 import numpy as np
@@ -459,7 +460,7 @@ class TestUtils(unittest.TestCase):
         y2 = np.arange(1000, 1200).reshape(10, 10, 2)
         yy = [y1, y2]
 
-        tr_x, testx, tr_y, testy = TrainTestSplit(xx, yy).split_by_slicing()
+        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(xx, yy)
 
         a = set([len(i) for i in tr_x])
         assert a.pop() == 7
@@ -472,19 +473,19 @@ class TestUtils(unittest.TestCase):
         test_y1, test_y2 = testy
         assert test_y2[-1][-1][-1].item() == 1199
 
-        tr_x, testx, tr_y, testy = TrainTestSplit(xx, yy).split_by_random(313)
+        tr_x, testx, tr_y, testy = TrainTestSplit(seed=313).split_by_random(xx, yy)
         tr_y1, tr_y2 = tr_y
         assert tr_y1[-1].item() == 1001
         test_y1, test_y2 = testy
         assert test_y2[-1][-1][-1].item() == 1179
 
-        tr_x, testx, tr_y, testy = TrainTestSplit(x1, y1).split_by_slicing()
+        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y1)
         assert tr_y[0].item() == 1000
 
-        tr_x, testx, tr_y, testy = TrainTestSplit(x1, y2).split_by_slicing()
+        tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y2)
         assert tr_y[0][0][0].item() == 1000
 
-        splitter = TrainTestSplit(x1, y1).KFold_splits(4)
+        splitter = TrainTestSplit().KFold_splits(x1, y1, 4)
 
         for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
         assert idx == 3
