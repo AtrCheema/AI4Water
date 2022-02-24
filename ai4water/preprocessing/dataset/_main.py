@@ -895,11 +895,11 @@ class DataSet(_DataSet):
 
         if self.split_random:
             # split x,y randomly
-            splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
-            train_x, val_x, train_y, val_y = splitter.split_by_random(seed=self.seed)
-            splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
+            splitter = TrainTestSplit(test_fraction=self.val_fraction, seed=self.seed)
+            train_x, val_x, train_y, val_y = splitter.split_by_random(x, y)
+            splitter = TrainTestSplit(test_fraction=self.val_fraction, seed=self.seed)
             train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_random(
-                seed=self.seed)
+                idx, prev_y)
 
         elif 'validation' in self.indices:
             # separate indices were provided for validation data
@@ -916,10 +916,10 @@ class DataSet(_DataSet):
                 train_indices, val_indices)
         else:
             # split x,y sequentially
-            splitter = TrainTestSplit(x, y, test_fraction=self.val_fraction)
-            train_x, val_x, train_y, val_y = splitter.split_by_slicing()
-            splitter = TrainTestSplit(idx, prev_y, test_fraction=self.val_fraction)
-            train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_slicing()
+            splitter = TrainTestSplit(test_fraction=self.val_fraction)
+            train_x, val_x, train_y, val_y = splitter.split_by_slicing(x, y)
+            splitter = TrainTestSplit(test_fraction=self.val_fraction)
+            train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_slicing(idx, prev_y)
         
         if return_type=="training":
             return train_x, train_prev_y, train_y, train_idx

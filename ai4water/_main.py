@@ -1163,8 +1163,8 @@ class BaseModel(NN):
 
         if data is None:  # prepared data is given
             from .utils.utils import TrainTestSplit
-            splitter = TrainTestSplit(x, y, test_fraction=1.0 - self.config['train_fraction'])
-            splits = splitter.KFold_splits(**cross_validator_args)
+            splitter = TrainTestSplit(test_fraction=1.0 - self.config['train_fraction'])
+            splits = splitter.KFold_splits(x, y, **cross_validator_args)
 
         else: # we need to prepare data first as x,y
 
@@ -1575,7 +1575,8 @@ class BaseModel(NN):
         y_transformer = None
         if true_outputs is not None:
             if self.config['y_transformation']:
-                y_transformer = Transformations(self.output_features, self.config['y_transformation'])
+                y_transformer = Transformations(self.output_features,
+                                                self.config['y_transformation'])
                 true_outputs = y_transformer.fit_transform(true_outputs)
 
         if self.category == 'DL':
@@ -1847,10 +1848,12 @@ class BaseModel(NN):
                 config['min_loss'] = np.nanmin(min_loss_array)
 
         config['config'] = self.config.copy()
-        config['config']['val_metric'] = self.val_metric  # it is calculated during run time
+        # it is calculated during run time
+        config['config']['val_metric'] = self.val_metric
         config['method'] = self.method
 
-        if 'path' in config['config']:  # we don't want our saved config to have 'path' key in it
+        # we don't want our saved config to have 'path' key in it
+        if 'path' in config['config']:
             config['config'].pop('path')
 
         if self.category == "DL":
@@ -1896,7 +1899,8 @@ class BaseModel(NN):
             >>> x = np.random.random((100, 14))
             >>> prediction = model.predict(x=x)
         """
-        config, path = cls._get_config_and_path(cls, config=config, make_new_path=make_new_path)
+        config, path = cls._get_config_and_path(cls, config=config,
+                                                make_new_path=make_new_path)
 
         return cls(**config,
                    path=path,
@@ -1942,7 +1946,8 @@ class BaseModel(NN):
                    **kwargs)
 
     @staticmethod
-    def _get_config_and_path(cls, config_path: str = None, config=None, make_new_path=False):
+    def _get_config_and_path(cls, config_path: str = None, config=None,
+                             make_new_path=False):
         """Sets some attributes of the cls so that it can be built from config.
 
         Also fetches config and path which are used to initiate cls."""
@@ -2164,9 +2169,8 @@ class BaseModel(NN):
             algorithm=algorithm,
             num_iterations=num_iterations,
             process_results=process_results,
-            data=data,
             **kwargs
-        ).fit()
+        ).fit(data=data)
 
         algo_type = list(self.config['model'].keys())[0]
 
@@ -2338,8 +2342,7 @@ class BaseModel(NN):
             append=append,
             categories=categories,
             process_results=process_results,
-            data=data,
-        ).fit()
+        ).fit(data=data)
 
         x_transformations = []
         y_transformations = []
