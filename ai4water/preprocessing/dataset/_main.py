@@ -189,7 +189,7 @@ class DataSet(_DataSet):
                 The fraction of the training data to be used for validation.
                 Set to 0.0 if no validation data is to be used.
             indices : dict, optional
-                A dictionary with three possible keys, 'training', 'validation' and 'test'.
+                A dictionary with two possible keys, 'training', 'validation'.
                 It determines the indices to be used to select training, validation
                 and test data. If indices are given for training, then train_fraction
                 must not be given. If indices are given for validation, then indices
@@ -197,8 +197,6 @@ class DataSet(_DataSet):
                 Therefore, the possible keys in indices dictionary are follwoing 
                     - 'training'
                     - 'training' and 'validation'
-                    - 'training' and 'test'
-                    - 'training', 'validation' and 'test'.
             intervals :
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means indices
@@ -908,12 +906,13 @@ class DataSet(_DataSet):
             val_indices = self.indices['validation']
             _train_indices, _ = self.get_indices()
             train_indices = [i for i in _train_indices if i not in val_indices]
-            splitter = TrainTestSplit(x, y)
+            splitter = TrainTestSplit(train_indices=train_indices, test_indices=val_indices)
             train_x, val_x, train_y, val_y = splitter.split_by_indices(
-                train_indices, val_indices)
-            splitter = TrainTestSplit(idx, prev_y)
+                x, y
+            )
+            splitter = TrainTestSplit(train_indices=train_indices, test_indices=val_indices)
             train_idx, val_idx, train_prev_y, val_prev_y = splitter.split_by_indices(
-                train_indices, val_indices)
+                idx, prev_y)
         else:
             # split x,y sequentially
             splitter = TrainTestSplit(test_fraction=self.val_fraction)

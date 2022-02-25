@@ -303,20 +303,20 @@ def post_process_skopt_results(skopt_results, results, opt_path):
 
     skopt_plots(skopt_results, pref=opt_path)
 
-    return save_skopt_results(skopt_results, results, opt_path)
-
-
-def save_skopt_results(skopt_results, results, opt_path):
-
-    fname = os.path.join(opt_path, 'gp_parameters')
-
-    sr_res = SerializeSKOptResults(skopt_results)
-
     if 'folder' in list(results.items())[0]:
         clear_weights(results=results, opt_dir=opt_path)
     else:
         clear_weights(results=results, opt_dir=opt_path)
         clear_weights(opt_dir=opt_path)
+
+    return
+
+
+def save_skopt_results(skopt_results, opt_path):
+
+    fname = os.path.join(opt_path, 'gp_parameters')
+
+    sr_res = SerializeSKOptResults(skopt_results)
 
     try:  # adding .hpo extension so that no other file/folder exists with same name
         fname = os.path.join(opt_path, os.path.basename(opt_path) + ".hpo")

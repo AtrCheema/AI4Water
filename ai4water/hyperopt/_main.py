@@ -31,6 +31,9 @@ except ImportError:
     skopt, gp_minimize, BayesSearchCV, Space, _Real, use_named_args = None, None, None, None, None, None
     Dimension, _Integer, _Categorical, plot_evaluations, plot_convergence = None, None, None, None, None
 
+if skopt is not None:
+    from skopt import forest_minimize
+
 try:
     import hyperopt
     from hyperopt.pyll.base import Apply
@@ -60,6 +63,7 @@ from ai4water.utils.utils import Jsonize, dateandtime_now
 from .utils import to_skopt_as_dict
 from .utils import post_process_skopt_results
 from .utils import to_skopt_space
+from .utils import save_skopt_results
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters, plot_edf
@@ -79,9 +83,8 @@ SEP = os.sep
 COUNTER = 0
 
 ALGORITHMS = {
-    'gp': {'name': 'gaussian_processes', 'backend': ['skopt']},
     'bayes': {},
-    'forest': {'name': 'decision_tree', 'backend': ['skopt']},
+    'bayes_rf': {'name': 'decision_tree', 'backend': ['skopt']},
     'gbrt': {'name': 'gradient-boosted-tree regression', 'backend': ['skopt']},
     'tpe': {'name': 'Tree of Parzen Estimators', 'backend': ['hyperopt', 'optuna']},
     'atpe': {'name': 'Adaptive Tree of Parzen Estimators', 'backend': ['hyperopt']},
@@ -296,7 +299,7 @@ class HyperOpt(object):
         Parameters
         ---------
             algorithm str:
-                must be one of "random", "grid" "bayes" and "tpe", defining which
+                must be one of "random", "grid" "bayes", "bayes_rf", and "tpe", defining which
                 optimization algorithm to use.
             objective_fn callable:
                 Any callable function whose returned value is to be minimized.
@@ -386,7 +389,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if x is None:
                 x = 'sklearn'
             assert x in ['sklearn', 'optuna']
-        elif self.algorithm == 'bayes':
+        elif self.algorithm in ['bayes', "bayes_rf"]:
             if x is None:
                 x = 'skopt'
         else:
@@ -445,7 +448,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     @param_space.setter
     def param_space(self, x):
-        if self.algorithm == "bayes":
+        if self.algorithm in ["bayes", "bayes_rf"]:
             if isinstance(x, dict):
                 _param_space = []
                 for k, v in x.items():
@@ -532,7 +535,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @property
     def use_skopt_bayes(self):
         # will return true if we have to use skopt based BayesSearchCV
-        if self.algorithm == "bayes" and "sklearn" in str(type(self.objective_fn)):
+        if self.algorithm in ["bayes", "bayes_rf"] and "sklearn" in str(type(self.objective_fn)):
             assert not self.use_sklearn
             return True
         return False
@@ -541,7 +544,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     def use_skopt_gpmin(self):
         # will return True if we have to use skopt based gp_minimize function. This is to implement Bayesian on
         # non-sklearn based models
-        if self.algorithm == "bayes" and "sklearn" not in str(type(self.objective_fn)):
+        if self.algorithm in ["bayes", "bayes_rf"] and "sklearn" not in str(type(self.objective_fn)):
             assert not self.use_sklearn
             assert not self.use_skopt_bayes
             return True
@@ -705,12 +708,18 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         raise ValueError(f"used named args is {self.use_named_args}")
 
     def own_fit(self):
+
+        if self.algorithm == "bayes":
+            minimize_func = gp_minimize
+        else: # bayes_rf
+            minimize_func = forest_minimize
+
         kwargs = self.gpmin_args
         if 'num_iterations' in kwargs:
             kwargs['n_calls'] = kwargs.pop('num_iterations')
 
         try:
-            search_result = gp_minimize(func=self.model_for_gpmin(),
+            search_result = minimize_func(func=self.model_for_gpmin(),
                                         dimensions=self.dims(),
                                         **kwargs)
         except ValueError as e:
@@ -742,6 +751,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         if self.process_results:
             post_process_skopt_results(search_result, self.results, self.opt_path)
+
+            if len(search_result.func_vals)<=100 and self.algorithm != "bayes_rf":
+                save_skopt_results(search_result, self.opt_path)
 
             self._process_results()
 
@@ -922,7 +934,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return np.array(list(self.results.keys()), dtype=np.float32)
 
     def skopt_results(self):
-        if self.use_own and self.algorithm == "bayes" and self.backend == 'skopt':
+        if self.use_own and self.algorithm in ["bayes", "bayes_rf"] and self.backend == 'skopt':
             return self.gpmin_results
         else:
             class SR:
@@ -1268,7 +1280,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 must be equal.
         """
 
-        assert self.algorithm == "bayes"
+        assert self.algorithm in ["bayes", "bayes_rf"]
 
         if iterations is None:
             assert isinstance(x, list) and isinstance(y, list)

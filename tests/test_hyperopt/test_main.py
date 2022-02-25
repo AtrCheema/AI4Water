@@ -443,6 +443,7 @@ class TestHyperOpt(unittest.TestCase):
         #run_unified_interface('atpe', 'hyperopt', 5)  # todo
         run_unified_interface('random', 'hyperopt', 5)
         run_unified_interface('bayes', 'skopt', 12)
+        run_unified_interface('bayes_rf', 'skopt', 12)
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
         return
