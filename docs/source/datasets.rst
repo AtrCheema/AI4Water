@@ -16,7 +16,7 @@ Datasets
    .. automethod:: __init__
 
 MtropicsLaos
-========
+=============
 .. autoclass:: ai4water.datasets.datasets.MtropicsLaos
    :members:
    :undoc-members:

@@ -130,7 +130,9 @@ def run_unified_interface(algorithm, backend, num_iterations, num_samples=None):
     check_attrs(optimizer, len(search_space))
 
     for f in ["fanova_importance_bar.png", "convergence.png", "iterations.json",
-              "edf.png", "parallel_coordinates.png", "iterations_sorted.json"]:
+              "edf.png", "parallel_coordinates.png", "iterations_sorted.json",
+              'distributions.png', "fanova_importance_hist.png"
+              ]:
         fpath = os.path.join(optimizer.opt_path, f)
         assert os.path.exists(fpath)
     return optimizer
@@ -441,6 +443,7 @@ class TestHyperOpt(unittest.TestCase):
         #run_unified_interface('atpe', 'hyperopt', 5)  # todo
         run_unified_interface('random', 'hyperopt', 5)
         run_unified_interface('bayes', 'skopt', 12)
+        run_unified_interface('bayes_rf', 'skopt', 12)
         run_unified_interface('random', 'sklearn', 5, num_samples=5)
         run_unified_interface('grid', 'sklearn', None, num_samples=2)
         return

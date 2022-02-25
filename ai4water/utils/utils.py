@@ -874,14 +874,33 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
 
 
 class TrainTestSplit(object):
-    """train_test_split of sklearn can not be used for list of arrays so here we go"""
+    """train_test_split of sklearn can not be used for list of arrays so here
+    we go
+    """
     def __init__(
+            self,
+            test_fraction: float = 0.3,
+            seed : int = None,
+            train_indices: Union[list, np.ndarray] = None,
+            test_indices: Union[list, np.ndarray] = None
+    ):
+        """
+            test_fraction:
+                test fraction. Must be greater than 0. and less than 1.
+            seed:
+                random seed for reproducibility
+        """
+        self.test_fraction = test_fraction
+        self.state = np.random.RandomState(seed=seed)
+        self.train_indices = train_indices
+        self.test_indices = test_indices
+
+    def split_by_slicing(
             self,
             x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
             y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
-            test_fraction: float = 0.3,
     ):
-        """
+        """splits the x and y by slicing which is defined by `test_fraction`
         Arguments:
             x:
                 arrays to split
@@ -893,27 +912,7 @@ class TrainTestSplit(object):
 
                 - array like such as list, numpy array or pandas dataframe/series
                 - list of array like objects
-            test_fraction:
-                test fraction. Must be greater than 0. and less than 1.
         """
-        self.x = x
-        self.y = y
-        self.test_fraction = test_fraction
-
-    @property
-    def x_is_list(self):
-        if isinstance(self.x, list):
-            return True
-        return False
-
-    @property
-    def y_is_list(self):
-        if isinstance(self.y, list):
-            return True
-        return False
-
-    def split_by_slicing(self):
-        """splits the x and y by slicing which is defined by `test_fraction`"""
         def split_arrays(array):
 
             if isinstance(array, list):
@@ -928,55 +927,60 @@ class TrainTestSplit(object):
 
             return train, test
 
-        train_x, test_x = split_arrays(self.x)
-        train_y, test_y = split_arrays(self.y)
+        train_x, test_x = split_arrays(x)
+        train_y, test_y = split_arrays(y)
 
         return train_x, test_x, train_y, test_y
 
     def split_by_random(
             self,
-            seed: int = None
+            x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
     ):
         """
         splits the x and y by random splitting.
-
         Arguments:
-            seed:
-                random seed for reproducibility
+            x:
+                arrays to split
+
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+            y:
+                array like
+
+                - array like such as list, numpy array or pandas dataframe/series
+                - list of array like objects
+
         """
-
-        
-        state = np.random.RandomState(seed=seed)
-
-        if isinstance(self.x, list):
-            indices = np.arange(len(self.x[0]))
+        if isinstance(x, list):
+            indices = np.arange(len(x[0]))
         else:
-            indices = np.arange(len(self.x))
+            indices = np.arange(len(x))
 
-        indices = state.permutation(indices)
+        indices = self.state.permutation(indices)
 
         split_at = int(len(indices) * (1. - self.test_fraction))
         train_indices, test_indices = (self.slice_arrays(indices, 0, split_at), self.slice_arrays(indices, split_at))
 
-        train_x = self.slice_with_indices(self.x, train_indices)
-        train_y = self.slice_with_indices(self.y, train_indices)
+        train_x = self.slice_with_indices(x, train_indices)
+        train_y = self.slice_with_indices(y, train_indices)
 
-        test_x = self.slice_with_indices(self.x, test_indices)
-        test_y = self.slice_with_indices(self.y, test_indices)
+        test_x = self.slice_with_indices(x, test_indices)
+        test_y = self.slice_with_indices(y, test_indices)
 
         return train_x, test_x, train_y, test_y
 
     def split_by_indices(
             self,
-            train_indices: Union[list, np.ndarray],
-            test_indices: Union[list, np.ndarray]
+            x: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
+            y: Union[list, np.ndarray, pd.Series, pd.DataFrame, List[np.ndarray]],
     ):
         """splits the x and y by user defined `train_indices` and `test_indices`"""
 
-        return self.slice_with_indices(self.x, train_indices), \
-               self.slice_with_indices(self.x, test_indices), \
-               self.slice_with_indices(self.y, train_indices), \
-               self.slice_with_indices(self.y, test_indices)
+        return self.slice_with_indices(x, self.train_indices), \
+               self.slice_with_indices(x, self.test_indices), \
+               self.slice_with_indices(y, self.train_indices), \
+               self.slice_with_indices(y, self.test_indices)
 
     @staticmethod
     def slice_with_indices(array, indices):
@@ -1000,29 +1004,31 @@ class TrainTestSplit(object):
 
     def KFold_splits(
             self,
+            x,
+            y,
             n_splits,
             shuffle=True,
             random_state=None
     ):
         from sklearn.model_selection import KFold
         kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
-        spliter = kf.split(self.x[0] if self.x_is_list else self.x)
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
 
         for tr_idx, test_idx in spliter:
 
-            if self.x_is_list:
-                train_x = [xarray[tr_idx] for xarray in self.x]
-                test_x = [xarray[test_idx] for xarray in self.x]
+            if isinstance(x, list):
+                train_x = [xarray[tr_idx] for xarray in x]
+                test_x = [xarray[test_idx] for xarray in x]
             else:
-                train_x = self.x[tr_idx]
-                test_x = self.x[test_idx]
+                train_x = x[tr_idx]
+                test_x = x[test_idx]
 
-            if self.y_is_list:
-                train_y = [yarray[tr_idx] for yarray in self.y]
-                test_y = [yarray[test_idx] for yarray in self.y]
+            if isinstance(y, list):
+                train_y = [yarray[tr_idx] for yarray in y]
+                test_y = [yarray[test_idx] for yarray in y]
             else:
-                train_y = self.y[tr_idx]
-                test_y = self.y[test_idx]
+                train_y = y[tr_idx]
+                test_y = y[test_idx]
 
             yield (train_x, train_y), (test_x, test_y)
 
@@ -1220,7 +1226,7 @@ def prepare_data(
     | 7      |  17    |
     +--------+--------+
 
-    then  `num_inputs`=2, `lookback`=7, `input_steps`=1
+    then  ``num_inputs``=2, ``lookback``=7, ``input_steps``=1
 
     and if we want to predict
 
@@ -1230,7 +1236,7 @@ def prepare_data(
     |   27    |   37    |   47     |
     +---------+---------+----------+
 
-    then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=0,
+    then ``num_outputs``=3, ``forecast_len``=1,  ``forecast_step``=0,
 
     if we want to predict
 
@@ -1240,7 +1246,7 @@ def prepare_data(
     | 28      | 38      | 48       |
     +---------+---------+----------+
 
-    then `num_outputs`=3, `forecast_len`=1,  `forecast_step`=1,
+    then ``num_outputs``=3, ``forecast_len``=1,  ``forecast_step``=1,
 
     if we want to predict
 
@@ -1252,7 +1258,7 @@ def prepare_data(
     |  28     |  38     |  48      |
     +---------+---------+----------+
 
-    then `num_outputs`=3, forecast_len=2,  horizon/forecast_step=0,
+    then ``num_outputs``=3, forecast_len=2,  horizon/forecast_step=0,
 
     if we want to predict
 
@@ -1266,7 +1272,7 @@ def prepare_data(
     |   30    |   40    |   50     |
     +---------+---------+----------+
 
-    then `num_outputs`=3, `forecast_len`=3,  `forecast_step`=1,
+    then ``num_outputs`` =3, ``forecast_len`` =3,  ``forecast_step`` =1,
 
     if we want to predict
 
@@ -1279,7 +1285,7 @@ def prepare_data(
     +---------+
     |   40    |
 
-    then `num_outputs`=1, `forecast_len`=3, `forecast_step`=0
+    then ``num_outputs``=1, ``forecast_len``=3, ``forecast_step``=0
 
     if we predict
 
@@ -1289,7 +1295,7 @@ def prepare_data(
     | 39      |
     +---------+
 
-    then `num_outputs`=1, `forecast_len`=1, `forecast_step`=2
+    then ``num_outputs``=1, ``forecast_len``=1, ``forecast_step``=2
 
     if we predict
 
@@ -1303,7 +1309,7 @@ def prepare_data(
     | 41      |
     +---------+
 
-     then `num_outputs`=1, `forecast_len`=3, `forecast_step`=2
+     then ``num_outputs``=1, ``forecast_len``=3, ``forecast_step``=2
 
     If we use following two time series as input
 
@@ -1319,7 +1325,7 @@ def prepare_data(
     |   7    |  17    |
     +--------+--------+
 
-    then   `num_inputs`=2, `lookback`=4, `input_steps`=2
+    then   ``num_inputs``=2, ``lookback``=4, ``input_steps``=2
 
     If the input is
 

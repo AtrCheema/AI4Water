@@ -3,6 +3,7 @@ __all__ = ["MLClassificationExperiments"]
 
 from ._main import Experiments
 from .utils import classification_space
+from ai4water.utils.utils import dateandtime_now
 
 
 class MLClassificationExperiments(Experiments):
@@ -28,7 +29,7 @@ class MLClassificationExperiments(Experiments):
                  param_space=None,
                  x0=None,
                  cases=None,
-                 exp_name='MLExperiments',
+                 exp_name='MLClassificationExperiments',
                  num_samples=5,
                  **model_kwargs):
         """
@@ -50,6 +51,8 @@ class MLClassificationExperiments(Experiments):
 
         self.classification_space = classification_space(num_samples=num_samples)
 
+        if exp_name == "MLClassificationExperiments":
+            exp_name = f"{exp_name}_{dateandtime_now()}"
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples)
 
     @property
@@ -358,7 +361,7 @@ class MLClassificationExperiments(Experiments):
     def model_CatBoostClassifier(self, **suggestions):
         # https://catboost.ai/en/docs/concepts/python-reference_catboostclassifier
 
-        self.path = "xgboost.CatBoostClassifier"
+        self.path = "catboost.CatBoostClassifier"
         self.param_space = self.classification_space["CatBoostClassifier"]["param_space"]
         self.x0 = self.classification_space["CatBoostClassifier"]["x0"]
 

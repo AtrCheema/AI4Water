@@ -1,11 +1,14 @@
 # AI4Water
 
 
-[![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf230/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
+[![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
 [![Documentation Status](https://readthedocs.org/projects/ai4water/badge/?version=latest)](https://ai4water.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://zenodo.org/badge/DOI/10.5194/gmd-2021-139.svg)](https://doi.org/10.5194/gmd-2021-139)
+[![Downloads](https://pepy.tech/badge/ai4water)](https://pepy.tech/project/ai4water)
 
-A uniform and simplified framework for rapid expermenting with deep leanring and machine learning based models
-for time series and 1D data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
+
+A uniform and simplified framework for rapid experimentation with deep leanring and machine learning based models
+for time series and tabular data. To put into Andrej Karapathy's [words](https://twitter.com/karpathy/status/1350503355299205120)
 
 `Because deep learning is so empirical, success in it is to a large extent proportional to raw experimental throughput,
  the ability to babysit a large number of experiments at once, staring at plots and tweaking/re-launching what works. 
@@ -15,7 +18,7 @@ The specific purposes of the repository are
 
 -    compliment the functionality of `keras`/`pytorch`/`sklearn` by making pre and 
  post processing easeier for time-series prediction/classification problems (also holds
- true for any 1D data).
+ true for any tabular data).
  
 -    save, load/reload or build models from readable json file. This repository 
  provides a framework to build layered models using python dictionary and with 
@@ -49,7 +52,11 @@ The specific purposes of the repository are
 
 ## Installation
 
-using github link
+An easy way to install ai4water is using pip
+
+    pip install ai4water
+
+You can also use github link
 
 	python -m pip install git+https://github.com/AtrCheema/AI4Water.git
 

@@ -2,7 +2,7 @@ Performance Metrics
 *******************
 
 Please note that the `SeqMetrics` sub-module has been deprecated. 
-Please use `SeqMetrics <SeqMetrics.readthedocs.io>`_ library instead.
+Please use`SeqMetrics <https://seqmetrics.readthedocs.io/en/latest/>`_ library instead.
 
 SeqMetrics
 =========

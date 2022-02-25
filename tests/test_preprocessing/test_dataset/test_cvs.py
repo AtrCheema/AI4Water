@@ -25,12 +25,6 @@ class TestCVs(unittest.TestCase):
 
         return ds
 
-    def __call__(self, *args, **kwargs):
-        self.test_loocv()
-        self.test_tscv()
-        self.test_kfold()
-        return
-
     def test_kfold(self):
         ds = self.make_cross_validator()
         ds.KFold_splits(n_splits=5)

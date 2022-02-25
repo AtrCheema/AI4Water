@@ -24,7 +24,6 @@ class ModelOptimizerMixIn(object):
             num_iterations,
             process_results,
             prefix="hpo",
-            data=None
     ):
         self.model = model
         self.algorithm = algorithm
@@ -32,15 +31,13 @@ class ModelOptimizerMixIn(object):
         self.process_results = process_results
         self.prefix = prefix
 
+    def fit(self, data=None,):
+
         if isinstance(data, tuple) or isinstance(data, list):
             assert len(data) == 2
-            self.xy = True
+            xy = True
         else:
-            self.xy = False
-
-        self.data = data
-
-    def fit(self):
+            xy = False
 
         PREFIX = f"{self.prefix}_{dateandtime_now()}"
         self.iter = 0
@@ -60,7 +57,6 @@ class ModelOptimizerMixIn(object):
             Metrics = RegressionMetrics
 
         def objective_fn(
-                seed=None,
                 **suggestions,
         ):
            # we must not set the seed here to None
@@ -77,31 +73,31 @@ class ModelOptimizerMixIn(object):
 
             if cross_validator is None:
 
-                if self.xy:  # todo, it is better to split data outside objective_fn
-                    splitter = TrainTestSplit(*self.data, 
+                if xy:  # todo, it is better to split data outside objective_fn
+                    splitter = TrainTestSplit(seed=SEED, 
                         test_fraction=config['val_fraction'])
 
                     if config['split_random']:
                         # for reproducibility, we should use SEED so that at everay optimization
                         # iteration, we split the data in the same way
-                        train_x, test_x, train_y, test_y = splitter.split_by_random(seed=SEED)
+                        train_x, test_x, train_y, test_y = splitter.split_by_random(*data)
                     else:
-                        train_x, test_x, train_y, test_y = splitter.split_by_slicing()
+                        train_x, test_x, train_y, test_y = splitter.split_by_slicing(*data)
 
                     _model.fit(x=train_x, y=train_y)
                     p = _model.predict(test_x)
                 else:
-                    _model.fit(data=self.data)
+                    _model.fit(data=data)
                     test_y, p = _model.predict(data='validation', return_true=True,
                                                process_results=False)
 
                 metrics = Metrics(test_y, p)
                 val_score = getattr(metrics, val_metric)()
             else:
-                if self.xy:
-                    val_score = _model.cross_val_score(*self.data)
+                if xy:
+                    val_score = _model.cross_val_score(*data)
                 else:
-                    val_score = _model.cross_val_score(data=self.data)
+                    val_score = _model.cross_val_score(data=data)
 
             
 
@@ -144,7 +140,6 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
             algorithm,
             num_iterations,
             process_results=False,
-            data=None,
             **kwargs
     ):
         super().__init__(
@@ -152,7 +147,6 @@ class OptimizeHyperparameters(ModelOptimizerMixIn):
             algorithm=algorithm,
             num_iterations=num_iterations,
             process_results=process_results,
-            data=data,
             prefix="hpo"
         )
 
@@ -187,7 +181,6 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             exclude=None,
             append=None,
             process_results=False,
-            data=None,
     ):
         super().__init__(
             model=model,
@@ -195,7 +188,6 @@ class OptimizeTransformations(ModelOptimizerMixIn):
             algorithm=algorithm,
             process_results=process_results,
             prefix="trans_hpo",
-            data=data
         )
 
         self.space = make_space(self.model.input_features,
