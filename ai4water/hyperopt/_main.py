@@ -345,7 +345,7 @@ class HyperOpt(object):
         self.data = None
         self.eval_on_best = eval_on_best
         self.opt_path = opt_path
-        self.process_results = process_results
+        self._process_results = process_results
         self.objective_fn_is_dl = False
         self.verbosity = verbosity
 
@@ -749,13 +749,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             xiters = search_result.x_iters
             self.results = {f'{round(k, 8)}_{idx}': self.to_kw(v) for idx, k, v in zip(range(self.num_iterations), fv, xiters)}
 
-        if self.process_results:
+        if self._process_results:
             post_process_skopt_results(search_result, self.results, self.opt_path)
 
             if len(search_result.func_vals)<=100 and self.algorithm != "bayes_rf":
                 save_skopt_results(search_result, self.opt_path)
 
-            self._process_results()
+            self.process_results()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -782,8 +782,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             self.results[err + idx] = sort_x_iters(para, self.original_para_order())
 
-        if self.process_results:
-            self._process_results()
+        if self._process_results:
+            self.process_results()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -844,8 +844,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         study.optimize(objective, n_trials=self.num_iterations)
         setattr(self, 'study', study)
 
-        if self.process_results:
-            self._process_results()
+        if self._process_results:
+            self.process_results()
 
         return study
 
@@ -891,8 +891,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         setattr(self, 'trials', trials)
         # self.results = trials.results
-        if self.process_results:
-            self._process_results()
+        if self._process_results:
+            self.process_results()
 
         return best
 
@@ -962,7 +962,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return paras
 
-    def _process_results(self):
+    def process_results(self):
         """post processing of results"""
         self.save_iterations_as_xy()
 
