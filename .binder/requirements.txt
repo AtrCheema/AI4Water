@@ -4,3 +4,5 @@ tensorflow
 seaborn
 xgboost
 seaborn
+catboost
+lightgbm

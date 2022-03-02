@@ -109,7 +109,9 @@ class Visualize(Plots):
 
     def __init__(
             self,
-            model
+            model,
+            save=True,
+            show=True,
     ):
         """
         Arguments:
@@ -119,6 +121,8 @@ class Visualize(Plots):
 
         self.model = model
         self.verbosity = model.verbosity
+        self.save=save
+        self.show=show
 
         self.vis_path = os.path.join(model.path, "visualize")
         if not os.path.exists(self.vis_path):

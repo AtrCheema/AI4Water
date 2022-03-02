@@ -18,3 +18,7 @@ seaborn
 easy_mpl
 SeqMetrics
 sphinx-gallery
+keras-tcn
+xgboost
+lightgbm
+catboost

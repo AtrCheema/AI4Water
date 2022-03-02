@@ -58,7 +58,7 @@ class BaseModel(NN):
     """ Model class that implements logic of AI4Water. """
 
     def __init__(self,
-                 model: Union[dict, str] = None,
+                 model: Union[dict, str, Callable] = None,
                  x_transformation: Union[str, dict, list] = None,
                  y_transformation:Union[str, dict, list] = None,
                  lr: float = 0.001,
@@ -1686,14 +1686,19 @@ class BaseModel(NN):
         """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
 
-    def plot_model(self, nn_model) -> None:
-        kwargs = {}
-        if int(tf.__version__.split('.')[1]) > 14:
+    def plot_model(self, nn_model, **kwargs) -> None:
+
+        if int(tf.__version__.split('.')[1]) > 14 and 'dpi' not in kwargs:
             kwargs['dpi'] = 300
 
+        if 'to_file' not in kwargs:
+            kwargs['to_file'] = os.path.join(self.path, "model.png")
+
         try:
-            keras.utils.plot_model(nn_model, to_file=os.path.join(self.path, "model.png"), 
-                show_shapes=True, **kwargs)
+            keras.utils.plot_model(
+                nn_model,
+                show_shapes=True,
+                **kwargs)
         except (AssertionError, ImportError) as e:
             print(f"dot plot of model could not be plotted due to {e}")
         return
