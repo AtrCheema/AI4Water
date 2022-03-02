@@ -66,7 +66,7 @@ sphinx_gallery_conf = {
     'examples_dirs': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'examples'),
     'gallery_dirs': 'auto_examples',
     'compress_images': ('images', 'thumbnails'),
-    #'filename_pattern': '',
+    'filename_pattern': 'example',
 
     'binder': {'org': 'sphinx-gallery',
                'repo': 'sphinx-gallery.github.io',
