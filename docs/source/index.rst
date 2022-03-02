@@ -24,6 +24,7 @@ Welcome to ai4water's documentation!
    experiments
    evapotranspiration
    utils
+   auto_examples/index
 
 
 paper
