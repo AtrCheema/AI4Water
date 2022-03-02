@@ -16,3 +16,4 @@ tensorflow
 torch
 easy_mpl
 SeqMetrics
+sphinx-gallery
