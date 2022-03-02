@@ -14,6 +14,7 @@ scikit-optimize
 plotly
 tensorflow
 torch
+seaborn
 easy_mpl
 SeqMetrics
 sphinx-gallery

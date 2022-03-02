@@ -3,3 +3,4 @@ sphinx-gallery
 tensorflow
 seaborn
 xgboost
+seaborn
