@@ -10,6 +10,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from easy_mpl import bar_chart, parallel_coordinates, pie
+from pandas.plotting._matplotlib.tools import create_subplots
 
 try:
     import seaborn as sns
@@ -210,6 +211,9 @@ class EDA(Plot):
             >>> vis = EDA(data)
             >>> vis.heatmap()
         """
+        if sns is None:
+            raise SeabornNotFound()
+
         return self._call_method('_heatmap_df',
                                  cols=cols,
                                  st=st,
@@ -450,7 +454,7 @@ class EDA(Plot):
             >>> eda = EDA(busan_beach())
             >>> eda.plot_data(subplots=True, figsize=(12, 14), sharex=True)
             >>> eda.plot_data(freq='monthly', subplots=True, figsize=(12, 14), sharex=True)
-        ```
+
         """
         return self._call_method("_plot_df",
                                  st=st,
@@ -604,7 +608,7 @@ class EDA(Plot):
                 any additional keyword arguments to be passed to easy_mpl.parallel_coordinates_
 
         .. _easy_mpl.parallel_coordinates:
-            https://easy-mpl.readthedocs.io/en/latest/#module-9
+            https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.parallel_coordinates
 
         """
         return self._call_method(
@@ -651,6 +655,7 @@ class EDA(Plot):
             en=None,
             orientation="h",
             color=None,
+            figsize: tuple = None,
     ):
         """plots the statistics of nromality test as bar charts. The statistics
         for each feature are calculated either Shapiro-wilke_
@@ -663,14 +668,16 @@ class EDA(Plot):
                 either "shapiro" or "anderson", or "kolmogorov" default is "shapiro"
             cols :
                 columns to use
-            st :
+            st : optional
                 start of data
-            en :
+            en : optional
                 end of data to use
-            orientation :
+            orientation : optional
                 orientation of bars
             color :
                 color to use
+            figsize : tuple, optional
+                figure size (width, height)
 
         Example
         -------
@@ -690,13 +697,16 @@ class EDA(Plot):
             en=en,
             orientation=orientation,
             color=color,
+            figsize=figsize
         )
 
     def _normality_test_df(
             self, data, cols=None, st=None, en=None,
             method="shapiro",
-            orientation="h", prefix="",
+            orientation="h",
+            prefix="",
             color=None,
+            figsize=None,
     ):
         """calculates normality test for each column of a DataFrame"""
         assert method in ("shapiro", "anderson", "kolmogorov")
@@ -714,12 +724,16 @@ class EDA(Plot):
 
             ranks.append(s)
 
+        _, ax = plt.subplots(figsize=figsize)
+
         bar_chart(labels=data.columns.tolist(),
                   values=ranks,
                   orient=orientation,
                   show=False,
                   sort=True,
-                  color=color)
+                  color=color,
+                  ax=ax
+                  )
         return self._save_or_show(fname=f"shapiro_normality_test_{prefix}")
 
     def correlation(
@@ -769,6 +783,9 @@ class EDA(Plot):
                 cols = self.in_cols + self.out_cols
             if isinstance(cols, dict):
                 cols = None
+
+        if sns is None:
+            raise SeabornNotFound()
 
         return self._call_method("_feature_feature_corr_df",
                                  cols=cols,
@@ -968,6 +985,8 @@ class EDA(Plot):
             kwargs :
                 keyword arguments for sns.pariplot
         """
+        if sns is None:
+            raise SeabornNotFound()
 
         self._call_method('_grouped_scatter_plot_df',
                           max_subplots=max_subplots,
@@ -1238,7 +1257,8 @@ class EDA(Plot):
             **kwargs :
                 any args for seaborn.boxplot/seaborn.violenplot or seaborn.swarmplot.
         """
-        #name = "violen_plot_" if violen else "box_plot_"
+        if sns is None:
+            raise SeabornNotFound()
 
         return self._call_method("_box_plot",
                                  st=st, en=en, cols=cols,
@@ -1415,18 +1435,24 @@ class EDA(Plot):
             self,
             n_lags: int = 10,
             cols: Union[list, str] = None,
+            figsize: tuple = None,
     ):
         """autocorrelation of individual features of data
 
         Arguments
         ---------
-            n_lags :
+            n_lags : int, optional
                 number of lag steps to consider
-            cols :
+            cols : str, list, optional
                 columns to use. If not defined then all the columns are used
+            figsize : tuple, optional
+                figure size
         """
-        return self._call_method("_autocorr_df", partial=False, n_lags=n_lags,
-                                 cols=cols)
+        return self._call_method("_autocorr_df", partial=False,
+                                 n_lags=n_lags,
+                                 cols=cols,
+                                 figsize=figsize
+                                 )
 
     def partial_autocorrelation(
             self,
@@ -1451,6 +1477,7 @@ class EDA(Plot):
             n_lags: int,
             partial: bool = False,
             cols=None,
+            figsize=None,
             fname='',
     ):
         """autocorrelation on a dataframe."""
@@ -1465,16 +1492,14 @@ class EDA(Plot):
         non_nan = data.isna().sum()
         num_subplots = max(math.ceil(len(non_nan[non_nan == 0])/2)*2, 1)
 
-        if num_subplots == 1:
-            nrows, ncols = 1, 1
-        elif num_subplots == 2:
-            nrows, ncols = 1, 2
-        else:
-            nrows, ncols = int(num_subplots/2), 2
+        fig, axis = create_subplots(naxes=num_subplots, figsize=figsize,
+                                    sharex=True, sharey=True
+                                    )
 
-        fig, axis = plt.subplots(nrows, ncols, figsize=(9, nrows*2),
-                                 sharex="all", sharey="all")
         axis = np.array(axis)  # if it is a single axis then axis.flat will not work
+
+        nrows = axis.shape[0]
+
         for col, ax in zip(data.columns, axis.flat):
 
             x = data[col].values
@@ -1486,12 +1511,12 @@ class EDA(Plot):
                     _ac = auto_corr(x, n_lags)
 
                 plot_autocorr(_ac, axis=ax, legend=col, show=False,
-                              legend_fs=nrows*2)
+                              legend_fs=nrows*1.5)
             else:
                 print(f"cannot plot autocorrelation for {col} feature")
 
         plt.suptitle(f"{prefix} Autocorrelation",
-                     fontsize=nrows*3)
+                     fontsize=nrows*2)
 
         fname = f"{prefix} autocorr_{fname}"
         self._save_or_show(fname=fname)
@@ -1752,7 +1777,7 @@ class EDA(Plot):
             max_subplots : int, optional
             figsize : tuple, optional
             **kwargs :
-                Any keyword arguments for easy_mpl.pie
+                Any keyword arguments for `easy_mpl.pie <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.pie>`_
 
         """
         return self._call_method('_pie_df',
@@ -1897,3 +1922,11 @@ def _preprocess_df(df:pd.DataFrame, st=None, en=None, cols=None,
         df = df.reset_index(drop=True)
 
     return df
+
+
+class SeabornNotFound(Exception):
+    def __str__(self):
+        return """
+        You must have seaborn library installed.
+        Please install seaborn using 'pip install seaborn'
+        """

@@ -484,7 +484,7 @@ class Experiments(object):
         >>> experiment.taylor_plot()
 
         .. _taylor_plot:
-            https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.taylor_plot
+            https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.taylor_plot
         """
         metrics = self.metrics.copy()
 
@@ -588,8 +588,8 @@ Available cases are {self.models} and you wanted to include
             dpi : int, optional
             **kwargs :
                 any additional keyword arguments for
-                `dumbell plot <https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.dumbbell_plot>`_
-                 or `bar_chart <https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.bar_chart>`_
+                `dumbell plot <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.dumbbell_plot>`_
+                 or `bar_chart <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.bar_chart>`_
 
         Returns
         -------
@@ -807,7 +807,7 @@ Available cases are {self.models} and you wanted to include
                 size of the figure
             **kwargs :
                 any other keyword arguments to be passed to the 
-                `plot <https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.plot>`_
+                `plot <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot>`_
         Returns:
             matplotlib axes
 
@@ -905,7 +905,7 @@ Available cases are {self.models} and you wanted to include
         >>> experiment.compare_convergence()
 
         .. _plot:
-            https://easy-mpl.readthedocs.io/en/latest/#easy_mpl.plot
+            https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot
         """
         if len(self.config['optimized_models']) < 1:
             print('No model was optimized')

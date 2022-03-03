@@ -345,7 +345,7 @@ class HyperOpt(object):
         self.data = None
         self.eval_on_best = eval_on_best
         self.opt_path = opt_path
-        self.process_results = process_results
+        self._process_results = process_results
         self.objective_fn_is_dl = False
         self.verbosity = verbosity
 
@@ -749,13 +749,13 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             xiters = search_result.x_iters
             self.results = {f'{round(k, 8)}_{idx}': self.to_kw(v) for idx, k, v in zip(range(self.num_iterations), fv, xiters)}
 
-        if self.process_results:
+        if self._process_results:
             post_process_skopt_results(search_result, self.results, self.opt_path)
 
             if len(search_result.func_vals)<=100 and self.algorithm != "bayes_rf":
                 save_skopt_results(search_result, self.opt_path)
 
-            self._process_results()
+            self.process_results()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -782,8 +782,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
             self.results[err + idx] = sort_x_iters(para, self.original_para_order())
 
-        if self.process_results:
-            self._process_results()
+        if self._process_results:
+            self.process_results()
 
         if self.eval_on_best:
             self.eval_with_best()
@@ -844,8 +844,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         study.optimize(objective, n_trials=self.num_iterations)
         setattr(self, 'study', study)
 
-        if self.process_results:
-            self._process_results()
+        if self._process_results:
+            self.process_results()
 
         return study
 
@@ -891,8 +891,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         setattr(self, 'trials', trials)
         # self.results = trials.results
-        if self.process_results:
-            self._process_results()
+        if self._process_results:
+            self.process_results()
 
         return best
 
@@ -962,10 +962,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return paras
 
-    def _process_results(self):
-        """post processing of results"""
-        self.save_iterations_as_xy()
+    def _plot_edf(self, save=True):
+        # empirical CDF of objective function
+        plt.close("all")
+        y = np.array(list(self.xy_of_iterations().keys())).astype("float64")
+        plot_edf(y)
+        if save:
+            plt.savefig(os.path.join(self.opt_path, "edf"))
+        return
 
+    def _plot_parallel_coords(self, save=True):
         # parallel coordinates of hyperparameters
         d = self.xy_of_iterations()
 
@@ -977,19 +983,41 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             categories=categories,
             show=False
         )
-        fname = os.path.join(self.opt_path, "parallel_coordinates")
-        plt.savefig(fname, dpi=500, bbox_inches="tight")
+        if save:
+            fname = os.path.join(self.opt_path, "parallel_coordinates")
+            plt.savefig(fname, dpi=500, bbox_inches="tight")
+        return
+
+    def _plot_evaluations(self, save=True):
+        plt.close('all')
+        plot_evaluations(self.skopt_results(), dimensions=self.best_paras(as_list=True))
+        if save:
+            plt.savefig(os.path.join(self.opt_path, "evaluations.png"),
+                        dpi=300,
+                        bbox_inches='tight')
+        return
+
+    def _plot_convergence(self, save=True):
+        plt.close('all')
+        # todo, should include an option to plot original evaluations instead of only minimum
+        plot_convergence([self.skopt_results()])
+        if save:
+            fname = os.path.join(self.opt_path, "convergence.png")
+            plt.savefig(fname, dpi=300, bbox_inches='tight')
+        return
+
+    def process_results(self):
+        """post processing of results"""
+        self.save_iterations_as_xy()
+
+        self._plot_parallel_coords()
 
         # deep learning related results
         if self.objective_fn_is_dl:
             plot_convergences(self.opt_path, what='val_loss', ylabel='Validation MSE')
             plot_convergences(self.opt_path, what='loss', ylabel='MSE', leg_pos="upper right")
 
-        # empirical CDF of objective function
-        plt.close("all")
-        y = np.array(list(self.xy_of_iterations().keys())).astype("float64")
-        plot_edf(y)
-        plt.savefig(os.path.join(self.opt_path, "edf"))
+        self._plot_edf()
 
         # distributions/historgrams of explored hyperparameters
         self._plot_distributions()
@@ -997,19 +1025,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         sr = self.skopt_results()
 
         # convergence plot
-        plt.close('all')
         if sr.x_iters is not None and self.backend != "skopt":
-            # todo, should include an option to plot original evaluations instead of only minimum
-            plot_convergence([sr])
-
-            fname = os.path.join(self.opt_path, "convergence.png")
-            plt.savefig(fname, dpi=300, bbox_inches='tight')
+            self._plot_convergence()
 
         # plot of hyperparameter space as explored by the optimizer
         if self.backend != 'skopt' and len(self.space()) < 20:  # and len(self.space())>1:
-            plt.close('all')
-            plot_evaluations(sr, dimensions=self.best_paras(as_list=True))
-            plt.savefig(os.path.join(self.opt_path, "evaluations.png"), dpi=300, bbox_inches='tight')
+            self._plot_evaluations()
 
         self.plot_importance(raise_error=False)
 
@@ -1027,7 +1048,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             if self.backend == 'optuna':
 
                 fig = plot_contour(self.study)
-                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'), auto_open=False)
+                plotly.offline.plot(fig, filename=os.path.join(self.opt_path, 'contours.html'),
+                                    auto_open=False)
 
         return
 
@@ -1043,13 +1065,16 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         else:
             importances, importance_paras, ax = plot_param_importances(self.optuna_study())
             if importances is not None:
-                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'), bbox_inches="tight", dpi=300)
+                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+                            bbox_inches="tight", dpi=300)
 
                 plt.close('all')
                 df = pd.DataFrame.from_dict(importance_paras)
                 axis = df.boxplot(rot=70, return_type="axes")
                 axis.set_ylabel("Relative Importance")
-                plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"), dpi=300, bbox_inches='tight')
+                plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"),
+                            dpi=300, 
+                            bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
                     json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
@@ -1058,7 +1083,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
         return
 
-    def _plot_distributions(self):
+    def _plot_distributions(self, save=True):
         """plot distributions of explored hyperparameters"""
         from pandas.plotting._matplotlib.tools import create_subplots
 
@@ -1084,8 +1109,9 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                  title=col,
                  ylabel="Number of iterations")
 
-        fname = os.path.join(self.opt_path, "distributions.png")
-        plt.savefig(fname, bbox_inches="tight")
+        if save:
+            fname = os.path.join(self.opt_path, "distributions.png")
+            plt.savefig(fname, bbox_inches="tight")
         return
 
     def to_kw(self, x):

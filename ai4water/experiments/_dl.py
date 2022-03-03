@@ -14,12 +14,14 @@ class DLRegressionExperiments(Experiments):
     a framework for comparing several basic DL architectures for a given data.
 
     Any method defining a model should have the following signature:
-    def model_<name>(self, **kwargs)
-        self.param_space = ...
-        self.x0 = ...
-        layers = update_layers(**kwargs) # update layers with kwargs
-        return self._make_return(layers, **kwargs)
-    
+    ```
+    python
+    >>> def model_<name>(self, **kwargs)
+    >>>         self.param_space = ...
+    >>>         self.x0 = ...
+    >>>     layers = update_layers(**kwargs) # update layers with kwargs
+    >>>        return self._make_return(layers, **kwargs)
+    ```
     To check the available models 
     >>> exp = DLRegressionExperiments(...)
     >>> exp.models

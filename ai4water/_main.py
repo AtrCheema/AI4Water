@@ -17,6 +17,7 @@ import joblib  # since sklearn is required, this will automatically come in
 import matplotlib  # for version info
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 try:
@@ -57,7 +58,7 @@ class BaseModel(NN):
     """ Model class that implements logic of AI4Water. """
 
     def __init__(self,
-                 model: Union[dict, str] = None,
+                 model: Union[dict, str, Callable] = None,
                  x_transformation: Union[str, dict, list] = None,
                  y_transformation:Union[str, dict, list] = None,
                  lr: float = 0.001,
@@ -1183,9 +1184,11 @@ class BaseModel(NN):
 
             self.verbosity = verbosity
 
-            self._maybe_change_residual_threshold(train_y)
-
-            self.fit(x=train_x, y=train_y.reshape(-1, ))
+            if self.category == "ML":
+                self._maybe_change_residual_threshold(train_y)
+                self.fit(x=train_x, y=train_y.reshape(-1, ))
+            else:
+                self.fit(x=train_x, y=train_y)
             # since we have access to true y, it is better to provide it
             # it can be helpful for inverse transformation of y
             pred = self.predict(x=test_x, y=test_y, process_results=False)
@@ -1683,14 +1686,19 @@ class BaseModel(NN):
         """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
 
-    def plot_model(self, nn_model) -> None:
-        kwargs = {}
-        if int(tf.__version__.split('.')[1]) > 14:
+    def plot_model(self, nn_model, **kwargs) -> None:
+
+        if int(tf.__version__.split('.')[1]) > 14 and 'dpi' not in kwargs:
             kwargs['dpi'] = 300
 
+        if 'to_file' not in kwargs:
+            kwargs['to_file'] = os.path.join(self.path, "model.png")
+
         try:
-            keras.utils.plot_model(nn_model, to_file=os.path.join(self.path, "model.png"), 
-                show_shapes=True, **kwargs)
+            keras.utils.plot_model(
+                nn_model,
+                show_shapes=True,
+                **kwargs)
         except (AssertionError, ImportError) as e:
             print(f"dot plot of model could not be plotted due to {e}")
         return
@@ -2134,7 +2142,7 @@ class BaseModel(NN):
             update_config:
                 whether to update the config of model or not.
         Returns:
-            an instance of [HyperOpt][ai4water.hyperopt.HyperOpt] which is used for optimization
+            an instance of :py:class:`ai4water.hyperopt.HyperOpt` which is used for optimization
 
         Examples:
             >>> from ai4water import Model
@@ -2443,6 +2451,108 @@ class BaseModel(NN):
         else:
             assert plot_type in ("boxplot", "heatmap")
             return getattr(pm, f"plot_as_{plot_type}")()
+
+    def sensitivity_analysis(
+            self,
+            data=None,
+            bounds=None,
+            sampler="morris",
+            analyzer="sobol",
+            sampler_kwds: dict = None,
+            analyzer_kwds: dict = None,
+            save_plots: bool = True
+    ):
+        """performs sensitivity analysis of the model w.r.t input features in data.
+
+        The model and its hyperprameters remain fixed while the input data is changed.
+
+        Parameters
+        ----------
+
+        data :
+            data which
+        bounds : list,
+            alternative to data
+
+        sampler : str, optional
+            any sampler_ from SALib library. For example ``morris``, ``fast_sampler``,
+            ``ff``, ``finite_diff``, ``latin``, ``saltelli``, ``sobol_sequence``
+        analyzer : str, optional
+            any analyzer_ from SALib lirary. For example ``sobol``, ``dgsm``, ``fast``
+            ``ff``, ``hdmr``, ``morris``, ``pawn``, ``rbd_fast``
+        sampler_kwds : dict
+            keyword arguments for sampler
+        analyzer_kwds : dict
+            keyword arguments for analyzer
+        save_plots : bool, optional
+
+        Examples
+        --------
+        >>> from ai4water import Model
+        >>> from ai4water.datasets import busan_beach
+        >>> data = busan_beach()
+        >>> input_features=data.columns.tolist()[0:-1]
+        >>> output_features = data.columns.tolist()[-1:]
+
+        >>> model=Model(model="RandomForestRegressor",
+        >>>     input_features=input_features,
+        >>>     output_features=output_features)
+
+        >>> model.fit(data=data)
+
+        >>> si = model.sensitivity_analysis(data=data[input_features].values,
+        >>>                    sampler="morris", analyzer="hdmr",
+        >>>                        sampler_kwds={'N': 100})
+
+        .. _sampler:
+            https://salib.readthedocs.io/en/latest/api/SALib.sample.html
+
+        .. _analyzer:
+            https://salib.readthedocs.io/en/latest/api/SALib.analyze.html
+
+        """
+        try:
+            import SALib
+        except (ImportError, ModuleNotFoundError):
+            warnings.warn("""
+            You must have SALib library installed in order to perform sensitivity analysis.
+            Please install it using 'pip install SALib' and make sure that it is importable
+            """)
+            return
+
+        from ai4water.postprocessing._sa import sensitivity_analysis, _plots
+
+        if data is not None:
+            assert isinstance(data, np.ndarray)
+            x = data
+
+            # calculate bounds
+            assert isinstance(x, np.ndarray)
+            bounds = []
+            for feat in range(x.shape[1]):
+                bound = [np.min(x[:, feat]), np.max(x[:, feat])]
+                bounds.append(bound)
+        else:
+            assert bounds is not None
+            assert isinstance(bounds, list)
+            assert all([isinstance(bound, list) for bound in bounds])
+
+        analyzer_kwds = analyzer_kwds or {}
+
+        si = sensitivity_analysis(
+            sampler,
+            analyzer,
+            self.predict,
+            bounds=bounds,
+            sampler_kwds = sampler_kwds,
+            analyzer_kwds = analyzer_kwds,
+            names=self.input_features
+        )
+
+        if save_plots:
+            _plots(analyzer, si, self.path)
+
+        return si
 
     def _transform_x(self, x, name):
         """transforms x and puts the transformer in config witht he key name"""
