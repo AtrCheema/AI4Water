@@ -1,11 +1,13 @@
 """
-================================================
+===========================
 EDA of beach water quality
-================================================
+===========================
 """
 
 from ai4water.datasets import busan_beach
 from ai4water.eda import EDA
+
+# sphinx_gallery_thumbnail_number = 7
 
 ###########################################################
 

@@ -608,7 +608,7 @@ class EDA(Plot):
                 any additional keyword arguments to be passed to easy_mpl.parallel_coordinates_
 
         .. _easy_mpl.parallel_coordinates:
-            https://easy-mpl.readthedocs.io/en/latest/#module-9
+            https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.parallel_coordinates
 
         """
         return self._call_method(
@@ -1777,7 +1777,7 @@ class EDA(Plot):
             max_subplots : int, optional
             figsize : tuple, optional
             **kwargs :
-                Any keyword arguments for easy_mpl.pie
+                Any keyword arguments for `easy_mpl.pie <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.pie>`_
 
         """
         return self._call_method('_pie_df',

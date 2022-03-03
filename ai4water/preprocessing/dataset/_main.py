@@ -47,7 +47,7 @@ class _DataSet(Plots):
     def KFold_splits(self, n_splits=5):
         raise NotImplementedError
     
-    def LeaveOneOut_Splits(self):
+    def LeaveOneOut_splits(self):
         raise NotImplementedError
     
     def TimeSeriesSplit_splits(self, n_splits=5):
@@ -1377,16 +1377,18 @@ class DataSet(_DataSet):
 
         yticklabels = list(range(len(splits)))
 
-        ax.set(yticks=np.arange(len(splits)) + .5, yticklabels=yticklabels,
-               xlabel='Sample index',
-               ylabel="CV iteration")
+        ax.set(yticks=np.arange(len(splits)) + .5, yticklabels=yticklabels)
+
+        ax.set_xlabel("Sample Index", fontsize=18)
+        ax.set_ylabel("CV iteration", fontsize=18)
         ax.set_title(title, fontsize=20)
 
         ax.legend([Patch(color=cmap_cv(.8)), Patch(color=cmap_cv(.02))],
-                  ['Training set', 'Test set'],
+                  ['Training', 'Test'],
                   loc=legend_pos, fontsize=legend_fs)
 
         if show:
+            plt.tight_layout()
             plt.show()
         return
 
