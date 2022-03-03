@@ -71,7 +71,7 @@ kfold_score = model.cross_val_score(data=data)
 # LeaveOneOut
 # ------------------
 
-ds = DataSet(data=data.iloc[0:100, :])  # not using all data because it takes more time
+ds = DataSet(data=data.iloc[0:600, :])  # not using all data because it takes more time
 
 splits = ds.LeaveOneOut_splits()
 
@@ -91,4 +91,4 @@ model = Model(
     verbosity=0,
 )
 
-loo_score = model.cross_val_score(data=data.iloc[0:100, :])
+loo_score = model.cross_val_score(data=data.iloc[0:600, :])

@@ -413,8 +413,11 @@ class PermutationImportance(ExplainerMixin):
 
         return results
 
-    def _plot_importance(self, imp,
-                         features, axes=None, show=False,
+    def _plot_importance(self,
+                         imp,
+                         features,
+                         axes=None,
+                         show=False,
                          save=False,
                          name=None):
         if axes is None:
