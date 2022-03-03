@@ -23,7 +23,7 @@ comparisons = MLRegressionExperiments(
 
 comparisons.fit(data=data,
                 run_type="dry_run",
-                include=['RandomForest',
+                include=['RandomForestRegressor',
                          'XGBRegressor',
                          'GaussianProcessRegressor',
                          'HistGradientBoostingRegressor',
