@@ -42,8 +42,8 @@ class Model(MODEL, BaseModel):
                  **kwargs):
 
         """
-        Initializes the layers of NN model using `initialize_layers` method. All
-        other input arguments goes to `BaseModel`.
+        Initializes the layers of NN model using `initialize_layers` method.
+        All other input arguments goes to `BaseModel`.
 
         """
         if K.BACKEND == 'tensorflow' and tf is not None:
@@ -95,8 +95,10 @@ class Model(MODEL, BaseModel):
                 setattr(self, 'output_lyrs', outs)
                 self._go_up = False  # do not reinitiate BaseModel and other upper classes
 
+                maj_ver = int(tf.__version__.split('.')[0])
+                min_ver = int(tf.__version__.split('.')[1][0])
                 # in tf versions >= 2.5, we don't need to specify inputs and outputs as keyword arguments
-                if tf.__version__ in ["2.5.0", "2.6.0", "2.7.0", "2.8.0"]:
+                if maj_ver>1 and min_ver>=5:
                     MODEL.__init__(self, self._input_lyrs(), self.output_lyrs)
                 else:
                     MODEL.__init__(self, inputs=self._input_lyrs(), outputs=self.output_lyrs)
