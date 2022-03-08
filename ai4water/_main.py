@@ -88,11 +88,10 @@ class BaseModel(NN):
         Parameters
         ----------
             model :
-                a dictionary defining machine learning model.
-                If you are building a non-tensorflow model
-                then this dictionary must consist of name of name of model as key
-                and the keyword arguments to that model as dictionary. For example
-                to build a decision forest based model
+                a dictionary defining machine learning model. If you are building
+                a non-neural network model then this dictionary must consist of
+                name of name of model as key and the keyword arguments to that
+                model as dictionary. For example to build a decision forest based model
 
                 >>> model = {'DecisionTreeRegressor': {"max_depth": 3,
                 ...                                    "criterion": "mae"}}
@@ -110,6 +109,8 @@ class BaseModel(NN):
                 in this case) accepts. The user must refer to the documentation
                 of the underlying library (scikit-learn for DecisionTreeRegressor)
                 to find out complete keyword arguments applicable for a particular model.
+                See `examples <https://ai4water.readthedocs.io/en/latest/auto_examples/dec_model_def_ml.html>`_
+                to learn how to build machine learning models
                 If You are building a Deep Learning model using tensorflow, then the key
                 must be 'layers' and the value must itself be a dictionary defining layers
                 of neural networks. For example we can build an MLP as following
@@ -125,7 +126,7 @@ class BaseModel(NN):
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
-                see_
+                see_ `examples <https://ai4water.readthedocs.io/en/latest/auto_examples/declarative_model_def_tf.html>`_
             x_transformation:
                 type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
@@ -134,11 +135,11 @@ class BaseModel(NN):
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
 
-                >>> transformation = 'minmax'
+                >>> x_transformation = 'minmax'
 
                 To apply different transformations on different input and output features
 
-                >>> transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
+                >>> x_transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
                 ...                {'method': 'zscore', 'features': ['input3', 'input4']}
                 ...                 ]
 
@@ -166,8 +167,6 @@ class BaseModel(NN):
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
                 Otherwise model is not saved.
-            subsequences :  int Default is 3.
-                The number of sub-sequences. Relevent for building CNN-LSTM based models.
             metrics : str/list
                 metrics to be monitored. e.g. ['nse', 'pbias']
             val_metric : str
@@ -1074,7 +1073,7 @@ class BaseModel(NN):
     def fit_ml_models(self, inputs, outputs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
-        for arg in ["composite", "optimizer", "lr", "epochs", "subsequences"]:
+        for arg in ["composite", "optimizer", "lr", "epochs"]:
             if arg in self.config:
                 self.config.pop(arg)
 

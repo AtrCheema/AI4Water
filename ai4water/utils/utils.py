@@ -321,9 +321,6 @@ def _make_model(**kwargs):
         'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
         # to save the best models using checkpoints
         'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
-        # used for cnn_lst structure
-        'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},
-
         'backend':       {'type': None, 'default': 'tensorflow', 'lower': None, 'upper': None,
                           'between': ['tensorflow', 'pytorch']},
         # buffer_size is only relevant if 'val_data' is same and shuffle is true.
