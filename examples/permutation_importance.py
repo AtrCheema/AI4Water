@@ -32,4 +32,4 @@ pimp = PermutationImportance(
 )
 
 # plot permutatin importance of each feature  as box-plot
-fig = pimp.plot_as_boxplot()
+fig = pimp.plot_1d_pimp()

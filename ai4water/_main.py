@@ -2417,7 +2417,11 @@ class BaseModel(NN):
                 valid if `noise` is not None.
             weights:
             plot_type:
-                if not None, it must be either `heatmap` or `boxplot`
+                if not None, it must be either ``heatmap`` or ``boxplot`` or ``bar_chart``
+
+        Retruns
+        -------
+        an instance of :py:class:`ai4water.postprocessing.PermutationImprotance`
 
         Examples:
             >>> from ai4water import Model
@@ -2425,6 +2429,7 @@ class BaseModel(NN):
             >>> model = Model(model="XGBRegressor")
             >>> model.fit(data=busan_beach())
             >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
+            >>> perm_imp.importances
 
         .. _book:
             https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data
@@ -2437,19 +2442,26 @@ class BaseModel(NN):
 
         from .postprocessing.explain import PermutationImportance
         pm = PermutationImportance(
-            self.predict, x, y, scoring,
-            n_repeats, noise, use_noise_only,
+            self.predict,
+            x,
+            y,
+            scoring,
+            n_repeats,
+            noise,
+            use_noise_only,
             path=os.path.join(self.path, "explain"),
             feature_names=self.input_features,
             weights=weights,
             seed=self.config['seed']
         )
 
-        if plot_type is None:
-            return pm.importances
-        else:
-            assert plot_type in ("boxplot", "heatmap")
-            return getattr(pm, f"plot_as_{plot_type}")()
+        if plot_type is not None:
+            assert plot_type in ("boxplot", "heatmap", "bar_chart")
+            if plot_type == "heatmap":
+                pm.plot_as_heatmap()
+            else:
+                pm.plot_1d_pimp(plot_type=plot_type)
+        return pm
 
     def sensitivity_analysis(
             self,

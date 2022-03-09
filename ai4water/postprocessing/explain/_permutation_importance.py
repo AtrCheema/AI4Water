@@ -5,6 +5,7 @@ import numpy as np
 from easy_mpl import imshow
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from easy_mpl import bar_chart
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 from ._explain import ExplainerMixin
@@ -32,7 +33,7 @@ class PermutationImportance(ExplainerMixin):
         >>> x_val, y_val = model.validation_data()
 
         >>> pimp = PermutationImportance(model.predict, x_val, y_val.reshape(-1,))
-        >>> fig = pimp.plot_as_boxplot(show=False)
+        >>> fig = pimp.plot_1d_pimp(show=False)
 
     .. _Molnar:
         https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance
@@ -258,35 +259,54 @@ class PermutationImportance(ExplainerMixin):
             )
         return axis
 
-    def plot_as_boxplot(
+    def plot_1d_pimp(
             self,
+            plot_type:str = "boxplot",
             show: bool = True,
-            save: bool = False
+            save: bool = False,
+            **kwargs
     ) -> plt.Axes:
-        """Plots the permutation importance as box plots
+        """Plots the 1d permutation importance either as box-plot or as bar_chart
 
-        Arguments:
-            show:
+        Arguments
+        ---------
+            plot_type : str, optional
+                either boxplot or barchart
+            show: bool, optional
                 whether to show the plot or now
-            save:
-                whether to save the plot or not
+            save: bool, optional
+                whether to save the plot or not,
+            **kwargs :
+                keyword arguments either for boxplot or bar_chart
 
-        Returns:
-            matplotlib AxesSubplot
+        Returns
+        -------
+        matplotlib AxesSubplot
         """
 
         if isinstance(self.importances, np.ndarray):
             fig, ax = plt.subplots()
-            self._plot_importance(self.importances, self.features, ax,
-                                  show=show, save=save)
+            self._plot_pimp(self.importances,
+                            self.features,
+                            ax,
+                            plot_type=plot_type,
+                            show=show,
+                            save=save,
+                            **kwargs)
         else:
             for idx,  importance in enumerate(self.importances.values()):
                 if self.data_is_3d:
                     features = self.features
                 else:
                     features = self.features[idx]
-                ax = self._plot_importance(importance, features, show=show,
-                                           save=save, name=idx)
+                ax = self._plot_pimp(importance,
+                                     features,
+                                     show=show,
+                                     plot_type=plot_type,
+                                     save=save,
+                                     name=idx,
+                                     **kwargs
+                                     )
 
         return ax
 
@@ -413,23 +433,31 @@ class PermutationImportance(ExplainerMixin):
 
         return results
 
-    def _plot_importance(self,
-                         imp,
-                         features,
-                         axes=None,
-                         show=False,
-                         save=False,
-                         name=None):
+    def _plot_pimp(
+            self,
+            imp,
+            features,
+            axes=None,
+            show=False,
+            save=False,
+            name=None,
+            plot_type="boxplot",
+            **kwargs
+    ):
         if axes is None:
             axes = plt.gca()
 
         importances_mean = np.mean(imp, axis=1)
         perm_sorted_idx = importances_mean.argsort()
-        axes.boxplot(
-            imp[perm_sorted_idx].T,  # (num_features, n_repeats) -> (n_repeats, num_features)
-            vert=False,
-            labels=np.array(features)[perm_sorted_idx],
-        )
+        if plot_type == "boxplot":
+            axes.boxplot(
+                imp[perm_sorted_idx].T,  # (num_features, n_repeats) -> (n_repeats, num_features)
+                vert=False,
+                labels=np.array(features)[perm_sorted_idx],
+                **kwargs
+            )
+        else:
+            bar_chart(importances_mean, features, show=False, ax=axes, **kwargs)
 
         axes.set_xlabel(ERROR_LABELS.get(self.scoring, self.scoring))
 
@@ -437,7 +465,7 @@ class PermutationImportance(ExplainerMixin):
 
         if save:
             name = name or ''
-            fname = os.path.join(self.path, f"box_plot_{name}_{self.n_repeats}_{self.scoring}")
+            fname = os.path.join(self.path, f"{plot_type}_{name}_{self.n_repeats}_{self.scoring}")
             plt.savefig(fname, bbox_inches="tight")
 
         if show:
