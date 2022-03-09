@@ -35,6 +35,7 @@ for  :doc:`declarative_def_torch` .
         optimize_transformations,
         optimize_hyperparameters,
         permutation_importance,
+        sensitivity_analysis,
 
 
 Model subclassing
