@@ -22,3 +22,4 @@ keras-tcn
 xgboost
 lightgbm
 catboost
+optuna

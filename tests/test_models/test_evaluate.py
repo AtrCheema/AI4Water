@@ -82,18 +82,29 @@ class TestEvaluate(unittest.TestCase):
 
     def test_tf_data(self):
         """when x is tf.data.Dataset"""
-
-        model = Model(model={"layers": {"Dense": 1}},
-                      input_features=beach_data.columns.tolist()[0:-1],
-                      output_features=beach_data.columns.tolist()[-1:],
-                      verbosity=0
-                      )
         x,y = DataSet(data=beach_data, verbosity=0).training_data()
         tr_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size=32)
-        p = model.evaluate(tr_ds)
-        p = model.evaluate(x=tr_ds)
+        model.evaluate(tr_ds)
+        model.evaluate(x=tr_ds)
         return
 
+    # def test_2d_data(self):
+    #     """when x is 2D"""
+    #
+    #     tf.keras.backend.clear_session()
+    #     _model = Model(model={"layers": {
+    #         "Input": {"shape": (10, 10)},
+    #         "Flatten": {},
+    #         "Dense": 12}},
+    #                   verbosity=0
+    #                   )
+    #     x = np.random.random((100, 10, 10))
+    #     y = np.random.random((100, 12))
+    #     _model.evaluate(x, y)
+    #     _model.evaluate(x=x, y=y)
+    #     #_model.evaluate(x=x, y=y, metrics='r2')
+    #     tf.keras.backend.clear_session()
+    #     return
 
 if __name__ == "__main__":
 

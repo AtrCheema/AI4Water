@@ -1325,7 +1325,9 @@ class BaseModel(NN):
                     - `hydro_metrics`
 
                 If this argument is given, the `evaluate` function of the underlying class
-                is not called. Rather the model is evaluated for given metrics.
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
             kwargs:
                 any keyword argument for the `evaluate` method of the underlying
                 model.
@@ -1373,7 +1375,7 @@ class BaseModel(NN):
         .. _ClassificationMetrics:
             https://seqmetrics.readthedocs.io/en/latest/cls.html#classificationmetrics
         """
-        return self.call_evaluate(x=x, y=y, data=data, **kwargs)
+        return self.call_evaluate(x=x, y=y, data=data, metrics=metrics, **kwargs)
 
     def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
 
@@ -1404,8 +1406,12 @@ class BaseModel(NN):
         if metrics is not None:
             return self._manual_eval(x, y, metrics)
 
+        # after this we call evaluate function of underlying model
+        # therefore we must transform inputs and outptus
+        x = self._transform_x(x, 'val_x_transformer_')
+        y = self._transform_y(y, 'val_y_transformer_')
+
         if hasattr(self._model, 'evaluate'):
-            # todo, should we transform?
             return self._model.evaluate(x, y, **kwargs)
 
         return self.evaluate_fn(x, y, **kwargs)

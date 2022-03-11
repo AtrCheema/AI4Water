@@ -36,7 +36,7 @@ ITER = 0
 
 def objective_fn(
         prefix=None,
-        **suggestions):
+        **suggestions)->float:
     """This function must build, train and evaluate the ML model.
     The output of this function will be minimized by optimization algorithm.
     """
@@ -61,6 +61,10 @@ def objective_fn(
     if not math.isfinite(val_score):
         val_score = 1.0
 
+    # since the optimization algorithm solves minimization algorithm
+    # we have to subtract r2_score from 1.0
+    # if our validation metric is something like mse or rmse,
+    # then we don't need to subtract it from 1.0
     val_score = 1.0 - val_score
 
     ITER += 1
@@ -72,6 +76,8 @@ def objective_fn(
 ###########################################
 # 2) define parameter space
 #-------------------------------
+# the parameter space determines the pool of candidates from which
+# hyperparameters will be choosen during optimization
 
 num_samples=10
 space = [
@@ -104,7 +110,7 @@ x0 = [200, 0.01, 1.0, 1.0, 0.2, 64, "Uniform"]
 #---------------------------------------------
 
 # algorithm can be either ``random``, ``grid``, ``bayes``, ``tpe``, ``bayes_rf``
-# 
+#
 
 optimizer = HyperOpt(
     algorithm="bayes",
