@@ -971,7 +971,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return
 
-    def _plot_parallel_coords(self, save=True):
+    def _plot_parallel_coords(self, save=True, **kwargs):
         # parallel coordinates of hyperparameters
         d = self.xy_of_iterations()
 
@@ -981,7 +981,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         parallel_coordinates(
             data=data,
             categories=categories,
-            show=False
+            show=False,
+            **kwargs,
         )
         if save:
             fname = os.path.join(self.opt_path, "parallel_coordinates")
@@ -1053,7 +1054,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, raise_error=True):
+    def plot_importance(self, raise_error=True, save=True):
 
         msg = "You must have optuna installed to get hyper-parameter importance."
         if optuna is None:
@@ -1064,7 +1065,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         else:
             importances, importance_paras, ax = plot_param_importances(self.optuna_study())
-            if importances is not None:
+            if importances is not None and save:
                 plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
                             bbox_inches="tight", dpi=300)
 
@@ -1072,9 +1073,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 df = pd.DataFrame.from_dict(importance_paras)
                 axis = df.boxplot(rot=70, return_type="axes")
                 axis.set_ylabel("Relative Importance")
-                plt.savefig(os.path.join(self.opt_path, "fanova_importance_hist.png"),
-                            dpi=300, 
-                            bbox_inches='tight')
+                if save:
+                    plt.savefig(os.path.join(
+                        self.opt_path,
+                        "fanova_importance_hist.png"),
+                        dpi=300,
+                        bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
                     json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
