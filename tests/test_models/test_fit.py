@@ -69,7 +69,7 @@ class TestFit(unittest.TestCase):
 
     def test_tf_data(self):
         """when x is tf.data.Dataset"""
-
+        time.sleep(1)
         model = Model(model={"layers": {"Dense": 1}},
                       input_features=data.columns.tolist()[0:-1],
                       output_features=data.columns.tolist()[-1:],

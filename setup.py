@@ -20,7 +20,7 @@ min_requirements = [
     'joblib',
     'requests',
     'plotly',
-    'easy_mpl>=0.20.3',
+    'easy_mpl>=0.20.4',
     'SeqMetrics>=1.3.2'
     ]
 
@@ -59,18 +59,18 @@ tf_hpo_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pa
                    'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
                    'SeqMetrics>=1.3.2']
 
-torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
+torch_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'SeqMetrics>=1.3.2']
 
-torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.3',  'pytorch', 'pandas',
+torch_hpo_requires = ['h5py', 'numpy', 'easy_mpl>=0.20.4',  'pytorch', 'pandas',
                   'matplotlib', 'scikit-learn', 'hyperopt', 'scikit-optimize', 'optuna',
                       'SeqMetrics>=1.3.2']
 
 ml_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.3', 'SeqMetrics>=1.3.2']
+               'lightgbm', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.2']
 
 ml_hpo_requires = ['numpy', 'matplotlib', 'pandas', 'scikit-learn', 'xgboost', 'catboost',
-               'lightgbm', 'easy_mpl>=0.20.3', 'hyperopt', 'scikit-optimize', 'optuna',
+               'lightgbm', 'easy_mpl>=0.20.4', 'hyperopt', 'scikit-optimize', 'optuna',
                    'SeqMetrics>=1.3.2']
 
 hpo_requirements = ['optuna', 'hyperopt', 'scikit-optimize', 'SeqMetrics>=1.3.2']
@@ -84,7 +84,7 @@ exp_requirements = ['catboost', 'lightgbm', 'xgboost',
                     ]
 pre_prcess_requirements = ['netCDF4', 'xarray', 'imageio', 'pyshp', 'SeqMetrics>=1.3.2']
 
-eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.3', 'SeqMetrics>=1.3.2']
+eda_requires = ['seaborn', 'scikit-learn', 'easy_mpl>=0.20.4', 'SeqMetrics>=1.3.2']
 
 all_requirements = min_requirements + extra_requires
 

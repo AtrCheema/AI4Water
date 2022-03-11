@@ -67,7 +67,6 @@ def make_layers(outs):
         "Concatenate": {"config": {},
                    "inputs": ["LSTM_1d", "Flatten"]},
         "Dense": {"units": outs},
-        #"Reshape": {"target_shape": (outs, 1)}
     }
     return layers
 
@@ -136,32 +135,6 @@ class test_MultiInputModels(unittest.TestCase):
         self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
         self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
 
-        return
-
-    def test_add_output_layer2(self):
-        # check if it reshapes the output correctly
-        model = Model(model={'layers': {'LSTM': 64,
-                                        'Dense': 1}},
-                      input_features=nasdaq_input_features,
-                      output_features=nasdaq_output_features,
-                      ts_args={"lookback": 15},
-                      verbosity=0)
-
-        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
-        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
-        return
-
-    def test_add_no_output_layer(self):
-        # check if it does not add layers when it does not have to
-        model = Model(model={'layers': {'LSTM': 64, 'Dense': 1,
-                             }},
-                      input_features=nasdaq_input_features,
-                      output_features=nasdaq_output_features,
-                      ts_args={"lookback": 15},
-                      verbosity=0)
-
-        self.assertEqual(model.ai4w_outputs[0].shape[1], model.num_outs)
-        self.assertEqual(model.ai4w_outputs[0].shape[-1], model.forecast_len)
         return
 
     def test_same_no_test_data(self):

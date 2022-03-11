@@ -2,9 +2,11 @@
 import unittest
 
 import numpy as np
+import tensorflow as tf
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
+from ai4water.preprocessing import DataSet
 
 
 beach_data = busan_beach()
@@ -13,6 +15,7 @@ model = Model(
     input_features=beach_data.columns.tolist()[0:-1],
     output_features=beach_data.columns.tolist()[-1:],
     ts_args={'lookback':1},
+    monitor="nse",
     verbosity=0,
 )
 
@@ -75,6 +78,20 @@ class TestEvaluate(unittest.TestCase):
         hydro = model.evaluate(x=np.random.random((10, 13)), y=np.random.random((10, 1)),
                                     metrics='hydro_metrics')
         assert isinstance(hydro, dict)
+        return
+
+    def test_tf_data(self):
+        """when x is tf.data.Dataset"""
+
+        model = Model(model={"layers": {"Dense": 1}},
+                      input_features=beach_data.columns.tolist()[0:-1],
+                      output_features=beach_data.columns.tolist()[-1:],
+                      verbosity=0
+                      )
+        x,y = DataSet(data=beach_data, verbosity=0).training_data()
+        tr_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size=32)
+        p = model.evaluate(tr_ds)
+        p = model.evaluate(x=tr_ds)
         return
 
 

@@ -703,10 +703,12 @@ class BaseModel(NN):
 
         outputs = get_values(outputs)
 
-        # if validation_data is not None:
-        #     val_outs = validation_data[-1]
-        #     val_outs = get_values(val_outs)
-        #     validation_data = (validation_data[0], val_outs)
+        if isinstance(validation_data, tuple):
+            # when val_outs is just a dictionary with 1 key/value pair,
+            # we just extract values and consider it validation_data
+            val_outs = validation_data[-1]
+            val_outs = get_values(val_outs)
+            validation_data = (validation_data[0], val_outs)
 
         if K.BACKEND == 'tensorflow':
             callbacks = self.get_wandb_cb(
@@ -1379,9 +1381,11 @@ class BaseModel(NN):
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
             source = data
 
-        x, y, _, _, _ = self._fetch_data(source, x, y, data)
+        x, y, _, _, user_defined = self._fetch_data(source, x, y, data)
 
-        if len(x) == 0 and source == "test":
+        if user_defined:
+            pass
+        elif len(x) == 0 and source == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
             data = "validation"
@@ -1548,7 +1552,9 @@ class BaseModel(NN):
             data=data
         )
 
-        if len(inputs)==0 and source == "test":
+        if user_defined_data:
+            pass
+        elif len(inputs)==0 and source == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
             data = "validation"
@@ -1586,7 +1592,10 @@ class BaseModel(NN):
                 kwargs['verbose'] = self.verbosity
 
             if 'batch_size' in kwargs:  # if given by user
-                self.config['batch_size'] = kwargs['batch_size']  # update config
+                ... #self.config['batch_size'] = kwargs['batch_size']  # update config
+            elif K.BACKEND == "tensorflow":
+                if isinstance(inputs, tf.data.Dataset):
+                    ...
             else:  # otherwise use from config
                 kwargs['batch_size'] = self.config['batch_size']
 
