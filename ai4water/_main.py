@@ -69,7 +69,7 @@ class BaseModel(NN):
                  min_val_loss: float = 0.0001,
                  patience: int = 100,
                  save_model: bool = True,
-                 metrics: Union[str, list] = None,
+                 monitor: Union[str, list] = None,
                  val_metric: str = None,
                  cross_validator: dict = None,
                  wandb_config: dict = None,
@@ -167,7 +167,7 @@ class BaseModel(NN):
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
                 Otherwise model is not saved.
-            metrics : str/list
+            monitor : str/list
                 metrics to be monitored. e.g. ['nse', 'pbias']
             val_metric : str
                 performance metric to be used for validation/cross_validation.
@@ -278,7 +278,7 @@ class BaseModel(NN):
                 min_val_loss=min_val_loss,
                 patience=patience,
                 save_model=save_model,
-                metrics=metrics or ['nse'],
+                monitor=monitor,
                 val_metric=val_metric,
                 cross_validator=cross_validator,
                 accept_additional_args=accept_additional_args,
@@ -1657,7 +1657,7 @@ class BaseModel(NN):
                                                user_defined_data=user_defined_data)
 
                     if self.category == 'ML':  # todo, also plot for DL
-                        pp.confusion_matrx(self, x=inputs, y=true_outputs)
+                        pp.confusion_matrx(true_outputs, predicted)
                         # if model does not have predict_proba method, we can't plot following
                         if hasattr(self._model, 'predict_proba'):
                             # if data is user defined, we don't know whether it is binary or not
@@ -1717,8 +1717,8 @@ class BaseModel(NN):
         return kwargs
 
     def get_metrics(self) -> list:
-        """Returns the performance metrics specified."""
-        _metrics = self.config['metrics']
+        """Returns the performance metrics to be monitored."""
+        _metrics = self.config['monitor']
 
         metrics = None
         if _metrics is not None:

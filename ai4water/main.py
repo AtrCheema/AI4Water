@@ -80,7 +80,7 @@ class Model(MODEL, BaseModel):
                 batch_size=self.config['batch_size'],
                 num_epochs=self.config['epochs'],
                 shuffle=self.config['shuffle'],
-                to_monitor=self.config['metrics'],
+                to_monitor=self.config['monitor'],
                 patience=self.config['patience'],
                 path=self.path,
                 use_cuda=False,
