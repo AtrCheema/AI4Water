@@ -76,9 +76,14 @@ class Experiments(object):
     --------
     - fit
     - taylor_plot
-    - compare_losses
+    - loss_comparison
     - plot_convergence
     - from_config
+    - compare_errors
+    - plot_improvement
+    - compare_convergence
+    - plot_cv_scores
+    - fit_with_tpot
 
     """
     def __init__(
@@ -808,7 +813,8 @@ Available cases are {self.models} and you wanted to include
             **kwargs :
                 any other keyword arguments to be passed to the 
                 `plot <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot>`_
-        Returns:
+        Returns
+        -------
             matplotlib axes
 
         Example
@@ -816,7 +822,7 @@ Available cases are {self.models} and you wanted to include
         >>> from ai4water.experiments import DLRegressionExperiments
         >>> from ai4water.datasets import busan_beach
         >>> data = busan_beach()
-        >>> exp = DLExperiments(
+        >>> exp = DLRegressionExperiments(
         >>> input_features = data.columns.tolist()[0:-1],
         >>> output_features = data.columns.tolist()[-1:],
         >>> epochs=300,

@@ -1,7 +1,7 @@
 """
-===========
-hpo_lower
-===========
+==========================================
+hyperparameter optimization using HyperOpt
+==========================================
 
 There are two ways of optimization of hyperparameters in AI4Water. The  :py:class:`HyperOpt`
 class is the lower level api while :py:meth:`Model.optimize_hyperparameters` is the higher level api.
@@ -25,6 +25,8 @@ data = busan_beach()
 
 PREFIX = f"hpo_{dateandtime_now()}"
 ITER = 0
+
+# sphinx_gallery_thumbnail_number = 2
 
 ##############################################
 
@@ -106,9 +108,10 @@ Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
 x0 = [200, 0.01, 1.0, 1.0, 0.2, 64, "Uniform"]
 
 #############################################
-# 4 instantiate HyperOpt class call .fit on it
+# 4) run optimization algorithm
 #---------------------------------------------
 
+# Now instantiate the HyperOpt class and call .fit on it
 # algorithm can be either ``random``, ``grid``, ``bayes``, ``tpe``, ``bayes_rf``
 #
 
@@ -119,7 +122,8 @@ optimizer = HyperOpt(
     x0=x0,
     num_iterations=15,
     process_results=False,
-    opt_path=f"results\\{PREFIX}"
+    opt_path=f"results\\{PREFIX}",
+    verbosity=0,
 )
 
 results = optimizer.fit()
@@ -129,6 +133,8 @@ results = optimizer.fit()
 print(f"optimized parameters are \n{optimizer.best_paras()}")
 
 ###########################################
+# postprocessing of results
+#---------------------------------------------
 
 optimizer._plot_convergence(save=False)
 
@@ -166,3 +172,81 @@ saved in the optimization directory.
 
 print(f"All the results are save in {optimizer.opt_path} directory")
 
+
+###########################################
+# Using HyperOpt with Neural Networks
+#--------------------------------------
+
+def objective_fn(
+        prefix=None,
+        **suggestions)->float:
+    """This function must build, train and evaluate the ML model.
+    The output of this function will be minimized by optimization algorithm.
+    """
+    suggestions = jsonize(suggestions)
+    global ITER
+
+    # build model
+    model = Model(
+        model={"layers": {
+        "LSTM": {"units": suggestions['units']},
+        "Activation": suggestions["activation"],
+        "Dense": 1
+    }},
+        batch_size=suggestions["batch_size"],
+        lr=suggestions["lr"],
+        prefix=prefix,
+        train_fraction=1.0,
+        split_random=True,
+        epochs=100,
+        ts_args={"lookback": 14},
+        input_features=data.columns.tolist()[0:-1],
+        output_features=data.columns.tolist()[-1:],
+        verbosity=0)
+
+    # train model
+    model.fit(data=data)
+
+    # evaluate model
+    t, p = model.predict(data='validation', return_true=True, process_results=False)
+    val_score = RegressionMetrics(t, p).r2_score()
+
+    if not math.isfinite(val_score):
+        val_score = 1.0
+
+    val_score = 1.0 - val_score
+
+    ITER += 1
+
+    print(f"{ITER} {val_score}")
+
+    return val_score
+
+
+# parameter space
+param_space = [
+    Integer(16, 50, name="units"),
+    Categorical(["relu", "elu", "tanh"], name="activation"),
+    Real(0.00001, 0.01, name="lr"),
+    Categorical([4, 8, 12, 16, 24], name="batch_size")
+]
+
+# initial values
+x0 = [32, "relu", 0.001, 8]
+
+# initialize the HyperOpt class and call fit method on it
+optimizer = HyperOpt(
+    algorithm="bayes",
+    objective_fn=objective_fn,
+    param_space=param_space,
+    x0=x0,
+    num_iterations=15,
+    process_results=False,
+    opt_path=f"results\\{PREFIX}"
+)
+
+results = optimizer.fit()
+
+###########################################
+
+print(f"optimized parameters are \n{optimizer.best_paras()}")
