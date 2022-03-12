@@ -44,10 +44,11 @@ class Model(MODEL, BaseModel):
         """
         Initializes the layers of NN model using `initialize_layers` method.
         All other input arguments goes to `BaseModel`.
-
         """
         if K.BACKEND == 'tensorflow' and tf is not None:
-            if tf.__version__ in ["2.3.0", "2.4.0"]:
+            min_version = tf.__version__.split(".")[1]
+            maj_version = tf.__version__.split(".")[0]
+            if maj_version in ["2"] and min_version in ["3", "4"]:
                 raise NotImplementedError(f"""
             Not implemented due to a bug in tensorflow as shown here https://github.com/tensorflow/tensorflow/issues/44646
             You can use functional API instead by using

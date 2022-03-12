@@ -14,7 +14,7 @@ This example shows, how to use HyperOpt class for optimization of hyperparameter
 
 import math
 
-from ai4water import Model
+from ai4water.functional import Model
 from skopt.plots import plot_objective
 from SeqMetrics import RegressionMetrics
 from ai4water.datasets import busan_beach
