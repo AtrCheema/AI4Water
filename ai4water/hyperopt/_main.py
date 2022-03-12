@@ -1089,7 +1089,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
     def _plot_distributions(self, save=True):
         """plot distributions of explored hyperparameters"""
-        from pandas.plotting._matplotlib.tools import create_subplots
+        try:
+            from pandas.plotting._matplotlib.tools import create_subplots
+        except ImportError: # for older pandas versions
+            from pandas.plotting._matplotlib.tools import _subplots as create_subplots
+
 
         # name of hyperparameters
         h_paras = list(list(self.best_xy().values())[0].keys())

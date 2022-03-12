@@ -283,7 +283,8 @@ class Visualize(Plots):
                                  title=indices,
                                  )
             else:
-                self._imshow(activation, f"{lyr_name} Activations", fname=lyr_name,
+                self._imshow(activation, f"{lyr_name} Activations",
+                             fname=lyr_name,
                              show=show,
                              ylabel="Examples", xlabel="LSTM units",
                              cmap=random.choice(CMAPS))

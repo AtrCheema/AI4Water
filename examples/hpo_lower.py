@@ -12,6 +12,8 @@ class and call the fit method on it.
 This example shows, how to use HyperOpt class for optimization of hyperparameters.
 """
 
+import os
+from typing import Union
 import math
 
 from ai4water.functional import Model
@@ -23,6 +25,7 @@ from ai4water.hyperopt import HyperOpt, Categorical, Real, Integer
 
 data = busan_beach()
 
+SEP = os.sep
 PREFIX = f"hpo_{dateandtime_now()}"
 ITER = 0
 
@@ -47,7 +50,7 @@ def objective_fn(
 
     # build model
     model = Model(model={"CatBoostRegressor": suggestions},
-                  prefix=prefix,
+                  prefix=prefix or PREFIX,
                   train_fraction=1.0,
                   split_random=True,
                   verbosity=0,
@@ -122,7 +125,7 @@ optimizer = HyperOpt(
     x0=x0,
     num_iterations=15,
     process_results=False,
-    opt_path=f"results\\{PREFIX}",
+    opt_path=f"results{SEP}{PREFIX}",
     verbosity=0,
 )
 
@@ -165,10 +168,10 @@ optimizer._plot_edf(save=False)
 
 ###########################################
 
-"""
-If you set ``process_results`` to True above, all of the results are automatically 
-saved in the optimization directory.
-"""
+
+# If you set ``process_results`` to True above, all of the results are automatically
+#saved in the optimization directory.
+
 
 print(f"All the results are save in {optimizer.opt_path} directory")
 
@@ -177,17 +180,38 @@ print(f"All the results are save in {optimizer.opt_path} directory")
 # Using HyperOpt with Neural Networks
 #--------------------------------------
 
+# If your model consists of layers of neural neworks, you can easily modify
+# the objective function accordingly. The only change you have to do is to
+# get corresponding parameters from ``suggestions`` and use them
+# to build the layers of neural network.
+
+
 def objective_fn(
         prefix=None,
-        **suggestions)->float:
+        return_model=False,
+        **suggestions)->Union[float, Model]:
     """This function must build, train and evaluate the ML model.
     The output of this function will be minimized by optimization algorithm.
+
+    Parameters
+    ----------
+    prefix : str
+        prefix to save the results. This argument will only be used after
+        the optimization is complete
+    return_model : bool
+        if True, then objective function will return the built model. This
+        argument will only be used after the optimization is complete
+    suggestions : dict
+        a dictionary with values of hyperparameters at the iteration when
+        this objective function is called. The objective function will be
+        called as many times as the number of iterations in optimization
+        algorithm.
     """
     suggestions = jsonize(suggestions)
     global ITER
 
     # build model
-    model = Model(
+    _model = Model(
         model={"layers": {
         "LSTM": {"units": suggestions['units']},
         "Activation": suggestions["activation"],
@@ -195,7 +219,7 @@ def objective_fn(
     }},
         batch_size=suggestions["batch_size"],
         lr=suggestions["lr"],
-        prefix=prefix,
+        prefix=prefix or PREFIX,
         train_fraction=1.0,
         split_random=True,
         epochs=100,
@@ -205,20 +229,23 @@ def objective_fn(
         verbosity=0)
 
     # train model
-    model.fit(data=data)
+    _model.fit(data=data)
 
     # evaluate model
-    t, p = model.predict(data='validation', return_true=True, process_results=False)
-    val_score = RegressionMetrics(t, p).r2_score()
+    t, p = _model.predict(data='validation', return_true=True, process_results=False)
+    val_score = RegressionMetrics(t, p).mse()
 
+    # here we are evaluating model with respect to mse, therefore
+    # we don't need to subtract it from 1.0
     if not math.isfinite(val_score):
-        val_score = 1.0
-
-    val_score = 1.0 - val_score
+        val_score = 9999
 
     ITER += 1
 
     print(f"{ITER} {val_score}")
+
+    if return_model:
+        return _model
 
     return val_score
 
@@ -242,7 +269,7 @@ optimizer = HyperOpt(
     x0=x0,
     num_iterations=15,
     process_results=False,
-    opt_path=f"results\\{PREFIX}"
+    opt_path=f"results{SEP}{PREFIX}"
 )
 
 results = optimizer.fit()
@@ -250,3 +277,11 @@ results = optimizer.fit()
 ###########################################
 
 print(f"optimized parameters are \n{optimizer.best_paras()}")
+
+##################################################
+
+# we can now again call the objective function with best/optimium parameters
+# if we want to retrain the model with best parameters, uncommnet below lines for this
+
+# model = objective_fn(prefix=f"{PREFIX}{SEP}best",
+#                      **optimizer.best_paras())
