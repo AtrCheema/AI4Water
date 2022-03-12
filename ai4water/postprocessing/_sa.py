@@ -1,10 +1,11 @@
 """sensitivity analysis"""
 
 import importlib
-import os.path
+import os
 from typing import Callable
 
 import matplotlib.pyplot as plt
+import numpy as np
 from SALib.plotting.hdmr import plot
 from SALib.plotting.bar import plot as barplot
 from SALib.plotting.morris import horizontal_bar_plot, covariance_plot
@@ -38,6 +39,11 @@ def sensitivity_analysis(
     print("total samples:", len(param_values))
 
     y = func(x=param_values)
+
+    y = np.array(y)
+
+    assert np.size(y) == len(y) , f"output must be 1 dimensional"
+    y = y.reshape(-1, )
 
     analyzer_kwds = analyzer_kwds or {}
 

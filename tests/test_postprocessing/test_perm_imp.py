@@ -21,8 +21,9 @@ class TestPermImportance(unittest.TestCase):
             model.predict,
             x_val,
             y_val.reshape(-1,))
-        fig = pimp.plot_as_boxplot(show=False)
-
+        fig = pimp.plot_1d_pimp(show=False)
+        assert fig.__class__.__name__ == "AxesSubplot"
+        fig = pimp.plot_1d_pimp(show=False, plot_type="bar_chart")
         assert fig.__class__.__name__ == "AxesSubplot"
 
         return
@@ -51,7 +52,7 @@ class TestPermImportance(unittest.TestCase):
         axes = pimp.plot_as_heatmap(annotate=False, show=False)
         assert axes.__class__.__name__ == "AxesSubplot"
 
-        pimp.plot_as_boxplot(show=False)
+        pimp.plot_1d_pimp(show=False)
 
         return
 
@@ -117,7 +118,7 @@ class TestPermImportance(unittest.TestCase):
         x1 = np.random.random((100, 5))
         x2 = np.random.random((100, 3))
         pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)), verbose=0)
-        fig = pimp.plot_as_boxplot(show=False)
+        fig = pimp.plot_1d_pimp(show=False)
 
         assert fig.__class__.__name__ == "AxesSubplot"
         return

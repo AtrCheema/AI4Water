@@ -64,6 +64,8 @@ class ModelOptimizerMixIn(object):
             config['verbosity'] = -1
             config['prefix'] = PREFIX
 
+            suggestions = jsonize(suggestions)
+
             getattr(self, f'update')(config, suggestions)
 
             _model = self.model.from_config(

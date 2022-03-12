@@ -69,7 +69,7 @@ class BaseModel(NN):
                  min_val_loss: float = 0.0001,
                  patience: int = 100,
                  save_model: bool = True,
-                 metrics: Union[str, list] = None,
+                 monitor: Union[str, list] = None,
                  val_metric: str = None,
                  cross_validator: dict = None,
                  wandb_config: dict = None,
@@ -88,11 +88,10 @@ class BaseModel(NN):
         Parameters
         ----------
             model :
-                a dictionary defining machine learning model.
-                If you are building a non-tensorflow model
-                then this dictionary must consist of name of name of model as key
-                and the keyword arguments to that model as dictionary. For example
-                to build a decision forest based model
+                a dictionary defining machine learning model. If you are building
+                a non-neural network model then this dictionary must consist of
+                name of name of model as key and the keyword arguments to that
+                model as dictionary. For example to build a decision forest based model
 
                 >>> model = {'DecisionTreeRegressor': {"max_depth": 3,
                 ...                                    "criterion": "mae"}}
@@ -110,6 +109,8 @@ class BaseModel(NN):
                 in this case) accepts. The user must refer to the documentation
                 of the underlying library (scikit-learn for DecisionTreeRegressor)
                 to find out complete keyword arguments applicable for a particular model.
+                See `examples <https://ai4water.readthedocs.io/en/latest/auto_examples/dec_model_def_ml.html>`_
+                to learn how to build machine learning models
                 If You are building a Deep Learning model using tensorflow, then the key
                 must be 'layers' and the value must itself be a dictionary defining layers
                 of neural networks. For example we can build an MLP as following
@@ -125,7 +126,7 @@ class BaseModel(NN):
                 TensorFlow. For example the `Dense` layer in TensorFlow can accept
                 `units` and `activation` keyword argument among others. For details
                 on how to buld neural networks using such layered API
-                see_
+                see_ `examples <https://ai4water.readthedocs.io/en/latest/auto_examples/declarative_model_def_tf.html>`_
             x_transformation:
                 type of transformation to be applied on x/input data.
                 The transformation can be any transformation name from
@@ -134,11 +135,11 @@ class BaseModel(NN):
                 transformation to be applied on which input feature. Default is 'minmax'.
                 To apply a single transformation on all the data
 
-                >>> transformation = 'minmax'
+                >>> x_transformation = 'minmax'
 
                 To apply different transformations on different input and output features
 
-                >>> transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
+                >>> x_transformation = [{'method': 'minmax', 'features': ['input1', 'input2']},
                 ...                {'method': 'zscore', 'features': ['input3', 'input4']}
                 ...                 ]
 
@@ -166,9 +167,7 @@ class BaseModel(NN):
                 whether to save the model or not. For neural networks, the model will
                 be saved only an improvement in training/validation loss is observed.
                 Otherwise model is not saved.
-            subsequences :  int Default is 3.
-                The number of sub-sequences. Relevent for building CNN-LSTM based models.
-            metrics : str/list
+            monitor : str/list
                 metrics to be monitored. e.g. ['nse', 'pbias']
             val_metric : str
                 performance metric to be used for validation/cross_validation.
@@ -279,7 +278,7 @@ class BaseModel(NN):
                 min_val_loss=min_val_loss,
                 patience=patience,
                 save_model=save_model,
-                metrics=metrics or ['nse'],
+                monitor=monitor,
                 val_metric=val_metric,
                 cross_validator=cross_validator,
                 accept_additional_args=accept_additional_args,
@@ -565,7 +564,7 @@ class BaseModel(NN):
     def first_layer_shape(self):
         return NotImplementedError
 
-    def get_callbacks(self, val_data, callbacks=None):
+    def get_callbacks(self, val_data=None, callbacks=None):
 
         if self.config['backend'] == 'pytorch':
             return self.cbs_for_pytorch(val_data, callbacks)
@@ -576,15 +575,15 @@ class BaseModel(NN):
         """Callbacks for pytorch training."""
         return []
 
-    def cbs_for_tf(self, val_data, callbacks=None):
+    def cbs_for_tf(self, val_data=None, callbacks=None):
 
         if callbacks is None:
             callbacks = {}
         # container to hold all callbacks
         _callbacks = list()
 
-        _monitor = 'val_loss' if val_data else 'loss'
-        fname = "{val_loss:.5f}.hdf5" if val_data else "{loss:.5f}.hdf5"
+        _monitor = 'val_loss' if val_data is not None else 'loss'
+        fname = "{val_loss:.5f}.hdf5" if val_data is not None else "{loss:.5f}.hdf5"
 
         if int(''.join(tf.__version__.split('.')[0:2])) <= 115:
             for lyr_name in self.layer_names:
@@ -628,38 +627,37 @@ class BaseModel(NN):
 
         return _callbacks
 
-    def get_val_data(self, val_data):
-        """Finds out if there is val_data or not"""
-        if isinstance(val_data, tuple):
-            x,y = val_data
+    def get_val_data(self, validation_data=None):
+        """Finds out if there is validation_data"""
+        if validation_data is None:
+            # when validation data is not given in kwargs and validation_data method is overwritten
+            try:
+                validation_data = self.validation_data()
+            # when x,y is user defined then validation_data() can give this error
+            except DataNotFound:
+                validation_data = None
+
+        if isinstance(validation_data, tuple):
+            x, y = validation_data
+
             if x is None and y is None:
                 return None
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
-            # val_data was probably available in kwargs, so use them as it is
-            return val_data
+            else:
+                x = self._transform_x(x, 'val_x_transformer_')
+                y = self._transform_y(y, 'val_y_transformer_')
+                validation_data = x,y
 
-        validation_data = None
-
-        if val_data is not None:
-            if isinstance(val_data, tuple):
-                x = val_data[0]
-                if x is not None:
-                    if isinstance(x, np.ndarray):
-                        if x.size > 0:
-                            validation_data = val_data
-                    elif isinstance(x, dict):  # x may be a dictionary
-                        for v in x.values():
-                            if v.size > 0:
-                                validation_data = val_data
-                                break
-                    elif isinstance(x, list):
-                        for v in x:
-                            if v.size > 0:
-                                validation_data = val_data
-                                break
-                    else:
-                        raise ValueError(f'Unrecognizable validattion data {val_data.__class__.__name__}')
+        elif validation_data is not None:
+            if self.config['backend'] == "tensorflow":
+                if isinstance(validation_data, tf.data.Dataset):
+                    pass
+            elif validation_data.__class__.__name__ in ['TorchDataset', 'BatchDataset']:
+                pass
+            else:
+                raise ValueError(f'Unrecognizable validattion data {validation_data.__class__.__name__}')
+            return validation_data
 
         return validation_data
 
@@ -680,7 +678,13 @@ class BaseModel(NN):
 
         return self.fit_fn(x, **kwargs)
 
-    def _fit(self, inputs, outputs, validation_data, validation_steps=None, callbacks=None, **kwargs):
+    def _fit(self,
+             inputs,
+             outputs,
+             validation_data=None,
+             validation_steps=None,
+             callbacks=None,
+             **kwargs):
 
         nans_in_y_exist = False
         if isinstance(outputs, np.ndarray):
@@ -699,32 +703,42 @@ class BaseModel(NN):
 
         outputs = get_values(outputs)
 
-        if validation_data is not None:
+        if isinstance(validation_data, tuple):
+            # when val_outs is just a dictionary with 1 key/value pair,
+            # we just extract values and consider it validation_data
             val_outs = validation_data[-1]
             val_outs = get_values(val_outs)
             validation_data = (validation_data[0], val_outs)
 
         if K.BACKEND == 'tensorflow':
-            callbacks = self.get_wandb_cb(callbacks, train_data=(inputs, outputs),
-                                          validation_data=validation_data,
-                                          )
+            callbacks = self.get_wandb_cb(
+                callbacks,
+                train_data=(inputs, outputs),
+                validation_data=validation_data,
+            )
 
         callbacks = self.get_callbacks(validation_data, callbacks=callbacks)
 
         st = time.time()
 
-        # .fit was called with epochs, so we must put that in config as well!
-        if 'epochs' in kwargs:
-            self.config['epochs'] = kwargs.pop('epochs')
-
-        batch_siz = None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else self.config['batch_size']
+        # when data is given as generator (tf.data or torchDataset) then
+        # we don't set batch size and don't given y argument to fit
+        batch_size = self.config['batch_size']
+        y = outputs
+        if K.BACKEND == "tensorflow":
+            if isinstance(inputs, tf.data.Dataset):
+                batch_size = None
+                y = None
+        elif inputs.__class__.__name__ in ["TorchDataset"]:
+            batch_size = None
+            y = None
 
         # natively prepared arguments
         _kwargs = {
             'x':inputs,
-            'y':None if inputs.__class__.__name__ in ['TorchDataset', 'BatchDataset'] else outputs,
+            'y':y,
             'epochs':self.config['epochs'],
-            'batch_size':batch_siz,
+            'batch_size':batch_size,
             'validation_data':validation_data,
             'callbacks':callbacks,
             'shuffle':self.config['shuffle'],
@@ -936,11 +950,13 @@ class BaseModel(NN):
             **kwargs
     ):
         """
-        Trains the model with data which is taken from data accoring to `data` arguments.
+        Trains the model with data. The data is either ``x`` or it is taken from
+        ``data`` by feeding it to DataSet.
 
         Arguments:
             x:
-                The input data consisting of input features
+                The input data consisting of input features. It can also be
+                tf.Dataset or TorchDataset.
             y:
                 Correct labels/observations/true data corresponding to 'x'.
             data :
@@ -1025,22 +1041,6 @@ class BaseModel(NN):
         self.info['training_start'] = dateandtime_now()
 
         if self.category == "DL":
-            if 'validation_data' in kwargs:
-                # validation data is provided by user but since transformations are part of
-                # model so we must transform it
-                val_x, val_y = kwargs['validation_data']
-            elif user_defined_x:
-                # user defined x,y but did not give validation data using
-                # validation_data keyword argument
-                val_x, val_y = None, None
-            else:
-                # either get validation data from DataSet or maybe the user
-                # has overwritten validation_data method, in both cases transformatins
-                # are applied inside validation data.
-                val_x, val_y = self.validation_data()
-            val_x = self._transform_x(val_x, 'val_x_transformer_')
-            val_y = self._transform_y(val_y, 'val_y_transformer_')
-            kwargs['validation_data'] = val_x, val_y
 
             history = self._fit(inputs, outputs, callbacks=callbacks, **kwargs)
 
@@ -1074,7 +1074,7 @@ class BaseModel(NN):
     def fit_ml_models(self, inputs, outputs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
-        for arg in ["composite", "optimizer", "lr", "epochs", "subsequences"]:
+        for arg in ["composite", "optimizer", "lr", "epochs"]:
             if arg in self.config:
                 self.config.pop(arg)
 
@@ -1325,7 +1325,9 @@ class BaseModel(NN):
                     - `hydro_metrics`
 
                 If this argument is given, the `evaluate` function of the underlying class
-                is not called. Rather the model is evaluated for given metrics.
+                is not called. Rather the model is evaluated manually for given metrics.
+                Otherwise, if this argument is not given, then evaluate method of underlying
+                model is called, if available.
             kwargs:
                 any keyword argument for the `evaluate` method of the underlying
                 model.
@@ -1373,7 +1375,7 @@ class BaseModel(NN):
         .. _ClassificationMetrics:
             https://seqmetrics.readthedocs.io/en/latest/cls.html#classificationmetrics
         """
-        return self.call_evaluate(x=x, y=y, data=data, **kwargs)
+        return self.call_evaluate(x=x, y=y, data=data, metrics=metrics, **kwargs)
 
     def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
 
@@ -1381,9 +1383,11 @@ class BaseModel(NN):
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
             source = data
 
-        x, y, _, _, _ = self._fetch_data(source, x, y, data)
+        x, y, _, _, user_defined = self._fetch_data(source, x, y, data)
 
-        if len(x) == 0 and source == "test":
+        if user_defined:
+            pass
+        elif len(x) == 0 and source == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
             data = "validation"
@@ -1402,8 +1406,12 @@ class BaseModel(NN):
         if metrics is not None:
             return self._manual_eval(x, y, metrics)
 
+        # after this we call evaluate function of underlying model
+        # therefore we must transform inputs and outptus
+        x = self._transform_x(x, 'val_x_transformer_')
+        y = self._transform_y(y, 'val_y_transformer_')
+
         if hasattr(self._model, 'evaluate'):
-            # todo, should we transform?
             return self._model.evaluate(x, y, **kwargs)
 
         return self.evaluate_fn(x, y, **kwargs)
@@ -1458,7 +1466,7 @@ class BaseModel(NN):
         Arguments:
             x:
                 The data on which to make prediction. if given, it will override
-                `data`
+                `data`. It can also be tf.Dataset or TorchDataset
             y:
                 Used for pos-processing etc. if given it will overrite `data`
             data:
@@ -1550,7 +1558,9 @@ class BaseModel(NN):
             data=data
         )
 
-        if len(inputs)==0 and source == "test":
+        if user_defined_data:
+            pass
+        elif len(inputs)==0 and source == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
             data = "validation"
@@ -1588,7 +1598,10 @@ class BaseModel(NN):
                 kwargs['verbose'] = self.verbosity
 
             if 'batch_size' in kwargs:  # if given by user
-                self.config['batch_size'] = kwargs['batch_size']  # update config
+                ... #self.config['batch_size'] = kwargs['batch_size']  # update config
+            elif K.BACKEND == "tensorflow":
+                if isinstance(inputs, tf.data.Dataset):
+                    ...
             else:  # otherwise use from config
                 kwargs['batch_size'] = self.config['batch_size']
 
@@ -1659,7 +1672,7 @@ class BaseModel(NN):
                                                user_defined_data=user_defined_data)
 
                     if self.category == 'ML':  # todo, also plot for DL
-                        pp.confusion_matrx(self, x=inputs, y=true_outputs)
+                        pp.confusion_matrx(true_outputs, predicted)
                         # if model does not have predict_proba method, we can't plot following
                         if hasattr(self._model, 'predict_proba'):
                             # if data is user defined, we don't know whether it is binary or not
@@ -1719,8 +1732,8 @@ class BaseModel(NN):
         return kwargs
 
     def get_metrics(self) -> list:
-        """Returns the performance metrics specified."""
-        _metrics = self.config['metrics']
+        """Returns the performance metrics to be monitored."""
+        _metrics = self.config['monitor']
 
         metrics = None
         if _metrics is not None:
@@ -2396,7 +2409,8 @@ class BaseModel(NN):
     ):
         """Calculates the permutation importance on the given data
 
-        Arguments:
+        Parameters
+        ----------
             data:
                 one of `training`, `test` or `validation`. By default test data is
                 used based upon recommendations of Christoph Molnar's book_
@@ -2418,14 +2432,20 @@ class BaseModel(NN):
                 valid if `noise` is not None.
             weights:
             plot_type:
-                if not None, it must be either `heatmap` or `boxplot`
+                if not None, it must be either ``heatmap`` or ``boxplot`` or ``bar_chart``
 
-        Examples:
+        Returns
+        -------
+        an instance of :py:class:`ai4water.postprocessing.PermutationImprotance`
+
+        Examples
+        --------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> model = Model(model="XGBRegressor")
             >>> model.fit(data=busan_beach())
             >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
+            >>> perm_imp.importances
 
         .. _book:
             https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data
@@ -2438,19 +2458,26 @@ class BaseModel(NN):
 
         from .postprocessing.explain import PermutationImportance
         pm = PermutationImportance(
-            self.predict, x, y, scoring,
-            n_repeats, noise, use_noise_only,
+            self.predict,
+            x,
+            y,
+            scoring,
+            n_repeats,
+            noise,
+            use_noise_only,
             path=os.path.join(self.path, "explain"),
             feature_names=self.input_features,
             weights=weights,
             seed=self.config['seed']
         )
 
-        if plot_type is None:
-            return pm.importances
-        else:
-            assert plot_type in ("boxplot", "heatmap")
-            return getattr(pm, f"plot_as_{plot_type}")()
+        if plot_type is not None:
+            assert plot_type in ("boxplot", "heatmap", "bar_chart")
+            if plot_type == "heatmap":
+                pm.plot_as_heatmap()
+            else:
+                pm.plot_1d_pimp(plot_type=plot_type)
+        return pm
 
     def sensitivity_analysis(
             self,
@@ -2647,9 +2674,7 @@ class BaseModel(NN):
                 if hasattr(self, 'dh_'):
                     data = getattr(self.dh_, f'{data}_data')(key=key)
                 else:
-                    raise AttributeError(f"""
-                    Unable to get {source} data.
-                    You must specify the data either using 'x' or 'data' keywords.""")
+                    raise DataNotFound(source)
             else:
                 # e.g. 'CAMELS_AUS'
                 dh = DataSet(data=data, **self.data_config)
@@ -2689,6 +2714,17 @@ class BaseModel(NN):
             x, y = maybe_three_outputs(data, self.teacher_forcing)
 
         return x, y, prefix, key, user_defined_x
+
+
+class DataNotFound(Exception):
+
+    def __init__(self, source):
+        self.source= source
+
+    def __str__(self):
+        return f"""
+        Unable to get {self.source} data.
+        You must specify the data either using 'x' or 'data' keywords."""
 
 
 def get_values(outputs):

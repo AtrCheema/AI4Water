@@ -273,7 +273,7 @@ def save_or_show(path, save: bool = True, fname=None, where='', dpi=300, bbox_in
     if show:
         plt.show()
 
-    if close:
+    elif close:
         plt.close('all')
     return
 

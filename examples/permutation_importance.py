@@ -14,7 +14,10 @@ data=busan_beach()
 
 # build the  model
 
-model = Model(model="XGBRegressor", verbosity=0)
+model = Model(
+    model="XGBRegressor",
+    split_random=True,
+    verbosity=0)
 
 # train the model
 
@@ -32,4 +35,8 @@ pimp = PermutationImportance(
 )
 
 # plot permutatin importance of each feature  as box-plot
-fig = pimp.plot_as_boxplot()
+pimp.plot_1d_pimp()
+
+################################################################
+
+pimp.plot_1d_pimp(plot_type="barchart")

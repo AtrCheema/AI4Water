@@ -321,9 +321,6 @@ def _make_model(**kwargs):
         'shuffle':      {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
         # to save the best models using checkpoints
         'save_model':   {'type': bool, 'default': True, 'lower': None, 'upper': None, 'between': None},
-        # used for cnn_lst structure
-        'subsequences': {'type': int, 'default': 3, 'lower': 2, "upper": None, "between": None},
-
         'backend':       {'type': None, 'default': 'tensorflow', 'lower': None, 'upper': None,
                           'between': ['tensorflow', 'pytorch']},
         # buffer_size is only relevant if 'val_data' is same and shuffle is true.
@@ -335,7 +332,7 @@ def _make_model(**kwargs):
         # https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit
         'steps_per_epoch': {"type": int, "default": None, 'lower': None, 'upper': None, 'between': None},
         # can be string or list of strings such as 'mse', 'kge', 'nse', 'pbias'
-        'metrics': {"type": list, "default": ['nse'], 'lower': None, 'upper': None, 'between': None},
+        'monitor': {"type": [list, type(None), str], "default": None, 'lower': None, 'upper': None, 'between': None},
         # todo, is it  redundant?
         # If the model takes one kind of input_features that is it consists of
         # only 1 Input layer, then the shape of the batches

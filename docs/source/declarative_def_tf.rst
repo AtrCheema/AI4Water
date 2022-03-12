@@ -34,7 +34,6 @@ multi-layer perceptron
     >>> model = Model(
     ...             input_features=df.columns.tolist()[0:-1],
     ...             output_features=df.columns.tolist()[-1:],
-    ...             lookback=1,
     ...             model={'layers':layers},
     ...               )
 
@@ -63,7 +62,7 @@ second `LSTM` layer.
     ...
     >>> df = arg_beach
     ...
-    >>> model = Model(lookback=1,
+    >>> model = Model(ts_args={"lookback": 12}
     ...               input_features=df.columns.tolist()[0:-1],
     ...               output_features=df.columns.tolist()[-1:],
     ...               model={'layers':layers})

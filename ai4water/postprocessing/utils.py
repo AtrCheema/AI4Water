@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-from easy_mpl import regplot
+from easy_mpl import regplot, imshow
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
@@ -311,9 +311,12 @@ class ProcessResults(Plot):
         self.save_or_show(save, fname="roc", where="results")
         return
 
-    def confusion_matrx(self,estimator, x, y, save=True):
+    def confusion_matrx(self, true, predicted, save=True, **kwargs):
 
-        plot_confusion_matrix(estimator, x, y.reshape(-1, ))
+        cm = ClassificationMetrics(true, predicted).confusion_matrix()
+
+        imshow(cm, annotate=True, colorbar=True, show=False, **kwargs)
+
         self.save_or_show(save, fname="confusion_matrix", where="results")
         return
 

@@ -39,6 +39,11 @@ def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, ep
     _ = model.evaluate(data='training')
     pred_y = model.predict()
 
+    # user defined data
+    x,y = model.training_data(data=data)
+    _ = model.fit(x=x,y=y, epochs=1)
+    _ = model.predict(x=x,y=y)
+
     return pred_y
 
 class TestModels(unittest.TestCase):
