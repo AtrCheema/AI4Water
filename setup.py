@@ -12,7 +12,7 @@ else:
     long_desc = "https://github.com/AtrCheema/AI4Water"
 
 min_requirements = [
-    'numpy<=1.19.5',
+    'numpy',
     'scikit-learn',
     'pandas',
     'matplotlib',
