@@ -1699,7 +1699,7 @@ class BaseModel(NN):
         """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
 
-    def plot_model(self, nn_model, **kwargs) -> None:
+    def plot_model(self, nn_model, show=False, figsize=None, **kwargs) -> None:
 
         if int(tf.__version__.split('.')[1]) > 14 and 'dpi' not in kwargs:
             kwargs['dpi'] = 300
@@ -1712,8 +1712,22 @@ class BaseModel(NN):
                 nn_model,
                 show_shapes=True,
                 **kwargs)
+            drawn = True
         except (AssertionError, ImportError) as e:
             print(f"dot plot of model could not be plotted due to {e}")
+            drawn = False
+
+        if drawn and show:
+            import matplotlib.image as mpimg
+            from easy_mpl import imshow
+            img = mpimg.imread(os.path.join(self.path, "model.png"))
+            kwargs = {}
+            if figsize:
+                kwargs['figsize'] = figsize
+            ax,_ = imshow(img, show=False, xticklabels=[], yticklabels=[], **kwargs)
+            ax.axis('off')
+            plt.tight_layout()
+            plt.show()
         return
 
     def get_opt_args(self) -> dict:

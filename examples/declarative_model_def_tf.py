@@ -8,6 +8,8 @@ from ai4water import Model
 from ai4water.datasets import busan_beach
 import pandas as pd
 
+# sphinx_gallery_thumbnail_number = -2
+
 ###########################################################
 
 layers = {"Dense_0": {'units': 64, 'activation': 'relu'},
@@ -25,6 +27,7 @@ model = Model(
             output_features=df.columns.tolist()[-1:],
             model={'layers':layers},
               )
+model.plot_model(model, show=True)
 
 ###########################################################
 
@@ -33,12 +36,13 @@ layers = {"LSTM_0": {'units': 64, 'return_sequences': True},
           "Dense": 1
           }
 
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
       ts_args={"lookback": 12}
       )
 
+model.plot_model(model, show=True)
 
 ###########################################################
 
@@ -55,12 +59,13 @@ layers = {"Conv1D_9": {'filters': 64, 'kernel_size': 2},
           'LeakyReLU': {},  # activation function can also be used as a separate layer
           "Dense": 1
           }
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
       ts_args={"lookback": 12}
       )
 
+model.plot_model(model, show=True)
 
 ###########################################################
 # LSTM -> CNN based model
@@ -76,12 +81,12 @@ layers = {"LSTM": {'units': 64, 'return_sequences': True},
           "Dense": 1
           }
 
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
       ts_args={"lookback": 12}
       )
-
+model.plot_model(model, show=True)
 
 ###########################################################
 # ConvLSTM based model
@@ -97,11 +102,12 @@ layers = {'Input': {'shape': (3, 1, 4, 8)},
           'LSTM':   {'units': 128,   'activation': 'relu', 'dropout': 0.3, 'recurrent_dropout': 0.4 },
           'Dense': 1
           }
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
       ts_args={"lookback": 12}
       )
+model.plot_model(model, show=True)
 
 ###########################################################
 # CNN -> LSTM
@@ -137,12 +143,13 @@ layers = {
     'sigmoid_2': {},
     'Dense': 1
 }
-Model(input_features=df.columns.tolist()[0:-1],
-      output_features=df.columns.tolist()[-1:],
-      model={'layers':layers},
-      ts_args={"lookback": 12}
+model = Model(
+    input_features=df.columns.tolist()[0:-1],
+    output_features=df.columns.tolist()[-1:],
+    model={'layers':layers},
+    ts_args={"lookback": 12}
       )
-
+model.plot_model(model, show=True)
 ###########################################################
 # LSTM based auto-encoder
 # -----------------------
@@ -155,11 +162,13 @@ layers = {
     "relu_1": {},
     'Dense': 1
 }
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
-      ts_args={"lookback": 12}
+      ts_args={"lookback": 12},
       )
+
+model.plot_model(model, show=True)
 
 ###########################################################
 # TCN layer
@@ -176,11 +185,13 @@ layers = {"TCN": {'nb_filters': 64,
           'Dense': 1
           }
 
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
-      ts_args={"lookback": 12}
+      ts_args={"lookback": 12},
       )
+
+model.plot_model(model, show=True)
 
 ###########################################################
 # Multiple Inputs
@@ -221,11 +232,13 @@ layers = {"Input_0": {"shape": (5, 10), "name": "cont_inputs"},
           "Dense_2": 1
         }
 
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
-      ts_args={"lookback": 12}
+      ts_args={"lookback": 12},
       )
+
+model.plot_model(model, show=True)
 
 ###########################################################
 # Multiple Output Layers
@@ -251,11 +264,13 @@ layers = {
     "Dense": 1
 }
 
-Model(input_features=df.columns.tolist()[0:-1],
+model = Model(input_features=df.columns.tolist()[0:-1],
       output_features=df.columns.tolist()[-1:],
       model={'layers':layers},
-      ts_args={"lookback": 12}
+      ts_args={"lookback": 12},
       )
+
+model.plot_model(model, show=True)
 
 ###########################################################
 # Additional call args
@@ -291,12 +306,14 @@ layers ={
 
     "Dense": 1
 }
-Model(input_features=df.columns.tolist()[0:-1],
-      output_features=df.columns.tolist()[-1:],
-      model={'layers':layers},
-      ts_args={"lookback": 12}
+model = Model(
+    input_features=df.columns.tolist()[0:-1],
+    output_features=df.columns.tolist()[-1:],
+    model={'layers':layers},
+    ts_args={"lookback": 12},
       )
 
+model.plot_model(model, show=True, figsize=(10, 10))
 
 ###########################################################
 # lambda layers
@@ -310,11 +327,14 @@ layers = {
     "lambda": {"config": tf.keras.layers.Lambda(lambda x: x[:, -1, :])},
     "Dense": {"config": {"units": 1}}
 }
-Model(input_features=df.columns.tolist()[0:-1],
-      output_features=df.columns.tolist()[-1:],
-      model={'layers':layers},
-      ts_args={"lookback": 12}
+model = Model(
+    input_features=df.columns.tolist()[0:-1],
+    output_features=df.columns.tolist()[-1:],
+    model={'layers':layers},
+    ts_args={"lookback": 12},
       )
+model.plot_model(model, show=True)
+
 # The model can be seelessly loaded from the saved json file using
 
 # config_path = "path like"
