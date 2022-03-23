@@ -457,9 +457,9 @@ class DualAttentionModel(FModel):
         act_avg_over_examples = np.mean(activation, axis=0)  # (lookback, num_ins)
 
         lookback = self.config['ts_args']['lookback']
-        data, _ = getattr(self, f'{data}_data')()
+        x, observations = getattr(self, f'{data}_data')()
 
-        predictions, observations = self.predict(process_results=False, data=data, return_true=True)
+        predictions = self.predict(process_results=False, x=x)
 
         plt.close('all')
 
@@ -481,7 +481,7 @@ class DualAttentionModel(FModel):
                     dpi=400, bbox_inches='tight')
         plt.close('all')
 
-        data = self.inputs_for_attention(data)
+        data = self.inputs_for_attention(x)
 
         plot_activations_along_inputs(
             data=data,

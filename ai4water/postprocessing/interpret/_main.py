@@ -312,8 +312,9 @@ class Interpret(Plot):
         ac, data = self.tft_attention_components(data=data)
         return ac['encoder_variable_selection_weights']
 
-
-    def interpret_example_tft(self, example_index, model=None, data='test',
+    def interpret_example_tft(self,
+                              example_index,
+                              data='test',
                               show=False):
         """interprets a single example using TFT model.
 
@@ -321,8 +322,6 @@ class Interpret(Plot):
         ---------
             example_index :
                 index of example to be explained
-            model : t
-                he ai4water model
             data :
                 the data whose example to interpret.
             show :
@@ -345,10 +344,12 @@ class Interpret(Plot):
                           show=False
                           )
 
-        plt.xticks(np.arange(model.num_ins), model.input_features, rotation=90)
+        plt.xticks(np.arange(self.model.num_ins), self.model.input_features,
+                   rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
-        plt.savefig(os.path.join(maybe_create_path(model.path), f'{data_name}_enc_var_selec_{example_index}.png'),
-                    bbox_inches='tight', dpi=300)
+        fname = os.path.join(maybe_create_path(self.model.path),
+                             f'{data_name}_enc_var_selec_{example_index}.png')
+        plt.savefig(fname, bbox_inches='tight', dpi=300)
         if show:
             plt.show()
         return
@@ -360,24 +361,24 @@ class Interpret(Plot):
             data : the data to use to interpret model
         """
 
-        true, predictions = model.predict(data=data, return_true=True,
+        true, predictions = self.model.predict(data=data, return_true=True,
                                           process_results=False)
 
         ac, data = self.tft_attention_components(data=data)
 
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
 
-        train_x, train_y = getattr(model, f'{data}_data')()
+        train_x, train_y = getattr(self.model, f'{data}_data')()
 
         plot_activations_along_inputs(activations=encoder_variable_selection_weights,
                                       data=train_x[:, -1],
                                       observations=true,
                                       predictions=predictions,
-                                      in_cols=model.input_features,
-                                      out_cols=model.output_features,
-                                      lookback=model.lookback,
+                                      in_cols=self.model.input_features,
+                                      out_cols=self.model.output_features,
+                                      lookback=self.model.lookback,
                                       name=f'tft_encoder_weights_{data}',
-                                      path=maybe_create_path(model.path)
+                                      path=maybe_create_path(self.model.path)
                                       )
         return
 
