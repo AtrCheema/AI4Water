@@ -87,6 +87,12 @@ class TestFit(unittest.TestCase):
         model.fit(x=tr_ds, callbacks=[tf.keras.callbacks.EarlyStopping(patience=3)], epochs=5)
         return
 
+    def test_ml_kwargs(self):
+        """additional kwargs to .fit of ML models such as catboost/lgbm"""
+        model = Model(model="LGBMRegressor")
+        model.fit(data=data, init_model=None)
+        return
+
 
 if __name__ == "__main__":
     unittest.main()

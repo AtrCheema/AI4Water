@@ -786,7 +786,7 @@ class ShapExplainer(ExplainerMixin):
                 any keyword arguments for shap.beeswarm plot
 
         .. _beeswarm:
-            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html)
+            https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
         """
 
         shap_values = self._get_shap_values_locally()

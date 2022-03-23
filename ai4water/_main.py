@@ -973,7 +973,7 @@ class BaseModel(NN):
                 >>> callbacks={'tensorboard': {'histogram_freq': 1}}
 
             kwargs :
-                Any keyword argument for the `fit` method of the underlying algorithm.
+                Any keyword argument for the `fit` method of the underlying library.
                 if 'x' is present in kwargs, that will take precedent over `data`.
         Returns:
             A keras history object in case of deep learning model with tensorflow
@@ -1049,7 +1049,7 @@ class BaseModel(NN):
 
             self.load_best_weights()
         else:
-            history = self.fit_ml_models(inputs, outputs)
+            history = self.fit_ml_models(inputs, outputs, **kwargs)
 
         self.info['training_end'] = dateandtime_now()
         self.save_config()
@@ -1071,7 +1071,7 @@ class BaseModel(NN):
                 self.update_weights(os.path.join(self.w_path, best_weights))
         return
 
-    def fit_ml_models(self, inputs, outputs):
+    def fit_ml_models(self, inputs, outputs, **kwargs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
         for arg in ["composite", "optimizer", "lr", "epochs"]:
@@ -1083,7 +1083,7 @@ class BaseModel(NN):
 
         self._maybe_change_residual_threshold(outputs)
 
-        history = self._model.fit(inputs, outputs)
+        history = self._model.fit(inputs, outputs, **kwargs)
 
         if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
             # by default feature_names of booster as set to f0, f1,...
@@ -2490,7 +2490,7 @@ class BaseModel(NN):
             if plot_type == "heatmap":
                 pm.plot_as_heatmap()
             else:
-                pm.plot_1d_pimp(plot_type=plot_type)
+                pm.plot_1d_pimp(plot_type=plot_type, save=True)
         return pm
 
     def sensitivity_analysis(
