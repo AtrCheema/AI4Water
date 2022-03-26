@@ -5,6 +5,7 @@ import os
 from typing import Callable
 
 import matplotlib.pyplot as plt
+from easy_mpl import bar_chart
 import numpy as np
 from SALib.plotting.hdmr import plot
 from SALib.plotting.bar import plot as barplot
@@ -47,7 +48,11 @@ def sensitivity_analysis(
 
     analyzer_kwds = analyzer_kwds or {}
 
-    if analyzer in ["hdmr", "morris"] and 'X' not in analyzer_kwds:
+    if analyzer in ["hdmr",
+                    "morris",
+                    "dgsm",
+        "ff",
+                    "pawn"] and 'X' not in analyzer_kwds:
         analyzer_kwds['X'] = param_values
 
     Si = _analyzer.analyze(problem=problem, Y=y, **analyzer_kwds)
@@ -72,6 +77,17 @@ def _plots(analyzer, si, path):
         plt.close('all')
         plot(si)
         plt.savefig(os.path.join(path, "hdmr"), bbox_inches="tight")
+
+    elif analyzer in ["pawn"]:
+        ax = bar_chart(si['mean'], si['names'], orient='v', sort=True,
+                  figsize=(8, 6), title="Mean values", show=False)
+        means = si["mean"]
+        mins = si["minimum"]
+        maxes = si["maximum"]
+        # ax.errorbar(np.arange(len(means)), means, [means - mins, maxes - means],
+        #              fmt='ok', ecolor='gray', lw=1)
+        plt.show()
+    return
 
 
 def morris_plots(si, show=False, path=None):

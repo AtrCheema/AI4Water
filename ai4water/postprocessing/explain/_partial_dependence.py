@@ -3,6 +3,7 @@ from typing import Union, List, Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from ._explain import ExplainerMixin
 
@@ -64,19 +65,19 @@ class PartialDependencePlot(ExplainerMixin):
 
         Parameters
         ----------
-            model :
+            model : Callable
                 the trained/calibrated model which must be callable. It must take the
                 `data` as input and sprout an array of predicted values. For example
                 if you are using Keras/sklearn model, then you must pass model.predict
-            data :
-                The inputs to the `model`.
-            feature_names :
+            data : np.ndarray, pd.DataFrame
+                The inputs to the `model`. It can numpy array or pandas DataFrame.
+            feature_names : list, optional
                 Names of features. Used for labeling.
-            num_points :
+            num_points : int, optional
                 determines the grid for evaluation of `model`
-            path:
+            path : str, optional
                 path to save the plots. By default the results are saved in current directory
-            kwargs:
+            **kwargs :
                 any additional keyword arguments for `model`
         """
 
@@ -85,6 +86,11 @@ class PartialDependencePlot(ExplainerMixin):
         self.xmin = "percentile(0)"
         self.xmax = "percentile(100)"
         self.kwargs = kwargs
+
+        if isinstance(data, pd.DataFrame):
+            if feature_names is None:
+                feature_names = data.columns.tolist()
+            data = data.values
 
         super().__init__(data=data, features=feature_names, path=path or os.getcwd())
 
@@ -312,29 +318,36 @@ class PartialDependencePlot(ExplainerMixin):
             model_expected_value: bool = False,
             show_ci: bool = False,
             show_minima: bool = False,
+            ice_only: bool = False,
+            ice_color: str = "lightblue",
             show: bool = True,
             save: bool = False
     ):
         """partial dependence plot in one dimension
 
-        Arguments:
-            feature:
+        Parameters
+        ----------
+            feature :
                 the feature name for which to plot the partial dependence
-            show_dist:
+            show_dist :
                 whether to show actual distribution of data or not
-            show_dist_as:
+            show_dist_as :
                 one of "hist" or "grid"
-            ice:
+            ice :
                 whether to show individual component elements on plot or not
-            feature_expected_value:
+            feature_expected_value :
                 whether to show the average value of feature on the plot or not
-            model_expected_value:
+            model_expected_value :
                 whether to show average prediction on plot or not
-            show_ci:
+            show_ci :
                 whether to show confidence interval of pdp or not
-            show_minima:
+            show_minima :
                 whether to indicate the minima or not
-            show:
+            ice_only : bool, False
+                whether to show only ice plots
+            ice_color :
+                color for ice lines
+            show :
                 whether to show the plot or not
             save:
                 whether to save the plot or not
@@ -344,27 +357,29 @@ class PartialDependencePlot(ExplainerMixin):
         else:
             if self.single_source:
                 if self.data_is_2d:
-                    self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature), self.data, feature,
+                    ax = self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature), self.data, feature,
                                         show_dist=show_dist, show_dist_as=show_dist_as,
                                         ice=ice, feature_expected_value=feature_expected_value,
                                         show_ci=show_ci, show_minima=show_minima,
-                                        model_expected_value=model_expected_value, show=show, save=save)
+                                        model_expected_value=model_expected_value, show=show,
+                                        save=save, ice_only=ice_only, ice_color=ice_color)
                 elif self.data_is_3d:
                     for lb in range(self.data.shape[1]):
-                        self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature, lb),
+                        ax = self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature, lb),
                                             data=self.data, feature=feature, lookback=lb,
                                             show_ci=show_ci, show_minima=show_minima,
                                             show_dist=show_dist, show_dist_as=show_dist_as,
                                             ice=ice, feature_expected_value=feature_expected_value,
-                                            model_expected_value=model_expected_value, show=show, save=save)
+                                            model_expected_value=model_expected_value, show=show,
+                                            save=save, ice_only=ice_only, ice_color=ice_color)
             else:
                 for data in self.data:
                     if self.data_is_2d:
-                        self._pdp_for_2d(data, feature)
+                        ax = self._pdp_for_2d(data, feature)
                     else:
                         for lb in []:
-                            self._pdp_for_2d(data, feature, lb)
-        return
+                            ax = self._pdp_for_2d(data, feature, lb)
+        return ax
 
     def xv(self, data, feature, lookback):
 
@@ -415,12 +430,16 @@ class PartialDependencePlot(ExplainerMixin):
 
         return ind
 
-    def _plot_pdp_1dim(self,
-                       pd_vals, ice_vals, data, feature, lookback=None,
-                       show_dist=True, show_dist_as="hist", ice=True, show_ci=False,
-                       show_minima=False,
-                       feature_expected_value=False, model_expected_value=False,
-                       show=True, save=False, ax=None):
+    def _plot_pdp_1dim(
+            self,
+            pd_vals, ice_vals, data, feature, lookback=None,
+            show_dist=True, show_dist_as="hist", ice=True, show_ci=False,
+            show_minima=False,
+            feature_expected_value=False, model_expected_value=False,
+            show=True, save=False, ax=None,
+            ice_color="lightblue",
+            ice_only=False,
+    ):
 
         xmin, xmax = compute_bounds(self.xmin, self.xmax, self.xv(data, feature, lookback))
 
@@ -433,17 +452,19 @@ class PartialDependencePlot(ExplainerMixin):
         ylabel = "E[f(x) | " + feature + "]"
         if ice:
             ice_linewidth = min(1, 50 / ice_vals.shape[1])  # pylint: disable=unsubscriptable-object
-            ax.plot(xs, ice_vals, color='lightblue', linewidth=ice_linewidth, alpha=1)
+            ax.plot(xs, ice_vals, color=ice_color, linewidth=ice_linewidth, alpha=1)
             ylabel = "f(x) | " + feature
 
         if show_ci:
             std = np.std(ice_vals, axis=1)
             upper = pd_vals + std
             lower = pd_vals - std
-            ax.fill_between(xs, upper, lower, alpha=0.14, color='#66C2D7')
+            ax.fill_between(xs, upper, lower, alpha=0.14,
+                            color='#66C2D7' if ice_color=="lightblue" else ice_color)
 
         # the line plot
-        ax.plot(xs, pd_vals, color='blue', linewidth=2, alpha=1)
+        if not ice_only:
+            ax.plot(xs, pd_vals, color='blue', linewidth=2, alpha=1)
 
         title = None
         if lookback is not None:

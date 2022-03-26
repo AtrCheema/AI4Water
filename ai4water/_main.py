@@ -2509,12 +2509,13 @@ class BaseModel(NN):
 
         Parameters
         ----------
-
         data :
-            data which
+            data which will be used to get the bounds/limits of features. If given,
+            it must be 2d numpy array. It should be remembered that the given data
+            is not used during sensitivity analysis. But new synthetic data is prepared
+            on which sensitivity analysis is performed.
         bounds : list,
             alternative to data
-
         sampler : str, optional
             any sampler_ from SALib library. For example ``morris``, ``fast_sampler``,
             ``ff``, ``finite_diff``, ``latin``, ``saltelli``, ``sobol_sequence``

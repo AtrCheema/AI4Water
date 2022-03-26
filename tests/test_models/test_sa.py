@@ -54,6 +54,30 @@ class TestMLRegression(unittest.TestCase):
         )
         return
 
+    def test_morris_pawn(self):
+        test_basic(
+            sampler="morris",
+            analyzer="pawn",
+            sampler_kwds={'N': 100}
+        )
+        return
+
+    def test_morris_ff(self):
+        test_basic(
+            sampler="morris",
+            analyzer="morris",
+            sampler_kwds={'N': 100}
+        )
+        return
+
+    def test_morris_dgsm(self):
+        test_basic(
+            sampler="morris",
+            analyzer="dgsm",
+            sampler_kwds={'N': 100}
+        )
+        return
+
     def test_saltelli_hdmr(self):
         test_basic(
             sampler="saltelli",
@@ -74,6 +98,30 @@ class TestMLRegression(unittest.TestCase):
         test_basic(
             sampler="saltelli",
             analyzer="morris",
+            sampler_kwds={'N': 100}
+        )
+        return
+
+    def test_saltelli_pawn(self):
+        test_basic(
+            sampler="saltelli",
+            analyzer="pawn",
+            sampler_kwds={'N': 100}
+        )
+        return
+
+    # def test_saltelli_ff(self):
+    #     test_basic(
+    #         sampler="saltelli",
+    #         analyzer="ff",
+    #         sampler_kwds={'N': 100}
+    #     )
+    #     return
+
+    def test_saltelli_dgsm(self):
+        test_basic(
+            sampler="saltelli",
+            analyzer="dgsm",
             sampler_kwds={'N': 100}
         )
         return
