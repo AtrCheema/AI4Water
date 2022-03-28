@@ -81,6 +81,8 @@ class ShapExplainer(ExplainerMixin):
             feature_names: list = None,
             framework: str = None,
             layer: Union[int, str] = None,
+            save: bool = True,
+            show: bool = True,
     ):
         """
 
@@ -118,12 +120,20 @@ class ShapExplainer(ExplainerMixin):
             layer : Union[int, str]
                 only relevant when framework is "DL" i.e when the model consits of layers
                 of neural networks.
-
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
         """
         test_data = maybe_to_dataframe(data, feature_names)
         train_data = maybe_to_dataframe(train_data, feature_names)
 
-        super(ShapExplainer, self).__init__(path=path or os.getcwd(), data=test_data, features=feature_names)
+        super(ShapExplainer, self).__init__(path=path or os.getcwd(),
+                                            data=test_data,
+                                            features=feature_names,
+                                            save=save,
+                                            show=show
+                                            )
 
         if train_data is None:
             self._check_data(test_data)
@@ -345,8 +355,6 @@ class ShapExplainer(ExplainerMixin):
                  dependence_plots=False,
                  beeswarm_plots=False,
                  heatmap=False,
-                 show=False,
-                 save=True
                  ):
         """Draws and saves all the plots for a given sklearn model in the path.
 
@@ -357,59 +365,55 @@ class ShapExplainer(ExplainerMixin):
 
         if dependence_plots:
             for feature in self.features:
-                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}", show=show, save=save)
+                self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}")
 
         if force_plots:
             for i in range(self.data.shape[0]):
 
-                self.force_plot_single_example(i, f"force_plot_{i}", show=show, save=save)
+                self.force_plot_single_example(i, f"force_plot_{i}")
 
         if beeswarm_plots:
-            self.beeswarm_plot(show=show, save=save)
+            self.beeswarm_plot()
 
         if plot_force_all:
-            self.force_plot_all("force_plot_all", show=show, save=save)
+            self.force_plot_all("force_plot_all")
 
         if heatmap:
-            self.heatmap(show=show, save=save)
+            self.heatmap()
 
-        self.summary_plot("summary_plot", show=show, save=save)
+        self.summary_plot("summary_plot")
 
         return
 
     def summary_plot(
             self,
+            plot_type: str = None,
             name: str = "summary_plot",
-            show: bool = True,
-            save: bool = False,
             **kwargs
     ):
-        """Plots the summary plot of SHAP package.
+        """
+        Plots the `summary <https://shap-lrjball.readthedocs.io/en/latest/generated/shap.summary_plot.html#shap.summary_plot>`_
+        plot of SHAP package.
 
         Arguments:
+            plot_type : str,
+                either "bar", or "violen" or "dot"
             name:
                 name of saved file
-            show:
-                whether to show the plot or not
-            save:
-                whether to save the plot or not
             kwargs:
                 any keyword arguments to shap.summary_plot
         """
 
         def _summary_plot(_shap_val, _data, _features, _name):
             plt.close('all')
-            shap.summary_plot(_shap_val, _data, show=False, feature_names=_features, **kwargs)
-            if save:
-                plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
-            if show:
-                plt.show()
 
-            shap.summary_plot(_shap_val, _data, show=False, plot_type="bar", feature_names=_features,
+            shap.summary_plot(_shap_val, _data, show=False, plot_type=plot_type,
+                              feature_names=_features,
                               **kwargs)
-            if save:
-                plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300, bbox_inches="tight")
-            if show:
+            if self.save:
+                plt.savefig(os.path.join(self.path, _name + " _bar"), dpi=300,
+                            bbox_inches="tight")
+            if self.show:
                 plt.show()
 
             return
@@ -445,8 +449,6 @@ class ShapExplainer(ExplainerMixin):
             self,
             idx:int,
             name=None,
-            show=True,
-            save=False,
             **force_kws
     ):
         """Draws force_plot_
@@ -460,10 +462,6 @@ class ShapExplainer(ExplainerMixin):
                 index of exmaple to use. It can be any value >=0
             name:
                 name of saved file
-            show:
-                whether to show the plot or not
-            save:
-                whether to save the plot or not
             force_kws : any keyword argument for force plot
 
         Returns:
@@ -509,23 +507,23 @@ class ShapExplainer(ExplainerMixin):
             **force_kws
         )
 
-        if save:
+        if self.save:
             name = name or f"force_plot_{idx}"
             plotter.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plotter.show()
 
         return plotter
 
-    def dependence_plot_all_features(self, show=True, save=False, **dependence_kws):
+    def dependence_plot_all_features(self, **dependence_kws):
         """dependence plot for all features"""
         for feature in self.features:
-            self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}", show=show, save=save,
+            self.dependence_plot_single_feature(feature, f"dependence_plot_{feature}",
                                                 **dependence_kws)
         return
 
-    def dependence_plot_single_feature(self, feature, name="dependence_plot", show=False, save=True, **kwargs):
+    def dependence_plot_single_feature(self, feature, name="dependence_plot", **kwargs):
         """dependence_ plot for a single feature. See this_ .
 
         .. _dependence:
@@ -547,9 +545,9 @@ class ShapExplainer(ExplainerMixin):
                              self.data,
                              show=False,
                              **kwargs)
-        if save:
+        if self.save:
             plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
-        if show:
+        if self.show:
             plt.show()
         return
 
@@ -574,8 +572,6 @@ class ShapExplainer(ExplainerMixin):
     def waterfall_plot_all_examples(
             self,
             name: str = "waterfall",
-            save=True,
-            show=False,
             **waterfall_kws
     ):
         """Plots the waterfall_ plot of SHAP package
@@ -586,7 +582,7 @@ class ShapExplainer(ExplainerMixin):
             https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
         """
         for i in range(len(self.data)):
-            self.waterfall_plot_single_example(i, name=name, save=save, show=show, **waterfall_kws)
+            self.waterfall_plot_single_example(i, name=name, **waterfall_kws)
 
         return
 
@@ -594,8 +590,6 @@ class ShapExplainer(ExplainerMixin):
             self,
             example_index: int,
             name: str = "waterfall",
-            show: bool = False,
-            save=True,
             max_display: int = 10,
     ):
         """draws and saves waterfall_ plot
@@ -615,10 +609,6 @@ class ShapExplainer(ExplainerMixin):
                 maximu features to display
             name : str
                 name of plot
-            save : bool
-                whether to save the plot or not
-            show : bool
-                whether to show the plot or now
 
         .. _waterfall:
             https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
@@ -658,10 +648,10 @@ class ShapExplainer(ExplainerMixin):
         else:
             shap.plots.waterfall(shap_vals_as_exp[example_index], show=False, max_display=max_display)
 
-        if save:
+        if self.save:
             plt.savefig(os.path.join(self.path, f"{name}_{example_index}"), dpi=300, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
 
         return
@@ -669,21 +659,19 @@ class ShapExplainer(ExplainerMixin):
     def scatter_plot_single_feature(
             self, feature: str,
             name: str = "scatter",
-            show=False,
-            save=True,
             **scatter_kws
     ):
 
         shap_values = self.explainer(self.data)
         shap.plots.scatter(shap_values[:, feature], show=False, **scatter_kws)
-        if save:
+        if self.save:
             plt.savefig(os.path.join(self.path, f"{name}_{feature}"), dpi=300, bbox_inches="tight")
-        if show:
+        if self.show:
             plt.show()
 
         return
 
-    def scatter_plot_all_features(self, name="scatter_plot", save=True, show=False, **scatter_kws):
+    def scatter_plot_all_features(self, name="scatter_plot", **scatter_kws):
         """draws scatter plot for all features"""
         if isinstance(self.data, pd.DataFrame):
             features = self.features
@@ -691,11 +679,11 @@ class ShapExplainer(ExplainerMixin):
             features = [i for i in range(self.data.shape[-1])]
 
         for feature in features:
-            self.scatter_plot_single_feature(feature, name=name, save=save, show=show, **scatter_kws)
+            self.scatter_plot_single_feature(feature, name=name, **scatter_kws)
 
         return
 
-    def heatmap(self, name: str = 'heatmap', show: bool = False, save=False, max_display=10):
+    def heatmap(self, name: str = 'heatmap', max_display=10):
         """Plots the heatmap_ and saves it
 
         This can be drawn for xgboost/lgbm as well as for randomforest type models
@@ -720,34 +708,32 @@ class ShapExplainer(ExplainerMixin):
         # by default examples are ordered in such a way that examples with similar
         # explanations are grouped together.
         self._heatmap(shap_values, f"{name}_basic",
-                      show=show,
-                      save=save,
                       max_display=max_display)
 
         # sort by the maximum absolute value of a feature over all the examples
-        self._heatmap(shap_values, f"{name}_sortby_maxabs", show=show,
+        self._heatmap(shap_values, f"{name}_sortby_maxabs",
                       max_display=max_display,
-                      save=save,
                       feature_values=shap_values.abs.max(0))
 
         # sorting by the sum of the SHAP values over all features gives a complementary perspective on the data
-        self._heatmap(shap_values, f"{name}_sortby_SumOfShap", show=show,
-                      save=save,
+        self._heatmap(shap_values, f"{name}_sortby_SumOfShap",
                       max_display=max_display,
                       instance_order=shap_values.sum(1))
         return
 
-    def _heatmap(self, shap_values, name, show=False, max_display=10, save=True,  **kwargs):
+    def _heatmap(self, shap_values, name, max_display=10, **kwargs):
         plt.close('all')
 
         # set show to False because we want to reset xlabel
-        shap.plots.heatmap(shap_values, show=False,  max_display=max_display, **kwargs)
+        shap.plots.heatmap(shap_values, show=False,  max_display=max_display,
+                           **kwargs)
         plt.xlabel("Examples")
 
-        if save:
-            plt.savefig(os.path.join(self.path, f"{name}_sortby_SumOfShap"), dpi=300, bbox_inches="tight")
+        if self.save:
+            plt.savefig(os.path.join(self.path, f"{name}_sortby_SumOfShap"), dpi=300,
+                        bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
         return
 
@@ -765,9 +751,7 @@ class ShapExplainer(ExplainerMixin):
     def beeswarm_plot(
             self,
             name: str = "beeswarm",
-            show: bool = False,
             max_display: int = 10,
-            save: bool = True,
             **kwargs
     ):
         """
@@ -776,10 +760,6 @@ class ShapExplainer(ExplainerMixin):
         Arguments:
             name : str
                 name of saved file
-            show : bool
-                whether to show the plot or not
-            save :
-                whether to save the plot or not
             max_display :
                 maximum
             kwargs :
@@ -792,28 +772,31 @@ class ShapExplainer(ExplainerMixin):
         shap_values = self._get_shap_values_locally()
 
         self._beeswarm_plot(shap_values,
-                            name=f"{name}_basic", show=show, max_display=max_display,
-                            save=save,
+                            name=f"{name}_basic",
+                            max_display=max_display,
                             **kwargs)
 
         # find features with high impacts
-        self._beeswarm_plot(shap_values, name=f"{name}_sortby_maxabs", show=show, max_display=max_display,
-                            order=shap_values.abs.max(0), save=save, **kwargs)
+        self._beeswarm_plot(shap_values, name=f"{name}_sortby_maxabs",
+                            max_display=max_display,
+                            order=shap_values.abs.max(0), **kwargs)
 
         # plot the absolute value
         self._beeswarm_plot(shap_values.abs,
-                            name=f"{name}_abs_shapvalues", show=show, max_display=max_display,
-                            save=save, **kwargs)
+                            name=f"{name}_abs_shapvalues",
+                            max_display=max_display,
+                            **kwargs)
         return
 
-    def _beeswarm_plot(self, shap_values, name, show=False, max_display=10, save=True, **kwargs):
+    def _beeswarm_plot(self, shap_values, name, max_display=10, **kwargs):
 
         plt.close('all')
-        shap.plots.beeswarm(shap_values,  show=False, max_display=max_display, **kwargs)
-        if save:
+        shap.plots.beeswarm(shap_values,  show=False, max_display=max_display,
+                            **kwargs)
+        if self.save:
             plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
 
         return
@@ -822,8 +805,6 @@ class ShapExplainer(ExplainerMixin):
             self,
             indices=None,
             name: str = "decision_",
-            show=False,
-            save=True,
             **decision_kwargs):
         """decision_ plot. For details see this blog.
 
@@ -850,9 +831,9 @@ class ShapExplainer(ExplainerMixin):
                                show=False,
                                legend_location=legend_location,
                                **decision_kwargs)
-            if save:
+            if self.save:
                 plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
-            if show:
+            if self.show:
                 plt.show()
         else:
             raise NotImplementedError
@@ -862,23 +843,16 @@ class ShapExplainer(ExplainerMixin):
             interpolation=None,
             cmap="coolwarm",
             name: str = "shap_values",
-            show: bool = True,
-            save: bool = False
     ):
         """Plots the SHAP values.
 
         Arguments:
             name:
                 name of saved file
-            show:
-                whether to show the plot or not
             interpolation:
                 interpolation argument to axis.imshow
             cmap:
                 color map
-            save:
-                whether to save the plot or not
-
         """
         shap_values = self.shap_values
 
@@ -893,7 +867,7 @@ class ShapExplainer(ExplainerMixin):
                                  _features,
                                  name=_name,
                                  path=self.path,
-                                 show=show,
+                                 show=self.show,
                                  cmap=cmap)
 
             plt.close('all')
@@ -910,10 +884,10 @@ class ShapExplainer(ExplainerMixin):
             axis.set_xlabel("Examples")
 
             fig.colorbar(im)
-            if save:
+            if self.save:
                 plt.savefig(os.path.join(self.path, _name), dpi=300, bbox_inches="tight")
 
-            if show:
+            if self.show:
                 plt.show()
             return
 
@@ -929,28 +903,22 @@ class ShapExplainer(ExplainerMixin):
 
     def pdp_all_features(
             self,
-            show: bool = False,
-            save: bool = True,
             **pdp_kws
     ):
         """partial dependence plot of all features.
 
         Arguments:
-            show:
-            save:
             pdp_kws:
                 any keyword arguments
             """
         for feat in self.features:
-            self.pdp_single_feature(feat, show=show, save=save, **pdp_kws)
+            self.pdp_single_feature(feat, show=self.show, save=self.save, **pdp_kws)
 
         return
 
     def pdp_single_feature(
             self,
             feature_name: str,
-            show=True,
-            save=False,
             **pdp_kws
     ):
         """partial depence plot using SHAP package for a single feature."""
@@ -974,10 +942,10 @@ class ShapExplainer(ExplainerMixin):
             **pdp_kws
         )
 
-        if save:
+        if self.save:
             fname = f"pdp_{feature_name}"
             plt.savefig(os.path.join(self.path, fname), dpi=300, bbox_inches="tight")
-        if show:
+        if self.show:
             plt.show()
 
         return fig

@@ -42,25 +42,43 @@ class LimeExplainer(ExplainerMixin):
             path=None,
             feature_names: list = None,
             verbosity: Union[int, bool] = True,
+            save: bool = True,
+            show: bool = True,
             **kwargs
     ):
         """
         Arguments:
-            model : the model to explain. The model must have `predict` method.
-            data : the data to explain. This would typically be test data but it
+            model :
+                the model to explain. The model must have `predict` method.
+            data :
+                the data to explain. This would typically be test data but it
                 can be any data.
-            train_data : the data on which the model was trained.
-            mode : either of `regression` or `classification`
-            explainer : The explainer to use. By default, LimeTabularExplainer is used.
-            path : path where to save all the plots. By default, plots will be saved in
+            train_data :
+                the data on which the model was trained.
+            mode :
+                either of `regression` or `classification`
+            explainer :
+                The explainer to use. By default, LimeTabularExplainer is used.
+            path :
+                path where to save all the plots. By default, plots will be saved in
                 current working directory.
-            feature_names : name/names of features.
-            verbosity : whether to print information or not.
+            feature_names :
+                name/names of features.
+            verbosity :
+                whether to print information or not.
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
         """
         self.model = model
         self.train_data = to_np(train_data)
 
-        super(LimeExplainer, self).__init__(path=path or os.getcwd(), data=to_np(data), features=feature_names)
+        super(LimeExplainer, self).__init__(path=path or os.getcwd(),
+                                            data=to_np(data),
+                                            save=save,
+                                            show=show,
+                                            features=feature_names)
 
         self.mode = mode
         self.verbosity = verbosity
@@ -155,8 +173,6 @@ class LimeExplainer(ExplainerMixin):
             num_features: int = None,
             colors=None,
             annotate=False,
-            show=False,
-            save=True,
             **kwargs
     )->plt.Figure:
         """
@@ -169,8 +185,6 @@ class LimeExplainer(ExplainerMixin):
             num_features :
             colors :
             annotate : whether to annotate figure or not
-            show : whether to show figure or not
-            save : wheter to save figure or not
             kwargs : any keyword argument for `explain_instance`
 
         Returns:
@@ -190,9 +204,9 @@ class LimeExplainer(ExplainerMixin):
         if plot_type == "pyplot":
             plt.close()
             fig = as_pyplot_figure(exp, colors=colors, example_index=index, annotate=annotate)
-            if save:
+            if self.save:
                 plt.savefig(os.path.join(self.path, f"{name}_{index}"), bbox_inches="tight")
-            if show:
+            if self.show:
                 plt.show()
         else:
             exp.save_to_file(os.path.join(self.path, f"{name}_{index}"))

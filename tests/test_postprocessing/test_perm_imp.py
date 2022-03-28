@@ -20,10 +20,12 @@ class TestPermImportance(unittest.TestCase):
         pimp = PermutationImportance(
             model.predict,
             x_val,
-            y_val.reshape(-1,))
-        fig = pimp.plot_1d_pimp(show=False)
+            y_val.reshape(-1,),
+            show=False,
+            save=False)
+        fig = pimp.plot_1d_pimp()
         assert fig.__class__.__name__ == "AxesSubplot"
-        fig = pimp.plot_1d_pimp(show=False, plot_type="bar_chart")
+        fig = pimp.plot_1d_pimp(plot_type="bar_chart")
         assert fig.__class__.__name__ == "AxesSubplot"
 
         return
@@ -46,13 +48,16 @@ class TestPermImportance(unittest.TestCase):
 
         x, y = model.training_data()
 
-        pimp = PermutationImportance(model.predict, inputs=x, target=y.reshape(-1, ),
+        pimp = PermutationImportance(model.predict, inputs=x,
+                                     target=y.reshape(-1, ),
                                      n_repeats=4,
-                                     verbose=False)
-        axes = pimp.plot_as_heatmap(annotate=False, show=False)
+                                     verbose=False,
+                                     show=False,
+                                     save=False)
+        axes = pimp.plot_as_heatmap(annotate=False)
         assert axes.__class__.__name__ == "AxesSubplot"
 
-        pimp.plot_1d_pimp(show=False)
+        pimp.plot_1d_pimp()
 
         return
 
@@ -71,7 +76,11 @@ class TestPermImportance(unittest.TestCase):
 
         x1 = np.random.random((100, 5, 4))
         x2 = np.random.random((100, 5, 3))
-        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)), verbose=0)
+        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)),
+                                     verbose=0,
+                                     show=False,
+                                     save=False
+                                     )
         assert len(pimp.importances) == 2
         assert len(pimp.importances[0]) == 5
         assert len(pimp.importances[1]) == 5
@@ -97,7 +106,10 @@ class TestPermImportance(unittest.TestCase):
 
         x1 = np.random.random((100, 5, 4))
         x2 = np.random.random((100, 4))
-        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)), verbose=0)
+        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)),
+                                     show=False,
+                                     save=False,
+                                     verbose=0)
         assert len(pimp.importances) == 2
         assert len(pimp.importances[0]) == 5
         assert pimp.importances[1].shape == (4, 14)
@@ -117,8 +129,11 @@ class TestPermImportance(unittest.TestCase):
         )
         x1 = np.random.random((100, 5))
         x2 = np.random.random((100, 3))
-        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)), verbose=0)
-        fig = pimp.plot_1d_pimp(show=False)
+        pimp = PermutationImportance(model.predict, [x1, x2], np.random.random((100, 1)),
+                                     show=False,
+                                     save=False,
+                                     verbose=0)
+        fig = pimp.plot_1d_pimp()
 
         assert fig.__class__.__name__ == "AxesSubplot"
         return

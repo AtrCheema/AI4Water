@@ -2482,7 +2482,8 @@ class BaseModel(NN):
             path=os.path.join(self.path, "explain"),
             feature_names=self.input_features,
             weights=weights,
-            seed=self.config['seed']
+            seed=self.config['seed'],
+            save=True
         )
 
         if plot_type is not None:
@@ -2490,7 +2491,7 @@ class BaseModel(NN):
             if plot_type == "heatmap":
                 pm.plot_as_heatmap()
             else:
-                pm.plot_1d_pimp(plot_type=plot_type, save=True)
+                pm.plot_1d_pimp(plot_type=plot_type)
         return pm
 
     def sensitivity_analysis(

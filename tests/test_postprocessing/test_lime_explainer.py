@@ -154,6 +154,8 @@ def get_lime(to_dataframe=False, examples_to_explain=5, model_type="regression")
                                feature_names=list(model.input_features),
                                path=model.path,
                                verbosity=False,
+                             save=False,
+                             show=False,
                                )
     return lime_exp
 
@@ -200,7 +202,9 @@ class TestLimeExplainer(unittest.TestCase):
                                    data=model.test_data()[0][0:3],
                                    mode="regression",
                                    verbosity=False,
-                                   path=model.path
+                                   path=model.path,
+                                 save=False,
+                                 show=False,
                                    )
         lime_exp()
 
@@ -247,7 +251,10 @@ class TestLimeExplainer(unittest.TestCase):
                             mode="regression",
                             path=m.path,
                             explainer="RecurrentTabularExplainer",
-                            feature_names=m.input_features)
+                            feature_names=m.input_features,
+                            save=False,
+                            show=False,
+                            )
         exp.explain_example(0)
         return
 

@@ -14,14 +14,14 @@ output_features = data.columns.tolist()[-1:]
 
 
 def test_plot_1d_plots(pdp):
-    pdp.plot_1d("tide_cm", show=False)
-    pdp.plot_1d("tide_cm", show_dist_as="grid", show=False)
-    pdp.plot_1d("tide_cm", show_dist=False, show=False)
-    pdp.plot_1d("tide_cm", show_dist=False, ice=False, show=False)
-    pdp.plot_1d("tide_cm", show_dist=False, ice=False, model_expected_value=True,
-                show=False)
-    pdp.plot_1d("tide_cm", show_dist=False, ice=False, feature_expected_value=True,
-                show=False)
+    pdp.plot_1d("tide_cm")
+    pdp.plot_1d("tide_cm", show_dist_as="grid")
+    pdp.plot_1d("tide_cm", show_dist=False)
+    pdp.plot_1d("tide_cm", show_dist=False, ice=False)
+    pdp.plot_1d("tide_cm", show_dist=False, ice=False, model_expected_value=True)
+    pdp.plot_1d("tide_cm", show_dist=False, ice=False, feature_expected_value=True)
+    pdp.plot_1d("tide_cm", ice_only=True, ice_color="red")
+    pdp.plot_1d("tide_cm", ice_only=True, ice_color="Blues")
 
     return
 
@@ -36,7 +36,7 @@ class TestPDP(unittest.TestCase):
         x, _ = model.training_data()
 
         pdp = PartialDependencePlot(model.predict, x, model.input_features,
-                                    num_points=14)
+                                    num_points=14, show=False, save=False)
 
         test_plot_1d_plots(pdp)
 
@@ -56,7 +56,7 @@ class TestPDP(unittest.TestCase):
         x, _ = model.training_data()
 
         pdp = PartialDependencePlot(model.predict, x, model.input_features, verbose=0,
-                                    num_points=14)
+                                    num_points=14, show=False, save=False)
         test_plot_1d_plots(pdp)
         return
 
@@ -69,11 +69,11 @@ class TestPDP(unittest.TestCase):
         x, _ = model.training_data()
 
         pdp = PartialDependencePlot(model.predict, x, model.input_features,
-                                    num_points=14)
+                                    num_points=14, show=False, save=False)
 
-        pdp.nd_interactions(show_dist=True, show=False)
+        pdp.nd_interactions(show_dist=True)
 
-        ax = pdp.plot_interaction(["tide_cm", "wat_temp_c"], show=False, save=False)
+        ax = pdp.plot_interaction(["tide_cm", "wat_temp_c"])
         assert isinstance(ax, plt.Axes)
 
         return

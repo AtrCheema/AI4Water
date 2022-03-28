@@ -33,7 +33,7 @@ class PermutationImportance(ExplainerMixin):
         >>> x_val, y_val = model.validation_data()
 
         >>> pimp = PermutationImportance(model.predict, x_val, y_val.reshape(-1,))
-        >>> fig = pimp.plot_1d_pimp(show=False)
+        >>> fig = pimp.plot_1d_pimp()
 
     .. _Molnar:
         https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance
@@ -52,6 +52,8 @@ class PermutationImportance(ExplainerMixin):
             path: str = None,
             seed: int = None,
             weights=None,
+            save: bool = True,
+            show: bool = True,
             **kwargs
     ):
         """
@@ -88,6 +90,10 @@ class PermutationImportance(ExplainerMixin):
                 reproduce your results, set this value to some integer value.
             path:
                 path to save the plots
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
             kwargs:
                 any additional keyword arguments for `model`
 
@@ -123,7 +129,12 @@ class PermutationImportance(ExplainerMixin):
 
         self.importances = None
 
-        super().__init__(features=feature_names, data=inputs, path=path or os.getcwd())
+        super().__init__(features=feature_names,
+                         data=inputs,
+                         path=path or os.getcwd(),
+                         show=show,
+                         save=save
+                         )
 
         self.seed = seed
 
@@ -212,7 +223,6 @@ class PermutationImportance(ExplainerMixin):
     def plot_as_heatmap(
             self,
             annotate=True,
-            show: bool = True,
             **kwargs
     ):
         """plots the permutation importance as heatmap.
@@ -222,8 +232,6 @@ class PermutationImportance(ExplainerMixin):
         Arguments:
             annotate:
                 whether to annotate the heat map with
-            show:
-                whether to show the plot or not
             kwargs:
                 any keyword arguments for imshow_ function.
 
@@ -253,7 +261,7 @@ class PermutationImportance(ExplainerMixin):
 
         fig.colorbar(im, orientation='vertical')
 
-        if show:
+        if self.show:
             plt.show(
 
             )
@@ -262,8 +270,6 @@ class PermutationImportance(ExplainerMixin):
     def plot_1d_pimp(
             self,
             plot_type:str = "boxplot",
-            show: bool = True,
-            save: bool = False,
             **kwargs
     ) -> plt.Axes:
         """Plots the 1d permutation importance either as box-plot or as bar_chart
@@ -272,10 +278,6 @@ class PermutationImportance(ExplainerMixin):
         ---------
             plot_type : str, optional
                 either boxplot or barchart
-            show: bool, optional
-                whether to show the plot or now
-            save: bool, optional
-                whether to save the plot or not,
             **kwargs :
                 keyword arguments either for boxplot or bar_chart
 
@@ -290,8 +292,6 @@ class PermutationImportance(ExplainerMixin):
                             self.features,
                             ax,
                             plot_type=plot_type,
-                            show=show,
-                            save=save,
                             **kwargs)
         else:
             for idx,  importance in enumerate(self.importances.values()):
@@ -301,9 +301,7 @@ class PermutationImportance(ExplainerMixin):
                     features = self.features[idx]
                 ax = self._plot_pimp(importance,
                                      features,
-                                     show=show,
                                      plot_type=plot_type,
-                                     save=save,
                                      name=idx,
                                      **kwargs
                                      )
@@ -438,8 +436,6 @@ class PermutationImportance(ExplainerMixin):
             imp,
             features,
             axes=None,
-            show=False,
-            save=False,
             name=None,
             plot_type="boxplot",
             **kwargs
@@ -463,12 +459,12 @@ class PermutationImportance(ExplainerMixin):
 
         axes.set_title(f"Base Score {round(self._base_score(), 3)}")
 
-        if save:
+        if self.save:
             name = name or ''
             fname = os.path.join(self.path, f"{plot_type}_{name}_{self.n_repeats}_{self.scoring}")
             plt.savefig(fname, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
 
         return axes

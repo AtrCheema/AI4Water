@@ -119,7 +119,8 @@ def explain_model_with_lime(
                               feature_names=features,
                               explainer=explainer,
                               mode=mode,
-                              verbosity=verbosity
+                              verbosity=verbosity,
+                              show=False
                               )
 
     for i in range(explainer.data.shape[0]):
@@ -188,14 +189,15 @@ def explain_model_with_shap(
                               path=shap_exp_path,
                               framework=framework,
                               feature_names=features_to_explain,
-                              layer=layer
+                              layer=layer,
+                              show=False
                               )
 
     for i in range(explainer.data.shape[0]):
-        explainer.force_plot_single_example(i, f"force_plot_{index[i]}", show=False)
+        explainer.force_plot_single_example(i, f"force_plot_{index[i]}")
 
-    explainer.summary_plot(show=False)
-    explainer.plot_shap_values(show=False)
+    explainer.summary_plot()
+    explainer.plot_shap_values()
 
     return explainer
 
