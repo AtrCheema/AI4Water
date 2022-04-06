@@ -2092,6 +2092,7 @@ class BaseModel(NN):
 
     def update_info(self):
         from .backend import lightgbm, tcn, catboost, xgboost
+        from . import __version__
         self.info['version_info'] = get_version_info(
             tf=tf,
             keras=keras,
@@ -2106,6 +2107,8 @@ class BaseModel(NN):
             catboost=catboost,
             xgboost=xgboost
         )
+
+        self.info["version_info"]['ai4water_version'] = __version__
         return
 
     def print_info(self):
@@ -2511,7 +2514,7 @@ class BaseModel(NN):
         Parameters
         ----------
         data :
-            data which will be used to get the bounds/limits of features. If given,
+            data which will be used to get the bounds/limits of input features. If given,
             it must be 2d numpy array. It should be remembered that the given data
             is not used during sensitivity analysis. But new synthetic data is prepared
             on which sensitivity analysis is performed.

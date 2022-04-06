@@ -358,34 +358,37 @@ class PartialDependencePlot(ExplainerMixin):
         else:
             if self.single_source:
                 if self.data_is_2d:
-                    ax = self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature),
-                                             self.data, feature,
-                                        show_dist=show_dist, show_dist_as=show_dist_as,
-                                        ice=ice,
-                                             feature_expected_value=feature_expected_value,
-                                        show_ci=show_ci, show_minima=show_minima,
-                                        model_expected_value=model_expected_value,
-                                                 show=self.show,
-                                                 save=self.save,
-                                             ice_only=ice_only,
-                                             ice_color=ice_color)
+                    ax = self._plot_pdp_1dim(
+                        *self._pdp_for_2d(self.data, feature),
+                        self.data, feature,
+                        show_dist=show_dist,
+                        show_dist_as=show_dist_as,
+                        ice=ice,
+                        feature_expected_value=feature_expected_value,
+                        show_ci=show_ci, show_minima=show_minima,
+                        model_expected_value=model_expected_value,
+                        show=self.show,
+                        save=self.save,
+                        ice_only=ice_only,
+                        ice_color=ice_color)
                 elif self.data_is_3d:
                     for lb in range(self.data.shape[1]):
-                        ax = self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature, lb),
-                                            data=self.data,
-                                                 feature=feature,
-                                                 lookback=lb,
-                                            show_ci=show_ci,
-                                                 show_minima=show_minima,
-                                            show_dist=show_dist,
-                                                 show_dist_as=show_dist_as,
-                                            ice=ice,
-                                                 feature_expected_value=feature_expected_value,
-                                            model_expected_value=model_expected_value,
-                                                 show=self.show,
-                                                 save=self.save,
-                                                 ice_only=ice_only,
-                                                 ice_color=ice_color)
+                        ax = self._plot_pdp_1dim(
+                            *self._pdp_for_2d(self.data, feature, lb),
+                            data=self.data,
+                            feature=feature,
+                            lookback=lb,
+                            show_ci=show_ci,
+                            show_minima=show_minima,
+                            show_dist=show_dist,
+                            show_dist_as=show_dist_as,
+                            ice=ice,
+                            feature_expected_value=feature_expected_value,
+                            model_expected_value=model_expected_value,
+                            show=self.show,
+                            save=self.save,
+                            ice_only=ice_only,
+                            ice_color=ice_color)
             else:
                 for data in self.data:
                     if self.data_is_2d:

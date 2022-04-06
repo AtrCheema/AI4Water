@@ -242,7 +242,10 @@ class PermutationImportance(ExplainerMixin):
 
         imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
 
-        fig, axis = plt.subplots()
+        figsize=None
+        if "figsize" in kwargs:
+            figsize = kwargs.pop("figsize")
+        fig, axis = plt.subplots(figsize=figsize)
 
         lookback = imp.shape[0]
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
@@ -250,8 +253,8 @@ class PermutationImportance(ExplainerMixin):
             imp,
             ax=axis,
             yticklabels=ytick_labels,
-            xticklabels=self.features if len(self.features) <= 10 else None,
-            ylabel="Looback steps",
+            xticklabels=self.features if len(self.features) <= 14 else None,
+            ylabel="Lookack steps",
             xlabel="Input Features",
             annotate=annotate,
             title=f"Base Score {round(self._base_score(), 3)} with {ERROR_LABELS[self.scoring]}",
@@ -263,7 +266,6 @@ class PermutationImportance(ExplainerMixin):
 
         if self.show:
             plt.show(
-
             )
         return axis
 
