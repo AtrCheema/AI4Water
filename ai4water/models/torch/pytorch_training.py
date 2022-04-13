@@ -1,6 +1,7 @@
 import os
 from typing import Union
 
+import gc
 import numpy as np
 import matplotlib.pyplot as plt
 from easy_mpl import regplot
@@ -287,6 +288,9 @@ class Learner(AttributeContainer):
             regplot(true, pred, show=False)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
+        if self.use_cuda:
+            torch.cuda.empty_cache()
+        gc.collect()
         return pred
 
     def _eval(self, x, y=None, batch_size=None):

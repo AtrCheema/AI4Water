@@ -1,3 +1,4 @@
+import gc
 import os
 from typing import Union, Callable, List
 
@@ -261,6 +262,7 @@ class PermutationImportance(ExplainerMixin):
             show=False,
             **kwargs
         )
+        axis.set_xticklabels(axis.get_xticklabels(), rotation=90)
 
         fig.colorbar(im, orientation='vertical')
 
@@ -290,7 +292,7 @@ class PermutationImportance(ExplainerMixin):
 
         if isinstance(self.importances, np.ndarray):
             fig, ax = plt.subplots()
-            self._plot_pimp(self.importances,
+            ax = self._plot_pimp(self.importances,
                             self.features,
                             ax,
                             plot_type=plot_type,
@@ -307,6 +309,7 @@ class PermutationImportance(ExplainerMixin):
                                      name=idx,
                                      **kwargs
                                      )
+                plt.close('all')
 
         return ax
 
@@ -379,6 +382,8 @@ class PermutationImportance(ExplainerMixin):
                     prediction = self.model(inputs, **kwargs)
 
                 scores[n_round] = self._score(prediction)
+
+                gc.collect()
 
             results[col_index] = scores
 

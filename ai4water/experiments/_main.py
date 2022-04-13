@@ -783,7 +783,7 @@ Available cases are {self.models} and you wanted to include
 
     def loss_comparison(
             self,
-            loss_name: Union[str, list] = 'loss',
+            loss_name: str = 'loss',
             include: list = None,
             save: bool = True,
             show: bool = True,
@@ -804,8 +804,6 @@ Available cases are {self.models} and you wanted to include
                 name of models to include
             save:
                 whether to save the plot or not
-            name:
-                name of saved file
             show:
                 whether to show the plot or now
             figsize : tuple
@@ -839,16 +837,12 @@ Available cases are {self.models} and you wanted to include
         >>> exp.loss_comparison(logy=True)
         """
 
-        if not isinstance(loss_name, list):
-            assert isinstance(loss_name, str)
-            loss_name = [loss_name]
-
         include = self._check_include_arg(include)
 
         loss_curves = {}
         for _model, _path in self.config['eval_models'].items():
             if _model in include:
-                df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=loss_name)
+                df = pd.read_csv(os.path.join(_path, 'losses.csv'), usecols=[loss_name])
                 loss_curves[_model] = df.values
 
         _kwargs = {'linestyle': '-',

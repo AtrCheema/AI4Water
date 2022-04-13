@@ -1560,7 +1560,7 @@ class BaseModel(NN):
 
         if user_defined_data:
             pass
-        elif len(inputs)==0 and source == "test":
+        elif len(inputs) == 0 or (isinstance(inputs, list) and len(inputs[0]) == 0) and source == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
             data = "validation"
@@ -1571,7 +1571,7 @@ class BaseModel(NN):
                 y=y,
                 data=data)
             # if we still have no data, then we use training data instead
-            if len(inputs)==0:
+            if len(inputs)==0 or (isinstance(inputs, list) and len(inputs[0]) == 0):
                 warnings.warn("""
                 No test and validation data found. using training data instead""",
                               UserWarning)
@@ -2502,11 +2502,11 @@ class BaseModel(NN):
             data=None,
             bounds=None,
             sampler="morris",
-            analyzer="sobol",
+            analyzer:Union[str, list]="sobol",
             sampler_kwds: dict = None,
             analyzer_kwds: dict = None,
             save_plots: bool = True
-    ):
+    )->dict:
         """performs sensitivity analysis of the model w.r.t input features in data.
 
         The model and its hyperprameters remain fixed while the input data is changed.
@@ -2525,12 +2525,24 @@ class BaseModel(NN):
             ``ff``, ``finite_diff``, ``latin``, ``saltelli``, ``sobol_sequence``
         analyzer : str, optional
             any analyzer_ from SALib lirary. For example ``sobol``, ``dgsm``, ``fast``
-            ``ff``, ``hdmr``, ``morris``, ``pawn``, ``rbd_fast``
+            ``ff``, ``hdmr``, ``morris``, ``pawn``, ``rbd_fast``. You can also choose
+            more than one analyzer. This is useful when you want to compare results
+            of more than one analyzers. It should be noted that having more than
+            one analyzers does not increases computation time except for ``hdmr``
+            and ``delta`` analyzers. The ``hdmr`` and ``delta`` analyzers ane computation
+            heavy. For example
+            >>> analyzer = ["morris", "sobol", "rbd_fast"]
         sampler_kwds : dict
             keyword arguments for sampler
         analyzer_kwds : dict
             keyword arguments for analyzer
         save_plots : bool, optional
+
+        Returns
+        -------
+        dict :
+            a dictionary whose keys are names of analyzers and values and sensitivity
+            results for that analyzer.
 
         Examples
         --------
@@ -2564,12 +2576,15 @@ class BaseModel(NN):
             You must have SALib library installed in order to perform sensitivity analysis.
             Please install it using 'pip install SALib' and make sure that it is importable
             """)
-            return
+            return {}
 
-        from ai4water.postprocessing._sa import sensitivity_analysis, _plots
+        from ai4water.postprocessing._sa import sensitivity_analysis, sensitivity_plots
+        from ai4water.postprocessing._sa import _make_predict_func
 
         if data is not None:
-            assert isinstance(data, np.ndarray)
+            if not isinstance(data, np.ndarray):
+                assert isinstance(data, pd.DataFrame)
+                data = data.values
             x = data
 
             # calculate bounds
@@ -2585,10 +2600,18 @@ class BaseModel(NN):
 
         analyzer_kwds = analyzer_kwds or {}
 
-        si = sensitivity_analysis(
+        if self.lookback >1:
+            if self.category == "DL":
+                func = _make_predict_func(self, verbose=0)
+            else:
+                func = _make_predict_func(self)
+        else:
+            func = self.predict
+
+        results = sensitivity_analysis(
             sampler,
             analyzer,
-            self.predict,
+            func,
             bounds=bounds,
             sampler_kwds = sampler_kwds,
             analyzer_kwds = analyzer_kwds,
@@ -2596,9 +2619,18 @@ class BaseModel(NN):
         )
 
         if save_plots:
-            _plots(analyzer, si, self.path)
+            for _analyzer, result in results.items():
+                res_df = result.to_df()
+                if isinstance(res_df, list):
+                    for idx, res in enumerate(res_df):
+                        fname = os.path.join(self.path, f"{_analyzer}_{idx}_results.csv")
+                        res.to_csv(fname)
+                else:
+                    res_df.to_csv(os.path.join(self.path, f"{_analyzer}_results.csv"))
 
-        return si
+                sensitivity_plots(_analyzer, result, self.path)
+
+        return results
 
     def _transform_x(self, x, name):
         """transforms x and puts the transformer in config witht he key name"""

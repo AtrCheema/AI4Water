@@ -459,6 +459,9 @@ class DualAttentionModel(FModel):
         lookback = self.config['ts_args']['lookback']
         x, observations = getattr(self, f'{data}_data')()
 
+        if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
+            raise ValueError(f"no {data} data found.")
+
         predictions = self.predict(process_results=False, x=x)
 
         plt.close('all')

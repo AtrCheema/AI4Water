@@ -450,6 +450,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @param_space.setter
     def param_space(self, x):
         if self.algorithm in ["bayes", "bayes_rf"]:
+            assert Dimension is not None, f"you must have scikit-optimize installed to use {self.algorithm}."
             if isinstance(x, dict):
                 _param_space = []
                 for k, v in x.items():

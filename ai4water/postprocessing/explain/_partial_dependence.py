@@ -398,7 +398,7 @@ class PartialDependencePlot(ExplainerMixin):
                             ax = self._pdp_for_2d(data, feature, lb)
         return ax
 
-    def xv(self, data, feature, lookback):
+    def xv(self, data, feature, lookback=None):
 
         ind = self._feature_to_ind(feature)
         if data.ndim == 3:
@@ -410,8 +410,10 @@ class PartialDependencePlot(ExplainerMixin):
 
     def grid(self, data, feature, lookback=None):
         """generates the grid for evaluation of model"""
-        xmin, xmax = compute_bounds(self.xmin, self.xmax, self.xv(data, feature,
-                                                                  lookback))
+        xmin, xmax = compute_bounds(self.xmin,
+                                    self.xmax,
+                                    self.xv(data, feature, lookback))
+
         return np.linspace(xmin, xmax, self.num_points)
 
     def _pdp_for_2d(self, data, feature, lookback=None):
@@ -450,18 +452,21 @@ class PartialDependencePlot(ExplainerMixin):
 
     def _plot_pdp_1dim(
             self,
-            pd_vals, ice_vals, data, feature, lookback=None,
-            show_dist=True, show_dist_as="hist", ice=True, show_ci=False,
+            pd_vals, ice_vals, data, feature,
+            lookback=None,
+            show_dist=True, show_dist_as="hist",
+            ice=True, show_ci=False,
             show_minima=False,
-            feature_expected_value=False, model_expected_value=False,
+            feature_expected_value=False,
+            model_expected_value=False,
             show=True, save=False, ax=None,
             ice_color="lightblue",
             ice_only=False,
     ):
 
-        xmin, xmax = compute_bounds(self.xmin, self.xmax, self.xv(data,
-                                                                  feature,
-                                                                  lookback))
+        xmin, xmax = compute_bounds(self.xmin,
+                                    self.xmax,
+                                    self.xv(data, feature, lookback))
 
         if ax is None:
             fig = plt.figure()
@@ -492,8 +497,7 @@ class PartialDependencePlot(ExplainerMixin):
                 if ice_color not in plt.colormaps():
                     color = ice_color
 
-            ax.fill_between(xs, upper, lower, alpha=0.14,
-                            color=color)
+            ax.fill_between(xs, upper, lower, alpha=0.14, color=color)
 
         # the line plot
         if not ice_only:
@@ -502,10 +506,13 @@ class PartialDependencePlot(ExplainerMixin):
         title = None
         if lookback is not None:
             title = f"lookback: {lookback}"
-        process_axis(ax, ylabel=ylabel, ylabel_kws=dict(fontsize=20),
+        process_axis(ax,
+                     ylabel=ylabel,
+                     ylabel_kws=dict(fontsize=20),
                      right_spine=False,
                      top_spine=False,
-                     tick_params=dict(labelsize=11), xlabel=feature,
+                     tick_params=dict(labelsize=11),
+                     xlabel=feature,
                      xlabel_kws=dict(fontsize=20),
                      title=title)
         ax.xaxis.set_ticks_position('bottom')
@@ -523,7 +530,10 @@ class PartialDependencePlot(ExplainerMixin):
                 _add_dist_as_grid(fig, xv, other_axes=ax, xlabel=feature,
                                   xlabel_kws=dict(fontsize=20))
 
-        process_axis(ax2, right_spine=False, top_spine=False, left_spine=False,
+        process_axis(ax2,
+                     right_spine=False,
+                     top_spine=False,
+                     left_spine=False,
                      bottom_spine=False,
                      ylim=(0, data.shape[0]))
         ax2.xaxis.set_ticks_position('bottom')

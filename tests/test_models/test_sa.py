@@ -126,6 +126,14 @@ class TestMLRegression(unittest.TestCase):
         )
         return
 
+    def test_multiple_analyzers(self):
+        test_basic(
+            sampler="morris",
+            analyzer=["dgsm", 'morris'],
+            sampler_kwds={'N': 100}
+        )
+        return
+
     # def test_latin_hdmr(self):
     #     test_basic(
     #         sampler="latin",
