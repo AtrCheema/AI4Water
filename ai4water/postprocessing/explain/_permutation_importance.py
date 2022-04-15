@@ -352,7 +352,7 @@ class PermutationImportance(ExplainerMixin):
             # instead of calling the model/func for each n_repeat, prepare the data
             # for all n_repeats and stack it and call the model/func once.
             # This reduces calls to model from num_inputs * n_repeats -> num_inputs
-            _permuted_x = np.full((len(permuted_x)*self.n_repeats, *permuted_x.shape[1:]), np.nan)
+            ermuted_inp = np.full((len(permuted_x)*self.n_repeats, *permuted_x.shape[1:]), np.nan)
             st, en = 0, len(permuted_x)
 
             for n_round in range(self.n_repeats):
@@ -380,13 +380,16 @@ class PermutationImportance(ExplainerMixin):
                 else:
                     permuted_x[:, time_step, col_index] = perturbed_feature
 
-                _permuted_x[st:en] = permuted_x
+                ermuted_inp[st:en] = permuted_x
                 st = en
                 en += len(permuted_x)
 
-            scores = self._eval(original_inp_idx, inputs, inp_idx, _permuted_x,
-                                len(permuted_x), **kwargs)
-            results[col_index] = scores
+            results[col_index] = self._eval(original_inp_idx,
+                                            inputs,
+                                            inp_idx,
+                                            ermuted_inp,
+                                            len(permuted_x),
+                                            **kwargs)
 
         if self.scoring in ["mse", "rmse", "rmsle", "mape"]:
             results = self.base_score + results

@@ -145,19 +145,26 @@ class PartialDependencePlot(ExplainerMixin):
                         ax_ = ax
 
                     self._plot_pdp_1dim(*self._pdp_for_2d(self.data, self.features[i]),
-                                        self.data, self.features[i],
-                                        show_dist=show_dist, show_minima=show_minima,
-                                        ice=ice, show=False, save=False, ax=ax_)
+                                        self.data,
+                                        self.features[i],
+                                        show_dist=show_dist,
+                                        show_minima=show_minima,
+                                        ice=ice, show=False, save=False,
+                                        ax=ax_)
                     # resetting the label
                     # ax_.set_xlabel(self.features[i])
                     ax_.set_ylabel(self.features[i])
-                    process_axis(ax_, xlabel=self.features[i], top_spine=True, right_spine=True)
+                    process_axis(ax_,
+                                 xlabel=self.features[i],
+                                 top_spine=True,
+                                 right_spine=True)
 
                 # lower triangle
                 elif i > j:
                     self.plot_interaction(
-                        features=[self.features[j], self.features[i]],
-                        ax=ax[i, j], colorbar=False, show=False, save=False,
+                        features=[self.features[j],self.features[i]],
+                        ax=ax[i, j],
+                        colorbar=False,
                     )
 
                 elif j > i:
@@ -191,8 +198,6 @@ class PartialDependencePlot(ExplainerMixin):
             plot_type: str = "2d",
             cmap=None,
             colorbar: bool = True,
-            show: bool = True,
-            save: bool = False,
             **kwargs
     ) -> plt.Axes:
         """Shows interaction between two features
@@ -261,11 +266,11 @@ class PartialDependencePlot(ExplainerMixin):
                                    lookback=lookback,
                                    colorbar=colorbar, **kwargs)
 
-        if save:
+        if self.save:
             fname = os.path.join(self.path, f"pdp_interact{features[0]}_{features[1]}")
             plt.savefig(fname, bbox_inches="tight", dpi=300)
 
-        if show:
+        if self.show:
             plt.show()
 
         return ax
@@ -302,15 +307,35 @@ class PartialDependencePlot(ExplainerMixin):
         features_tmp = data.copy()
         x0 = np.zeros((self.num_points, self.num_points))
         x1 = np.zeros((self.num_points, self.num_points))
-        pd_vals = np.zeros((self.num_points, self.num_points))
 
+        # instead of calling the model in two for loops, prepare data data
+        # stack it in 'features_all' and call the model only once.
+        total_samples = len(data) * self.num_points * self.num_points
+        features_all = np.full((total_samples, *data.shape[1:]), np.nan)
+
+        st, en = 0, len(data)
         for i in range(self.num_points):
             for j in range(self.num_points):
                 features_tmp[:, ind0] = xs0[i]
                 features_tmp[:, ind1] = xs1[j]
                 x0[i, j] = xs0[i]
                 x1[i, j] = xs1[j]
-                pd_vals[i, j] = self.model(features_tmp).mean()
+
+                features_all[st:en] = features_tmp
+                st = en
+                en += len(data)
+
+        predictions = self.model(features_all)
+
+        pd_vals = np.zeros((self.num_points, self.num_points))
+        st, en = 0, len(data)
+
+        for i in range(self.num_points):
+            for j in range(self.num_points):
+
+                pd_vals[i, j] = predictions[st:en].mean()
+                st = en
+                en += len(data)
 
         return x0, x1, pd_vals
 
@@ -422,19 +447,36 @@ class PartialDependencePlot(ExplainerMixin):
         xs = self.grid(data, feature, lookback)
 
         data_temp = data.copy()
+
+        # instead of calling the model for each num_point, prepare the data
+        # stack it in 'data_all' and call the model only once
+        total_samples = len(data) * self.num_points
+        data_all = np.full((total_samples, *data.shape[1:]), np.nan)
+
         pd_vals = np.full(self.num_points, np.nan)
         ice_vals = np.full((self.num_points, data.shape[0]), np.nan)
 
+        st, en = 0, len(data)
         for i in range(self.num_points):
 
             if data.ndim == 3:
                 data_temp[:, lookback, ind] = xs[i]
             else:
                 data_temp[:, ind] = xs[i]
+                data_all[st:en] = data_temp
 
-            preds = self.model(data_temp, **self.kwargs)
-            pd_vals[i] = preds.mean()
-            ice_vals[i, :] = preds.reshape(-1,)
+            st = en
+            en += len(data)
+
+        predictions = self.model(data_all, **self.kwargs)
+
+        st, en = 0, len(data)
+        for i in range(self.num_points):
+            pred = predictions[st:en]
+            pd_vals[i] = pred.mean()
+            ice_vals[i, :] = pred.reshape(-1, )
+            st = en
+            en += len(data)
 
         return pd_vals, ice_vals
 
