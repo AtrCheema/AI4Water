@@ -69,7 +69,7 @@ class PermutationImportance(ExplainerMixin):
                 arrays or list of arrays which will be given as input to `model`
             target:
                 the true outputs or labels for corresponding `inputs`
-                It must be a numpy array
+                It must be a 1-dimensional numpy array
             scoring:
                 the peformance metric to use. It can be any metric from RegressionMetrics_ or
                 ClassificationMetrics_ or a callable. If callable, then this must take
@@ -138,6 +138,8 @@ class PermutationImportance(ExplainerMixin):
                          )
 
         self.seed = seed
+
+        self.base_score = self._base_score()
 
         self._calculate(**kwargs)
 
@@ -258,7 +260,7 @@ class PermutationImportance(ExplainerMixin):
             ylabel="Lookack steps",
             xlabel="Input Features",
             annotate=annotate,
-            title=f"Base Score {round(self._base_score(), 3)} with {ERROR_LABELS[self.scoring]}",
+            title=f"Base Score {round(self.base_score, 3)} with {ERROR_LABELS[self.scoring]}",
             show=False,
             **kwargs
         )
@@ -322,7 +324,7 @@ class PermutationImportance(ExplainerMixin):
     ):
         """
         calculates permutation importance by permuting columns in inputs
-        which is supposed to be 2d array. args are optional inputs to model
+        which is supposed to be 2d array. args are optional inputs to model.
         """
         original_inp_idx = inp_idx
         if inp_idx is None:
@@ -338,7 +340,8 @@ class PermutationImportance(ExplainerMixin):
             feat_dim = 2
 
         # empty container to keep results
-        results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)  # (num_features, n_repeats)
+        # (num_features, n_repeats)
+        results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)
 
         # todo, instead of having two for loops, we can perturb the
         #  inputs at once and concatenate
@@ -346,7 +349,11 @@ class PermutationImportance(ExplainerMixin):
 
         for col_index in range(permuted_x.shape[feat_dim]):
 
-            scores = np.full(self.n_repeats, np.nan)
+            # instead of calling the model/func for each n_repeat, prepare the data
+            # for all n_repeats and stack it and call the model/func once.
+            # This reduces calls to model from num_inputs * n_repeats -> num_inputs
+            _permuted_x = np.full((len(permuted_x)*self.n_repeats, *permuted_x.shape[1:]), np.nan)
+            st, en = 0, len(permuted_x)
 
             for n_round in range(self.n_repeats):
 
@@ -373,23 +380,23 @@ class PermutationImportance(ExplainerMixin):
                 else:
                     permuted_x[:, time_step, col_index] = perturbed_feature
 
-                # put the permuted input back in the list
-                inputs[inp_idx] = permuted_x
+                _permuted_x[st:en] = permuted_x
+                st = en
+                en += len(permuted_x)
 
-                if original_inp_idx is None:  # inputs were not list so unpack the list
-                    prediction = self.model(*inputs, **kwargs)
-                else:
-                    prediction = self.model(inputs, **kwargs)
-
-                scores[n_round] = self._score(prediction)
-
-                gc.collect()
-
+            scores = self._eval(original_inp_idx, inputs, inp_idx, _permuted_x,
+                                len(permuted_x), **kwargs)
             results[col_index] = scores
 
-        # permutation importance is how much performance decreases by permutation
-        results = self._base_score() - results
+        if self.scoring in ["mse", "rmse", "rmsle", "mape"]:
+            results = self.base_score + results
+        else:
+            # permutation importance is how much performance decreases by permutation
+            results = self.base_score - results
 
+        gc.collect()
+        if time_step:
+            print(f"finished for time_step {time_step}")
         return results
 
     def _permute_importance_2d1(
@@ -434,7 +441,7 @@ class PermutationImportance(ExplainerMixin):
             results[col_index, :] = _func(inputs, col_index)
 
         # permutation importance is how much performance decreases by permutation
-        results = self._base_score() - results
+        results = self.base_score - results
 
         return results
 
@@ -464,7 +471,7 @@ class PermutationImportance(ExplainerMixin):
 
         axes.set_xlabel(ERROR_LABELS.get(self.scoring, self.scoring))
 
-        axes.set_title(f"Base Score {round(self._base_score(), 3)}")
+        axes.set_title(f"Base Score {round(self.base_score, 3)}")
 
         if self.save:
             name = name or ''
@@ -475,3 +482,34 @@ class PermutationImportance(ExplainerMixin):
             plt.show()
 
         return axes
+
+    def _eval(self, original_inp_idx, inputs, inp_idx, permuted_inp, batch_size,
+              **kwargs):
+        """batch size here refers to number of examples in one `n_round`."""
+        # don't disturb the original input data, create new one
+        new_inputs = [None]*len(inputs)
+        new_inputs[inp_idx] = permuted_inp
+
+        if original_inp_idx is None:  # inputs were not list so unpack the list
+            prediction = self.model(*new_inputs, **kwargs)
+        else:
+            for idx, inp in enumerate(inputs):
+                if idx != inp_idx:
+                    new_inputs[idx] = np.concatenate([inp for _ in range(self.n_repeats)])
+
+            prediction = self.model(new_inputs, **kwargs)
+
+        st, en = 0, batch_size
+        scores = np.full(self.n_repeats, np.nan)
+
+        for n_round in range(self.n_repeats):
+
+            pred = prediction[st:en]
+
+            scores[n_round] = self._score(pred)
+            st = en
+            en += batch_size
+
+        gc.collect()
+
+        return scores

@@ -138,6 +138,7 @@ class TestPermImportance(unittest.TestCase):
         assert fig.__class__.__name__ == "AxesSubplot"
         return
 
+
 if __name__ == "__main__":
 
     unittest.main()
