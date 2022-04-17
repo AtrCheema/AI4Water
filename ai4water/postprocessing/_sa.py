@@ -148,6 +148,15 @@ def sensitivity_plots(analyzer, si, path=None, show=False):
             plt.savefig(os.path.join(path, "fast_s1"), bbox_inches="tight")
         if show:
             plt.show()
+
+    elif analyzer == "rbd_fast":
+        plt.close('all')
+        si_df = si.to_df()
+        bar_plot(si_df[["S1", "S1_conf"]])
+        if path:
+            plt.savefig(os.path.join(path, "rbd_fast_s1"), bbox_inches="tight")
+        if show:
+            plt.show()
     return
 
 

@@ -20,6 +20,10 @@ for  :doc:`declarative_def_torch` .
         fit,
         evaluate,
         predict,
+        predict_on_training_data,
+        predict_on_validation_data,
+        predict_on_test_data,
+        predict_on_all_data,
         predict_proba,
         predict_log_proba,
         interpret,
@@ -36,6 +40,7 @@ for  :doc:`declarative_def_torch` .
         optimize_hyperparameters,
         permutation_importance,
         sensitivity_analysis,
+        seed_everything
 
 
 Model subclassing

@@ -197,9 +197,13 @@ class BaseModel(NN):
                 >>> wandb_config = {'entity': 'entity_name', 'project': 'project_name',
                 ...                 'training_data':True, 'validation_data': True}
 
-            seed : int
+            seed int:
                 random seed for reproducibility. This can be set to None. The seed
-                is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
+                is set to `os`, `tf`, `torch` and `random` modules simultaneously.
+                Please note that this seed is not set for numpy because that
+                will result in constant sampling during hyperparameter optimization.
+                If you want to seed everything, then use following function
+                >>> model.seed_everything()
             prefix : str
                 prefix to be used for the folder in which the results are saved.
                 default is None, which means within
@@ -289,7 +293,8 @@ class BaseModel(NN):
 
             reset_seed(maker.config['seed'], os=os, random=random, tf=tf, torch=torch)
             if tf is not None:
-                # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
+                # graph should be cleared everytime we build new `Model` otherwise,
+                # if two `Models` are prepared in same
                 # file, they may share same graph.
                 tf.keras.backend.clear_session()
 
@@ -498,6 +503,15 @@ class BaseModel(NN):
             return self._model.outputs
         else:
             return None
+
+    def seed_everything(self, seed = None)->None:
+        """resets seeds of numpy, os, random, tensorflow, torch.
+        If any of these module is not available, the seed for that module
+        is not set."""
+        if seed is None:
+            seed = seed or self.config['seed'] or 313
+        reset_seed(seed=seed, os=os, np=np, tf=tf, torch=torch, random=random)
+        return
 
     def trainable_parameters(self) -> int:
         """Calculates trainable parameters in the model
@@ -1538,6 +1552,153 @@ class BaseModel(NN):
                                  return_true=return_true,
                                  **kwargs)
 
+    def predict_on_training_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """makes prediction on training data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which training data (x,y paris) will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        ds = DataSet(data, **self.data_config)
+
+        x, y = ds.training_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
+    def predict_on_validation_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """makes prediction on validation data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which validation data (x,y paris) will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        ds = DataSet(data, **self.data_config)
+
+        x, y = ds.validation_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
+    def predict_on_test_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """makes prediction on test data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which test data (x,y paris) will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        ds = DataSet(data, **self.data_config)
+
+        x, y = ds.test_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
+    def predict_on_all_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """
+        This function first generates x,y pairs from ``data`` and then makes prediction on it.
+        The ``data`` is not divided into training,test sets. Moreover if target data contains
+        missing values, then predictions for that will also be made using corresponding input
+        data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which x,y paris will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        data_config = self.data_config
+
+        data_config['train_fraction'] = 1.0
+        data_config['val_fraction'] = 0.0
+        data_config['allow_nan_labels'] = 2
+        data_config['indices'] = None
+
+        ds = DataSet(data, **data_config)
+
+        x, y = ds.training_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
     def call_predict(self,
                      x=None,
                      y=None,
@@ -2559,7 +2720,7 @@ class BaseModel(NN):
         >>> model.fit(data=data)
 
         >>> si = model.sensitivity_analysis(data=data[input_features].values,
-        >>>                    sampler="morris", analyzer="hdmr",
+        >>>                    sampler="morris", analyzer=["morris", "sobol"],
         >>>                        sampler_kwds={'N': 100})
 
         .. _sampler:

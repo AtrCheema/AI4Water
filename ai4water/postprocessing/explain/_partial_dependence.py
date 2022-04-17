@@ -165,6 +165,8 @@ class PartialDependencePlot(ExplainerMixin):
                         features=[self.features[j],self.features[i]],
                         ax=ax[i, j],
                         colorbar=False,
+                        save=False,
+                        show=False,
                     )
 
                 elif j > i:
@@ -198,6 +200,8 @@ class PartialDependencePlot(ExplainerMixin):
             plot_type: str = "2d",
             cmap=None,
             colorbar: bool = True,
+            show:bool = True,
+            save:bool = True,
             **kwargs
     ) -> plt.Axes:
         """Shows interaction between two features
@@ -217,6 +221,8 @@ class PartialDependencePlot(ExplainerMixin):
                 color map to use
             colorbar : optional
                 whether to show the colorbar or not
+            show : bool
+            save : bool
             **kwargs :
                 any keyword argument for axes.plot_surface or axes.contourf
 
@@ -266,11 +272,11 @@ class PartialDependencePlot(ExplainerMixin):
                                    lookback=lookback,
                                    colorbar=colorbar, **kwargs)
 
-        if self.save:
+        if save:
             fname = os.path.join(self.path, f"pdp_interact{features[0]}_{features[1]}")
             plt.savefig(fname, bbox_inches="tight", dpi=300)
 
-        if self.show:
+        if show:
             plt.show()
 
         return ax

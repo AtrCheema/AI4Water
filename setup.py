@@ -92,7 +92,7 @@ setup(
 
     name='AI4Water',
 
-    version="1.0b6",
+    version="1.0b7",
 
     description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,
