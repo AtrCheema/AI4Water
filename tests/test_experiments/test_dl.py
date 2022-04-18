@@ -21,9 +21,13 @@ class TestDLExeriments(unittest.TestCase):
             input_features = data.columns.tolist()[0:-1],
             output_features = data.columns.tolist()[-1:],
             epochs=50,
+            ts_args={"lookback": 9}
         )
 
-        exp.fit(data=data, include=["Dense", "DenseAct", "Cnn1D"])
+        exp.fit(data=data, include=["TemporalFusionTransformer",
+                                    "TCN",
+                                    "CNNLSTM",
+                                    "LSTMAutoEncoder"])
 
         exp.loss_comparison(save=False, show=False)
         exp.compare_errors('r2', save=False, show=False)
@@ -36,12 +40,16 @@ class TestDLExeriments(unittest.TestCase):
             input_features = data.columns.tolist()[0:-1],
             output_features = data.columns.tolist()[-1:],
             epochs=50,
+            ts_args={"lookback": 5}
         )
 
-        exp.batch_size_space = Categorical(categories=[4, 8, 12, 16, 32], name="batch_size")
+        exp.batch_size_space = Categorical(categories=[4, 8, 12, 16, 32],
+                                           name="batch_size")
 
-        exp.fit(data=data, include=["Dense", "DenseAct"], run_type="optimize",
-            num_iterations=12)
+        exp.fit(data=data,
+                include=["MLP", "CNN"],
+                run_type="optimize",
+                num_iterations=12)
 
         exp.loss_comparison(save=False, show=False)
         exp.compare_errors('r2', save=False, show=False)
