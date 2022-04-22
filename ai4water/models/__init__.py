@@ -3,25 +3,31 @@ from typing import Union
 
 
 def MLP(
-        input_shape:tuple,
         units: Union[int, list] = 32,
         num_layers:int = 1,
+        input_shape: tuple = None,
         output_features:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         problem:str = "regression",
         **kwargs
 )->dict:
-    """helper function to make multi layer perceptron model
+    """helper function to make multi layer perceptron model.
+    This model consists of stacking layers of Dense_ layers. The number of
+    dense layers are defined by ``num_layers``. Each layer can be optionaly
+    followed by a Dropout_ layer.
 
     Parameters
     ----------
-    input_shape : tuple
-        shape of input tensor to the model
     units : Union[int, list], default=32
         number of units in Dense layer
     num_layers : int, optional, (default, 32)
-        number of Dense_ layers to use
+        number of Dense_ layers to use excluding output layer.
+    input_shape : tuple, optional (default=None)
+        shape of input tensor to the model. If specified, it should exclude batch_size
+        for example if model takes inputs (num_examples, num_features) then
+        we should define the shape as (num_features,). The batch_size dimension
+        is always None.
     output_features : int, optional
         number of output features from the network
     activation : Union[str, list], optional
@@ -36,22 +42,36 @@ def MLP(
     Returns
     -------
     dict :
-        a dictionary with 'layers' as key
+        a dictionary with 'layers' as key which can be fed to ai4water's Model
 
     Examples
     --------
-    >>> MLP((10, ),32)
-
-    >>> MLP((10, ), 32,  3)
-
-    >>> MLP((5, 10), 32,  3)
-
-    >>> MLP((10, 1), [32, 16, 8], 3, activation="relu")
-
-    >>> MLP((10, ), 32, 3, use_bias=True)
+    >>> from ai4water import Model
+    >>> from ai4water.models import MLP
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
+    >>> input_features = data.columns.tolist()[0:-1]
+    >>> output_features = data.columns.tolist()[-1:]
+    ... # build a basic MLP
+    >>> MLP(32)
+    ... # MLP with 3 Dense layers
+    >>> MLP(32,  3)
+    ... # we can specify input shape as 3d (first dimension is always None)
+    >>> MLP(32,  3, (5, 10))
+    ... # we can also specify number of units for each layer
+    >>> MLP([32, 16, 8], 3, (10, 1))
+    ... # we can feed any argument which is accepted by Dense layer
+    >>> mlp =  MLP(32, 3, (10, ), use_bias=True, activation="relu")
+    ... # we can feed the output of MLP to ai4water's Model
+    >>> model = Model(model=mlp, input_features=input_features,
+    >>>               output_features=output_features)
+    >>> model.fit(data=data)
 
     .. _Dense:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
+
+    .. _Dropout:
+        https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dropout
 
     """
     assert num_layers>=1
@@ -60,7 +80,10 @@ def MLP(
     dropout = _check_length(dropout, num_layers)
     activation = _check_length(activation, num_layers)
 
-    layers =   {"Input": {"shape": input_shape}}
+    if input_shape is None:
+        layers = {}
+    else:
+        layers =   {"Input": {"shape": input_shape}}
 
     for idx, lyr in enumerate(range(num_layers)):
 
@@ -86,9 +109,9 @@ def MLP(
 
 
 def LSTM(
-        input_shape:tuple,
         units: Union[int, list] = 32,
         num_layers:int = 1,
+        input_shape: tuple = None,
         output_features:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
@@ -99,12 +122,15 @@ def LSTM(
 
     Parameters
     ----------
-    input_shape :
-        shape of input tensor to the model
     units : Union[int, list], optional (default 32)
         number of units in LSTM layer
     num_layers :
         number of lstm layers to use
+    input_shape : tuple, optional (default=None)
+        shape of input tensor to the model. If specified, it should exclude batch_size
+        for example if model takes inputs (num_examples, lookback, num_features) then
+        we should define the shape as (lookback, num_features). The batch_size dimension
+        is always None.
     output_features : int, optinoal (default=1)
         number of output features
     activation : Union[str, list], optional
@@ -123,21 +149,35 @@ def LSTM(
 
     Examples
     --------
-    >>> LSTM((5, 10))
+    >>> from ai4water import Model
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
+    >>> input_features = data.columns.tolist()[0:-1]
+    >>> output_features = data.columns.tolist()[-1:]
+    # a simple LSTM model with 32 neurons/units
+    >>> LSTM(32)
     # to build a model with stacking of LSTM layers
-    >>> LSTM((5, 10), 32, num_layers=2)
+    >>> LSTM(32, num_layers=2)
+    # we can build ai4water's model and train it
+    >>> lstm = LSTM(32)
+    >>> model = Model(model=lstm, input_features=input_features,
+    >>>               output_features=output_features, ts_args={"lookback": 5})
+    >>> model.fit(data=data)
 
     .. _LSTM:
         https://www.tensorflow.org/api_docs/python/tf/keras/layers/LSTM
     """
     assert num_layers>=1
-    assert len(input_shape)>=2
+
+    if input_shape is None:
+        layers = {}
+    else:
+        layers = {"Input": {"shape": input_shape}}
+        assert len(input_shape)>=2
 
     units = _check_length(units, num_layers)
     dropout = _check_length(dropout, num_layers)
     activation = _check_length(activation, num_layers)
-
-    layers =   {"Input": {"shape": input_shape}}
 
     for idx, lyr in enumerate(range(num_layers)):
 
@@ -167,10 +207,9 @@ def LSTM(
 
 
 def CNN(
-        input_shape:tuple,
-        convolution_type: str = "1D",
         filters: Union[int, list] = 32,
         kernel_size: Union[int, tuple, list] = 3,
+        convolution_type: str = "1D",
         num_layers: int = 1,
         padding: Union[str, list] = "same",
         strides: Union[int, list]= 1,
@@ -179,6 +218,7 @@ def CNN(
         batch_normalization: Union[bool, list] = None,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
+        input_shape: tuple = None,
         output_features:int = 1,
         problem: str = "regression",
         **kwargs
@@ -187,15 +227,13 @@ def CNN(
 
     Parameters
     ----------
-    input_shape : tuple
-        shape of input tensor to the model
-    convolution_type : str, optional, (default="1D")
-        either ``1D`` or ``2D`` or ``3D``
     filters : Union[int, list], optional
         number of filters in convolution layer. If given as list, it should
         be equal to ``num_layers``.
     kernel_size : Union[int, list], optional
         kernel size in (each) convolution layer
+    convolution_type : str, optional, (default="1D")
+        either ``1D`` or ``2D`` or ``3D``
     num_layers : int, optional
         number of convolution layers to use. Should be > 0.
     padding : Union[str, list], optional
@@ -214,6 +252,11 @@ def CNN(
         activation function to use in convolution layer
     dropout : Union[float, list], optional
         if > 0.0, a dropout layer is added after each LSTM layer
+    input_shape : tuple, optional (default=None)
+        shape of input tensor to the model. If specified, it should exclude batch_size
+        for example if model takes inputs (num_examples, lookback, num_features) then
+        we should define the shape as (lookback, num_features). The batch_size dimension
+        is always None.
     output_features : int, optional
         number of output features
     problem : str, optional
@@ -228,9 +271,9 @@ def CNN(
 
     Examples
     --------
-    >>> CNN((5, 10), "1D", 32, 2)
+    >>> CNN(32, 2, "1D", input_shape=(5, 10))
 
-    >>> CNN((5, 10), "1D", 32, 2, pooling_type="MaxPool")
+    >>> CNN(32, 2, "1D", pooling_type="MaxPool", input_shape=(5, 10))
 
 
     .. _Convolution:
@@ -241,7 +284,7 @@ def CNN(
     """
 
     assert num_layers>=1
-    assert len(input_shape) >= 2
+
 
     assert convolution_type in ("1D", "2D", "3D")
     assert pooling_type in ("MaxPool", "AveragePooling", None)
@@ -256,7 +299,11 @@ def CNN(
     batch_normalization = _check_length(batch_normalization, num_layers)
     dropout = _check_length(dropout, num_layers)
 
-    layers =   {"Input": {"shape": input_shape}}
+    if input_shape is None:
+        layers = {}
+    else:
+        assert len(input_shape) >= 2
+        layers =   {"Input": {"shape": input_shape}}
 
     for idx, lyr in enumerate(range(num_layers)):
 
@@ -316,7 +363,10 @@ def CNNLSTM(
     Parameters
     ----------
     input_shape : tuple
-        shape of input tensor to the model
+        shape of input tensor to the model. If specified, it should exclude batch_size
+        for example if model takes inputs (num_examples, lookback, num_features) then
+        we should define the shape as (lookback, num_features). The batch_size dimension
+        is always None.
     sub_sequences : int
         number of sub_sequences in which to divide the input before applying
         Conv1D on it.
@@ -413,7 +463,10 @@ def LSTMAutoEncoder(
     Parameters
     ----------
     input_shape : tuple
-        shape of input tensor to the model
+        shape of input tensor to the model. This shape should exclude batch_size
+        for example if model takes inputs (num_examples, num_features) then
+        we should define the shape as (num_features,). The batch_size dimension
+        is always None.
     encoder_layers : int, optional (default=1)
         number of encoder LSTM layers
     decoder_layers : int, optional (default=1)
@@ -493,7 +546,10 @@ def TCN(
     Parameters
     ----------
     input_shape : tuple
-        shape of input tensor to the model
+        shape of input tensor to the model. This shape should exclude batch_size
+        for example if model takes inputs (num_examples, num_features) then
+        we should define the shape as (num_features,). The batch_size dimension
+        is always None.
     filters : int, optional (default=32)
         number of filters
     kernel_size : int, optional (default=2)
@@ -513,6 +569,7 @@ def TCN(
     -------
     dict :
         a dictionary with ``layers`` as key
+
     Examples
     --------
     >>> TCN((5, 10), 32)
@@ -554,7 +611,10 @@ def TFT(
     Parameters
     ----------
     input_shape : tuple
-        shape of input tensor to the model
+        shape of input tensor to the model. This shape should exclude batch_size
+        for example if model takes inputs (num_examples, num_features) then
+        we should define the shape as (num_features,). The batch_size dimension
+        is always None.
     hidden_units : int, optional (default=32)
         number of hidden units
     num_heads : int, optional (default=1)
