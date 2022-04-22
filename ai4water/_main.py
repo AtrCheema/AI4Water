@@ -659,8 +659,8 @@ class BaseModel(NN):
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
             else:
-                x = self._transform_x(x, 'val_x_transformer_')
-                y = self._transform_y(y, 'val_y_transformer_')
+                x = self._transform_x(x)
+                y = self._transform_y(y)
                 validation_data = x,y
 
         elif validation_data is not None:
@@ -1029,8 +1029,8 @@ class BaseModel(NN):
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
         # apply preprocessing/feature engineering if required.
-        inputs = self._transform_x(inputs, 'x_transformer_')
-        outputs = self._transform_y(outputs, 'y_transformer_')
+        inputs = self._fit_transform_x(inputs)
+        outputs = self._fit_transform_y(outputs)
 
         if isinstance(outputs, np.ndarray) and self.category == "DL":
 
@@ -1273,8 +1273,8 @@ class BaseModel(NN):
         `score` function of sklearn by first transforming x and y."""
         if self.category == "ML" and hasattr(self, '_model'):
             x,y, _, _, _ = self._fetch_data(data, x=x,y=y, data=data)
-            x = self._transform_x(x, 'x_score_')
-            x = self._transform_x(x, 'y_score_')
+            x = self._transform_x(x)
+            y = self._transform_y(y)
             return self._model.score(x, y, **kwargs)
         raise NotImplementedError(f"can not calculate score")
 
@@ -1287,7 +1287,7 @@ class BaseModel(NN):
         """
         if self.category == "ML" and hasattr(self, '_model'):
             x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
-            x = self._transform_x(x, 'x_proba_')
+            x = self._transform_x(x)
             return self._model.predict_proba(x,  **kwargs)
         raise NotImplementedError(f"can not calculate proba")
 
@@ -1300,7 +1300,7 @@ class BaseModel(NN):
         """
         if self.category == "ML" and hasattr(self, '_model'):
             x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
-            x = self._transform_x(x, 'x_log_proba_')
+            x = self._transform_x(x)
             return self._model.predict_log_proba(x, **kwargs)
         raise NotImplementedError(f"can not calculate log_proba")
 
@@ -1422,8 +1422,8 @@ class BaseModel(NN):
 
         # after this we call evaluate function of underlying model
         # therefore we must transform inputs and outptus
-        x = self._transform_x(x, 'val_x_transformer_')
-        y = self._transform_y(y, 'val_y_transformer_')
+        x = self._transform_x(x)
+        y = self._transform_y(y)
 
         if hasattr(self._model, 'evaluate'):
             return self._model.evaluate(x, y, **kwargs)
@@ -1744,14 +1744,10 @@ class BaseModel(NN):
                     y=y,
                     data=data)
 
-        inputs = self._transform_x(inputs, 'x_transformer_')
+        inputs = self._transform_x(inputs)
 
-        y_transformer = None
         if true_outputs is not None:
-            if self.config['y_transformation']:
-                y_transformer = Transformations(self.output_features,
-                                                self.config['y_transformation'])
-                true_outputs = y_transformer.fit_transform(true_outputs)
+            true_outputs = self._transform_y(true_outputs)
 
         if self.category == 'DL':
             # some arguments specifically for DL models
@@ -1775,9 +1771,9 @@ class BaseModel(NN):
 
             predicted = self.predict_ml_models(inputs, **kwargs)
 
-        true_outputs, predicted = self._inverse_transform_y(true_outputs,
-            predicted, 
-            y_transformer)
+        true_outputs, predicted = self._inverse_transform_y(
+            true_outputs,
+            predicted)
 
         if true_outputs is None:
             if return_true:
@@ -2793,31 +2789,68 @@ class BaseModel(NN):
 
         return results
 
-    def _transform_x(self, x, name):
-        """transforms x and puts the transformer in config witht he key name"""
-        return self._transform(x, name, self.config['x_transformation'], self.input_features)
+    def _transform(self, data, name_in_config):
+        """transforms the data using the transformer which has already been fit"""
 
-    def _transform_y(self, y, name):
-        """transforms y and puts the transformer in config witht he key name"""
-        return self._transform(y, name, self.config['y_transformation'], self.output_features)
+        if name_in_config not in self.config:
+            raise NotImplementedError(f"""You have not trained the model using .fit.
+            Making predictions from model or evaluating model without training
+            is not allowed when applying transformations. Because the transformation
+            parameters are calculated using training data. Either train the model
+            first by using.fit() method or remove x_transformation/y_transformation
+            arguments.""")
 
-    def _transform(self, data, name, transformation, feature_names):
-        """transforms the `data` using `transformation` and puts it in config
+        transformer = Transformations.from_config(self.config[name_in_config])
+        return transformer.transform(data=data)
+
+    def _transform_x(self, x):
+        """transforms the x data using the transformer which has already been fit"""
+        if self.config['x_transformation']:
+            return self._transform(x, 'x_transformer_')
+        return x
+
+    def _transform_y(self, y):
+        """transforms the y according the transformer which has already been fit."""
+        if self.config['y_transformation']:
+            return self._transform(y, 'y_transformer_')
+        return y
+
+    def _fit_transform_x(self, x):
+        """fits and transforms x and puts the transformer in config witht he key
+        'x_transformer_'"""
+        return self._fit_transform(x,
+                                   'x_transformer_',
+                                   self.config['x_transformation'],
+                                   self.input_features)
+
+    def _fit_transform_y(self, y):
+        """fits and transforms y and puts the transformer in config witht he key
+        'y_transformer_'"""
+        return self._fit_transform(y,
+                                   'y_transformer_',
+                                   self.config['y_transformation'],
+                                   self.output_features)
+
+    def _fit_transform(self, data, key, transformation, feature_names):
+        """fits and transforms the `data` using `transformation` and puts it in config
         with config `name`."""
         if data is not None and transformation:
             transformer = Transformations(feature_names, transformation)
             if isinstance(data, pd.DataFrame):
                 data = data.values
             data = transformer.fit_transform(data)
-            self.config[name] = transformer.config()
+            self.config[key] = transformer.config()
         return data
 
-    def _inverse_transform_y(self, true_outputs, predicted, y_transformer):
+    def _inverse_transform_y(self, true_outputs, predicted):
         """inverse transformation of y/labels for both true and predicted"""
-        if true_outputs is None and self.config['y_transformation'] is not None:  
-                # only x was given and y was transformed
-                predicted = self._inverse_transform_y_without_fit(predicted)
-        elif self.config['y_transformation']:  # only if we apply transformation on y
+
+        if self.config['y_transformation'] is None:
+            return true_outputs, predicted
+
+        y_transformer = Transformations.from_config(self.config['y_transformer_'])
+
+        if self.config['y_transformation']:  # only if we apply transformation on y
             # both x,and true_y were given
             true_outputs = self.__inverse_transform_y(true_outputs, y_transformer)
             # because observed y may have -ves or zeros which would have been
@@ -2828,12 +2861,6 @@ class BaseModel(NN):
             predicted = self.__inverse_transform_y(predicted, y_transformer, postprocess=False)
 
         return true_outputs, predicted
-
-    def _inverse_transform_y_without_fit(self, y):
-        """inverse transforms y/predicted array by starting new Transformations class
-        and without calling fit_transform first."""
-        transformer = Transformations(self.output_features, self.config['y_transformation'])
-        return self.__inverse_transform_y(y, transformer, "inverse_transform_without_fit")
 
     def __inverse_transform_y(self,
                               y,

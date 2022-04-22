@@ -27,6 +27,8 @@ input_features = ['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm', 'p
 ins = len(input_features)
 outs = 1
 
+class CustomLayer(tf.keras.layers.Dense):
+    pass
 
 def make_and_run(
         model,
@@ -95,11 +97,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1312.3688450753175,
             '115_posix': 1265.676495072539,
             '26_posix': 1312.3688450753175,
-            '21_nt': 429.86236572265625,
+            '21_nt': 426.52874755859375,
             '23_nt': 286.2128473956241,
-            '25_nt': 286.21284595900113,
+            '25_nt': 428.7085876464844,
             '26_nt': 286.21284595900113,
-            '27_nt': 439.714111328125,
+            '27_nt': 428.7085876464844,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1405.3555436921633), 3)
         return
@@ -116,11 +118,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1408.9016057021054,
             '115_posix': 1327.6904604995418,
             '26_posix': 1408.9016057021054,
-            '21_nt': 275.37835693359375,
+            '21_nt': 299.75152587890625,
             '23_nt': 195.22941200342964,
-            '25_nt': 195.22941257807892,
+            '25_nt': 312.6127014160156,
             '26_nt': 195.22941257807892,
-            '27_nt': 273.4630432128906,
+            '27_nt': 312.6127014160156,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1434.2028425805552), 3)
         return
@@ -137,7 +139,7 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
         }
         trues = {
-            '21_nt': 201.2708740234375,
+            '21_nt': 204.87033081054688,
             '23_nt': 108.09015740001126,
             '27_nt': 195.22941257807892,
         }
@@ -157,11 +159,11 @@ class TestModels(unittest.TestCase):
             "Dense": {'config': {'units': outs, 'name': 'output'}},
         }
         trues = {
-            '21_nt': 275.72845458984375,
+            '21_nt': 317.4256286621094,
             '23_nt': 204.1259977159385,
-            '25_nt': 204.12599872157463,
+            '25_nt': 313.1969909667969,
             '26_nt': 204.12599872157463,
-            '27_nt': 271.5715637207031,
+            '27_nt': 313.1969909667969,
         }
         prediction, _model = make_and_run(Model, layers=lyrs, return_model=True)
 
@@ -181,11 +183,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1361.6870130712944,
             '26_posix': 1361.6870130712944,
             '115_posix':  1443.1860088206834,
-            '21_nt': 281.3543395996094,
+            '21_nt': 290.931396484375,
             '23_nt': 205.64932981643847,
-            '25_nt': 205.64933154038607,
+            '25_nt': 313.2801818847656,
             '26_nt': 205.64933154038607,
-            '27_nt': 273.1344909667969,
+            '27_nt': 313.2801818847656,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1353.11274522034), 4)
@@ -207,11 +209,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1327.5073743917194,
             '26_posix': 1327.5073743917194,
             '115_posix': 1430.7282310875908,
-            '21_nt': 250.7138671875,
+            '21_nt': 284.6064147949219,
             '23_nt': 197.95141420462951,
-            '25_nt': 197.95141865816086,
+            '25_nt': 287.0279846191406,
             '26_nt': 197.95141865816086,
-            '27_nt': 252.04019165039062,
+            '27_nt': 287.0279846191406,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1356.0140036362777), 2)  # TODO failing with higher precision
         return
@@ -229,11 +231,11 @@ class TestModels(unittest.TestCase):
             '21_posix_functional': 1522.6872986943176,
             '115_posix': 1549.689167207415,
             '26_posix_functional': 1549.689167207415,
-            '21_nt_functional': 264.7032775878906,
-            '27_nt_functional': 281.42071533203125,
+            '21_nt_functional': 298.0132141113281,
+            '27_nt_functional': 294.6787414550781,
             '25_nt': 131,
             '23_nt_functional': 182.70824960252654,
-            '25_nt_functional': 182.7082507518249,
+            '25_nt_functional': 294.6787414550781,
             '26_nt_functional': 182.7082507518249,
             #'27_nt_nt': 197.26560974121094,
         }
@@ -252,11 +254,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1376.5340244296872,
             '26_posix': 1376.5340244296872,
             '115_posix': 1376.5340244296872,
-            '21_nt': 257.56768798828125,
+            '21_nt': 291.0807189941406,
             '23_nt': 197.72353275519052,
-            '25_nt': 197.72353304251516,
+            '25_nt': 302.0905456542969,
             '26_nt': 197.72353304251516,
-            '27_nt': 274.42120361328125,
+            '27_nt': 302.0905456542969,
         }
         prediction = make_and_run(Model, layers=lyrs)
         self.assertAlmostEqual(float(prediction.sum()),  trues.get(PLATFORM, 198.62783813476562), 3)
@@ -278,11 +280,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1347.4325338505837,
             '26_posix': 1347.4325338505837,
             '115_posix': 1272.8471532368762,
-            '21_nt': 255.33322143554688,
+            '21_nt': 311.875732421875,
             '23_nt': 188.44924334159703,
-            '25_nt': 188.44923658946897,
+            '25_nt': 299.3736877441406,
             '26_nt': 188.449236,
-            '27_nt': 250.88307189941406,
+            '27_nt': 299.3736877441406,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 193.57937622070312), 4)
         return
@@ -300,11 +302,11 @@ class TestModels(unittest.TestCase):
             '21_posix': 1548.395502996973,
             '26_posix': 1548.395502996973,
             '115_posix': 673.8151633572088,
-            '21_nt': 271.2632751464844,
+            '21_nt': 311.81280517578125,
             '23_nt': 192.28048198313545,
-            '25_nt': 192.28047997186326,
+            '25_nt': 310.38372802734375,
             '26_nt': 192.28047997186326,
-            '27_nt': 270.0838317871094,
+            '27_nt': 310.38372802734375,
         }
         self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 1475.2777905818857), 4)
         return
@@ -321,16 +323,31 @@ class TestModels(unittest.TestCase):
             import tcn
             prediction = make_and_run(Model, layers=lyrs)
             trues = {
-                '21_nt': 267.6639404296875,
+                '21_nt': 303.4326477050781,
                 '23_nt': 197.4112326089435,
-                '25_nt': 197.41123361457963,
-                '27_nt': 197.41123361457963,
+                '25_nt': 305.4326171875,
+                '27_nt': 305.4326171875,
             }
             self.assertAlmostEqual(float(prediction.sum()), trues.get(PLATFORM, 970.6771222840335), 2)  # TODO failing with higher precision
         except ModuleNotFoundError:
             print("tcn based model can not be tested as it is not found.")
         return
 
+    def test_custom_layer(self):
+
+        outputs = ['blaTEM_coppml']
+        df = busan_beach(input_features, target=outputs)
+
+        lyrs = {
+            "Input": {"shape": (ins, )},
+            CustomLayer: 1
+        }
+
+        model = FModel(model={"layers": lyrs},
+                       epochs=1,
+                       verbosity=0)
+        h = model.fit(data=df)
+        return
 
 if __name__ == "__main__":
     unittest.main()

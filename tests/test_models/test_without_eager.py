@@ -21,7 +21,8 @@ nasdaq_input_features = nasdaq.columns.tolist()[0:-1]
 nasdaq_output_features = nasdaq.columns.tolist()[-1:]
 
 
-def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, epochs=3, **kwargs):
+def make_and_run(input_model, data, _layers=None, lookback=12,
+                 batch_size=64, epochs=3, **kwargs):
 
     model = input_model(
         verbosity=0,
@@ -48,7 +49,8 @@ def make_and_run(input_model, data, _layers=None, lookback=12, batch_size=64, ep
 
 class TestModels(unittest.TestCase):
 
-    # InputAttention based model does not conform reproducibility so just testing that it runs.
+    # InputAttention based model does not conform reproducibility
+    # so just testing that it runs.
 
     def test_InputAttentionModel(self):
 

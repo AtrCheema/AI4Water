@@ -532,7 +532,7 @@ class DualAttentionModel(FModel):
 
         return inputs
 
-    def _transform_x(self, x, name):
+    def _fit_transform_x(self, x):
         """transforms x and puts the transformer in config witht he key name"""
         feature_names = [
             self.input_features,
@@ -545,7 +545,7 @@ class DualAttentionModel(FModel):
         if self.teacher_forcing:
             feature_names.insert(1, self.output_features)
             transformation.insert(1, self.config['y_transformation'])
-        return self._transform(x, name, transformation, feature_names)
+        return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
 
 
 class InputAttentionModel(DualAttentionModel):
@@ -621,7 +621,7 @@ class InputAttentionModel(DualAttentionModel):
         else:
             return x, labels
 
-    def _transform_x(self, x, name):
+    def _fit_transform_x(self, x):
         """transforms x and puts the transformer in config witht he key name
         for conformity we need to add feature names of initial states and their transformations
         will always be None."""
@@ -631,5 +631,5 @@ class InputAttentionModel(DualAttentionModel):
             [f"{i}" for i in range(self.enc_config['n_h'])]
         ]
         transformation = [self.config['x_transformation'], None, None]
-        return self._transform(x, name, transformation, feature_names)
+        return self._fit_transform(x, 'x_transformer_', transformation, feature_names)
 

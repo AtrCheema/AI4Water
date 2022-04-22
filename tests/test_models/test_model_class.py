@@ -87,8 +87,6 @@ def _test_ml_userdefined_data(_model, model_name, x, y):
     return model
 
 
-
-
 def _test_ml_userdefined_non_kw(_model, model_name, x, y):
     # using non-keyword arguments to .predict
     model = _model(model=model_name, verbosity=0)
@@ -167,8 +165,6 @@ class TestPredictMethod(unittest.TestCase):
                                         "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
-                    x_transformation="minmax",
-                    y_transformation="minmax",
                     verbosity=0)
         p = model.predict(data=data)
         assert isinstance(p, np.ndarray)
@@ -180,8 +176,6 @@ class TestPredictMethod(unittest.TestCase):
                                         "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
-                    x_transformation="minmax",
-                    y_transformation="minmax",
                     verbosity=0)
         t, p = model.predict(x=x_reg, y=y_reg, return_true=True)
         assert isinstance(t, np.ndarray)
@@ -194,8 +188,6 @@ class TestPredictMethod(unittest.TestCase):
                                         "Dense_1": 1}},
                     input_features=data.columns.tolist()[0:-1],
                     output_features=data.columns.tolist()[-1:],
-                    x_transformation="minmax",
-                    y_transformation="log",
                     verbosity=0)
         p = model.predict(x=x_reg)
         assert isinstance(p, np.ndarray)

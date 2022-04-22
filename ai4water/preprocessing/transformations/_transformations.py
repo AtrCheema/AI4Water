@@ -141,6 +141,9 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
         for attr, attr_val in config['config'].items():
             setattr(scaler, attr, attr_val)
+
+        if isinstance(scaler.lambdas_, float):
+            scaler.lambdas_ = [scaler.lambdas_]
         return scaler
 
     def _fit(self, X, y=None, force_transform=False):
@@ -182,12 +185,34 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
         return X
 
+
 class QuantileTransformer(SKQuantileTransformer, ScalerWithConfig):
 
     @property
     def config_paras(self):
         return ['n_quantiles_', 'references_', 'quantiles_']
 
+    @classmethod
+    def from_config(cls, config: dict):
+        """Build the scaler/transformer from config
+
+        Arguments:
+            config : dictionary of parameters which can be used to build transformer/scaler.
+
+        Returns :
+            An instance of scaler/transformer
+        """
+        scaler = cls(**config['params'])
+        setattr(scaler, '_config', config['config'])
+        setattr(scaler, '_from_config', True)
+
+        scaler.n_quantiles_ = config['config']['n_quantiles_']
+        scaler.references_ = np.array(config['config']['references_'])
+        quantiles_ = np.array(config['config']['quantiles_'])
+        # make sure it is 2d
+        quantiles_ = quantiles_.reshape(len(quantiles_), -1)
+        scaler.quantiles_ = quantiles_
+        return scaler
 
 class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):
 
@@ -204,9 +229,7 @@ class Center(ScalerWithConfig):
     ):
         self.feature_dim = feature_dim
 
-    def fit(self): pass
-
-    def fit_transform(self, x:np.ndarray)->np.ndarray:
+    def fit(self, x:np.ndarray):
         dim = x.ndim
         assert dim == 2
 
@@ -214,8 +237,16 @@ class Center(ScalerWithConfig):
 
         setattr(self, 'mean_', mean)
         setattr(self, 'data_dim_', dim)
+        return
 
-        return x - mean
+    def transform(self, x):
+
+        return x - self.mean_
+
+    def fit_transform(self, x:np.ndarray)->np.ndarray:
+
+        self.fit(x)
+        return self.transform(x)
 
     def inverse_transform(self, x:np.ndarray)->np.ndarray:
 
@@ -228,6 +259,22 @@ class Center(ScalerWithConfig):
 
     def get_params(self):
         return {'feature_dim': self.feature_dim}
+
+
+class CLR(object):
+
+    """centre log ratio transformation"""
+    @staticmethod
+    def fit_transform(x:np.ndarray)->np.ndarray:
+        assert x.sum() == 1.0
+        lmat = np.log(x)
+        gm = lmat.mean(axis=-1, keepdims=True)
+        return (lmat - gm).squeeze()
+
+    @staticmethod
+    def inverse_transform(x:np.ndarray)->np.ndarray:
+        emat = np.exp(x)
+        return closure(emat, out=emat)
 
 
 class FuncTransformer(ScalerWithConfig):
@@ -267,7 +314,10 @@ class FuncTransformer(ScalerWithConfig):
             raise ValueError(f" dimension {dim} not allowed")
         return dim
 
-    def fit_transform(self, x:np.ndarray)-> np.ndarray:
+    def fit_transform(self, x:np.ndarray)->np.ndarray:
+        return self.transform(x)
+
+    def transform(self, x:np.ndarray)-> np.ndarray:
 
         dim = self._get_dim(x)
 
@@ -285,8 +335,8 @@ class FuncTransformer(ScalerWithConfig):
 
     def _inverse_transform(self, x, check_dim=True):
         dim = x.ndim
-        if check_dim:
-            assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
+        #if check_dim:
+        #assert dim == self.data_dim_, f"dimension of data changed from {self.data_dim_} to {dim}"
 
         if dim == 3 and self.feature_dim == "1d":
             _x = np.full(x.shape, np.nan)
@@ -526,3 +576,17 @@ class FunctionTransformer(SKFunctionTransformer):
                 raise ValueError(f"{func} is not serializable")
 
         return func
+
+
+def closure(mat, out=None):
+    mat = np.atleast_2d(mat)
+    if out is not None:
+        out = np.atleast_2d(out)
+    if np.any(mat < 0):
+        raise ValueError("Cannot have negative proportions")
+    if mat.ndim > 2:
+        raise ValueError("Input matrix can only have two dimensions or less")
+    norm = mat.sum(axis=1, keepdims=True)
+    if np.any(norm == 0):
+        raise ValueError("Input matrix cannot have rows with all zeros")
+    return np.divide(mat, norm, out=out).squeeze()

@@ -56,7 +56,7 @@ class TestML(unittest.TestCase):
         p = get_model("RandomForestRegressor",
                       x_transformation="minmax",
                       y_transformation="log")
-        assert np.allclose(p.sum(), 19376295.67998046), p.sum()
+        assert np.allclose(p.sum(), 833541.2080729741), p.sum()
 
         return
 
@@ -154,7 +154,7 @@ class TestML(unittest.TestCase):
                 "replace_zeros": True
             }
         ])
-        assert np.allclose(p.sum(), 5953105.679834714), p.sum()
+        assert np.allclose(p.sum(), 1017556.4220493606), p.sum()
 
         return
 

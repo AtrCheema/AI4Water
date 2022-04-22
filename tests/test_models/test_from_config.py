@@ -52,6 +52,7 @@ def _test_from_config_basic(
 
     return
 
+
 class TestFromConfig(unittest.TestCase):
     models = ["RandomForestRegressor",
               "XGBRegressor",
@@ -82,6 +83,7 @@ class TestFromConfig(unittest.TestCase):
         # we are able to load functional model from config_file
         _test_from_config_basic(FModel, self.models, x_reg, y_reg, config_file=True)
         return
+
 
 if __name__ == "__main__":
 
