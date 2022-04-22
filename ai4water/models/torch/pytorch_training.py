@@ -284,12 +284,12 @@ class Learner(AttributeContainer):
         """
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
-        if reg_plot and true.size > 0.0:
+        if y is not None and reg_plot and pred.size > 0.0:
             regplot(true, pred, show=False)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
-        if self.use_cuda:
-            torch.cuda.empty_cache()
+        #if self.use_cuda:
+        torch.cuda.empty_cache()
         gc.collect()
         return pred
 
@@ -308,6 +308,11 @@ class Learner(AttributeContainer):
         true = np.concatenate(true)
         pred = np.concatenate(pred)
 
+        del loader
+        del batch_x
+        del batch_y
+        gc.collect()
+
         return true, pred
 
     def eval(self, batch_x, batch_y):
@@ -322,12 +327,14 @@ class Learner(AttributeContainer):
 
         pred_y = self.model(*batch_x)
 
+        del batch_x
+
         return batch_y, pred_y
 
     def evaluate(
             self,
             x,
-            y=None,
+            y,
             batch_size: int = None,
             metrics: Union[str, list] = 'r2',
             **kwargs
@@ -343,7 +350,7 @@ class Learner(AttributeContainer):
                 - a torch.Tensor
                 - a numpy.ndarray
                 - a list of torch tensors numpy arrays
-            y : only relevent if `x` is torch.Tensor. It comprises labels for
+            y : It comprises labels for
                 correspoing x.
             batch_size : None means make prediction on whole data in one go
             metrics : name of performance metric to measure. It can be a single metric
@@ -355,6 +362,7 @@ class Learner(AttributeContainer):
             if metrics is string the returned value is float otherwise
             it will be a dictionary
         """
+        # todo y->pred is only converting tensor into numpy array
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
         evaluator = RegressionMetrics(true, pred)
@@ -383,6 +391,8 @@ class Learner(AttributeContainer):
 
         for i, (batch_x, batch_y) in enumerate(self.train_loader):
 
+            # todo, feeding batch_y to eval is only putting it on right device
+            # can we do it before?
             batch_y, pred_y = self.eval(batch_x, batch_y)
 
             if num_outs:
@@ -454,8 +464,13 @@ class Learner(AttributeContainer):
 
     def _get_train_val_loaders(self, x, y=None, validation_data=None):
 
-        train_loader, self.num_outs = self._get_loader(x=x, y=y, batch_size=self.batch_size, shuffle=self.shuffle)
-        val_loader, _ = self._get_loader(x=validation_data, batch_size=self.batch_size, shuffle=self.shuffle)
+        train_loader, self.num_outs = self._get_loader(x=x,
+                                                       y=y,
+                                                       batch_size=self.batch_size,
+                                                       shuffle=self.shuffle)
+        val_loader, _ = self._get_loader(x=validation_data,
+                                         batch_size=self.batch_size,
+                                         shuffle=self.shuffle)
 
         return train_loader, val_loader
 
@@ -481,7 +496,10 @@ class Learner(AttributeContainer):
         else:
             self.optimizer = self.optimizer
 
-        self.train_loader, self.val_loader = self._get_train_val_loaders(x, y=y, validation_data=validation_data)
+        self.train_loader, self.val_loader = self._get_train_val_loaders(
+            x,
+            y=y,
+            validation_data=validation_data)
 
         if self.wandb_config is not None:
             assert wandb is not None

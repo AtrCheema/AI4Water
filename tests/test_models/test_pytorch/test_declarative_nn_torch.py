@@ -16,12 +16,12 @@ def build_and_fit(nn_model, parameters, lookback=1):
 
     model = Model(
         model=nn_model,
-        lookback=lookback,
+        ts_args={'lookback':lookback},
         epochs=50,
         x_transformation='minmax',
         lr=0.0001,
         batch_size=4,
-        test_fraction=0.0,
+        train_fraction=1.0,
         val_fraction=0.0,
         patience=10,
         verbosity=0,

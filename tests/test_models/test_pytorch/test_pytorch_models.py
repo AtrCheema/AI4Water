@@ -27,7 +27,9 @@ class TestPytorchModels(unittest.TestCase):
                            output_features=output_features,
                            epochs=3,
                            model={'layers': {'n_conv_lyrs': 3, 'enc_units': 4, 'dec_units': 4}},
-                           verbosity=0
+                           verbosity=0,
+                           #use_cuda=False,
+                           ts_args={"lookback": 4}
                            )
         # doping na will be wrong but it is just for test purpose
         model.fit(data=df.dropna())
@@ -39,18 +41,19 @@ class TestPytorchModels(unittest.TestCase):
 
     def test_imvmodel(self):
 
-        model = IMVModel(val_data="same",
+        model = IMVModel( # use_cuda=False, todo
                          input_features=input_features,
                          output_features=output_features,
                          val_fraction=0.0,
                          epochs=2,
                          lr=0.0001,
                          batch_size=4,
-                         train_data='random',
+                         split_random=True,
                          x_transformation={'method': 'minmax', 'features': input_features},
                          y_transformation={'method': 'log2', 'features': ['tetx_coppml'], 'replace_zeros': True},
                          model={'layers': {'hidden_units': 4}},
-                         verbosity=0
+                         verbosity=0,
+            ts_args={"lookback": 4}
                          )
 
         model.fit(data=df)
