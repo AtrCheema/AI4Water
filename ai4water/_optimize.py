@@ -1,12 +1,12 @@
 import gc
-import copy
 import math
 import importlib
 from typing import Union
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config, TrainTestSplit
+from .utils.utils import rank_folders, TrainTestSplit
+from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config
 
 
 DEFAULTS = {
@@ -61,7 +61,7 @@ class ModelOptimizerMixIn(object):
         ):
            # we must not set the seed here to None
            # this will cause random splitting unpreproducible (if random splitting is applied)
-            config['verbosity'] = -1
+            config['verbosity'] = 0
             config['prefix'] = PREFIX
 
             suggestions = jsonize(suggestions)
@@ -129,6 +129,8 @@ class ModelOptimizerMixIn(object):
         )
 
         optimizer.fit()
+
+        rank_folders(opt_dir=optimizer.opt_path)
 
         return optimizer
 

@@ -758,7 +758,8 @@ def take(n, iterable):
     return list(islice(iterable, n))
 
 
-def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False, **kwargs):
+def plot_convergences(opt_dir, what='val_loss', show_whole=True, show_min=False,
+                      **kwargs):
 
     plot_dir = os.path.join(opt_dir, "plots")
     if not os.path.exists(plot_dir):

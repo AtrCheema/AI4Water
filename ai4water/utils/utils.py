@@ -758,7 +758,8 @@ def make_hpo_results(opt_dir, metric_name='val_loss') -> dict:
     return results
 
 
-def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_identifier: int = None):
+def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5",
+                     epoch_identifier: int = None):
     """Given weights in w_path, find the best weight.
     if epoch_identifier is given, it will be given priority to find best_weights
     The file_names are supposed in following format FileName_Epoch_Error.ext
@@ -777,7 +778,8 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5", epoch_i
     for w in all_weights:
         wname = w.split(ext)[0]
         try:
-            val_loss = str(float(wname.split('_')[2]))  # converting to float so that trailing 0 is removed
+            # converting to float so that trailing 0 is removed
+            val_loss = str(float(wname.split('_')[2]))
         except ValueError as e:
             raise ValueError(f"while trying to find best weight in {w_path} with {best} and"
                              f" {ext} and {epoch_identifier}"
@@ -825,12 +827,12 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
         results = make_hpo_results(opt_dir)
         fname = 'sorted_folders.json'
 
-    od = OrderedDict(sorted(results.items()))
+    results = OrderedDict(sorted(results.items()))
 
     idx = 0
     best_results = {}
 
-    for v in od.values():
+    for v in results.values():
         if 'folder' in v:
             folder = v['folder']
             _path = os.path.join(opt_dir, folder)
@@ -848,7 +850,7 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
     if rename:
         # append ranking of models to folder_names
         idx = 0
-        for v in od.values():
+        for v in results.values():
             if 'folder' in v:
                 folder = v['folder']
                 old_path = os.path.join(opt_dir, folder)
@@ -860,14 +862,33 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
 
                 idx += 1
 
-    od = {k: Jsonize(v)() for k, v in od.items()}
+    results = {k: Jsonize(v)() for k, v in results.items()}
 
     if write:
         sorted_fname = os.path.join(opt_dir, fname)
         with open(sorted_fname, 'w') as sfp:
-            json.dump(od, sfp, sort_keys=True, indent=True)
+            json.dump(results, sfp, sort_keys=True, indent=True)
 
     return best_results
+
+
+def rank_folders(opt_dir):
+
+    results = make_hpo_results(opt_dir)
+
+    results = OrderedDict(sorted(results.items()))
+
+    # append ranking of models to folder_names
+    idx = 0
+    for v in results.values():
+        if 'folder' in v:
+            folder = v['folder']
+            old_path = os.path.join(opt_dir, folder)
+            new_path = os.path.join(opt_dir, str(idx + 1) + "_" + folder)
+            os.rename(old_path, new_path)
+
+            idx += 1
+    return
 
 
 class TrainTestSplit(object):

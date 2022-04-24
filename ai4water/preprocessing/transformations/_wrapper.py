@@ -201,8 +201,6 @@ class Transformations(object):
         type changed from {orignal_data_type} to {data.__class__.__name__}
         """
 
-        #self._assert_same_dim(self, orignal_data, data)
-
         return data
 
     def _transform_2d(self, data, columns, transformation=None, key="5"):
@@ -211,7 +209,8 @@ class Transformations(object):
         if transformation:
 
             if isinstance(transformation, dict):
-                transformer = self.scalers_[key].from_config()
+                config = self.scalers_[key]
+                transformer = Transformation.from_config(config)
                 data = transformer.transform(pd.DataFrame(data, columns=columns))
 
             # we want to apply multiple transformations
