@@ -23,7 +23,7 @@ from .utils import InvalidTransformation, TransformerNotFittedError, SP_METHODS
 class TransformationsContainer(object):
 
     def __init__(self):
-        self.scalers = {}
+        self.scaler_ = None
         self.transforming_straight = True
         # self.nan_indices = None
         self.index = None
@@ -35,6 +35,79 @@ INITIATED_TRANSFORMERS = {
     'log10': Log10Scaler(),
     'sqrt': SqrtScaler()
 }
+
+class _Processor(object):
+
+    def __init__(self,
+                 replace_zeros,
+                 replace_zeros_with,
+                 treat_negatives,
+                 features=None
+                 ):
+        self.replace_zeros = replace_zeros
+        self.replace_zeros_with = replace_zeros_with
+        self.treat_negatives = treat_negatives
+        self.features = features
+
+        self.index = None
+
+    def preprocess(self, data, transforming_straight=True):
+        """Makes sure that data is dataframe and optionally replaces nans"""
+        data = to_dataframe(data)
+
+        # save the index if not already saved so that can be used later
+        if self.index is None:
+            self.index = data.index
+
+        columns = self.features or data.columns
+
+        indices = {}
+        if self.replace_zeros and transforming_straight:
+            # instead of saving indices with column names, using column indices
+            # because df.iloc[row_idx, col_idx] is better than df[col_name].iloc[row_idx]
+            for col_idx, col in enumerate(columns):
+                # find index containing 0s in corrent column of dataframe
+                i = data.index[data[col] == 0.0]
+                if len(i) > 0:
+                    indices[col_idx] = i.values
+                    if self.replace_zeros_with in ['mean', 'max', 'min']:
+                        replace_with = float(getattr(np, 'nan' + self.replace_zeros_with)(data[col]))
+                    else:
+                        replace_with = self.replace_zeros_with
+                    data.loc[indices[col_idx], col] = get_val(data[col], replace_with)
+
+            #if self.zero_indices is None:
+        self.zero_indices_ = indices
+
+        indices = {}
+        if self.treat_negatives:
+            for col_idx, col in enumerate(columns):
+                # find index containing negatives in corrent column of dataframe
+                i = data.index[data[col] < 0.0]
+                if len(i) > 0:
+                    indices[col_idx] = i.values
+                    # turn -ve values into positives
+                    data[col] = data[col].abs()
+
+        self.negative_indices_ = indices
+
+        return data
+
+    def postprocess(self, data):
+        """If nans/zeros were replaced with some value, put nans/zeros back."""
+        data = data.copy()
+        if self.replace_zeros:
+            if hasattr(self, 'zero_indices_'):
+                for col, idx in self.zero_indices_.items():
+                    data.iloc[idx, col] = 0.0
+
+        if self.treat_negatives:
+            if hasattr(self, 'negative_indices_'):
+                for col, idx in self.negative_indices_.items():
+                    # invert the sign of those values which were originally -ve
+                    for _idx in idx:
+                        data.iat[_idx, col] = -data.iat[_idx, col]
+        return data
 
 class Transformation(TransformationsContainer):
     """
@@ -75,10 +148,12 @@ class Transformation(TransformationsContainer):
         or
 
         >>> transformer = Transformation(method='minmax')
-        >>> normalized_df = transformer.fit_transform_with_minmax(data=pd.DataFrame([1,2,3]))
+        >>> normalized_df = transformer.fit_transform(data=pd.DataFrame([1,2,3]))
 
-        >>> transformer = Transformation(method='minmax')
-        >>> normalized_df, scaler_dict = transformer(data=pd.DataFrame([1,2,3]))
+        >>> transformer = Transformation(method='log', replace_zeros=True)
+        >>> trans_df, proc = transformer.fit_transform(data=pd.DataFrame([1,0,2,3]),
+        >>>                                                 return_proc=True)
+        >>> detransfomred_df = transformer.inverse_transform(trans_df, postprocessor=proc)
 
         or using one liner
 
@@ -187,14 +262,29 @@ class Transformation(TransformationsContainer):
         self.kwargs = kwargs
         self.transformed_features = None
 
-    def __call__(self, data, what="fit_transform", return_key=False, **kwargs):
+        if self.scaler_ is None:  # self.scaler_ can be set during from_config
+            _kwargs = {}
+            if self.method == "scale":
+                _kwargs['with_mean'] = False
+
+            elif self.method == "box-cox":
+                _kwargs['method'] = "box-cox"
+
+            for k,v in self.kwargs.items():
+                if k in _kwargs:
+                    _kwargs.pop(k)
+
+            scaler = self.get_scaler()(**_kwargs, **kwargs)
+            self.scaler_ = scaler
+
+    def __call__(self, data, what="fit_transform", return_proc=False, **kwargs):
         """
         Calls the `fit_transform` and `inverse_transform` methods.
         """
         if what.startswith("fit"):
             self.transforming_straight = True
 
-            return self.fit_transform(data, return_key=return_key, **kwargs)
+            return self.fit_transform(data, return_proc=return_proc, **kwargs)
 
         elif what.startswith("inv"):
             self.transforming_straight = False
@@ -203,25 +293,25 @@ class Transformation(TransformationsContainer):
         else:
             raise ValueError(f"The class Transformation can not be called with keyword argument 'what'={what}")
 
-    def __getattr__(self, item):
-        """
-        Gets the attributes from underlying transformation modules.
-        """
-        if item.startswith('_'):
-            return self.__getattribute__(item)
-        elif item.startswith("fit_transform_with"):
-            transformer = item.split('_')[-1]
-            if transformer.lower() in list(self.available_transformers.keys()):
-                self.method = transformer
-                return self.fit_transform_with_sklearn
-
-        elif item.startswith("inverse_transform_with"):
-            transformer = item.split('_')[-1]
-            if transformer.lower() in list(self.available_transformers.keys()):
-                self.method = transformer
-                return self.inverse_transform_with_sklearn
-        else:
-            raise AttributeError(f'Transformation has no attribute {item}')
+    # def __getattr__(self, item):
+    #     """
+    #     Gets the attributes from underlying transformation modules.
+    #     """
+    #     if item.startswith('_'):
+    #         return self.__getattribute__(item)
+    #     elif item.startswith("fit_transform_with"):
+    #         transformer = item.split('_')[-1]
+    #         if transformer.lower() in list(self.available_transformers.keys()):
+    #             self.method = transformer
+    #             return self.fit_transform_with_sklearn
+    #
+    #     elif item.startswith("inverse_transform_with"):
+    #         transformer = item.split('_')[-1]
+    #         if transformer.lower() in list(self.available_transformers.keys()):
+    #             self.method = transformer
+    #             return self.inverse_transform_with_sklearn
+    #     else:
+    #         raise AttributeError(f'Transformation has no attribute {item}')
 
     @property
     def data(self):
@@ -262,68 +352,22 @@ class Transformation(TransformationsContainer):
 
         return self.available_transformers[self.method.lower()]
 
-    def pre_process_data(self, data):
-        """Makes sure that data is dataframe and optionally replaces nans"""
-        data = to_dataframe(data)
+    def _preprocess(self, data):
+        self.transforming_straight = True
 
-        # save the index if not already saved so that can be used later
-        if self.index is None:
-            self.index = data.index
+        proc = _Processor(self.replace_zeros,
+                          self.replace_zeros_with,
+                          self.treat_negatives,
+                          features=self.features
+                          )
 
-        indices = {}
-        if self.replace_zeros and self.transforming_straight:
-            # instead of saving indices with column names, using column indices
-            # because df.iloc[row_idx, col_idx] is better than df[col_name].iloc[row_idx]
-            for col_idx, col in enumerate(data.columns):
-                # find index containing 0s in corrent column of dataframe
-                i = data.index[data[col] == 0.0]
-                if len(i) > 0:
-                    indices[col_idx] = i.values
-                    if self.replace_zeros_with in ['mean', 'max', 'min']:
-                        replace_with = float(getattr(np, 'nan' + self.replace_zeros_with)(data[col]))
-                    else:
-                        replace_with = self.replace_zeros_with
-                    data.iloc[indices[col_idx], col_idx] = get_val(data[col], replace_with)
+        data = proc.preprocess(data.copy())
 
-            #if self.zero_indices is None:
-        self.zero_indices_ = indices
+        if self.features is None:
+            self.features = list(data.columns)
 
-        indices = {}
-        if self.treat_negatives:
-            for col_idx, col in enumerate(data.columns):
-                # find index containing negatives in corrent column of dataframe
-                i = data.index[data[col] < 0.0]
-                if len(i) > 0:
-                    indices[col_idx] = i.values
-                    # turn -ve values into positives
-                    data[col] = data[col].abs()
+        setattr(self, 'initial_shape_', data.shape)
 
-        self.negative_indices_ = indices
-
-        return data
-
-    def post_process_data(self, data):
-        """If nans/zeros were replaced with some value, put nans/zeros back."""
-        data = data.copy()
-        if self.replace_zeros:
-            if hasattr(self, 'zero_indices_'):
-                for col, idx in self.zero_indices_.items():
-                    data.iloc[idx, col] = 0.0
-
-        if self.treat_negatives:
-            if hasattr(self, 'negative_indices_'):
-                for col, idx in self.negative_indices_.items():
-                    # invert the sign of those values which were originally -ve
-                    data.iloc[idx, col] = -data.iloc[idx, col]
-        return data
-
-    def fit_transform_with_sklearn(
-            self,
-            data:Union[pd.DataFrame, np.ndarray],
-            return_key=False,
-            **kwargs):
-
-        original_data = data.copy()
         to_transform = self.get_features(data)  # TODO, shouldn't kwargs go here as input?
 
         if self.method.lower() in ["log", "log10", "log2"]:
@@ -331,65 +375,36 @@ class Transformation(TransformationsContainer):
             if (to_transform.values < 0).any():
                 raise InvalidValueError(self.method, "negative")
 
-        _kwargs = {}
-        if self.method == "scale":
-            _kwargs['with_mean'] = False
-        elif self.method in ['power', 'yeo-johnson', 'box-cox']:
+        return data, to_transform, proc
+
+    def fit(self, data, **kwargs):
+
+
+        data, to_transform, proc = self._preprocess(data)
+
+        if self.method in ['power', 'yeo-johnson', 'box-cox']:
             # a = np.array([87.52, 89.41, 89.4, 89.23, 89.92], dtype=np.float32).reshape(-1,1)
             # power transformers sometimes overflow with small data which causes inf error
             to_transform = to_transform.astype("float64")
-            if self.method == "box-cox":
-                _kwargs['method'] = "box-cox"
 
-        for k,v in self.kwargs.items():
-            if k in _kwargs:
-                _kwargs.pop(k)
+        return self.scaler_.fit(to_transform, **kwargs)
 
-        scaler = self.get_scaler()(**_kwargs, **self.kwargs)
-
-        data = scaler.fit_transform(to_transform, **kwargs)
-
-        data = pd.DataFrame(data, columns=to_transform.columns)
-
-        scaler = self.serialize_scaler(scaler, to_transform)
-
-        data = self.maybe_insert_features(original_data, data)
-
-        data = self.post_process_data(data)
-
-        self.tr_data = data
-        if return_key:
-            return data, scaler
-        return data
-
-    def inverse_transform_with_sklearn(self,
-                                       data,
-                                       postprocess=True,
-                                       without_fit=False,
-                                       **kwargs):
-
-        self.transforming_straight = False
-
-        scaler = self.get_scaler_from_dict(**kwargs)
+    def transform(self, data, return_proc=False, **kwargs):
 
         original_data = data.copy()
-        to_transform = self.get_features(data)
 
-        if without_fit:
-            data = scaler.inverse_transform_without_fit(to_transform)
-        else:
-            data = scaler.inverse_transform(to_transform)
+        data, to_transform, proc = self._preprocess(data)
 
-        data = pd.DataFrame(data, columns=to_transform.columns)
+        if self.method in ['power', 'yeo-johnson', 'box-cox']:
+            # a = np.array([87.52, 89.41, 89.4, 89.23, 89.92], dtype=np.float32).reshape(-1,1)
+            # power transformers sometimes overflow with small data which causes inf error
+            to_transform = to_transform.astype("float64")
 
-        data = self.maybe_insert_features(original_data, data)
+        data = self.scaler_.transform(to_transform, **kwargs)
 
-        if postprocess:
-            data = self.post_process_data(data)
+        return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
-        return data
-
-    def fit_transform(self, data, return_key=False, **kwargs):
+    def fit_transform(self, data, return_proc=False, **kwargs):
         """
         Transforms the data
 
@@ -398,24 +413,33 @@ class Transformation(TransformationsContainer):
                 transformed value will have the same type as data and will have
                 the same index as data (in case data is dataframe). The shape of
                 `data` is supposed to be (num_examples, num_features).
-            return_key : whether to return the scaler or not. If True, then a
+            return_proc : whether to return the scaler or not. If True, then a
                 tuple is returned which consists of transformed data and scaler itself.
             kwargs :
         """
-        self.transforming_straight = True
+        original_data = to_dataframe(data.copy())
 
-        data = self.pre_process_data(data.copy())
+        data, to_transform, proc = self._preprocess(data)
 
-        if self.features is None:
-            self.features = list(data.columns)
+        data = self.scaler_.fit_transform(to_transform, **kwargs)
 
-        setattr(self, 'initial_shape_', data.shape)
+        return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
-        return getattr(self, "fit_transform_with_" + self.method)(data, return_key=return_key, **kwargs)
+    def _postprocess(self, data, to_transform, original_data, proc, return_proc):
+
+        data = pd.DataFrame(data, columns=to_transform.columns)
+
+        data = self.maybe_insert_features(original_data, data)
+
+        data = proc.postprocess(data)
+
+        if return_proc:
+            return data, proc
+        return data
 
     def inverse_transform(self,
                           data,
-                          postprocess=True,
+                          postprocessor:_Processor=None,
                           without_fit=False,
                           **kwargs):
         """
@@ -424,7 +448,7 @@ class Transformation(TransformationsContainer):
         Parameters
         ---------
             data:
-            postprocess : bool
+            postprocessor :
             without_fit : bool
             kwargs : any of the folliwng keyword arguments
 
@@ -439,12 +463,16 @@ class Transformation(TransformationsContainer):
         # which inserts columns/features into data.
         data = to_dataframe(data)
 
-        if 'key' in kwargs or 'scaler' in kwargs:
-            pass
-        elif len(self.scalers) == 1:
-            kwargs['scaler'] = list(self.scalers.values())[0]
+        if self.treat_negatives and hasattr(postprocessor, "negative_indices_"):
+            for col, idx in postprocessor.negative_indices_.items():
+                data.iloc[idx, col] = -data.iloc[idx, col]
+
+        if 'scaler' in kwargs:
+            scaler = kwargs['scaler']
+        elif self.scaler_ is not None:
+            scaler = self.scaler_
         elif self.method in SP_METHODS:
-            kwargs['scaler'] = INITIATED_TRANSFORMERS[self.method]
+            scaler = INITIATED_TRANSFORMERS[self.method]
             without_fit = True
         else:
             raise TransformerNotFittedError()
@@ -453,11 +481,24 @@ class Transformation(TransformationsContainer):
             for col, idx in self.negative_indices_.items():
                 data.iloc[idx, col] = -data.iloc[idx, col]
 
-        return getattr(self, "inverse_transform_with_" + self.method.lower())(
-            data,
-            postprocess=postprocess,
-            without_fit=without_fit,
-            **kwargs)
+        self.transforming_straight = False
+
+        original_data = data.copy()
+        to_transform = self.get_features(data)
+
+        if without_fit:
+            data = scaler.inverse_transform_without_fit(to_transform)
+        else:
+            data = scaler.inverse_transform(to_transform)
+
+        data = pd.DataFrame(data, columns=to_transform.columns)
+
+        data = self.maybe_insert_features(original_data, data)
+
+        if postprocessor is not None:
+            data = postprocessor.postprocess(data)
+
+        return data
 
     def get_features(self, data) -> pd.DataFrame:
 
@@ -467,41 +508,31 @@ class Transformation(TransformationsContainer):
             assert isinstance(self.features, list)
             return data[self.features]
 
-    def serialize_scaler(self, scaler, to_transform):
+    def serialize_scaler(self, scaler):
         key = self.method + str(dateandtime_now())
         serialized_scaler = {
             "scaler": scaler,
-            "shape": to_transform.shape,
+            #"shape": to_transform.shape,
             "key": key
         }
-        self.scalers[key] = scaler
+        self.scaler_ = scaler
 
         return serialized_scaler
 
     def get_scaler_from_dict(self, **kwargs):
         if 'scaler' in kwargs:
             scaler = kwargs['scaler']
-        elif 'key' in kwargs:
-            scaler = self.scalers[kwargs['key']]
         else:
             raise TransformerNotFittedError()
         return scaler
 
     def maybe_insert_features(self, original_df, trans_df):
 
-        if self.index is not None:
-            # the data on which to perform inverse transformation has different
-            # length so can't insert index, therefore make sure that negatives and
-            # zeros were not treated beccause their indexes do not remain same now
-            if len(trans_df) != len(self.index):
-                assert len(self.zero_indices_) == 0
-                assert len(self.negative_indices_) == 0
-            else:
-                trans_df.index = self.index
+        trans_df.index = original_df.index
 
         num_features = len(original_df.columns)
         if len(trans_df.columns) != num_features:
-            df = pd.DataFrame(index=self.index)
+            df = pd.DataFrame(index=original_df.index)
             for col in original_df.columns:  # features:
                 if col in trans_df.columns:
                     _df = trans_df[col]
@@ -521,13 +552,10 @@ class Transformation(TransformationsContainer):
         Returns:
             a dictionary
         """
-        assert len(self.scalers) > 0, f"Transformation is not fitted yet"
-
-        assert len(self.scalers) == 1
-        scaler = list(self.scalers.values())[0].config()
+        assert self.scaler_ is not None, f"Transformation is not fitted yet"
 
         return {
-            "scaler": {self.method: scaler},
+            "scaler": {self.method: self.scaler_.config()},
             "shape": self.initial_shape_,
             "method": self.method,
             "features": self.features,
@@ -535,8 +563,8 @@ class Transformation(TransformationsContainer):
             "replace_zeros_with": self.replace_zeros_with,
             "treat_negatives": self.treat_negatives,
             "kwargs": self.kwargs,
-            "negative_indices_": jsonize(self.negative_indices_),
-            "zero_indices_": jsonize(self.zero_indices_)
+            #"negative_indices_": jsonize(self.negative_indices_),
+            #"zero_indices_": jsonize(self.zero_indices_)
         }
 
 
@@ -557,22 +585,23 @@ class Transformation(TransformationsContainer):
 
         shape = config.pop('shape')
         scaler = config.pop('scaler')
-        negative_indices_ = config.pop("negative_indices_")
-        zero_indices_ = config.pop("zero_indices_")
+        #negative_indices_ = config.pop("negative_indices_")
+        #zero_indices_ = config.pop("zero_indices_")
 
         assert len(scaler) == 1
         scaler_name = list(scaler.keys())[0]
         scaler_config = list(scaler.values())[0]
 
-        transformer = cls(**config)
+        if 'kwargs' in config:
+            kwargs = config.pop('kwargs')
+        transformer = cls(**config, **kwargs)
 
-        # initiate the scalers
+        # initiate the scaler
         sc_initiated = transformer.available_transformers[scaler_name].from_config(scaler_config)
 
-
-        transformer.scalers = {scaler_name: sc_initiated}
-        transformer.negative_indices_ = negative_indices_
-        transformer.zero_indices_ = zero_indices_
+        transformer.scaler_ = sc_initiated
+        #transformer.negative_indices_ = negative_indices_
+        #transformer.zero_indices_ = zero_indices_
         transformer.initial_shape_ = shape
 
         return transformer
@@ -623,5 +652,6 @@ def to_dataframe(data)->pd.DataFrame:
         if data.ndim == 1:
             data = data.reshape(-1, 1)
         assert isinstance(data, np.ndarray)
-        data = pd.DataFrame(data, columns=['data' + str(i) for i in range(data.shape[1])])
+        data = pd.DataFrame(data, #columns=['data' + str(i) for i in range(data.shape[1])]
+                            )
     return data

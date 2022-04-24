@@ -794,8 +794,6 @@ class MtropicsLaos(Datasets):
     Downloads and prepares hydrological, climate and land use data for Laos from
     Mtropics_ website and ird_ data servers.
 
-    See the notebook_ for exploratory data analysis of this data
-
     Methods
     -------
         - fetch_lu
@@ -808,9 +806,6 @@ class MtropicsLaos(Datasets):
 
     .. _Mtropics:
         https://mtropics.obs-mip.fr/catalogue-m-tropics/
-
-    .. _notebook:
-        https://nbviewer.jupyter.org/github/AtrCheema/AI4Water/blob/master/examples/datasets/MtropicsLaos.ipynb
 
     .. _ird:
         https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
@@ -893,9 +888,12 @@ class MtropicsLaos(Datasets):
         """
         Fetches physio-chemical features of Huoy Pano catchment Laos.
 
-        Arguments:
-            st : start of data.
-            en :end of data.
+        Parameters
+        ----------
+            st :
+                start of data.
+            en :
+                end of data.
             features :
                 The physio-chemical features to fetch. Following features
                 are available
@@ -909,7 +907,8 @@ class MtropicsLaos(Datasets):
                 - 'Turbidity',
                 'TSS'
 
-        Returns:
+        Returns
+        -------
             a pandas dataframe
         """
 
@@ -951,7 +950,8 @@ class MtropicsLaos(Datasets):
         NaNs represent missing values. The data is randomly sampled between 2011
         to 2021 during rainfall events. Total 368 E. coli observation points are available now.
 
-        Arguments:
+        Parameters
+        ----------
             st :
                 start of data. By default the data is fetched from the point it
                 is available.
@@ -964,9 +964,12 @@ class MtropicsLaos(Datasets):
                 - Ecoli_LL_mpn100: Lower limit of the confidence interval
                 - Ecoli_mpn100: Stream water Escherichia coli concentration
                 - Ecoli_UL_mpn100: Upper limit of the confidence interval
-            remove_duplicates : whether to remove duplicates or not. This is because
+            remove_duplicates :
+                whether to remove duplicates or not. This is because
                 some values were recorded within a minute,
-        Returns:
+
+        Returns
+        -------
             a pandas dataframe consisting of features as columns.
 
         .. _Ribolzi:
@@ -1020,12 +1023,16 @@ class MtropicsLaos(Datasets):
         fetches data from 7 rain gauges_ which is collected at daily time step
         from 2001 to 2019.
 
-        Arguments:
-            st : start of data. By default the data is fetched from the point it
+        Parameters
+        ----------
+            st :
+                start of data. By default the data is fetched from the point it
                 is available.
-            en : end of data. By default the data is fetched til the point it is
+            en :
+                end of data. By default the data is fetched til the point it is
                 available.
-        Returns:
+        Returns
+        -------
             a dataframe of 7 columns, where each column represnets a rain guage
             observations. The length of dataframe depends upon range defined by
             `st` and `en` arguments.
@@ -1061,11 +1068,17 @@ class MtropicsLaos(Datasets):
         """
         fetches hourly weather_ station data which consits of air temperature,
         humidity, wind speed and solar radiation.
-        Arguments:
-            st : start of data to be feteched.
-            en : end of data to be fetched.
-            freq : frequency at which the data is to be fetched.
-        Returns:
+
+        Parameters
+        ----------
+            st :
+                start of data to be feteched.
+            en :
+                end of data to be fetched.
+            freq :
+                frequency at which the data is to be fetched.
+        Returns
+        -------
             a pandas dataframe consisting of 4 columns
 
         .. _weather:
@@ -1099,11 +1112,18 @@ class MtropicsLaos(Datasets):
         """
         Fetches the precipitation_ data which is collected at 6 minutes time-step
         from 2001 to 2020.
-        Arguments:
-            st : starting point of data to be fetched.
-            en : end point of data to be fetched.
-            freq : frequency at which the data is to be returned.
-        Returns:
+
+        Parameters
+        ----------
+            st :
+                starting point of data to be fetched.
+            en :
+                end point of data to be fetched.
+            freq :
+                frequency at which the data is to be returned.
+
+        Returns
+        -------
             pandas dataframe of precipitation data
 
         .. _precipitation:
@@ -1130,17 +1150,23 @@ class MtropicsLaos(Datasets):
 
         return df[st:en]
 
-    def fetch_hydro(self,
-                    st: Union[str, pd.Timestamp] = '20010101 00:06:00',
-                    en: Union[str, pd.Timestamp] = '20200101 00:06:00',
-                    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def fetch_hydro(
+            self,
+            st: Union[str, pd.Timestamp] = '20010101 00:06:00',
+            en: Union[str, pd.Timestamp] = '20200101 00:06:00',
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        fetches water level and suspended particulate matter. Both data are from
-        2001 to 2019 but are randomly sampled.
-        Arguments:
-            st : starting point of data to be fetched.
-            en : end point of data to be fetched.
-        Returns:
+        fetches water level (cm) and suspended particulate matter (g L-1). Both
+        data are from 2001 to 2019 but are randomly sampled.
+
+        Parameters
+        ----------
+            st : optional
+                starting point of data to be fetched.
+            en : optional
+                end point of data to be fetched.
+        Returns
+        -------
             a tuple of pandas dataframes of water level and suspended particulate
             matter.
         """
@@ -1188,19 +1214,21 @@ class MtropicsLaos(Datasets):
         # FutureWarning: Value based partial slicing on non-monotonic DatetimeIndexes
         return wl.loc[st:en], spm.loc[st:en]
 
-    def make_classification(self,
-                            input_features: Union[None, list] = None,
-                            output_features: Union[str, list] = None,
-                            st: Union[None, str] = "20110525 14:00:00",
-                            en: Union[None, str] = "20181027 00:00:00",
-                            freq: str = "6min",
-                            threshold: Union[int, dict] = 400,
-                            lookback_steps: int = None,
-                            ) -> pd.DataFrame:
+    def make_classification(
+            self,
+            input_features: Union[None, list] = None,
+            output_features: Union[str, list] = None,
+            st: Union[None, str] = "20110525 14:00:00",
+            en: Union[None, str] = "20181027 00:00:00",
+            freq: str = "6min",
+            threshold: Union[int, dict] = 400,
+            lookback_steps: int = None,
+    ) -> pd.DataFrame:
         """
         Makes a classification problem.
 
-        Arguments:
+        Parameters
+        ----------
             input_features :
                 names of inputs to use.
             output_features :
@@ -1222,7 +1250,8 @@ class MtropicsLaos(Datasets):
                 the resultant dataframe will have (ecoli_observations * lookback_steps)
                 rows. The resulting index will not be continuous.
 
-        returns :
+        Returns
+        -------
             a dataframe of shape `(inputs+target, st:en)`
 
         Example:
@@ -1253,14 +1282,15 @@ class MtropicsLaos(Datasets):
             return consider_lookback(data, lookback_steps, target)
         return data
 
-    def make_regression(self,
-                        input_features: Union[None, list] = None,
-                        output_features: Union[str, list] = "Ecoli_mpn100",
-                        st: Union[None, str] = "20110525 14:00:00",
-                        en: Union[None, str] = "20181027 00:00:00",
-                        freq: str = "6min",
-                        lookback_steps: int = None
-                        ) -> pd.DataFrame:
+    def make_regression(
+            self,
+            input_features: Union[None, list] = None,
+            output_features: Union[str, list] = "Ecoli_mpn100",
+            st: Union[None, str] = "20110525 14:00:00",
+            en: Union[None, str] = "20181027 00:00:00",
+            freq: str = "6min",
+            lookback_steps: int = None
+    ) -> pd.DataFrame:
         """
         Makes a regression problem using hydrological, environmental,
         and water quality data of Huoay pano.

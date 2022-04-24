@@ -16,6 +16,7 @@ from ai4water.preprocessing.transformations import LogScaler
 from ai4water.preprocessing.transformations import Log2Scaler
 from ai4water.preprocessing.transformations import Log10Scaler
 from ai4water.preprocessing.transformations import Center
+from ai4water.preprocessing.transformations._transformations import CLR
 
 
 x = np.random.randint(1, 100, (20, 2))
@@ -114,9 +115,14 @@ class TestTransformations(unittest.TestCase):
     def test_function(self):
         test_func_transformer(x, np.log, None)
         test_func_transformer(x, np.log, np.exp)
-        test_func_transformer(x, np.log2, inverse_func="""lambda _x: 2**_x""", validate=True)
-        test_func_transformer(x, np.log10, inverse_func="""lambda _x: 10**_x""", validate=True, check_inverse=False)
-        test_func_transformer(x, np.tan, inverse_func=np.tanh, validate=True, check_inverse=False)
+        test_func_transformer(x, np.log2,
+                              inverse_func="""lambda _x: 2**_x""",
+                              validate=True)
+        test_func_transformer(x, np.log10,
+                              inverse_func="""lambda _x: 10**_x""",
+                              validate=True, check_inverse=False)
+        test_func_transformer(x, np.tan, inverse_func=np.tanh,
+                              validate=True, check_inverse=False)
         test_func_transformer(x, np.cumsum, inverse_func=np.diff,
                               validate=True, check_inverse=False,
                               kw_args={"axis": 0},

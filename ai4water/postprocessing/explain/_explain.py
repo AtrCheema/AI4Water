@@ -10,7 +10,9 @@ class ExplainerMixin(object):
             self,
             path,
             data,
-            features
+            features,
+            save=True,
+            show=True,
     ):
         if not os.path.exists(path):
             os.makedirs(path)
@@ -18,6 +20,8 @@ class ExplainerMixin(object):
         self.path = path
         self.data = data
         self.features = features
+        self.save = save
+        self.show = show
 
     @property
     def data_is_2d(self):

@@ -1,3 +1,4 @@
+import gc
 import os
 from typing import Union, Callable, List
 
@@ -33,7 +34,7 @@ class PermutationImportance(ExplainerMixin):
         >>> x_val, y_val = model.validation_data()
 
         >>> pimp = PermutationImportance(model.predict, x_val, y_val.reshape(-1,))
-        >>> fig = pimp.plot_1d_pimp(show=False)
+        >>> fig = pimp.plot_1d_pimp()
 
     .. _Molnar:
         https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance
@@ -52,6 +53,8 @@ class PermutationImportance(ExplainerMixin):
             path: str = None,
             seed: int = None,
             weights=None,
+            save: bool = True,
+            show: bool = True,
             **kwargs
     ):
         """
@@ -66,7 +69,7 @@ class PermutationImportance(ExplainerMixin):
                 arrays or list of arrays which will be given as input to `model`
             target:
                 the true outputs or labels for corresponding `inputs`
-                It must be a numpy array
+                It must be a 1-dimensional numpy array
             scoring:
                 the peformance metric to use. It can be any metric from RegressionMetrics_ or
                 ClassificationMetrics_ or a callable. If callable, then this must take
@@ -88,6 +91,10 @@ class PermutationImportance(ExplainerMixin):
                 reproduce your results, set this value to some integer value.
             path:
                 path to save the plots
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
             kwargs:
                 any additional keyword arguments for `model`
 
@@ -123,9 +130,16 @@ class PermutationImportance(ExplainerMixin):
 
         self.importances = None
 
-        super().__init__(features=feature_names, data=inputs, path=path or os.getcwd())
+        super().__init__(features=feature_names,
+                         data=inputs,
+                         path=path or os.getcwd(),
+                         show=show,
+                         save=save
+                         )
 
         self.seed = seed
+
+        self.base_score = self._base_score()
 
         self._calculate(**kwargs)
 
@@ -212,7 +226,6 @@ class PermutationImportance(ExplainerMixin):
     def plot_as_heatmap(
             self,
             annotate=True,
-            show: bool = True,
             **kwargs
     ):
         """plots the permutation importance as heatmap.
@@ -222,8 +235,6 @@ class PermutationImportance(ExplainerMixin):
         Arguments:
             annotate:
                 whether to annotate the heat map with
-            show:
-                whether to show the plot or not
             kwargs:
                 any keyword arguments for imshow_ function.
 
@@ -234,7 +245,10 @@ class PermutationImportance(ExplainerMixin):
 
         imp = np.stack([np.mean(v, axis=1) for v in self.importances.values()])
 
-        fig, axis = plt.subplots()
+        figsize=None
+        if "figsize" in kwargs:
+            figsize = kwargs.pop("figsize")
+        fig, axis = plt.subplots(figsize=figsize)
 
         lookback = imp.shape[0]
         ytick_labels = [f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
@@ -242,28 +256,26 @@ class PermutationImportance(ExplainerMixin):
             imp,
             ax=axis,
             yticklabels=ytick_labels,
-            xticklabels=self.features if len(self.features) <= 10 else None,
-            ylabel="Looback steps",
+            xticklabels=self.features if len(self.features) <= 14 else None,
+            ylabel="Lookack steps",
             xlabel="Input Features",
             annotate=annotate,
-            title=f"Base Score {round(self._base_score(), 3)} with {ERROR_LABELS[self.scoring]}",
+            title=f"Base Score {round(self.base_score, 3)} with {ERROR_LABELS[self.scoring]}",
             show=False,
             **kwargs
         )
+        axis.set_xticklabels(axis.get_xticklabels(), rotation=90)
 
         fig.colorbar(im, orientation='vertical')
 
-        if show:
+        if self.show:
             plt.show(
-
             )
         return axis
 
     def plot_1d_pimp(
             self,
             plot_type:str = "boxplot",
-            show: bool = True,
-            save: bool = False,
             **kwargs
     ) -> plt.Axes:
         """Plots the 1d permutation importance either as box-plot or as bar_chart
@@ -272,10 +284,6 @@ class PermutationImportance(ExplainerMixin):
         ---------
             plot_type : str, optional
                 either boxplot or barchart
-            show: bool, optional
-                whether to show the plot or now
-            save: bool, optional
-                whether to save the plot or not,
             **kwargs :
                 keyword arguments either for boxplot or bar_chart
 
@@ -286,12 +294,10 @@ class PermutationImportance(ExplainerMixin):
 
         if isinstance(self.importances, np.ndarray):
             fig, ax = plt.subplots()
-            self._plot_pimp(self.importances,
+            ax = self._plot_pimp(self.importances,
                             self.features,
                             ax,
                             plot_type=plot_type,
-                            show=show,
-                            save=save,
                             **kwargs)
         else:
             for idx,  importance in enumerate(self.importances.values()):
@@ -301,12 +307,11 @@ class PermutationImportance(ExplainerMixin):
                     features = self.features[idx]
                 ax = self._plot_pimp(importance,
                                      features,
-                                     show=show,
                                      plot_type=plot_type,
-                                     save=save,
                                      name=idx,
                                      **kwargs
                                      )
+                plt.close('all')
 
         return ax
 
@@ -319,7 +324,7 @@ class PermutationImportance(ExplainerMixin):
     ):
         """
         calculates permutation importance by permuting columns in inputs
-        which is supposed to be 2d array. args are optional inputs to model
+        which is supposed to be 2d array. args are optional inputs to model.
         """
         original_inp_idx = inp_idx
         if inp_idx is None:
@@ -335,7 +340,8 @@ class PermutationImportance(ExplainerMixin):
             feat_dim = 2
 
         # empty container to keep results
-        results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)  # (num_features, n_repeats)
+        # (num_features, n_repeats)
+        results = np.full((permuted_x.shape[feat_dim], self.n_repeats), np.nan)
 
         # todo, instead of having two for loops, we can perturb the
         #  inputs at once and concatenate
@@ -343,7 +349,11 @@ class PermutationImportance(ExplainerMixin):
 
         for col_index in range(permuted_x.shape[feat_dim]):
 
-            scores = np.full(self.n_repeats, np.nan)
+            # instead of calling the model/func for each n_repeat, prepare the data
+            # for all n_repeats and stack it and call the model/func once.
+            # This reduces calls to model from num_inputs * n_repeats -> num_inputs
+            ermuted_inp = np.full((len(permuted_x)*self.n_repeats, *permuted_x.shape[1:]), np.nan)
+            st, en = 0, len(permuted_x)
 
             for n_round in range(self.n_repeats):
 
@@ -370,21 +380,26 @@ class PermutationImportance(ExplainerMixin):
                 else:
                     permuted_x[:, time_step, col_index] = perturbed_feature
 
-                # put the permuted input back in the list
-                inputs[inp_idx] = permuted_x
+                ermuted_inp[st:en] = permuted_x
+                st = en
+                en += len(permuted_x)
 
-                if original_inp_idx is None:  # inputs were not list so unpack the list
-                    prediction = self.model(*inputs, **kwargs)
-                else:
-                    prediction = self.model(inputs, **kwargs)
+            results[col_index] = self._eval(original_inp_idx,
+                                            inputs,
+                                            inp_idx,
+                                            ermuted_inp,
+                                            len(permuted_x),
+                                            **kwargs)
 
-                scores[n_round] = self._score(prediction)
+        if self.scoring in ["mse", "rmse", "rmsle", "mape"]:
+            results = self.base_score + results
+        else:
+            # permutation importance is how much performance decreases by permutation
+            results = self.base_score - results
 
-            results[col_index] = scores
-
-        # permutation importance is how much performance decreases by permutation
-        results = self._base_score() - results
-
+        gc.collect()
+        if time_step:
+            print(f"finished for time_step {time_step}")
         return results
 
     def _permute_importance_2d1(
@@ -429,7 +444,7 @@ class PermutationImportance(ExplainerMixin):
             results[col_index, :] = _func(inputs, col_index)
 
         # permutation importance is how much performance decreases by permutation
-        results = self._base_score() - results
+        results = self.base_score - results
 
         return results
 
@@ -438,8 +453,6 @@ class PermutationImportance(ExplainerMixin):
             imp,
             features,
             axes=None,
-            show=False,
-            save=False,
             name=None,
             plot_type="boxplot",
             **kwargs
@@ -461,14 +474,45 @@ class PermutationImportance(ExplainerMixin):
 
         axes.set_xlabel(ERROR_LABELS.get(self.scoring, self.scoring))
 
-        axes.set_title(f"Base Score {round(self._base_score(), 3)}")
+        axes.set_title(f"Base Score {round(self.base_score, 3)}")
 
-        if save:
+        if self.save:
             name = name or ''
             fname = os.path.join(self.path, f"{plot_type}_{name}_{self.n_repeats}_{self.scoring}")
             plt.savefig(fname, bbox_inches="tight")
 
-        if show:
+        if self.show:
             plt.show()
 
         return axes
+
+    def _eval(self, original_inp_idx, inputs, inp_idx, permuted_inp, batch_size,
+              **kwargs):
+        """batch size here refers to number of examples in one `n_round`."""
+        # don't disturb the original input data, create new one
+        new_inputs = [None]*len(inputs)
+        new_inputs[inp_idx] = permuted_inp
+
+        if original_inp_idx is None:  # inputs were not list so unpack the list
+            prediction = self.model(*new_inputs, **kwargs)
+        else:
+            for idx, inp in enumerate(inputs):
+                if idx != inp_idx:
+                    new_inputs[idx] = np.concatenate([inp for _ in range(self.n_repeats)])
+
+            prediction = self.model(new_inputs, **kwargs)
+
+        st, en = 0, batch_size
+        scores = np.full(self.n_repeats, np.nan)
+
+        for n_round in range(self.n_repeats):
+
+            pred = prediction[st:en]
+
+            scores[n_round] = self._score(pred)
+            st = en
+            en += batch_size
+
+        gc.collect()
+
+        return scores

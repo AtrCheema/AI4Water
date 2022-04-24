@@ -41,4 +41,21 @@ ClassificationExperiments
    .. automethod:: __init__
 
 
+DLRegressionExperiments
+=========================
+.. autoclass:: ai4water.experiments.DLRegressionExperiments
+   :members:
+   :show-inheritance:
+
+   .. automethod:: __init__,
+                    input_shape,
+                    model_MLP,
+                    model_LSTM,
+                    model_CNN,
+                    model_CNNLSTM,
+                    model_LSTMAutoEncoder,
+                    model_TCN,
+                    model_TemporalFusionTransformer,
+
+
 

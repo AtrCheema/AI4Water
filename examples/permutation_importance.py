@@ -31,7 +31,8 @@ pimp = PermutationImportance(
     model.predict,
     x_val,
     y_val.reshape(-1, ),
-    feature_names=model.input_features
+    feature_names=model.input_features,
+    save=False
 )
 
 # plot permutatin importance of each feature  as box-plot

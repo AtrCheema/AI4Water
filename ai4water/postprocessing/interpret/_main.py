@@ -174,14 +174,13 @@ class Interpret(Plot):
             self,
             calculation_method="all",
             rescale=True,
-            fig_width=1200,
-            fig_height=1000,
+            figsize:tuple=None,
+            backend:str = 'matplotlib',
+            show:bool = False,
+            **kwargs
     ):
         """compare various feature importance calculations methods that are built
         in in XGBoost"""
-
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
 
         inp_features = self.model.input_features
         assert isinstance(inp_features, list)
@@ -217,42 +216,40 @@ class Interpret(Plot):
 
         importance = pd.concat(importance, axis=1)
 
-        # initiate figure with subplots
-        fig = make_subplots(
-            rows=len(importance_types) + 1, cols=1,
-            vertical_spacing=0.02
-            # shared_xaxes=True
-        )
+        if backend=="plotly":
+            width = figsize[0] if figsize else 1200
+            height = figsize[1] if figsize else 1200
+            return xgb_fimp_with_plotly(importance,
+                                        importance_types,
+                                        fig_width=width,
+                                        fig_height=height,
+                                        path=self.model.path)
 
-        for idx, col in enumerate(importance.columns):
-            fig.add_trace(go.Bar(
-                x=importance.index.tolist(),
-                y=importance[col],
-                name=col
-            ), row=idx + 1, col=1)
+        plt.close('all')
 
-        fig.update_xaxes(showticklabels=False)  # hide all the xticks
-        fig.update_xaxes(showticklabels=True,
-                         row=len(importance_types),
-                         col=1,
-                         tickangle=-45,
-                         title="Input Features"
-                         )
+        fig, axis = plt.subplots(importance.shape[1],
+                                 sharex="all",
+                                 figsize=figsize)
 
-        # Here we modify the tickangle of the xaxis, resulting in rotated labels.
-        fig.update_layout(
-            height=fig_height,
-            width=fig_width,
-            legend_title="Calculation Method",
-            title_text="XGBoost Feature Importance",
-            title_x=0.42,
-            font=dict(
-                family="Times New Roman",
-                size=26,
-            )
-        )
-        fname = os.path.join(self.model.path, "xgb_f_imp_comp.html")
-        fig.write_html(fname)
+        for ax, imp in zip(axis.flat, importance.columns):
+
+            ax = bar_chart(
+                importance[imp],
+                labels=importance.index,
+                orient="vertical",
+                show=False,
+                rotation=90,
+                label=imp,
+                ax=ax,
+                **kwargs)
+            ax.legend()
+
+        fname = os.path.join(self.model.path, "xgb_f_imp_comp")
+
+        plt.savefig(fname, bbox_inches="tight")
+        if show:
+            plt.show()
+
         return fig
 
     def tft_attention_components(
@@ -312,8 +309,9 @@ class Interpret(Plot):
         ac, data = self.tft_attention_components(data=data)
         return ac['encoder_variable_selection_weights']
 
-
-    def interpret_example_tft(self, example_index, model=None, data='test',
+    def interpret_example_tft(self,
+                              example_index,
+                              data='test',
                               show=False):
         """interprets a single example using TFT model.
 
@@ -321,8 +319,6 @@ class Interpret(Plot):
         ---------
             example_index :
                 index of example to be explained
-            model : t
-                he ai4water model
             data :
                 the data whose example to interpret.
             show :
@@ -345,10 +341,12 @@ class Interpret(Plot):
                           show=False
                           )
 
-        plt.xticks(np.arange(model.num_ins), model.input_features, rotation=90)
+        plt.xticks(np.arange(self.model.num_ins), self.model.input_features,
+                   rotation=90)
         plt.colorbar(im, orientation='vertical', pad=0.05)
-        plt.savefig(os.path.join(maybe_create_path(model.path), f'{data_name}_enc_var_selec_{example_index}.png'),
-                    bbox_inches='tight', dpi=300)
+        fname = os.path.join(maybe_create_path(self.model.path),
+                             f'{data_name}_enc_var_selec_{example_index}.png')
+        plt.savefig(fname, bbox_inches='tight', dpi=300)
         if show:
             plt.show()
         return
@@ -360,26 +358,76 @@ class Interpret(Plot):
             data : the data to use to interpret model
         """
 
-        true, predictions = model.predict(data=data, return_true=True,
+        true, predictions = self.model.predict(data=data, return_true=True,
                                           process_results=False)
 
         ac, data = self.tft_attention_components(data=data)
 
         encoder_variable_selection_weights = ac['encoder_variable_selection_weights']
 
-        train_x, train_y = getattr(model, f'{data}_data')()
+        train_x, train_y = getattr(self.model, f'{data}_data')()
 
         plot_activations_along_inputs(activations=encoder_variable_selection_weights,
                                       data=train_x[:, -1],
                                       observations=true,
                                       predictions=predictions,
-                                      in_cols=model.input_features,
-                                      out_cols=model.output_features,
-                                      lookback=model.lookback,
+                                      in_cols=self.model.input_features,
+                                      out_cols=self.model.output_features,
+                                      lookback=self.model.lookback,
                                       name=f'tft_encoder_weights_{data}',
-                                      path=maybe_create_path(model.path)
+                                      path=maybe_create_path(self.model.path)
                                       )
         return
+
+
+def xgb_fimp_with_plotly(
+        importance:pd.DataFrame,
+        importance_types,
+        fig_width,
+        fig_height,
+        path,
+):
+
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    # initiate figure with subplots
+    fig = make_subplots(
+        rows=len(importance_types) + 1, cols=1,
+        vertical_spacing=0.02
+        # shared_xaxes=True
+    )
+
+    for idx, col in enumerate(importance.columns):
+        fig.add_trace(go.Bar(
+            x=importance.index.tolist(),
+            y=importance[col],
+            name=col
+        ), row=idx + 1, col=1)
+
+    fig.update_xaxes(showticklabels=False)  # hide all the xticks
+    fig.update_xaxes(showticklabels=True,
+                     row=len(importance_types),
+                     col=1,
+                     tickangle=-45,
+                     title="Input Features"
+                     )
+
+    # Here we modify the tickangle of the xaxis, resulting in rotated labels.
+    fig.update_layout(
+        height=fig_height,
+        width=fig_width,
+        legend_title="Calculation Method",
+        title_text="XGBoost Feature Importance",
+        title_x=0.42,
+        font=dict(
+            family="Times New Roman",
+            size=26,
+        )
+    )
+    fname = os.path.join(path, "xgb_f_imp_comp.html")
+    fig.write_html(fname)
+    return fig
 
 
 def maybe_create_path(path):

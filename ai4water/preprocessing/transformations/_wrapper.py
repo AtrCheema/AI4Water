@@ -121,6 +121,43 @@ class Transformations(object):
 
         return
 
+    def transform(self, data:Union[np.ndarray, List, Dict]):
+        """Transforms the data according the the `config`.
+
+        Arguments:
+            data:
+                The data on which to apply transformations. It can be one of following
+
+                - a (2d or 3d) numpy array
+                - a list of numpy arrays
+                - a dictionary of numpy arrays
+        Returns:
+            The transformed data which has same type and dimensions as the input data
+        """
+
+        if self.t_config is None:  # if no transformation then just return the data as it is
+            return data
+
+        orignal_data_type = data.__class__.__name__
+
+        assert hasattr(self, 'scalers_'), f"transformer has not been fitted yet"
+        assert len(self.scalers_) > 0
+
+        # first check that data matches config
+        self._check_features()
+
+        # then apply transformation
+        data = self._transform(data)
+
+        # now pack it in original form
+        assert data.__class__.__name__ == orignal_data_type, f"""
+        type changed from {orignal_data_type} to {data.__class__.__name__}
+        """
+
+        #self._assert_same_dim(self, orignal_data, data)
+
+        return data
+
     def fit_transform(self, data:Union[np.ndarray, List, Dict]):
         """Transforms the data according the the `config`.
 
@@ -134,10 +171,10 @@ class Transformations(object):
         Returns:
             The transformed data which has same type and dimensions as the input data
         """
-        setattr(self, 'is_numpy_', False)
-        setattr(self, 'is_list_', False)
-        setattr(self, 'is_dict_', False)
-        setattr(self, 'scalers_', {})
+        self.is_numpy_ = False
+        self.is_list_ = False
+        self.is_dict_ =False
+        self.scalers_ = {}
 
         if self.t_config is None:  # if no transformation then just return the data as it is
             return data
@@ -145,11 +182,11 @@ class Transformations(object):
         orignal_data_type = data.__class__.__name__
 
         if isinstance(data, np.ndarray):
-            setattr(self, 'is_numpy_', True)
+            self.is_numpy_ = True
         elif isinstance(data, list):
-            setattr(self, 'is_list_', True)
+            self.is_list_ = True
         elif isinstance(data, dict):
-            setattr(self, 'is_dict_', True)
+            self.is_dict_ = True
         else:
             raise ValueError(f"invalid data of type {data.__class__.__name__}")
 
@@ -164,13 +201,44 @@ class Transformations(object):
         type changed from {orignal_data_type} to {data.__class__.__name__}
         """
 
-        #self._assert_same_dim(self, orignal_data, data)
-
         return data
 
     def _transform_2d(self, data, columns, transformation=None, key="5"):
+        data = data.copy()
+
+        if transformation:
+
+            if isinstance(transformation, dict):
+                config = self.scalers_[key]
+                transformer = Transformation.from_config(config)
+                data = transformer.transform(pd.DataFrame(data, columns=columns))
+
+            # we want to apply multiple transformations
+            elif isinstance(transformation, list):
+                for idx, trans in enumerate(transformation):
+
+                    if isinstance(trans, str):
+                        config = self.scalers_[f'{key}_{trans}_{idx}']
+                        transformer = Transformation.from_config(config)
+                        data = transformer.transform(pd.DataFrame(data, columns=columns))
+
+                    elif trans['method'] is not None:
+                        config = self.scalers_[f'{key}_{trans["method"]}_{idx}']
+                        transformer = Transformation.from_config(config)
+                        data = transformer.transform(pd.DataFrame(data, columns=columns))
+            else:
+                assert isinstance(transformation, str)
+                transformer = Transformation.from_config(self.scalers_[key])
+                data = transformer.transform(pd.DataFrame(data, columns=columns))
+
+            data = data.values
+
+        return data
+
+    def _fit_transform_2d(self, data, columns, transformation=None, key="5"):
         """performs transformation on single data 2D source"""
-        # it is better to make a copy here because all the operations on data happen after this.
+        # it is better to make a copy here because all the operations
+        # on data happen after this.
         data = data.copy()
         scalers = {}
         if transformation:
@@ -205,8 +273,8 @@ class Transformations(object):
 
         return data
 
-    def __fit_transform(self, data, feature_names, transformation=None, key="5"):
-        """performs transformation on single data source
+    def __transform(self, data, feature_names, transformation=None, key="5"):
+        """performs transformation on single data source without fiting on it first.
         In case of 3d array, the shape is supposed to be following
         (num_examples, time_steps, num_features)
         Therefore, each time_step is extracted and transfomred individually
@@ -224,6 +292,50 @@ class Transformations(object):
         else:
             _data = self._transform_2d(data, feature_names, transformation, key=key)
 
+        return _data
+
+    def __fit_transform(self, data, feature_names, transformation=None, key="5"):
+        """performs transformation on single data source
+        In case of 3d array, the shape is supposed to be following
+        (num_examples, time_steps, num_features)
+        Therefore, each time_step is extracted and transfomred individually
+        for example with time_steps of 2, two 2d arrays will be extracted and
+        transformed individually
+        (num_examples, 0,num_features), (num_examples, 1, num_features)
+        """
+        if data.ndim == 3:
+            _data = np.full(data.shape, np.nan)
+            for time_step in range(data.shape[1]):
+                _data[:, time_step] = self._fit_transform_2d(data[:, time_step],
+                                                        feature_names,
+                                                        transformation,
+                                                        key=f"{key}_{time_step}")
+        else:
+            _data = self._fit_transform_2d(data, feature_names, transformation, key=key)
+
+        return _data
+
+    def _transform(self, data, key="5"):
+        """performs transformation on every data source in data"""
+        transformation = self._fetch_transformation(data)
+        if self.is_numpy_:
+            _data = self.__transform(data, self.names, transformation, key)
+
+        elif self.is_list_:
+            _data = []
+            for idx, array in enumerate(data):
+                _data.append(self.__transform(array,
+                                              self.names[idx],
+                                              transformation[idx],
+                                              key=f"{key}_{idx}")
+                             )
+        else:
+            _data = {}
+            for src_name, array in data.items():
+                _data[src_name] = self.__transform(array,
+                                                   self.names[src_name],
+                                                   transformation[src_name],
+                                                   f"{key}_{src_name}")
         return _data
 
     def _fit_transform(self, data, key="5"):

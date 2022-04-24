@@ -21,10 +21,10 @@ else:
 
 class HARHNModel(Model):
 
-    def __init__(self, use_gpu=True, teacher_forcing=True, **kwargs):
+    def __init__(self, use_cuda=True, teacher_forcing=True, **kwargs):
 
         dev = torch.device("cpu")
-        if use_gpu and torch.cuda.is_available():
+        if use_cuda and torch.cuda.is_available():
             dev = torch.device("cuda")
 
         self.dev = dev
@@ -32,7 +32,7 @@ class HARHNModel(Model):
         super(HARHNModel, self).__init__(teacher_forcing=teacher_forcing, **kwargs)
 
         # should be set after initiating upper classes so that torch_learner attribute is set
-        self.torch_learner.use_cuda = use_gpu
+        self.torch_learner.use_cuda = use_cuda
 
     def initialize_layers(self, layers_config: dict, inputs=None):
 
@@ -97,6 +97,9 @@ class IMVModel(HARHNModel):
         alphas = np.concatenate(alphas)  # (examples, lookback, ins, 1)
 
         x, _ = getattr(self, f'{data}_data')()
+
+        if len(x) == 0 or (isinstance(x, list) and len(x[0]) == 0):
+            raise ValueError(f"no {data} data found.")
 
         path = os.path.join(self.path, "interpret")
         if not os.path.exists(path):

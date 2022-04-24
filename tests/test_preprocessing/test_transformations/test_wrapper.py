@@ -41,7 +41,7 @@ class Test3dData(unittest.TestCase):
             elif method == "sqrt":
                 kwargs['treat_negatives'] = True
 
-            x = np.arange(-1, 29, dtype='float32').reshape(15, 2)
+            x = np.arange(1, 31, dtype='float32').reshape(15, 2)
             x3d, _, _ = prepare_data(x, num_outputs=0, lookback=2)
             x1 = calculate_manually(x3d, **kwargs)
 
@@ -255,7 +255,7 @@ class TestMultipleSources(unittest.TestCase):
 
             config = {'method': method, 'treat_negatives': True, 'replace_zeros': True}
 
-            x = np.random.randint(-2, 30, (10, 3))
+            x = np.random.randint(2, 32, (10, 3))
             t = Transformations(['a', 'b', 'c'], config)
             x_ = t.fit_transform(x.copy())
             conf = t.config()
@@ -268,10 +268,14 @@ class TestMultipleSources(unittest.TestCase):
     def test_model_predict(self):
         # first use transformation and inverse_transformation from fit/predict and
         # then compare with manually doing the same
+        methods = ["minmax", "box-cox", "robust", "power",
+                   "center", "zscore", "scale", "quantile"]
+
         data1 = np.random.random((10, 3))
         df = pd.DataFrame(data1, columns=['a', 'b', 'c'])
-        for x_trans in ["minmax", "box-cox", "robust", "power", "center", "zscore", "scale", "quantile"]:
-            for y_trans in ["log", "sqrt", "log10", "log2"]:
+        for x_trans in methods:
+
+            for y_trans in methods:
 
                 model = Model(model="RandomForestRegressor",
                               x_transformation = x_trans,
@@ -280,7 +284,9 @@ class TestMultipleSources(unittest.TestCase):
                               val_fraction=0.0, train_fraction=1.0)
 
                 model.fit(data=df)
-                t,p = model.predict(data='training', return_true=True, process_results=False)
+                t,p = model.predict(data='training',
+                                    return_true=True,
+                                    process_results=False)
 
                 x = data1[:, 0:2]
                 y = data1[:, -1]

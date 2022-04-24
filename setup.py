@@ -12,14 +12,13 @@ else:
     long_desc = "https://github.com/AtrCheema/AI4Water"
 
 min_requirements = [
-    'numpy<=1.19.5',
+    'numpy',
     'scikit-learn',
     'pandas',
     'matplotlib',
     'scikit-optimize',
     'joblib',
     'requests',
-    'plotly',
     'easy_mpl>=0.20.4',
     'SeqMetrics>=1.3.2'
     ]
@@ -49,7 +48,10 @@ extra_requires = [
 'wrapt',
 
 # eda
-'seaborn'
+'seaborn',
+
+# only in some plots
+'plotly',
 ]
 
 tf_requires = ['h5py<2.11.0', 'numpy<=1.19.5', 'easy_mpl', 'tensorflow', 'pandas',
@@ -92,7 +94,7 @@ setup(
 
     name='AI4Water',
 
-    version="1.0b6",
+    version="1.0b7",
 
     description='Platform for developing data driven based models for sequential/tabular data',
     long_description=long_desc,

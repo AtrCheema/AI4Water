@@ -284,7 +284,7 @@ class HyperOpt(object):
             self,
             algorithm: str, *,
             param_space,
-            objective_fn=None,
+            objective_fn,
             eval_on_best: bool = False,
             backend: str = None,
             opt_path: str = None,
@@ -292,23 +292,18 @@ class HyperOpt(object):
             verbosity: int = 1,
             **kwargs
     ):
-
         """
         Initializes the class
 
         Parameters
-        ---------
-            algorithm str:
+        ----------
+            algorithm : str
                 must be one of "random", "grid" "bayes", "bayes_rf", and "tpe", defining which
                 optimization algorithm to use.
-            objective_fn callable:
+            objective_fn : callable
                 Any callable function whose returned value is to be minimized.
                 It can also be either sklearn/xgboost based regressor/classifier.
-            backend str:
-                Defines which backend library to use for the `algorithm`. For
-                example the user can specify whether to use `optuna` or `hyper_opt`
-                or `sklearn` for `grid` algorithm.
-            param_space list/dict:
+            param_space : list, dict
                 the search space of parameters to be optimized. We recommend the use
                 of Real, Integer and categorical classes from [ai4water.hyperopt][ai4water.hyperopt.Integer]
                 (not from skopt.space). These classes allow a uniform way of defining
@@ -318,13 +313,19 @@ class HyperOpt(object):
                 underlying libraries. For example, for hyperopt based method like
                 'tpe' the parameter space can be specified as in the examples of
                 hyperopt library. In case the code breaks, please report.
-            eval_on_best bool:
+            eval_on_best : bool, optional
                 if True, then after optimization, the objective_fn will
                 be evaluated on best parameters and the results will be stored in the
                 folder named "best" inside `title` folder.
-            opt_path : path to save the results
-            verbosity : determines amount of information being printed
-            kwargs dict:
+            opt_path :
+                path to save the results
+            backend : str, optional
+                Defines which backend library to use for the `algorithm`. For
+                example the user can specify whether to use `optuna` or `hyper_opt`
+                or `sklearn` for `grid` algorithm.
+            verbosity : bool, optional
+                determines amount of information being printed
+            **kwargs :
                 Any additional keyword arguments will for the underlying optimization
                 algorithm. In case of using AI4Water model, these must be arguments
                 which are passed to AI4Water's Model class.
@@ -449,6 +450,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
     @param_space.setter
     def param_space(self, x):
         if self.algorithm in ["bayes", "bayes_rf"]:
+            assert Dimension is not None, f"you must have scikit-optimize installed to use {self.algorithm}."
             if isinstance(x, dict):
                 _param_space = []
                 for k, v in x.items():

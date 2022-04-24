@@ -197,9 +197,13 @@ class BaseModel(NN):
                 >>> wandb_config = {'entity': 'entity_name', 'project': 'project_name',
                 ...                 'training_data':True, 'validation_data': True}
 
-            seed : int
+            seed int:
                 random seed for reproducibility. This can be set to None. The seed
-                is set to `np`, `os`, `tf`, `torch` and `random` modules simultaneously.
+                is set to `os`, `tf`, `torch` and `random` modules simultaneously.
+                Please note that this seed is not set for numpy because that
+                will result in constant sampling during hyperparameter optimization.
+                If you want to seed everything, then use following function
+                >>> model.seed_everything()
             prefix : str
                 prefix to be used for the folder in which the results are saved.
                 default is None, which means within
@@ -289,7 +293,8 @@ class BaseModel(NN):
 
             reset_seed(maker.config['seed'], os=os, random=random, tf=tf, torch=torch)
             if tf is not None:
-                # graph should be cleared everytime we build new `Model` otherwise, if two `Models` are prepared in same
+                # graph should be cleared everytime we build new `Model` otherwise,
+                # if two `Models` are prepared in same
                 # file, they may share same graph.
                 tf.keras.backend.clear_session()
 
@@ -499,6 +504,15 @@ class BaseModel(NN):
         else:
             return None
 
+    def seed_everything(self, seed = None)->None:
+        """resets seeds of numpy, os, random, tensorflow, torch.
+        If any of these module is not available, the seed for that module
+        is not set."""
+        if seed is None:
+            seed = seed or self.config['seed'] or 313
+        reset_seed(seed=seed, os=os, np=np, tf=tf, torch=torch, random=random)
+        return
+
     def trainable_parameters(self) -> int:
         """Calculates trainable parameters in the model
 
@@ -645,8 +659,8 @@ class BaseModel(NN):
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
             else:
-                x = self._transform_x(x, 'val_x_transformer_')
-                y = self._transform_y(y, 'val_y_transformer_')
+                x = self._transform_x(x)
+                y = self._transform_y(y)
                 validation_data = x,y
 
         elif validation_data is not None:
@@ -973,7 +987,7 @@ class BaseModel(NN):
                 >>> callbacks={'tensorboard': {'histogram_freq': 1}}
 
             kwargs :
-                Any keyword argument for the `fit` method of the underlying algorithm.
+                Any keyword argument for the `fit` method of the underlying library.
                 if 'x' is present in kwargs, that will take precedent over `data`.
         Returns:
             A keras history object in case of deep learning model with tensorflow
@@ -1015,8 +1029,8 @@ class BaseModel(NN):
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
         # apply preprocessing/feature engineering if required.
-        inputs = self._transform_x(inputs, 'x_transformer_')
-        outputs = self._transform_y(outputs, 'y_transformer_')
+        inputs = self._fit_transform_x(inputs)
+        outputs = self._fit_transform_y(outputs)
 
         if isinstance(outputs, np.ndarray) and self.category == "DL":
 
@@ -1049,7 +1063,7 @@ class BaseModel(NN):
 
             self.load_best_weights()
         else:
-            history = self.fit_ml_models(inputs, outputs)
+            history = self.fit_ml_models(inputs, outputs, **kwargs)
 
         self.info['training_end'] = dateandtime_now()
         self.save_config()
@@ -1071,7 +1085,7 @@ class BaseModel(NN):
                 self.update_weights(os.path.join(self.w_path, best_weights))
         return
 
-    def fit_ml_models(self, inputs, outputs):
+    def fit_ml_models(self, inputs, outputs, **kwargs):
         # following arguments are strictly about nn so we don't need to save them in config file
         # so that it does not confuse the reader.
         for arg in ["composite", "optimizer", "lr", "epochs"]:
@@ -1083,7 +1097,7 @@ class BaseModel(NN):
 
         self._maybe_change_residual_threshold(outputs)
 
-        history = self._model.fit(inputs, outputs)
+        history = self._model.fit(inputs, outputs, **kwargs)
 
         if self._model.__class__.__name__.startswith("XGB") and inputs.__class__.__name__ == "ndarray":
             # by default feature_names of booster as set to f0, f1,...
@@ -1259,8 +1273,8 @@ class BaseModel(NN):
         `score` function of sklearn by first transforming x and y."""
         if self.category == "ML" and hasattr(self, '_model'):
             x,y, _, _, _ = self._fetch_data(data, x=x,y=y, data=data)
-            x = self._transform_x(x, 'x_score_')
-            x = self._transform_x(x, 'y_score_')
+            x = self._transform_x(x)
+            y = self._transform_y(y)
             return self._model.score(x, y, **kwargs)
         raise NotImplementedError(f"can not calculate score")
 
@@ -1273,7 +1287,7 @@ class BaseModel(NN):
         """
         if self.category == "ML" and hasattr(self, '_model'):
             x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
-            x = self._transform_x(x, 'x_proba_')
+            x = self._transform_x(x)
             return self._model.predict_proba(x,  **kwargs)
         raise NotImplementedError(f"can not calculate proba")
 
@@ -1286,7 +1300,7 @@ class BaseModel(NN):
         """
         if self.category == "ML" and hasattr(self, '_model'):
             x, _, _, _, _ = self._fetch_data(data, x=x, data=data)
-            x = self._transform_x(x, 'x_log_proba_')
+            x = self._transform_x(x)
             return self._model.predict_log_proba(x, **kwargs)
         raise NotImplementedError(f"can not calculate log_proba")
 
@@ -1408,8 +1422,8 @@ class BaseModel(NN):
 
         # after this we call evaluate function of underlying model
         # therefore we must transform inputs and outptus
-        x = self._transform_x(x, 'val_x_transformer_')
-        y = self._transform_y(y, 'val_y_transformer_')
+        x = self._transform_x(x)
+        y = self._transform_y(y)
 
         if hasattr(self._model, 'evaluate'):
             return self._model.evaluate(x, y, **kwargs)
@@ -1538,6 +1552,153 @@ class BaseModel(NN):
                                  return_true=return_true,
                                  **kwargs)
 
+    def predict_on_training_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """makes prediction on training data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which training data (x,y paris) will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        ds = DataSet(data, **self.data_config)
+
+        x, y = ds.training_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
+    def predict_on_validation_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """makes prediction on validation data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which validation data (x,y paris) will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        ds = DataSet(data, **self.data_config)
+
+        x, y = ds.validation_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
+    def predict_on_test_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """makes prediction on test data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which test data (x,y paris) will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        ds = DataSet(data, **self.data_config)
+
+        x, y = ds.test_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
+    def predict_on_all_data(
+            self,
+            data,
+            process_results=True,
+            return_true=False,
+            metrics="minimal",
+            **kwargs
+    ):
+        """
+        This function first generates x,y pairs from ``data`` and then makes prediction on it.
+        The ``data`` is not divided into training,test sets. Moreover if target data contains
+        missing values, then predictions for that will also be made using corresponding input
+        data.
+        Parameters
+        ----------
+        data :
+            raw, unprepared data from which x,y paris will be generated.
+        process_results : bool, optional
+            whether to post-process the results or not
+        return_true : bool, optional
+            If true, the returned value will be tuple, first is true and second is predicted array
+        metrics : str, optional
+            the metrics to calculate during post-processing
+        **kwargs
+            any keyword argument for .predict method.
+        """
+        data_config = self.data_config
+
+        data_config['train_fraction'] = 1.0
+        data_config['val_fraction'] = 0.0
+        data_config['allow_nan_labels'] = 2
+        data_config['indices'] = None
+
+        ds = DataSet(data, **data_config)
+
+        x, y = ds.training_data()
+
+        return self.call_predict(x=x,
+                                 y=y,
+                                 process_results=process_results,
+                                 return_true=return_true,
+                                 metrics=metrics,
+                                 **kwargs
+                                 )
+
     def call_predict(self,
                      x=None,
                      y=None,
@@ -1560,7 +1721,7 @@ class BaseModel(NN):
 
         if user_defined_data:
             pass
-        elif len(inputs)==0 and source == "test":
+        elif len(inputs) == 0 or (isinstance(inputs, list) and len(inputs[0]) == 0) and source == "test":
             warnings.warn("No test data found. using validation data instead",
                           UserWarning)
             data = "validation"
@@ -1571,7 +1732,7 @@ class BaseModel(NN):
                 y=y,
                 data=data)
             # if we still have no data, then we use training data instead
-            if len(inputs)==0:
+            if len(inputs)==0 or (isinstance(inputs, list) and len(inputs[0]) == 0):
                 warnings.warn("""
                 No test and validation data found. using training data instead""",
                               UserWarning)
@@ -1583,14 +1744,10 @@ class BaseModel(NN):
                     y=y,
                     data=data)
 
-        inputs = self._transform_x(inputs, 'x_transformer_')
+        inputs = self._transform_x(inputs)
 
-        y_transformer = None
         if true_outputs is not None:
-            if self.config['y_transformation']:
-                y_transformer = Transformations(self.output_features,
-                                                self.config['y_transformation'])
-                true_outputs = y_transformer.fit_transform(true_outputs)
+            true_outputs = self._transform_y(true_outputs)
 
         if self.category == 'DL':
             # some arguments specifically for DL models
@@ -1614,9 +1771,9 @@ class BaseModel(NN):
 
             predicted = self.predict_ml_models(inputs, **kwargs)
 
-        true_outputs, predicted = self._inverse_transform_y(true_outputs,
-            predicted, 
-            y_transformer)
+        true_outputs, predicted = self._inverse_transform_y(
+            true_outputs,
+            predicted)
 
         if true_outputs is None:
             if return_true:
@@ -1699,7 +1856,7 @@ class BaseModel(NN):
         """So that it can be overwritten easily for ML models."""
         return self.predict_fn(inputs, **kwargs)
 
-    def plot_model(self, nn_model, **kwargs) -> None:
+    def plot_model(self, nn_model, show=False, figsize=None, **kwargs) -> None:
 
         if int(tf.__version__.split('.')[1]) > 14 and 'dpi' not in kwargs:
             kwargs['dpi'] = 300
@@ -1712,8 +1869,22 @@ class BaseModel(NN):
                 nn_model,
                 show_shapes=True,
                 **kwargs)
+            drawn = True
         except (AssertionError, ImportError) as e:
             print(f"dot plot of model could not be plotted due to {e}")
+            drawn = False
+
+        if drawn and show:
+            import matplotlib.image as mpimg
+            from easy_mpl import imshow
+            img = mpimg.imread(os.path.join(self.path, "model.png"))
+            kwargs = {}
+            if figsize:
+                kwargs['figsize'] = figsize
+            ax,_ = imshow(img, show=False, xticklabels=[], yticklabels=[], **kwargs)
+            ax.axis('off')
+            plt.tight_layout()
+            plt.show()
         return
 
     def get_opt_args(self) -> dict:
@@ -2078,6 +2249,7 @@ class BaseModel(NN):
 
     def update_info(self):
         from .backend import lightgbm, tcn, catboost, xgboost
+        from . import __version__
         self.info['version_info'] = get_version_info(
             tf=tf,
             keras=keras,
@@ -2092,6 +2264,8 @@ class BaseModel(NN):
             catboost=catboost,
             xgboost=xgboost
         )
+
+        self.info["version_info"]['ai4water_version'] = __version__
         return
 
     def print_info(self):
@@ -2468,7 +2642,8 @@ class BaseModel(NN):
             path=os.path.join(self.path, "explain"),
             feature_names=self.input_features,
             weights=weights,
-            seed=self.config['seed']
+            seed=self.config['seed'],
+            save=True
         )
 
         if plot_type is not None:
@@ -2484,34 +2659,47 @@ class BaseModel(NN):
             data=None,
             bounds=None,
             sampler="morris",
-            analyzer="sobol",
+            analyzer:Union[str, list]="sobol",
             sampler_kwds: dict = None,
             analyzer_kwds: dict = None,
             save_plots: bool = True
-    ):
+    )->dict:
         """performs sensitivity analysis of the model w.r.t input features in data.
 
         The model and its hyperprameters remain fixed while the input data is changed.
 
         Parameters
         ----------
-
         data :
-            data which
+            data which will be used to get the bounds/limits of input features. If given,
+            it must be 2d numpy array. It should be remembered that the given data
+            is not used during sensitivity analysis. But new synthetic data is prepared
+            on which sensitivity analysis is performed.
         bounds : list,
             alternative to data
-
         sampler : str, optional
             any sampler_ from SALib library. For example ``morris``, ``fast_sampler``,
             ``ff``, ``finite_diff``, ``latin``, ``saltelli``, ``sobol_sequence``
         analyzer : str, optional
             any analyzer_ from SALib lirary. For example ``sobol``, ``dgsm``, ``fast``
-            ``ff``, ``hdmr``, ``morris``, ``pawn``, ``rbd_fast``
+            ``ff``, ``hdmr``, ``morris``, ``pawn``, ``rbd_fast``. You can also choose
+            more than one analyzer. This is useful when you want to compare results
+            of more than one analyzers. It should be noted that having more than
+            one analyzers does not increases computation time except for ``hdmr``
+            and ``delta`` analyzers. The ``hdmr`` and ``delta`` analyzers ane computation
+            heavy. For example
+            >>> analyzer = ["morris", "sobol", "rbd_fast"]
         sampler_kwds : dict
             keyword arguments for sampler
         analyzer_kwds : dict
             keyword arguments for analyzer
         save_plots : bool, optional
+
+        Returns
+        -------
+        dict :
+            a dictionary whose keys are names of analyzers and values and sensitivity
+            results for that analyzer.
 
         Examples
         --------
@@ -2528,7 +2716,7 @@ class BaseModel(NN):
         >>> model.fit(data=data)
 
         >>> si = model.sensitivity_analysis(data=data[input_features].values,
-        >>>                    sampler="morris", analyzer="hdmr",
+        >>>                    sampler="morris", analyzer=["morris", "sobol"],
         >>>                        sampler_kwds={'N': 100})
 
         .. _sampler:
@@ -2545,12 +2733,15 @@ class BaseModel(NN):
             You must have SALib library installed in order to perform sensitivity analysis.
             Please install it using 'pip install SALib' and make sure that it is importable
             """)
-            return
+            return {}
 
-        from ai4water.postprocessing._sa import sensitivity_analysis, _plots
+        from ai4water.postprocessing._sa import sensitivity_analysis, sensitivity_plots
+        from ai4water.postprocessing._sa import _make_predict_func
 
         if data is not None:
-            assert isinstance(data, np.ndarray)
+            if not isinstance(data, np.ndarray):
+                assert isinstance(data, pd.DataFrame)
+                data = data.values
             x = data
 
             # calculate bounds
@@ -2566,10 +2757,18 @@ class BaseModel(NN):
 
         analyzer_kwds = analyzer_kwds or {}
 
-        si = sensitivity_analysis(
+        if self.lookback >1:
+            if self.category == "DL":
+                func = _make_predict_func(self, verbose=0)
+            else:
+                func = _make_predict_func(self)
+        else:
+            func = self.predict
+
+        results = sensitivity_analysis(
             sampler,
             analyzer,
-            self.predict,
+            func,
             bounds=bounds,
             sampler_kwds = sampler_kwds,
             analyzer_kwds = analyzer_kwds,
@@ -2577,35 +2776,81 @@ class BaseModel(NN):
         )
 
         if save_plots:
-            _plots(analyzer, si, self.path)
+            for _analyzer, result in results.items():
+                res_df = result.to_df()
+                if isinstance(res_df, list):
+                    for idx, res in enumerate(res_df):
+                        fname = os.path.join(self.path, f"{_analyzer}_{idx}_results.csv")
+                        res.to_csv(fname)
+                else:
+                    res_df.to_csv(os.path.join(self.path, f"{_analyzer}_results.csv"))
 
-        return si
+                sensitivity_plots(_analyzer, result, self.path)
 
-    def _transform_x(self, x, name):
-        """transforms x and puts the transformer in config witht he key name"""
-        return self._transform(x, name, self.config['x_transformation'], self.input_features)
+        return results
 
-    def _transform_y(self, y, name):
-        """transforms y and puts the transformer in config witht he key name"""
-        return self._transform(y, name, self.config['y_transformation'], self.output_features)
+    def _transform(self, data, name_in_config):
+        """transforms the data using the transformer which has already been fit"""
 
-    def _transform(self, data, name, transformation, feature_names):
-        """transforms the `data` using `transformation` and puts it in config
+        if name_in_config not in self.config:
+            raise NotImplementedError(f"""You have not trained the model using .fit.
+            Making predictions from model or evaluating model without training
+            is not allowed when applying transformations. Because the transformation
+            parameters are calculated using training data. Either train the model
+            first by using.fit() method or remove x_transformation/y_transformation
+            arguments.""")
+
+        transformer = Transformations.from_config(self.config[name_in_config])
+        return transformer.transform(data=data)
+
+    def _transform_x(self, x):
+        """transforms the x data using the transformer which has already been fit"""
+        if self.config['x_transformation']:
+            return self._transform(x, 'x_transformer_')
+        return x
+
+    def _transform_y(self, y):
+        """transforms the y according the transformer which has already been fit."""
+        if self.config['y_transformation']:
+            return self._transform(y, 'y_transformer_')
+        return y
+
+    def _fit_transform_x(self, x):
+        """fits and transforms x and puts the transformer in config witht he key
+        'x_transformer_'"""
+        return self._fit_transform(x,
+                                   'x_transformer_',
+                                   self.config['x_transformation'],
+                                   self.input_features)
+
+    def _fit_transform_y(self, y):
+        """fits and transforms y and puts the transformer in config witht he key
+        'y_transformer_'"""
+        return self._fit_transform(y,
+                                   'y_transformer_',
+                                   self.config['y_transformation'],
+                                   self.output_features)
+
+    def _fit_transform(self, data, key, transformation, feature_names):
+        """fits and transforms the `data` using `transformation` and puts it in config
         with config `name`."""
         if data is not None and transformation:
             transformer = Transformations(feature_names, transformation)
             if isinstance(data, pd.DataFrame):
                 data = data.values
             data = transformer.fit_transform(data)
-            self.config[name] = transformer.config()
+            self.config[key] = transformer.config()
         return data
 
-    def _inverse_transform_y(self, true_outputs, predicted, y_transformer):
+    def _inverse_transform_y(self, true_outputs, predicted):
         """inverse transformation of y/labels for both true and predicted"""
-        if true_outputs is None and self.config['y_transformation'] is not None:  
-                # only x was given and y was transformed
-                predicted = self._inverse_transform_y_without_fit(predicted)
-        elif self.config['y_transformation']:  # only if we apply transformation on y
+
+        if self.config['y_transformation'] is None:
+            return true_outputs, predicted
+
+        y_transformer = Transformations.from_config(self.config['y_transformer_'])
+
+        if self.config['y_transformation']:  # only if we apply transformation on y
             # both x,and true_y were given
             true_outputs = self.__inverse_transform_y(true_outputs, y_transformer)
             # because observed y may have -ves or zeros which would have been
@@ -2616,12 +2861,6 @@ class BaseModel(NN):
             predicted = self.__inverse_transform_y(predicted, y_transformer, postprocess=False)
 
         return true_outputs, predicted
-
-    def _inverse_transform_y_without_fit(self, y):
-        """inverse transforms y/predicted array by starting new Transformations class
-        and without calling fit_transform first."""
-        transformer = Transformations(self.output_features, self.config['y_transformation'])
-        return self.__inverse_transform_y(y, transformer, "inverse_transform_without_fit")
 
     def __inverse_transform_y(self,
                               y,

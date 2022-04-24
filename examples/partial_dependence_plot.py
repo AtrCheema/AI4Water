@@ -31,6 +31,7 @@ x, _ = model.training_data()
 pdp = PartialDependencePlot(model.predict,
                             x,
                             model.input_features,
+                            save=False,
                             num_points=14)
 
 pdp.plot_1d("tide_cm")

@@ -3,6 +3,7 @@ from typing import Union, List, Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from ._explain import ExplainerMixin
 
@@ -58,25 +59,31 @@ class PartialDependencePlot(ExplainerMixin):
             feature_names=None,
             num_points: int = 100,
             path=None,
+            save: bool = True,
+            show: bool = True,
             **kwargs
     ):
         """Initiates the class
 
         Parameters
         ----------
-            model :
+            model : Callable
                 the trained/calibrated model which must be callable. It must take the
                 `data` as input and sprout an array of predicted values. For example
                 if you are using Keras/sklearn model, then you must pass model.predict
-            data :
-                The inputs to the `model`.
-            feature_names :
+            data : np.ndarray, pd.DataFrame
+                The inputs to the `model`. It can numpy array or pandas DataFrame.
+            feature_names : list, optional
                 Names of features. Used for labeling.
-            num_points :
+            num_points : int, optional
                 determines the grid for evaluation of `model`
-            path:
+            path : str, optional
                 path to save the plots. By default the results are saved in current directory
-            kwargs:
+            show:
+                whether to show the plot or not
+            save:
+                whether to save the plot or not
+            **kwargs :
                 any additional keyword arguments for `model`
         """
 
@@ -86,7 +93,17 @@ class PartialDependencePlot(ExplainerMixin):
         self.xmax = "percentile(100)"
         self.kwargs = kwargs
 
-        super().__init__(data=data, features=feature_names, path=path or os.getcwd())
+        if isinstance(data, pd.DataFrame):
+            if feature_names is None:
+                feature_names = data.columns.tolist()
+            data = data.values
+
+        super().__init__(data=data,
+                         features=feature_names,
+                         path=path or os.getcwd(),
+                         show=show,
+                         save=save
+                         )
 
     def nd_interactions(
             self,
@@ -94,8 +111,6 @@ class PartialDependencePlot(ExplainerMixin):
             ice: bool = False,
             show_dist: bool = False,
             show_minima: bool = False,
-            show: bool = True,
-            save: bool = False
     ) -> plt.Figure:
         """Plots 2d interaction plots of all features as done in skopt
 
@@ -108,10 +123,6 @@ class PartialDependencePlot(ExplainerMixin):
                 whether to show the distribution of data as histogram or not
             show_minima:
                 whether to show the function minima or not
-            show:
-                whether to show the plot or not
-            save:
-                whether to save the plot or not
         Returns:
             matplotlib Figure
         """
@@ -134,19 +145,28 @@ class PartialDependencePlot(ExplainerMixin):
                         ax_ = ax
 
                     self._plot_pdp_1dim(*self._pdp_for_2d(self.data, self.features[i]),
-                                        self.data, self.features[i],
-                                        show_dist=show_dist, show_minima=show_minima,
-                                        ice=ice, show=False, ax=ax_)
+                                        self.data,
+                                        self.features[i],
+                                        show_dist=show_dist,
+                                        show_minima=show_minima,
+                                        ice=ice, show=False, save=False,
+                                        ax=ax_)
                     # resetting the label
                     # ax_.set_xlabel(self.features[i])
                     ax_.set_ylabel(self.features[i])
-                    process_axis(ax_, xlabel=self.features[i], top_spine=True, right_spine=True)
+                    process_axis(ax_,
+                                 xlabel=self.features[i],
+                                 top_spine=True,
+                                 right_spine=True)
 
                 # lower triangle
                 elif i > j:
                     self.plot_interaction(
-                        features=[self.features[j], self.features[i]],
-                        show=False, ax=ax[i, j], colorbar=False
+                        features=[self.features[j],self.features[i]],
+                        ax=ax[i, j],
+                        colorbar=False,
+                        save=False,
+                        show=False,
                     )
 
                 elif j > i:
@@ -163,11 +183,11 @@ class PartialDependencePlot(ExplainerMixin):
                     ax[i, j].xaxis.set_visible(False)
                     ax[i, j].xaxis.label.set_visible(False)
 
-        if save:
+        if self.save:
             fname = os.path.join(self.path, f"pdp_interact_nd")
             plt.savefig(fname, bbox_inches="tight", dpi=100*n_dims)
 
-        if show:
+        if self.show:
             plt.show()
 
         return fig
@@ -180,35 +200,35 @@ class PartialDependencePlot(ExplainerMixin):
             plot_type: str = "2d",
             cmap=None,
             colorbar: bool = True,
-            show: bool = True,
-            save: bool = False,
+            show:bool = True,
+            save:bool = True,
             **kwargs
     ) -> plt.Axes:
         """Shows interaction between two features
 
-        Arguments:
-            features:
+        Parameters
+        ----------
+            features :
                 a list or tuple of two feature names to use
-            lookback:
-
-            ax:
+            lookback : optional
+                only relevant in data is 3d
+            ax : optional
                 matplotlib axes on which to draw. If not given, current axes will
                 be used.
-            plot_type:
+            plot_type : optional
                 either "2d" or "surface"
-            cmap:
+            cmap : optional
                 color map to use
-            colorbar:
+            colorbar : optional
                 whether to show the colorbar or not
-            show:
-                whether to show the plot or not
-            save:
-                whether to save the plot or not
-            kwargs:
+            show : bool
+            save : bool
+            **kwargs :
                 any keyword argument for axes.plot_surface or axes.contourf
 
-        Returns:
-              matplotlib Axes
+        Returns
+        -------
+        matplotlib Axes
 
         Examples
         --------
@@ -261,9 +281,12 @@ class PartialDependencePlot(ExplainerMixin):
 
         return ax
 
-    def _plot_interaction(self, ax, x0, x1, pd_vals, cmap, features, lookback,
-                          colorbar=True,
-                          **kwargs):
+    def _plot_interaction(
+            self, ax, x0, x1, pd_vals, cmap,
+            features,
+            lookback,
+            colorbar=True,
+            **kwargs):
         """adds a 2d interaction plot"""
         cntr = ax.contourf(x0, x1, pd_vals, cmap=cmap, **kwargs)
 
@@ -275,7 +298,7 @@ class PartialDependencePlot(ExplainerMixin):
 
         if colorbar:
             cbar = plt.colorbar(cntr, ax=ax)
-            cbar.set_label(f"E[f(x) | {features[0]} {features[1]} ]", rotation=90)
+            cbar.set_label(f"E[f(x) | {features[0]}, {features[1]} ]", rotation=90)
 
         return
 
@@ -290,15 +313,35 @@ class PartialDependencePlot(ExplainerMixin):
         features_tmp = data.copy()
         x0 = np.zeros((self.num_points, self.num_points))
         x1 = np.zeros((self.num_points, self.num_points))
-        pd_vals = np.zeros((self.num_points, self.num_points))
 
+        # instead of calling the model in two for loops, prepare data data
+        # stack it in 'features_all' and call the model only once.
+        total_samples = len(data) * self.num_points * self.num_points
+        features_all = np.full((total_samples, *data.shape[1:]), np.nan)
+
+        st, en = 0, len(data)
         for i in range(self.num_points):
             for j in range(self.num_points):
                 features_tmp[:, ind0] = xs0[i]
                 features_tmp[:, ind1] = xs1[j]
                 x0[i, j] = xs0[i]
                 x1[i, j] = xs1[j]
-                pd_vals[i, j] = self.model(features_tmp).mean()
+
+                features_all[st:en] = features_tmp
+                st = en
+                en += len(data)
+
+        predictions = self.model(features_all)
+
+        pd_vals = np.zeros((self.num_points, self.num_points))
+        st, en = 0, len(data)
+
+        for i in range(self.num_points):
+            for j in range(self.num_points):
+
+                pd_vals[i, j] = predictions[st:en].mean()
+                st = en
+                en += len(data)
 
         return x0, x1, pd_vals
 
@@ -312,61 +355,81 @@ class PartialDependencePlot(ExplainerMixin):
             model_expected_value: bool = False,
             show_ci: bool = False,
             show_minima: bool = False,
-            show: bool = True,
-            save: bool = False
+            ice_only: bool = False,
+            ice_color: str = "lightblue",
     ):
         """partial dependence plot in one dimension
 
-        Arguments:
-            feature:
+        Parameters
+        ----------
+            feature :
                 the feature name for which to plot the partial dependence
-            show_dist:
+            show_dist :
                 whether to show actual distribution of data or not
-            show_dist_as:
+            show_dist_as :
                 one of "hist" or "grid"
-            ice:
+            ice :
                 whether to show individual component elements on plot or not
-            feature_expected_value:
+            feature_expected_value :
                 whether to show the average value of feature on the plot or not
-            model_expected_value:
+            model_expected_value :
                 whether to show average prediction on plot or not
-            show_ci:
+            show_ci :
                 whether to show confidence interval of pdp or not
-            show_minima:
+            show_minima :
                 whether to indicate the minima or not
-            show:
-                whether to show the plot or not
-            save:
-                whether to save the plot or not
+            ice_only : bool, False
+                whether to show only ice plots
+            ice_color :
+                color for ice lines. It can also be a valid maplotlib
+                `colormap <https://matplotlib.org/3.5.1/tutorials/colors/colormaps.html>`_
         """
         if isinstance(feature, list) or isinstance(feature, tuple):
             raise NotImplementedError
         else:
             if self.single_source:
                 if self.data_is_2d:
-                    self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature), self.data, feature,
-                                        show_dist=show_dist, show_dist_as=show_dist_as,
-                                        ice=ice, feature_expected_value=feature_expected_value,
-                                        show_ci=show_ci, show_minima=show_minima,
-                                        model_expected_value=model_expected_value, show=show, save=save)
+                    ax = self._plot_pdp_1dim(
+                        *self._pdp_for_2d(self.data, feature),
+                        self.data, feature,
+                        show_dist=show_dist,
+                        show_dist_as=show_dist_as,
+                        ice=ice,
+                        feature_expected_value=feature_expected_value,
+                        show_ci=show_ci, show_minima=show_minima,
+                        model_expected_value=model_expected_value,
+                        show=self.show,
+                        save=self.save,
+                        ice_only=ice_only,
+                        ice_color=ice_color)
                 elif self.data_is_3d:
                     for lb in range(self.data.shape[1]):
-                        self._plot_pdp_1dim(*self._pdp_for_2d(self.data, feature, lb),
-                                            data=self.data, feature=feature, lookback=lb,
-                                            show_ci=show_ci, show_minima=show_minima,
-                                            show_dist=show_dist, show_dist_as=show_dist_as,
-                                            ice=ice, feature_expected_value=feature_expected_value,
-                                            model_expected_value=model_expected_value, show=show, save=save)
+                        ax = self._plot_pdp_1dim(
+                            *self._pdp_for_2d(self.data, feature, lb),
+                            data=self.data,
+                            feature=feature,
+                            lookback=lb,
+                            show_ci=show_ci,
+                            show_minima=show_minima,
+                            show_dist=show_dist,
+                            show_dist_as=show_dist_as,
+                            ice=ice,
+                            feature_expected_value=feature_expected_value,
+                            model_expected_value=model_expected_value,
+                            show=self.show,
+                            save=self.save,
+                            ice_only=ice_only,
+                            ice_color=ice_color)
             else:
                 for data in self.data:
                     if self.data_is_2d:
-                        self._pdp_for_2d(data, feature)
+                        ax = self._pdp_for_2d(data, feature)
                     else:
                         for lb in []:
-                            self._pdp_for_2d(data, feature, lb)
-        return
+                            ax = self._pdp_for_2d(data, feature, lb)
+        return ax
 
-    def xv(self, data, feature, lookback):
+    def xv(self, data, feature, lookback=None):
 
         ind = self._feature_to_ind(feature)
         if data.ndim == 3:
@@ -378,7 +441,10 @@ class PartialDependencePlot(ExplainerMixin):
 
     def grid(self, data, feature, lookback=None):
         """generates the grid for evaluation of model"""
-        xmin, xmax = compute_bounds(self.xmin, self.xmax, self.xv(data, feature, lookback))
+        xmin, xmax = compute_bounds(self.xmin,
+                                    self.xmax,
+                                    self.xv(data, feature, lookback))
+
         return np.linspace(xmin, xmax, self.num_points)
 
     def _pdp_for_2d(self, data, feature, lookback=None):
@@ -387,19 +453,36 @@ class PartialDependencePlot(ExplainerMixin):
         xs = self.grid(data, feature, lookback)
 
         data_temp = data.copy()
+
+        # instead of calling the model for each num_point, prepare the data
+        # stack it in 'data_all' and call the model only once
+        total_samples = len(data) * self.num_points
+        data_all = np.full((total_samples, *data.shape[1:]), np.nan)
+
         pd_vals = np.full(self.num_points, np.nan)
         ice_vals = np.full((self.num_points, data.shape[0]), np.nan)
 
+        st, en = 0, len(data)
         for i in range(self.num_points):
 
             if data.ndim == 3:
                 data_temp[:, lookback, ind] = xs[i]
             else:
                 data_temp[:, ind] = xs[i]
+                data_all[st:en] = data_temp
 
-            preds = self.model(data_temp, **self.kwargs)
-            pd_vals[i] = preds.mean()
-            ice_vals[i, :] = preds.reshape(-1,)
+            st = en
+            en += len(data)
+
+        predictions = self.model(data_all, **self.kwargs)
+
+        st, en = 0, len(data)
+        for i in range(self.num_points):
+            pred = predictions[st:en]
+            pd_vals[i] = pred.mean()
+            ice_vals[i, :] = pred.reshape(-1, )
+            st = en
+            en += len(data)
 
         return pd_vals, ice_vals
 
@@ -415,14 +498,23 @@ class PartialDependencePlot(ExplainerMixin):
 
         return ind
 
-    def _plot_pdp_1dim(self,
-                       pd_vals, ice_vals, data, feature, lookback=None,
-                       show_dist=True, show_dist_as="hist", ice=True, show_ci=False,
-                       show_minima=False,
-                       feature_expected_value=False, model_expected_value=False,
-                       show=True, save=False, ax=None):
+    def _plot_pdp_1dim(
+            self,
+            pd_vals, ice_vals, data, feature,
+            lookback=None,
+            show_dist=True, show_dist_as="hist",
+            ice=True, show_ci=False,
+            show_minima=False,
+            feature_expected_value=False,
+            model_expected_value=False,
+            show=True, save=False, ax=None,
+            ice_color="lightblue",
+            ice_only=False,
+    ):
 
-        xmin, xmax = compute_bounds(self.xmin, self.xmax, self.xv(data, feature, lookback))
+        xmin, xmax = compute_bounds(self.xmin,
+                                    self.xmax,
+                                    self.xv(data, feature, lookback))
 
         if ax is None:
             fig = plt.figure()
@@ -432,24 +524,45 @@ class PartialDependencePlot(ExplainerMixin):
 
         ylabel = "E[f(x) | " + feature + "]"
         if ice:
-            ice_linewidth = min(1, 50 / ice_vals.shape[1])  # pylint: disable=unsubscriptable-object
-            ax.plot(xs, ice_vals, color='lightblue', linewidth=ice_linewidth, alpha=1)
+            n = ice_vals.shape[1]
+            if ice_color in plt.colormaps():
+                colors = plt.get_cmap(ice_color)(np.linspace(0, 0.8, n))
+            else:
+                colors = [ice_color for _ in range(n)]
+
+            ice_linewidth = min(1, 50 / n)  # pylint: disable=unsubscriptable-object
+            for _ice in range(n):
+                ax.plot(xs, ice_vals[:, _ice], color=colors[_ice],
+                        linewidth=ice_linewidth, alpha=1)
             ylabel = "f(x) | " + feature
 
         if show_ci:
             std = np.std(ice_vals, axis=1)
             upper = pd_vals + std
             lower = pd_vals - std
-            ax.fill_between(xs, upper, lower, alpha=0.14, color='#66C2D7')
+            color = '#66C2D7'
+            if ice_color != "lightblue":
+                if ice_color not in plt.colormaps():
+                    color = ice_color
+
+            ax.fill_between(xs, upper, lower, alpha=0.14, color=color)
 
         # the line plot
-        ax.plot(xs, pd_vals, color='blue', linewidth=2, alpha=1)
+        if not ice_only:
+            ax.plot(xs, pd_vals, color='blue', linewidth=2, alpha=1)
 
         title = None
         if lookback is not None:
             title = f"lookback: {lookback}"
-        process_axis(ax, ylabel=ylabel, ylabel_kws=dict(fontsize=20), right_spine=False, top_spine=False,
-                     tick_params=dict(labelsize=11), xlabel=feature, xlabel_kws=dict(fontsize=20), title=title)
+        process_axis(ax,
+                     ylabel=ylabel,
+                     ylabel_kws=dict(fontsize=20),
+                     right_spine=False,
+                     top_spine=False,
+                     tick_params=dict(labelsize=11),
+                     xlabel=feature,
+                     xlabel_kws=dict(fontsize=20),
+                     title=title)
         ax.xaxis.set_ticks_position('bottom')
         ax.yaxis.set_ticks_position('left')
 
@@ -459,11 +572,17 @@ class PartialDependencePlot(ExplainerMixin):
             xv = self.xv(data, feature, lookback)
             if show_dist_as == "hist":
 
-                ax2.hist(xv, 50, density=False, facecolor='black', alpha=0.1, range=(xmin, xmax))
+                ax2.hist(xv, 50, density=False, facecolor='black', alpha=0.1,
+                         range=(xmin, xmax))
             else:
-                _add_dist_as_grid(fig, xv, other_axes=ax, xlabel=feature, xlabel_kws=dict(fontsize=20))
+                _add_dist_as_grid(fig, xv, other_axes=ax, xlabel=feature,
+                                  xlabel_kws=dict(fontsize=20))
 
-        process_axis(ax2, right_spine=False, top_spine=False, left_spine=False, bottom_spine=False,
+        process_axis(ax2,
+                     right_spine=False,
+                     top_spine=False,
+                     left_spine=False,
+                     bottom_spine=False,
                      ylim=(0, data.shape[0]))
         ax2.xaxis.set_ticks_position('bottom')
         ax2.yaxis.set_ticks_position('left')
@@ -504,10 +623,12 @@ class PartialDependencePlot(ExplainerMixin):
                      tick_params=dict(length=0, labelsize=11)
                      )
 
-        original_axis.axhline(model_expected_val, color="#999999", zorder=-1, linestyle="--", linewidth=1)
+        original_axis.axhline(model_expected_val, color="#999999", zorder=-1,
+                              linestyle="--", linewidth=1)
         return
 
-    def _add_feature_exp_val(self, ax, original_axis, xmin, xmax, data, feature, lookback=None):
+    def _add_feature_exp_val(self, ax, original_axis, xmin, xmax, data, feature,
+                             lookback=None):
 
         xv = self.xv(data=data, feature=feature, lookback=lookback)
         mval = xv.mean()
@@ -517,8 +638,10 @@ class PartialDependencePlot(ExplainerMixin):
         process_axis(ax3,
                      xlim=(xmin, xmax),
                      xticks=[mval], xticklabels=["E[" + feature + "]"],
-                     tick_params={'length': 0, 'labelsize': 11}, top_spine=False, right_spine=False)
-        original_axis.axvline(mval, color="#999999", zorder=-1, linestyle="--", linewidth=1)
+                     tick_params={'length': 0, 'labelsize': 11}, top_spine=False,
+                     right_spine=False)
+        original_axis.axvline(mval, color="#999999", zorder=-1, linestyle="--",
+                              linewidth=1)
         return
 
 
@@ -590,7 +713,8 @@ def _add_dist_as_grid(fig: plt.Figure, hist_data, other_axes: plt.Axes,
     """Data point distribution plot for numeric feature"""
 
     ax = fig.add_axes((0.1, 0.1, 0.8, 0.14), sharex=other_axes)
-    process_axis(ax, top_spine=False, xlabel=xlabel, xlabel_kws=xlabel_kws, bottom_spine=False,
+    process_axis(ax, top_spine=False, xlabel=xlabel, xlabel_kws=xlabel_kws,
+                 bottom_spine=False,
                  right_spine=False, left_spine=False)
     ax.yaxis.set_visible(False)  # hide the yaxis
     ax.xaxis.set_visible(False)  # hide the x-axis

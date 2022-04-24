@@ -4,6 +4,9 @@ Activations
 ===========
 """
 
+# This notebook shows how to use activation functions as activation within
+# layer or as activation functions.
+
 from ai4water import Model
 import tensorflow as tf
 from ai4water.postprocessing import Visualize
@@ -23,6 +26,8 @@ data.head()
 ##############################################################
 # activations as layers
 #-------------------------
+
+# After 'Input' layer, all activations are used as tensorflow "Layer".
 
 activation_layers = ['PReLU', "relu", "tanh", "ELU", "LeakyReLU",
                      "ThresholdedReLU", "selu", 'sigmoid', 'hardsigmoid', 'crelu',
@@ -144,6 +149,9 @@ vis.activations(layer_names="swish", show=True)
 ##############################################################
 # As activation functions within layers
 #---------------------------------------
+
+# Following shows how to use different activation functions in a Dense layer.
+# Similar approach can be used to employ activation functions in other tensorflow layers.
 
 layers = {"Input": {"config": {"shape": (1, ), "name": "CustomInputs"}}}
 
