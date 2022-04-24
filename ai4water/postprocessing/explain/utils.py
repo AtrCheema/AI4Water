@@ -26,7 +26,12 @@ def convert_ai4water_model(old_model, framework=None, explainer=None):
 
 
 def to_native(model, model_name:str):
-    explainer = "TreeExplainer"
+    # because transformations are part of Model in ai4water, and TreeExplainer
+    # is based upon on tree structure, it will not consider ransformation as part of Model
+    if model.config['x_transformation']or model.config['y_transformation']:
+        explainer = "KernelExplainer"
+    else:
+        explainer = "TreeExplainer"
 
     if model_name.startswith("XGB"):
         import xgboost

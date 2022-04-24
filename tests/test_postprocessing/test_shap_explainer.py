@@ -32,7 +32,7 @@ beach_data = busan_beach()
 
 
 
-def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
+def fit_and_plot(model_name, data, heatmap=True, beeswarm_plot=True):
 
     model = get_fitted_model(model_name, data)
 
@@ -45,7 +45,7 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
                                 explainer="Explainer",
                                 framework="ML")
     if heatmap: interpreter.heatmap()
-    if beeswarm_plot: interpreter.beeswarm_plot(show=False)
+    if beeswarm_plot: interpreter.beeswarm_plot()
 
     interpreter = ShapExplainer(model, x_test.values,
                                 path=model.path,
@@ -54,7 +54,7 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
                                 save=False,
                                 framework="ML")
     if heatmap: interpreter.heatmap()
-    if beeswarm_plot: interpreter.beeswarm_plot(show=False)
+    if beeswarm_plot: interpreter.beeswarm_plot()
 
     return
 
@@ -62,6 +62,10 @@ def fit_and_plot(model_name, data, heatmap=False, beeswarm_plot=False):
 def fit_and_interpret(model_name:str,
                       data,
                       draw_heatmap=True,
+                      draw_beeswarm=True,
+                      summary_plot=True,
+                      waterfall=True,
+                      scatter=True,
                       **kwargs
                       ):
 
@@ -73,7 +77,7 @@ def fit_and_interpret(model_name:str,
     x_test, y_test = model.test_data()
     x_test = pd.DataFrame(x_test, columns=model.input_features).iloc[0:2]
 
-    interpreter = ShapExplainer(model, x_test,
+    explainer = ShapExplainer(model, x_test,
                                 train_data=x_train,
                                 path=model.path,
                                 framework="ML",
@@ -81,10 +85,18 @@ def fit_and_interpret(model_name:str,
                                 show=False,
                                 **kwargs
                                 )
-    interpreter()
+    explainer()
 
     if draw_heatmap:
-        interpreter.heatmap()
+        explainer.heatmap()
+    if draw_beeswarm:
+        explainer.beeswarm_plot()
+    if summary_plot:
+        explainer.summary_plot(plot_type="dot")
+    if waterfall:
+        explainer.waterfall_plot_single_example(0)
+    if scatter:
+        explainer.scatter_plot_single_feature(0)
 
     explainer = ShapExplainer(model,
                               x_test.values,
@@ -96,7 +108,7 @@ def fit_and_interpret(model_name:str,
                                 show=False,
                               **kwargs
                               )
-    explainer()
+    assert isinstance(explainer.data, pd.DataFrame)
 
     return
 
@@ -116,7 +128,7 @@ def get_explainer(model_name, data):
     return explainer
 
 
-def fit_and_draw_plots(model_name, data, draw_heatmap=False):
+def fit_and_draw_plots(model_name, data, draw_heatmap=True):
 
     model = get_fitted_model(model_name, data)
 
@@ -187,7 +199,10 @@ class TestShapExplainers(unittest.TestCase):
     def test_doc_example(self):
 
         X, y = shap.datasets.diabetes()
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+        X_train, X_test, y_train, y_test = train_test_split(X,
+                                                            y,
+                                                            test_size=0.2,
+                                                            random_state=0)
         lin_regr = linear_model.LinearRegression()
         lin_regr.fit(X_train, y_train)
 
@@ -219,7 +234,8 @@ class TestShapExplainers(unittest.TestCase):
             "XGBRFRegressor" # todo error
                     ]:
 
-            exp = get_explainer(mod, busan_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
+            exp = get_explainer(mod,
+                                busan_beach(inputs=["pcp_mm", "air_p_hpa", "air_temp_c"]))
             exp.pdp_single_feature(feature_name=exp.features[0])
 
             time.sleep(1)
@@ -249,7 +265,7 @@ class TestShapExplainers(unittest.TestCase):
                                   explainer="KernelExplainer")
 
         explainer(plot_force_all=False)
-        #explainer.heatmap()
+        explainer.heatmap()
 
         explainer = ShapExplainer(model,
                                   train_data=x_train.values, data=x_test.values,
@@ -258,67 +274,53 @@ class TestShapExplainers(unittest.TestCase):
                                 show=False,
                                   explainer="KernelExplainer")
         explainer(plot_force_all=False)
-        #explainer.heatmap()
+        explainer.heatmap()
         return
 
-    def test_raise_error(self):
 
-        model = Model(
-            model={"layers": {"LSTM":{"units": 4}}},
-            input_features=['wat_temp_c', 'tide_cm'],
-            output_features=['tetx_coppml', "ecoli", "16s", "inti1"],
-            verbosity=0,
-            ts_args={'lookback':15},
-        )
-        model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm'],
-                                 target=['tetx_coppml', "ecoli", "16s",
-                                         "inti1"]))
-
-        x_test, y_test = model.test_data()
-
-        def initiate_class():
-            return ShapExplainer(model, x_test)
-
-        # self.assertRaises(AssertionError,
-        #                   initiate_class)
-        return
 
     def test_xgb(self):
 
-        fit_and_interpret("XGBRegressor", data=busan_beach(inputs=['wat_temp_c',
-                                                                   'tide_cm']),
-                          draw_heatmap=True, explainer="TreeExplainer")
+        fit_and_interpret("XGBRegressor",
+                          data=busan_beach(inputs=['wat_temp_c','tide_cm']),
+                          draw_heatmap=True,
+                          explainer="TreeExplainer")
 
         return
 
     def test_lgbm(self):
 
-        fit_and_interpret("LGBMRegressor", data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
-                          draw_heatmap=False, explainer="TreeExplainer")
+        fit_and_interpret("LGBMRegressor",
+                          data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
+                          draw_heatmap=True,
+                          explainer="TreeExplainer")
 
         return
 
-    def test_catboost(self):
+    def test_catboost_tree(self):
 
-        fit_and_interpret("CatBoostRegressor", data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
-                          draw_heatmap=False, explainer="TreeExplainer")
+        fit_and_interpret("CatBoostRegressor",
+                          data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
+                          explainer="TreeExplainer")
+
+        return
+
+    def test_catboost_kernel(self):
+
+        fit_and_interpret("CatBoostRegressor",
+                          data=busan_beach(inputs=['wat_temp_c', 'tide_cm']),
+                          explainer="KernelExplainer")
 
         return
 
     def test_waterfall_with_xgb(self):
 
-        fit_and_draw_plots("XGBRegressor", busan_beach(inputs=['wat_temp_c',
-                                                               'tide_cm']),
+        fit_and_draw_plots("XGBRegressor",
+                           busan_beach(inputs=['wat_temp_c','tide_cm']),
                            draw_heatmap=True)
 
         return
 
-    def test_waterfall_with_catboost(self):
-
-        fit_and_draw_plots("CatBoostRegressor", busan_beach(inputs=['wat_temp_c',
-                                                                    'tide_cm']))
-
-        return
 
     def test_heatmap(self):
 
@@ -356,6 +358,57 @@ class TestShapExplainers(unittest.TestCase):
             time.sleep(1)
         return
 
+
+    def test_ai4water_ml(self):
+
+        for m in [
+            "XGBRegressor",
+            "RandomForestRegressor",
+            "GradientBoostingRegressor"
+                  ]:
+
+            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c',
+                                                            'tide_cm']))
+            exp = explain_model_with_shap(model, examples_to_explain=2,
+                                          explainer="TreeExplainer")
+            assert isinstance(exp, ShapExplainer)
+
+        return
+
+    def test_class_model(self):
+
+        fit_and_interpret("DecisionTreeClassifier", data=class_data,
+                          draw_heatmap=False,
+                          draw_beeswarm=False,
+                          explainer="KernelExplainer")
+
+        return
+
+
+class TestDL(unittest.TestCase):
+
+    def test_raise_error(self):
+
+        model = Model(
+            model={"layers": {"LSTM":{"units": 4}}},
+            input_features=['wat_temp_c', 'tide_cm'],
+            output_features=['tetx_coppml', "ecoli", "16s", "inti1"],
+            verbosity=0,
+            ts_args={'lookback':15},
+        )
+        model.fit(data=busan_beach(inputs=['wat_temp_c', 'tide_cm'],
+                                 target=['tetx_coppml', "ecoli", "16s",
+                                         "inti1"]))
+
+        x_test, y_test = model.test_data()
+
+        def initiate_class():
+            return ShapExplainer(model, x_test)
+
+        # self.assertRaises(AssertionError,
+        #                   initiate_class)
+        return
+
     def test_deepexplainer_mlp(self):
 
         model, testx = get_mlp()
@@ -383,13 +436,7 @@ class TestShapExplainers(unittest.TestCase):
 
         return
 
-    def test_class_model(self):
 
-        fit_and_interpret("DecisionTreeClassifier", data=class_data,
-                          draw_heatmap=False,
-                          explainer="KernelExplainer")
-
-        return
 
     def test_lstm_model_deep_exp(self):
 
@@ -431,21 +478,6 @@ class TestShapExplainers(unittest.TestCase):
         exp.force_plot_single_example(0)
         return
 
-    def test_ai4water_ml(self):
-
-        for m in [
-            "XGBRegressor",
-            "RandomForestRegressor",
-            "GradientBoostingRegressor"
-                  ]:
-
-            model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c',
-                                                            'tide_cm']))
-            exp = explain_model_with_shap(model, examples_to_explain=2,
-                                          explainer="TreeExplainer")
-            assert isinstance(exp, ShapExplainer)
-
-        return
 
     def test_ai4water_mlp(self):
         time.sleep(1)
@@ -525,6 +557,7 @@ class TestShapExplainers(unittest.TestCase):
         sv = expl.shap_values
         assert isinstance(sv, list)
         return
+
 
 if __name__ == "__main__":
 

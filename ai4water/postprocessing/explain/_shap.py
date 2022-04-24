@@ -3,8 +3,10 @@ from typing import Union, Callable, List
 
 try:
     import shap
+    from shap import Explanation
 except ModuleNotFoundError:
     shap = None
+    Explanation = None
 
 import scipy as sp
 import numpy as np
@@ -613,7 +615,7 @@ class ShapExplainer(ExplainerMixin):
         .. _waterfall:
             https://shap.readthedocs.io/en/latest/generated/shap.plots.waterfall.html
         """
-        if self.explainer.__class__.__name__ in ["Deep"]:
+        if self.explainer.__class__.__name__ in ["Deep", "Kernel"]:
             shap_vals_as_exp = None
         else:
             shap_vals_as_exp = self.explainer(self.data)
@@ -630,26 +632,37 @@ class ShapExplainer(ExplainerMixin):
             if not self.data_is_2d:
                 features = self.unrolled_features
 
-            class Explanation:
-                # waterfall plot expects first argument as Explaination class
-                # which must have at least these attributes (values, data, feature_names, base_values)
-                # https://github.com/slundberg/shap/issues/1420#issuecomment-715190610
-                if not self.data_is_2d:  # if original data is 3d then we flat it into 1d array
-                    values = shap_values[example_index].reshape(-1, )
-                    data = self.data[example_index].reshape(-1, )
-                else:
-                    values = shap_values[example_index]
-                    data = self.data[example_index]
+            # waterfall plot expects first argument as Explaination class
+            # which must have at least these attributes (values, data, feature_names, base_values)
+            # https://github.com/slundberg/shap/issues/1420#issuecomment-715190610
+            if not self.data_is_2d:  # if original data is 3d then we flat it into 1d array
+                values = shap_values[example_index].reshape(-1, )
+                data = self.data[example_index].reshape(-1, )
+            else:
+                values = shap_values[example_index]
+                data = self.data.iloc[example_index]
 
-                feature_names = features
-                base_values = self.explainer.expected_value[0]
+            exp_value = self.explainer.expected_value
+            if self.explainer.__class__.__name__ in ["Kernel"]:
+                pass
+            else:
+                exp_value = exp_value[0]
 
-            shap.plots.waterfall(Explanation(), show=False, max_display=max_display)
+            e = Explanation(
+                values,
+                base_values=exp_value,
+                data=data,
+                feature_names=features
+            )
+
+            shap.plots.waterfall(e, show=False, max_display=max_display)
         else:
             shap.plots.waterfall(shap_vals_as_exp[example_index], show=False, max_display=max_display)
 
         if self.save:
-            plt.savefig(os.path.join(self.path, f"{name}_{example_index}"), dpi=300, bbox_inches="tight")
+            plt.savefig(os.path.join(self.path, f"{name}_{example_index}"),
+                        dpi=300,
+                        bbox_inches="tight")
 
         if self.show:
             plt.show()
@@ -657,12 +670,18 @@ class ShapExplainer(ExplainerMixin):
         return
 
     def scatter_plot_single_feature(
-            self, feature: str,
+            self,
+            feature: int,
             name: str = "scatter",
             **scatter_kws
     ):
+        """scatter plot for a single feature"""
+        if self.explainer.__class__.__name__ in ["Kernel"]:
+            shap_values = Explanation(self.shap_values, data=self.data.values,
+                                      feature_names=self.features)
+        else:
+            shap_values = self.explainer(self.data)
 
-        shap_values = self.explainer(self.data)
         shap.plots.scatter(shap_values[:, feature], show=False, **scatter_kws)
         if self.save:
             plt.savefig(os.path.join(self.path, f"{name}_{feature}"), dpi=300, bbox_inches="tight")
@@ -703,7 +722,14 @@ class ShapExplainer(ExplainerMixin):
 
         # if heat map is drawn with np.ndarray, it throws errors therefore convert
         # it into pandas DataFrame. It is more interpretable and does not hurt.
-        shap_values = self._get_shap_values_locally()
+        try:
+            shap_values = self._get_shap_values_locally()
+        except (ValueError, AttributeError):  # some times we are not able to calculate shap values as
+            # being calcultaed inside '_get_shap_values_locally'
+            shap_values = Explanation(
+                self.shap_values,
+                data=self.data.values,
+                feature_names=self.features)
 
         # by default examples are ordered in such a way that examples with similar
         # explanations are grouped together.
@@ -769,7 +795,11 @@ class ShapExplainer(ExplainerMixin):
             https://shap.readthedocs.io/en/latest/example_notebooks/api_examples/plots/beeswarm.html
         """
 
-        shap_values = self._get_shap_values_locally()
+        try:
+            shap_values = self._get_shap_values_locally()
+        except (ValueError, AttributeError):
+            shap_values = Explanation(self.shap_values, data=self.data.values,
+                                      feature_names=self.features)
 
         self._beeswarm_plot(shap_values,
                             name=f"{name}_basic",
@@ -791,7 +821,9 @@ class ShapExplainer(ExplainerMixin):
     def _beeswarm_plot(self, shap_values, name, max_display=10, **kwargs):
 
         plt.close('all')
-        shap.plots.beeswarm(shap_values,  show=False, max_display=max_display,
+        shap.plots.beeswarm(shap_values,
+                            show=False,
+                            max_display=max_display,
                             **kwargs)
         if self.save:
             plt.savefig(os.path.join(self.path, name), dpi=300, bbox_inches="tight")
@@ -912,7 +944,7 @@ class ShapExplainer(ExplainerMixin):
                 any keyword arguments
             """
         for feat in self.features:
-            self.pdp_single_feature(feat, show=self.show, save=self.save, **pdp_kws)
+            self.pdp_single_feature(feat, **pdp_kws)
 
         return
 
