@@ -49,7 +49,7 @@ class MLClassificationExperiments(Experiments):
         self.x0 = x0
         self.model_kws = model_kwargs
 
-        self.classification_space = classification_space(num_samples=num_samples)
+        self.spaces = classification_space(num_samples=num_samples)
 
         if exp_name == "MLClassificationExperiments":
             exp_name = f"{exp_name}_{dateandtime_now()}"
@@ -71,8 +71,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html
 
         self.path = "sklearn.ensemble.AdaBoostClassifier"
-        self.param_space = self.classification_space["AdaBoostClassifier"]["param_space"]
-        self.x0 = self.classification_space["AdaBoostClassifier"]["x0"]
+        self.param_space = self.spaces["AdaBoostClassifier"]["param_space"]
+        self.x0 = self.spaces["AdaBoostClassifier"]["x0"]
 
         return {'model': {'AdaBoostClassifier': kwargs}}
 
@@ -80,8 +80,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.BaggingClassifier.html
 
         self.path = "sklearn.ensemble.BaggingClassifier"
-        self.param_space = self.classification_space["BaggingClassifier"]["param_space"]
-        self.x0 = self.classification_space["BaggingClassifier"]["x0"]
+        self.param_space = self.spaces["BaggingClassifier"]["param_space"]
+        self.x0 = self.spaces["BaggingClassifier"]["x0"]
 
         return {'model': {'BaggingClassifier': kwargs}}
 
@@ -89,8 +89,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.BernoulliNB.html
 
         self.path = "sklearn.naive_bayes.BernoulliNB"
-        self.param_space = self.classification_space["BernoulliNB"]["param_space"]
-        self.x0 = self.classification_space["BernoulliNB"]["x0"]
+        self.param_space = self.spaces["BernoulliNB"]["param_space"]
+        self.x0 = self.spaces["BernoulliNB"]["x0"]
 
         return {'model': {'BernoulliNB': kwargs}}
 
@@ -98,8 +98,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
 
         self.path = "sklearn.calibration.CalibratedClassifierCV"
-        self.param_space = self.classification_space["CalibratedClassifierCV"]["param_space"]
-        self.x0 = self.classification_space["CalibratedClassifierCV"]["x0"]
+        self.param_space = self.spaces["CalibratedClassifierCV"]["param_space"]
+        self.x0 = self.spaces["CalibratedClassifierCV"]["x0"]
 
         return {'model': {'CalibratedClassifierCV': kwargs}}
 
@@ -110,8 +110,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
 
         self.path = "sklearn.tree.DecisionTreeClassifier"
-        self.param_space = self.classification_space["DecisionTreeClassifier"]["param_space"]
-        self.x0 = self.classification_space["DecisionTreeClassifier"]["x0"]
+        self.param_space = self.spaces["DecisionTreeClassifier"]["param_space"]
+        self.x0 = self.spaces["DecisionTreeClassifier"]["x0"]
 
         return {'model': {'DecisionTreeClassifier': kwargs}}
 
@@ -119,8 +119,8 @@ class MLClassificationExperiments(Experiments):
         #  https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html
 
         self.path = "sklearn.dummy.DummyClassifier"
-        self.param_space = self.classification_space["DummyClassifier"]["param_space"]
-        self.x0 = self.classification_space["DummyClassifier"]["x0"]
+        self.param_space = self.spaces["DummyClassifier"]["param_space"]
+        self.x0 = self.spaces["DummyClassifier"]["x0"]
 
         return {'model': {'DummyClassifier': kwargs}}
 
@@ -128,8 +128,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeClassifier.html
 
         self.path = "sklearn.tree.ExtraTreeClassifier"
-        self.param_space = self.classification_space["ExtraTreeClassifier"]["param_space"]
-        self.x0 = self.classification_space["ExtraTreeClassifier"]["x0"]
+        self.param_space = self.spaces["ExtraTreeClassifier"]["param_space"]
+        self.x0 = self.spaces["ExtraTreeClassifier"]["x0"]
 
         return {'model': {'ExtraTreeClassifier': kwargs}}
 
@@ -137,8 +137,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html
 
         self.path = "sklearn.ensemble.ExtraTreesClassifier"
-        self.param_space = self.classification_space["ExtraTreesClassifier"]["param_space"]
-        self.x0 = self.classification_space["ExtraTreesClassifier"]["x0"]
+        self.param_space = self.spaces["ExtraTreesClassifier"]["param_space"]
+        self.x0 = self.spaces["ExtraTreesClassifier"]["x0"]
 
         return {'model': {'ExtraTreesClassifier': kwargs}}
 
@@ -146,8 +146,8 @@ class MLClassificationExperiments(Experiments):
         #  https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html
 
         self.path = "sklearn.gaussian_process.GaussianProcessClassifier"
-        self.param_space = self.classification_space["GaussianProcessClassifier"]["param_space"]
-        self.x0 = self.classification_space["GaussianProcessClassifier"]["x0"]
+        self.param_space = self.spaces["GaussianProcessClassifier"]["param_space"]
+        self.x0 = self.spaces["GaussianProcessClassifier"]["x0"]
 
         return {'model': {'GaussianProcessClassifier': kwargs}}
 
@@ -155,8 +155,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeClassifier.html
 
         self.path = "sklearn.ensemble.GradientBoostingClassifier"
-        self.param_space = self.classification_space["GradientBoostingClassifier"]["param_space"]
-        self.x0 = self.classification_space["GradientBoostingClassifier"]["x0"]
+        self.param_space = self.spaces["GradientBoostingClassifier"]["param_space"]
+        self.x0 = self.spaces["GradientBoostingClassifier"]["x0"]
 
         return {'model': {'GradientBoostingClassifier': kwargs}}
 
@@ -164,8 +164,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesClassifier.html
 
         self.path = "sklearn.ensemble.HistGradientBoostingClassifier"
-        self.param_space = self.classification_space["HistGradientBoostingClassifier"]["param_space"]
-        self.x0 = self.classification_space["HistGradientBoostingClassifier"]["x0"]
+        self.param_space = self.spaces["HistGradientBoostingClassifier"]["param_space"]
+        self.x0 = self.spaces["HistGradientBoostingClassifier"]["x0"]
 
         return {'model': {'HistGradientBoostingClassifier': kwargs}}
 
@@ -173,8 +173,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
 
         self.path = "sklearn.neighbors.KNeighborsClassifier"
-        self.param_space = self.classification_space["KNeighborsClassifier"]["param_space"]
-        self.x0 = self.classification_space["KNeighborsClassifier"]["x0"]
+        self.param_space = self.spaces["KNeighborsClassifier"]["param_space"]
+        self.x0 = self.spaces["KNeighborsClassifier"]["x0"]
 
         return {'model': {'KNeighborsClassifier': kwargs}}
 
@@ -182,8 +182,8 @@ class MLClassificationExperiments(Experiments):
         ## https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelPropagation.html
 
         self.path = "sklearn.semi_supervised.LabelPropagation"
-        self.param_space = self.classification_space["LabelPropagation"]["param_space"]
-        self.x0 = self.classification_space["LabelPropagation"]["x0"]
+        self.param_space = self.spaces["LabelPropagation"]["param_space"]
+        self.x0 = self.spaces["LabelPropagation"]["x0"]
 
         return {'model': {'LabelPropagation': kwargs}}
 
@@ -191,8 +191,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.semi_supervised.LabelSpreading.html
 
         self.path = "sklearn.semi_supervised.LabelSpreading"
-        self.param_space = self.classification_space["LabelSpreading"]["param_space"]
-        self.x0 = self.classification_space["LabelSpreading"]["x0"]
+        self.param_space = self.spaces["LabelSpreading"]["param_space"]
+        self.x0 = self.spaces["LabelSpreading"]["x0"]
 
         return {'model': {'LabelSpreading': kwargs}}
 
@@ -200,8 +200,8 @@ class MLClassificationExperiments(Experiments):
         # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMClassifier.html
 
         self.path = "lightgbm.LGBMClassifier"
-        self.param_space = self.classification_space["LGBMClassifier"]["param_space"]
-        self.x0 = self.classification_space["LGBMClassifier"]["x0"]
+        self.param_space = self.spaces["LGBMClassifier"]["param_space"]
+        self.x0 = self.spaces["LGBMClassifier"]["x0"]
 
         return {'model': {'LGBMClassifier': kwargs}}
 
@@ -209,8 +209,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html
 
         self.path = "sklearn.discriminant_analysis.LinearDiscriminantAnalysis"
-        self.param_space = self.classification_space["LinearDiscriminantAnalysis"]["param_space"]
-        self.x0 = self.classification_space["LinearDiscriminantAnalysis"]["x0"]
+        self.param_space = self.spaces["LinearDiscriminantAnalysis"]["param_space"]
+        self.x0 = self.spaces["LinearDiscriminantAnalysis"]["x0"]
 
         return {'model': {'LinearDiscriminantAnalysis': kwargs}}
 
@@ -218,8 +218,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html
 
         self.path = "sklearn.svm.LinearSVC"
-        self.param_space = self.classification_space["LinearSVC"]["param_space"]
-        self.x0 = self.classification_space["LinearSVC"]["x0"]
+        self.param_space = self.spaces["LinearSVC"]["param_space"]
+        self.x0 = self.spaces["LinearSVC"]["x0"]
 
         return {'model': {'LinearSVC': kwargs}}
 
@@ -227,8 +227,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
 
         self.path = "sklearn.linear_model.LogisticRegression"
-        self.param_space = self.classification_space["LogisticRegression"]["param_space"]
-        self.x0 = self.classification_space["LogisticRegression"]["x0"]
+        self.param_space = self.spaces["LogisticRegression"]["param_space"]
+        self.x0 = self.spaces["LogisticRegression"]["x0"]
 
         return {'model': {'LogisticRegression': kwargs}}
 
@@ -236,8 +236,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
 
         self.path = "sklearn.neural_network.MLPClassifier"
-        self.param_space = self.classification_space["MLPClassifier"]["param_space"]
-        self.x0 = self.classification_space["MLPClassifier"]["x0"]
+        self.param_space = self.spaces["MLPClassifier"]["param_space"]
+        self.x0 = self.spaces["MLPClassifier"]["x0"]
 
         return {'model': {'MLPClassifier': kwargs}}
 
@@ -245,8 +245,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestCentroid.html
 
         self.path = "sklearn.neighbors.NearestCentroid"
-        self.param_space = self.classification_space["NearestCentroid"]["param_space"]
-        self.x0 = self.classification_space["NearestCentroid"]["x0"]
+        self.param_space = self.spaces["NearestCentroid"]["param_space"]
+        self.x0 = self.spaces["NearestCentroid"]["x0"]
 
         return {'model': {'NearestCentroid': kwargs}}
 
@@ -254,8 +254,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVC.html
 
         self.path = "sklearn.svm.NuSVC"
-        self.param_space = self.classification_space["NuSVC"]["param_space"]
-        self.x0 = self.classification_space["NuSVC"]["x0"]
+        self.param_space = self.spaces["NuSVC"]["param_space"]
+        self.x0 = self.spaces["NuSVC"]["x0"]
 
         return {'model': {'NuSVC': kwargs}}
 
@@ -263,8 +263,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PassiveAggressiveClassifier.html
 
         self.path = "sklearn.linear_model.PassiveAggressiveClassifier"
-        self.param_space = self.classification_space["PassiveAggressiveClassifier"]["param_space"]
-        self.x0 = self.classification_space["PassiveAggressiveClassifier"]["x0"]
+        self.param_space = self.spaces["PassiveAggressiveClassifier"]["param_space"]
+        self.x0 = self.spaces["PassiveAggressiveClassifier"]["x0"]
 
         return {'model': {'PassiveAggressiveClassifier': kwargs}}
 
@@ -272,8 +272,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Perceptron.html
 
         self.path = "sklearn.linear_model.Perceptron"
-        self.param_space = self.classification_space["Perceptron"]["param_space"]
-        self.x0 = self.classification_space["Perceptron"]["x0"]
+        self.param_space = self.spaces["Perceptron"]["param_space"]
+        self.x0 = self.spaces["Perceptron"]["x0"]
 
         return {'model': {'Perceptron': kwargs}}
 
@@ -281,8 +281,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
 
         self.path = "sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis"
-        self.param_space = self.classification_space["QuadraticDiscriminantAnalysis"]["param_space"]
-        self.x0 = self.classification_space["QuadraticDiscriminantAnalysis"]["x0"]
+        self.param_space = self.spaces["QuadraticDiscriminantAnalysis"]["param_space"]
+        self.x0 = self.spaces["QuadraticDiscriminantAnalysis"]["x0"]
 
         return {'model': {'QuadraticDiscriminantAnalysis': kwargs}}
 
@@ -290,8 +290,8 @@ class MLClassificationExperiments(Experiments):
     #     # https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html
     #
     #     self.path = "sklearn.neighbors.RadiusNeighborsClassifier"
-    #     self.param_space = self.classification_space["RadiusNeighborsClassifier"]["param_space"]
-    #     self.x0 = self.classification_space["RadiusNeighborsClassifier"]["x0"]
+    #     self.param_space = self.spaces["RadiusNeighborsClassifier"]["param_space"]
+    #     self.x0 = self.spaces["RadiusNeighborsClassifier"]["x0"]
     #
     #     return {'model': {'RadiusNeighborsClassifier': kwargs}}
 
@@ -299,8 +299,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
 
         self.path = "sklearn.ensemble.RandomForestClassifier"
-        self.param_space = self.classification_space["RandomForestClassifier"]["param_space"]
-        self.x0 = self.classification_space["RandomForestClassifier"]["x0"]
+        self.param_space = self.spaces["RandomForestClassifier"]["param_space"]
+        self.x0 = self.spaces["RandomForestClassifier"]["x0"]
 
         return {'model': {'RandomForestClassifier': kwargs}}
 
@@ -308,8 +308,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifier.html
 
         self.path = "sklearn.linear_model.RidgeClassifier"
-        self.param_space = self.classification_space["RidgeClassifierCV"]["param_space"]
-        self.x0 = self.classification_space["RidgeClassifierCV"]["x0"]
+        self.param_space = self.spaces["RidgeClassifierCV"]["param_space"]
+        self.x0 = self.spaces["RidgeClassifierCV"]["x0"]
 
         return {'model': {'RidgeClassifier': kwargs}}
 
@@ -317,8 +317,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeClassifierCV.html
 
         self.path = "sklearn.linear_model.RidgeClassifierCV"
-        self.param_space = self.classification_space["RidgeClassifierCV"]["param_space"]
-        self.x0 = self.classification_space["RidgeClassifierCV"]["x0"]
+        self.param_space = self.spaces["RidgeClassifierCV"]["param_space"]
+        self.x0 = self.spaces["RidgeClassifierCV"]["x0"]
 
         return {'model': {'RidgeClassifierCV': kwargs}}
 
@@ -326,8 +326,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
 
         self.path = "sklearn.linear_model.SGDClassifier"
-        self.param_space = self.classification_space["SGDClassifier"]["param_space"]
-        self.x0 = self.classification_space["SGDClassifier"]["x0"]
+        self.param_space = self.spaces["SGDClassifier"]["param_space"]
+        self.x0 = self.spaces["SGDClassifier"]["x0"]
 
         return {'model': {'SGDClassifier': kwargs}}
 
@@ -335,8 +335,8 @@ class MLClassificationExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
 
         self.path = "sklearn.svm.SVC"
-        self.param_space = self.classification_space["SVC"]["param_space"]
-        self.x0 = self.classification_space["SVC"]["x0"]
+        self.param_space = self.spaces["SVC"]["param_space"]
+        self.x0 = self.spaces["SVC"]["x0"]
 
         return {'model': {'SVC': kwargs}}
 
@@ -344,8 +344,8 @@ class MLClassificationExperiments(Experiments):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html
 
         self.path = "xgboost.XGBClassifier"
-        self.param_space = self.classification_space["XGBClassifier"]["param_space"]
-        self.x0 = self.classification_space["XGBClassifier"]["x0"]
+        self.param_space = self.spaces["XGBClassifier"]["param_space"]
+        self.x0 = self.spaces["XGBClassifier"]["x0"]
 
         return {'model': {'XGBClassifier': kwargs}}
 
@@ -353,8 +353,8 @@ class MLClassificationExperiments(Experiments):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFClassifier
 
         self.path = "xgboost.XGBRFClassifier"
-        self.param_space = self.classification_space["XGBRFClassifier"]["param_space"]
-        self.x0 = self.classification_space["XGBRFClassifier"]["x0"]
+        self.param_space = self.spaces["XGBRFClassifier"]["param_space"]
+        self.x0 = self.spaces["XGBRFClassifier"]["x0"]
 
         return {'model': {'XGBRFClassifier': kwargs}}
 
@@ -362,7 +362,7 @@ class MLClassificationExperiments(Experiments):
         # https://catboost.ai/en/docs/concepts/python-reference_catboostclassifier
 
         self.path = "catboost.CatBoostClassifier"
-        self.param_space = self.classification_space["CatBoostClassifier"]["param_space"]
-        self.x0 = self.classification_space["CatBoostClassifier"]["x0"]
+        self.param_space = self.spaces["CatBoostClassifier"]["param_space"]
+        self.x0 = self.spaces["CatBoostClassifier"]["x0"]
 
         return {'model': {'CatBoostClassifier': suggestions}}

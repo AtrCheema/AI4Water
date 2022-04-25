@@ -748,6 +748,72 @@ def classification_space(num_samples:int, verbosity=0):
     return spaces
 
 
+def dl_space(
+        num_samples:int=10
+)->dict:
+    spaces = {
+        "MLP": {
+            "param_space":[
+                Integer(8, 128, name="units", num_samples=num_samples),
+                Categorical([1, 2, 3], name="num_layers"),
+                Real(0.0, 0.4, name="dropout", num_samples=num_samples),
+                Categorical(["relu", "linear", "leakyrelu", "elu", "tanh", "sigmoid"],
+                        name="activation")],
+            'x0':
+                [32, 1, 0.0, "relu"]},
+        "LSTM":{
+            "param_space": [
+                Integer(8, 128, name="units", num_samples=num_samples),
+                Categorical([1, 2, 3], name="num_layers"),
+                Real(0.0, 0.4, name="dropout", num_samples=num_samples),
+                Categorical(["relu",  "leakyrelu", "elu", "tanh", "sigmoid"],
+                            name="activation")],
+            'x0':
+                [32, 1, 0.0, "relu"]},
+        "CNN": {
+            "param_space": [
+                Integer(8, 128, name="filters", num_samples=num_samples),
+                Categorical([2,3,4,5], name="kernel_size"),
+                Categorical([1, 2, 3], name="num_layers"),
+                Real(0.0, 0.4, name="dropout"),
+                Categorical(["relu", "leakyrelu", "elu", "tanh", "sigmoid"],
+                            name="activation")],
+            "x0":
+                [32, 2, 1, 0.0, "relu"]},
+        "CNNLSTM": {
+            "param_space": [
+                Categorical([1,2,3], name="cnn_layers"),
+                Categorical([1, 2, 3], name="lstm_layers"),
+                Integer(8, 128, name="units", num_samples=num_samples),
+                Integer(8, 128, name="filters", num_samples=num_samples),
+                Categorical([2,3,4,5], name="kernel_size")],
+            "x0":
+                [2, 1, 32, 32, 2]},
+        "LSTMAutoEncoder": {
+            "param_space": [
+                Integer(8, 128, name="encoder_units", num_samples=num_samples),
+                Integer(8, 128, name="decoder_units", num_samples=num_samples),
+                Categorical([1,2,3], name="encoder_layers"),
+                Categorical([1,2,3], name="decoder_layers")],
+            "x0":
+                [32, 32, 1, 1]},
+        "TCN": {
+            "param_space": [
+                Integer(16, 128, name="hidden_units", num_samples=num_samples),
+                Categorical([1,2,3,4,5], name="num_heads")],
+            "x0":
+                [64, 2]},
+        "TFT": {
+            "param_space":[
+                Integer(16, 128, name="hidden_units", num_samples=num_samples),
+                Categorical([1, 2, 3, 4, 5], name="num_heads")],
+            "x0":
+                [64, 2]}
+    }
+
+    return spaces
+
+
 def _remove_estimator(spaces, libraries_to_models, verbosity=0):
     for lib, estimators in libraries_to_models.items():
         if lib not in sys.modules:

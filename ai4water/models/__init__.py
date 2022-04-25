@@ -9,7 +9,7 @@ def MLP(
         output_features:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
-        problem:str = "regression",
+        mode:str = "regression",
         **kwargs
 )->dict:
     """helper function to make multi layer perceptron model.
@@ -34,7 +34,7 @@ def MLP(
         activation function to use.
     dropout : Union[float, list], optional
         dropout to use in Dense layer
-    problem : str, optional
+    mode : str, optional
         either ``regression`` or ``classification``
     **kwargs :
         any additional keyword arguments for Dense_ layer
@@ -103,7 +103,7 @@ def MLP(
     layers.update({"Flatten": {}})
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
     return {'layers': layers}
 
@@ -115,7 +115,7 @@ def LSTM(
         output_features:int = 1,
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
-        problem:str = "regression",
+        mode:str = "regression",
         **kwargs
 ):
     """helper function to make LSTM Model
@@ -132,12 +132,13 @@ def LSTM(
         we should define the shape as (lookback, num_features). The batch_size dimension
         is always None.
     output_features : int, optinoal (default=1)
-        number of output features
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
     activation : Union[str, list], optional
         activation function to use in LSTM
     dropout :
         if > 0.0, a dropout layer is added after each LSTM layer
-    problem : str, optional
+    mode : str, optional
         either ``regression`` or ``classification``
     **kwargs :
         any keyword argument for LSTM_ layer
@@ -201,7 +202,7 @@ def LSTM(
     layers.update({"Flatten": {}})
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
     return {'layers': layers}
 
@@ -220,7 +221,7 @@ def CNN(
         dropout: Union[float, list] = None,
         input_shape: tuple = None,
         output_features:int = 1,
-        problem: str = "regression",
+        mode: str = "regression",
         **kwargs
 )->dict:
     """helper function to make convolution neural network based model.
@@ -257,9 +258,10 @@ def CNN(
         for example if model takes inputs (num_examples, lookback, num_features) then
         we should define the shape as (lookback, num_features). The batch_size dimension
         is always None.
-    output_features : int, optional
-        number of output features
-    problem : str, optional
+    output_features : int, optional, (default=1)
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    mode : str, optional
         either ``regression`` or ``classification``
     **kwargs :
         any keyword argument for Convolution_ layer
@@ -339,7 +341,7 @@ def CNN(
     layers.update({"Flatten": {}})
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
     return {'layers': layers}
 
@@ -354,7 +356,7 @@ def CNNLSTM(
         max_pool:bool=False,
         units: Union[int, tuple, list] = 32,
         output_features:int = 1,
-        problem:str = "regression"
+        mode:str = "regression"
 )->dict:
     """
     helper function to make CNNLSTM model. It adds one or more 1D convolutional
@@ -383,8 +385,9 @@ def CNNLSTM(
     units : Union[int, list], optional (default=32)
         number of units in (each) lstm layer
     output_features : int, optional (default=1)
-        number of output features
-    problem :
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    mode :
         either ``regression`` or ``classification``
 
     Returns
@@ -441,7 +444,7 @@ def CNNLSTM(
     layers.update({"Flatten": {}})
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
     return {"layers": layers}
 
@@ -453,8 +456,8 @@ def LSTMAutoEncoder(
         encoder_units: Union[int, list]=32,
         decoder_units: Union[int, list]=32,
         output_features: int = 1,
-        mode: str = "prediction",
-        problem:str = "regression",
+        prediction_mode: bool = True,
+        mode:str = "regression",
         **kwargs
 )->dict:
     """
@@ -475,11 +478,12 @@ def LSTMAutoEncoder(
         number of units in (each) encoder LSTM
     decoder_units : Union[int, list], optional, (default=32)
         number of units in (each) decoder LSTM
-    mode : str, optional (default="prediction")
+    prediction_mode : bool, optional (default="prediction")
         either "prediction" or "reconstruction"
     output_features : int, optional
-        number of output features
-    problem : str, optional
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    mode : str, optional
         either ``regression`` or ``classification``
     **kwargs
 
@@ -526,7 +530,7 @@ def LSTMAutoEncoder(
     layers.update({"Flatten": {}})
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
     return {'layers': layers}
 
@@ -538,7 +542,7 @@ def TCN(
         nb_stacks: int = 1,
         dilations = [1, 2, 4, 8, 16, 32],
         output_features:int = 1,
-        problem="regression",
+        mode="regression",
         **kwargs
 )->dict:
     """helper function for building temporal convolution network
@@ -559,8 +563,9 @@ def TCN(
     dilations :
         dilation rate
     output_features : int, optional
-        number of output features
-    problem : str, optional
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
+    mode : str, optional
         either ``regression`` or ``classification``
     **kwargs
         any additional keyword argument
@@ -592,7 +597,7 @@ def TCN(
     layers.update({"Flatten": {}})
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
     return {'layers': layers}
 
@@ -604,7 +609,7 @@ def TFT(
         dropout:float = 0.1,
         output_features:int = 1,
         use_cudnn=False,
-        problem="regression",
+        mode="regression",
 )->dict:
     """helper function for temporal fusion transformer based model
 
@@ -622,10 +627,11 @@ def TFT(
     dropout : int, optional (default=0.1)
         droput rate
     output_features : int, optional (default=1)
-        number of output features
+        number of output features. If ``mode`` is ``classification``, this refers
+        to number of classes.
     use_cudnn : bool, optional (default=False)
         whether to use cuda or not
-    problem : str, optional (default="regression")
+    mode : str, optional (default="regression")
         either ``regression`` or ``classification``
 
     Returns
@@ -665,7 +671,7 @@ def TFT(
     }
 
     layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if problem=="regression" else "softmax"
+                   "activation": None if mode=="regression" else "softmax"
                    }})
 
     return {'layers': layers}
