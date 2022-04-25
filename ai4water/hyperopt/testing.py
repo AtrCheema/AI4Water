@@ -43,11 +43,14 @@ from optuna.study import Study
 from optuna.trial import FrozenTrial
 from optuna.trial import TrialState
 from optuna.importance._fanova import FanovaImportanceEvaluator
-from optuna.visualization._plotly_imports import _imports
 from optuna.visualization._utils import _check_plot_args
-from optuna.visualization._plotly_imports import go
 from optuna.importance import get_param_importances
-
+try:
+    from optuna.visualization._plotly_imports import go
+    from optuna.visualization._plotly_imports import _imports
+except (ImportError, ModuleNotFoundError):
+    go, _imports = None, None
+    
 
 from easy_mpl import bar_chart
 
@@ -158,21 +161,21 @@ def plot_param_importances(
     target: Optional[Callable[[FrozenTrial], float]] = None,
     target_name: str = "Objective Value",
 ):
-
-    _imports.check()
     _check_plot_args(study, target, target_name)
 
-    layout = go.Layout(
-        title="Hyperparameter Importances",
-        xaxis={"title": f"Importance for {target_name}"},
-        yaxis={"title": "Hyperparameter"},
-        showlegend=False,
-    )
+    if go is not None:
+        _imports.check()
+        layout = go.Layout(
+            title="Hyperparameter Importances",
+            xaxis={"title": f"Importance for {target_name}"},
+            yaxis={"title": "Hyperparameter"},
+            showlegend=False,
+        )
 
     # Importances cannot be evaluated without completed trials.
     # Return an empty figure for consistency with other visualization functions.
     trials = [trial for trial in study.trials if trial.state == TrialState.COMPLETE]
-    if len(trials) == 0:
+    if go and len(trials) == 0:
         logger.warning("Study instance does not contain completed trials.")
         return go.Figure(data=[], layout=layout)
 

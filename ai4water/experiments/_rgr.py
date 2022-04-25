@@ -98,7 +98,7 @@ class MLRegressionExperiments(Experiments):
 
         super().__init__(cases=cases, exp_name=exp_name, num_samples=num_samples, verbosity=verbosity)
 
-        self.regression_space = regression_space(num_samples=num_samples)
+        self.spaces = regression_space(num_samples=num_samples)
 
         if catboost is None:
             self.models.remove('model_CatBoostRegressor')
@@ -129,8 +129,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html
 
         self.path = "sklearn.ensemble.AdaBoostRegressor"
-        self.param_space = self.regression_space["AdaBoostRegressor"]["param_space"]
-        self.x0 = self.regression_space["AdaBoostRegressor"]["x0"]
+        self.param_space = self.spaces["AdaBoostRegressor"]["param_space"]
+        self.x0 = self.spaces["AdaBoostRegressor"]["x0"]
 
         return {'model': {'AdaBoostRegressor': kwargs}}
 
@@ -138,16 +138,16 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ARDRegression.html
 
         self.path = "sklearn.linear_model.ARDRegression"
-        self.param_space = self.regression_space["ARDRegression"]["param_space"]
-        self.x0 = self.regression_space["ARDRegression"]["x0"]
+        self.param_space = self.spaces["ARDRegression"]["param_space"]
+        self.x0 = self.spaces["ARDRegression"]["x0"]
 
         return {'model': {'ARDRegression': kwargs}}
 
     def model_BaggingRegressor(self, **kwargs):
 
         self.path = "sklearn.ensemble.BaggingRegressor"
-        self.param_space = self.regression_space["BaggingRegressor"]["param_space"]
-        self.x0 = self.regression_space["BaggingRegressor"]["x0"]
+        self.param_space = self.spaces["BaggingRegressor"]["param_space"]
+        self.x0 = self.spaces["BaggingRegressor"]["x0"]
 
         return {'model': {'BaggingRegressor': kwargs}}
 
@@ -155,8 +155,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.BayesianRidge.html
 
         self.path = "sklearn.linear_model.BayesianRidge"
-        self.param_space = self.regression_space["BayesianRidge"]["param_space"]
-        self.x0 = self.regression_space["BayesianRidge"]["x0"]
+        self.param_space = self.spaces["BayesianRidge"]["param_space"]
+        self.x0 = self.spaces["BayesianRidge"]["x0"]
 
         return {'model': {'BayesianRidge': kwargs}}
 
@@ -164,8 +164,8 @@ class MLRegressionExperiments(Experiments):
         # https://catboost.ai/docs/concepts/python-reference_parameters-list.html
 
         self.path = "catboost.CatBoostRegressor"
-        self.param_space = self.regression_space["CatBoostRegressor"]["param_space"]
-        self.x0 = self.regression_space["CatBoostRegressor"]["x0"]
+        self.param_space = self.spaces["CatBoostRegressor"]["param_space"]
+        self.x0 = self.spaces["CatBoostRegressor"]["x0"]
 
         return {'model': {'CatBoostRegressor': kwargs}}
 
@@ -174,8 +174,8 @@ class MLRegressionExperiments(Experiments):
 
         self.path = "sklearn.tree.DecisionTreeRegressor"
         # TODO not converging
-        self.param_space = self.regression_space["DecisionTreeRegressor"]["param_space"]
-        self.x0 = self.regression_space["DecisionTreeRegressor"]["x0"]
+        self.param_space = self.spaces["DecisionTreeRegressor"]["param_space"]
+        self.x0 = self.spaces["DecisionTreeRegressor"]["x0"]
 
         return {'model': {'DecisionTreeRegressor': kwargs}}
 
@@ -183,8 +183,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyRegressor.html
 
         self.path = "sklearn.dummy.DummyRegressor"
-        self.param_space = self.regression_space["DummyRegressor"]["param_space"]
-        self.x0 = self.regression_space["DummyRegressor"]["x0"]
+        self.param_space = self.spaces["DummyRegressor"]["param_space"]
+        self.x0 = self.spaces["DummyRegressor"]["x0"]
         kwargs.update({'constant': 0.2,
                        'quantile': 0.2})
 
@@ -194,8 +194,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNet.html
 
         self.path = "sklearn.linear_model.ElasticNet"
-        self.param_space = self.regression_space["ElasticNet"]["param_space"]
-        self.x0 = self.regression_space["ElasticNet"]["x0"]
+        self.param_space = self.spaces["ElasticNet"]["param_space"]
+        self.x0 = self.spaces["ElasticNet"]["x0"]
 
         return {'model': {'ElasticNet': kwargs}}
 
@@ -203,8 +203,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNetCV.html
 
         self.path = "sklearn.linear_model.ElasticNetCV"
-        self.param_space = self.regression_space["ElasticNetCV"]["param_space"]
-        self.x0 = self.regression_space["ElasticNetCV"]["x0"]
+        self.param_space = self.spaces["ElasticNetCV"]["param_space"]
+        self.x0 = self.spaces["ElasticNetCV"]["x0"]
 
         return {'model': {'ElasticNetCV': kwargs}}
 
@@ -212,8 +212,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.tree.ExtraTreeRegressor.htm
 
         self.path = "sklearn.tree.ExtraTreeRegressor"
-        self.param_space = self.regression_space["ExtraTreeRegressor"]["param_space"]
-        self.x0 = self.regression_space["ExtraTreeRegressor"]["x0"]
+        self.param_space = self.spaces["ExtraTreeRegressor"]["param_space"]
+        self.x0 = self.spaces["ExtraTreeRegressor"]["x0"]
 
         return {'model': {'ExtraTreeRegressor': kwargs}}
 
@@ -221,8 +221,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.ExtraTreesRegressor.html
 
         self.path = "sklearn.ensemble.ExtraTreesRegressor"
-        self.param_space = self.regression_space["ExtraTreesRegressor"]["param_space"]
-        self.x0 = self.regression_space["ExtraTreesRegressor"]["x0"]
+        self.param_space = self.spaces["ExtraTreesRegressor"]["param_space"]
+        self.x0 = self.spaces["ExtraTreesRegressor"]["x0"]
 
         return {'model': {'ExtraTreesRegressor': kwargs}}
 
@@ -242,8 +242,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.gaussian_process.GaussianProcessRegressor.html
 
         self.path = "sklearn.gaussian_process.GaussianProcessRegressor"
-        self.param_space = self.regression_space["GaussianProcessRegressor"]["param_space"]
-        self.x0 = self.regression_space["GaussianProcessRegressor"]["x0"]
+        self.param_space = self.spaces["GaussianProcessRegressor"]["param_space"]
+        self.x0 = self.spaces["GaussianProcessRegressor"]["x0"]
 
         return {'model': {'GaussianProcessRegressor': kwargs}}
 
@@ -251,8 +251,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html
 
         self.path = "sklearn.ensemble.GradientBoostingRegressor"
-        self.param_space = self.regression_space["GradientBoostingRegressor"]["param_space"]
-        self.x0 = self.regression_space["GradientBoostingRegressor"]["x0"]
+        self.param_space = self.spaces["GradientBoostingRegressor"]["param_space"]
+        self.x0 = self.spaces["GradientBoostingRegressor"]["x0"]
 
         return {'model': {'GradientBoostingRegressor': kwargs}}
 
@@ -261,8 +261,8 @@ class MLRegressionExperiments(Experiments):
 
         # TODO not hpo not converging
         self.path = "sklearn.ensemble.HistGradientBoostingRegressor"
-        self.param_space = self.regression_space["HistGradientBoostingRegressor"]["param_space"]
-        self.x0 = self.regression_space["HistGradientBoostingRegressor"]["x0"]
+        self.param_space = self.spaces["HistGradientBoostingRegressor"]["param_space"]
+        self.x0 = self.spaces["HistGradientBoostingRegressor"]["x0"]
 
         return {'model': {'HistGradientBoostingRegressor':kwargs}}
 
@@ -270,8 +270,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.HuberRegressor.html
 
         self.path = "sklearn.linear_model.HuberRegressor"
-        self.param_space = self.regression_space["HuberRegressor"]["param_space"]
-        self.x0 = self.regression_space["HuberRegressor"]["x0"]
+        self.param_space = self.spaces["HuberRegressor"]["param_space"]
+        self.x0 = self.spaces["HuberRegressor"]["x0"]
 
         return {'model': {'HuberRegressor': kwargs}}
 
@@ -279,8 +279,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.kernel_ridge.KernelRidge.html
 
         self.path = "sklearn.kernel_ridge.KernelRidge"
-        self.param_space = self.regression_space["KernelRidge"]["param_space"]
-        self.x0 = self.regression_space["KernelRidge"]["x0"]
+        self.param_space = self.spaces["KernelRidge"]["param_space"]
+        self.x0 = self.spaces["KernelRidge"]["x0"]
 
         return {'model': {'KernelRidge': kwargs}}
 
@@ -288,8 +288,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsRegressor.html
 
         self.path = "sklearn.neighbors.KNeighborsRegressor"
-        self.param_space = self.regression_space["KNeighborsRegressor"]["param_space"]
-        self.x0 = self.regression_space["KNeighborsRegressor"]["x0"]
+        self.param_space = self.spaces["KNeighborsRegressor"]["param_space"]
+        self.x0 = self.spaces["KNeighborsRegressor"]["x0"]
 
         return {'model': {'KNeighborsRegressor': kwargs}}
 
@@ -297,8 +297,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLars.html
 
         self.path = "sklearn.linear_model.LassoLars"
-        self.param_space = self.regression_space["LassoLars"]["param_space"]
-        self.x0 = self.regression_space["LassoLars"]["x0"]
+        self.param_space = self.spaces["LassoLars"]["param_space"]
+        self.x0 = self.spaces["LassoLars"]["x0"]
 
         return {'model': {'LassoLars': kwargs}}
 
@@ -306,8 +306,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lars.html
 
         self.path = "sklearn.linear_model.Lars"
-        self.param_space = self.regression_space["Lars"]["param_space"]
-        self.x0 = self.regression_space["Lars"]["x0"]
+        self.param_space = self.spaces["Lars"]["param_space"]
+        self.x0 = self.spaces["Lars"]["x0"]
 
         return {'model': {'Lars': kwargs}}
 
@@ -315,8 +315,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LarsCV.html
 
         self.path = "sklearn.linear_model.LarsCV"
-        self.param_space = self.regression_space["LarsCV"]["param_space"]
-        self.x0 = self.regression_space["LarsCV"]["x0"]
+        self.param_space = self.spaces["LarsCV"]["param_space"]
+        self.x0 = self.spaces["LarsCV"]["x0"]
 
         return {'model': {'LarsCV': kwargs}}
 
@@ -324,8 +324,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVR.html
 
         self.path = "sklearn.svm.LinearSVR"
-        self.param_space = self.regression_space["LinearSVR"]["param_space"]
-        self.x0 = self.regression_space["LinearSVR"]["x0"]
+        self.param_space = self.spaces["LinearSVR"]["param_space"]
+        self.x0 = self.spaces["LinearSVR"]["x0"]
 
         return {'model': {'LinearSVR': kwargs}}
 
@@ -333,8 +333,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html
 
         self.path = "sklearn.linear_model.Lasso"
-        self.param_space = self.regression_space["Lasso"]["param_space"]
-        self.x0 = self.regression_space["Lasso"]["x0"]
+        self.param_space = self.spaces["Lasso"]["param_space"]
+        self.x0 = self.spaces["Lasso"]["x0"]
 
         return {'model': {'Lasso': kwargs}}
 
@@ -342,8 +342,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoCV.html
 
         self.path = "sklearn.linear_model.LassoCV"
-        self.param_space = self.regression_space["LassoCV"]["param_space"]
-        self.x0 = self.regression_space["LassoCV"]["x0"]
+        self.param_space = self.spaces["LassoCV"]["param_space"]
+        self.x0 = self.spaces["LassoCV"]["x0"]
 
         return {'model': {'LassoCV': kwargs}}
 
@@ -351,8 +351,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsCV.html
 
         self.path = "sklearn.linear_model.LassoLarsCV"
-        self.param_space = self.regression_space["LassoLarsCV"]["param_space"]
-        self.x0 = self.regression_space["LassoLarsCV"]["x0"]
+        self.param_space = self.spaces["LassoLarsCV"]["param_space"]
+        self.x0 = self.spaces["LassoLarsCV"]["x0"]
 
         return {'model': {'LassoLarsCV': kwargs}}
 
@@ -360,8 +360,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LassoLarsIC.html
 
         self.path = "sklearn.linear_model.LassoLarsIC"
-        self.param_space = self.regression_space["LassoLarsIC"]["param_space"]
-        self.x0 = self.regression_space["LassoLarsIC"]["x0"]
+        self.param_space = self.spaces["LassoLarsIC"]["param_space"]
+        self.x0 = self.spaces["LassoLarsIC"]["x0"]
 
         return {'model': {'LassoLarsIC': kwargs}}
 
@@ -369,8 +369,8 @@ class MLRegressionExperiments(Experiments):
         # https://lightgbm.readthedocs.io/en/latest/pythonapi/lightgbm.LGBMRegressor.html
 
         self.path = "lightgbm.LGBMRegressor"
-        self.param_space = self.regression_space["LGBMRegressor"]["param_space"]
-        self.x0 = self.regression_space["LGBMRegressor"]["x0"]
+        self.param_space = self.spaces["LGBMRegressor"]["param_space"]
+        self.x0 = self.spaces["LGBMRegressor"]["x0"]
 
         return {'model': {'LGBMRegressor': kwargs}}
 
@@ -378,8 +378,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
 
         self.path = "sklearn.linear_model.LinearRegression"
-        self.param_space = self.regression_space["LinearRegression"]["param_space"]
-        self.x0 = self.regression_space["LinearRegression"]["x0"]
+        self.param_space = self.spaces["LinearRegression"]["param_space"]
+        self.x0 = self.spaces["LinearRegression"]["x0"]
 
         return {'model': {'LinearRegression': kwargs}}
 
@@ -387,8 +387,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPRegressor.html
 
         self.path = "sklearn.neural_network.MLPRegressor"
-        self.param_space = self.regression_space["MLPRegressor"]["param_space"]
-        self.x0 = self.regression_space["MLPRegressor"]["x0"]
+        self.param_space = self.spaces["MLPRegressor"]["param_space"]
+        self.x0 = self.spaces["MLPRegressor"]["x0"]
 
         return {'model': {'MLPRegressor': kwargs}}
 
@@ -396,8 +396,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.NuSVR.html
 
         self.path = "sklearn.svm.NuSVR"
-        self.param_space = self.regression_space["NuSVR"]["param_space"]
-        self.x0 = self.regression_space["NuSVR"]["x0"]
+        self.param_space = self.spaces["NuSVR"]["param_space"]
+        self.x0 = self.spaces["NuSVR"]["x0"]
 
         return {'model': {'NuSVR': kwargs}}
 
@@ -405,8 +405,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuit.html
 
         self.path = "sklearn.linear_model.OrthogonalMatchingPursuit"
-        self.param_space = self.regression_space["OrthogonalMatchingPursuit"]["param_space"]
-        self.x0 = self.regression_space["OrthogonalMatchingPursuit"]["x0"]
+        self.param_space = self.spaces["OrthogonalMatchingPursuit"]["param_space"]
+        self.x0 = self.spaces["OrthogonalMatchingPursuit"]["x0"]
 
         return {'model': {'OrthogonalMatchingPursuit': kwargs}}
 
@@ -414,8 +414,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.OrthogonalMatchingPursuitCV.html
 
         self.path = "sklearn.linear_model.OrthogonalMatchingPursuitCV"
-        self.param_space = self.regression_space["OrthogonalMatchingPursuitCV"]["param_space"]
-        self.x0 = self.regression_space["OrthogonalMatchingPursuitCV"]["x0"]
+        self.param_space = self.spaces["OrthogonalMatchingPursuitCV"]["param_space"]
+        self.x0 = self.spaces["OrthogonalMatchingPursuitCV"]["x0"]
 
         return {'model': {'OrthogonalMatchingPursuitCV': kwargs}}
 
@@ -423,8 +423,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html
 
         self.path = "sklearn.svm.OneClassSVM"
-        self.param_space = self.regression_space["OneClassSVM"]["param_space"]
-        self.x0 = self.regression_space["OneClassSVM"]["x0"]
+        self.param_space = self.spaces["OneClassSVM"]["param_space"]
+        self.x0 = self.spaces["OneClassSVM"]["x0"]
 
         return {'model': {'OneClassSVM': kwargs}}
 
@@ -432,8 +432,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html
 
         self.path = "sklearn.linear_model.PoissonRegressor"
-        self.param_space = self.regression_space["PoissonRegressor"]["param_space"]
-        self.x0 = self.regression_space["PoissonRegressor"]["x0"]
+        self.param_space = self.spaces["PoissonRegressor"]["param_space"]
+        self.x0 = self.spaces["PoissonRegressor"]["x0"]
 
         return {'model': {'PoissonRegressor': kwargs}}
 
@@ -441,8 +441,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
 
         self.path = "sklearn.linear_model.Ridge"
-        self.param_space = self.regression_space["Ridge"]["param_space"]
-        self.x0 = self.regression_space["Ridge"]["x0"]
+        self.param_space = self.spaces["Ridge"]["param_space"]
+        self.x0 = self.spaces["Ridge"]["x0"]
 
         return {'model': {'Ridge': kwargs}}
 
@@ -450,8 +450,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RidgeCV.html
 
         self.path = "sklearn.linear_model.RidgeCV"
-        self.param_space = self.regression_space["RidgeCV"]["param_space"]
-        self.x0 = self.regression_space["RidgeCV"]["x0"]
+        self.param_space = self.spaces["RidgeCV"]["param_space"]
+        self.x0 = self.spaces["RidgeCV"]["x0"]
 
         return {'model': {'RidgeCV': kwargs}}
 
@@ -459,8 +459,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.RadiusNeighborsRegressor.html
 
         self.path = "sklearn.neighbors.RadiusNeighborsRegressor"
-        self.param_space = self.regression_space["RadiusNeighborsRegressor"]["param_space"]
-        self.x0 = self.regression_space["RadiusNeighborsRegressor"]["x0"]
+        self.param_space = self.spaces["RadiusNeighborsRegressor"]["param_space"]
+        self.x0 = self.spaces["RadiusNeighborsRegressor"]["x0"]
 
         return {'model': {'RadiusNeighborsRegressor': kwargs}}
 
@@ -468,8 +468,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
 
         self.path = "sklearn.linear_model.RANSACRegressor"
-        self.param_space = self.regression_space["RANSACRegressor"]["param_space"]
-        self.x0 = self.regression_space["RANSACRegressor"]["x0"]
+        self.param_space = self.spaces["RANSACRegressor"]["param_space"]
+        self.x0 = self.spaces["RANSACRegressor"]["x0"]
 
         return {'model': {'RANSACRegressor': kwargs}}
 
@@ -477,8 +477,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
 
         self.path = "sklearn.ensemble.RandomForestRegressor"
-        self.param_space = self.regression_space["RandomForestRegressor"]["param_space"]
-        self.x0 = self.regression_space["RandomForestRegressor"]["x0"]
+        self.param_space = self.spaces["RandomForestRegressor"]["param_space"]
+        self.x0 = self.spaces["RandomForestRegressor"]["x0"]
 
         return {'model': {'RandomForestRegressor': kwargs}}
 
@@ -486,8 +486,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html
 
         self.path = "sklearn.svm.SVR"
-        self.param_space = self.regression_space["SVR"]["param_space"]
-        self.x0 = self.regression_space["SVR"]["x0"]
+        self.param_space = self.spaces["SVR"]["param_space"]
+        self.x0 = self.spaces["SVR"]["x0"]
 
         return {'model': {'SVR': kwargs}}
 
@@ -495,8 +495,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html
 
         self.path = "sklearn.linear_model.SGDRegressor"
-        self.param_space = self.regression_space["SGDRegressor"]["param_space"]
-        self.x0 = self.regression_space["SGDRegressor"]["x0"]
+        self.param_space = self.spaces["SGDRegressor"]["param_space"]
+        self.x0 = self.spaces["SGDRegressor"]["x0"]
 
         return {'model': {'SGDRegressor': kwargs}}
 
@@ -514,8 +514,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TweedieRegressor.html
 
         self.path = "sklearn.linear_model.TweedieRegressor"
-        self.param_space = self.regression_space["TweedieRegressor"]["param_space"]
-        self.x0 = self.regression_space["TweedieRegressor"]["x0"]
+        self.param_space = self.spaces["TweedieRegressor"]["param_space"]
+        self.x0 = self.spaces["TweedieRegressor"]["x0"]
 
         return {'model': {'TweedieRegressor': kwargs}}
 
@@ -523,8 +523,8 @@ class MLRegressionExperiments(Experiments):
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.TheilSenRegressor.html
 
         self.path = "sklearn.linear_model.TheilSenRegressor"
-        self.param_space = self.regression_space["TheilSenRegressor"]["param_space"]
-        self.x0 = self.regression_space["TheilSenRegressor"]["x0"]
+        self.param_space = self.spaces["TheilSenRegressor"]["param_space"]
+        self.x0 = self.spaces["TheilSenRegressor"]["x0"]
 
         return {'model': {'TheilSenRegressor': kwargs}}
 
@@ -537,8 +537,8 @@ class MLRegressionExperiments(Experiments):
         # https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRFRegressor
 
         self.path = "xgboost.XGBRFRegressor"
-        self.param_space = self.regression_space["XGBRFRegressor"]["param_space"]
-        self.x0 = self.regression_space["XGBRFRegressor"]["x0"]
+        self.param_space = self.spaces["XGBRFRegressor"]["param_space"]
+        self.x0 = self.spaces["XGBRFRegressor"]["x0"]
 
         return {'model': {'XGBRFRegressor': kwargs}}
 
@@ -546,7 +546,7 @@ class MLRegressionExperiments(Experiments):
         # ##https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor
 
         self.path = "xgboost.XGBRegressor"
-        self.param_space = self.regression_space["XGBRegressor"]["param_space"]
-        self.x0 = self.regression_space["XGBRegressor"]["x0"]
+        self.param_space = self.spaces["XGBRegressor"]["param_space"]
+        self.x0 = self.spaces["XGBRegressor"]["x0"]
 
         return {'model': {'XGBRegressor': kwargs}}

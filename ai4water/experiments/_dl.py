@@ -3,11 +3,13 @@ __all__ = ["DLRegressionExperiments"]
 
 import os
 
-from ._main import Experiments
 from ai4water import Model
 from ai4water.hyperopt import Integer, Real, Categorical
 from ai4water.utils.utils import dateandtime_now
-from ai4water.models import MLP, CNN, LSTM, CNNLSTM, LSTMAutoEncoder, TFT
+from ai4water.models import MLP, CNN, LSTM, CNNLSTM, LSTMAutoEncoder, TFT, TCN
+
+from ._main import Experiments
+from .utils import dl_space
 
 
 class DLRegressionExperiments(Experiments):
@@ -67,6 +69,8 @@ class DLRegressionExperiments(Experiments):
                          exp_name=exp_name,
                          num_samples=num_samples,
                          verbosity=verbosity)
+
+        self.spaces = dl_space(num_samples=num_samples)
 
     @property
     def input_shape(self)->tuple:
@@ -149,107 +153,98 @@ class DLRegressionExperiments(Experiments):
     def model_MLP(self, **kwargs):
         """multi-layer perceptron model"""
 
-        self.param_space = [
-            Integer(8, 128, name="units"),
-            Categorical([1,2,3], name="num_layers"),
-            Real(0.0, 0.4, name="dropout"),
-            Categorical(["relu", "linear", "leakyrelu", "elu", "tanh", "sigmoid"],
-                        name="activation")
-        ] + self.static_space
+        self.param_space = self.spaces["MLP"]["param_space"] + self.static_space
+        self.x0 = self.spaces["MLP"]["x0"] + self.static_x0
 
-        self.x0 = [32, 1, 0.0, "relu"] + self.static_x0
-
-        return {'model': MLP(input_shape=self.input_shape,
-                              **kwargs)}
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config = {'model': MLP(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+        return config
 
     def model_LSTM(self, **kwargs):
-        self.param_space = [
-            Integer(8, 128, name="units"),
-            Categorical([1, 2, 3], name="num_layers"),
-            Real(0.0, 0.4, name="dropout"),
-            Categorical(["relu",  "leakyrelu", "elu", "tanh", "sigmoid"],
-                        name="activation")
-        ] + self.static_space
+        """LSTM based model"""
 
-        self.x0 = [32, 1, 0.0, "relu"] + self.static_x0
-        return {'model': LSTM(input_shape=self.input_shape,
-                              **kwargs)}
+        self.param_space = self.spaces["LSTM"]["param_space"] + self.static_space
+        self.x0 = self.spaces["LSTM"]["x0"] + self.static_x0
+
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config = {'model': LSTM(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+        return config
 
     def model_CNN(self, **kwargs):
-        self.param_space = [
-            Integer(8, 128, name="filters"),
-            Categorical([2,3,4,5], name="kernel_size"),
-            Categorical([1, 2, 3], name="num_layers"),
-            Real(0.0, 0.4, name="dropout"),
-            Categorical(["relu", "leakyrelu", "elu", "tanh", "sigmoid"],
-                        name="activation")
-        ] + self.static_space
+        """1D CNN based model"""
 
-        self.x0 = [32, 2, 1, 0.0, "relu"] + self.static_x0
-        return {'model': CNN(input_shape=self.input_shape,
-                              **kwargs)}
+        self.param_space = self.spaces["CNN"]["param_space"] + self.static_space
+        self.x0 = self.spaces["CNN"]["x0"] + self.static_x0
+
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config =  {'model': CNN(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+
+        return config
 
     def model_CNNLSTM(self, **kwargs):
         """CNN-LSTM model"""
 
-        self.param_space = [
-            Categorical([1,2,3], name="cnn_layers"),
-            Categorical([1, 2, 3], name="lstm_layers"),
-            Integer(8, 128, name="units"),
-            Integer(8, 128, name="filters"),
-            Categorical([2,3,4,5], name="kernel_size")
-        ] + self.static_space
+        self.param_space = self.spaces["CNNLSTM"]["param_space"] + self.static_space
+        self.x0 = self.spaces["CNNLSTM"]["x0"] + self.static_x0
 
-        self.x0 = [2, 1, 32, 32, 2] + self.static_x0
-
-        return {'model': CNNLSTM(
-            input_shape=self.input_shape,
-            **kwargs)
-        }
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config = {'model': CNNLSTM(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+        return config
 
     def model_LSTMAutoEncoder(self, **kwargs):
         """LSTM based auto-encoder model."""
 
-        self.param_space = [
-            Integer(8, 128, name="encoder_units"),
-            Integer(8, 128, name="decoder_units"),
-            Categorical([1,2,3], name="encoder_layers"),
-            Categorical([1,2,3], name="decoder_layers"),
-        ] + self.static_space
+        self.param_space = self.spaces["LSTMAutoEncoder"]["param_space"] + self.static_space
+        self.x0 = self.spaces["LSTMAutoEncoder"]["x0"] + self.static_x0
 
-        self.x0 = [32, 32, 1, 1] + self.static_x0
-
-        return {'model': LSTMAutoEncoder(
-            input_shape=self.input_shape,
-            **kwargs)
-        }
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config = {'model': LSTMAutoEncoder(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+        return config
 
     def model_TCN(self, **kwargs):
         """Temporal Convolution network based model."""
 
-        self.param_space = [
-            Integer(8, 128, name="filters"),
-            Categorical([1,2,3], name="kernel_size"),
-        ] + self.static_space
+        self.param_space = self.spaces["TCN"]["param_space"] + self.static_space
+        self.x0 = self.spaces["TCN"]["x0"] + self.static_x0
 
-        self.x0 = [32, 2] + self.static_x0
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config = {'model': TCN(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+        return config
 
-        return {'model': LSTMAutoEncoder(
-            input_shape=self.input_shape,
-            **kwargs)
-        }
-
-    def model_TemporalFusionTransformer(self, **kwargs):
+    def model_TFT(self, **kwargs):
         """temporal fusion transformer model."""
 
-        self.param_space = [
-            Integer(16, 128, name="hidden_units"),
-            Categorical([1,2,3,4,5], name="num_heads")
-        ] + self.static_space
+        self.param_space = self.spaces["TFT"]["param_space"] + self.static_space
+        self.x0 = self.spaces["TFT"]["x0"] + self.static_x0
 
-        self.x0 = [64, 2]
-
-        return {'model': TFT(
-            input_shape=self.input_shape,
-            **kwargs)
-        }
+        _kwargs = {}
+        for arg in ['batch_size', 'lr']:
+            if arg in kwargs:
+                _kwargs[arg] = kwargs.pop(arg)
+        config = {'model': TFT(input_shape=self.input_shape, **kwargs)}
+        config.update(_kwargs)
+        return config
