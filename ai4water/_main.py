@@ -1042,7 +1042,7 @@ class BaseModel(NN):
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
                 # todo, it is assumed that there is softmax as the last layer
-                elif self.mode == 'classification':
+                elif self.mode == 'classification' and not user_defined_x:
                     # todo, don't know why it is working
                     assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
                             {self.num_classes} while model's output has {model_output_shape[0]} nodes """
@@ -2845,20 +2845,19 @@ class BaseModel(NN):
     def _inverse_transform_y(self, true_outputs, predicted):
         """inverse transformation of y/labels for both true and predicted"""
 
-        if self.config['y_transformation'] is None:
-            return true_outputs, predicted
+        if self.config['y_transformation']:
 
-        y_transformer = Transformations.from_config(self.config['y_transformer_'])
+            y_transformer = Transformations.from_config(self.config['y_transformer_'])
 
-        if self.config['y_transformation']:  # only if we apply transformation on y
-            # both x,and true_y were given
-            true_outputs = self.__inverse_transform_y(true_outputs, y_transformer)
-            # because observed y may have -ves or zeros which would have been
-            # removed during fit and are put back into it during inverse transform, so
-            # in such case predicted y should not be treated by zero indices or negative indices
-            # of true y. In other words, parameters of true y should not have impact on inverse
-            # transformation of predicted y.
-            predicted = self.__inverse_transform_y(predicted, y_transformer, postprocess=False)
+            if self.config['y_transformation']:  # only if we apply transformation on y
+                # both x,and true_y were given
+                true_outputs = self.__inverse_transform_y(true_outputs, y_transformer)
+                # because observed y may have -ves or zeros which would have been
+                # removed during fit and are put back into it during inverse transform, so
+                # in such case predicted y should not be treated by zero indices or negative indices
+                # of true y. In other words, parameters of true y should not have impact on inverse
+                # transformation of predicted y.
+                predicted = self.__inverse_transform_y(predicted, y_transformer, postprocess=False)
 
         return true_outputs, predicted
 
