@@ -1,5 +1,7 @@
+
 import tensorflow as tf
 from tensorflow.keras import layers
+from tensorflow.keras.layers import Dense, Layer
 
 from .attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
@@ -378,7 +380,7 @@ class Conditionalize(tf.keras.layers.Layer):
 
     Example
     --------
-    >>> from ai4water.models._tensorflow import Conditionalize
+    >>> from ai4water.models.tensorflow import Conditionalize
     >>> from tensorflow.keras.layers import Input, LSTM
     >>> i = Input(shape=(10, 3))
     >>> raw_conditions = Input(shape=(14,))
@@ -433,6 +435,246 @@ class Conditionalize(tf.keras.layers.Layer):
         return cond_state
 
 
+class _NormalizedGate(Layer):
+
+    _Normalizers = {
+        'relu': tf.nn.relu,
+        'sigmoid': tf.nn.sigmoid
+    }
+
+    def __init__(self, in_features, out_shape, normalizer="relu"):
+
+        super(_NormalizedGate, self).__init__()
+
+        self.in_features = in_features
+        self.out_shape = out_shape
+        self.normalizer = self._Normalizers[normalizer]
+
+        self.fc = Dense(out_shape[0]*out_shape[1],
+                        use_bias=True,
+                        kernel_initializer="Orthogonal",
+                        bias_initializer="zeros")
+
+    def call(self, inputs):
+
+        h = self.fc(inputs)
+        h = tf.reshape(h, (-1, *self.out_shape))
+        h =  self.normalizer(h)
+        normalized, _ = tf.linalg.normalize(h, axis=-1)
+
+        return normalized
+
+
+class _MCLSTMCell(Layer):
+    """
+    m_inp = tf.range(50, dtype=tf.float32)
+    m_inp = tf.reshape(m_inp, (5, 10, 1))
+    aux_inp = tf.range(150, dtype=tf.float32)
+    aux_inp = tf.reshape(aux_inp, (5, 10, 3))
+    cell = _MCLSTMCell(1, 3, 8)
+    m_out_, ct_ = cell(m_inp, aux_inp)
+    """
+    def __init__(
+            self,
+            mass_input_size,
+            aux_input_size,
+            units,
+            time_major:bool = False,
+    ):
+        super(_MCLSTMCell, self).__init__()
+
+        self.units = units
+        self.time_major = time_major
+
+        gate_inputs = aux_input_size + self.units + mass_input_size
+
+        self.output_gate = Dense(self.units,
+                                 activation="sigmoid",
+                                 kernel_initializer="Orthogonal",
+                                 bias_initializer="zeros",
+                                 name="sigmoid_gate")
+
+        self.input_gate = _NormalizedGate(gate_inputs,
+                                          (mass_input_size, self.units),
+                                          "sigmoid")
+
+        self.redistribution = _NormalizedGate(gate_inputs,
+                                              (self.units, self.units),
+                                              "relu")
+
+    def call(self, x_m, x_a, ct=None):
+
+        if not self.time_major:
+            # (batch_size, lookback, input_features) -> (lookback, batch_size, input_features)
+            x_m = tf.transpose(x_m, [1, 0, 2])
+            x_a = tf.transpose(x_a, [1, 0, 2])
+
+        lookback_steps, batch_size, _ = x_m.shape
+
+        if ct is None:
+            ct = tf.zeros((batch_size, self.units))
+
+        m_out, c = [], []
+
+        for time_step in range(lookback_steps):
+            mt_out, ct = self._step(x_m[time_step], x_a[time_step], ct)
+
+            m_out.append(mt_out)
+            c.append(ct)
+
+        m_out, c = tf.stack(m_out), tf.stack(c)  # (lookback, batch_size, units)
+
+        return m_out, c
+
+    def _step(self, xt_m, xt_a, c):
+
+        features = tf.concat([xt_m, xt_a, c / (tf.norm(c) + 1e-5)], axis=-1)  # (examples, ?)
+
+        # compute gate activations
+        i = self.input_gate(features)  # (examples, 1, units)
+        r = self.redistribution(features)  # (examples, units, units)
+        o = self.output_gate(features)  # (examples, units)
+
+        m_in = tf.squeeze(tf.matmul(tf.expand_dims(xt_m, axis=-2), i), axis=-2)
+
+        m_sys = tf.squeeze(tf.matmul(tf.expand_dims(c, axis=-2), r), axis=-2)
+
+        m_new = m_in + m_sys
+
+        return tf.multiply(o, m_new), tf.multiply(tf.subtract(1.0, o),  m_new)
+
+
+class MCLSTM(Layer):
+    """Mass-Conserving LSTM model from Hoedt et al. [1]_.
+
+    This implementation follows of NeuralHydrology's implementation of MCLSTM
+    with some changes:
+    1) reduced sum is not performed for over the units
+    2) time_major argument is added
+    3) no implementation of Embedding
+
+    Examples
+    --------
+    >>> inputs = tf.range(150, dtype=tf.float32)
+    >>> inputs = tf.reshape(inputs, (10, 5, 3))
+    >>> mc = MCLSTM(1, 2, 8, 1)
+    >>> h = mc(inputs)  # (batch, units)
+    ...
+    >>> mc = MCLSTM(1, 2, 8, 1, return_sequences=True)
+    >>> h = mc(inputs)  # (batch, lookback, units)
+    ...
+    >>> mc = MCLSTM(1, 2, 8, 1, return_state=True)
+    >>> _h, _o, _c = mc(inputs)  # (batch, lookback, units)
+    ...
+    >>> mc = MCLSTM(1, 2, 8, 1, return_state=True, return_sequences=True)
+    >>> _h, _o, _c = mc(inputs)  # (batch, lookback, units)
+    ...
+    ... # with time_major as True
+    >>> inputs = tf.range(150, dtype=tf.float32)
+    >>> inputs = tf.reshape(inputs, (5, 10, 3))
+    >>> mc = MCLSTM(1, 2, 8, 1, time_major=True)
+    >>> _h = mc(inputs)  # (batch, units)
+    ...
+    >>> mc = MCLSTM(1, 2, 8, 1, time_major=True, return_sequences=True)
+    >>> _h = mc(inputs)  # (lookback, batch, units)
+    ...
+    >>> mc = MCLSTM(1, 2, 8, 1, time_major=True, return_state=True)
+    >>> _h, _o, _c = mc(inputs)  # (batch, units), ..., (lookback, batch, units)
+    ...
+    ... # end to end keras Model
+    >>> from tensorflow.keras.layers import Dense, Input
+    >>> from tensorflow.keras.models import Model
+    >>> import numpy as np
+    ...
+    >>> inp = Input(batch_shape=(32, 10, 3))
+    >>> lstm = MCLSTM(1, 2, 8)(inp)
+    >>> out = Dense(1)(lstm)
+    ...
+    >>> model = Model(inputs=inp, outputs=out)
+    >>> model.compile(loss='mse')
+    ...
+    >>> x = np.random.random((320, 10, 3))
+    >>> y = np.random.random((320, 1))
+    >>> y = model.fit(x=x, y=y)
+
+    References
+    ----------
+    .. [1] https://arxiv.org/abs/2101.05186
+    """
+    def __init__(
+            self,
+            num_mass_inputs,
+            dynamic_inputs,
+            units,
+            num_targets=1,
+            time_major:bool = False,
+            return_sequences:bool = False,
+            return_state:bool = False,
+            name="MCLSTM",
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+        num_targets : int
+            number of inputs for which mass balance is to be reserved.
+        dynamic_inputs :
+            number of inpts other than mass_targets
+        units :
+            hidden size, determines the size of weight matrix
+        time_major : bool, optional (default=True)
+            if True, the data is expected to be of shape (lookback, batch_size, input_features)
+            otherwise, data is expected of shape (batch_size, lookback, input_features)
+        """
+        super(MCLSTM, self).__init__(name=name, **kwargs)
+
+        assert num_mass_inputs ==1
+        assert units>1
+        assert num_targets==1
+
+        self.n_mass_inputs = num_mass_inputs
+        self.units = units
+        self.n_aux_inputs = dynamic_inputs
+        self.time_major = time_major
+        self.return_sequences = return_sequences
+        self.return_state = return_state
+
+        self.mclstm = _MCLSTMCell(
+            self.n_mass_inputs,
+            self.n_aux_inputs,
+            self.units,
+            self.time_major,
+        )
+
+    def call(self, inputs):
+
+        x_m = inputs[:, :, :self.n_mass_inputs]  # (batch, lookback, 1)
+        x_a = inputs[:, :, self.n_mass_inputs:]  # (batch, lookback, dynamic_inputs)
+
+        output, c = self.mclstm(x_m, x_a)  # (lookback, batch, units)
+
+        # unlike NeuralHydrology, we don't preform reduced sum over units
+        # to keep with the convention in keras/lstm
+        #output = tf.math.reduce_sum(output[:, :, 1:], axis=-1, keepdims=True)
+
+        if self.time_major:
+            h, m_out, c = output, output, c
+            if not self.return_sequences:
+                h = h[-1]
+        else:
+            h = tf.transpose(output, [1, 0, 2])   # -> (batch_size, lookback, 1)
+            #m_out = tf.transpose(output, [1, 0, 2])  # -> (batch_size, lookback, 1)
+            c = tf.transpose(c, [1, 0, 2])  # -> (batch_size, lookback, units)
+
+            if not self.return_sequences:
+                h = h[:, -1]
+
+        if self.return_state:
+            return h, h, c
+
+        return h
+
+
 class PrivateLayers(object):
 
     class layers:
@@ -441,3 +683,4 @@ class PrivateLayers(object):
         BasicBlock = BasicBlock
         CONDRNN = ConditionalRNN
         Conditionalize = Conditionalize
+        MCLSTM = MCLSTM
