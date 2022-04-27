@@ -1,3 +1,5 @@
+import math
+import warnings
 
 from scipy.special import boxcox
 
@@ -108,14 +110,15 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
             if isinstance(lambdas, float):
                 lambdas = np.array([lambdas])
             lambdas = np.array(lambdas)
-            # if given lambdas must be a 1d array
+            # if given, lambdas must be a 1d array
             assert lambdas.size == len(lambdas)
             lambdas = lambdas.reshape(-1,)
             assert method != "yeo-johnson"
 
         self.lambdas = lambdas
 
-        super(PowerTransformer, self).__init__(method=method, standardize=standardize,
+        super(PowerTransformer, self).__init__(method=method,
+                                               standardize=standardize,
                                                copy=copy)
 
     @property

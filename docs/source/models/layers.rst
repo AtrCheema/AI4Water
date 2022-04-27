@@ -19,3 +19,12 @@ Conditionalize
    :show-inheritance:
 
    .. automethod:: __init__
+
+EALSTM
+========
+.. autoclass:: ai4water.models.tensorflow.EALSTM
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

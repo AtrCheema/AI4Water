@@ -2,6 +2,12 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense, Layer
+from tensorflow.python.ops import array_ops
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras import activations
+from tensorflow.python.keras import constraints
+from tensorflow.python.keras import initializers
+from tensorflow.python.keras import regularizers
 
 from .attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
@@ -675,6 +681,257 @@ class MCLSTM(Layer):
         return h
 
 
+class EALSTM(Layer):
+    """Entity Aware LSTM as proposed by Kratzert et al., 2019 [1]_
+
+    The difference here is that a Dense layer is not applied on cell state as done in
+    original implementation in NeuralHydrology [2]_. This is left to user's discretion.
+
+    Examples
+    --------
+    >>> import tensorflow as tf
+    >>> batch, lookback, num_dyn_inputs, num_static_inputs, units = 10, 5, 3, 2, 8
+    >>> inputs = tf.range(batch*lookback*num_dyn_inputs, dtype=tf.float32)
+    >>> inputs = tf.reshape(inputs, (batch, lookback, num_dyn_inputs))
+    >>> stat_inputs = tf.range(batch*num_static_inputs, dtype=tf.float32)
+    >>> stat_inputs = tf.reshape(stat_inputs, (batch, num_static_inputs))
+    >>> lstm = EALSTM(units, num_static_inputs)
+    >>> h_n = lstm(inputs, stat_inputs)  # -> (batch, units)
+    ...
+    ... # with return sequences
+    >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True)
+    >>> h_n = lstm(inputs, stat_inputs)  # -> (batch, lookback, units)
+    ...
+    ... # with return sequences and return_state
+    >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True)
+    >>> h_n, [c_n, y_hat] = lstm(inputs, stat_inputs)  # -> (batch, lookback, units), [(), ()]
+    ...
+    ... # end to end Keras model
+    >>> from tensorflow.keras.models import Model
+    >>> from tensorflow.keras.layers import Input, Dense
+    >>> import numpy as np
+    >>> inp_dyn = Input(batch_shape=(batch, lookback, num_dyn_inputs))
+    >>> inp_static = Input(batch_shape=(batch, num_static_inputs))
+    >>> lstm = EALSTM(units, num_static_inputs)(inp_dyn, inp_static)
+    >>> out = Dense(1)(lstm)
+    >>> model = Model(inputs=[inp_dyn, inp_static], outputs=out)
+    >>> model.compile(loss='mse')
+    >>> print(model.summary())
+    ... # generate hypothetical data and train it
+    >>> dyn_x = np.random.random((100, lookback, num_dyn_inputs))
+    >>> static_x = np.random.random((100, num_static_inputs))
+    >>> y = np.random.random((100, 1))
+    >>> h = model.fit(x=[dyn_x, static_x], y=y, batch_size=batch)
+
+    References
+    ----------
+    .. [1] https://doi.org/10.5194/hess-23-5089-2019
+
+    .. [2] https://github.com/neuralhydrology/neuralhydrology
+    """
+
+    def __init__(
+            self,
+            units,
+            num_static_inputs:int,
+            use_bias=True,
+
+            activation = "tanh",
+            recurrent_activation="sigmoid",
+            static_activation="sigmoid",
+
+            kernel_initializer='glorot_uniform',
+            recurrent_initializer='orthogonal',
+            bias_initializer='zeros',
+            static_initializer = "glorot_uniform",
+
+            kernel_constraint=None,
+            recurrent_constraint=None,
+            bias_constraint=None,
+            static_constraint=None,
+
+            kernel_regularizer=None,
+            recurrent_regularizer=None,
+            bias_regularizer=None,
+            static_regularizer=None,
+
+            return_state=False,
+            return_sequences=False,
+            time_major=False,
+            **kwargs
+    ):
+        """
+
+        Parameters
+        ----------
+        units : int
+            number of units
+        num_static_inputs : int
+            number of static features
+        static_activation :
+            activation function for static input gate
+        static_regularizer :
+        static_constraint :
+        static_initializer :
+        """
+
+        super(EALSTM, self).__init__(**kwargs)
+
+        self.units = units
+        self.num_static_inputs = num_static_inputs
+
+        self.activation = activations.get(activation)
+        self.rec_activation = activations.get(recurrent_activation)
+        self.static_activation = static_activation
+
+        self.use_bias = use_bias
+
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.recurrent_initializer = initializers.get(recurrent_initializer)
+        self.bias_initializer = initializers.get(bias_initializer)
+        self.static_initializer = initializers.get(static_initializer)
+
+        self.kernel_constraint = constraints.get(kernel_constraint)
+        self.recurrent_constraint = constraints.get(recurrent_constraint)
+        self.bias_constraint = constraints.get(bias_constraint)
+        self.static_constraint = static_constraint
+
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.recurrent_regularizer = regularizers.get(recurrent_regularizer)
+        self.bias_regularizer = regularizers.get(bias_regularizer)
+        self.static_regularizer = static_regularizer
+
+        self.return_state = return_state
+        self.return_sequences = return_sequences
+        self.time_major=time_major
+
+        self.input_gate = Dense(units,
+                                use_bias=self.use_bias,
+                                kernel_initializer=self.static_initializer,
+                                bias_initializer=self.bias_initializer,
+                                activation=self.static_activation,
+                                kernel_constraint=self.static_constraint,
+                                bias_constraint=self.bias_constraint,
+                                kernel_regularizer=self.static_regularizer,
+                                bias_regularizer=self.bias_regularizer,
+                                name="input_gate")
+
+    def call(self, inputs, static_inputs, initial_state, **kwargs):
+        """
+        static_inputs :
+            of shape (batch, num_static_inputs)
+        """
+        if not self.time_major:
+            inputs = tf.transpose(inputs, [1, 0, 2])
+
+        lookback, batch_size, _ = inputs.shape
+
+        if initial_state is None:
+            initial_state = tf.zeros((batch_size, self.units))  # todo
+            state = [initial_state, initial_state]
+        else:
+            state = initial_state
+
+        # calculate input gate only once because inputs are static
+        inp_g = self.input_gate(static_inputs)  # (batch, num_static_inputs) -> (batch, units)
+
+        outputs, states = [], []
+        for time_step in range(lookback):
+
+            _out, state = self.cell(inputs[time_step], inp_g, state)
+
+            outputs.append(_out)
+            states.append(state)
+
+        outputs = tf.stack(outputs)
+        h_s = tf.stack([states[i][0] for i in range(lookback)])
+        c_s = tf.stack([states[i][1] for i in range(lookback)])
+
+        if not self.time_major:
+            outputs = tf.transpose(outputs, [1, 0, 2])
+            h_s = tf.transpose(h_s, [1, 0, 2])
+            c_s = tf.transpose(c_s, [1, 0, 2])
+            states = [h_s, c_s]
+            last_output = outputs[:, -1]
+        else:
+            states = [h_s, c_s]
+            last_output = outputs[-1]
+
+        h = last_output
+
+        if self.return_sequences:
+            h = outputs
+
+        if self.return_state:
+            return h, states
+
+        return h
+
+    def cell(self, inputs, i, states):
+
+        h_tm1 = states[0]  # previous memory state
+        c_tm1 = states[1]  # previous carry state
+
+        k_f, k_c, k_o = array_ops.split(self.kernel, num_or_size_splits=3, axis=1)
+
+        x_f = K.dot(inputs, k_f)
+        x_c = K.dot(inputs, k_c)
+        x_o = K.dot(inputs, k_o)
+
+        if self.use_bias:
+            b_f, b_c, b_o = array_ops.split(
+                self.bias, num_or_size_splits=3, axis=0)
+
+            x_f = K.bias_add(x_f, b_f)
+            x_c = K.bias_add(x_c, b_c)
+            x_o = K.bias_add(x_o, b_o)
+
+        # forget gate
+        f = self.rec_activation(x_f + K.dot(h_tm1, self.rec_kernel[:, :self.units]))
+        # cell state
+        c = f * c_tm1 + i * self.activation(x_c + K.dot(h_tm1, self.rec_kernel[:, self.units:self.units * 2]))
+        # output gate
+        o = self.rec_activation(x_o + K.dot(h_tm1, self.rec_kernel[:, self.units * 2:]))
+
+        h = o * self.activation(c)
+
+        return h, [h, c]
+
+    def build(self, input_shape):
+        """
+        kernel, recurrent_kernel and bias are initiated for 3 gates instead
+        of 4 gates as in original LSTM
+        """
+        input_dim = input_shape[-1]
+
+        self.bias = self.add_weight(
+            shape=(self.units * 3,),
+            name='bias',
+            initializer=self.bias_initializer,
+            constraint=self.bias_constraint,
+            regularizer=self.bias_regularizer
+        )
+
+        self.kernel = self.add_weight(
+            shape=(input_dim, self.units * 3),
+            name='kernel',
+            initializer=self.kernel_initializer,
+            constraint=self.kernel_constraint,
+            regularizer=self.kernel_regularizer
+        )
+
+        self.rec_kernel = self.add_weight(
+            shape=(self.units, self.units * 3),
+            name='recurrent_kernel',
+            initializer=self.recurrent_initializer,
+            constraint=self.recurrent_constraint,
+            regularizer=self.recurrent_regularizer
+        )
+
+        self.built = True
+        return
+
+
 class PrivateLayers(object):
 
     class layers:
@@ -684,3 +941,4 @@ class PrivateLayers(object):
         CONDRNN = ConditionalRNN
         Conditionalize = Conditionalize
         MCLSTM = MCLSTM
+        EALSTM = EALSTM
