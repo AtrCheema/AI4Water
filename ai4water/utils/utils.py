@@ -435,8 +435,8 @@ def _make_model(**kwargs):
         elif arg_name in config:
             update_dict(arg_name, val, data_args, config)
 
-        elif arg_name in ['x_transformer_', 'y_transformer_', 'val_x_transformer_', 'val_y_transformer_']:
-            pass
+        elif arg_name in ['x_transformer_', 'y_transformer_']:
+            config[arg_name] = val
 
         # config may contain additional user defined args which will not be checked
         elif not accept_additional_args:

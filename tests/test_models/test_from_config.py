@@ -31,6 +31,7 @@ def _test_from_config_basic(
         model = _model(model=m,
                        ts_args={'lookback':1},
                        verbosity=0,
+                       x_transformation="minmax",
                        input_features=data.columns.tolist()[0:-1],
                        output_features=data.columns.tolist()[-1:])
         model.fit(x, y)
