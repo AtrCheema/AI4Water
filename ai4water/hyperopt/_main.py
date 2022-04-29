@@ -10,7 +10,7 @@ import sklearn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from easy_mpl import parallel_coordinates, hist
+from easy_mpl import parallel_coordinates, bar_chart
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.model_selection import ParameterGrid, ParameterSampler
 
@@ -1023,7 +1023,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         self._plot_edf()
 
         # distributions/historgrams of explored hyperparameters
-        self._plot_distributions()
+        self._plot_distributions(show=False)
 
         sr = self.skopt_results()
 
@@ -1036,6 +1036,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self._plot_evaluations()
 
         self.plot_importance(raise_error=False)
+        self.plot_importance(raise_error=False, plot_type="bar")
 
         if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
@@ -1056,7 +1057,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, raise_error=True, save=True):
+    def plot_importance(self, raise_error=True, save=True, plot_type="box"):
 
         msg = "You must have optuna installed to get hyper-parameter importance."
         if optuna is None:
@@ -1067,20 +1068,22 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         else:
             importances, importance_paras, ax = plot_param_importances(self.optuna_study())
-            if importances is not None and save:
-                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+            if importances is not None:
+                if plot_type in ["bar"]:
+                    if  save:
+                        plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
                             bbox_inches="tight", dpi=300)
-
-                plt.close('all')
-                df = pd.DataFrame.from_dict(importance_paras)
-                axis = df.boxplot(rot=70, return_type="axes")
-                axis.set_ylabel("Relative Importance")
-                if save:
-                    plt.savefig(os.path.join(
-                        self.opt_path,
-                        "fanova_importance_hist.png"),
-                        dpi=300,
-                        bbox_inches='tight')
+                else:
+                    plt.close('all')
+                    df = pd.DataFrame.from_dict(importance_paras)
+                    axis = df.boxplot(rot=70, return_type="axes")
+                    axis.set_ylabel("Relative Importance")
+                    if save:
+                        plt.savefig(os.path.join(
+                            self.opt_path,
+                            "fanova_importance_hist.png"),
+                            dpi=300,
+                            bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
                     json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
@@ -1089,13 +1092,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
         return
 
-    def _plot_distributions(self, save=True):
+    def _plot_distributions(self, save=True, show=True, figsize=None)->plt.Figure:
         """plot distributions of explored hyperparameters"""
         try:
             from pandas.plotting._matplotlib.tools import create_subplots
         except ImportError: # for older pandas versions
             from pandas.plotting._matplotlib.tools import _subplots as create_subplots
-
 
         # name of hyperparameters
         h_paras = list(list(self.best_xy().values())[0].keys())
@@ -1107,22 +1109,29 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             for para, val in x_iter.items():
                 h_para_lists[para].append(val)
 
+        figsize = figsize or (6+len(h_paras), 6+len(h_paras))
         fig, axes = create_subplots(naxes=len(h_paras),
-                                    figsize=(6+len(h_paras), 6+len(h_paras)))
+                                    figsize=figsize)
 
         if not isinstance(axes, np.ndarray):
             axes = np.array([axes])
 
         for ax, col in zip(axes.flat, h_paras):
 
-            hist(h_para_lists[col], ax=ax, show=False,
-                 title=col,
-                 ylabel="Number of iterations")
+            labels, bins = np.unique(np.array(h_para_lists[col]), return_counts=True)
+            bar_chart(bins, labels, orient="v", ax=ax, rotation=90, label=col,
+                      show=False)
+            ax.set_ylabel("Number of iterations")
+            ax.legend()
 
         if save:
             fname = os.path.join(self.opt_path, "distributions.png")
             plt.savefig(fname, bbox_inches="tight")
-        return
+
+        if show:
+            plt.show()
+
+        return fig
 
     def to_kw(self, x):
         names = []

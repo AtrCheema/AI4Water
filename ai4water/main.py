@@ -875,25 +875,14 @@ class Model(MODEL, BaseModel):
         # todo test from_config with keras
         """
         _config = args
-        #data = None
 
         if isinstance(args, tuple):  # multiple non-keyword arguments were provided
             if len(args) > 0:
                 _config = args[0]
-                #if len(args) > 1:
-                #    data = args[1]
-                #else:
-                #    data = kwargs.get('data', None)
+
             else:
                 _config = kwargs['config_path']
                 kwargs.pop('config_path')
-                #if 'data' in kwargs:
-                #    data = kwargs.pop('data')
-        #else:
-        #    data = kwargs['data']
-
-        #if 'data' in kwargs:
-        #    kwargs.pop('data')
 
         local = False
         if 'make_new_path' in kwargs:
@@ -923,7 +912,6 @@ class Model(MODEL, BaseModel):
                 config['verbosity'] = kwargs.pop('verbosity')
 
             return cls(**config,
-                       #data=data,
                        path=path,
                        **kwargs)
 
