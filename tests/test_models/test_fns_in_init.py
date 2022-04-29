@@ -5,7 +5,7 @@ import pandas as pd
 
 from ai4water import Model
 from ai4water.datasets import busan_beach, MtropicsLaos
-from ai4water.models import MLP, LSTM, CNN
+from ai4water.models import MLP, LSTM, CNN, CNNLSTM, LSTMAutoEncoder
 from sklearn.datasets import make_classification
 
 
@@ -59,8 +59,18 @@ class TestModels(unittest.TestCase):
         assert model.category == "DL"
         return
 
+    def test_cnnlstm(self):
+        model = Model(model=CNNLSTM(input_shape=(9, 13), sub_sequences=3),
+                      input_features=input_features,
+                      output_features=output_features,
+                      ts_args={'lookback': 9},
+                      verbosity=0)
+        assert model.category == "DL"
+        return
+
     def test_mlp_for_cls_binary(self):
-        model = Model(model=MLP(32, mode="classification",
+        model = Model(model=MLP(32,
+                                mode="classification",
                                 output_features=2),
                       input_features=input_features_cls,
                       output_features=output_features_cls,
@@ -68,6 +78,22 @@ class TestModels(unittest.TestCase):
                       loss="binary_crossentropy",
                       verbosity=0
                       )
+        model.fit(data=cls_data)
+        return
+
+    def test_mlp_for_cls_binary_softmax(self):
+        model = Model(model=MLP(32,
+                                mode="classification",
+                                output_features=2,
+                                output_activation="softmax",
+                                ),
+                      input_features=input_features_cls,
+                      output_features=output_features_cls,
+                      epochs=2,
+                      loss="binary_crossentropy",
+                      verbosity=0
+                      )
+
         model.fit(data=cls_data)
         return
 

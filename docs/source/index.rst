@@ -16,6 +16,7 @@ Welcome to ai4water's documentation!
    :caption: modules
 
    model
+   models
    datasets
    preprocessing
    postprocessing

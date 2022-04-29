@@ -658,7 +658,11 @@ class BaseModel(NN):
                 return None
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
-            else:
+            else:  # x,y is numpy array
+                if self.is_binary:
+                    if y.shape[1] > self.output_shape[1]:
+                        y = np.argmax(y, 1).reshape(-1,1)
+
                 x = self._transform_x(x)
                 y = self._transform_y(y)
                 validation_data = x,y
@@ -1043,9 +1047,15 @@ class BaseModel(NN):
 
                 # todo, it is assumed that there is softmax as the last layer
                 elif self.mode == 'classification' and not user_defined_x:
-                    # todo, don't know why it is working
-                    assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
-                            {self.num_classes} while model's output has {model_output_shape[0]} nodes """
+                    activation = self.layers[-1].get_config()['activation']
+                    if self.is_binary:
+                        if activation == "softmax":
+                            assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
+                                    {self.num_classes} while model's output has {model_output_shape[0]} nodes """
+                        else:
+                            if outputs.shape[1] > model_output_shape[0]:
+                                outputs = np.argmax(outputs, 1).reshape(-1, 1)
+
                     assert model_output_shape[0] == outputs.shape[1]
                 else:
                     assert model_output_shape == outputs.shape[1:], f"""
@@ -1124,27 +1134,34 @@ class BaseModel(NN):
             x=None,
             y=None,
             data: Union[pd.DataFrame, np.ndarray, str] = None,
-            scoring: str = None,
+            scoring: Union [str, list] = None,
             refit: bool = False,
-    ) -> float:
+            process_results:bool = False
+    ) -> list:
         """computes cross validation score
 
-        Arguments:
-            x:
+        Parameters
+        ----------
+            x :
                 input data
-            y:
+            y :
                 output corresponding to ``x``.
-            data:
+            data :
                 raw unprepared data which will be given to :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y from it.
-            scoring:
+            scoring :
                 performance metric to use for cross validation.
                 If None, it will be taken from config['val_metric']
-            refit:
+            refit : bool, optional (default=False
                 If True, the model will be trained on the whole training+validation
                 data after calculating cross validation score.
-        Returns:
-            cross validation score
+            process_results : bool, optional
+                whether to process results at each cv iteration or not
+
+        Returns
+        -------
+        list
+            cross validation score for each of metric in scoring
 
         Example
         -------
@@ -1167,6 +1184,9 @@ class BaseModel(NN):
 
         if scoring is None:
             scoring = self.val_metric
+
+        if not isinstance(scoring, list):
+            scoring = [scoring]
 
         scores = []
 
@@ -1204,16 +1224,19 @@ class BaseModel(NN):
             else:
                 self.fit(x=train_x, y=train_y)
             # since we have access to true y, it is better to provide it
-            # it can be helpful for inverse transformation of y
-            pred = self.predict(x=test_x, y=test_y, process_results=False)
+            # it will be used for processing of results
+            pred = self.predict(x=test_x, y=test_y, process_results=process_results)
 
             metrics = Metrics(test_y.reshape(-1, 1), pred)
-            val_score = getattr(metrics, scoring)()
 
-            scores.append(val_score)
+            val_scores = []
+            for score in scoring:
+                val_scores.append(getattr(metrics, score)())
+
+            scores.append(val_scores)
 
             if self.verbosity > 0:
-                print(f'fold: {fold} val_score: {val_score}')
+                print(f'fold: {fold} val_score: {val_scores}')
 
         # save all the scores as json in model path`
         cv_name = str(cross_validator)
@@ -1221,8 +1244,8 @@ class BaseModel(NN):
         with open(fname, 'w') as fp:
             json.dump(scores, fp)
 
-        # set it as class attribute so that it can be used
-        setattr(self, f'cross_val_{scoring}', scores)
+        ## set it as class attribute so that it can be used
+        setattr(self, f'cross_val_scores', scores)
 
         if refit:
             self.fit_on_all_training_data(data=data)
@@ -1231,12 +1254,16 @@ class BaseModel(NN):
         # the disk so that it can be used.
         self._save_ml_model()
 
-        cv_score = np.nanmean(scores).item()
+        scores = np.array(scores)
+        cv_scores_ = np.nanmean(scores, axis=0)
 
-        if not math.isfinite(cv_score):
-            cv_score = 1.0
+        cv_scores = []
+        for cv_score in cv_scores_:
+            if not math.isfinite(cv_score):
+                cv_score = 1.0
+            cv_scores.append(cv_score)
 
-        return cv_score
+        return cv_scores
 
     def fit_on_all_training_data(self, data=None):
         """Fits the model on training+validation data"""
@@ -1251,6 +1278,11 @@ class BaseModel(NN):
             if hasattr(x_val, '__len__') and len(x_val)>0:
                 x = np.concatenate([x_train, x_val])
                 y = np.concatenate([y_train, y_val])
+
+        if self.is_binary:
+            if len(y) != y.size: # when sigmoid is used for binary
+                # convert the output to 1d
+                y = np.argmax(y, 1).reshape(-1, 1)
 
         return self.fit(x=x, y=y)
 

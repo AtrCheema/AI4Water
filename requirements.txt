@@ -8,4 +8,4 @@ requests
 matplotlib
 
 easy_mpl>=0.20.4
-SeqMetrics>=1.3.2
+SeqMetrics>=1.3.3

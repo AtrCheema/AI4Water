@@ -13,7 +13,7 @@ from ._transformations import Center
 from .utils import InvalidTransformation, TransformerNotFittedError, SP_METHODS
 
 
-# TODO add logistic, tanh and more scalers.
+# TODO add logistic, tanh and more transformers.
 # which transformation to use? Some related articles/posts
 # https://scikit-learn.org/stable/modules/preprocessing.html
 # http://www.faqs.org/faqs/ai-faq/neural-nets/part2/section-16.html
@@ -23,9 +23,8 @@ from .utils import InvalidTransformation, TransformerNotFittedError, SP_METHODS
 class TransformationsContainer(object):
 
     def __init__(self):
-        self.scaler_ = None
+        self.transformer_ = None
         self.transforming_straight = True
-        # self.nan_indices = None
         self.index = None
 
 
@@ -116,7 +115,6 @@ class Transformation(TransformationsContainer):
     pre-processing on data before applying transformation on it.
     Any new transforming methods should define two methods one starting with
     `transform_with_` and `inverse_transofrm_with_`
-
 
     Currently following methods are available for transformation and inverse transformation
 
@@ -262,7 +260,7 @@ class Transformation(TransformationsContainer):
         self.kwargs = kwargs
         self.transformed_features = None
 
-        if self.scaler_ is None:  # self.scaler_ can be set during from_config
+        if self.transformer_ is None:  # self.transformer_ can be set during from_config
             _kwargs = {}
             if self.method == "scale":
                 _kwargs['with_mean'] = False
@@ -274,8 +272,8 @@ class Transformation(TransformationsContainer):
                 if k in _kwargs:
                     _kwargs.pop(k)
 
-            scaler = self.get_scaler()(**_kwargs, **kwargs)
-            self.scaler_ = scaler
+            transformer = self.get_transformer()(**_kwargs, **kwargs)
+            self.transformer_ = transformer
 
     def __call__(self, data, what="fit_transform", return_proc=False, **kwargs):
         """
@@ -292,39 +290,6 @@ class Transformation(TransformationsContainer):
 
         else:
             raise ValueError(f"The class Transformation can not be called with keyword argument 'what'={what}")
-
-    # def __getattr__(self, item):
-    #     """
-    #     Gets the attributes from underlying transformation modules.
-    #     """
-    #     if item.startswith('_'):
-    #         return self.__getattribute__(item)
-    #     elif item.startswith("fit_transform_with"):
-    #         transformer = item.split('_')[-1]
-    #         if transformer.lower() in list(self.available_transformers.keys()):
-    #             self.method = transformer
-    #             return self.fit_transform_with_sklearn
-    #
-    #     elif item.startswith("inverse_transform_with"):
-    #         transformer = item.split('_')[-1]
-    #         if transformer.lower() in list(self.available_transformers.keys()):
-    #             self.method = transformer
-    #             return self.inverse_transform_with_sklearn
-    #     else:
-    #         raise AttributeError(f'Transformation has no attribute {item}')
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, x):
-        if isinstance(x, pd.DataFrame):
-            self._data = x
-        else:
-            assert isinstance(x, np.ndarray)
-            xdf = pd.DataFrame(x, columns=['data'+str(i) for i in range(x.shape[1])])
-            self._data = xdf
 
     @property
     def features(self):
@@ -348,7 +313,7 @@ class Transformation(TransformationsContainer):
     def num_features(self):
         return len(self.features)
 
-    def get_scaler(self):
+    def get_transformer(self):
 
         return self.available_transformers[self.method.lower()]
 
@@ -378,7 +343,7 @@ class Transformation(TransformationsContainer):
         return data, to_transform, proc
 
     def fit(self, data, **kwargs):
-
+        """fits the data according the transformation methods."""
 
         data, to_transform, proc = self._preprocess(data)
 
@@ -387,11 +352,12 @@ class Transformation(TransformationsContainer):
             # power transformers sometimes overflow with small data which causes inf error
             to_transform = to_transform.astype("float64")
 
-        return self.scaler_.fit(to_transform, **kwargs)
+        return self.transformer_.fit(to_transform, **kwargs)
 
     def transform(self, data, return_proc=False, **kwargs):
+        """transforms the data according to fitted transformers."""
 
-        original_data = data.copy()
+        original_data = to_dataframe(data.copy())
 
         data, to_transform, proc = self._preprocess(data)
 
@@ -400,7 +366,7 @@ class Transformation(TransformationsContainer):
             # power transformers sometimes overflow with small data which causes inf error
             to_transform = to_transform.astype("float64")
 
-        data = self.scaler_.transform(to_transform, **kwargs)
+        data = self.transformer_.transform(to_transform, **kwargs)
 
         return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
@@ -413,15 +379,15 @@ class Transformation(TransformationsContainer):
                 transformed value will have the same type as data and will have
                 the same index as data (in case data is dataframe). The shape of
                 `data` is supposed to be (num_examples, num_features).
-            return_proc : whether to return the scaler or not. If True, then a
-                tuple is returned which consists of transformed data and scaler itself.
+            return_proc : whether to return the transformer or not. If True, then a
+                tuple is returned which consists of transformed data and transformer itself.
             kwargs :
         """
         original_data = to_dataframe(data.copy())
 
         data, to_transform, proc = self._preprocess(data)
 
-        data = self.scaler_.fit_transform(to_transform, **kwargs)
+        data = self.transformer_.fit_transform(to_transform, **kwargs)
 
         return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
@@ -453,9 +419,9 @@ class Transformation(TransformationsContainer):
             kwargs : any of the folliwng keyword arguments
 
             - data: data on which to apply inverse transformation
-            - key : key to fetch scaler
-            - scaler : scaler to use for inverse transformation. If not given, then
-                the available scaler is used.
+            - key : key to fetch transformer
+            - transformer : transformer to use for inverse transformation. If not given, then
+                the available transformer is used.
         """
         self.transforming_straight = False
 
@@ -467,12 +433,12 @@ class Transformation(TransformationsContainer):
             for col, idx in postprocessor.negative_indices_.items():
                 data.iloc[idx, col] = -data.iloc[idx, col]
 
-        if 'scaler' in kwargs:
-            scaler = kwargs['scaler']
-        elif self.scaler_ is not None:
-            scaler = self.scaler_
+        if 'transformer' in kwargs:
+            transformer = kwargs['transformer']
+        elif self.transformer_ is not None:
+            transformer = self.transformer_
         elif self.method in SP_METHODS:
-            scaler = INITIATED_TRANSFORMERS[self.method]
+            transformer = INITIATED_TRANSFORMERS[self.method]
             without_fit = True
         else:
             raise TransformerNotFittedError()
@@ -487,9 +453,9 @@ class Transformation(TransformationsContainer):
         to_transform = self.get_features(data)
 
         if without_fit:
-            data = scaler.inverse_transform_without_fit(to_transform)
+            data = transformer.inverse_transform_without_fit(to_transform)
         else:
-            data = scaler.inverse_transform(to_transform)
+            data = transformer.inverse_transform(to_transform)
 
         data = pd.DataFrame(data, columns=to_transform.columns)
 
@@ -508,23 +474,22 @@ class Transformation(TransformationsContainer):
             assert isinstance(self.features, list)
             return data[self.features]
 
-    def serialize_scaler(self, scaler):
+    def serialize_transformer(self, transformer):
         key = self.method + str(dateandtime_now())
-        serialized_scaler = {
-            "scaler": scaler,
-            #"shape": to_transform.shape,
+        serialized_transformer = {
+            "transformer": transformer,
             "key": key
         }
-        self.scaler_ = scaler
+        self.transformer_ = transformer
 
-        return serialized_scaler
+        return serialized_transformer
 
-    def get_scaler_from_dict(self, **kwargs):
-        if 'scaler' in kwargs:
-            scaler = kwargs['scaler']
+    def get_transformer_from_dict(self, **kwargs):
+        if 'transformer' in kwargs:
+            transformer = kwargs['transformer']
         else:
             raise TransformerNotFittedError()
-        return scaler
+        return transformer
 
     def maybe_insert_features(self, original_df, trans_df):
 
@@ -552,10 +517,10 @@ class Transformation(TransformationsContainer):
         Returns:
             a dictionary
         """
-        assert self.scaler_ is not None, f"Transformation is not fitted yet"
+        assert self.transformer_ is not None, f"Transformation is not fitted yet"
 
         return {
-            "scaler": {self.method: self.scaler_.config()},
+            "transformer": {self.method: self.transformer_.config()},
             "shape": self.initial_shape_,
             "method": self.method,
             "features": self.features,
@@ -563,8 +528,6 @@ class Transformation(TransformationsContainer):
             "replace_zeros_with": self.replace_zeros_with,
             "treat_negatives": self.treat_negatives,
             "kwargs": self.kwargs,
-            #"negative_indices_": jsonize(self.negative_indices_),
-            #"zero_indices_": jsonize(self.zero_indices_)
         }
 
 
@@ -584,24 +547,20 @@ class Transformation(TransformationsContainer):
         config = deepcopy_dict_without_clone(config)
 
         shape = config.pop('shape')
-        scaler = config.pop('scaler')
-        #negative_indices_ = config.pop("negative_indices_")
-        #zero_indices_ = config.pop("zero_indices_")
+        transformer = config.pop('transformer')
 
-        assert len(scaler) == 1
-        scaler_name = list(scaler.keys())[0]
-        scaler_config = list(scaler.values())[0]
+        assert len(transformer) == 1
+        transformer_name = list(transformer.keys())[0]
+        transformer_config = list(transformer.values())[0]
 
         if 'kwargs' in config:
             kwargs = config.pop('kwargs')
         transformer = cls(**config, **kwargs)
 
-        # initiate the scaler
-        sc_initiated = transformer.available_transformers[scaler_name].from_config(scaler_config)
+        # initiate the transformer
+        tr_initiated = transformer.available_transformers[transformer_name].from_config(transformer_config)
 
-        transformer.scaler_ = sc_initiated
-        #transformer.negative_indices_ = negative_indices_
-        #transformer.zero_indices_ = zero_indices_
+        transformer.transformer_ = tr_initiated
         transformer.initial_shape_ = shape
 
         return transformer

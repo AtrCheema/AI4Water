@@ -50,9 +50,12 @@ def test_evaluation(model):
 
 def test_prediction(model):
 
-    model.predict(data='training', return_true=True, metrics="all")
-    model.predict(data='validation', return_true=True, metrics="all")
-    model.predict(data='test', return_true=True, metrics="all")
+    t, p =model.predict(data='training', return_true=True, metrics="all")
+    assert t.size == p.size
+    t,p = model.predict(data='validation', return_true=True, metrics="all")
+    assert t.size == p.size
+    t,p = model.predict(data='test', return_true=True, metrics="all")
+    assert t.size == p.size
 
     return
 
@@ -123,6 +126,19 @@ class TestClassifications(unittest.TestCase):
 
     def test_binary_classification(self):
 
+        model = build_and_run_class_problem(
+            2,
+            'binary_crossentropy',
+            model=make_dl_model(2, "sigmoid"))
+
+        assert model.is_binary
+        assert not model.is_multiclass
+        assert not model.is_multilabel
+
+        return
+
+    def test_binary_classification_softmax(self):
+
         model = build_and_run_class_problem(2,
                                             'binary_crossentropy',
                                             model=make_dl_model(2))
@@ -132,7 +148,7 @@ class TestClassifications(unittest.TestCase):
         assert not model.is_multilabel
 
         return
-    
+
     def test_binary_cls_ml(self):
     
         for algo in ["RandomForestClassifier",
@@ -140,9 +156,10 @@ class TestClassifications(unittest.TestCase):
                       "CatBoostClassifier",
                       "LGBMClassifier"]:
 
-            model = build_and_run_class_problem(2,
-                                                'binary_crossentropy',
-                                                model=algo)
+            model = build_and_run_class_problem(
+                2,
+                'binary_crossentropy',
+                model=algo)
             assert model.is_binary
             assert not model.is_multiclass
             assert not model.is_multilabel
