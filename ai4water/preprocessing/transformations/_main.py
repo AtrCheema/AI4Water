@@ -333,40 +333,40 @@ class Transformation(TransformationsContainer):
 
         setattr(self, 'initial_shape_', data.shape)
 
-        to_transform = self.get_features(data)  # TODO, shouldn't kwargs go here as input?
+        to_transform = self.get_features(data)
 
         if self.method.lower() in ["log", "log10", "log2"]:
 
             if (to_transform.values < 0).any():
                 raise InvalidValueError(self.method, "negative")
 
-        return data, to_transform, proc
+        return to_transform, proc
 
     def fit(self, data, **kwargs):
         """fits the data according the transformation methods."""
 
-        data, to_transform, proc = self._preprocess(data)
+        to_transform, proc = self._preprocess(data)
 
         if self.method in ['power', 'yeo-johnson', 'box-cox']:
             # a = np.array([87.52, 89.41, 89.4, 89.23, 89.92], dtype=np.float32).reshape(-1,1)
             # power transformers sometimes overflow with small data which causes inf error
             to_transform = to_transform.astype("float64")
 
-        return self.transformer_.fit(to_transform, **kwargs)
+        return self.transformer_.fit(to_transform.values, **kwargs)
 
     def transform(self, data, return_proc=False, **kwargs):
         """transforms the data according to fitted transformers."""
 
         original_data = to_dataframe(data.copy())
 
-        data, to_transform, proc = self._preprocess(data)
+        to_transform, proc = self._preprocess(data)
 
         if self.method in ['power', 'yeo-johnson', 'box-cox']:
             # a = np.array([87.52, 89.41, 89.4, 89.23, 89.92], dtype=np.float32).reshape(-1,1)
             # power transformers sometimes overflow with small data which causes inf error
             to_transform = to_transform.astype("float64")
 
-        data = self.transformer_.transform(to_transform, **kwargs)
+        data = self.transformer_.transform(to_transform.values, **kwargs)
 
         return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
@@ -379,15 +379,15 @@ class Transformation(TransformationsContainer):
                 transformed value will have the same type as data and will have
                 the same index as data (in case data is dataframe). The shape of
                 `data` is supposed to be (num_examples, num_features).
-            return_proc : whether to return the transformer or not. If True, then a
-                tuple is returned which consists of transformed data and transformer itself.
+            return_proc : whether to return the processer or not. If True, then a
+                tuple is returned which consists of transformed data and second is the preprocessor.
             kwargs :
         """
         original_data = to_dataframe(data.copy())
 
-        data, to_transform, proc = self._preprocess(data)
+        to_transform, proc = self._preprocess(data)
 
-        data = self.transformer_.fit_transform(to_transform, **kwargs)
+        data = self.transformer_.fit_transform(to_transform.values, **kwargs)
 
         return self._postprocess(data, to_transform, original_data, proc, return_proc)
 
