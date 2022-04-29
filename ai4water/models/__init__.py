@@ -38,7 +38,7 @@ def MLP(
     mode : str, optional
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
@@ -158,7 +158,7 @@ def LSTM(
     mode : str, optional
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
@@ -297,7 +297,7 @@ def CNN(
     mode : str, optional
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
@@ -439,7 +439,7 @@ def CNNLSTM(
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
@@ -553,7 +553,7 @@ def LSTMAutoEncoder(
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
@@ -650,7 +650,7 @@ def TCN(
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
@@ -731,7 +731,7 @@ def TFT(
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
     output_activation : str, optional (default=None)
-        activation of the output layer. If not given the mode is clsasification
+        activation of the output layer. If not given and the mode is clsasification
         then the activation of output layer is decided based upon ``output_features``
         argument. In such a case, for binary classification, sigmoid with 1 output
         neuron is preferred. Therefore, even if the output_features are 2,
