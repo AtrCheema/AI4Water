@@ -658,7 +658,11 @@ class BaseModel(NN):
                 return None
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
-            else:
+            else:  # x,y is numpy array
+                if self.is_binary:
+                    if y.shape[1] > self.output_shape[1]:
+                        y = np.argmax(y, 1).reshape(-1,1)
+
                 x = self._transform_x(x)
                 y = self._transform_y(y)
                 validation_data = x,y
@@ -1043,9 +1047,15 @@ class BaseModel(NN):
 
                 # todo, it is assumed that there is softmax as the last layer
                 elif self.mode == 'classification' and not user_defined_x:
-                    # todo, don't know why it is working
-                    assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
-                            {self.num_classes} while model's output has {model_output_shape[0]} nodes """
+                    activation = self.layers[-1].get_config()['activation']
+                    if self.is_binary:
+                        if activation == "softmax":
+                            assert model_output_shape[0] == self.num_classes, f"""inferred number of classes are 
+                                    {self.num_classes} while model's output has {model_output_shape[0]} nodes """
+                        else:
+                            if outputs.shape[1] > model_output_shape[0]:
+                                outputs = np.argmax(outputs, 1).reshape(-1, 1)
+
                     assert model_output_shape[0] == outputs.shape[1]
                 else:
                     assert model_output_shape == outputs.shape[1:], f"""
@@ -1268,6 +1278,11 @@ class BaseModel(NN):
             if hasattr(x_val, '__len__') and len(x_val)>0:
                 x = np.concatenate([x_train, x_val])
                 y = np.concatenate([y_train, y_val])
+
+        if self.is_binary:
+            if len(y) != y.size: # when sigmoid is used for binary
+                # convert the output to 1d
+                y = np.argmax(y, 1).reshape(-1, 1)
 
         return self.fit(x=x, y=y)
 
