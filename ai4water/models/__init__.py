@@ -10,6 +10,7 @@ def MLP(
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         mode:str = "regression",
+        output_activation:str = None,
         **kwargs
 )->dict:
     """helper function to make multi layer perceptron model.
@@ -36,6 +37,17 @@ def MLP(
         dropout to use in Dense layer
     mode : str, optional
         either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
     **kwargs :
         any additional keyword arguments for Dense_ layer
 
@@ -102,9 +114,13 @@ def MLP(
 
     layers.update({"Flatten": {}})
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
+
     return {'layers': layers}
 
 
@@ -116,6 +132,7 @@ def LSTM(
         activation: Union[str, list] = None,
         dropout: Union[float, list] = None,
         mode:str = "regression",
+        output_activation:str = None,
         **kwargs
 ):
     """helper function to make LSTM Model
@@ -140,6 +157,17 @@ def LSTM(
         if > 0.0, a dropout layer is added after each LSTM layer
     mode : str, optional
         either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
     **kwargs :
         any keyword argument for LSTM_ layer
 
@@ -201,9 +229,13 @@ def LSTM(
 
     layers.update({"Flatten": {}})
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
+
     return {'layers': layers}
 
 
@@ -222,6 +254,7 @@ def CNN(
         input_shape: tuple = None,
         output_features:int = 1,
         mode: str = "regression",
+        output_activation:str = None,
         **kwargs
 )->dict:
     """helper function to make convolution neural network based model.
@@ -263,6 +296,17 @@ def CNN(
         to number of classes.
     mode : str, optional
         either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
     **kwargs :
         any keyword argument for Convolution_ layer
 
@@ -340,9 +384,13 @@ def CNN(
 
     layers.update({"Flatten": {}})
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
+
     return {'layers': layers}
 
 
@@ -356,7 +404,8 @@ def CNNLSTM(
         max_pool:bool=False,
         units: Union[int, tuple, list] = 32,
         output_features:int = 1,
-        mode:str = "regression"
+        mode:str = "regression",
+        output_activation:str = None,
 )->dict:
     """
     helper function to make CNNLSTM model. It adds one or more 1D convolutional
@@ -387,8 +436,19 @@ def CNNLSTM(
     output_features : int, optional (default=1)
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
-    mode :
+    mode : str, optional (default="regression")
         either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
 
     Returns
     -------
@@ -397,6 +457,8 @@ def CNNLSTM(
 
     Examples
     --------
+    >>> from ai4water.models import CNNLSTM
+    >>>model = CNNLSTM(input_shape=(9, 13), sub_sequences=3)
 
     """
     assert len(input_shape) == 2
@@ -443,9 +505,13 @@ def CNNLSTM(
 
     layers.update({"Flatten": {}})
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
+
     return {"layers": layers}
 
 
@@ -458,6 +524,7 @@ def LSTMAutoEncoder(
         output_features: int = 1,
         prediction_mode: bool = True,
         mode:str = "regression",
+        output_activation: str = None,
         **kwargs
 )->dict:
     """
@@ -483,8 +550,19 @@ def LSTMAutoEncoder(
     output_features : int, optional
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
-    mode : str, optional
+    mode : str, optional (default="regression")
         either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
     **kwargs
 
     Returns
@@ -529,9 +607,12 @@ def LSTMAutoEncoder(
 
     layers.update({"Flatten": {}})
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
     return {'layers': layers}
 
 
@@ -543,6 +624,7 @@ def TCN(
         dilations = [1, 2, 4, 8, 16, 32],
         output_features:int = 1,
         mode="regression",
+        output_activation: str = None,
         **kwargs
 )->dict:
     """helper function for building temporal convolution network
@@ -565,8 +647,19 @@ def TCN(
     output_features : int, optional
         number of output features. If ``mode`` is ``classification``, this refers
         to number of classes.
-    mode : str, optional
+    mode : str, optional (default="regression")
         either ``regression`` or ``classification``
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
     **kwargs
         any additional keyword argument
 
@@ -596,9 +689,12 @@ def TCN(
 
     layers.update({"Flatten": {}})
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
     return {'layers': layers}
 
 
@@ -608,8 +704,9 @@ def TFT(
         num_heads: int = 3,
         dropout:float = 0.1,
         output_features:int = 1,
-        use_cudnn=False,
-        mode="regression",
+        use_cudnn:bool = False,
+        mode:str="regression",
+        output_activation:str = None,
 )->dict:
     """helper function for temporal fusion transformer based model
 
@@ -633,7 +730,17 @@ def TFT(
         whether to use cuda or not
     mode : str, optional (default="regression")
         either ``regression`` or ``classification``
-
+    output_activation : str, optional (default=None)
+        activation of the output layer. If not given the mode is clsasification
+        then the activation of output layer is decided based upon ``output_features``
+        argument. In such a case, for binary classification, sigmoid with 1 output
+        neuron is preferred. Therefore, even if the output_features are 2,
+        the last layer will have 1 neuron and activation function is ``sigmoid``.
+        Although the user can set ``softmax`` for 2 output_features as well
+        (binary classification) but this seems superfluous and is slightly
+        more expensive.
+        For multiclass, the last layer will have neurons equal to output_features
+        and ``softmax`` as activation.
     Returns
     -------
     dict :
@@ -670,11 +777,34 @@ def TFT(
         "lambda": {"config": tf.keras.layers.Lambda(lambda _x: _x[Ellipsis, -1, :])},
     }
 
-    layers.update({"Dense_out": {"units": output_features,
-                   "activation": None if mode=="regression" else "softmax"
-                   }})
+    layers = _make_output_layer(
+        layers,
+        mode,
+        output_features,
+        output_activation
+    )
 
     return {'layers': layers}
+
+
+def _make_output_layer(
+        layers:dict,
+        mode="regression",
+        output_features=1,
+        output_activation=None,
+)->dict:
+    if output_activation is None and mode == "classification":
+        # for binary it is better to use sigmoid
+        if output_features > 2:
+            output_activation = "softmax"
+        else:
+            output_activation = "sigmoid"
+            output_features = 1
+
+    layers.update({"Dense_out": {"units": output_features,
+                                 "activation": output_activation
+                                 }})
+    return layers
 
 
 def _check_length(parameter, num_layers):
