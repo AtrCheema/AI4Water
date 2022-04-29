@@ -1032,6 +1032,9 @@ class BaseModel(NN):
 
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
+        num_examples = _find_num_examples(inputs)
+        self._maybe_reduce_nquantiles(num_examples)
+
         # apply preprocessing/feature engineering if required.
         inputs = self._fit_transform_x(inputs)
         outputs = self._fit_transform_y(outputs)
@@ -1045,7 +1048,6 @@ class BaseModel(NN):
                 if getattr(self, 'quantiles', None) is not None:
                     assert model_output_shape[0] == len(self.quantiles) * self.num_outs
 
-                # todo, it is assumed that there is softmax as the last layer
                 elif self.mode == 'classification' and not user_defined_x:
                     activation = self.layers[-1].get_config()['activation']
                     if self.is_binary:
@@ -1593,18 +1595,19 @@ class BaseModel(NN):
             **kwargs
     ):
         """makes prediction on training data.
+
         Parameters
         ----------
-        data :
-            raw, unprepared data from which training data (x,y paris) will be generated.
-        process_results : bool, optional
-            whether to post-process the results or not
-        return_true : bool, optional
-            If true, the returned value will be tuple, first is true and second is predicted array
-        metrics : str, optional
-            the metrics to calculate during post-processing
-        **kwargs
-            any keyword argument for .predict method.
+            data :
+                raw, unprepared data from which training data (x,y paris) will be generated.
+            process_results : bool, optional
+                whether to post-process the results or not
+            return_true : bool, optional
+                If true, the returned value will be tuple, first is true and second is predicted array
+            metrics : str, optional
+                the metrics to calculate during post-processing
+            **kwargs :
+                any keyword argument for .predict method.
         """
         ds = DataSet(data, **self.data_config)
 
@@ -1627,18 +1630,19 @@ class BaseModel(NN):
             **kwargs
     ):
         """makes prediction on validation data.
+
         Parameters
         ----------
-        data :
-            raw, unprepared data from which validation data (x,y paris) will be generated.
-        process_results : bool, optional
-            whether to post-process the results or not
-        return_true : bool, optional
-            If true, the returned value will be tuple, first is true and second is predicted array
-        metrics : str, optional
-            the metrics to calculate during post-processing
-        **kwargs
-            any keyword argument for .predict method.
+            data :
+                raw, unprepared data from which validation data (x,y paris) will be generated.
+            process_results : bool, optional
+                whether to post-process the results or not
+            return_true : bool, optional
+                If true, the returned value will be tuple, first is true and second is predicted array
+            metrics : str, optional
+                the metrics to calculate during post-processing
+            **kwargs :
+                any keyword argument for .predict method.
         """
         ds = DataSet(data, **self.data_config)
 
@@ -1661,18 +1665,19 @@ class BaseModel(NN):
             **kwargs
     ):
         """makes prediction on test data.
+
         Parameters
         ----------
-        data :
-            raw, unprepared data from which test data (x,y paris) will be generated.
-        process_results : bool, optional
-            whether to post-process the results or not
-        return_true : bool, optional
-            If true, the returned value will be tuple, first is true and second is predicted array
-        metrics : str, optional
-            the metrics to calculate during post-processing
-        **kwargs
-            any keyword argument for .predict method.
+            data :
+                raw, unprepared data from which test data (x,y paris) will be generated.
+            process_results : bool, optional
+                whether to post-process the results or not
+            return_true : bool, optional
+                If true, the returned value will be tuple, first is true and second is predicted array
+            metrics : str, optional
+                the metrics to calculate during post-processing
+            **kwargs :
+                any keyword argument for .predict method.
         """
         ds = DataSet(data, **self.data_config)
 
@@ -1699,18 +1704,19 @@ class BaseModel(NN):
         The ``data`` is not divided into training,test sets. Moreover if target data contains
         missing values, then predictions for that will also be made using corresponding input
         data.
+
         Parameters
         ----------
-        data :
-            raw, unprepared data from which x,y paris will be generated.
-        process_results : bool, optional
-            whether to post-process the results or not
-        return_true : bool, optional
-            If true, the returned value will be tuple, first is true and second is predicted array
-        metrics : str, optional
-            the metrics to calculate during post-processing
-        **kwargs
-            any keyword argument for .predict method.
+            data :
+                raw, unprepared data from which x,y paris will be generated.
+            process_results : bool, optional
+                whether to post-process the results or not
+            return_true : bool, optional
+                If true, the returned value will be tuple, first is true and second is predicted array
+            metrics : str, optional
+                the metrics to calculate during post-processing
+            **kwargs :
+                any keyword argument for .predict method.
         """
         data_config = self.data_config
 
@@ -2170,7 +2176,9 @@ class BaseModel(NN):
                    **kwargs)
 
     @staticmethod
-    def _get_config_and_path(cls, config_path: str = None, config=None,
+    def _get_config_and_path(cls,
+                             config_path: str = None,
+                             config=None,
                              make_new_path=False):
         """Sets some attributes of the cls so that it can be built from config.
 
@@ -2985,6 +2993,34 @@ class BaseModel(NN):
 
         return x, y, prefix, key, user_defined_x
 
+    def _maybe_reduce_nquantiles(self, num_exs:int)->None:
+
+        self.config['x_transformation'] = _reduce_nquantiles_in_config(self.config['x_transformation'], num_exs)
+        self.config['y_transformation'] = _reduce_nquantiles_in_config(self.config['y_transformation'], num_exs)
+
+        return
+
+def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
+
+    if isinstance(config, str) and config == 'quantile':
+        config = {'method': 'quantile', 'n_quantiles': num_exs}
+
+    elif isinstance(config, dict) and config['method'] == 'quantile':
+        config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
+
+    elif isinstance(config, list):
+
+        for idx, transformer in enumerate(config):
+
+            if isinstance(transformer, str) and transformer == 'quantile':
+                config[idx] = {'method': 'quantile', 'n_quantiles': num_exs}
+
+            elif isinstance(transformer, dict) and transformer['method'] == 'quantile':
+                transformer['n_quantiles'] = min(transformer.get('n_quantiles', num_exs), num_exs)
+                config[idx] = transformer
+
+    return config
+
 
 class DataNotFound(Exception):
 
@@ -3003,3 +3039,14 @@ def get_values(outputs):
         outputs = list(outputs.values())[0]
 
     return outputs
+
+
+def _find_num_examples(inputs)->int:
+    """find number of examples in inputs"""
+    if isinstance(inputs, (pd.DataFrame, np.ndarray)):
+        return len(inputs)
+    if isinstance(inputs, list):
+        return len(inputs[0])
+    elif hasattr(inputs, '__len__'):
+        return len(inputs)
+    raise NotImplementedError(f"Can not find number of examples in input data of type {type(inputs)}")
