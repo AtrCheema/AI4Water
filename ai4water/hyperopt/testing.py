@@ -108,10 +108,19 @@ class ImportanceEvaluator(FanovaImportanceEvaluator):
         # if nan values are present in target, use mean to fill them
         nan_idx = np.isnan(trans_values)
         if nan_idx.any():
-            warnings.warn("Invalid value encountered in target values",
+            warnings.warn("Nan value encountered in target values",
                 UserWarning)
             # fill nan values with mean
             trans_values[nan_idx] = np.nanmean(trans_values)
+
+        # if inf values are present in target, fill them with max
+        inf_idx = np.isinf(trans_values)
+        if inf_idx.any():
+            warnings.warn("Infinity value encountered in target values",
+                UserWarning)
+            # first convert infs to NaNs with np.isinf masking and then NaNs to max values
+            trans_values[inf_idx] = np.nan
+            trans_values[np.isnan(trans_values)] = np.nanmax(trans_values)
 
         trans_bounds = trans.bounds
         column_to_encoded_columns = trans.column_to_encoded_columns
