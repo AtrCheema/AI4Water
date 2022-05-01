@@ -33,7 +33,7 @@ from .preprocessing.transformations import Transformations
 from .utils.utils import maybe_three_outputs, get_version_info
 from .models.tensorflow.custom_training import train_step, test_step
 from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
-from .utils.utils import find_best_weight, reset_seed, update_model_config
+from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
@@ -1242,7 +1242,7 @@ class BaseModel(NN):
 
         # save all the scores as json in model path`
         cv_name = str(cross_validator)
-        fname = os.path.join(self.path, f'{cv_name}_{scoring}.json')
+        fname = os.path.join(self.path, f'{cv_name}_scores.json')
         with open(fname, 'w') as fp:
             json.dump(scores, fp)
 
@@ -1259,10 +1259,27 @@ class BaseModel(NN):
         scores = np.array(scores)
         cv_scores_ = np.nanmean(scores, axis=0)
 
+        max_val = max(cv_scores_)
+        avg_val = np.nanmean(cv_scores_).item()
+        if np.isinf(cv_scores_).any():
+            # if there is inf, we should not fill it with very large value (999999999)
+            # but it should be max(so far experienced) value
+            cv_scores_no_inf = cv_scores_.copy()
+            cv_scores_no_inf[np.isinf(cv_scores_no_inf)] = np.nan
+            cv_scores_no_inf[np.isnan(cv_scores_no_inf)] = np.nanmax(cv_scores_no_inf)
+            max_val = max(cv_scores_no_inf)
+
+        # check for both infinity and nans separately
+        # because they come due to different reasons
         cv_scores = []
-        for cv_score in cv_scores_:
-            if not math.isfinite(cv_score):
-                cv_score = 1.0
+        for cv_score, metric_name in zip(cv_scores_, scoring):
+            #  math.isinf(np.nan) will be false therefore
+            # first check if cv_score is nan or not, if true, fill it with avg_val
+            if math.isnan(cv_score):
+                cv_score = fill_val(metric_name, default_min=avg_val)
+            # then check if cv_score is infinity because
+            elif math.isinf(cv_score):
+                cv_score = fill_val(metric_name, default_min=max_val)
             cv_scores.append(cv_score)
 
         return cv_scores
@@ -2745,17 +2762,17 @@ class BaseModel(NN):
         --------
         >>> from ai4water import Model
         >>> from ai4water.datasets import busan_beach
-        >>> data = busan_beach()
-        >>> input_features=data.columns.tolist()[0:-1]
-        >>> output_features = data.columns.tolist()[-1:]
-
+        >>> df = busan_beach()
+        >>> input_features=df.columns.tolist()[0:-1]
+        >>> output_features = df.columns.tolist()[-1:]
+        ... # build the model
         >>> model=Model(model="RandomForestRegressor",
         >>>     input_features=input_features,
         >>>     output_features=output_features)
-
-        >>> model.fit(data=data)
-
-        >>> si = model.sensitivity_analysis(data=data[input_features].values,
+        ... # train the model
+        >>> model.fit(data=df)
+        .. # perform sensitivity analysis
+        >>> si = model.sensitivity_analysis(data=df[input_features].values,
         >>>                    sampler="morris", analyzer=["morris", "sobol"],
         >>>                        sampler_kwds={'N': 100})
 
@@ -3039,6 +3056,12 @@ def get_values(outputs):
         outputs = list(outputs.values())[0]
 
     return outputs
+
+
+def fill_val(metric_name, default="min", default_min=99999999):
+    if METRIC_TYPES.get(metric_name, default) == "min":
+        return default_min
+    return 0.0
 
 
 def _find_num_examples(inputs)->int:

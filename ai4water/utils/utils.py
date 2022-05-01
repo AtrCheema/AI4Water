@@ -1675,3 +1675,23 @@ def get_nrows_ncols(n_rows, n_subplots)->"tuple[int, int]":
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
+
+
+METRIC_TYPES = {
+    "r2": "max",
+    "nse": "max",
+    "r2_score": "max",
+    "kge": "max",
+    'log_nse': 'max',
+    "corr_coeff": "max",
+    'accuracy': "max",
+    'f1_score': 'max',
+    "mse": "min",
+    "rmse": "min",
+    "rmsle": "min",
+    "mape": "min",
+    "nrmse": "min",
+    "pbias": "min",
+    "bias": "min",
+    "med_seq_error": "min",
+}
