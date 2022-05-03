@@ -1,14 +1,8 @@
 
-import os
-import numpy as np
-import pandas as pd
-import matplotlib as mpl
-from easy_mpl import regplot, imshow
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, plot_precision_recall_curve
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
+from ai4water.backend import easy_mpl as ep
+from ai4water.backend import np, pd, mpl, plt, os, sklearn
 from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.utils import dateandtime_now, ts_features, dict_to_file
 
@@ -16,6 +10,11 @@ try:
     import wandb
 except ModuleNotFoundError:
     wandb = None
+
+mdates = mpl.dates
+plot_roc_curve = sklearn.metrics.plot_roc_curve
+plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
+
 
 # TODO add Murphy's plot as shown in MLAir
 # prediction_distribution aka actual_plot of PDPbox
@@ -99,7 +98,7 @@ class ProcessResults(Plot):
             # color:
         """
 
-        regplot(true,
+        ep.regplot(true,
                 predicted,
                 title=name,
                 annotation_key=annotation_key,
@@ -315,7 +314,7 @@ class ProcessResults(Plot):
 
         cm = ClassificationMetrics(true, predicted).confusion_matrix()
 
-        imshow(cm, annotate=True, colorbar=True, show=False, **kwargs)
+        ep.imshow(cm, annotate=True, colorbar=True, show=False, **kwargs)
 
         self.save_or_show(save, fname="confusion_matrix", where="results")
         return

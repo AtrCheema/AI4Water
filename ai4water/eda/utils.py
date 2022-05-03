@@ -1,10 +1,9 @@
 
 from typing import Any, Dict
 
-import numpy as np
-import pandas as pd
 from scipy import linalg
-import matplotlib.pyplot as plt
+
+from ai4water.backend import np, pd, plt
 
 
 def auto_corr(x, nlags, demean=True):

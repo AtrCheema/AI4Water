@@ -1,8 +1,9 @@
 # extracts features of 1d array like data.
 
-import numpy as np
 import scipy
 from scipy.stats import norm, rankdata
+
+from ai4water.backend import np
 
 class Features(object):
 

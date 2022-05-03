@@ -1,10 +1,8 @@
-import os
-from typing import Union, List, Callable
 
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
+from typing import Callable
 
+
+from ai4water.backend import np, os, plt, pd
 from ._explain import ExplainerMixin
 
 

@@ -2,12 +2,7 @@
 __all__ = ["ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "LAYERS", "OPTIMIZERS", "tcn"]
 
 # it is supposed that tf is available
-from .backend import get_attributes
-
-try:
-    import tensorflow as tf
-except ModuleNotFoundError:
-    tf = None
+from .backend import get_attributes, tf
 
 
 try:

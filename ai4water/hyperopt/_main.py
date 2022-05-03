@@ -1,60 +1,9 @@
-import os
 import json
 import copy
 import inspect
 import warnings
 from typing import Union
 from collections import OrderedDict
-
-import sklearn
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from easy_mpl import parallel_coordinates, bar_chart
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.model_selection import ParameterGrid, ParameterSampler
-
-try:
-    import plotly
-except ImportError:
-    plotly = None
-
-try:
-    import skopt
-    from skopt import gp_minimize
-    from skopt import BayesSearchCV
-    from skopt.space.space import Space
-    from skopt.utils import use_named_args
-    from skopt.space.space import Dimension
-    from skopt.plots import plot_convergence, plot_evaluations
-except ImportError:
-    skopt, gp_minimize, BayesSearchCV, Space, _Real, use_named_args = None, None, None, None, None, None
-    Dimension, _Integer, _Categorical, plot_evaluations, plot_convergence = None, None, None, None, None
-
-if skopt is not None:
-    from skopt import forest_minimize
-
-try:
-    import hyperopt
-    from hyperopt.pyll.base import Apply
-    from hyperopt import fmin as fmin_hyperopt
-    from hyperopt import tpe, STATUS_OK, Trials, rand
-except ImportError:
-    hyperopt, fmin_hyperopt, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
-    space_eval, miscs_to_idxs_vals = None, None
-
-try:  # atpe is only available in later versions of hyperopt
-    from hyperopt import atpe
-except ImportError:
-    atpe = None
-
-try:
-    import optuna
-    from optuna.study import Study
-    from optuna.visualization import plot_contour
-except ImportError:
-    optuna, plot_contour = None, None
-    Study = None
 
 from ai4water.utils.utils import JsonEncoder
 from .utils import plot_convergences
@@ -67,7 +16,58 @@ from .utils import save_skopt_results
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters, plot_edf
+from ai4water.backend import hyperopt as _hyperopt
+from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
+
+GridSearchCV = sklearn.model_selection.GridSearchCV
+RandomizedSearchCV = sklearn.model_selection.RandomizedSearchCV
+ParameterGrid = sklearn.model_selection.ParameterGrid
+ParameterSampler = sklearn.model_selection.ParameterSampler
+
+bar_chart = easy_mpl.bar_chart
+parallel_coordinates = easy_mpl.parallel_coordinates
+
+Space = skopt.space.space.Space
+Dimension = skopt.space.space.Dimension
+forest_minimize = skopt.forest_minimize
+gp_minimize = skopt.gp_minimize
+BayesSearchCV = skopt.BayesSearchCV
+use_named_args = skopt.utils.use_named_args
+
+from skopt.plots import plot_convergence, plot_evaluations
+
+if _hyperopt is not None:
+    space_eval = _hyperopt.space_eval
+    hp = _hyperopt.hp
+    miscs_to_idxs_vals = _hyperopt.base.miscs_to_idxs_vals
+    Apply = _hyperopt.pyll.base.Apply
+    fmin_hyperopt = _hyperopt.fmin
+    tpe = _hyperopt.tpe
+    STATUS_OK = _hyperopt.STATUS_OK
+    Trials = _hyperopt.Trials
+    rand = _hyperopt.rand
+else:
+    space_eval, hp = None, None
+    miscs_to_idxs_vals = None
+    Apply = None
+    fmin_hyperopt = None
+    tpe = None
+    STATUS_OK = None
+    Trials = None
+    rand = None
+
+try:  # atpe is only available in later versions of hyperopt
+    atpe = _hyperopt.atpe
+except ImportError:
+    atpe = None
+
+if optuna is None:
+    plot_contour = None
+    Study = None
+else:
+    Study = optuna.study.Study
+    plot_contour = optuna.visualization.plot_contour
 
 try:
     from.testing import plot_param_importances
@@ -395,7 +395,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 x = 'skopt'
         else:
             raise ValueError
-        if x == 'hyperopt' and hyperopt is None:
+        if x == 'hyperopt' and _hyperopt is None:
             raise ValueError(f"You must install `hyperopt` to use it as backend for {self.algorithm} algorithm.")
         if x == 'optuna' and optuna is None:
             raise ValueError(f"You must install optuna to use `optuna` as backend for {self.algorithm} algorithm")

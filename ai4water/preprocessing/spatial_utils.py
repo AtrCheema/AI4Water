@@ -1,21 +1,8 @@
-import os
-import random
+
 import warnings
 from collections import OrderedDict
 
-try:
-    import imageio
-except ModuleNotFoundError:
-    imageio = None
-
-
-try:
-    import shapefile
-except ModuleNotFoundError:
-    shapefile = None
-
-import matplotlib.pyplot as plt
-import numpy as np
+from ai4water.backend import np, plt, imageio, shapefile, os, random
 
 
 MSG = f"""

@@ -1,10 +1,8 @@
-import os
+
 from typing import Union
 
-import numpy as np
-import pandas as pd
-from easy_mpl import imshow
-import matplotlib.pyplot as plt
+from ai4water.backend import easy_mpl as ep
+from ai4water.backend import os, np, pd, plt
 
 # TODO
 # rank histogram, reliability diagram, ROC curve
@@ -74,7 +72,7 @@ class Plots(object):
 
         assert np.ndim(img) == 2, "can not plot {} with shape {} and ndim {}".format(label, img.shape, np.ndim(img))
 
-        axis, im = imshow(img,
+        axis, im = ep.imshow(img,
                           aspect="auto",
                           interpolation=interpolation,
                           cmap=cmap,

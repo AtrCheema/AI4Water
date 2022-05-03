@@ -1,6 +1,6 @@
-import numpy as np
 
-from ai4water.backend import keras
+from ai4water.backend import keras, np
+
 K = keras.backend
 Concatenate, Add, Reshape = keras.layers.Concatenate, keras.layers.Add, keras.layers.Reshape
 Input, Dense, Lambda, Subtract = keras.layers.Input, keras.layers.Dense, keras.layers.Lambda, keras.layers.Subtract

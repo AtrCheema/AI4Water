@@ -3,17 +3,12 @@
 The code in this file has been modified after https://github.com/pangaea-data-publisher/pangaeapy/blob/master/pangaeapy/pandataset.py
 """
 import json
-import os
 import xml.etree.ElementTree as ET
 import re
 import io
 
-try:
-    import requests
-except ModuleNotFoundError:
-    requests = None
 
-import pandas as pd
+from ai4water.backend import os, pd, requests
 
 
 class PanParam:

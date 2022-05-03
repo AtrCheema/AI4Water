@@ -1,21 +1,21 @@
-import os
+
 import json
 import math
 from typing import Union, Tuple, List
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from easy_mpl import plot
-from easy_mpl import bar_chart, taylor_plot, dumbbell_plot
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from ai4water.backend import tf
+from ai4water.backend import tf, os, np, pd, plt, easy_mpl
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.postprocessing import ProcessResults 
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
+
+plot = easy_mpl.plot
+bar_chart = easy_mpl.bar_chart
+taylor_plot = easy_mpl.taylor_plot
+dumbbell_plot = easy_mpl.dumbbell_plot
 
 
 if tf is not None:

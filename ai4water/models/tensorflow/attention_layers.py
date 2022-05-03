@@ -1,17 +1,26 @@
 __all__ = ["attn_layers"]
 
-from tensorflow.keras import initializers, regularizers, constraints
-from tensorflow.python.keras.engine import base_layer_utils
-from tensorflow.keras.layers import Layer
-from tensorflow import keras
-from tensorflow.keras import layers
-import tensorflow.keras.backend as K
+
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
-from tensorflow.keras.layers import Dense, Lambda, dot, Activation, concatenate, Softmax
-import tensorflow as tf
+
 import math
-import numpy as np
+
+from ai4water.backend import np, tf, keras
+
+initializers = tf.keras.initializers
+regularizers = tf.keras.regularizers
+constraints = tf.keras.constraints
+Layer = tf.keras.layers.Layer
+layers = tf.keras.layers
+K = tf.keras.backend
+Dense = tf.keras.layers.Dense
+Lambda = tf.keras.layers.Lambda
+Activation = tf.keras.layers.Activation
+Softmax = tf.keras.layers.Softmax
+dot = tf.keras.layers.dot
+concatenate = tf.keras.layers.concatenate
+
 
 # A review of different attention mechanisms is given at following link
 # https://lilianweng.github.io/lil-log/2018/06/24/attention-attention.html

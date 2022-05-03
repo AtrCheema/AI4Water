@@ -1,7 +1,6 @@
 import re
 
-import pandas as pd
-import numpy as np
+from ai4water.backend import np, pd
 
 
 class Resampler(object):

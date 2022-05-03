@@ -1,13 +1,12 @@
-import os
+
 from typing import Any, List
 from collections import OrderedDict
 
-import numpy as np
 
 from ._main import BaseModel
-from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn, tf
+from ai4water.tf_attributes import ACTIVATION_LAYERS, tcn
 from .nn_tools import get_call_args
-from .backend import tf, torch
+from .backend import tf, torch, np, os
 import ai4water.backend as K
 
 from .models.torch import LAYERS as TORCH_LAYERS

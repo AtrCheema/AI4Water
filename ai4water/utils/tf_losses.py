@@ -1,6 +1,11 @@
-import tensorflow as tf
-import tensorflow.keras.backend as K
-import numpy as np
+
+from ai4water.backend import tf, np
+
+if tf is not None:
+    K = tf.keras.backend
+else:
+    K = None
+
 
 
 def reset_graph(seed=313):

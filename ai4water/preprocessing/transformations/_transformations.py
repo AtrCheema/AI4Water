@@ -1,21 +1,17 @@
-import math
-import warnings
 
 from scipy.special import boxcox
 
-from sklearn.preprocessing import MinMaxScaler as SKMinMaxScaler
-from sklearn.preprocessing import StandardScaler as SKStandardScaler
-from sklearn.preprocessing import RobustScaler as SKRobustScaler
-from sklearn.preprocessing import PowerTransformer as SKPowerTransformer
-from sklearn.preprocessing import QuantileTransformer as SKQuantileTransformer
-from sklearn.preprocessing import FunctionTransformer as SKFunctionTransformer
-from sklearn.preprocessing import MaxAbsScaler as SKMaxAbsScaler
-from sklearn.utils.validation import check_is_fitted
-
-import numpy as np
-
+from ai4water.backend import np, sklearn
 from ai4water.utils.utils import jsonize
 
+SKMinMaxScaler = sklearn.preprocessing.MinMaxScaler
+SKStandardScaler = sklearn.preprocessing.StandardScaler
+SKRobustScaler = sklearn.preprocessing.RobustScaler
+SKPowerTransformer = sklearn.preprocessing.PowerTransformer
+SKQuantileTransformer = sklearn.preprocessing.QuantileTransformer
+SKFunctionTransformer = sklearn.preprocessing.FunctionTransformer
+SKMaxAbsScaler = sklearn.preprocessing.MaxAbsScaler
+check_is_fitted = sklearn.utils.validation.check_is_fitted
 
 # todo
 # inverse hyperbolic transformation: effective with many zeros

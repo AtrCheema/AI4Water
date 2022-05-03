@@ -1,14 +1,13 @@
 import re
 import math
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+from easy_mpl.utils import process_axis
 
 from .converter import Temp, Speed, Pressure
 from .global_variables import ALLOWED_COLUMNS, SOLAR_CONSTANT, LAMBDA
 from .global_variables import default_constants, SB_CONS
-from easy_mpl.utils import process_axis
+
+from ai4water.backend import np, pd, plt
 
 
 class AttributeChecker:

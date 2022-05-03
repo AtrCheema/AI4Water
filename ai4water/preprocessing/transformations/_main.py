@@ -1,10 +1,8 @@
-import warnings
+
 from typing import Union
 
-import numpy as np
-import pandas as pd
-
-from ai4water.utils.utils import dateandtime_now, jsonize, deepcopy_dict_without_clone
+from ai4water.backend import np, pd
+from ai4water.utils.utils import dateandtime_now, deepcopy_dict_without_clone
 
 from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
 from ._transformations import LogScaler, Log10Scaler, Log2Scaler, TanScaler, SqrtScaler, CumsumScaler

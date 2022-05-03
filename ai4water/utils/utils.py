@@ -1,5 +1,4 @@
 import copy
-import os
 import json
 import pprint
 import datetime
@@ -11,10 +10,8 @@ from typing import Tuple, List
 import collections.abc as collections_abc
 
 import scipy
-import numpy as np
-import pandas as pd
+from ai4water.backend import np, pd, plt, os
 from easy_mpl import imshow
-import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
 try:

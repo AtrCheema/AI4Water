@@ -1,24 +1,15 @@
 
-import os
 from typing import Union
 from collections import OrderedDict
-
-import numpy as np
-import pandas as pd
-from easy_mpl import pie
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-
-try:
-    import shapefile
-except ModuleNotFoundError:
-    shapefile = None
 
 from .spatial_utils import find_records
 from .spatial_utils import plot_shapefile
 from .spatial_utils import get_total_area, GifUtil
 from .spatial_utils import get_sorted_dict, get_areas_geoms, check_shp_validity
+from ai4water.backend import os, np, pd, plt, mpl, shapefile, easy_mpl
 
+
+mdates = mpl.dates
 
 M2ToAcre = 0.0002471     # meter square to Acre
 COLORS = ['#CDC0B0', '#00FFFF', '#76EEC6', '#C1CDCD', '#E3CF57', '#EED5B7',
@@ -585,7 +576,7 @@ class MakeHRUs(object):
         if name is None: name = self.hru_definition
         name = f'{len(self.hru_names)}hrus_for_{year}_{name}.png'
 
-        return pie(fractions=vals,
+        return easy_mpl.pie(fractions=vals,
                    labels=labels_n,
                    explode=tuple(explode),
                    autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,

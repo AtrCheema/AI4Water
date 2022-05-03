@@ -1,23 +1,12 @@
 import math
-import os
 import json
 import time
-import random
 import warnings
 from pickle import PicklingError
 from typing import Union, Callable
 from types import MethodType
 
-try:
-    import h5py
-except ModuleNotFoundError:
-    h5py = None
-
 import joblib  # since sklearn is required, this will automatically come in
-import matplotlib  # for version info
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
 try:
@@ -36,6 +25,7 @@ from .utils.utils import maybe_create_path, dict_to_file, dateandtime_now
 from .utils.utils import find_best_weight, reset_seed, update_model_config, METRIC_TYPES
 from .preprocessing import DataSet
 from .preprocessing.dataset._main import _DataSet
+from ai4water.backend import np, pd, plt, os, mpl, random, h5py
 from .backend import tf, keras, torch, catboost_models, xgboost_models, lightgbm_models
 import ai4water.backend as K
 
@@ -2313,7 +2303,7 @@ class BaseModel(NN):
             torch=torch,
             np=np,
             pd=pd,
-            matplotlib=matplotlib,
+            matplotlib=mpl,
             h5py=h5py,
             joblib=joblib,
             lightgbm=lightgbm,

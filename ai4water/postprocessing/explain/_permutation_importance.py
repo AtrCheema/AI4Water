@@ -1,16 +1,15 @@
 import gc
-import os
 from typing import Union, Callable, List
 
-import numpy as np
-from easy_mpl import imshow
 import scipy.stats as stats
-import matplotlib.pyplot as plt
-from easy_mpl import bar_chart
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
+from ai4water.backend import np, plt, os, easy_mpl
 from ._explain import ExplainerMixin
 from ai4water.utils.utils import reset_seed, ERROR_LABELS
+
+imshow = easy_mpl.imshow
+bar_chart = easy_mpl.bar_chart
 
 
 class PermutationImportance(ExplainerMixin):

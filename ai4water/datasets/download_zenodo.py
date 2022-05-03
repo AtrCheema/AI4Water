@@ -2,19 +2,16 @@
 #     https://github.com/dvolgyes/zenodo_get/blob/master/zenodo_get/zget.py
 
 import sys
-import os
 import json
 import signal
 import time
 import hashlib
 from contextlib import contextmanager
 
-try:
-    import requests
-except ModuleNotFoundError:
-    requests = None
+
 
 from .utils import download
+from ai4water.backend import requests, os
 
 abort_signal = False
 abort_counter = 0

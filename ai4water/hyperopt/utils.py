@@ -1,39 +1,31 @@
-import os
 import json
 from itertools import islice
 from pickle import PicklingError
 from collections import OrderedDict
 
-import numpy as np
-import pandas as pd
-import matplotlib as mpl
-from easy_mpl import plot
-import matplotlib.pyplot as plt
-
 try:
-    from hyperopt import space_eval, hp
-    from hyperopt.base import miscs_to_idxs_vals  # todo main_plot_1D_attachment
+    from skopt.plots import plot_evaluations, plot_objective
 except ImportError:
+    plot_evaluations, plot_objective = None, None
+
+from ai4water.utils.utils import Jsonize, clear_weights
+from ai4water.backend import os, np, pd, mpl, plt, skopt, easy_mpl
+from ai4water.backend import hyperopt as _hyperopt
+from ._space import Categorical, Real, Integer
+
+Space = skopt.space.space.Space
+Dimension = skopt.space.space.Dimension
+dump = skopt.utils.dump
+
+if _hyperopt is not None:
+    space_eval = _hyperopt.space_eval
+    hp = _hyperopt.hp
+    miscs_to_idxs_vals = _hyperopt.base.miscs_to_idxs_vals
+else:
     space_eval, hp = None, None
     miscs_to_idxs_vals = None
 
-try:
-    from skopt.plots import plot_evaluations, plot_objective
-    import skopt
-    from skopt.space.space import Space, Dimension
-except ImportError:
-    plot_evaluations, plot_objective = None, None
-    Space = None
-    Dimension = None
-
-try:
-    from skopt.utils import dump
-except ImportError:
-    dump = None
-
-
-from ai4water.utils.utils import Jsonize, clear_weights
-from ._space import Categorical, Real, Integer
+plot = easy_mpl.plot
 
 
 def is_choice(space):

@@ -1,14 +1,7 @@
-import os
+
 from typing import Union, Callable
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-try:
-    import plotly
-except ModuleNotFoundError:
-    plotly = None
+from ai4water.backend import os, np, pd, plt, plotly
 
 from .plotting_tools import save_or_show, to_1d_array
 

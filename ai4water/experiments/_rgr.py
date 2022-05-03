@@ -4,24 +4,8 @@ __all__ = ["MLRegressionExperiments"]
 from ai4water.utils.utils import get_version_info, dateandtime_now
 from ._main import Experiments
 from .utils import regression_space
+from ai4water.backend import xgboost, lightgbm, catboost, sklearn
 
-
-try:
-    import catboost
-except ModuleNotFoundError:
-    catboost = None
-
-try:
-    import lightgbm
-except ModuleNotFoundError:
-    lightgbm = None
-
-try:
-    import xgboost
-except ModuleNotFoundError:
-    xgboost = None
-
-import sklearn
 
 VERSION_INFO = get_version_info(sklearn=sklearn)
 

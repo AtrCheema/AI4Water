@@ -1,7 +1,7 @@
 import re
 from weakref import WeakKeyDictionary
 
-import numpy as np
+from ai4water.backend import np
 
 
 metric_dict = {

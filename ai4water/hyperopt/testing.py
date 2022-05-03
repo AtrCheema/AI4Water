@@ -35,7 +35,7 @@ from typing import Callable
 from typing import List
 from typing import Optional
 
-import numpy as np
+from ai4water.backend import np
 
 from optuna.logging import get_logger
 from optuna._transform import _SearchSpaceTransform

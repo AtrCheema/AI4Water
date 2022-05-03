@@ -193,24 +193,11 @@
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1760
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1761
 
-
-import os
 import glob
-import random
 import zipfile
 import warnings
 import shutil
 from typing import Union, Tuple
-
-try:
-    import netCDF4
-except ModuleNotFoundError:
-    netCDF4 = None
-
-try:
-    import shapefile
-except ModuleNotFoundError:
-    shapefile = None
 
 try:
     from shapely.geometry import shape, mapping
@@ -218,19 +205,9 @@ try:
 except (ModuleNotFoundError, OSError):
     shape, mapping, unary_union = None, None, None
 
-try:
-    import fiona
-except ModuleNotFoundError:
-    fiona = None
 
-try:
-    import xarray as xr
-except ModuleNotFoundError:
-    xr = None
-
-import numpy as np
-import pandas as pd
-
+from ai4water.backend import os, random, shapefile, xr, np, pd, fiona
+from ai4water.backend import netCDF4
 from ai4water.preprocessing.spatial_utils import find_records
 from .download_pangaea import PanDataSet
 from .download_zenodo import download_from_zenodo
