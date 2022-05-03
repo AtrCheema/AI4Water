@@ -12,7 +12,7 @@ scipy
 scikit-learn
 scikit-optimize
 plotly
-tensorflow
+tensorflow==2.7
 torch
 seaborn
 easy_mpl
