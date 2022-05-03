@@ -187,6 +187,8 @@ print(f"All the results are save in {optimizer.opt_path} directory")
 # get corresponding parameters from ``suggestions`` and use them
 # to build the layers of neural network.
 
+PREFIX = f"hpo_nn{dateandtime_now()}"
+ITER = 0
 num_iterations = 15
 
 # these seeds are randomly generated but we keep track of the seed
