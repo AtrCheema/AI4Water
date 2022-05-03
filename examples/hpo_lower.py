@@ -17,6 +17,7 @@ import math
 from typing import Union
 
 import numpy as np
+import tensorflow as tf
 from skopt.plots import plot_objective
 from SeqMetrics import RegressionMetrics
 
@@ -32,6 +33,10 @@ PREFIX = f"hpo_{dateandtime_now()}"
 ITER = 0
 
 # sphinx_gallery_thumbnail_number = 2
+
+##############################################
+
+print(tf.__version__, np.__version__)
 
 ##############################################
 
@@ -268,7 +273,7 @@ def objective_fn(
 
     ITER += 1
 
-    print(f"{ITER} {val_score}")
+    print(f"{ITER} {val_score} {seed}")
 
     if return_model:
         return _model
@@ -302,15 +307,17 @@ results = optimizer.fit()
 
 ###########################################
 
-print(f"optimized parameters are \n{optimizer.best_paras()}")
+best_iteration = list(optimizer.best_xy().keys())[0].split('_')[-1]
+
+seed_on_best_iter = SEEDS_USED[int(best_iteration)]
+
+print(f"optimized parameters are \n{optimizer.best_paras()} at {best_iteration} with seed {seed_on_best_iter}")
 
 ##################################################
 
 # we can now again call the objective function with best/optimium parameters
 
-best_iteration = list(optimizer.best_xy().keys())[0].split('_')[-1]
 
-seed_on_best_iter = SEEDS_USED[int(best_iteration)]
 model = objective_fn(prefix=f"{PREFIX}{SEP}best",
                      seed=seed_on_best_iter,
                      return_model=True,

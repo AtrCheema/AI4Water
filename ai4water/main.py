@@ -984,6 +984,6 @@ def assign_dummy_name(tensor, dummy_name):
     else:
         if "CAST" in tensor.name.upper() or "IteratorGetNext" in tensor.name:
             setattr(tensor, '__dummy_name', dummy_name)
-            print(f"assigning name {dummy_name} to {tensor.name} with shape {getattr(tensor, 'shape', None)}")
+            #print(f"assigning name {dummy_name} to {tensor.name} with shape {getattr(tensor, 'shape', None)}")
         else:
             setattr(tensor, '__dummy_name', tensor.name)
