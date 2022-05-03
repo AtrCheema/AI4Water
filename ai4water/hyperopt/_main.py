@@ -57,9 +57,12 @@ else:
     Trials = None
     rand = None
 
-try:  # atpe is only available in later versions of hyperopt
-    atpe = _hyperopt.atpe
-except ImportError:
+if _hyperopt is not None:
+    try:  # atpe is only available in later versions of hyperopt
+        atpe = _hyperopt.atpe
+    except ImportError:
+        atpe = None
+else:
     atpe = None
 
 if optuna is None:
