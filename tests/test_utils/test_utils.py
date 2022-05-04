@@ -734,7 +734,7 @@ class TestUtils(unittest.TestCase):
 
             history = model.fit(data=df)
 
-            self.assertTrue(np.abs(np.sum(history.history['val_loss'])) > 0.0)
+            self.assertTrue(np.abs(np.sum(history.history['loss'])) > 0.0)
 
             testx, testy = model.test_data()
 
