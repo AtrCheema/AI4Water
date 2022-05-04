@@ -1017,7 +1017,7 @@ class TrainTestSplit(object):
         elif hasattr(arrays, 'shape'):
             return arrays[start:stop]
 
-    def KFold_splits(
+    def KFold(
             self,
             x,
             y,
@@ -1028,7 +1028,10 @@ class TrainTestSplit(object):
         from sklearn.model_selection import KFold
         kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
         spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
 
+    @staticmethod
+    def yield_splits(x, y, spliter):
         for tr_idx, test_idx in spliter:
 
             if isinstance(x, list):
@@ -1046,6 +1049,40 @@ class TrainTestSplit(object):
                 test_y = y[test_idx]
 
             yield (train_x, train_y), (test_x, test_y)
+
+    def TimeSeriesSplit(
+            self,
+            x,
+            y,
+            **kwargs
+    ):
+        from sklearn.model_selection import TimeSeriesSplit
+        kf = TimeSeriesSplit(**kwargs)
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
+
+    def ShuffleSplit(
+            self,
+            x,
+            y,
+            *args,
+            **kwargs
+    ):
+        from sklearn.model_selection import ShuffleSplit
+        kf = ShuffleSplit(*args, **kwargs)
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
+
+    def LeaveOneOut(
+            self,
+            x,
+            y,
+            **kwargs
+    ):
+        from sklearn.model_selection import LeaveOneOut
+        kf = LeaveOneOut()
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
 
 
 def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],

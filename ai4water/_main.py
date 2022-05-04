@@ -1191,7 +1191,7 @@ class BaseModel(NN):
         if data is None:  # prepared data is given
             from .utils.utils import TrainTestSplit
             splitter = TrainTestSplit(test_fraction=1.0 - self.config['train_fraction'])
-            splits = splitter.KFold_splits(x, y, **cross_validator_args)
+            splits = getattr(splitter, cross_validator)(x, y, **cross_validator_args)
 
         else: # we need to prepare data first as x,y
 

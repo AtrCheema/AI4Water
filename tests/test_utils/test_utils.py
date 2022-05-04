@@ -485,11 +485,15 @@ class TestUtils(unittest.TestCase):
         tr_x, testx, tr_y, testy = TrainTestSplit().split_by_slicing(x1, y2)
         assert tr_y[0][0][0].item() == 1000
 
-        splitter = TrainTestSplit().KFold_splits(x1, y1, 4)
+        splitter = TrainTestSplit().KFold(x1, y1, 4)
 
         for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
         assert idx == 3
         assert tr_x.shape[-1] == x1.shape[-1]
+
+        splitter = TrainTestSplit().ShuffleSplit(x1, y1, 4)
+
+        for idx, ((tr_x, tr_y), (test_x, test_y)) in enumerate(splitter): pass
         return
 
     def test_datetimeindex(self):
@@ -654,7 +658,7 @@ class TestUtils(unittest.TestCase):
             layers = {
                 "Flatten": {},
                 "Dense": 2,
-                "Reshape": {"target_shape": (2,1)}}
+            }
 
             model = FModel(allow_nan_labels=True,
                           model={'layers':layers},
@@ -666,8 +670,8 @@ class TestUtils(unittest.TestCase):
 
             history = model.fit(data=df)
 
-            self.assertTrue(np.abs(np.sum(history.history['nse'])) > 0.0)
-            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+            self.assertTrue(np.abs(np.sum(history.history['loss'])) > 0.0)
+            self.assertTrue(np.abs(np.sum(history.history['val_loss'])) > 0.0)
 
             test_evaluation(model)
 
@@ -684,7 +688,7 @@ class TestUtils(unittest.TestCase):
             layers = {
                 "Flatten": {},
                 "Dense": 2,
-                "Reshape": {"target_shape": (2 ,1)}}
+            }
 
             # todo, make sure that model-subclassing also work
             model = FModel(allow_nan_labels=1,
@@ -699,8 +703,8 @@ class TestUtils(unittest.TestCase):
 
             history = model.fit(data=df.copy())
 
-            self.assertFalse(any(np.isin(model.train_indices ,model.test_indices)))
-            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+            self.assertFalse(any(np.isin(model.dh_.train_indices ,model.dh_.test_indices)))
+            self.assertTrue(np.abs(np.sum(history.history['val_loss'])) > 0.0)
 
             test_evaluation(model)
 
@@ -715,28 +719,28 @@ class TestUtils(unittest.TestCase):
             layers = {
                 "Flatten": {"config": {}},
                 "Dense": {"config": {"units": 2}},
-                "Reshape": {"config": {"target_shape": (2, 1)}}}
+                #"Reshape": {"config": {"target_shape": (2, 1)}}
+            }
 
             model = Model(allow_nan_labels=1,
-                          #transformation=None,
-                          #val_data="same",
                           val_fraction=0.0,
                           model={'layers':layers},
-                          inputs=['in1', 'in2'],
-                          outputs=['out1', 'out2'],
+                          input_features=['in1', 'in2'],
+                          output_features=['out1', 'out2'],
                           ts_args={'lookback': 15},
                           epochs=10,
-                          verbosity=1,
-                          data=df.copy())
+                          verbosity=0,
+                          split_random=True)
 
-            history = model.fit(indices='random')
+            history = model.fit(data=df)
 
-            self.assertTrue(np.abs(np.sum(history.history['val_nse'])) > 0.0)
+            self.assertTrue(np.abs(np.sum(history.history['val_loss'])) > 0.0)
 
             testx, testy = model.test_data()
 
             np.allclose(testy[4][0], df[['out1']].iloc[29])
             return
+
 
 class TestTSFeatures(unittest.TestCase):
 
