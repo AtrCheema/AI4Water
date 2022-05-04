@@ -1,10 +1,5 @@
 
-from ai4water.backend import get_attributes
-
-try:
-    import torch
-except ModuleNotFoundError:
-    torch = None
+from ai4water.backend import get_attributes, torch
 
 LAYERS = {}
 

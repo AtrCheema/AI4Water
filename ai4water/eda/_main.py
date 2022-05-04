@@ -1,29 +1,22 @@
 
-import os
 import math
 import warnings
 from typing import Union, List, Dict
 
-import numpy as np
-import pandas as pd
 import scipy.stats as stats
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from easy_mpl import bar_chart, parallel_coordinates, pie
 from pandas.plotting._matplotlib.tools import create_subplots
 
-try:
-    import seaborn as sns
-except ModuleNotFoundError:
-    sns = None
 
 from .utils import _missing_vals
+from ai4water.backend import easy_mpl as ep
 from .utils import pac_yw, auto_corr, plot_autocorr
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.utils import find_tot_plots, get_nrows_ncols
 from ai4water.preprocessing import Transformation
 from ai4water.utils.utils import dict_to_file, dateandtime_now, ts_features
+from ai4water.backend import np, pd, os, plt, sns, mpl
 
+ticker = mpl.ticker
 
 # qq plot
 # decompose into trend/seasonality and noise
@@ -372,7 +365,7 @@ class EDA(Plot):
             ax1 = fig.add_subplot(gs[:1, :5])
 
             # ax1 - Barplot
-            ax1 = bar_chart(labels=list(data.columns),
+            ax1 = ep.bar_chart(labels=list(data.columns),
                             values=np.round(mv_cols_ratio * 100, 2),
                             orient='v',
                             show=False,
@@ -640,7 +633,7 @@ class EDA(Plot):
                     categories = data.pop(out_col)
                 #else:
                     ... # todo categories = self.data[out_col]
-            parallel_coordinates(data, cmap=color, categories=categories,
+            ep.parallel_coordinates(data, cmap=color, categories=categories,
                                  show=False, **kwargs)
             return self._save_or_show(fname=f"parallel_coord_{prefix}")
         else:
@@ -726,7 +719,7 @@ class EDA(Plot):
 
         _, ax = plt.subplots(figsize=figsize)
 
-        bar_chart(labels=data.columns.tolist(),
+        ep.bar_chart(labels=data.columns.tolist(),
                   values=ranks,
                   orient=orientation,
                   show=False,
@@ -1828,7 +1821,7 @@ class EDA(Plot):
 
             for col, ax in zip(fractions.keys(), axis.flat):            
                 
-                pie(fractions[col], ax=ax, show=False, **kwargs)
+                ep.pie(fractions[col], ax=ax, show=False, **kwargs)
                 
             self._save_or_show(fname=f"pie_{fname}")
 

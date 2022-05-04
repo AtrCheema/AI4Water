@@ -1,19 +1,9 @@
 
-import os
 import json
 import inspect
 import warnings
 from typing import Union
 from copy import copy, deepcopy
-
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
-
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import KFold, LeaveOneOut, TimeSeriesSplit
 
 import ai4water.datasets as datasets
 from ai4water.datasets import all_datasets
@@ -21,13 +11,21 @@ from ai4water.utils.utils import TrainTestSplit
 from ai4water.utils.plotting_tools import Plots
 from ai4water.preprocessing.imputation import Imputation
 from ai4water.utils.utils import prepare_data, jsonize, to_datetime_index, print_something
+from ai4water.backend import np, pd, plt, os, mpl, sklearn
 
 from .utils import check_for_classification
 from .utils import consider_intervals, decode
 from .utils import load_data_from_hdf5
 
+train_test_split = sklearn.model_selection.train_test_split
+KFold = sklearn.model_selection.KFold
+LeaveOneOut = sklearn.model_selection.LeaveOneOut
+TimeSeriesSplit = sklearn.model_selection.TimeSeriesSplit
+ShuffleSplit = sklearn.model_selection.ShuffleSplit
 
+Patch = mpl.patches.Patch
 cmap_cv = plt.cm.coolwarm
+
 
 class _DataSet(Plots):
 
@@ -1286,6 +1284,20 @@ class DataSet(_DataSet):
         kf = LeaveOneOut()
 
         for tr_idx, test_idx in kf.split(x):
+
+            yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
+
+    def ShuffleSplit_splits(self, **kwargs):
+        """Yields ShuffleSplit splits
+        The iterator on every iteration returns following
+        `(train_x, train_y), (test_x, test_y)`"""
+        if self.teacher_forcing:
+            warnings.warn("Ignoring prev_y")
+        x, _, y = self._training_data()
+
+        sf = ShuffleSplit(**kwargs)
+
+        for tr_idx, test_idx in sf.split(x):
 
             yield (x[tr_idx], y[tr_idx]), (x[test_idx], y[test_idx])
 

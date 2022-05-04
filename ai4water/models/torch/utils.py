@@ -1,7 +1,11 @@
-import numpy as np
 
-import torch
-from torch.utils.data import Dataset
+
+from ai4water.backend import torch, np
+
+if torch is not None:
+    Dataset = torch.utils.data.Dataset
+else:
+    Dataset = None
 
 
 class TorchDataset(Dataset):

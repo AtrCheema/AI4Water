@@ -1,32 +1,32 @@
-import warnings
+
 from typing import Union
 
-import numpy as np
-
-try:
-    from hyperopt import space_eval, hp
-except ImportError:
-    space_eval, hp = None, None
-
-
-try:
-    from skopt.space import Real as _Real
-    from skopt.space import Integer as _Integer
-    from skopt.space import Categorical as _Categorical
-    import skopt
-except ImportError:
-    skopt, _Integer, _Categorical, _Real = None, None, None, None
-
-
-try:
-    from optuna.distributions import CategoricalDistribution, UniformDistribution, IntLogUniformDistribution
-    from optuna.distributions import IntUniformDistribution, LogUniformDistribution
-except ImportError:
-    CategoricalDistribution, UniformDistribution, IntLogUniformDistribution = None, None, None
-    IntUniformDistribution, LogUniformDistribution = None, None
-
-
 from ai4water.utils.utils import Jsonize
+from ai4water.backend import np, skopt, optuna
+from ai4water.backend import hyperopt as hp
+
+if hp is not None:
+    space_eval = hp.space_eval
+else:
+    hp = None
+
+_Real = skopt.space.Real
+_Integer = skopt.space.Integer
+_Categorical = skopt.space.Categorical
+
+if optuna is not None:
+    CategoricalDistribution = optuna.distributions.CategoricalDistribution
+    UniformDistribution = optuna.distributions.UniformDistribution
+    IntLogUniformDistribution = optuna.distributions.IntLogUniformDistribution
+    IntUniformDistribution = optuna.distributions.IntUniformDistribution
+    LogUniformDistribution = optuna.distributions.LogUniformDistribution
+else:
+    CategoricalDistribution = None
+    UniformDistribution = None
+    IntLogUniformDistribution = None
+    IntUniformDistribution = None
+    LogUniformDistribution = None
+
 
 # helper class to be able to print [1, ..., 4] instead of [1, '...', 4]
 class _Ellipsis:

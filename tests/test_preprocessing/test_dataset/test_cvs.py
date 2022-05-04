@@ -15,6 +15,8 @@ beach_data = busan_beach()
 
 class TestCVs(unittest.TestCase):
 
+    show = False
+
     def make_cross_validator(self, **kwargs):
 
         ds = DataSet(
@@ -28,19 +30,25 @@ class TestCVs(unittest.TestCase):
     def test_kfold(self):
         ds = self.make_cross_validator()
         ds.KFold_splits(n_splits=5)
-        ds.plot_KFold_splits(show=False)
+        ds.plot_KFold_splits(show=self.show)
         return
 
     def test_loocv(self):
         ds = self.make_cross_validator()
         ds.LeaveOneOut_splits()
-        ds.plot_LeaveOneOut_splits(show=False)
+        ds.plot_LeaveOneOut_splits(show=self.show)
         return
 
     def test_tscv(self):
         ds = self.make_cross_validator(train_fraction=0.4)
         ds.TimeSeriesSplit_splits(n_splits=5)
         ds.plot_TimeSeriesSplit_splits(show=False)
+        return
+
+    def test_ss(self):
+        ds = self.make_cross_validator(train_fraction=0.4)
+        ds.ShuffleSplit_splits(n_splits=5)
+        ds.plot_TimeSeriesSplit_splits(show=self.show)
         return
 
 

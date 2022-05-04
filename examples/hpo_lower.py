@@ -13,12 +13,15 @@ This example shows, how to use HyperOpt class for optimization of hyperparameter
 """
 
 import os
-from typing import Union
 import math
+from typing import Union
 
-from ai4water.functional import Model
+import numpy as np
+import tensorflow as tf
 from skopt.plots import plot_objective
 from SeqMetrics import RegressionMetrics
+
+from ai4water.functional import Model
 from ai4water.datasets import busan_beach
 from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.hyperopt import HyperOpt, Categorical, Real, Integer
@@ -30,6 +33,10 @@ PREFIX = f"hpo_{dateandtime_now()}"
 ITER = 0
 
 # sphinx_gallery_thumbnail_number = 2
+
+##############################################
+
+print(tf.__version__, np.__version__)
 
 ##############################################
 
@@ -185,10 +192,21 @@ print(f"All the results are save in {optimizer.opt_path} directory")
 # get corresponding parameters from ``suggestions`` and use them
 # to build the layers of neural network.
 
+PREFIX = f"hpo_nn{dateandtime_now()}"
+ITER = 0
+num_iterations = 15
+
+# these seeds are randomly generated but we keep track of the seed
+# used at each iteration, so that when we rebuilt the model with optimized
+# hyperparameters, we get reproducible results
+SEEDS = np.random.randint(0, 1000, num_iterations)
+# to keep track of seed being used at every optimization iteration
+SEEDS_USED = []
 
 def objective_fn(
         prefix=None,
         return_model=False,
+        seed:int=None,
         **suggestions)->Union[float, Model]:
     """This function must build, train and evaluate the ML model.
     The output of this function will be minimized by optimization algorithm.
@@ -201,6 +219,11 @@ def objective_fn(
     return_model : bool
         if True, then objective function will return the built model. This
         argument will only be used after the optimization is complete
+    seed : int, optional
+        random seed for reproducibility. During optimization, its value will
+        be None and we will use the value from SEEDS. After optimization,
+        we will again call the objective function but this time with fixed
+        seed.
     suggestions : dict
         a dictionary with values of hyperparameters at the iteration when
         this objective function is called. The objective function will be
@@ -228,6 +251,14 @@ def objective_fn(
         output_features=data.columns.tolist()[-1:],
         verbosity=0)
 
+    # ai4water's Model class does not fix numpy seed
+    # below we fix all the seeds including numpy but this seed it itself randomly generated
+    if seed is None:
+        seed = SEEDS[ITER]
+        SEEDS_USED.append(seed)
+
+    _model.seed_everything(seed)
+
     # train model
     _model.fit(data=data)
 
@@ -242,7 +273,7 @@ def objective_fn(
 
     ITER += 1
 
-    print(f"{ITER} {val_score}")
+    print(f"{ITER} {val_score} {seed}")
 
     if return_model:
         return _model
@@ -267,7 +298,7 @@ optimizer = HyperOpt(
     objective_fn=objective_fn,
     param_space=param_space,
     x0=x0,
-    num_iterations=15,
+    num_iterations=num_iterations,
     process_results=False,
     opt_path=f"results{SEP}{PREFIX}"
 )
@@ -276,12 +307,18 @@ results = optimizer.fit()
 
 ###########################################
 
-print(f"optimized parameters are \n{optimizer.best_paras()}")
+best_iteration = list(optimizer.best_xy().keys())[0].split('_')[-1]
+
+seed_on_best_iter = SEEDS_USED[int(best_iteration)]
+
+print(f"optimized parameters are \n{optimizer.best_paras()} at {best_iteration} with seed {seed_on_best_iter}")
 
 ##################################################
 
 # we can now again call the objective function with best/optimium parameters
-# if we want to retrain the model with best parameters, uncommnet below lines for this
 
-# model = objective_fn(prefix=f"{PREFIX}{SEP}best",
-#                      **optimizer.best_paras())
+
+model = objective_fn(prefix=f"{PREFIX}{SEP}best",
+                     seed=seed_on_best_iter,
+                     return_model=True,
+                     **optimizer.best_paras())

@@ -1,16 +1,14 @@
 """sensitivity analysis"""
 
 import importlib
-import os
 from typing import Callable, Union
 
-import matplotlib.pyplot as plt
-from easy_mpl import bar_chart
-import numpy as np
-import pandas as pd
 from SALib.plotting.hdmr import plot
 from SALib.plotting.bar import plot as barplot
 from SALib.plotting.morris import covariance_plot
+
+from ai4water.backend import easy_mpl as ep
+from ai4water.backend import np, pd, plt, os
 
 
 def sensitivity_analysis(
@@ -245,7 +243,7 @@ def bar_plot(sis_df:pd.DataFrame, sort=True, conf_col = "_conf", **kwargs):
 
     label = sis_df.columns[~conf_cols][0]
 
-    ax = bar_chart(sis, names, orient="v", sort=sort, rotation=90, show=False,
+    ax = ep.bar_chart(sis, names, orient="v", sort=sort, rotation=90, show=False,
                    label=label, **kwargs)
     if sort:
         ax.legend(loc="upper left")

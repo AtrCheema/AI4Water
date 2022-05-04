@@ -3,8 +3,7 @@
 # data to it) due to which they could
 # not be used as it is, hence they have been put here and modified.
 
-import matplotlib.pyplot as plt
-import numpy as np
+from ai4water.backend import np, plt
 
 from see_rnn import scalefig
 from see_rnn.inspect_gen import detect_nans

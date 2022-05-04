@@ -1,16 +1,13 @@
 __all__ = ["HARHNModel", "IMVModel"]
 
-import os
 from typing import Any
 
-import numpy as np
-import matplotlib as mpl
+
 from easy_mpl import imshow
-import matplotlib.pyplot as plt
 
 from .main import Model
 from .utils.utils import dateandtime_now, plot_activations_along_inputs
-from .backend import torch
+from .backend import torch, np, plt, os, mpl
 
 if torch is not None:
     from .models.torch import IMVTensorLSTM

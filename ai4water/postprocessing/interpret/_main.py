@@ -1,14 +1,9 @@
 
-import os
+
 import warnings
 
-import numpy as np
-import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from easy_mpl import bar_chart, imshow
-
-from ai4water.backend import xgboost, tf
+from ai4water.backend import xgboost, tf, np, pd, mpl, plt, os
+from ai4water.backend import easy_mpl as ep
 from ai4water.utils.visualizations import Plot
 from ai4water.utils.utils import plot_activations_along_inputs
 
@@ -136,7 +131,7 @@ class Interpret(Plot):
         else:
             plt.close('all')
             _, axis = plt.subplots(figsize=figsize)
-            bar_chart(labels=all_cols,
+            ep.bar_chart(labels=all_cols,
                       values=imp,
                       ax=axis,
                       title="Feature importance",
@@ -233,7 +228,7 @@ class Interpret(Plot):
 
         for ax, imp in zip(axis.flat, importance.columns):
 
-            ax = bar_chart(
+            ax = ep.bar_chart(
                 importance[imp],
                 labels=importance.index,
                 orient="vertical",
@@ -334,7 +329,7 @@ class Interpret(Plot):
 
         plt.close('all')
 
-        axis, im = imshow(enc_var_selection_weights[example_index],
+        axis, im = ep.imshow(enc_var_selection_weights[example_index],
                           aspect="auto",
                           ylabel="lookback steps",
                           title=example_index,

@@ -292,6 +292,51 @@ class TestCustomModel(unittest.TestCase):
         return
 
 
+class TestChangeNQuantiles(unittest.TestCase):
+
+    def test_x_transformation_str(self):
+        model = Model(model="RandomForestRegressor",
+                      x_transformation="quantile",
+                      verbosity=0)
+        model.fit(data=data)
+        assert model.config['x_transformation']['n_quantiles']<1000
+        return
+
+    def test_x_transformation_dict(self):
+        model = Model(model="RandomForestRegressor",
+                      x_transformation={'method': 'quantile', 'n_quantiles': 1000},
+                      verbosity=0)
+        model.fit(data=data)
+        assert model.config['x_transformation']['n_quantiles']<1000
+        return
+
+    def test_y_transformation_str(self):
+        model = Model(model="RandomForestRegressor",
+                      y_transformation="quantile",
+                      verbosity=0)
+        model.fit(data=data)
+        assert model.config['y_transformation']['n_quantiles']<1000
+        return
+
+    def test_y_transformation_dict(self):
+        model = Model(model="RandomForestRegressor",
+                      y_transformation={'method': 'quantile', 'n_quantiles': 1000},
+                      verbosity=0)
+        model.fit(data=data)
+        assert model.config['y_transformation']['n_quantiles']<1000
+        return
+
+    def test_x_transformation_list(self):
+        model = Model(model="RandomForestRegressor",
+                      x_transformation=[{'method': 'quantile', 'n_quantiles': 1000},
+                                        {'method': 'quantile', 'n_quantiles': 2000}],
+                      verbosity=0)
+        model.fit(data=data)
+        assert model.config['x_transformation'][0]['n_quantiles'] < 1000
+        assert model.config['x_transformation'][1]['n_quantiles'] < 1000
+
+        return
+
 if __name__ == "__main__":
 
     unittest.main()

@@ -1,15 +1,10 @@
 
-import os
-import random
 import warnings
 from typing import Union
 
-import numpy as np
-from easy_mpl import imshow
-import matplotlib.pyplot as plt
-from sklearn.tree import plot_tree
 
-from ai4water.backend import tf, keras
+from ai4water.backend import easy_mpl as ep
+from ai4water.backend import tf, keras, np, plt, os, random, lightgbm, xgboost, sklearn
 
 if tf is not None:
     import ai4water.keract_mod as keract
@@ -26,21 +21,13 @@ try:
 except ModuleNotFoundError:
     rnn_histogram = None
 
-
 try:
     from dtreeviz import trees
 except ModuleNotFoundError:
     trees = None
 
-try:
-    import lightgbm
-except ModuleNotFoundError:
-    lightgbm = None
 
-try:
-    import xgboost
-except ModuleNotFoundError:
-    xgboost = None
+plot_tree = sklearn.tree.plot_tree
 
 RNN_INFO = {"LSTM": {'rnn_type': 'LSTM',
                      'gate_names': ['INPUT', 'FORGET', 'CELL', 'OUTPUT'],
@@ -866,7 +853,7 @@ def features_2D(data,
     vmax = data.max()
 
     for idx, ax in enumerate(axis.flat):
-        ax, im = imshow(data[idx],
+        ax, im = ep.imshow(data[idx],
                           ax=ax,
                           cmap=cmap, vmin=vmin, vmax=vmax,
                           title=title[idx],

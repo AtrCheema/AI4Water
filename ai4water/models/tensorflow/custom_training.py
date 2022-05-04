@@ -1,9 +1,6 @@
 # https://www.tensorflow.org/guide/keras/customizing_what_happens_in_fit
 
-try:
-    import tensorflow as tf
-except ModuleNotFoundError:
-    tf = None
+from ai4water.backend import tf
 
 #@tf.function
 def train_step(keras_model, data):

@@ -1,10 +1,16 @@
 
 import unittest
+import os
 
 import numpy as np
+import tensorflow as tf
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
+from ai4water.preprocessing import DataSet
+from SeqMetrics import RegressionMetrics
+
+PLATFORM = ''.join(tf.__version__.split('.')[0:2]) + '_' + os.name
 
 data = busan_beach()
 inputs = data.columns.tolist()[0:-1]
@@ -156,6 +162,47 @@ class TestML(unittest.TestCase):
         ])
         assert np.allclose(p.sum(), 1017556.4220493606), p.sum()
 
+        return
+
+    def test_lstm_tf(self):
+        # this test does not pass in tensorflow<2
+        ds = DataSet(data, ts_args={'lookback': 14}, train_fraction=1.0)
+        train_x, train_y = ds.training_data()
+        val_x, val_y = ds.validation_data()
+
+        _model = Model(model={"layers": {
+            "LSTM": {"units": 34},
+            "Activation": "tanh",
+            "Dense": 1
+        }},
+            ts_args={"lookback": 14},
+            input_features=data.columns.tolist()[0:-1],
+            output_features=data.columns.tolist()[-1],
+            train_fraction=1.0,
+            epochs=100,
+            verbosity=0
+        )
+
+        _model.seed_everything(313)
+
+        # train model
+        _model.fit(x=train_x, y=train_y)
+
+        # evaluate model
+        p = _model.predict(val_x)
+        val_score = RegressionMetrics(val_y, p).mse()
+        trues = {
+            '21_posix': 60611115352064.0,
+            '115_posix': 60611115352064.0,
+            '26_posix': 0,
+            '21_nt': 60611115352064.0,
+            '23_nt': 60611115352064.0,
+            '25_nt': 60611144712192.0,
+            '26_nt': 60611115352064.0,
+            '27_nt': 60611144712192.0,
+        }
+
+        self.assertAlmostEqual(val_score, trues[PLATFORM], 1)
         return
 
 

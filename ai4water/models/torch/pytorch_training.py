@@ -1,21 +1,17 @@
-import os
+
 from typing import Union
 
 import gc
-import numpy as np
-import matplotlib.pyplot as plt
-from easy_mpl import regplot
 from SeqMetrics import RegressionMetrics
+
+from ai4water.backend import easy_mpl as ep
+from ai4water.backend import os, np, plt, torch
 
 try:
     import wandb
 except ModuleNotFoundError:
     wandb = None
 
-try:
-    import torch
-except (ImportError, ModuleNotFoundError):
-    torch = None
 
 # only so that docs can be built without having torch to be installed
 try:
@@ -285,7 +281,7 @@ class Learner(AttributeContainer):
         true, pred = self._eval(x=x, y=y, batch_size=batch_size)
 
         if y is not None and reg_plot and pred.size > 0.0:
-            regplot(true, pred, show=False)
+            ep.regplot(true, pred, show=False)
             plt.savefig(os.path.join(self.path, f'{name}_regplot.png'))
 
         #if self.use_cuda:

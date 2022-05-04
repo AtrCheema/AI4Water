@@ -1,9 +1,11 @@
-import tensorflow as tf
+
 from tensorflow.python.ops import sparse_ops
 from tensorflow.python.ops.ragged import ragged_tensor
 from tensorflow.python.ops import array_ops
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import TimeDistributed, Dense, Dropout, Add, Activation, Lambda, Multiply
+
+from ai4water.backend import tf
 
 LayerNorm = tf.keras.layers.LayerNormalization
 

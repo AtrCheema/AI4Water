@@ -135,6 +135,11 @@ class NN(AttributeStore):
         if 'name' not in config and K.BACKEND != 'pytorch':
             config['name'] = lyr_name
 
+        # for reproducibility, dropout seed should be fixed if available in self.config
+        if "Dropout" in lyr_name and K.BACKEND != 'pytorch':
+            if 'seed' not in config:
+                config['seed'] = self.config['seed']
+
         activation = None
         if "LAMBDA" not in lyr_name.upper():
             # for lambda layers, we don't need to check activation functions and layer names.

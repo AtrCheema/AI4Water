@@ -1,5 +1,4 @@
 import copy
-import os
 import json
 import pprint
 import datetime
@@ -11,10 +10,8 @@ from typing import Tuple, List
 import collections.abc as collections_abc
 
 import scipy
-import numpy as np
-import pandas as pd
+from ai4water.backend import np, pd, plt, os
 from easy_mpl import imshow
-import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis, variation, gmean, hmean
 
 try:
@@ -435,8 +432,8 @@ def _make_model(**kwargs):
         elif arg_name in config:
             update_dict(arg_name, val, data_args, config)
 
-        elif arg_name in ['x_transformer_', 'y_transformer_', 'val_x_transformer_', 'val_y_transformer_']:
-            pass
+        elif arg_name in ['x_transformer_', 'y_transformer_']:
+            config[arg_name] = val
 
         # config may contain additional user defined args which will not be checked
         elif not accept_additional_args:
@@ -1020,7 +1017,7 @@ class TrainTestSplit(object):
         elif hasattr(arrays, 'shape'):
             return arrays[start:stop]
 
-    def KFold_splits(
+    def KFold(
             self,
             x,
             y,
@@ -1031,7 +1028,10 @@ class TrainTestSplit(object):
         from sklearn.model_selection import KFold
         kf = KFold(n_splits=n_splits, random_state=random_state,  shuffle=shuffle)
         spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
 
+    @staticmethod
+    def yield_splits(x, y, spliter):
         for tr_idx, test_idx in spliter:
 
             if isinstance(x, list):
@@ -1049,6 +1049,40 @@ class TrainTestSplit(object):
                 test_y = y[test_idx]
 
             yield (train_x, train_y), (test_x, test_y)
+
+    def TimeSeriesSplit(
+            self,
+            x,
+            y,
+            **kwargs
+    ):
+        from sklearn.model_selection import TimeSeriesSplit
+        kf = TimeSeriesSplit(**kwargs)
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
+
+    def ShuffleSplit(
+            self,
+            x,
+            y,
+            *args,
+            **kwargs
+    ):
+        from sklearn.model_selection import ShuffleSplit
+        kf = ShuffleSplit(*args, **kwargs)
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
+
+    def LeaveOneOut(
+            self,
+            x,
+            y,
+            **kwargs
+    ):
+        from sklearn.model_selection import LeaveOneOut
+        kf = LeaveOneOut()
+        spliter = kf.split(x[0] if isinstance(x, list) else x)
+        return self.yield_splits(x, y, spliter)
 
 
 def ts_features(data: Union[np.ndarray, pd.DataFrame, pd.Series],
@@ -1675,3 +1709,23 @@ def get_nrows_ncols(n_rows, n_subplots)->"tuple[int, int]":
         n_cols -= 1
         n_rows = int(n_subplots / n_cols)
     return n_rows, n_cols
+
+
+METRIC_TYPES = {
+    "r2": "max",
+    "nse": "max",
+    "r2_score": "max",
+    "kge": "max",
+    'log_nse': 'max',
+    "corr_coeff": "max",
+    'accuracy': "max",
+    'f1_score': 'max',
+    "mse": "min",
+    "rmse": "min",
+    "rmsle": "min",
+    "mape": "min",
+    "nrmse": "min",
+    "pbias": "min",
+    "bias": "min",
+    "med_seq_error": "min",
+}

@@ -1,5 +1,10 @@
 
-from torch import nn
+from ai4water.backend import torch
+
+if torch is not None:
+    nn = torch.nn
+else:
+    nn = None
 
 class Conditionalize(nn.Module):
 

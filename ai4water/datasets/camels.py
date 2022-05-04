@@ -1,20 +1,12 @@
 import json
-import os
 import glob
-import random
 from typing import Union
 
-try:
-    import xarray as xr
-except ModuleNotFoundError:
-    xr = None
-
-import numpy as np
-import pandas as pd
 
 from .datasets import Datasets
 from .utils import check_attributes, download, sanity_check
 from ai4water.utils.utils import dateandtime_now
+from ai4water.backend import os, random, np, pd, xr
 
 try:  # shapely may not be installed, as it may be difficult to isntall and is only needed for plotting data.
     from ai4water.preprocessing.spatial_utils import plot_shapefile

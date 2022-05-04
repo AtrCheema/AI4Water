@@ -1,9 +1,11 @@
 
-try:
-    import torch
+from ai4water.backend import torch
+
+
+if torch is None:
+    nn = None
+else:
     nn = torch.nn
-except (ImportError, ModuleNotFoundError):
-    torch, nn = None, None
 
 
 class IMVTensorLSTM(torch.jit.ScriptModule):

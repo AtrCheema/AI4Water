@@ -1,8 +1,7 @@
-import numpy as np
-import pandas as pd
 
 from .utils import Utils
 from .global_variables import LAMBDA
+from ai4water.backend import np, pd
 
 # TODO, classify methods which require wind_speed, or which require solar_rad.
 

@@ -3,8 +3,9 @@
 
 [![Build Status](https://github.com/AtrCheema/AI4Water/workflows/tf/badge.svg)](https://github.com/AtrCheema/AI4Water/actions)
 [![Documentation Status](https://readthedocs.org/projects/ai4water/badge/?version=latest)](https://ai4water.readthedocs.io/en/latest/?badge=latest)
-[![DOI](https://zenodo.org/badge/DOI/10.5194/gmd-2021-139.svg)](https://doi.org/10.5194/gmd-2021-139)
+[![DOI](https://zenodo.org/badge/DOI/10.5194/gmd-2021-139.svg)](https://doi.org/10.5194/gmd-15-3021-2022)
 [![Downloads](https://pepy.tech/badge/ai4water)](https://pepy.tech/project/ai4water)
+[![PyPI version](https://badge.fury.io/py/AI4Water.svg)](https://badge.fury.io/py/AI4Water)
 
 
 A uniform and simplified framework for rapid experimentation with deep leanring and machine learning based models

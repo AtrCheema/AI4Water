@@ -1,60 +1,9 @@
-import os
 import json
 import copy
 import inspect
 import warnings
 from typing import Union
 from collections import OrderedDict
-
-import sklearn
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from easy_mpl import parallel_coordinates, hist
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.model_selection import ParameterGrid, ParameterSampler
-
-try:
-    import plotly
-except ImportError:
-    plotly = None
-
-try:
-    import skopt
-    from skopt import gp_minimize
-    from skopt import BayesSearchCV
-    from skopt.space.space import Space
-    from skopt.utils import use_named_args
-    from skopt.space.space import Dimension
-    from skopt.plots import plot_convergence, plot_evaluations
-except ImportError:
-    skopt, gp_minimize, BayesSearchCV, Space, _Real, use_named_args = None, None, None, None, None, None
-    Dimension, _Integer, _Categorical, plot_evaluations, plot_convergence = None, None, None, None, None
-
-if skopt is not None:
-    from skopt import forest_minimize
-
-try:
-    import hyperopt
-    from hyperopt.pyll.base import Apply
-    from hyperopt import fmin as fmin_hyperopt
-    from hyperopt import tpe, STATUS_OK, Trials, rand
-except ImportError:
-    hyperopt, fmin_hyperopt, tpe, atpe, Trials, rand, Apply = None, None, None, None, None, None, None
-    space_eval, miscs_to_idxs_vals = None, None
-
-try:  # atpe is only available in later versions of hyperopt
-    from hyperopt import atpe
-except ImportError:
-    atpe = None
-
-try:
-    import optuna
-    from optuna.study import Study
-    from optuna.visualization import plot_contour
-except ImportError:
-    optuna, plot_contour = None, None
-    Study = None
 
 from ai4water.utils.utils import JsonEncoder
 from .utils import plot_convergences
@@ -67,7 +16,61 @@ from .utils import save_skopt_results
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters, plot_edf
+from ai4water.backend import hyperopt as _hyperopt
+from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
+
+GridSearchCV = sklearn.model_selection.GridSearchCV
+RandomizedSearchCV = sklearn.model_selection.RandomizedSearchCV
+ParameterGrid = sklearn.model_selection.ParameterGrid
+ParameterSampler = sklearn.model_selection.ParameterSampler
+
+bar_chart = easy_mpl.bar_chart
+parallel_coordinates = easy_mpl.parallel_coordinates
+
+Space = skopt.space.space.Space
+Dimension = skopt.space.space.Dimension
+forest_minimize = skopt.forest_minimize
+gp_minimize = skopt.gp_minimize
+BayesSearchCV = skopt.BayesSearchCV
+use_named_args = skopt.utils.use_named_args
+
+from skopt.plots import plot_convergence, plot_evaluations
+
+if _hyperopt is not None:
+    space_eval = _hyperopt.space_eval
+    hp = _hyperopt.hp
+    miscs_to_idxs_vals = _hyperopt.base.miscs_to_idxs_vals
+    Apply = _hyperopt.pyll.base.Apply
+    fmin_hyperopt = _hyperopt.fmin
+    tpe = _hyperopt.tpe
+    STATUS_OK = _hyperopt.STATUS_OK
+    Trials = _hyperopt.Trials
+    rand = _hyperopt.rand
+else:
+    space_eval, hp = None, None
+    miscs_to_idxs_vals = None
+    Apply = None
+    fmin_hyperopt = None
+    tpe = None
+    STATUS_OK = None
+    Trials = None
+    rand = None
+
+if _hyperopt is not None:
+    try:  # atpe is only available in later versions of hyperopt
+        atpe = _hyperopt.atpe
+    except ImportError:
+        atpe = None
+else:
+    atpe = None
+
+if optuna is None:
+    plot_contour = None
+    Study = None
+else:
+    Study = optuna.study.Study
+    plot_contour = optuna.visualization.plot_contour
 
 try:
     from.testing import plot_param_importances
@@ -395,7 +398,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                 x = 'skopt'
         else:
             raise ValueError
-        if x == 'hyperopt' and hyperopt is None:
+        if x == 'hyperopt' and _hyperopt is None:
             raise ValueError(f"You must install `hyperopt` to use it as backend for {self.algorithm} algorithm.")
         if x == 'optuna' and optuna is None:
             raise ValueError(f"You must install optuna to use `optuna` as backend for {self.algorithm} algorithm")
@@ -1023,7 +1026,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         self._plot_edf()
 
         # distributions/historgrams of explored hyperparameters
-        self._plot_distributions()
+        self._plot_distributions(show=False)
 
         sr = self.skopt_results()
 
@@ -1036,6 +1039,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             self._plot_evaluations()
 
         self.plot_importance(raise_error=False)
+        self.plot_importance(raise_error=False, plot_type="bar")
 
         if self.backend == 'hyperopt':
             loss_histogram([y for y in self.trials.losses()],
@@ -1056,7 +1060,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return
 
-    def plot_importance(self, raise_error=True, save=True):
+    def plot_importance(self, raise_error=True, save=True, plot_type="box"):
 
         msg = "You must have optuna installed to get hyper-parameter importance."
         if optuna is None:
@@ -1067,20 +1071,22 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         else:
             importances, importance_paras, ax = plot_param_importances(self.optuna_study())
-            if importances is not None and save:
-                plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
+            if importances is not None:
+                if plot_type in ["bar"]:
+                    if  save:
+                        plt.savefig(os.path.join(self.opt_path, 'fanova_importance_bar.png'),
                             bbox_inches="tight", dpi=300)
-
-                plt.close('all')
-                df = pd.DataFrame.from_dict(importance_paras)
-                axis = df.boxplot(rot=70, return_type="axes")
-                axis.set_ylabel("Relative Importance")
-                if save:
-                    plt.savefig(os.path.join(
-                        self.opt_path,
-                        "fanova_importance_hist.png"),
-                        dpi=300,
-                        bbox_inches='tight')
+                else:
+                    plt.close('all')
+                    df = pd.DataFrame.from_dict(importance_paras)
+                    axis = df.boxplot(rot=70, return_type="axes")
+                    axis.set_ylabel("Relative Importance")
+                    if save:
+                        plt.savefig(os.path.join(
+                            self.opt_path,
+                            "fanova_importance_hist.png"),
+                            dpi=300,
+                            bbox_inches='tight')
 
                 with open(os.path.join(self.opt_path, "importances.json"), 'w') as fp:
                     json.dump(importances, fp, indent=4, sort_keys=True, cls=JsonEncoder)
@@ -1089,13 +1095,12 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                     json.dump(importance_paras, fp, indent=4, sort_keys=True, cls=JsonEncoder)
         return
 
-    def _plot_distributions(self, save=True):
+    def _plot_distributions(self, save=True, show=True, figsize=None)->plt.Figure:
         """plot distributions of explored hyperparameters"""
         try:
             from pandas.plotting._matplotlib.tools import create_subplots
         except ImportError: # for older pandas versions
             from pandas.plotting._matplotlib.tools import _subplots as create_subplots
-
 
         # name of hyperparameters
         h_paras = list(list(self.best_xy().values())[0].keys())
@@ -1107,22 +1112,29 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             for para, val in x_iter.items():
                 h_para_lists[para].append(val)
 
+        figsize = figsize or (6+len(h_paras), 6+len(h_paras))
         fig, axes = create_subplots(naxes=len(h_paras),
-                                    figsize=(6+len(h_paras), 6+len(h_paras)))
+                                    figsize=figsize)
 
         if not isinstance(axes, np.ndarray):
             axes = np.array([axes])
 
         for ax, col in zip(axes.flat, h_paras):
 
-            hist(h_para_lists[col], ax=ax, show=False,
-                 title=col,
-                 ylabel="Number of iterations")
+            labels, bins = np.unique(np.array(h_para_lists[col]), return_counts=True)
+            bar_chart(bins, labels, orient="v", ax=ax, rotation=90, label=col,
+                      show=False)
+            ax.set_ylabel("Number of iterations")
+            ax.legend()
 
         if save:
             fname = os.path.join(self.opt_path, "distributions.png")
             plt.savefig(fname, bbox_inches="tight")
-        return
+
+        if show:
+            plt.show()
+
+        return fig
 
     def to_kw(self, x):
         names = []

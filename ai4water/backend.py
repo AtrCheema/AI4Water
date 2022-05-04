@@ -1,13 +1,31 @@
-__all__ = ["tf", "keras", "torch",
+
+"""
+tensorflow, torch, numpy, matplotlib, random and other libraries are imported here
+once and then used all over ai4water. This file does not import anything from
+other files of ai4water.
+"""
+__all__ = ["np", "os", "plt", "mpl", "pd", "random",
+           "easy_mpl", "SeqMetrics",
+           "sklearn", "skopt", "hyperopt", "xr", "fiona", "netCDF4",
+           "sns", "imageio", "shapefile", "tf", "torch", "keras",
+           "requests", "optuna", "plotly", "h5py", "lime",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
            "get_attributes"]
 
 from types import FunctionType
 
-try:
-    import sklearn
-except ModuleNotFoundError:
-    sklearn = None
+import os
+import random
+
+import skopt
+import sklearn
+import easy_mpl
+import SeqMetrics
+import numpy as np
+import pandas as pd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
 
 
 def get_attributes(
@@ -24,18 +42,24 @@ def get_attributes(
     still not valid losses, in that case the error will be generated from tensorflow.
     We are not catching those error right now.
 
-    Arguments:
-        aus : parent module
-        what : child module/package
-        retain : if duplicates of 'what' exist then whether to prefer class or function.
+    Parameters
+    ----------
+        aus :
+            parent module
+        what : str
+            child module/package
+        retain : str, optional (default=None)
+            if duplicates of 'what' exist then whether to prefer class or function.
             For example, fastica and FastICA exist in sklearn.decomposition then if retain
             is 'function' then fastica will be kept, if retain is 'class' then FastICA is
             kept. If retain is None, then what comes later will overwrite the previously
             kept object.
-        case_sensitive : whether to consider what as case-sensitive or not. In such
+        case_sensitive : bool, optional (default=False)
+            whether to consider what as case-sensitive or not. In such
             a case, fastica and FastICA will both be saved as separate objects.
 
-    Example:
+    Example
+    -------
         >>> get_attributes(tf.keras, 'layers')  # will get all layers from tf.keras.layers
 
     """
@@ -133,10 +157,71 @@ except ModuleNotFoundError:
 
 try:
     import torch
-except Exception:  # there can be many reasons for unavailability(unproper installation) fo pytorch
+except (ModuleNotFoundError, ImportError):
     torch = None
 
+try:
+    import seaborn as sns
+except ModuleNotFoundError:
+    sns = None
+
+try:
+    import imageio
+except (ModuleNotFoundError, ImportError):
+    imageio = None
+
+
+try:
+    import shapefile
+except (ModuleNotFoundError, ImportError):
+    shapefile = None
+
 catboost_models = {}
+
+try:
+    import hyperopt
+except (ModuleNotFoundError, ImportError):
+    hyperopt = None
+
+try:
+    import xarray as xr
+except (ModuleNotFoundError, ImportError):
+    xr = None
+
+try:
+    import fiona
+except (ModuleNotFoundError, ImportError):
+    fiona = None
+
+try:
+    import netCDF4
+except (ModuleNotFoundError, ImportError):
+    netCDF4 = None
+
+try:
+    import requests
+except (ModuleNotFoundError, ImportError):
+    requests = None
+
+try:
+    import optuna
+except (ModuleNotFoundError, ImportError):
+    optuna = None
+
+try:
+    import plotly
+except ImportError:
+    plotly = None
+
+try:
+    import h5py
+except ModuleNotFoundError:
+    h5py = None
+
+try:
+    import lime
+except ModuleNotFoundError:
+    lime = None
 
 try:
     import catboost

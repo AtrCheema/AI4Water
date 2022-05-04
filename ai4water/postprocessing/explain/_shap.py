@@ -1,4 +1,4 @@
-import os
+
 from typing import Union, Callable, List
 
 try:
@@ -9,19 +9,15 @@ except ModuleNotFoundError:
     Explanation = None
 
 import scipy as sp
-import numpy as np
-import pandas as pd
-from easy_mpl import imshow
-import matplotlib.pyplot as plt
 
 try:
     import tensorflow.keras.backend as K
 except ModuleNotFoundError:
     K = None
 
-from ai4water.backend import sklearn_models
 from ._explain import ExplainerMixin
 from .utils import convert_ai4water_model
+from ai4water.backend import sklearn_models, np, pd, os, plt, easy_mpl
 
 
 class ShapExplainer(ExplainerMixin):
@@ -1000,7 +996,7 @@ def imshow_3d(values,
         fig, (ax1, ax2) = plt.subplots(2, sharex='all', figsize=(10, 12))
 
         yticklabels=[f"t-{int(i)}" for i in np.linspace(lookback - 1, 0, lookback)]
-        axis, im = imshow(data[:, :, idx].transpose(),
+        axis, im = easy_mpl.imshow(data[:, :, idx].transpose(),
                           yticklabels=yticklabels,
                           ax=ax1,
                           vmin=vmin,
@@ -1011,7 +1007,7 @@ def imshow_3d(values,
                           )
         fig.colorbar(im, ax=axis, orientation='vertical', pad=0.2)
 
-        axis, im = imshow(values[:, :, idx].transpose(),
+        axis, im = easy_mpl.imshow(values[:, :, idx].transpose(),
                           yticklabels=yticklabels,
                           vmin=vmin, vmax=vmax,
                           xlabel="Examples",

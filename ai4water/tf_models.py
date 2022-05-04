@@ -1,12 +1,8 @@
 __all__ = ["DualAttentionModel", "InputAttentionModel"]
 
-import os
-
-import numpy as np
-import matplotlib.pyplot as plt
 from easy_mpl import imshow
 
-from .backend import tf
+from .backend import tf, plt, np, os
 from .backend import keras
 from .functional import Model as FModel
 from ai4water.utils.utils import print_something

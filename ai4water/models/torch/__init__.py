@@ -1,9 +1,6 @@
 
 
-try:
-    import torch
-except (ModuleNotFoundError, ImportError):
-    torch = None
+from ai4water.backend import torch
 
 LAYERS, LOSSES, OPTIMIZERS = {}, {}, {}
 Learner = None

@@ -1,14 +1,7 @@
-import os
+
 from typing import Union
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-try:
-    import lime
-except ModuleNotFoundError:
-    lime = None
+from ai4water.backend import np, pd, plt, os, lime
 
 from ._explain import ExplainerMixin
 
@@ -97,8 +90,6 @@ class LimeExplainer(ExplainerMixin):
         self._mode = x
 
     def _get_explainer(self, proposed_explainer=None, **kwargs):
-
-        import lime.lime_tabular
 
         if proposed_explainer is None and self.data.ndim <= 2:
             lime_explainer = lime.lime_tabular.LimeTabularExplainer(

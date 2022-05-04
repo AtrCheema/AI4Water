@@ -1,5 +1,5 @@
-import numpy as np
-import random
+
+from ai4water.backend import np, random
 
 # Latent heat of vaporisation [MJ.Kg-1]
 LAMBDA = 2.45

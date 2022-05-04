@@ -1,11 +1,9 @@
 
 import json
 
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import OneHotEncoder
+from ai4water.backend import np, pd, sklearn
 
-from ai4water.utils.utils import print_something
+OneHotEncoder = sklearn.preprocessing.OneHotEncoder
 
 
 def consider_intervals(data, intervals):

@@ -1,12 +1,9 @@
 
 from typing import Union, List, Dict
 
-import numpy as np
-import pandas as pd
-
-from ai4water.utils.utils import jsonize, deepcopy_dict_without_clone
+from ai4water.backend import np, pd
 from ai4water.preprocessing.transformations import Transformation
-from .utils import TransformerNotFittedError, SP_METHODS
+from ai4water.utils.utils import jsonize, deepcopy_dict_without_clone
 
 
 class Transformations(object):

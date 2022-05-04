@@ -2,10 +2,9 @@
 
 __all__ = ['DataSetUnion']
 
-import os
 from typing import Union
 
-import numpy as np
+from ai4water.backend import np, os
 
 from ._main import _DataSet
 

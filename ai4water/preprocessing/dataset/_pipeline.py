@@ -2,9 +2,7 @@
 
 __all__ = ['DataSetPipeline']
 
-import os
-
-import numpy as np
+from ai4water.backend import np, os
 
 from ._main import _DataSet
 

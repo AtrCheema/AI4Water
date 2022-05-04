@@ -1,9 +1,9 @@
 
 __all__ = ["DLRegressionExperiments"]
 
-import os
 
 from ai4water import Model
+from ai4water.backend import os
 from ai4water.hyperopt import Integer, Real, Categorical
 from ai4water.utils.utils import dateandtime_now
 from ai4water.models import MLP, CNN, LSTM, CNNLSTM, LSTMAutoEncoder, TFT, TCN

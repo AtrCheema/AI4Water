@@ -1,13 +1,16 @@
 
-import tensorflow as tf
-from tensorflow.keras import layers
-from tensorflow.keras.layers import Dense, Layer
+from ai4water.backend import tf
+
+layers = tf.keras.layers
+Dense = tf.keras.layers.Dense
+Layer = tf.keras.layers.Layer
+activations = tf.keras.activations
+K = tf.keras.backend
+constraints = tf.keras.constraints
+initializers = tf.keras.initializers
+regularizers = tf.keras.regularizers
+
 from tensorflow.python.ops import array_ops
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras import activations
-from tensorflow.python.keras import constraints
-from tensorflow.python.keras import initializers
-from tensorflow.python.keras import regularizers
 
 from .attention_layers import ChannelAttention, SpatialAttention, regularized_padded_conv
 
