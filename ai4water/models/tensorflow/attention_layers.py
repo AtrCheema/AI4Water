@@ -26,99 +26,27 @@ concatenate = tf.keras.layers.concatenate
 # https://lilianweng.github.io/lil-log/2018/06/24/attention-attention.html
 # Raffel, SeqWeightedSelfAttention and HierarchicalAttention appear to be very much similar.
 
-class AttentionRaffel(Layer):
-    """
-    Keras Layer that implements an Attention mechanism for temporal data.
-    Supports Masking.
-    Follows the work of Raffel et al., 2015 https://arxiv.org/pdf/1512.08756.pdf
-    # Input shape
-        3D tensor with shape: `(samples, steps, features)`.
-    # Output shape
-        2D tensor with shape: `(samples, features)`.
-    :param kwargs:
-    Just put it on top of an RNN Layer (GRU/LSTM/SimpleRNN) with return_sequences=True.
-    The dimensions are inferred based on the output shape of the RNN.
-    Example:
-        model.add(LSTM(64, return_sequences=True))
-        model.add(Attention())
-    """
-    def __init__(self, step_dim,
-                 W_regularizer=None, b_regularizer=None,
-                 W_constraint=None, b_constraint=None,
-                 bias=True, **kwargs):
-        self.supports_masking = True
-        self.init = initializers.get('glorot_uniform')
-
-        self.W_regularizer = regularizers.get(W_regularizer)
-        self.b_regularizer = regularizers.get(b_regularizer)
-
-        self.W_constraint = constraints.get(W_constraint)
-        self.b_constraint = constraints.get(b_constraint)
-
-        self.bias = bias
-        self.step_dim = step_dim
-        self.features_dim = 0
-        super(AttentionRaffel, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-
-        self.W = self.add_weight(shape=(input_shape[-1], ),
-                                 initializer=self.init,
-                                 name='{}_W'.format(self.name),
-                                 regularizer=self.W_regularizer,
-                                 constraint=self.W_constraint)
-        self.features_dim = input_shape[-1]
-
-        if self.bias:
-            self.b = self.add_weight(shape=(input_shape[1],),
-                                     initializer='zero',
-                                     name='{}_b'.format(self.name),
-                                     regularizer=self.b_regularizer,
-                                     constraint=self.b_constraint)
-        else:
-            self.b = None
-
-        self.built = True
-
-    def compute_mask(self, input, input_mask=None):
-        return None
-
-    def __call__(self, x, mask=None):
-        # TODO different result when using call()
-        if not self.built:
-            self._maybe_build(x)
-
-        features_dim = self.features_dim
-        step_dim = self.step_dim
-
-        eij = K.reshape(K.dot(K.reshape(x, (-1, features_dim)),
-                        K.reshape(self.W, (features_dim, 1))), (-1, step_dim))
-
-        if self.bias:
-            eij += self.b
-
-        eij = tf.tanh(eij, name="AttentionRaffel_tanh")
-
-        a = math_ops.exp(eij, name="AttentionRaffel_exp")
-
-        if mask is not None:
-            a *= K.cast(mask, K.floatx())
-
-        a = tf.divide(a, K.cast(math_ops.reduce_sum(a, axis=1, keepdims=True,
-                                                    name="AttentionRaffel_sum") + K.epsilon(), K.floatx()),
-                      name="AttentionRaffel_a")
-
-        a = array_ops.expand_dims(a, axis=-1, name="AttentionRaffel_expand_dims")
-        weighted_input = x * a
-        return K.sum(weighted_input, axis=1)
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0],  self.features_dim
-
 
 class SelfAttention(Layer):
+    """
+    SelfAttention is originally proposed by Cheng et al., 2016 [1]_
+    Here using the implementation of Philipperemy from
+    [2]_ with modification
+    that `attn_units` and `attn_activation` attributes can be changed. The default values of these attributes are same
+    as used by the auther. However, there is another implementation of SelfAttention at
+    [3]_
+    but the author have cited a different paper i.e. Zheng et al., 2018 [4]_ and
+    named it as additive attention.
+    A useful discussion about this (in this class) implementation can be found at [5]_
 
+    References
+    ----------
+    .. [1] https://arxiv.org/pdf/1601.06733.pdf
+    .. [2] https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention/attention.py
+    .. [3] https://github.com/CyberZHG/keras-self-attention/blob/master/keras_self_attention/seq_self_attention.py
+    .. [4] https://arxiv.org/pdf/1806.01264.pdf
+    .. [5] https://github.com/philipperemy/keras-attention-mechanism/issues/14
+    """
     def __init__(self, attn_units=128, attn_activation='tanh', context='', **kwargs):
         self.attn_units = attn_units
         self.attn_activation = attn_activation
@@ -127,16 +55,6 @@ class SelfAttention(Layer):
 
     def __call__(self, hidden_states):
         """
-        SelfAttention is originally proposed by Cheng et al., 2016 https://arxiv.org/pdf/1601.06733.pdf
-        Here using the implementation of Philipperemy from
-        https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention/attention.py with modification
-        that `attn_units` and `attn_activation` attributes can be changed. The default values of these attributes are same
-        as used by the auther. However, there is another implementation of SelfAttention at
-        https://github.com/CyberZHG/keras-self-attention/blob/master/keras_self_attention/seq_self_attention.py
-        but the author have cited a different paper i.e. Zheng et al., 2018 https://arxiv.org/pdf/1806.01264.pdf and
-        named it as additive attention.
-        A useful discussion about this (in this class) implementation can be found at
-        https://github.com/philipperemy/keras-attention-mechanism/issues/14
         Many-to-one attention mechanism for Keras.
         @param hidden_states: 3D tensor with shape (batch_size, time_steps, input_dim).
         @return: 2D tensor with shape (batch_size, 128)
@@ -973,7 +891,6 @@ class SpatialAttention(layers.Layer):
 
 class attn_layers(object):
 
-    AttentionRaffel = AttentionRaffel
     SelfAttention = SelfAttention
     SeqSelfAttention = SeqSelfAttention
     SnailAttention = SnailAttention

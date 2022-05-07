@@ -60,7 +60,7 @@ else:
 if _hyperopt is not None:
     try:  # atpe is only available in later versions of hyperopt
         atpe = _hyperopt.atpe
-    except ImportError:
+    except AttributeError:
         atpe = None
 else:
     atpe = None

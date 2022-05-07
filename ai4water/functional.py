@@ -65,6 +65,24 @@ class Model(BaseModel):
         return _ws
 
     @property
+    def layers(self):
+        if self.category == "ML":
+            raise NotImplementedError
+        return self._model.layers
+
+    @property
+    def inputs(self):
+        if self.category == "ML":
+            raise NotImplementedError
+        return self._model.inputs
+
+    @property
+    def outputs(self):
+        if self.category == "ML":
+            raise NotImplementedError
+        return self._model.outputs
+
+    @property
     def layer_names(self):
         _all_layers = []
         if self.category == "ML":

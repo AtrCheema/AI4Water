@@ -47,28 +47,30 @@ class BaseModel(NN):
 
     """ Model class that implements logic of AI4Water. """
 
-    def __init__(self,
-                 model: Union[dict, str, Callable] = None,
-                 x_transformation: Union[str, dict, list] = None,
-                 y_transformation:Union[str, dict, list] = None,
-                 lr: float = 0.001,
-                 optimizer='Adam',
-                 loss: Union[str, Callable] = 'mse',
-                 quantiles=None,
-                 epochs: int = 14,
-                 min_val_loss: float = 0.0001,
-                 patience: int = 100,
-                 save_model: bool = True,
-                 monitor: Union[str, list] = None,
-                 val_metric: str = None,
-                 cross_validator: dict = None,
-                 wandb_config: dict = None,
-                 seed: int = 313,
-                 prefix: str = None,
-                 path: str = None,
-                 verbosity: int = 1,
-                 accept_additional_args: bool = False,
-                 **kwargs):
+    def __init__(
+            self,
+            model: Union[dict, str, Callable] = None,
+            x_transformation: Union[str, dict, list] = None,
+            y_transformation:Union[str, dict, list] = None,
+            lr: float = 0.001,
+            optimizer='Adam',
+            loss: Union[str, Callable] = 'mse',
+            quantiles=None,
+            epochs: int = 14,
+            min_val_loss: float = 0.0001,
+            patience: int = 100,
+            save_model: bool = True,
+            monitor: Union[str, list] = None,
+            val_metric: str = None,
+            cross_validator: dict = None,
+            wandb_config: dict = None,
+            seed: int = 313,
+            prefix: str = None,
+            path: str = None,
+            verbosity: int = 1,
+            accept_additional_args: bool = False,
+            **kwargs
+    ):
         """
         The Model class can take a large number of possible arguments depending
         upon the machine learning model/algorithm used. Not all the arguments
@@ -633,10 +635,12 @@ class BaseModel(NN):
 
     def get_val_data(self, validation_data=None):
         """Finds out if there is validation_data"""
+        user_defined = True
         if validation_data is None:
             # when validation data is not given in kwargs and validation_data method is overwritten
             try:
                 validation_data = self.validation_data()
+                user_defined = False
             # when x,y is user defined then validation_data() can give this error
             except DataNotFound:
                 validation_data = None
@@ -649,7 +653,7 @@ class BaseModel(NN):
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
             else:  # x,y is numpy array
-                if self.is_binary:
+                if not user_defined and self.is_binary:
                     if y.shape[1] > self.output_shape[1]:
                         y = np.argmax(y, 1).reshape(-1,1)
 
@@ -2231,7 +2235,9 @@ class BaseModel(NN):
                 weights are updated from model.w_path directory. For neural
                 network based models, the best weights are updated if more
                 than one weight file is present in model.w_path.
-        Returns:
+
+        Returns
+        -------
             None
         """
         if weight_file is None:
