@@ -188,7 +188,10 @@ class Experiments(object):
 
     def fit(
             self,
-            data,
+            x=None,
+            y=None,
+            data=None,
+            validation_data:tuple = None,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -205,32 +208,45 @@ class Experiments(object):
 
         todo, post_optimize not working for 'eval_best' with ML methods.
 
-        Arguments:
-            data: this will be passed to :py:meth:`ai4water.Model.fit`.
-            run_type :
-                One of ``dry_run`` or ``optimize``. If ``dry_run``, the all
+        Parameters
+        ----------
+            x :
+                input data
+            y :
+                label/true/observed data
+            data :
+                Raw unprepared data from which x,y pairs for training and validation
+                will be extracted.
+                this will be passed to :py:meth:`ai4water.Model.fit`.
+                This is is only required if ``x`` and ``y`` are not given
+            validation_data :
+                a tuple which consists of x,y pairs for validation data. This is only
+                required if ``x`` and ``y`` are given and ``data`` is not given.
+            run_type : str, optional (default="dry_run")
+                One of ``dry_run`` or ``optimize``. If ``dry_run``, then all
                 the `models` will be trained only once. if ``optimize``, then
                 hyperparameters of all the models will be optimized.
-            opt_method :
+            opt_method : str, optional (default="bayes")
                 which optimization method to use. options are ``bayes``,
                 ``random``, ``grid``. Only valid if ``run_type`` is ``optimize``
-            num_iterations : number of iterations for optimization. Only valid
+            num_iterations : int, optional
+                number of iterations for optimization. Only valid
                 if ``run_type`` is ``optimize``.
             include :
                 name of models to included. If None, all the models found
                 will be trained and or optimized.
             exclude :
                 name of ``models`` to be excluded
-            cross_validate :
+            cross_validate : bool, optional (default=False)
                 whether to cross validate the model or not. This
                 depends upon `cross_validator` agrument to the `Model`.
-            post_optimize :
+            post_optimize : str, optional
                 one of ``eval_best`` or ``train_best``. If eval_best,
                 the weights from the best models will be uploaded again and the model
                 will be evaluated on train, test and all the data. If ``train_best``,
                 then a new model will be built and trained using the parameters of
                 the best model.
-            hpo_kws :
+            **hpo_kws :
                 keyword arguments for :py:class:`ai4water.hyperopt.HyperOpt` class.
 
         Examples
@@ -265,6 +281,9 @@ class Experiments(object):
         >>> exp.fit(data=busan_beach(), run_type="optimize", num_iterations=20)
 
         """
+
+        verify_data(x, y, data, validation_data)
+
         assert run_type in ['optimize', 'dry_run']
 
         assert post_optimize in ['eval_best', 'train_best']
@@ -313,7 +332,10 @@ class Experiments(object):
                         raise TypeError
 
                     return self._build_and_run(
+                        x=x,
+                        y=y,
                         data=data,
+                        validation_data=validation_data,
                         predict=predict,
                         cross_validate=cross_validate,
                         title=f"{self.exp_name}{SEP}{model_name}",
@@ -351,9 +373,9 @@ class Experiments(object):
                     self.config['optimized_models'][model_type] = self.optimizer.opt_path
 
                     if post_optimize == 'eval_best':
-                        self.eval_best(data, model_name, opt_dir)
+                        self.eval_best(x, y, data, validation_data, model_name, opt_dir)
                     elif post_optimize == 'train_best':
-                        self.train_best(data, model_name)
+                        self.train_best(x, y, data, validation_data, model_name)
 
                 if not hasattr(self, 'model_'):  # todo asking user to define this parameter is not good
                     raise ValueError(f'The `build` method must set a class level attribute named `model_`.')
@@ -361,7 +383,7 @@ class Experiments(object):
 
                 if cross_validate:
                     cv_scoring = self.model_.val_metric
-                    self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_{cv_scoring}')
+                    self.cv_scores_[model_type] = getattr(self.model_, f'cross_val_scores')
                     setattr(self, '_cv_scoring', cv_scoring)
 
                 self.iter_metrics[model_type] = self.model_iter_metric
@@ -373,12 +395,21 @@ class Experiments(object):
 
         return
 
-    def eval_best(self, data, model_type, opt_dir, **kwargs):
+    def eval_best(
+            self,
+            x,
+            y,
+            data,
+            validation_data,
+            model_type,
+            opt_dir,
+            **kwargs
+    ):
         """Evaluate the best models."""
         best_models = clear_weights(opt_dir, rename=False, write=False)
         # TODO for ML, best_models is empty
         if len(best_models) < 1:
-            return self.train_best(data, model_type)
+            return self.train_best(x, y, data, validation_data, model_type)
         for mod, props in best_models.items():
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']
@@ -393,7 +424,14 @@ class Experiments(object):
                 self._populate_results(model_type, train_results, test_results)
         return
 
-    def train_best(self, data, model_type):
+    def train_best(
+            self,
+            x,
+            y,
+            data,
+            validation_data,
+            model_type
+    ):
         """Train the best model."""
         best_paras = self.optimizer.best_paras()
         if best_paras.get('lookback', 1) > 1:
@@ -401,7 +439,10 @@ class Experiments(object):
         else:
             _model = model_type
         train_results, test_results = self._build_and_run(
+            x=x,
+            y=y,
             data=data,
+            validation_data=validation_data,
             predict=True,
             model={_model: self.optimizer.best_paras()},
             title=f"{self.exp_name}{SEP}{model_type}{SEP}best"
@@ -1049,7 +1090,7 @@ Available cases are {self.models} and you wanted to include
 
         _, axis = plt.subplots(figsize=kwargs.get('figsize', (8, 6)))
 
-        d = axis.boxplot(list(cv_scores.values()),
+        d = axis.boxplot(np.array(list(cv_scores.values())).squeeze().T,
                          notch=kwargs.get('notch', None),
                          vert=kwargs.get('vert', None),
                          labels=model_names
@@ -1274,13 +1315,18 @@ Available cases are {self.models} and you wanted to include
             json.dump(tpot.evaluated_individuals_, fp, indent=True)
         return tpot
 
-    def _build_and_run(self,
-        data,
-        predict=True,
-        view=False,
-        title=None,
-        cross_validate=False,
-        **kwargs):
+    def _build_and_run(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            validation_data=None,
+            predict=True,
+            view=False,
+            title=None,
+            cross_validate=False,
+            **kwargs
+    ):
 
         """
         Builds and run one 'model' of the experiment.
@@ -1288,18 +1334,28 @@ Available cases are {self.models} and you wanted to include
         Since an experiment consists of many models, this method
         is also run many times.
         """
-        model = self._build(title=title, **kwargs)
+        model: Model = self._build(title=title, **kwargs)
 
-        self._fit(data=data, cross_validate=cross_validate)
+        self._fit(
+            x=x,
+            y=y,
+            data=data,
+            validation_data=validation_data,
+            cross_validate=cross_validate)
 
         if view:
             model.view()
 
         if predict:
-            return self._predict(data=data)
+            return self._predict(
+                x=x,
+                y=y,
+                data=data,
+                validation_data=validation_data
+            )
 
         # return the validation score
-        return self._evaluate()
+        return self._evaluate(validation_data=validation_data)
 
     def _build(self, title=None, **suggested_paras):
         """Builds the ai4water Model class"""
@@ -1318,24 +1374,47 @@ Available cases are {self.models} and you wanted to include
         )
 
         setattr(self, 'model_', model)
-        return
+        return model
 
-    def _fit(self, data, cross_validate=False):
+    def _fit(
+            self,
+            x,
+            y,
+            data,
+            validation_data,
+            cross_validate=False
+    ):
         """Trains the model"""
 
         if cross_validate:
-            return self.model_.cross_val_score(data=data,
-                scoring = self.model_.config['val_metric'])
+            if validation_data is None:
+                return self.model_.cross_val_score(data=data,
+                    scoring = self.model_.config['val_metric'])
+            else:
+                return self.model._cross_val_score(
+                    x=x, y=y  # todo, combine validation data here with x,y
+                )
 
-        return self.model_.fit(data=data)
+        return self.model_.fit(x=x, y=y, data=data)
 
-    def _evaluate(self, data="validation")->float:
+    def _evaluate(
+            self,
+            validation_data=None,
+            data="validation"
+    )->float:
         """Evaluates the model"""
 
-        t, p = self.model_.predict(
-            data=data,
-            return_true=True,
-            process_results=False)
+        if validation_data is None:
+            t, p = self.model_.predict(
+                data=data,
+                return_true=True,
+                process_results=False)
+        else:
+            t, p = self.model_.predict(
+                return_true=True,
+                process_results=False,
+                *validation_data
+            )
 
         metrics = Metrics[self.mode](t, p,
             remove_zero=True, remove_neg=True,
@@ -1359,13 +1438,23 @@ Available cases are {self.models} and you wanted to include
         print(f"val_score: {val_score}")
         return val_score
 
-    def _predict(self, data):
+    def _predict(
+            self,
+            x=None,
+            y=None,
+            data=None,
+            validation_data=None,
+    ):
         """Makes predictions on training and test data from the model.
         It is supposed that the model has been trained before."""
 
-        test_true, test_pred = self.model_.predict(data=data, return_true=True)
+        if validation_data is None:
+            test_true, test_pred = self.model_.predict(data=data, return_true=True)
 
-        train_true, train_pred = self.model_.predict(data='training', return_true=True)
+            train_true, train_pred = self.model_.predict(data='training', return_true=True)
+        else:
+            test_true, test_pred = self.model_.predict(*validation_data, return_true=True)
+            train_true, train_pred = self.model_.predict(x=x, y=y, return_true=True)
 
         return (train_true, train_pred), (test_true, test_pred)
 
@@ -1535,3 +1624,53 @@ def shred_model_name(model_name):
     key = model_name[6:] if model_name.startswith('model_') else model_name
     key = key[0:-9] if key.endswith("Regressor") else key
     return key
+
+
+
+def verify_data(
+        x=None,
+        y=None,
+        data=None,
+        validation_data=None,
+        label="validation"
+)->Tuple[dict, dict]:
+
+    def num_examples(samples):
+        if isinstance(samples, list):
+            assert len(set(len(sample) for sample in samples)) == 1
+            return len(samples[0])
+        return len(samples)
+
+    """verifies that either x,y and validation_data is given or only data is given."""
+    train_data = {}
+    val_data = {}
+    if x is None:
+        assert y is None, f"y must only be given if x is given. x is {type(x)}"
+        assert data is not None, f"if x is given, data must not be given"
+        assert validation_data is None, f"{label} data must only be given if x is given"
+        train_data['data'] = data
+    else:
+        train_data['x'] = x
+        train_data['y'] = y
+
+        assert y is not None, f"if x is given, corresponding y must also be given"
+        assert isinstance(y, np.ndarray)
+        assert validation_data is not None, f"if x is given, {label}_data must also be given"
+        assert num_examples(x) == num_examples(y)
+
+    if data is None:
+        assert validation_data is not None, f"If data is not given, {label}_data must be given"
+    else:
+        assert validation_data is None, f"If data is given, {label} data must not be given"
+        assert isinstance(data, pd.DataFrame), f"data must be dataframe, but it is {type(data)}"
+
+    if validation_data is not None:
+
+        assert isinstance(validation_data, (tuple, list)), f"{label} data must be of type tuple but it is {type(validation_data)}"
+        assert len(validation_data) == 2, f"{label}_data tuple must have length 2 but it has {len(validation_data)}"
+        assert isinstance(validation_data[1], np.ndarray), f"second value in {label}_data must be ndarray"
+        assert num_examples(validation_data[0]) == num_examples(validation_data[1])
+        val_data['x'] = validation_data[0]
+        val_data['y'] = validation_data[1]
+
+    return train_data, val_data
