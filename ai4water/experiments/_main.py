@@ -9,7 +9,7 @@ from ai4water.backend import tf, os, np, pd, plt, easy_mpl
 from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import jsonize, ERROR_LABELS
-from ai4water.postprocessing import ProcessResults 
+from ai4water.postprocessing import ProcessPredictions
 from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
 
 plot = easy_mpl.plot
@@ -1289,7 +1289,13 @@ Available cases are {self.models} and you wanted to include
         train_x, train_y = dh.training_data()
         tpot.fit(train_x, train_y.reshape(-1, 1))
 
-        visualizer = ProcessResults(path=self.exp_path)
+        if "regressor" in self.tpot_estimator:
+            mode = "regression"
+        else:
+            mode = "classification"
+        visualizer = ProcessPredictions(path=self.exp_path,
+                                        show=self.verbosity,
+                                        mode=mode)
 
         for idx, data_name in enumerate(['training', 'test']):
 
@@ -1299,12 +1305,9 @@ Available cases are {self.models} and you wanted to include
             r2 = RegressionMetrics(y_data, pred).r2()
 
             # todo, perform inverse transform and deindexification
-            visualizer.plot_results(
+            visualizer(
                 pd.DataFrame(y_data.reshape(-1,)),
                 pd.DataFrame(pred.reshape(-1,)),
-                annotation_key='$R^2$', annotation_val=r2,
-                show=self.verbosity,
-                where='',  name=data_name
             )
         # save the python code of fitted pipeline
         tpot.export(os.path.join(self.exp_path, "tpot_fitted_pipeline.py"))
@@ -1617,7 +1620,7 @@ def load_json_file(fpath):
 def save_json_file(fpath, obj):
 
     with open(fpath, 'w') as fp:
-        json.dump(jsonize(obj), fp)
+        json.dump(jsonize(obj), fp, sort_keys=True, indent=4)
 
 
 def shred_model_name(model_name):

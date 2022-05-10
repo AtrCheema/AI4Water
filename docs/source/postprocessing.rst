@@ -7,6 +7,16 @@ the model has been trained i.e. after `.fit` method has been called on it.
 Please note that the `SeqMetrics` sub-module has been deprecated. 
 Please use `SeqMetrics <https://seqmetrics.readthedocs.io/en/latest/>`_ library instead.
 
+ProcessPredictions
+==================
+.. autoclass:: ai4water.postprocessing.ProcessPredictions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__
+
+
 .. toctree::
    :maxdepth: 2
 

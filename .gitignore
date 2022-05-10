@@ -15,6 +15,7 @@
 __pycache__/
 .idea/
 .vscode/
+.eggs/
 AI4Water.egg-info/
 
 # private stuff

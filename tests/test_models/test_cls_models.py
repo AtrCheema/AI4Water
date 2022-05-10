@@ -1,7 +1,7 @@
 import time
 import unittest
 import os
-import sys
+
 import site
 ai4_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 site.addsitedir(ai4_dir)
@@ -150,7 +150,7 @@ class TestClassifications(unittest.TestCase):
         return
 
     def test_binary_cls_ml(self):
-    
+
         for algo in ["RandomForestClassifier",
                       "XGBClassifier",
                       "CatBoostClassifier",
@@ -163,7 +163,7 @@ class TestClassifications(unittest.TestCase):
             assert model.is_binary
             assert not model.is_multiclass
             assert not model.is_multilabel
-    
+
         return
 
     def test_multicls_cls_ml(self):

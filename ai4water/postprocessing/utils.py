@@ -1,10 +1,14 @@
 
+from typing import Union
+
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
+from SeqMetrics.utils import plot_metrics
 
 from ai4water.backend import easy_mpl as ep
 from ai4water.backend import np, pd, mpl, plt, os, sklearn
 from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.utils import dateandtime_now, ts_features, dict_to_file
+from ai4water.utils.visualizations import murphy_diagram, fdc_plot
 
 try:
     import wandb
@@ -15,6 +19,12 @@ mdates = mpl.dates
 plot_roc_curve = sklearn.metrics.plot_roc_curve
 plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
 
+# in order to unify the use of metrics
+Metrics = {
+    'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(t, p, **kwargs),
+    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p,
+        multiclass=multiclass, **kwargs)
+}
 
 # TODO add Murphy's plot as shown in MLAir
 # prediction_distribution aka actual_plot of PDPbox
@@ -27,40 +37,102 @@ plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
 # class prediction error as in yellow brick
 # discremination threshold as in yellow brick
 
-class ProcessResults(Plot):
-    """post processing of results after training"""
-    def __init__(self,
-                 forecast_len=None,
-                 output_features=None,
-                 is_multiclass=None,
-                 config: dict = None,
-                 path=None,
-                 dpi=300,
-                 in_cols=None,
-                 out_cols=None,
-                 verbosity=1,
-                 backend: str = 'plotly'
-                 ):
 
+class ProcessPredictions(Plot):
+    """post processing of results after training"""
+
+    available_plots = [
+        'regression', 'prediction', 'residual',
+        'murphy', 'fdc', 'errors',
+    ]
+
+    def __init__(
+            self,
+            mode: str,
+            forecast_len: int = None,
+            output_features: Union[list, str]=None,
+            is_multiclass:bool = None,
+            is_binary:bool = None,
+            is_multilabel:bool = None,
+            wandb_config: dict = None,
+            path:str = None,
+            dpi: int = 300,
+            show = 1,
+            save: bool = True,
+            plots: Union[list, str] = None,
+    ):
+        """
+        Parameters
+        ----------
+            mode : str
+                either "regression" or "classification"
+            forecast_len : int
+                forecast length, only valid when mode is regression
+            output_features : str, optional
+                names of output features
+            is_binary : bool, optional (default=None)
+                whether the results correspond to binary classification problem.
+            is_multiclass : bool
+                whether the results correspond to multiclass classification problem.
+                Only valid if mode is classification
+            is_multilabel : bool, optional (default=None)
+                whether the results correspond to multilabel classification problem.
+                Only valid if mode is classification
+            plots : int, list
+                the names of plots to draw. Following plots are avialble.
+
+                    ``residual``
+                    ``regression``
+                    ``prediction``
+                    ``errors``
+                    ``fdc``
+                    ``murphy``
+
+            path : str
+                folder in which to save the results/plots
+            show : bool
+                whether to show the plots or not
+            save : bool
+                whether to save the plots or not
+            wandb_config :
+                weights and bias configuration dictionary
+            dpi : int
+                determines resolution of saved figure
+
+        Examples
+        --------
+        >>> true = np.random.random(100)
+        >>> predicted = np.random.random(100)
+        >>> processor = ProcessPredictions("regression", plots=['prediction', 'regression', 'residual', 'murphy'])
+        >>> processor(true, predicted)
+
+        # for classification
+        >>> true = np.random.randint(0, 2, (100, 1))
+        >>> predicted = np.random.randint(0, 2, (100, 1))
+        >>> processor = ProcessPredictions("classification", is_binary=True)
+        >>> processor(true, predicted)
+        """
+        self.mode = mode
         self.forecast_len = forecast_len
         self.output_features = output_features
         self.is_multiclass = is_multiclass
-        self.config = config
-        self.dpi = dpi
-        self.in_cols = in_cols
-        self.out_cols = out_cols
+        self.is_binary = is_binary
+        self.is_multilabel = is_multilabel
+        self.wandb_config = wandb_config
         self.quantiles = None
-        self.verbosity = verbosity
+        self.show = show
+        self.save = save
+        self.dpi = dpi
 
-        super().__init__(path, backend=backend)
+        if plots is None:
+            plots = ['regression', 'prediction']
+        elif not isinstance(plots, list):
+            plots = [plots]
 
-    @property
-    def config(self):
-        return self._config
+        assert all([plot in self.available_plots for plot in plots])
+        self.plots = plots
 
-    @config.setter
-    def config(self, x):
-        self._config = x
+        super().__init__(path, save=save)
 
     @property
     def quantiles(self):
@@ -69,6 +141,44 @@ class ProcessResults(Plot):
     @quantiles.setter
     def quantiles(self, x):
         self._quantiles = x
+
+    def classes(self, array):
+        if self.mode == "classification":
+            return np.unique(array)
+        return []
+
+    def n_classes(self, array):
+        if self.mode == "classification":
+            return len(self.classes(array))
+        return None
+
+    def save_or_show(self, show=None, **kwargs):
+        if show is None:
+            show = self.show
+        return super().save_or_show(save=self.save, show=show, **kwargs)
+
+    def __call__(
+            self,
+            true_outputs,
+            predicted,
+            metrics="minimal",
+            prefix="test",
+            index=None,
+            inputs=None
+    ):
+
+        key = {"regression": "rgr", "classification": "cls"}
+
+        getattr(self, f"process_{key[self.mode]}_results")(
+            true_outputs,
+            predicted,
+            inputs=inputs,
+            metrics=metrics,
+            prefix=prefix,
+            index=index,
+        )
+
+        return
 
     def horizon_plots(self, errors: dict, fname='', save=True):
         plt.close('')
@@ -84,11 +194,17 @@ class ProcessResults(Plot):
                 ax.set_xlabel("Horizons", fontsize=14)
             ax.set_ylabel(legends.get(metric_name, metric_name), fontsize=14)
             idx += 1
-        self.save_or_show(save=save, fname=fname)
+        self.save_or_show(fname=fname)
         return
 
-    def plot_results(self, true, predicted: pd.DataFrame, save=True, name=None, where=None,
-                     annotation_key=None, annotation_val=None, show=False):
+    def plot_results(
+            self,
+            true,
+            predicted: pd.DataFrame,
+            prefix,
+            where,
+            inputs=None,
+    ):
         """
         # kwargs can be any/all of followings
             # fillstyle:
@@ -98,17 +214,92 @@ class ProcessResults(Plot):
             # color:
         """
 
+        for plot in self.plots:
+            if plot=="murphy":
+                self.murphy_plot(true, predicted, prefix, where, inputs)
+            else:
+                getattr(self, f"{plot}_plot")(true, predicted, prefix, where)
+        return
+
+    def average_target_across_feature(self, true, predicted, feature):
+        raise NotImplementedError
+
+    def prediction_distribution_across_feature(self, true, predicted, feature):
+        raise NotImplementedError
+
+    def murphy_plot(self, true, predicted, prefix, where, inputs, **kwargs):
+
+        murphy_diagram(true,
+                       predicted,
+                       reference_model="LinearRegression",
+                       plot_type="diff",
+                       inputs=inputs,
+                       show = False,
+                       **kwargs)
+
+        return self.save_or_show(fname=f"{prefix}_murphy", where=where)
+
+    def fdc_plot(self, true, predicted, prefix, where, **kwargs):
+
+        fdc_plot(predicted, true, show=False, **kwargs)
+
+        return self.save_or_show(fname=f"{prefix}_fdc",
+                          where=where)
+
+    def residual_plot(self, true, predicted, prefix, where, **kwargs):
+
+        fig, axis = plt.subplots(2)
+
+        x = predicted.values
+        y = true.values-predicted.values
+
+        ep.hist(y, show=False, ax=axis[0])
+
+        ep.plot(x, y, 'o', show=False, ax=axis[1],
+                color="darksalmon", xlabel="Predicted", ylabel="Residual")
+
+        plt.suptitle("Residual")
+
+        return self.save_or_show(fname=f"{prefix}_residual",
+                          where=where)
+
+    def errors_plot(self, true, predicted, prefix, where, **kwargs):
+
+        errors = Metrics[self.mode](true, predicted, multiclass=self.is_multiclass)
+
+        return plot_metrics(
+            errors.calculate_all(),
+            show=False,
+            save_path=os.path.join(self.path, where),
+            save=self.save,
+            statistics=False)
+
+    def regression_plot(
+            self,
+            true,
+            predicted,
+            target_name,
+            where,
+            annotate_with="r2"
+    ):
+        annotation_val = getattr(RegressionMetrics(true, predicted), annotate_with)()
+
+        metric_names = {'r2': "$R^2$"}
+
+        annotation_key = metric_names.get(annotate_with, annotate_with)
+
         ep.regplot(true,
                 predicted,
-                title=name,
+                title="Regression Plot",
                 annotation_key=annotation_key,
                 annotation_val=annotation_val,
                 show=False
                 )
 
-        self.save_or_show(save=save, fname=f"{name}_reg", close=False,
-                          where=where, show=show)
+        return self.save_or_show(fname=f"{target_name}_regression",
+                          where=where)
 
+    def prediction_plot(self, true, predicted, prefix, where):
         mpl.rcParams.update(mpl.rcParamsDefault)
 
         _, axis = init_subplots(width=12, height=8)
@@ -152,10 +343,9 @@ class ProcessResults(Plot):
         plt.yticks(fontsize=18)
         plt.xlabel("Time", fontsize=18)
 
-        self.save_or_show(save=save, fname=name, close=False, where=where)
-        return
+        return self.save_or_show(fname=f"{prefix}_prediction", where=where)
 
-    def plot_loss(self, history: dict, name="loss_curve", show=False):
+    def plot_loss(self, history: dict, name="loss_curve"):
         """Considering history is a dictionary of different arrays, possible
         training and validation loss arrays, this method plots those arrays."""
 
@@ -216,7 +406,7 @@ class ProcessResults(Plot):
 
         fig.set_figheight(sub_plots[len(history)]['height'])
         fig.set_figwidth(sub_plots[len(history)]['width'])
-        self.save_or_show(fname=name, save=True if name is not None else False, show=show)
+        self.save_or_show(fname=name, show=self.show)
         mpl.rcParams.update(mpl.rcParamsDefault)
         return
 
@@ -300,32 +490,32 @@ class ProcessResults(Plot):
         self.save_or_show(save, fname="q_" + q_name + ".png", where='results')
         return
 
-    def roc_curve(self, estimator, x, y, save=True):
+    def roc_curve(self, estimator, x, y):
 
         if hasattr(estimator, '_model'):
             if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x, np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
 
         plot_roc_curve(estimator, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="roc", where="results")
+        self.save_or_show(fname="roc")
         return
 
-    def confusion_matrx(self, true, predicted, save=True, **kwargs):
+    def confusion_matrx(self, true, predicted, **kwargs):
 
-        cm = ClassificationMetrics(true, predicted).confusion_matrix()
+        cm = ClassificationMetrics(true, predicted, multiclass=self.is_multiclass).confusion_matrix()
 
         ep.imshow(cm, annotate=True, colorbar=True, show=False, **kwargs)
 
-        self.save_or_show(save, fname="confusion_matrix", where="results")
+        self.save_or_show(fname="confusion_matrix")
         return
 
-    def precision_recall_curve(self, estimator, x, y, save=True):
+    def precision_recall_curve(self, estimator, x, y):
 
         if hasattr(estimator, '_model'):
             if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x, np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
         plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
-        self.save_or_show(save, fname="plot_precision_recall_curve", where="results")
+        self.save_or_show(fname="plot_precision_recall_curve")
         return
 
     def process_rgr_results(
@@ -336,22 +526,20 @@ class ProcessResults(Plot):
             prefix=None,
             index=None,
             remove_nans=True,
-            user_defined_data: bool = False,
-            annotate_with="r2",
+            inputs=None,
     ):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len).
-        annotate_with : which value to write on regression plot
         """
-
-        metric_names = {'r2': "$R^2$"}
-
-        if user_defined_data:
+        #if user_defined_data:
+        if self.output_features is None:
             # when data is user_defined, we don't know what out_cols, and forecast_len are
-            if predicted.ndim == 1:
+            if predicted.size == len(predicted):
                 out_cols = ['output']
+                forecast_len = 1
             else:
                 out_cols = [f'output_{i}' for i in range(predicted.shape[-1])]
+
             forecast_len = 1
             true, predicted = self.maybe_not_3d_data(true, predicted)
         else:
@@ -386,22 +574,15 @@ class ProcessResults(Plot):
                 t = pd.DataFrame(true[:, idx, h], index=index, columns=['true_' + out])
                 p = pd.DataFrame(predicted[:, idx, h], index=index, columns=['pred_' + out])
 
-                if wandb is not None and self.config['wandb_config'] is not None:
+                if wandb is not None and self.wandb_config is not None:
                     _wandb_scatter(t.values, p.values, out)
 
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
-                fname = f"{prefix + out}_{h}.csv"
-                df.to_csv(os.path.join(fpath, fname), index_label='index')
+                fname = f"{prefix}_{out}_{h}"
+                df.to_csv(os.path.join(fpath, fname+".csv"), index_label='index')
 
-                annotation_val = getattr(RegressionMetrics(t, p), annotate_with)()
-                self.plot_results(t,
-                                  p,
-                                  name=fname,
-                                  where=out,
-                                  annotation_key=metric_names.get(annotate_with, annotate_with),
-                                  annotation_val=annotation_val,
-                                  show=bool(self.verbosity))
+                self.plot_results(t, p, prefix=fname, where=out, inputs=inputs)
 
                 if remove_nans:
                     nan_idx = np.isnan(t)
@@ -429,46 +610,89 @@ class ProcessResults(Plot):
             metrics="minimal",
             prefix=None,
             index=None,
-            user_defined_data: bool = False
+            inputs=None,
     ):
         """post-processes classification results."""
-        if user_defined_data:
-            return
+
+        if self.is_multiclass is None and self.is_binary is None and self.is_multilabel is None:
+            if self.n_classes(true)==2:
+                self.is_binary = True
+            else:
+                self.is_multiclass = True
+
+        if self.is_multilabel:
+            return self.process_multilabel(true, predicted, metrics, prefix, index)
 
         if self.is_multiclass:
-            if len(predicted) == predicted.size:
-                predicted = predicted.reshape(-1, 1)
-
-            pred_labels = [f"pred_{i}" for i in range(predicted.shape[1])]
-            true_labels = [f"true_{i}" for i in range(true.shape[1])]
-            fname = os.path.join(self.path, f"{prefix}_prediction.csv")
-            pd.DataFrame(np.concatenate([true, predicted], axis=1),
-                         columns=true_labels + pred_labels, index=index).to_csv(fname)
-            class_metrics = ClassificationMetrics(true, predicted, multiclass=True)
-
-            dict_to_file(self.path,
-                         errors=class_metrics.calculate_all(),
-                         name=f"{prefix}_{dateandtime_now()}.json")
+            return self.process_multiclass(true, predicted, metrics, prefix, index)
         else:
-            if predicted.ndim == 1:
-                predicted = predicted.reshape(-1, 1)
-            for idx, _class in enumerate(self.output_features):
-                _true = true[:, idx]
-                _pred = predicted[:, idx]
+            return self.process_binary(true, predicted, metrics, prefix, index)
 
-                fpath = os.path.join(self.path, _class)
-                if not os.path.exists(fpath):
-                    os.makedirs(fpath)
+    def process_multilabel(self, true, predicted, metrics, prefix, index):
 
-                class_metrics = ClassificationMetrics(_true, _pred, multiclass=False)
-                dict_to_file(fpath,
-                             errors=getattr(class_metrics, f"calculate_{metrics}")(),
-                             name=f"{prefix}_{_class}_{dateandtime_now()}.json"
-                             )
+        for label in range(true.shape[1]):
+            if self.n_classes(true[:, label])==2:
+                self.process_binary(true[:, label], predicted[:, label], metrics, f"{prefix}_{label}", index)
+            else:
+                self.process_multiclass(true[:, label], predicted[:, label], metrics, f"{prefix}_{label}", index)
+        return
 
-                fname = os.path.join(fpath, f"{prefix}_{_class}.csv")
-                array = np.concatenate([_true.reshape(-1, 1), _pred.reshape(-1, 1)], axis=1)
-                pd.DataFrame(array, columns=['true', 'predicted'],  index=index).to_csv(fname)
+    def process_multiclass(self, true, predicted, metrics, prefix, index):
+
+        if len(predicted) == predicted.size:
+            predicted = predicted.reshape(-1, 1)
+        else:
+            predicted = np.argmax(predicted, axis=1).reshape(-1, 1)
+        if len(true) == true.size:
+            true = true.reshape(-1, 1)
+        else:
+            true = np.argmax(true, axis=1).reshape(-1, 1)
+
+        if self.output_features is None:
+            self.output_features = [f'feature_{i}' for i in range(self.n_classes(true))]
+
+        self.confusion_matrx(true, predicted)
+
+        fname = os.path.join(self.path, f"{prefix}_prediction.csv")
+        pd.DataFrame(np.concatenate([true, predicted], axis=1),
+                     columns=['true', 'predicted'], index=index).to_csv(fname)
+        class_metrics = ClassificationMetrics(true, predicted, multiclass=True)
+
+        dict_to_file(self.path,
+                     errors=class_metrics.calculate_all(),
+                     name=f"{prefix}_{dateandtime_now()}.json")
+        return
+
+    def process_binary(self, true, predicted, metrics, prefix, index):
+
+        assert self.n_classes(true) == 2
+
+        if predicted.ndim == 1:
+            predicted = predicted.reshape(-1, 1)
+        elif predicted.size != len(predicted):
+            predicted = np.argmax(predicted, axis=1).reshape(-1,1)
+
+        if true.ndim == 1:
+            true = true.reshape(-1, 1)
+        elif true.size != len(true):
+            true = np.argmax(true, axis=1).reshape(-1,1)
+
+        self.confusion_matrx(true, predicted)
+
+        fpath = os.path.join(self.path, prefix)
+        if not os.path.exists(fpath):
+            os.makedirs(fpath)
+
+        metrics_instance = ClassificationMetrics(true, predicted, multiclass=False)
+        metrics = getattr(metrics_instance, f"calculate_{metrics}")()
+        dict_to_file(fpath,
+                     errors=metrics,
+                     name=f"{prefix}_{dateandtime_now()}.json"
+                     )
+
+        fname = os.path.join(fpath, f"{prefix}_.csv")
+        array = np.concatenate([true.reshape(-1, 1), predicted.reshape(-1, 1)], axis=1)
+        pd.DataFrame(array, columns=['true', 'predicted'],  index=index).to_csv(fname)
 
         return
 
