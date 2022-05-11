@@ -168,6 +168,19 @@ class NN(AttributeStore):
             setattr(self, f'{layer.name}_attentions', layer.attention_components)
         return
 
+    def get_self_attention_weights(self, inputs, **kwargs)->dict:
+
+        no = {}
+        for lyr in self.layers:
+            if "SelfAttention" in lyr.name:
+                no[lyr.name] = lyr.output[1]
+
+        if len(no)==0:
+            raise ValueError(f"No SelfAttention layer found in Model")
+
+        nmodel = tf.keras.models.Model(self.inputs, no)
+        return nmodel.predict(x=inputs, **kwargs)
+
 
 def check_act_fn(config: dict):
     """ it is possible that the config file does not have activation argument or activation is None"""

@@ -1517,6 +1517,7 @@ class BaseModel(NN):
             process_results: bool = True,
             metrics: str = "minimal",
             return_true: bool = False,
+            plots:Union[str, list] = None,
             **kwargs
     ):
         """
@@ -1549,6 +1550,8 @@ class BaseModel(NN):
             return_true: bool
                 whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             kwargs : any keyword argument for ``predict`` method.
 
         Returns:
@@ -1589,13 +1592,15 @@ class BaseModel(NN):
 
         assert metrics in ("minimal", "all", "hydro_metrics")
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 data=data,
-                                 process_results=process_results,
-                                 metrics=metrics,
-                                 return_true=return_true,
-                                 **kwargs)
+        return self.call_predict(
+            x=x,
+            y=y,
+            data=data,
+            process_results=process_results,
+            metrics=metrics,
+            return_true=return_true,
+            plots=plots,
+            **kwargs)
 
     def predict_on_training_data(
             self,
@@ -1603,6 +1608,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """makes prediction on training data.
@@ -1617,6 +1623,8 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1624,13 +1632,15 @@ class BaseModel(NN):
 
         x, y = ds.training_data()
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
     def predict_on_validation_data(
             self,
@@ -1638,6 +1648,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """makes prediction on validation data.
@@ -1652,6 +1663,8 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1659,13 +1672,15 @@ class BaseModel(NN):
 
         x, y = ds.validation_data()
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
     def predict_on_test_data(
             self,
@@ -1673,6 +1688,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """makes prediction on test data.
@@ -1687,6 +1703,8 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1694,13 +1712,15 @@ class BaseModel(NN):
 
         x, y = ds.test_data()
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
     def predict_on_all_data(
             self,
@@ -1708,6 +1728,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """
@@ -1726,6 +1747,8 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
@@ -1740,22 +1763,27 @@ class BaseModel(NN):
 
         x, y = ds.training_data()
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
-    def call_predict(self,
-                     x=None,
-                     y=None,
-                     data='test',
-                     process_results=True,
-                     metrics="minimal",
-                     return_true: bool = False,
-                     **kwargs):
+    def call_predict(
+            self,
+            x=None,
+            y=None,
+            data='test',
+            process_results=True,
+            metrics="minimal",
+            return_true: bool = False,
+            plots=None,
+            **kwargs
+    ):
 
         source = 'test'
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
@@ -1849,6 +1877,7 @@ class BaseModel(NN):
             output_features=self.output_features,
             is_multiclass=self.is_multiclass,
             is_multilabel=self.is_multilabel,
+            plots=plots,
             show=bool(self.verbosity),
         )
 

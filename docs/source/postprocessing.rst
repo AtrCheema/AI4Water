@@ -27,4 +27,5 @@ ProcessPredictions
    :undoc-members:
    :show-inheritance:
 
-   .. automethod:: __init__, __call__
+   .. automethod:: __init__
+   .. automethod:: __call__

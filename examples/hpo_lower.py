@@ -17,7 +17,6 @@ import math
 from typing import Union
 
 import numpy as np
-import tensorflow as tf
 from skopt.plots import plot_objective
 from SeqMetrics import RegressionMetrics
 
@@ -33,10 +32,6 @@ PREFIX = f"hpo_{dateandtime_now()}"
 ITER = 0
 
 # sphinx_gallery_thumbnail_number = 2
-
-##############################################
-
-print(tf.__version__, np.__version__)
 
 ##############################################
 
@@ -192,6 +187,14 @@ print(f"All the results are save in {optimizer.opt_path} directory")
 # get corresponding parameters from ``suggestions`` and use them
 # to build the layers of neural network.
 
+###########################################
+
+import tensorflow as tf
+
+print(tf.__version__, np.__version__)
+
+##############################################
+
 PREFIX = f"hpo_nn{dateandtime_now()}"
 ITER = 0
 num_iterations = 15
@@ -202,6 +205,7 @@ num_iterations = 15
 SEEDS = np.random.randint(0, 1000, num_iterations)
 # to keep track of seed being used at every optimization iteration
 SEEDS_USED = []
+
 
 def objective_fn(
         prefix=None,

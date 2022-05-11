@@ -28,3 +28,13 @@ EALSTM
    :show-inheritance:
 
    .. automethod:: __init__
+
+
+SelfAttention
+=============
+.. autoclass:: ai4water.models.tensorflow.SelfAttention
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   .. automethod:: __init__

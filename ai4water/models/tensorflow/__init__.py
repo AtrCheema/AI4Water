@@ -9,5 +9,6 @@ if tf is not None:
     from .private_layers import Conditionalize
     from .private_layers import MCLSTM
     from .private_layers import EALSTM
+    from .attention_layers import SelfAttention
     from .nbeats_keras import NBeats
     from .tft_layer import TemporalFusionTransformer

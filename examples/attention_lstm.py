@@ -39,10 +39,14 @@ model = Model(
         "LSTM_1": {"config": {"units": 16, "return_sequences": True}, "inputs": "Input_1"},
         "LSTM_2": {"config": {"units": 16, "return_sequences": True}, "inputs": "Input_2"},
 
-        "SelfAttention_1": {"config": {"context": "attn1"}, "inputs": "LSTM_1"},
-        "SelfAttention_2": {"config": {"context": "attn2"}, "inputs": "LSTM_2"},
+        "SelfAttention_1": {"config": {},
+                            "inputs": "LSTM_1",
+                            "outputs": ["attention_vector1", "attention_weights1"]},
+        "SelfAttention_2": {"config": {},
+                            "inputs": "LSTM_2",
+                            "outputs": ["attention_vector2", "attention_weights2"]},
 
-        "Concatenate": {"config": {}, "inputs": ["SelfAttention_1", "SelfAttention_2"]},
+        "Concatenate": {"config": {}, "inputs": ["attention_vector1", "attention_vector2"]},
 
         "Dense": 1
     }}
@@ -100,7 +104,7 @@ x_val.shape, y_val.shape
 
 h = model.fit(x=[x_train1, x_train2], y=y_train,
               validation_data=([x_val1, x_val2], y_val),
-              epochs=1000, verbose=0
+              epochs=1000, verbose=1
               )
 
 #########################################
@@ -115,17 +119,18 @@ x_test.shape, y_test.shape
 
 #########################################
 
-vis = Visualize(model, save=False)
-attention_map = vis.get_activations(["attention_weightattn1", "attention_weightattn2"],
-                                    x=[x_test1, x_test2])
+attention_weights = model.get_self_attention_weights([x_test1, x_test2])
+
+
+attention_weights.keys()
 
 #########################################
 
-num_examples = 10
+num_examples = 10  # number of examples to show
 
 fig, axis = plt.subplots(2, sharex="all")
 
-imshow(attention_map["attention_weightattn1"][0:num_examples],
+imshow(attention_weights["SelfAttention_1"][0:num_examples],
        ylabel="Examples",
        title="Predicted important steps", cmap="hot",
       ax=axis[0], show=False)
@@ -142,7 +147,7 @@ imshow(a, ylabel="Examples",
 
 fig, axis = plt.subplots(2, sharex="all")
 
-imshow(attention_map["attention_weightattn2"][0:num_examples],
+imshow(attention_weights["SelfAttention_2"][0:num_examples],
        ylabel="Examples",
        title="Predicted important steps", cmap="hot",
       ax=axis[0], show=False)
