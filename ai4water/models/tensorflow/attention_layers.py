@@ -1,4 +1,4 @@
-__all__ = ["attn_layers", "SelfAttention"]
+__all__ = ["attn_layers", "SelfAttention", "AttentionLSTM"]
 
 
 from tensorflow.python.ops import math_ops
@@ -49,15 +49,27 @@ class SelfAttention(Layer):
     >>> lstm = LSTM(2, return_sequences=True)(inp)
     >>> sa, _ = SelfAttention()(lstm)
     >>> out = Dense(1)(sa)
-
+    ...
     >>> model = Model(inputs=inp, outputs=out)
     >>> model.compile(loss="mse")
-
+    ...
     >>> print(model.summary())
-
+    ...
     >>> x = np.random.random((100, 10, 1))
     >>> y = np.random.random((100, 1))
     >>> h = model.fit(x=x, y=y)
+
+    # using with ai4water's Model
+    >>> from ai4water import Model
+    >>> seq_len = 20
+    >>> model = Model(
+    ...    model = {"layers": {
+    ...         "Input_1": {"shape": (seq_len, 1)},
+    ...         "LSTM_1": {"config": {"units": 16, "return_sequences": True}, "inputs": "Input_1"},
+    ...         "SelfAttention_1": {"config": {},
+    ...                             "outputs": ["attention_vector1", "attention_weights1"]},
+    ...         "Dense": {"config": {"units": 1}, "inputs": "attention_vector1"}
+    ...     }})
 
     References
     ----------
@@ -939,6 +951,109 @@ class SpatialAttention(layers.Layer):
 
         return out
 
+
+class AttentionLSTM(Layer):
+    """
+    This layer combines Self Attention [1]_ mechanism with LSTM. It uses one separate
+    LSTM+SelfAttention block for each input feature. The output from each
+    LSTM+SelfAttention block is concatenated and returned. The layer expects
+    same input dimension as by LSTM i.e. (batch_size, time_steps, input_features).
+    For usage see example [2]_
+
+    References
+    ----------
+    .. [1] https://ai4water.readthedocs.io/en/dev/models/layers.html#selfattention
+
+    .. [2] https://ai4water.readthedocs.io/en/dev/auto_examples/attention_lstm.html#
+    """
+    def __init__(
+            self,
+            num_inputs: int,
+            lstm_units: int,
+            attn_units: int = 128,
+            attn_activation: str = "tanh",
+            lstm_kwargs:dict = None,
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+            num_inputs: int
+                number of inputs
+            lstm_units : int
+                number of units in LSTM layers
+            attn_units : int, optional (default=128)
+                number of units in SelfAttention layers
+            attn_activation : str, optional (default="tanh")
+                activation function in SelfAttention layers
+            lstm_kwargs : dict, optional (default=None)
+                any keyword arguments for LSTM layer.
+
+        Example
+        -------
+        >>> import numpy as np
+        >>> from tensorflow.keras.models import Model
+        >>> from tensorflow.keras.layers import Input, Dense
+        >>> from ai4water.models.tensorflow import AttentionLSTM
+        >>> seq_len = 20
+        >>> n_inputs = 2
+        >>> inp = Input(shape=(10, n_inputs))
+        >>> outs = AttentionLSTM(n_inputs, 16)(inp)
+        >>> outs = Dense(1)(outs)
+        ...
+        >>> model = Model(inputs=inp, outputs=outs)
+        >>> model.compile(loss="mse")
+        ...
+        >>> print(model.summary())
+        ... # define input
+        >>> x = np.random.random((100, seq_len, num_inputs))
+        >>> y = np.random.random((100, 1))
+        >>> h = model.fit(x=x, y=y)
+
+        # using with ai4water's Modle
+
+        >>> from ai4water import Model
+        >>> model = Model(
+        ...    model = {"layers": {
+        ...        "Input_1": {"shape": (seq_len, num_inputs)},
+        ...        "AttentionLSTM": {"num_inputs": num_inputs, "lstm_units": 16},
+        ...        "Dense": 1 }})
+        >>> model.fit(x=x, y=y)
+
+        """
+        super(AttentionLSTM, self).__init__(**kwargs)
+        self.num_inputs = num_inputs
+        self.lstm_units = lstm_units
+        self.attn_units = attn_units
+        self.attn_activation = attn_activation
+
+        if lstm_kwargs is None:
+            lstm_kwargs = {}
+
+        assert isinstance(lstm_kwargs, dict)
+        self.lstm_kwargs = lstm_kwargs
+
+        self.lstms = []
+        self.sas = []
+        for i in range(self.num_inputs):
+            self.lstms.append(tf.keras.layers.LSTM(self.lstm_units, return_sequences=True, **self.lstm_kwargs))
+            self.sas.append(SelfAttention(self.attn_units, self.attn_activation))
+
+    def __call__(self, inputs, *args, **kwargs):
+
+        assert self.num_inputs == inputs.shape[-1], f"""
+        num_inputs {self.num_inputs} does not match with input features.
+         Inputs are of shape {inputs.shape}"""
+
+        outs = []
+        for i in range(inputs.shape[-1]):
+            lstm = self.lstms[i](tf.expand_dims(inputs[..., i], axis=-1))
+            out, _ = self.sas[i](lstm)
+            outs.append(out)
+
+        return tf.concat(outs, axis=-1)
+
+
 class attn_layers(object):
 
     SelfAttention = SelfAttention
@@ -949,3 +1064,4 @@ class attn_layers(object):
     HierarchicalAttention = HierarchicalAttention
     SpatialAttention = SpatialAttention
     ChannelAttention = ChannelAttention
+    AttentionLSTM = AttentionLSTM

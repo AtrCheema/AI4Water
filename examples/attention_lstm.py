@@ -20,8 +20,7 @@ tf.__version__
 #########################################
 
 import matplotlib.pyplot as plt
-from ai4water.functional import Model
-from ai4water.postprocessing import Visualize
+from ai4water import Model
 
 from easy_mpl import imshow
 
@@ -31,25 +30,13 @@ np.__version__
 #########################################
 
 seq_len = 20
+num_inputs = 2
 model = Model(
     model = {"layers": {
-        "Input_1": {"shape": (seq_len, 1)},
-        "Input_2": {"shape": (seq_len, 1)},
-
-        "LSTM_1": {"config": {"units": 16, "return_sequences": True}, "inputs": "Input_1"},
-        "LSTM_2": {"config": {"units": 16, "return_sequences": True}, "inputs": "Input_2"},
-
-        "SelfAttention_1": {"config": {},
-                            "inputs": "LSTM_1",
-                            "outputs": ["attention_vector1", "attention_weights1"]},
-        "SelfAttention_2": {"config": {},
-                            "inputs": "LSTM_2",
-                            "outputs": ["attention_vector2", "attention_weights2"]},
-
-        "Concatenate": {"config": {}, "inputs": ["attention_vector1", "attention_vector2"]},
-
+        "Input_1": {"shape": (seq_len, num_inputs)},
+        "AttentionLSTM": {"num_inputs": num_inputs, "lstm_units": 16},
         "Dense": 1
-    }}
+    }},
 )
 
 #########################################
@@ -102,8 +89,8 @@ x_val.shape, y_val.shape
 
 #########################################
 
-h = model.fit(x=[x_train1, x_train2], y=y_train,
-              validation_data=([x_val1, x_val2], y_val),
+h = model.fit(x=x_train, y=y_train,
+              validation_data=(x_val, y_val),
               epochs=1000, verbose=1
               )
 
@@ -119,7 +106,7 @@ x_test.shape, y_test.shape
 
 #########################################
 
-attention_weights = model.get_self_attention_weights([x_test1, x_test2])
+attention_weights = model.get_attention_lstm_weights(x_test)
 
 
 attention_weights.keys()
@@ -130,7 +117,7 @@ num_examples = 10  # number of examples to show
 
 fig, axis = plt.subplots(2, sharex="all")
 
-imshow(attention_weights["SelfAttention_1"][0:num_examples],
+imshow(attention_weights["self_attention"][0:num_examples],
        ylabel="Examples",
        title="Predicted important steps", cmap="hot",
       ax=axis[0], show=False)
@@ -147,7 +134,7 @@ imshow(a, ylabel="Examples",
 
 fig, axis = plt.subplots(2, sharex="all")
 
-imshow(attention_weights["SelfAttention_2"][0:num_examples],
+imshow(attention_weights["self_attention_1"][0:num_examples],
        ylabel="Examples",
        title="Predicted important steps", cmap="hot",
       ax=axis[0], show=False)
