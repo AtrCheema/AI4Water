@@ -1482,13 +1482,13 @@ class BaseModel(NN):
 
     def _manual_eval(self, x, y, metrics):
         """manual evaluation"""
-        p = self.predict(x=x, return_true=False, process_results=False)
+        t, p = self.predict(x=x, y=y, return_true=True, process_results=False)
 
         if self.mode == "regression":
 
-            errs = RegressionMetrics(y, p)
+            errs = RegressionMetrics(t, p)
         else:
-            errs = ClassificationMetrics(y, p, multiclass=self.is_multiclass)
+            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass)
 
         if isinstance(metrics, str):
 
@@ -1503,7 +1503,7 @@ class BaseModel(NN):
                 results[m] = getattr(errs, m)()
 
         elif callable(metrics):
-            results = metrics(x, y)
+            results = metrics(x, t)
         else:
             raise ValueError(f"unknown metrics type {metrics}")
 
