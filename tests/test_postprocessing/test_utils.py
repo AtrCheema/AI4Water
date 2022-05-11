@@ -22,13 +22,14 @@ p2 = np.random.random((100, 2))
 
 class TestProcessPrediction(unittest.TestCase):
 
+    show = False
     def test_rgr_1_output(self):
         pp = ProcessPredictions(mode="regression",
                                 forecast_len=1,
                                 output_features=['a'],
                                 is_multiclass=False,
-                                plots=ProcessPredictions.available_plots,
-                                show=False,
+                                plots="residual",
+                                show=self.show,
                                 save=False,
                                 )
 
@@ -41,7 +42,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a', 'b'],
                                 is_multiclass=False,
                                 plots=ProcessPredictions.available_plots,
-                                show=False,
+                                show=self.show,
                                 save=False,
                                 )
 
@@ -54,7 +55,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 is_multiclass=False,
                                 plots=ProcessPredictions.available_plots,
-                                show=False,
+                                show=self.show,
                                 save=False,
                                 )
 
@@ -67,7 +68,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 output_features=['a'],
                                 is_multiclass=False,
                                 plots=ProcessPredictions.available_plots,
-                                show=False,
+                                show=self.show,
                                 save=False,
                                 )
 
@@ -80,7 +81,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 forecast_len=1,
                                 output_features=['a'],
                                 plots=ProcessPredictions.available_plots,
-                                show=False,
+                                show=self.show,
                                 save=False,
                                 )
 
@@ -93,7 +94,7 @@ class TestProcessPrediction(unittest.TestCase):
                                 forecast_len=1,
                                 output_features=['a', 'b'],
                                 plots=ProcessPredictions.available_plots,
-                                show=False,
+                                show=self.show,
                                 save=False,
                                 )
 

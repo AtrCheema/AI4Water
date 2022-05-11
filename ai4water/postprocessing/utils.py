@@ -107,6 +107,7 @@ class ProcessPredictions(Plot):
         >>> processor(true, predicted)
 
         # for classification
+
         >>> true = np.random.randint(0, 2, (100, 1))
         >>> predicted = np.random.randint(0, 2, (100, 1))
         >>> processor = ProcessPredictions("classification", is_binary=True)
@@ -257,7 +258,8 @@ class ProcessPredictions(Plot):
 
         ep.plot(x, y, 'o', show=False, ax=axis[1],
                 color="darksalmon", xlabel="Predicted", ylabel="Residual")
-
+        # draw horizontal line on y=0
+        axis[1].axhline(0.0)
         plt.suptitle("Residual")
 
         return self.save_or_show(fname=f"{prefix}_residual",

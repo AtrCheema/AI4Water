@@ -34,7 +34,10 @@ if tf is not None:
     LAYERS.update({"TemporalFusionTransformer": TemporalFusionTransformer})
     LAYERS.update({"TFT": TemporalFusionTransformer})
     LAYERS.update(get_attributes(aus=tf.keras, what='layers', case_sensitive=True))
-
+    
+    from .models.tensorflow.private_layers import PrivateLayers
+    # add private layers to dictionary
+    LAYERS.update(get_attributes(aus=PrivateLayers, what='layers', case_sensitive=True))
 
 if NBeats is not None:
     LAYERS.update({"NBeats": NBeats})
@@ -42,14 +45,6 @@ if NBeats is not None:
 if attns is not None:
     LAYERS.update(get_attributes(aus=attns, what='attn_layers', case_sensitive=True))
 
-try:
-    from .models.tensorflow.private_layers import PrivateLayers
-except (ModuleNotFoundError, ImportError):
-    PrivateLayers = None
-
-if PrivateLayers is not None:
-    # add private layers to dictionary
-    LAYERS.update(get_attributes(aus=PrivateLayers, what='layers', case_sensitive=True))
 
 ACTIVATION_LAYERS = {
     # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf
