@@ -101,10 +101,16 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
         lambdas: float or 1d array like for each feature. If not given, it is
             calculated from scipy.stats.boxcox(X, lmbda=None). Only available
             if method is box-cox.
+        pre_center:
+            center the data before applying power transformation. see github_ for more discussion
+        rescale:
         For complete documentation see scikit-learn's documentation_
 
         .. documentation:
             https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html
+
+        .. github:
+            https://github.com/scikit-learn/scikit-learn/issues/14959
         """
         if lambdas is not None:
             if isinstance(lambdas, float):

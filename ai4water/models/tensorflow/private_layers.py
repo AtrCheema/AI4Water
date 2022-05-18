@@ -692,14 +692,15 @@ class EALSTM(Layer):
 
     Examples
     --------
+    >>> from ai4water.models.tensorflow import EALSTM
     >>> import tensorflow as tf
-    >>> batch, lookback, num_dyn_inputs, num_static_inputs, units = 10, 5, 3, 2, 8
-    >>> inputs = tf.range(batch*lookback*num_dyn_inputs, dtype=tf.float32)
-    >>> inputs = tf.reshape(inputs, (batch, lookback, num_dyn_inputs))
-    >>> stat_inputs = tf.range(batch*num_static_inputs, dtype=tf.float32)
-    >>> stat_inputs = tf.reshape(stat_inputs, (batch, num_static_inputs))
+    >>> batch_size, lookback, num_dyn_inputs, num_static_inputs, units = 10, 5, 3, 2, 8
+    >>> inputs = tf.range(batch_size*lookback*num_dyn_inputs, dtype=tf.float32)
+    >>> inputs = tf.reshape(inputs, (batch_size, lookback, num_dyn_inputs))
+    >>> stat_inputs = tf.range(batch_size*num_static_inputs, dtype=tf.float32)
+    >>> stat_inputs = tf.reshape(stat_inputs, (batch_size, num_static_inputs))
     >>> lstm = EALSTM(units, num_static_inputs)
-    >>> h_n = lstm(inputs, stat_inputs)  # -> (batch, units)
+    >>> h_n = lstm(inputs, stat_inputs)  # -> (batch_size, units)
     ...
     ... # with return sequences
     >>> lstm = EALSTM(units, num_static_inputs, return_sequences=True)
@@ -713,8 +714,8 @@ class EALSTM(Layer):
     >>> from tensorflow.keras.models import Model
     >>> from tensorflow.keras.layers import Input, Dense
     >>> import numpy as np
-    >>> inp_dyn = Input(batch_shape=(batch, lookback, num_dyn_inputs))
-    >>> inp_static = Input(batch_shape=(batch, num_static_inputs))
+    >>> inp_dyn = Input(batch_shape=(batch_size, lookback, num_dyn_inputs))
+    >>> inp_static = Input(batch_shape=(batch_size, num_static_inputs))
     >>> lstm = EALSTM(units, num_static_inputs)(inp_dyn, inp_static)
     >>> out = Dense(1)(lstm)
     >>> model = Model(inputs=[inp_dyn, inp_static], outputs=out)
@@ -724,7 +725,7 @@ class EALSTM(Layer):
     >>> dyn_x = np.random.random((100, lookback, num_dyn_inputs))
     >>> static_x = np.random.random((100, num_static_inputs))
     >>> y = np.random.random((100, 1))
-    >>> h = model.fit(x=[dyn_x, static_x], y=y, batch_size=batch)
+    >>> h = model.fit(x=[dyn_x, static_x], y=y, batch_size=batch_size)
 
     References
     ----------
@@ -735,9 +736,9 @@ class EALSTM(Layer):
 
     def __init__(
             self,
-            units,
+            units:int,
             num_static_inputs:int,
-            use_bias=True,
+            use_bias:bool=True,
 
             activation = "tanh",
             recurrent_activation="sigmoid",
@@ -767,15 +768,15 @@ class EALSTM(Layer):
 
         Parameters
         ----------
-        units : int
-            number of units
-        num_static_inputs : int
-            number of static features
-        static_activation :
-            activation function for static input gate
-        static_regularizer :
-        static_constraint :
-        static_initializer :
+            units : int
+                number of units
+            num_static_inputs : int
+                number of static features
+            static_activation :
+                activation function for static input gate
+            static_regularizer :
+            static_constraint :
+            static_initializer :
         """
 
         super(EALSTM, self).__init__(**kwargs)
@@ -819,7 +820,7 @@ class EALSTM(Layer):
                                 bias_regularizer=self.bias_regularizer,
                                 name="input_gate")
 
-    def call(self, inputs, static_inputs, initial_state, **kwargs):
+    def call(self, inputs, static_inputs, initial_state=None, **kwargs):
         """
         static_inputs :
             of shape (batch, num_static_inputs)
