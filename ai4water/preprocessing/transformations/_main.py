@@ -128,6 +128,7 @@ class Transformation(TransformationsContainer):
         - `scale`    division by standard deviation
         - 'center'   by subtracting mean
         - `quantile`
+        -  `quantile_normal` quantile with normal distribution as target
         - `log`      natural logrithmic
         - `log10`    log with base 10
         - `log2`  log with base 2
@@ -178,6 +179,7 @@ class Transformation(TransformationsContainer):
         "yeo-johnson": PowerTransformer,
         "box-cox": PowerTransformer,
         "quantile": QuantileTransformer,
+        "quantile_normal": QuantileTransformer,
         "log": LogScaler,
         "log10": Log10Scaler,
         "log2": Log2Scaler,
@@ -265,6 +267,9 @@ class Transformation(TransformationsContainer):
 
             elif self.method == "box-cox":
                 _kwargs['method'] = "box-cox"
+
+            elif self.method == "quantile_normal":
+                _kwargs["output_distribution"] = "normal"
 
             for k,v in self.kwargs.items():
                 if k in _kwargs:
@@ -453,7 +458,7 @@ class Transformation(TransformationsContainer):
         if without_fit:
             data = transformer.inverse_transform_without_fit(to_transform)
         else:
-            data = transformer.inverse_transform(to_transform)
+            data = transformer.inverse_transform(to_transform.values)
 
         data = pd.DataFrame(data, columns=to_transform.columns)
 

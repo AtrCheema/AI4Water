@@ -174,7 +174,6 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
     _, _, dfo3 = run_method3(method=method, data=df3.copy())
 
     if assert_equality:
-        #assert np.allclose(df3, dfo1, equal_nan=True)
         assert np.allclose(df3, dfo2, equal_nan=True)
         assert np.allclose(df3, dfo3, equal_nan=True)
     return

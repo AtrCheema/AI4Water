@@ -258,6 +258,8 @@ class Transformations(object):
                         transformer = Transformation(**trans)
                         data = transformer.fit_transform(pd.DataFrame(data, columns=columns))
                         transformers[f'{key}_{trans["method"]}_{idx}'] = transformer.config()
+                    else:
+                        raise ValueError(f"{trans['method']} is invalid transformation")
             else:
                 assert isinstance(transformation, str)
                 transformer = Transformation(method=transformation)

@@ -91,7 +91,11 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
     the user to define `lambdas` parameter for each input feature. The default
     behaviour of this transformer is same as that of scikit-learn's.
     """
-    def __init__(self, method='yeo-johnson', *, standardize=True, copy=True,
+    def __init__(self, method='yeo-johnson', *,
+                 rescale=False,
+                 pre_center:bool = False,
+                 standardize=True,
+                 copy=True,
                  lambdas=None):
         """
         lambdas: float or 1d array like for each feature. If not given, it is
@@ -112,6 +116,8 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
             assert method != "yeo-johnson"
 
         self.lambdas = lambdas
+        self.rescale = rescale
+        self.pre_center = pre_center
 
         super(PowerTransformer, self).__init__(method=method,
                                                standardize=standardize,
@@ -119,7 +125,8 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
     @property
     def config_paras(self):
-        return ['lambdas_', 'scaler_to_standardize_']
+        return ['lambdas_', 'scaler_to_standardize_',
+                'pre_center_config_', 'rescaler_config_']
 
     @classmethod
     def from_config(cls, config: dict):
@@ -138,6 +145,18 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
         _scaler_config = config['config'].pop('scaler_to_standardize_')
         setattr(scaler, '_scaler', StandardScaler.from_config(_scaler_config))
 
+        rescaler = config['config'].pop('rescaler_config_')
+        if rescaler:
+            setattr(scaler, 'recaler_', MinMaxScaler.from_config(rescaler))
+        else:
+            setattr(scaler, 'recaler_', None)
+
+        pre_standardizer = config['config'].pop('pre_center_config_')
+        if pre_standardizer:
+            setattr(scaler, 'pre_centerer_', Center.from_config(pre_standardizer))
+        else:
+            setattr(scaler, 'pre_centerer_', None)
+
         for attr, attr_val in config['config'].items():
             setattr(scaler, attr, attr_val)
 
@@ -154,6 +173,10 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
         if not self.copy and not force_transform:  # if call from fit()
             X = X.copy()  # force copy so that fit does not change X inplace
+
+        X = self._maybe_rescale(X, force_transform)
+
+        X = self._maybe_precenter(X, force_transform)
 
         optim_function = {'box-cox': self._box_cox_optimize,
                           'yeo-johnson': self._yeo_johnson_optimize
@@ -184,6 +207,72 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
         return X
 
+    def _maybe_rescale(self, X, force_transform):
+        self.rescaler_config_ = None
+        if self.rescale:
+            rescaler = MinMaxScaler()
+            self.rescaler_ = rescaler
+            if force_transform:
+                X = rescaler.fit_transform(X)
+            else:
+                X = rescaler.fit(X)
+
+            self.rescaler_config_ = rescaler.config()
+        return X
+
+    def _maybe_precenter(self, X, force_transform=False):
+        self.pre_center_config_ = None
+        if self.pre_center:
+            pre_centerer = Center()
+            self.pre_centerer_ = pre_centerer
+            if force_transform:
+                X = pre_centerer.fit_transform(X)
+            else:
+                X = pre_centerer.fit(X)
+
+            self.pre_center_config_ = pre_centerer.config()
+        return X
+
+    def inverse_transform(self, X):
+        """Apply the inverse power transformation using the fitted lambdas.
+
+        The inverse of the Box-Cox transformation is given by::
+
+            if lambda_ == 0:
+                X = exp(X_trans)
+            else:
+                X = (X_trans * lambda_ + 1) ** (1 / lambda_)
+
+        The inverse of the Yeo-Johnson transformation is given by::
+
+            if X >= 0 and lambda_ == 0:
+                X = exp(X_trans) - 1
+            elif X >= 0 and lambda_ != 0:
+                X = (X_trans * lambda_ + 1) ** (1 / lambda_) - 1
+            elif X < 0 and lambda_ != 2:
+                X = 1 - (-(2 - lambda_) * X_trans + 1) ** (1 / (2 - lambda_))
+            elif X < 0 and lambda_ == 2:
+                X = 1 - exp(-X_trans)
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The transformed data.
+
+        Returns
+        -------
+        X : ndarray of shape (n_samples, n_features)
+            The original data.
+        """
+        X = super(PowerTransformer, self).inverse_transform(X)
+
+        if self.pre_center:
+            X = self.pre_centerer_.inverse_transform(X)
+
+        if self.rescale:
+            X = self.rescaler_.inverse_transform(X)
+
+        return X
 
 class QuantileTransformer(SKQuantileTransformer, ScalerWithConfig):
 
@@ -213,6 +302,7 @@ class QuantileTransformer(SKQuantileTransformer, ScalerWithConfig):
         scaler.quantiles_ = quantiles_
         return scaler
 
+
 class MaxAbsScaler(SKMaxAbsScaler, ScalerWithConfig):
 
     @property
@@ -224,19 +314,20 @@ class Center(ScalerWithConfig):
 
     def __init__(
             self,
-            feature_dim="2d"
+            feature_dim="2d",
+            axis=0
     ):
         self.feature_dim = feature_dim
+        self.axis = axis
 
     def fit(self, x:np.ndarray):
         dim = x.ndim
-        assert dim == 2
 
-        mean = np.mean(x, axis=0)
+        mean = np.nanmean(x, axis=self.axis)
 
         setattr(self, 'mean_', mean)
         setattr(self, 'data_dim_', dim)
-        return
+        return x
 
     def transform(self, x):
 
@@ -257,23 +348,55 @@ class Center(ScalerWithConfig):
         return ['data_dim_', 'mean_']
 
     def get_params(self):
-        return {'feature_dim': self.feature_dim}
+        return {'feature_dim': self.feature_dim, 'axis': self.axis}
 
 
-class CLR(object):
-
+class CLR(ScalerWithConfig):
     """centre log ratio transformation"""
-    @staticmethod
-    def fit_transform(x:np.ndarray)->np.ndarray:
-        assert x.sum() == 1.0
+    def __init__(self, force_closure:bool = False):
+        self.force_closure = force_closure
+        """
+        force_closure: bool
+            if ture, and input data is not a closure, it will be converted
+            into closure by dividing with the sum of input data
+        """
+
+    def fit(self, x):
+        return x
+
+    def transform(
+            self,
+            x:np.ndarray
+    )->np.ndarray:
+
+        if not np.allclose(x.sum(), 1.0):
+            if self.force_closure:
+                self.sum_ = np.sum(x)
+                x = x / self.sum_
+            else:
+                raise ValueError(f"x is not a closure{x.sum()}")
+
         lmat = np.log(x)
         gm = lmat.mean(axis=-1, keepdims=True)
         return (lmat - gm).squeeze()
 
-    @staticmethod
-    def inverse_transform(x:np.ndarray)->np.ndarray:
+    def fit_transform(self, x):
+        return self.transform(x)
+
+    def inverse_transform(self, x:np.ndarray)->np.ndarray:
         emat = np.exp(x)
-        return closure(emat, out=emat)
+        x = closure(emat, out=emat)
+
+        if self.force_closure:
+            return x * self.sum_
+        return x
+
+    @property
+    def config_paras(self):
+        return ['sum_']
+
+    def get_params(self):
+        return {'force_closure': self.force_closure}
 
 
 class FuncTransformer(ScalerWithConfig):

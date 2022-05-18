@@ -427,7 +427,7 @@ class BaseModel(NN):
 
     @property
     def classes_(self):
-        if hasattr(self, 'dh_'):
+        if self.mode == "classification" and  hasattr(self, 'dh_'):
             return self.dh_.classes
         elif self.category == "ML" and self.mode == "classification":
             return self._model.classes_
@@ -3032,20 +3032,20 @@ class BaseModel(NN):
 
 def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
 
-    if isinstance(config, str) and config == 'quantile':
+    if isinstance(config, str) and config in ['quantile', 'quantile_normal']:
         config = {'method': 'quantile', 'n_quantiles': num_exs}
 
-    elif isinstance(config, dict) and config['method'] == 'quantile':
+    elif isinstance(config, dict) and config['method'] in ['quantile', 'quantile_normal']:
         config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
 
     elif isinstance(config, list):
 
         for idx, transformer in enumerate(config):
 
-            if isinstance(transformer, str) and transformer == 'quantile':
+            if isinstance(transformer, str) and transformer in ['quantile', 'quantile_normal']:
                 config[idx] = {'method': 'quantile', 'n_quantiles': num_exs}
 
-            elif isinstance(transformer, dict) and transformer['method'] == 'quantile':
+            elif isinstance(transformer, dict) and transformer['method'] in ['quantile', 'quantile_normal']:
                 transformer['n_quantiles'] = min(transformer.get('n_quantiles', num_exs), num_exs)
                 config[idx] = transformer
 
