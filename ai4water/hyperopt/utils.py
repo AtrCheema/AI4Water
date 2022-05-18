@@ -947,26 +947,3 @@ def space_from_list(v: list, k: str):
         else:
             raise NotImplementedError
     return s
-
-
-def plot_edf(y, num_points=100):
-    """
-    Plots the objective value empirical distribution function on hyperparameter
-    optimization. Implementation is taken from optuna.
-    """
-    x = np.linspace(np.min(y), np.max(y), num_points)
-
-    y_values = np.sum(y[:, np.newaxis] <= x, axis=0) / y.size
-
-    _, ax = plt.subplots()
-    ax.grid()
-    ax = plot(x,
-              y_values,
-              '-',
-              show=False,
-              title="Empirical Distribution Function Plot",
-              ylabel="Cumulative Probability",
-              xlabel="Objective Value",
-              ax=ax)
-
-    return ax

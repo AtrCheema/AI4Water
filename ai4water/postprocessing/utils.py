@@ -8,7 +8,7 @@ from ai4water.backend import easy_mpl as ep
 from ai4water.backend import np, pd, mpl, plt, os, sklearn
 from ai4water.utils.visualizations import Plot, init_subplots
 from ai4water.utils.utils import dateandtime_now, ts_features, dict_to_file
-from ai4water.utils.visualizations import murphy_diagram, fdc_plot
+from ai4water.utils.visualizations import murphy_diagram, fdc_plot, plot_edf
 
 try:
     import wandb
@@ -43,7 +43,7 @@ class ProcessPredictions(Plot):
 
     available_plots = [
         'regression', 'prediction', 'residual',
-        'murphy', 'fdc', 'errors',
+        'murphy', 'fdc', 'errors', "edf"
     ]
 
     def __init__(
@@ -87,6 +87,7 @@ class ProcessPredictions(Plot):
                     ``errors``
                     ``fdc``
                     ``murphy``
+                    ``edf``
 
             path : str
                 folder in which to save the results/plots
@@ -227,6 +228,12 @@ class ProcessPredictions(Plot):
 
     def prediction_distribution_across_feature(self, true, predicted, feature):
         raise NotImplementedError
+
+    def edf_plot(self, true, predicted, prefix, where, **kwargs):
+        """cummulative distribution function of absolute error between true and predicted."""
+        error = np.abs(true - predicted)
+        plot_edf(error, xlabel="Absolute Error")
+        return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
     def murphy_plot(self, true, predicted, prefix, where, inputs, **kwargs):
 

@@ -15,7 +15,8 @@ from .utils import to_skopt_space
 from .utils import save_skopt_results
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
-from .utils import loss_histogram, plot_hyperparameters, plot_edf
+from .utils import loss_histogram, plot_hyperparameters
+from ai4water.utils.visualizations import plot_edf
 from ai4water.backend import hyperopt as _hyperopt
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
 
