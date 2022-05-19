@@ -4,7 +4,7 @@ tensorflow, torch, numpy, matplotlib, random and other libraries are imported he
 once and then used all over ai4water. This file does not import anything from
 other files of ai4water.
 """
-__all__ = ["np", "os", "plt", "mpl", "pd", "random",
+__all__ = ["np", "os", "plt", "mpl", "pd", "random", "scipy", "stats",
            "easy_mpl", "SeqMetrics",
            "sklearn", "skopt", "hyperopt", "xr", "fiona", "netCDF4",
            "sns", "imageio", "shapefile", "tf", "torch", "keras",
@@ -20,6 +20,8 @@ import random
 import skopt
 import sklearn
 import easy_mpl
+import scipy
+from scipy import stats
 import SeqMetrics
 import numpy as np
 import pandas as pd

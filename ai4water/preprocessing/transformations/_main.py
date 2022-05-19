@@ -1,7 +1,8 @@
 
 from typing import Union
 
-from ai4water.backend import np, pd
+from ai4water.backend import np, pd, plt, stats
+from ai4water.backend import easy_mpl as em
 from ai4water.utils.utils import dateandtime_now, deepcopy_dict_without_clone
 
 from ._transformations import MinMaxScaler, PowerTransformer, QuantileTransformer, StandardScaler
@@ -567,6 +568,85 @@ class Transformation(TransformationsContainer):
         transformer.initial_shape_ = shape
 
         return transformer
+
+    def compare_distribution(
+            self,
+            data,
+            plot_type:str = "hist",
+            show:bool=True,
+            **kwargs
+    )->plt.Figure:
+        """
+        compares distribution before and after transformation
+
+        Parameters
+        ----------
+            data :
+                the data on which to apply transformation. It can list, numpy array or pandas dataframe
+            plot_type : str, optional (default="hist")
+                either ``hist`` or ``probplot``
+            show : bool, optional (default=True)
+                whether to show the plot or not
+            **kwargs :
+                any keyword arguments for easy_mpl.hist or easy_mpl.plot when
+                plot_type is "hist" or "probplot" respectively.
+
+        Returns
+        -------
+        plt.Figure
+
+        Examples
+        --------
+            >>> from ai4water.preprocessing import Transformation
+            >>> import numpy as np
+            >>> t = Transformation()
+            >>> t.compare_distribution(np.random.randint(1, 100, (100, 2)))
+            ...
+            >>> t.compare_distribution(np.random.randint(1, 100, (100, 2)), "probplot")
+        """
+        x_ = self.fit_transform(data)
+
+        if plot_type == "hist":
+            func = hist
+        else:
+            func = probplot
+
+        if len(x_) == x_.size:
+            # it is 1d
+            fig, axes = plt.subplots(1, 2, sharey="all")
+            func(data, ax=axes[0], ** kwargs, title="original", show=False)
+            func(x_, ax = axes[1], **kwargs,  title="Transformed", show=False)
+        else:
+            fig, axes = plt.subplots(x_.shape[1], 2, sharey="all")
+            if isinstance(data, pd.DataFrame):
+                data = data.values
+
+            for idx in range(len(axes)):
+
+                title1, title2 = None, None
+                if idx == 0:
+                    title1, title2 = "Original", "Transformed"
+                func(data[:, idx], ax=axes[idx, 0], title=title1,
+                        show=False, **kwargs)
+                func(x_.iloc[:, idx], ax=axes[idx, 1], title=title2,
+                        show=False, **kwargs)
+
+        if show:
+            plt.show()
+
+        return fig
+
+
+def hist(x, ax, **kwargs):
+
+    return em.hist(x, ax=ax, **kwargs)
+
+
+def probplot(x, ax, **kwargs):
+    (osm, osr), (slope, intercept, r) = stats.probplot(x,
+                                                       dist="norm",
+                                                       plot=ax)
+    return em.plot(osm, osr, ax=ax, **kwargs)
 
 
 def get_val(df: pd.DataFrame, method):
