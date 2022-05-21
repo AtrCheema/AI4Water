@@ -1027,7 +1027,8 @@ class BaseModel(NN):
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
         num_examples = _find_num_examples(inputs)
-        self._maybe_reduce_nquantiles(num_examples)
+        if num_examples:  # for tf.data, we can't find num_examples
+            self._maybe_reduce_nquantiles(num_examples)
 
         # apply preprocessing/feature engineering if required.
         inputs = self._fit_transform_x(inputs)
@@ -1278,27 +1279,40 @@ class BaseModel(NN):
 
         return cv_scores
 
-    def fit_on_all_training_data(self, data=None):
-        """Fits the model on training+validation data"""
+    def fit_on_all_training_data(self, data=None, **kwargs):
+        """trains the model on training+validation data"""
         x_train, y_train = self.training_data(data=data)
         x_val, y_val = self.validation_data()
-        if not isinstance(x_train, np.ndarray):
-            raise NotImplementedError
 
-        x, y = x_train, y_train
-        # if not validation data is available then use only training data
-        if x_val is not None:
-            if hasattr(x_val, '__len__') and len(x_val)>0:
-                x = np.concatenate([x_train, x_val])
+        if isinstance(x_train, list):
+            x = []
+            for val in range(len(x_train)):
+                if x_val is not None:
+                    _val = np.concatenate([x_train[val], x_val[val]])
+                    x.append(_val)
+                else:
+                    _val = x_train[val]
+
+            y = y_train
+            if hasattr(y_val, '__len__') and len(y_val) > 0:
                 y = np.concatenate([y_train, y_val])
+
+        elif isinstance(x_train, np.ndarray):
+            x, y = x_train, y_train
+            # if not validation data is available then use only training data
+            if x_val is not None:
+                if hasattr(x_val, '__len__') and len(x_val)>0:
+                    x = np.concatenate([x_train, x_val])
+                    y = np.concatenate([y_train, y_val])
+        else:
+            raise NotImplementedError
 
         if self.is_binary:
             if len(y) != y.size: # when sigmoid is used for binary
                 # convert the output to 1d
                 y = np.argmax(y, 1).reshape(-1, 1)
 
-        return self.fit(x=x, y=y)
-
+        return self.fit(x=x, y=y, **kwargs)
 
     def _maybe_change_residual_threshold(self, outputs) -> None:
         # https://stackoverflow.com/a/64396757/5982232
@@ -1369,9 +1383,7 @@ class BaseModel(NN):
                 outputs/true data corresponding to `x`
             data:
                 Raw unprepared data which will be fed to [DataSet][ai4water.preprocessing.DataSet]
-                to prepare x and y. If it is is a string then it will determine,
-                which data type to use. Allowed string values are `training`, `test` and
-                `validation`. If `x` and `y` are given, this argument will have no meaning.
+                to prepare x and y. If `x` and `y` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
@@ -1395,8 +1407,8 @@ class BaseModel(NN):
             by `evaluate` method of underlying model. Otherwise the model is evaluated
             for given metric or group of metrics and the result is returned
 
-        Example
-        -------
+        Examples
+        --------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> model = Model(model={"layers": {"Dense": 1}})
@@ -1404,14 +1416,12 @@ class BaseModel(NN):
 
             for evaluation on test data
 
-            >>> model.evaluate()
+            >>> model.evaluate(data=busan_beach())
             ...
-            ... #for evaluation on training data
-            >>> model.evaluate(data='training')
 
             evaluate on any metric from SeqMetrics_ library
 
-            >>> model.evaluate(metrics='pbias')
+            >>> model.evaluate(data=busan_beach(), metrics='pbias')
             ...
             ... # to evaluate on custom data, the user can provide its own x and y
             >>> new_inputs = np.random.random((10, 13))
@@ -1435,6 +1445,36 @@ class BaseModel(NN):
             https://seqmetrics.readthedocs.io/en/latest/cls.html#classificationmetrics
         """
         return self.call_evaluate(x=x, y=y, data=data, metrics=metrics, **kwargs)
+
+    def evaluate_on_training_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on training data.
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> model = Model(model={"layers": {"Dense": 1}})
+            >>> model.fit(data=busan_beach())
+            ... # for evaluation on training data
+            >>> model.evaluate_on_training_data(data=busan_beach())
+        """
+        x, y = self.training_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
+
+    def evaluate_on_validation_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on validation data."""
+        x, y = self.validation_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
+
+    def evaluate_on_test_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on test data."""
+        x, y = self.test_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
+
+    def evaluate_on_all_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on all i.e. training+validation+test data."""
+        x, y = self.all_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
 
@@ -1530,14 +1570,6 @@ class BaseModel(NN):
             y:
                 Used for pos-processing etc. if given it will overrite `data`
             data:
-                It can either be a string indicating which data to use. In this
-                case, possible values are
-
-                - ``training``
-                - ``test``
-                - ``validation``
-
-                By default, ``test`` data is used for predictions.
                 It can also be unprepared/raw data which will be given to
                 :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y values.
@@ -1566,23 +1598,19 @@ class BaseModel(NN):
         >>> from ai4water.datasets import busan_beach
         >>> model = Model(model="XGBRegressor")
         >>> model.fit(data=busan_beach())
-        >>> pred = model.predict()
-
-        make predictions on training data
-
-        >>> pred = model.predict(data="training")
+        >>> pred = model.predict(data=busan_beach())
 
         get true values
 
-        >>> true, pred = model.predict(return_true=True)
+        >>> true, pred = model.predict(data=busan_beach(), return_true=True)
 
         postprocessing of results
 
-        >>> pred = model.predict(process_results=True)
+        >>> pred = model.predict(data=busan_beach(), process_results=True)
 
         calculate all metrics during postprocessing
 
-        >>> pred = model.predict(process_results=True, metrics="all")
+        >>> pred = model.predict(data=busan_beach(), process_results=True, metrics="all")
 
         using your own data
 
@@ -1628,9 +1656,8 @@ class BaseModel(NN):
             **kwargs :
                 any keyword argument for .predict method.
         """
-        ds = DataSet(data, **self.data_config)
 
-        x, y = ds.training_data()
+        x, y = self.training_data(data=data)
 
         return self.call_predict(
             x=x,
@@ -1668,9 +1695,8 @@ class BaseModel(NN):
             **kwargs :
                 any keyword argument for .predict method.
         """
-        ds = DataSet(data, **self.data_config)
 
-        x, y = ds.validation_data()
+        x, y = self.validation_data(data=data)
 
         return self.call_predict(
             x=x,
@@ -1708,9 +1734,8 @@ class BaseModel(NN):
             **kwargs :
                 any keyword argument for .predict method.
         """
-        ds = DataSet(data, **self.data_config)
 
-        x, y = ds.test_data()
+        x, y = self.test_data(data=data)
 
         return self.call_predict(
             x=x,
@@ -1732,10 +1757,7 @@ class BaseModel(NN):
             **kwargs
     ):
         """
-        This function first generates x,y pairs from ``data`` and then makes prediction on it.
-        The ``data`` is not divided into training,test sets. Moreover if target data contains
-        missing values, then predictions for that will also be made using corresponding input
-        data.
+        It makes prediction on training+validation+test data.
 
         Parameters
         ----------
@@ -1752,16 +1774,8 @@ class BaseModel(NN):
             **kwargs :
                 any keyword argument for .predict method.
         """
-        data_config = self.data_config
 
-        data_config['train_fraction'] = 1.0
-        data_config['val_fraction'] = 0.0
-        data_config['allow_nan_labels'] = 2
-        data_config['indices'] = None
-
-        ds = DataSet(data, **data_config)
-
-        x, y = ds.training_data()
+        x, y = self.all_data(data=data)
 
         return self.call_predict(
             x=x,
@@ -2972,6 +2986,33 @@ class BaseModel(NN):
         """This method should return x,y pairs of validation data"""
         return self.__fetch('test', data, key)
 
+    def all_data(self, x=None, y=None, data=None)->tuple:
+        """it returns all i.e. training+validation+test data"""
+
+        train_x, train_y = self.training_data(x=x, y=y, data=data)
+        val_x, val_y = self.validation_data(x=x, y=y, data=data)
+        test_x, test_y = self.test_data(x=x, y=y, data=data)
+
+        x = []
+        y = []
+
+        if isinstance(train_x, list):
+            for val in range(len(train_x)):
+                x_val = np.concatenate([train_x[val], val_x[val], test_x[val]])
+                x.append(x_val)
+        else:
+            for _x in [train_x, val_x, test_x]:
+                if _x is not None:
+                    x.append(_x)
+            x = np.concatenate(x)
+
+        for _y in [train_y, val_y, test_y]:
+            if _y is not None:
+                y.append(_y)
+
+        y = np.concatenate(y)
+        return x, y
+
     def __fetch(self, source, data=None, key=None):
         """if data is string, then it must either be `trianing`, `validation` or
         `test` or name of a valid dataset. Otherwise data is supposed to be raw
@@ -3077,7 +3118,7 @@ def fill_val(metric_name, default="min", default_min=99999999):
     return 0.0
 
 
-def _find_num_examples(inputs)->int:
+def _find_num_examples(inputs)->Union[int, None]:
     """find number of examples in inputs"""
     if isinstance(inputs, (pd.DataFrame, np.ndarray)):
         return len(inputs)
@@ -3085,4 +3126,5 @@ def _find_num_examples(inputs)->int:
         return len(inputs[0])
     elif hasattr(inputs, '__len__'):
         return len(inputs)
-    raise NotImplementedError(f"Can not find number of examples in input data of type {type(inputs)}")
+
+    return None

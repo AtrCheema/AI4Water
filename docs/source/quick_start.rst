@@ -74,7 +74,7 @@ input output paris to `data` argument to `fit` and/or `predict` methods.
 
 
 using for `scikit-learn`/`xgboost`/`lgbm`/`catboost` based models
-===================================================================
+=================================================================
 The repository can also be used for machine learning based models such as scikit-learn/xgboost based models for both
 classification and regression problems by making use of `model` keyword arguments in `Model` function.
 However, integration of ML based models is not complete yet.
@@ -101,7 +101,7 @@ However, integration of ML based models is not complete yet.
 
 
 Using your own (custom) model
-============================
+=============================
 If you don't want to use sklearn/xgboost/catboost/lgbm's Models and you
 have your own model. You can use this model seamlessley as far as this
 model has .fit, .evaluate and .predict methods.
@@ -124,7 +124,7 @@ model has .fit, .evaluate and .predict methods.
 
 
 Hyperparameter optimization
-=============================
+===========================
 For hyperparameter optimization, replace the actual values of hyperparameters
 with the space.
 

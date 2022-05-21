@@ -56,6 +56,10 @@ def _test_ml_inbuilt_data_reg(_model):
 
     test_user_defined_data(model, x_reg, y_reg)
 
+    model.predict_on_all_data(data=data)
+    model.predict_on_training_data(data=data)
+    model.predict_on_validation_data(data=data)
+
     t, p = model.predict(data="test", return_true=True)
     assert isinstance(t, np.ndarray)
     assert isinstance(p, np.ndarray)
