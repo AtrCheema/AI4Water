@@ -1577,15 +1577,15 @@ class CAMELS_CL(Camels):
                         'pet_8d_modis', 'pet_hargreaves',
                         'swe'
                         ]
-    """
-    Arguments:
-        path: path where the CAMELS-AUS dataset has been downloaded. This path must
-              contain five zip files and one xlsx file.
-    """
+
     def __init__(self,
                  path: str = None
                  ):
-
+        """
+        Arguments:
+            path: path where the CAMELS-AUS dataset has been downloaded. This path must
+                  contain five zip files and one xlsx file.
+        """
         self.ds_dir = path
 
         super().__init__()

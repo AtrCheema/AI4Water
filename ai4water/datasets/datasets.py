@@ -289,71 +289,11 @@ class Datasets(object):
 
     def _download(self, overwrite=False):
         """Downloads the dataset. If already downloaded, then"""
-        if os.path.exists(self.ds_dir) and len(os.listdir(self.ds_dir)) > 0:
-            if overwrite:
-                print(f"removing previous data directory {self.ds_dir} and downloading new")
-                shutil.rmtree(self.ds_dir)
-                self._download_and_unzip()
-            else:
-                sanity_check(self.name, self.ds_dir)
-                print(f"""
-Not downloading the data since the directory 
-{self.ds_dir} already exists.
-Use overwrite=True to remove previously saved files and download again""")
-        else:
-            self._download_and_unzip()
+        _maybe_download(self.ds_dir, overwrite, self.url, self.name)
         return
 
     def _download_and_unzip(self):
-        if not os.path.exists(self.ds_dir):
-            os.makedirs(self.ds_dir)
-        if isinstance(self.url, str):
-            if 'zenodo' in self.url:
-                download_from_zenodo(self.ds_dir, self.url)
-            else:
-                download(self.url, self.ds_dir)
-            self._unzip()
-        elif isinstance(self.url, list):
-            for url in self.url:
-                if 'zenodo' in url:
-                    download_from_zenodo(self.ds_dir, url)
-                else:
-                    download(url, self.ds_dir)
-            self._unzip()
-        elif isinstance(self.url, dict):
-            for fname, url in self.url.items():
-                if 'zenodo' in url:
-                    download_from_zenodo(self.ds_dir, url)
-                else:
-                    download(url, os.path.join(self.ds_dir, fname))
-            self._unzip()
-        return
-
-    def _unzip(self, dirname=None):
-        """unzip all the zipped files in a directory"""
-        if dirname is None:
-            dirname = self.ds_dir
-
-        all_files = glob.glob(f"{dirname}/*.zip")
-        for f in all_files:
-            src = os.path.join(dirname, f)
-            trgt = os.path.join(dirname, f.split('.zip')[0])
-            if not os.path.exists(trgt):
-                print(f"unziping {src} to {trgt}")
-                with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
-                    try:
-                        zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
-                    except OSError:
-                        filelist = zip_ref.filelist
-                        for _file in filelist:
-                            if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
-                                zip_ref.extract(_file)
-
-        # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
-        gz_files = glob.glob(f"{self.ds_dir}/*.gz")
-        for f in gz_files:
-            shutil.unpack_archive(f, self.ds_dir)
-
+        _download_and_unzip(self.ds_dir, self.url)
         return
 
     def download_from_pangaea(self, overwrite=False):
@@ -807,7 +747,11 @@ class MtropicsLaos(Datasets):
         "soilmap.zip":
             "https://dataverse.ird.fr/api/access/datafile/5430",
         "subs1.zip":
-            "https://dataverse.ird.fr/api/access/datafile/5432"
+            "https://dataverse.ird.fr/api/access/datafile/5432",
+        "suro.zip":
+            "https://services.aeris-data.fr/theiacatalogueprod/metadata/f06cb605-7e59-4ba4-8faf-1beee35d2162",
+        "surf_feat.zip":
+            "https://services.aeris-data.fr/theiacatalogueprod/metadata/72d9e532-8910-48d2-b9a2-6c8b0241825b",
     }
 
     physio_chem_features = {
@@ -847,6 +791,48 @@ class MtropicsLaos(Datasets):
 
             _process_laos_shpfiles(shp_file, op)
 
+    def surface_features(
+            self,
+            st,
+            en,
+    )->pd.DataFrame:
+        """soil surface features data"""
+        fname = os.path.join(self.ds_dir, "surf_feat", "SEDOO_EdS_Houay Pano.xlsx")
+        df = pd.read_excel(fname, sheet_name="SEDOO_EdS_Houay Pano")
+
+        df.index = pd.to_datetime(df['Date'])
+
+        return df
+
+    def fetch_suro(
+            self,
+            st,
+            en,
+    )->pd.DataFrame:
+        """returns surface runoff and soil detachment data from Houay pano, Laos PDR.
+
+        Parameters
+        ----------
+            st :
+                starting date
+            en :
+                end date
+
+        Returns
+        -------
+        pd.DataFrame
+
+        Examples
+        --------
+            >>> from ai4water.datasets import MtropicsLaos
+            >>> laos = MtropicsLaos()
+            >>> suro = laos.fetch_suro()
+        """
+        fname = os.path.join(self.ds_dir, 'suro', 'SEDOO_Runoff_Detachment_Houay Pano.xlsx')
+        df = pd.read_excel(fname, sheet_name="SEDOO_Runoff_Detachment_Houay Pano")
+
+        return df
+
     def fetch_lu(self, processed=False):
         """returns landuse_ data as list of shapefiles.
 
@@ -882,7 +868,7 @@ class MtropicsLaos(Datasets):
                 - 'pH',
                 - 'ORP',
                 - 'Turbidity',
-                'TSS'
+                - 'TSS'
 
         Returns
         -------
@@ -1278,13 +1264,13 @@ class MtropicsLaos(Datasets):
                 names of inputs to use. By default following features
                 are used as input
 
-                - ``air_temp`
+                - ``air_temp``
                 - ``rel_hum``
-                - ``wind_speed`
-                - ``sol_rad`
-                - ``water_level`
+                - ``wind_speed``
+                - ``sol_rad``
+                - ``water_level``
                 - ``pcp``
-                - ``susp_pm`'
+                - ``susp_pm``
 
             output_features : feature/features to consdier as target/output/label
             st :
@@ -1497,3 +1483,218 @@ def consider_lookback(df:pd.DataFrame, lookback:int, col_name:str)->pd.DataFrame
             start = False
 
     return df.iloc[masks[::-1]]
+
+
+def ecoli_mekong_2016(
+        st: Union[str, pd.Timestamp, int] = "20160101",
+        en: Union[str, pd.Timestamp, int] = "20161231",
+        features:Union[str, list] = None,
+        overwrite=False
+)->pd.DataFrame:
+    """
+    E. coli data from Mekong river from 2016 from 29 catchments
+
+    Parameters
+    ----------
+        st :
+            starting time
+        en :
+            end time
+        features : str, optional
+            names of features to use. use ``all`` to get all features.
+        overwrite : bool
+            whether to overwrite the downloaded file or not
+
+    Examples
+    --------
+        >>> from ai4water.datasets import ecoli_mekong_2016
+        >>> ecoli = ecoli_mekong_2016()
+
+    .. url_
+        https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/ZRSBM4
+    """
+    url = {"ecoli_mekong_2016.csv": "https://dataverse.ird.fr/api/access/datafile/8852"}
+
+    ds_dir = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_mekong_2016')
+
+    return _fetch_ecoli(ds_dir, overwrite, url, None, features, st, en,
+                        "ecoli_houay_pano_tab_file")
+
+
+def ecoli_houay_pano(
+        st: Union[str, pd.Timestamp, int] = "20110101",
+        en: Union[str, pd.Timestamp, int] = "20211231",
+        features:Union[str, list] = None,
+        overwrite=False
+)->pd.DataFrame:
+    """
+    E. coli data from Mekong river (Houay Pano) area.
+
+    Parameters
+    ----------
+        st :
+            starting time
+        en :
+            end time
+        features : str, optional
+            names of features to use. use ``all`` to get all features.
+        overwrite : bool
+            whether to overwrite the downloaded file or not
+
+    Examples
+    --------
+        >>> from ai4water.datasets import ecoli_houay_pano
+        >>> ecoli = ecoli_houay_pano()
+
+    .. url_
+        https://dataverse.ird.fr/dataset.xhtml?persistentId=doi:10.23708/EWOYNK
+    """
+    url = {"ecoli_houay_pano_file.csv": "https://dataverse.ird.fr/api/access/datafile/9230"}
+
+    ds_dir = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_houay_pano')
+
+    return _fetch_ecoli(ds_dir, overwrite, url, None, features, st, en,
+                        "ecoli_houay_pano_tab_file")
+
+
+def ecoli_mekong_laos(
+        st: Union[str, pd.Timestamp, int] = "20110101",
+        en: Union[str, pd.Timestamp, int] = "20211231",
+        station_name:str = None,
+        features:Union[str, list] = None,
+        overwrite=False
+)->pd.DataFrame:
+    """
+    E. coli data from Mekong river (Northern Laos).
+
+    Parameters
+    ----------
+        st :
+            starting time
+        en :
+            end time
+        station_name : str
+        features : str, optional
+        overwrite : bool
+            whether to overwrite or not
+
+    Examples
+    --------
+        >>> from ai4water.datasets import ecoli_mekong_laos
+        >>> ecoli = ecoli_mekong_laos()
+
+    .. url_
+        https://dataverse.ird.fr/file.xhtml?fileId=9229&version=3.0
+    """
+    url = {"ecoli_mekong_loas_file.csv": "https://dataverse.ird.fr/api/access/datafile/9229"}
+
+    ds_dir = os.path.join(os.path.dirname(__file__), 'data', 'ecoli_mekong_loas')
+
+    return _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en,
+                        "ecoli_mekong_laos_tab_file")
+
+
+def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
+
+    _maybe_download(ds_dir, overwrite, url, _name=_name)
+    all_files = os.listdir(ds_dir)
+    assert len(all_files)==1
+    fname = os.path.join(ds_dir, all_files[0])
+    df = pd.read_csv(fname, sep='\t')
+
+    df.index = pd.to_datetime(df['Date_Time'])
+
+    if station_name is not None:
+        assert station_name in df['River'].unique().tolist()
+        df = df.loc[df['River']==station_name]
+
+    if features is None:
+        features = ['River', 'T', 'EC', 'DOpercent', 'DO', 'pH', 'ORP', 'Turbidity',
+                    'TSS', 'E-coli_4dilutions']
+
+    features = check_attributes(features, df.columns.tolist())
+    df = df[features]
+
+    if st:
+        if isinstance(en, int):
+            assert isinstance(en, int)
+            df = df.iloc[st:en]
+        else:
+            df = df.loc[st:en]
+
+    return df
+
+
+def _maybe_download(ds_dir, overwrite, url, _name):
+    if os.path.exists(ds_dir) and len(os.listdir(ds_dir)) > 0:
+        if overwrite:
+            print(f"removing previous data directory {ds_dir} and downloading new")
+            shutil.rmtree(ds_dir)
+            _download_and_unzip(ds_dir, url)
+        else:
+            sanity_check(_name, ds_dir)
+            print(f"""
+    Not downloading the data since the directory 
+    {ds_dir} already exists.
+    Use overwrite=True to remove previously saved files and download again""")
+    else:
+        _download_and_unzip(ds_dir, url)
+    return
+
+
+def _download_and_unzip(ds_dir, url):
+    if not os.path.exists(ds_dir):
+        os.makedirs(ds_dir)
+    if isinstance(url, str):
+        if 'zenodo' in url:
+            download_from_zenodo(ds_dir, url)
+        else:
+            download(url, ds_dir)
+        _unzip(ds_dir)
+    elif isinstance(url, list):
+        for url in url:
+            if 'zenodo' in url:
+                download_from_zenodo(ds_dir, url)
+            else:
+                download(url, ds_dir)
+        _unzip(ds_dir)
+    elif isinstance(url, dict):
+        for fname, url in url.items():
+            if 'zenodo' in url:
+                download_from_zenodo(ds_dir, url)
+            else:
+                download(url, os.path.join(ds_dir, fname))
+        _unzip(ds_dir)
+
+    else:
+        raise ValueError(ds_dir)
+
+    return
+
+
+def _unzip(ds_dir, dirname=None):
+    """unzip all the zipped files in a directory"""
+    if dirname is None:
+        dirname = ds_dir
+
+    all_files = glob.glob(f"{dirname}/*.zip")
+    for f in all_files:
+        src = os.path.join(dirname, f)
+        trgt = os.path.join(dirname, f.split('.zip')[0])
+        if not os.path.exists(trgt):
+            print(f"unziping {src} to {trgt}")
+            with zipfile.ZipFile(os.path.join(dirname, f), 'r') as zip_ref:
+                try:
+                    zip_ref.extractall(os.path.join(dirname, f.split('.zip')[0]))
+                except OSError:
+                    filelist = zip_ref.filelist
+                    for _file in filelist:
+                        if '.txt' in _file.filename or '.csv' in _file.filename or '.xlsx' in _file.filename:
+                            zip_ref.extract(_file)
+
+    # extracting tar.gz files todo, check if zip files can also be unpacked by the following oneliner
+    gz_files = glob.glob(f"{ds_dir}/*.gz")
+    for f in gz_files:
+        shutil.unpack_archive(f, ds_dir)
+
+    return

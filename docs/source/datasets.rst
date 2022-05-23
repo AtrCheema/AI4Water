@@ -6,6 +6,21 @@ Busan Beach data
 .. automodule:: ai4water.datasets.busan_beach
    :show-inheritance:
 
+Ecoli Mekong River (Laos)
+=======================
+.. automodule:: ai4water.datasets.ecoli_mekong_laos
+   :show-inheritance:
+
+Ecoli Houay Pano (Laos)
+=======================
+.. automodule:: ai4water.datasets.ecoli_houay_pano
+   :show-inheritance:
+
+Ecoli data from Mekong river (2016)
+==================================
+.. automodule:: ai4water.datasets.ecoli_mekong_2016
+   :show-inheritance:
+
 Datasets
 ========
 .. autoclass:: ai4water.datasets.datasets.Datasets

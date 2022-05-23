@@ -41,6 +41,9 @@ from .datasets import SWECanada
 from .datasets import MtropicsLaos
 from .datasets import MtropcsThailand
 from .datasets import MtropicsVietnam
+from .datasets import ecoli_mekong_laos
+from .datasets import ecoli_houay_pano
+from .datasets import ecoli_mekong_2016
 
 
 def busan_beach(inputs: list = None,
