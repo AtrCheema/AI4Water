@@ -231,7 +231,14 @@ class ProcessPredictions(Plot):
 
     def edf_plot(self, true, predicted, prefix, where, **kwargs):
         """cummulative distribution function of absolute error between true and predicted."""
+
+        if isinstance(true, (pd.DataFrame, pd.Series)):
+            true = true.values
+        if isinstance(predicted, (pd.DataFrame, pd.Series)):
+            predicted = predicted.values
+
         error = np.abs(true - predicted)
+        
         plot_edf(error, xlabel="Absolute Error")
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 

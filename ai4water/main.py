@@ -84,7 +84,8 @@ class Model(MODEL, BaseModel):
                 patience=self.config['patience'],
                 path=self.path,
                 use_cuda=False,
-                wandb_config=self.config['wandb_config']
+                wandb_config=self.config['wandb_config'],
+                verbosity=self.verbosity
             )
 
         if self.category == "DL":
