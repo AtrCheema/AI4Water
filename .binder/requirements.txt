@@ -1,6 +1,6 @@
 ai4water
 sphinx-gallery
-tensorflow==2.7
+tensorflow==2.7.2
 seaborn
 xgboost
 seaborn
