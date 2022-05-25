@@ -731,27 +731,27 @@ class MtropicsLaos(Datasets):
 
     url = {
         'lu.zip':
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0f1aea48-2a51-9b42-7688-a774a8f75e7a",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=0f1aea48-2a51-9b42-7688-a774a8f75e7a",
         'pcp.zip':
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3c870a03-324b-140d-7d98-d3585a63e6ec",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=3c870a03-324b-140d-7d98-d3585a63e6ec",
         'hydro.zip':
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=389bbea0-7279-12c1-63d0-cfc4a77ded87",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=389bbea0-7279-12c1-63d0-cfc4a77ded87",
         'rain_guage.zip':
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=7bc45591-5b9f-a13d-90dc-f2a75b0a15cc",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=7bc45591-5b9f-a13d-90dc-f2a75b0a15cc",
         'weather_station.zip':
-            "https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=353d7f00-8d6a-2a34-c0a2-5903c64e800b",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=353d7f00-8d6a-2a34-c0a2-5903c64e800b",
         'ecoli_data.csv':
-            "https://dataverse.ird.fr/api/access/datafile/5435",
+"https://dataverse.ird.fr/api/access/datafile/5435",
         "ecoli_dict.csv":
-            "https://dataverse.ird.fr/api/access/datafile/5436",
+"https://dataverse.ird.fr/api/access/datafile/5436",
         "soilmap.zip":
-            "https://dataverse.ird.fr/api/access/datafile/5430",
+"https://dataverse.ird.fr/api/access/datafile/5430",
         "subs1.zip":
-            "https://dataverse.ird.fr/api/access/datafile/5432",
+"https://dataverse.ird.fr/api/access/datafile/5432",
         "suro.zip":
-            "https://services.aeris-data.fr/theiacatalogueprod/metadata/f06cb605-7e59-4ba4-8faf-1beee35d2162",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=f06cb605-7e59-4ba4-8faf-1beee35d2162",
         "surf_feat.zip":
-            "https://services.aeris-data.fr/theiacatalogueprod/metadata/72d9e532-8910-48d2-b9a2-6c8b0241825b",
+"https://services.sedoo.fr/mtropics/data/v1_0/download?collectionId=72d9e532-8910-48d2-b9a2-6c8b0241825b",
     }
 
     physio_chem_features = {
@@ -793,35 +793,32 @@ class MtropicsLaos(Datasets):
 
     def surface_features(
             self,
-            st,
-            en,
+            st: Union[str, int, pd.Timestamp] = '2000-10-14',
+            en: Union[str, int, pd.Timestamp] = '2016-11-12',
     )->pd.DataFrame:
         """soil surface features data"""
         fname = os.path.join(self.ds_dir, "surf_feat", "SEDOO_EdS_Houay Pano.xlsx")
-        df = pd.read_excel(fname, sheet_name="SEDOO_EdS_Houay Pano")
+        df = pd.read_excel(fname, sheet_name="Soil surface features")
 
-        df.index = pd.to_datetime(df['Date'])
+        df.index = pd.to_datetime(df.pop('Date'))
 
+        if st:
+            if isinstance(en, int):
+                assert isinstance(en, int)
+                df = df.iloc[st:en]
+            else:
+                df = df.loc[st:en]
         return df
 
     def fetch_suro(
             self,
-            st,
-            en,
     )->pd.DataFrame:
         """returns surface runoff and soil detachment data from Houay pano, Laos PDR.
-
-        Parameters
-        ----------
-            st :
-                starting date
-            en :
-                end date
 
         Returns
         -------
         pd.DataFrame
-
+            a dataframe of shape (293, 13)
         Examples
         --------
             >>> from ai4water.datasets import MtropicsLaos
@@ -829,9 +826,9 @@ class MtropicsLaos(Datasets):
             >>> suro = laos.fetch_suro()
         """
         fname = os.path.join(self.ds_dir, 'suro', 'SEDOO_Runoff_Detachment_Houay Pano.xlsx')
-        df = pd.read_excel(fname, sheet_name="SEDOO_Runoff_Detachment_Houay Pano")
+        df = pd.read_excel(fname, sheet_name="Surface runoff soil detachment")
 
-        return df
+        return df.dropna()
 
     def fetch_lu(self, processed=False):
         """returns landuse_ data as list of shapefiles.
