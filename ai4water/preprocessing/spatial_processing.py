@@ -93,6 +93,8 @@ class MakeHRUs(object):
             verbosity : Determines verbosity.
         """
 
+        if shapefile is None:
+            raise ModuleNotFoundError(f"You must install pyshp package e.g. pip install pyshp")
         self.hru_definition = hru_definition
 
         assert hru_definition in self.HRU_DEFINITIONS, f"""

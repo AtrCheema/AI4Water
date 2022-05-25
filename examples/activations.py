@@ -182,50 +182,50 @@ model = Model(model={'layers':layers},
               shuffle=False)
 
 ###########################################################
-
-model.fit(data=data)
-
-vis = Visualize(model=model)
-vis.activations(layer_names="CustomInputs", show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[0], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[1], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[2], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[3], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[4], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[5], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[6], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[7], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[8], show=True)
-
-###########################################################
-
-vis.activations(layer_names=activation_layers[9], show=True)
-
-###########################################################
+#
+# model.fit(data=data)
+#
+# vis = Visualize(model=model)
+# vis.activations(layer_names="CustomInputs", show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[0], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[1], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[2], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[3], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[4], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[5], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[6], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[7], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[8], show=True)
+#
+# ###########################################################
+#
+# vis.activations(layer_names=activation_layers[9], show=True)
+#
+# ###########################################################

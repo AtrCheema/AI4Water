@@ -23,3 +23,7 @@ xgboost
 lightgbm
 catboost
 optuna
+
+# for hru discretization examples
+pyshp
+shapely

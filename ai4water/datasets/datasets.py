@@ -273,7 +273,7 @@ class Datasets(object):
 
     @property
     def url(self):
-        raise NotImplementedError
+        raise NotImplementedError(f"url must be defined.")
 
     @property
     def base_ds_dir(self):
@@ -1485,6 +1485,57 @@ def consider_lookback(df:pd.DataFrame, lookback:int, col_name:str)->pd.DataFrame
     return df.iloc[masks[::-1]]
 
 
+def ecoli_mekong(
+        st: Union[str, pd.Timestamp, int] = "20110101",
+        en: Union[str, pd.Timestamp, int] = "20211231",
+        features:Union[str, list] = None,
+        overwrite=False
+)->pd.DataFrame:
+    """
+    E. coli data from Mekong river (Houay Pano) area from 2011 to 2021 [1]_.
+
+    Parameters
+    ----------
+        st : optional
+            starting time. The default starting point is 2011-05-25 10:00:00
+        en : optional
+            end time, The default end point is 2021-05-25 15:41:00
+        features : str, optional
+            names of features to use. use ``all`` to get all features. By default
+            following input features are selected
+
+                ``station_name`` name of station/catchment where the observation was made
+                ``T`` temperature
+                ``EC`` electrical conductance
+                ``DOpercent`` dissolved oxygen concentration
+                ``DO`` dissolved oxygen saturation
+                ``pH`` pH
+                ``ORP`` oxidation-reduction potential
+                ``Turbidity`` turbidity
+                ``TSS`` total suspended sediment concentration
+                ``E-coli_4dilutions`` Eschrechia coli concentration
+
+        overwrite : bool
+            whether to overwrite the downloaded file or not
+
+    Returns
+    -------
+    pd.DataFrame
+        with default parameters, the shape is (1602, 10)
+
+    Examples
+    --------
+        >>> from ai4water.datasets import ecoli_mekong
+        >>> ecoli = ecoli_mekong()
+
+    .. [1]
+        https://essd.copernicus.org/preprints/essd-2021-440/
+    """
+    ecoli = ecoli_houay_pano(st, en, features, overwrite=overwrite)
+    ecoli1 = ecoli_mekong_2016(st, en, features, overwrite=overwrite)
+    ecoli2 = ecoli_mekong_laos(st, en, features, overwrite=overwrite)
+    return pd.concat([ecoli, ecoli1, ecoli2])
+
 def ecoli_mekong_2016(
         st: Union[str, pd.Timestamp, int] = "20160101",
         en: Union[str, pd.Timestamp, int] = "20161231",
@@ -1504,6 +1555,11 @@ def ecoli_mekong_2016(
             names of features to use. use ``all`` to get all features.
         overwrite : bool
             whether to overwrite the downloaded file or not
+
+    Returns
+    -------
+    pd.DataFrame
+        with default parameters, the shape is (58, 10)
 
     Examples
     --------
@@ -1532,14 +1588,32 @@ def ecoli_houay_pano(
 
     Parameters
     ----------
-        st :
-            starting time
-        en :
-            end time
+        st : optional
+            starting time. The default starting point is 2011-05-25 10:00:00
+        en : optional
+            end time, The default end point is 2021-05-25 15:41:00
         features : str, optional
-            names of features to use. use ``all`` to get all features.
+            names of features to use. use ``all`` to get all features. By default
+            following input features are selected
+
+                ``station_name`` name of station/catchment where the observation was made
+                ``T`` temperature
+                ``EC`` electrical conductance
+                ``DOpercent`` dissolved oxygen concentration
+                ``DO`` dissolved oxygen saturation
+                ``pH`` pH
+                ``ORP`` oxidation-reduction potential
+                ``Turbidity`` turbidity
+                ``TSS`` total suspended sediment concentration
+                ``E-coli_4dilutions`` Eschrechia coli concentration
+
         overwrite : bool
             whether to overwrite the downloaded file or not
+
+    Returns
+    -------
+    pd.DataFrame
+        with default parameters, the shape is (413, 10)
 
     Examples
     --------
@@ -1560,8 +1634,8 @@ def ecoli_houay_pano(
 def ecoli_mekong_laos(
         st: Union[str, pd.Timestamp, int] = "20110101",
         en: Union[str, pd.Timestamp, int] = "20211231",
-        station_name:str = None,
         features:Union[str, list] = None,
+        station_name:str = None,
         overwrite=False
 )->pd.DataFrame:
     """
@@ -1577,6 +1651,11 @@ def ecoli_mekong_laos(
         features : str, optional
         overwrite : bool
             whether to overwrite or not
+
+    Returns
+    -------
+    pd.DataFrame
+        with default parameters, the shape is (1131, 10)
 
     Examples
     --------
@@ -1615,6 +1694,9 @@ def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
     features = check_attributes(features, df.columns.tolist())
     df = df[features]
 
+    # River is not a representative name
+    df = df.rename(columns={"River": "station_name"})
+
     if st:
         if isinstance(en, int):
             assert isinstance(en, int)
@@ -1623,6 +1705,34 @@ def _fetch_ecoli(ds_dir, overwrite, url, station_name, features, st, en, _name):
             df = df.loc[st:en]
 
     return df
+
+
+class Quadica(Datasets):
+    """water quality dataset following Pia Ebeling et al. 2022 [1]_ .
+
+    .. [1] https://doi.org/10.5194/essd-2022-6
+
+    """
+    url = {
+        "quadica.zip":
+            "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/QUADICA.zip",
+        "metadata.pdf":
+            "https://www.hydroshare.org/resource/26e8238f0be14fa1a49641cd8a455e29/data/contents/Metadata_QUADICA.pdf"
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._download()
+
+    def fetch_monthly(self):
+        fname = os.path.join(self.ds_dir, "quadica", "wrtds_monthly.csv")
+        wrtds = pd.read_csv(fname)
+        wrtds.index = pd.to_datetime(wrtds['Year'].astype(str) + ' ' + wrtds['Month'].astype(str))
+        return wrtds
+
+    def fetch_annual(self):
+        return
 
 
 def _maybe_download(ds_dir, overwrite, url, _name):
