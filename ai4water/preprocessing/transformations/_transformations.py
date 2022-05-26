@@ -76,7 +76,7 @@ class StandardScaler(SKStandardScaler, ScalerWithConfig):
 
     @property
     def config_paras(self):
-        return ['scale_', 'n_samples_seen_', 'mean_', 'var_']
+        return ['scale_', 'n_samples_seen_', 'mean_', 'var_', 'n_features_in_']
 
 
 class RobustScaler(SKRobustScaler, ScalerWithConfig):
@@ -102,14 +102,14 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
             calculated from scipy.stats.boxcox(X, lmbda=None). Only available
             if method is box-cox.
         pre_center:
-            center the data before applying power transformation. see github_ for more discussion
+            center the data before applying power transformation. see github [1] for more discussion
         rescale:
-        For complete documentation see scikit-learn's documentation_
+        For complete documentation see scikit-learn's documentation [2]
 
-        .. documentation:
+        .. [2]
             https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html
 
-        .. github:
+        .. [1]
             https://github.com/scikit-learn/scikit-learn/issues/14959
         """
         if lambdas is not None:
@@ -132,7 +132,7 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
     @property
     def config_paras(self):
         return ['lambdas_', 'scaler_to_standardize_',
-                'pre_center_config_', 'rescaler_config_']
+                'pre_center_config_', 'rescaler_config_', 'n_features_in_']
 
     @classmethod
     def from_config(cls, config: dict):
@@ -153,9 +153,9 @@ class PowerTransformer(SKPowerTransformer, ScalerWithConfig):
 
         rescaler = config['config'].pop('rescaler_config_')
         if rescaler:
-            setattr(scaler, 'recaler_', MinMaxScaler.from_config(rescaler))
+            setattr(scaler, 'rescaler_', MinMaxScaler.from_config(rescaler))
         else:
-            setattr(scaler, 'recaler_', None)
+            setattr(scaler, 'rescaler_', None)
 
         pre_standardizer = config['config'].pop('pre_center_config_')
         if pre_standardizer:

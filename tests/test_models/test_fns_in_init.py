@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 
 from ai4water import Model
+from ai4water.functional import Model as FModel
 from ai4water.datasets import busan_beach, MtropicsLaos
-from ai4water.models import MLP, LSTM, CNN, CNNLSTM, LSTMAutoEncoder
+from ai4water.models import MLP, LSTM, CNN, CNNLSTM, LSTMAutoEncoder, TFT
 from sklearn.datasets import make_classification
 
 
@@ -107,6 +108,11 @@ class TestModels(unittest.TestCase):
                       verbosity=0,
                       )
         model.fit(data=multi_cls_data)
+        return
+
+    def test_tft(self):
+        model = FModel(model=TFT(input_shape=(14, 13)),
+                       ts_args={"lookback": 14}, verbosity=0)
         return
 
 if __name__ == "__main__":
