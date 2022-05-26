@@ -36,4 +36,242 @@ hru_object = MakeHRUs('unique_sub',
                       subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'},
                      )
 
+#########################################
+
 hru_object.call(plot_hrus=True)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, title=False, n_merge=0, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_soil
+#-------------------
+
+hru_object = MakeHRUs('unique_soil',
+                      index={2011: None, 2012: None, 2013:None, 2014:None},
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
+                     )
+
+#########################################
+
+hru_object.call(plot_hrus=True)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_soil
+#-------------------
+
+#########################################
+# unique_lu
+#-------------------
+# Since the land use varies with time, we will include it in index.
+
+hru_object = MakeHRUs('unique_lu',
+                      index=years,
+                     )
+
+#########################################
+
+hru_object.call(plot_hrus=True)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_slope
+#------------------
+
+hru_object = MakeHRUs('unique_slope',
+                      index={2011: None, 2012: None, 2013:None, 2014:None},
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'}
+                     )
+
+#########################################
+
+hru_object.call(plot_hrus=False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_lu_sub
+#------------------
+
+#########################################
+
+hru_object = MakeHRUs('unique_lu_sub',
+                      index=years,
+                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
+                     )
+
+#########################################
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=12, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_lu_soil
+#------------------
+# combination of land use and soil
+
+hru_object = MakeHRUs('unique_lu_soil',
+                      index=years,
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
+                     )
+
+#########################################
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=4, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_lu_slope
+#------------------
+
+hru_object = MakeHRUs('unique_lu_slope',
+                      index=years,
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'}
+                     )
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=7, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_soil_sub
+#------------------
+
+hru_object = MakeHRUs('unique_soil_sub',
+                      index={2011: None, 2012: None, 2013:None, 2014:None},
+                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'},
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
+                     )
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=7, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_soil_slope
+#-------------------
+
+hru_object = MakeHRUs('unique_soil_slope',
+                      index={2011: None, 2012: None, 2013:None, 2014:None},
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
+                     )
+
+#########################################
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=3, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_slope_sub
+#-------------------
+
+hru_object = MakeHRUs('unique_slope_sub',
+                      index={2011: None, 2012: None, 2013:None, 2014:None},
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
+                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
+                     )
+
+#########################################
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=7, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
+
+#########################################
+# unique_lu_soil_slope
+#----------------------
+
+hru_object = MakeHRUs('unique_lu_soil_slope',
+                      index=years,
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'},
+                     )
+
+#########################################
+
+hru_object.call(False)
+
+#########################################
+
+for yr in years:
+    hru_object.draw_pie(yr, n_merge=29, title=False, save=True, textprops={'fontsize': '12'})
+
+#########################################
+
+hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)

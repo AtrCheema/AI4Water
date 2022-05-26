@@ -1,36 +1,18 @@
-import unittest
+
 import os
 import sys
-from typing import Union
-import random
 import site   # so that AI4Water directory is in path
+import random
+import unittest
 ai4_dir = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
 site.addsitedir(ai4_dir)
-
 
 
 import pandas as pd
 import xarray as xr
 
-from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS, CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
-from ai4water.datasets import WQJordan, WQJordan2, YamaguchiClimateJp, FlowBenin, HydrometricParana
-from ai4water.datasets import Weisssee, RiverTempSpain, WQCantareira, RiverIsotope, EtpPcpSamoylov
-from ai4water.datasets import FlowSamoylov, FlowSedDenmark, StreamTempSpain, RiverTempEroo
-from ai4water.datasets import HoloceneTemp, FlowTetRiver, SedimentAmersee, HydrocarbonsGabes
-from ai4water.datasets import WaterChemEcuador, WaterChemVictoriaLakes, HydroChemJava, PrecipBerlin
-from ai4water.datasets import GeoChemMatane
-
-
-
-def check_data(dataset, num_datasets=1, min_len_data=1, index_col: Union[None, str] = 'index'):
-    data = dataset.fetch(index_col=index_col)
-    assert len(data) == num_datasets, f'data is of length {len(data)}'
-
-    for k,v in data.items():
-        assert len(v) >= min_len_data, f'{v} if length {len(v)}'
-        if index_col is not None:
-            assert isinstance(v.index, pd.DatetimeIndex), f'for {k} index is of type {type(v.index)}'
-    return
+from ai4water.datasets import CAMELS_GB, CAMELS_BR, CAMELS_AUS
+from ai4water.datasets import CAMELS_CL, CAMELS_US, LamaH, HYSETS, HYPE
 
 
 def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_dataframe=False):
@@ -43,6 +25,7 @@ def test_dynamic_data(dataset, stations, num_stations, stn_data_len, as_datafram
         check_dataset(dataset, df, num_stations, stn_data_len)
 
     return
+
 
 def test_all_data(dataset, stations, stn_data_len, as_dataframe=False):
 
@@ -59,6 +42,7 @@ def test_all_data(dataset, stations, stn_data_len, as_dataframe=False):
         check_dataset(dataset, df['dynamic'], stations, stn_data_len)
 
     return
+
 
 def check_dataframe(dataset, df, num_stations, data_len):
     assert isinstance(df, pd.DataFrame)
@@ -328,101 +312,6 @@ class TestCamels(unittest.TestCase):
     def test_hysets(self):
         #test_hysets()
         return
-
-
-class TestPangaea(unittest.TestCase):
-
-    def test_Weisssee(self):
-        dataset = Weisssee()
-        check_data(dataset, 21, 29)
-
-    def test_jordanwq(self):
-        dataset = WQJordan()
-        check_data(dataset, 1, 428)
-
-    def test_jordanwq2(self):
-        dataset = WQJordan2()
-        check_data(dataset, 1, 189)
-
-    def test_YamaguchiClimateJp(self):
-        dataset = YamaguchiClimateJp()
-        check_data(dataset, 1, 877)
-
-    def test_FlowBenin(self):
-        dataset = FlowBenin()
-        check_data(dataset, 4, 600)
-
-    def test_HydrometricParana(self):
-        dataset = HydrometricParana()
-        check_data(dataset, 2, 1700)
-
-    def test_RiverTempSpain(self):
-        dataset = RiverTempSpain()
-        check_data(dataset, 21, 400)
-
-    def test_WQCantareira(self):
-        dataset = WQCantareira()
-        check_data(dataset, 1, 67)
-
-    def test_RiverIsotope(self):
-        dataset = RiverIsotope()
-        check_data(dataset, 1, 398, index_col=None)
-
-    def test_EtpPcpSamoylov(self):
-        dataset = EtpPcpSamoylov()
-        check_data(dataset, 1, 4214)
-
-    def test_FlowSamoylov(self):
-        dataset = FlowSamoylov()
-        check_data(dataset, 1, 3292)
-
-    def test_FlowSedDenmark(self):
-        dataset = FlowSedDenmark()
-        check_data(dataset, 1, 29663)
-
-    def test_StreamTempSpain(self):
-        dataset = StreamTempSpain()
-        check_data(dataset, 1, 1)
-
-    def test_RiverTempEroo(self):
-        dataset = RiverTempEroo()
-        check_data(dataset, 1, 138442)
-
-    def test_HoloceneTemp(self):
-        dataset = HoloceneTemp()
-        check_data(dataset, 1, 1030, index_col=None)
-
-    def test_FlowTetRiver(self):
-        dataset = FlowTetRiver()
-        check_data(dataset, 1, 7649)
-
-    def test_SedimentAmersee(self):
-        dataset = SedimentAmersee()
-        check_data(dataset, 1, 455, index_col=None)
-
-    def test_HydrocarbonsGabes(self):
-        dataset = HydrocarbonsGabes()
-        check_data(dataset, 1, 14, index_col=None)
-
-    def test_WaterChemEcuador(self):
-        dataset = WaterChemEcuador()
-        check_data(dataset, 1, 10, index_col=None)
-
-    def test_WaterChemVictoriaLakes(self):
-        dataset = WaterChemVictoriaLakes()
-        check_data(dataset, 1, 4, index_col=None)
-
-    def test_HydroChemJava(self):
-        dataset = HydroChemJava()
-        check_data(dataset, 1, 40)
-
-    def test_PrecipBerlin(self):
-        dataset = PrecipBerlin()
-        check_data(dataset, 1, 113952)
-
-    def test_GeoChemMatane(self):
-        dataset = GeoChemMatane()
-        check_data(dataset, 1, 166)
 
 
 if __name__=="__main__":

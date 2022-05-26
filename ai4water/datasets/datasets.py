@@ -341,6 +341,13 @@ class Weisssee(Datasets):
     url = '10.1594/PANGAEA.898217'
 
     def fetch(self, **kwargs):
+        """
+        Examples
+        --------
+            >>> from ai4water.datasets import Weisssee
+            >>> dataset = Weisssee()
+            >>> data = dataset.fetch()
+        """
         self.download_from_pangaea()
         data = {}
         for f in self.data_files:
@@ -997,6 +1004,12 @@ class MtropicsLaos(Datasets):
             observations. The length of dataframe depends upon range defined by
             `st` and `en` arguments.
 
+        Examples
+        --------
+            >>> from ai4water.datasets import MtropicsLaos
+            >>> laos = MtropicsLaos()
+            >>> rg = laos.fetch_rain_gauges()
+
         .. _gauges:
             https://doi.org/10.1038/s41598-017-04385-2
         """
@@ -1006,8 +1019,13 @@ class MtropicsLaos(Datasets):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'rain_guage')}/*.xlsx")
             df = pd.DataFrame()
             for f in files:
-                _df = pd.read_excel(f, sheet_name='Daily', usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'])
+                _df = pd.read_excel(f, sheet_name='Daily',
+                                    usecols=['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'],
+                                    keep_default_na=False)
                 df = pd.concat([df, _df])
+
+            for col in df.columns:
+                df[col] = pd.to_numeric(df[col])
 
             df = df.reset_index(drop=True)  # index is of type Int64Index
             df.to_xarray().to_netcdf(fname)
@@ -1026,7 +1044,7 @@ class MtropicsLaos(Datasets):
             freq: str = 'H'
     ) -> pd.DataFrame:
         """
-        fetches hourly weather_ station data which consits of air temperature,
+        fetches hourly weather [1]_ station data which consits of air temperature,
         humidity, wind speed and solar radiation.
 
         Parameters
@@ -1041,17 +1059,22 @@ class MtropicsLaos(Datasets):
         -------
             a pandas dataframe consisting of 4 columns
 
-        .. _weather:
+        .. [1]:
             https://doi.org/10.1038/s41598-017-04385-2
         """
 
-        fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.f')
+        fname = os.path.join(self.ds_dir, 'weather_station', 'weather_stations.nc')
         if not os.path.exists(fname):
             files = glob.glob(f"{os.path.join(self.ds_dir, 'weather_station')}/*.xlsx")
             df = pd.DataFrame()
             for f in files:
-                _df = pd.read_excel(f, sheet_name='Hourly', usecols=['T', 'H', 'W', 'Gr'])
+                _df = pd.read_excel(f, sheet_name='Hourly',
+                                    usecols=['T', 'H', 'W', 'Gr'], keep_default_na=False)
                 df = pd.concat([df, _df])
+
+            # non-numertic dtype causes problem in converting/saving netcdf
+            for col in df.columns:
+                df[col] = pd.to_numeric(df[col])
 
             df = df.reset_index(drop=True)  # index is of type Int64Index
             df.to_xarray().to_netcdf(fname)
