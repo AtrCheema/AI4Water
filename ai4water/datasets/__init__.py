@@ -38,13 +38,13 @@ from .datasets import RiverTempSpain
 from .datasets import RiverIsotope
 from .datasets import EtpPcpSamoylov
 from .datasets import SWECanada
-from .datasets import MtropicsLaos
-from .datasets import MtropcsThailand
-from .datasets import MtropicsVietnam
-from .datasets import ecoli_mekong_laos
-from .datasets import ecoli_houay_pano
-from .datasets import ecoli_mekong_2016
-from .datasets import ecoli_mekong
+from ._mtropics import MtropicsLaos
+from ._mtropics import MtropcsThailand
+from ._mtropics import MtropicsVietnam
+from ._mtropics import ecoli_mekong_laos
+from ._mtropics import ecoli_houay_pano
+from ._mtropics import ecoli_mekong_2016
+from ._mtropics import ecoli_mekong
 from .datasets import Quadica
 
 

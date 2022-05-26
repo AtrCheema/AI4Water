@@ -30,6 +30,9 @@ def test_jena_weather():
     assert df.shape[0] >= 919551
     assert df.shape[1] >= 21
 
+    #wj = WeatherJena(obs_loc='soil')
+    #df = wj.fetch()
+    #assert isinstance(df, pd.DataFrame)
     return
 
 
@@ -150,11 +153,11 @@ class TestPangaea(unittest.TestCase):
         check_data(dataset, 1, 166)
 
     def test_swe_canada(self):
-        # test_swe_canada()
+        test_swe_canada()
         return
 
     def test_jena_weather(self):
-        # test_jena_weather()
+        test_jena_weather()
         return
 
 
