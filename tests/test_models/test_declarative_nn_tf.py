@@ -46,7 +46,7 @@ class TestBuiltTFConfig(unittest.TestCase):
         "Dense_3": 1
     }, 1)
 
-
+        assert model.layers[-2].get_config()['activation'] == "relu"
         assert model.trainable_parameters() == 3201
         assert model.nn_layers().__len__() == 7
         return
