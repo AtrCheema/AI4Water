@@ -523,23 +523,31 @@ class WeatherJena(Datasets):
         download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
         unzip_all_in_dir(sub_dir, 'zip')
 
-    def fetch(self,
-              st: str = None,
-              en: str = None
-              ) -> pd.DataFrame:
+    def fetch(
+            self,
+            st: str = None,
+            en: str = None
+    ) -> pd.DataFrame:
         """
         Fetches the time series data between given period as pandas dataframe.
 
-        Arguments:
-            st : start of data to be fetched. If None, the data from start will
-                be retuned.
-            en : end of data to be fetched. If None, the data from till end
-                be retuned.
-        Returns:
-            a pandas dataframe.
+        Parameters
+        ----------
+            st :
+                start of data to be fetched. If None, the data from start (2003-01-01)
+                will be retuned
+            en :
+                end of data to be fetched. If None, the data from till (2021-12-31)
+                end be retuned.
+
+        Returns
+        -------
+        pd.DataFrame
+            a pandas dataframe of shape (972111, 21)
 
         Examples
         --------
+            >>> from ai4water.datasets import WeatherJena
             >>> dataset = WeatherJena()
             >>> df = dataset.fetch()
         """
@@ -571,16 +579,17 @@ class SWECanada(Datasets):
 
     Examples
     --------
+        >>> from ai4water.datasets import SWECanada
         >>> swe = SWECanada()
-        ...
+        ... # get names of all available stations
         >>> stns = swe.stations()
-        ...
-        >>> df1 = swe.fetch(1)
-        ...
+        ... # get data of one station
+        >>> df1 = swe.fetch('SCD-NS010')
+        ... # get data of 10 stations
         >>> df10 = swe.fetch(10, st='20110101')
-        ...
+        ... # get data of 0.1% of stations
         >>> df2 = swe.fetch(0.001, st='20110101')
-        ...
+        ... # get data of one stations starting from 2011
         >>> df3 = swe.fetch('ALE-05AE810', st='20110101')
         ...
         >>> df4 = swe.fetch(stns[0:10], st='20110101')
@@ -610,23 +619,27 @@ class SWECanada(Datasets):
     def end(self):
         return '20200731'
 
-    def fetch(self,
-              station_id: Union[None, str, float, int, list] = None,
-              features: Union[None, str, list] = None,
-              q_flags: Union[None, str, list] = None,
-              st=None,
-              en=None,
-              ) -> dict:
+    def fetch(
+            self,
+            station_id: Union[None, str, float, int, list] = None,
+            features: Union[None, str, list] = None,
+            q_flags: Union[None, str, list] = None,
+            st=None,
+            en=None
+    ) -> dict:
         """
         Fetches time series data from selected stations.
+
         Arguments:
             station_id : station/stations to be retrieved. In None, then data
                           from all stations will be returned.
             features : Names of features to be retrieved. Following features
                 are allowed:
-                    - 'snw' snow water equivalent kg/m3
-                    - 'snd' snow depth m
-                    - 'den' snowpack bulk density kg/m3
+
+                    - ``snw`` snow water equivalent kg/m3
+                    - ``snd`` snow depth m
+                    - ``den`` snowpack bulk density kg/m3
+
                 If None, then all three features will be retrieved.
             q_flags : If None, then no qflags will be returned. Following q_flag
                 values are available.

@@ -23,7 +23,7 @@ Ecoli Houay Pano (Laos)
 
 Ecoli data from Mekong river (2016)
 ==================================
-.. automodule:: ai4water.datasets._mtropics
+.. automodule:: ai4water.datasets.mtropics
    :members: ecoli_mekong_2016
 
 Datasets
