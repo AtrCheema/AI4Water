@@ -3,15 +3,17 @@ quick start
 
 
 Build a `Model` by providing all the arguments to initiate it.
+For building deep learning mdoels, we can use higher level functions such as :py:class:`ai4water.models.LSTM`.
+
 
 .. code-block:: python
 
     >>> from ai4water import Model
+    >>> from ai4water.models import LSTM
     >>> from ai4water.datasets import busan_beach
     >>> data = busan_beach()
     >>> model = Model(
-    ...         model = {'layers': {"LSTM": 64,
-    ...                             'Dense': 1}},
+    ...         model = LSTM(64),
     ...         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],   # columns in csv file to be used as input
     ...         output_features = ['tetx_coppml'],     # columns in csv file to be used as output
     ...         ts_args={'lookback': 12}  # how much historical data we want to feed to model
@@ -40,6 +42,27 @@ We can verify it by checking its type
     >>> import tensorflow as tf
     >>> isinstance(model, tf.keras.Model)  # True
 
+
+Defining layers of neural networks
+==================================
+Above we had used LSTM model. Other available deep learning models are MLP (:py:class:`ai4water.models.MLP`),
+CNN (:py:class:`ai4water.models.CNN`) CNNLSTM (:py:class:`ai4water.models.CNNLSTM`),
+TCN (:py:class:`ai4water.models.TCN`) and TFT (:py:class:`ai4water.models.TFT`). On the other hand
+if we wish to define the layers of neural networks ourselves, we can also do so using :ref:`dec_def_tf`
+
+
+.. code-block:: python
+
+    >>> from ai4water import Model
+    >>> from ai4water.datasets import busan_beach
+    >>> data = busan_beach()
+    >>> model = Model(
+    ...         model = {'layers': {"LSTM": 64,
+    ...                             'Dense': 1}},
+    ...         input_features=['tide_cm', 'wat_temp_c', 'sal_psu', 'air_temp_c', 'pcp_mm'],
+    ...         output_features = ['tetx_coppml'],
+    ...         ts_args={'lookback': 12}
+    >>> )
 
 
 Using your own pre-processed data
@@ -73,7 +96,7 @@ input output paris to `data` argument to `fit` and/or `predict` methods.
 
 
 
-using for `scikit-learn`/`xgboost`/`lgbm`/`catboost` based models
+using `scikit-learn`/`xgboost`/`lgbm`/`catboost` based models
 =================================================================
 The repository can also be used for machine learning based models such as scikit-learn/xgboost based models for both
 classification and regression problems by making use of `model` keyword arguments in `Model` function.

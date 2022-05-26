@@ -34,7 +34,7 @@ years = {2011: {'shapefile': os.path.join(shapefile_paths, 'lu2011.shp'), 'featu
 hru_object = MakeHRUs('unique_sub',
                       index={2011: None, 2012: None, 2013:None, 2014:None},
                       subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'},
-                     )
+                      save=False)
 
 #########################################
 
@@ -55,8 +55,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 
 hru_object = MakeHRUs('unique_soil',
                       index={2011: None, 2012: None, 2013:None, 2014:None},
-                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
-                     )
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'},
+                      save=False)
 
 #########################################
 
@@ -82,7 +82,7 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 
 hru_object = MakeHRUs('unique_lu',
                       index=years,
-                     )
+                      save=False)
 
 #########################################
 
@@ -103,8 +103,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 
 hru_object = MakeHRUs('unique_slope',
                       index={2011: None, 2012: None, 2013:None, 2014:None},
-                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'}
-                     )
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
+                      save=False)
 
 #########################################
 
@@ -127,8 +127,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 
 hru_object = MakeHRUs('unique_lu_sub',
                       index=years,
-                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
-                     )
+                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'},
+                      save=False)
 
 #########################################
 
@@ -150,8 +150,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 
 hru_object = MakeHRUs('unique_lu_soil',
                       index=years,
-                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
-                     )
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'},
+                      save=False)
 
 #########################################
 
@@ -172,8 +172,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 
 hru_object = MakeHRUs('unique_lu_slope',
                       index=years,
-                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'}
-                     )
+                      slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
+                      save=False)
 
 hru_object.call(False)
 
@@ -193,8 +193,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 hru_object = MakeHRUs('unique_soil_sub',
                       index={2011: None, 2012: None, 2013:None, 2014:None},
                       subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'},
-                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
-                     )
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'},
+                      save=False)
 
 hru_object.call(False)
 
@@ -214,8 +214,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 hru_object = MakeHRUs('unique_soil_slope',
                       index={2011: None, 2012: None, 2013:None, 2014:None},
                       slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
-                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'}
-                     )
+                      soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'},
+                      save=False)
 
 #########################################
 
@@ -237,8 +237,8 @@ hru_object.plot_as_ts(min_xticks=3, max_xticks=4, save=True)
 hru_object = MakeHRUs('unique_slope_sub',
                       index={2011: None, 2012: None, 2013:None, 2014:None},
                       slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
-                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'}
-                     )
+                      subbasins_shape={'shapefile': SubBasin_shp, 'feature': 'id'},
+                      save=False)
 
 #########################################
 
@@ -261,7 +261,7 @@ hru_object = MakeHRUs('unique_lu_soil_slope',
                       index=years,
                       slope_shape={'shapefile': slope_shp, 'feature': 'percent'},
                       soil_shape={'shapefile': Soil_shp, 'feature': 'NAME'},
-                     )
+                      save=False)
 
 #########################################
 

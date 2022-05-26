@@ -704,8 +704,8 @@ class ShapExplainer(ExplainerMixin):
         This can be drawn for xgboost/lgbm as well as for randomforest type models
         but not for CatBoostRegressor which is todo.
 
-        Explanation
-        ----------
+        Note
+        ----
         The upper line plot on the heat map shows $-fx/max(abs(fx))$ where $fx$ is
         the mean SHAP value of all features. The length of $fx$ is equal to length
         of data/examples. Thus one point on this line is the mean of SHAP values

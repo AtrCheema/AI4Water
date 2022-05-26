@@ -12,7 +12,7 @@ MCLSTM
 
 
 Conditionalize
-========
+==============
 .. autoclass:: ai4water.models.tensorflow.Conditionalize
    :members:
    :undoc-members:
@@ -48,4 +48,4 @@ AttentionLSTM
    :show-inheritance:
 
    .. automethod:: __init__
-   .. automethod:: __call_
+   .. automethod:: __call__

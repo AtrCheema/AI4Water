@@ -924,11 +924,13 @@ class ChannelAttention(layers.Layer):
 
 class SpatialAttention(layers.Layer):
     """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0 .
-    The time step (spatial) attention module generates a concatenated feature descriptor [F'Tavg;F'Tmax]∈R2×T by
-    applying average pooling and max pooling along the feature axis, followed by a standard convolution layer.[1].
+    The time step (spatial) attention module generates a concatenated feature
+    descriptor [F'Tavg;F'Tmax]∈R2×T by applying average pooling and max pooling
+    along the feature axis, followed by a standard convolution layer.[6].
 
-    Cheng, Y., Liu, Z., & Morimoto, Y. (2020). Attention-Based SeriesNet: An Attention-Based Hybrid Neural Network Model
-    for Conditional Time Series Forecasting. Information, 11(6), 305.
+    .. [6] Cheng, Y., Liu, Z., & Morimoto, Y. (2020). Attention-Based SeriesNet:
+        An Attention-Based Hybrid Neural Network Model
+        for Conditional Time Series Forecasting. Information, 11(6), 305.
     """
     def __init__(self, conv_dim,  kernel_size=7, **kwargs):
 
@@ -954,17 +956,17 @@ class SpatialAttention(layers.Layer):
 
 class AttentionLSTM(Layer):
     """
-    This layer combines Self Attention [1]_ mechanism with LSTM. It uses one separate
+    This layer combines Self Attention [7] mechanism with LSTM. It uses one separate
     LSTM+SelfAttention block for each input feature. The output from each
     LSTM+SelfAttention block is concatenated and returned. The layer expects
     same input dimension as by LSTM i.e. (batch_size, time_steps, input_features).
-    For usage see example [2]_
+    For usage see example [8]
 
     References
     ----------
-    .. [1] https://ai4water.readthedocs.io/en/dev/models/layers.html#selfattention
+    .. [7] https://ai4water.readthedocs.io/en/dev/models/layers.html#selfattention
 
-    .. [2] https://ai4water.readthedocs.io/en/dev/auto_examples/attention_lstm.html#
+    .. [8] https://ai4water.readthedocs.io/en/dev/auto_examples/attention_lstm.html#
     """
     def __init__(
             self,
@@ -1043,7 +1045,7 @@ class AttentionLSTM(Layer):
 
         assert self.num_inputs == inputs.shape[-1], f"""
         num_inputs {self.num_inputs} does not match with input features.
-         Inputs are of shape {inputs.shape}"""
+        Inputs are of shape {inputs.shape}"""
 
         outs = []
         for i in range(inputs.shape[-1]):
