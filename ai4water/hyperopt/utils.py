@@ -310,11 +310,11 @@ def save_skopt_results(skopt_results, opt_path):
 
     sr_res = SerializeSKOptResults(skopt_results)
 
-    try:  # adding .hpo extension so that no other file/folder exists with same name
-        fname = os.path.join(opt_path, os.path.basename(opt_path) + ".hpo")
-        dump(skopt_results, fname)
-    except PicklingError:
-        print("could not pickle results")
+    # try:  # adding .hpo extension so that no other file/folder exists with same name
+    #     fname = os.path.join(opt_path, os.path.basename(opt_path) + ".hpo")
+    #     dump(skopt_results, fname)
+    # except PicklingError:
+    #     print("could not pickle results")
 
     try:
         with open(fname + '.json', 'w') as fp:

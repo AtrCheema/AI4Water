@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.9.7]
 
     steps:
     - uses: actions/checkout@v2
@@ -21,6 +21,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest tensorflow==2.7 scikit-learn matplotlib pandas scikit-optimize
+        python -m pip install numpy==1.21.0
         python -m pip install easy_mpl SeqMetrics
     - name: Test with unittest
       run: |
