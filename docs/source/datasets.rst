@@ -8,22 +8,22 @@ Busan Beach data
 
 Ecoli Mekong River
 ================
-.. automodule:: ai4water.datasets
+.. automodule:: ai4water.datasets._mtropics
    :members: ecoli_mekong
 
 Ecoli Mekong River (Laos)
 =======================
-.. automodule:: ai4water.datasets
+.. automodule:: ai4water.datasets._mtropics
    :members: ecoli_mekong_laos
 
 Ecoli Houay Pano (Laos)
 =======================
-.. automodule:: ai4water.datasets
+.. automodule:: ai4water.datasets._mtropics
    :members: ecoli_houay_pano
 
 Ecoli data from Mekong river (2016)
 ==================================
-.. automodule:: ai4water.datasets
+.. automodule:: ai4water.datasets._mtropics
    :members: ecoli_mekong_2016
 
 Datasets

@@ -52,16 +52,19 @@ class MakeHRUs(object):
         'unique_lu_soil_slope',
     ]
 
-    def __init__(self,
-                 hru_definition:str,
-                 index:dict,
-                 soil_shape: Union[dict, None] = None,
-                 slope_shape: Union[dict, None]=None,
-                 subbasins_shape: Union[None, dict] = None,
-                 verbosity: int = 1
+    def __init__(
+            self,
+            hru_definition:str,
+            index:dict,
+            soil_shape: Union[dict, None] = None,
+            slope_shape: Union[dict, None]=None,
+            subbasins_shape: Union[None, dict] = None,
+            save:bool = True,
+            verbosity: int = 1
                  ):
         """
-        Arguments:
+        Parameters
+        ----------
             hru_definition :
                 hru definition. For valid hru_definitions check `MakeHRUs.HRU_DEFINITIONS`
             index :
@@ -90,6 +93,7 @@ class MakeHRUs(object):
 
                 >>> {'shapefile': os.path.join(shapefile_paths, 'subbasins.shp'), 'feature': 'id'}
 
+            save : bool
             verbosity : Determines verbosity.
         """
 
@@ -120,6 +124,7 @@ class MakeHRUs(object):
         self.hru_geoms = OrderedDict()
         self.all_hrus = []
         self.hru_names = []
+        self.save = save
         self.verbosity = verbosity
 
         st, en = list(index.keys())[0], list(index.keys())[-1]
@@ -136,8 +141,11 @@ class MakeHRUs(object):
     def call(self, plot_hrus=True):
         """
         Makes the HRUs.
-        Arguments:
-            plot_hrus : If true, the exact area hrus will be plotted as well.
+
+        Parameters
+        ----------
+            plot_hrus :
+                If true, the exact area hrus will be plotted as well.
         """
         for _yr, shp_file in self.index.items():
 
@@ -146,7 +154,7 @@ class MakeHRUs(object):
 
             if plot_hrus:
                 self.plot_hrus(year=_yr, _polygon_dict=self.hru_geoms, nrows=3, ncols=4,
-                               bbox=self.slope_shape, annotate=False, save=False,
+                               bbox=self.slope_shape, annotate=False,
                                name=self.hru_definition)
         return
 
@@ -324,7 +332,7 @@ class MakeHRUs(object):
         return
 
     def plot_hrus(self, year, bbox, _polygon_dict, annotate=False, nrows=3,
-                  ncols=4, save=False, name='',
+                  ncols=4, name='',
                   annotate_missing_hru=False):
 
         polygon_dict = OrderedDict()
@@ -390,12 +398,12 @@ class MakeHRUs(object):
 
         figure.suptitle('HRUs for year {}'.format(year), fontsize=22)
         # plt.title('HRUs for year {}'.format(year), fontsize=22)
-        if save:
+        if self.save:
             name = 'hrus_{}.png'.format(year) if name is None else name + str(year)
             plt.savefig('plots/' + name)
         plt.show()
 
-    def plot_as_ts(self, save=False, name=None, show=True, **kwargs):
+    def plot_as_ts(self, name=None, show=True, **kwargs):
         """hru_object.plot_as_ts(save=True, min_xticks=3, max_xticks=4"""
 
         figsize = kwargs.get('figsize', (12, 6))
@@ -429,7 +437,7 @@ class MakeHRUs(object):
             axis.xaxis.set_major_formatter(fmt)
         if title:
             plt.suptitle('Variation of Area (acre) of HRUs with time')
-        if save:
+        if self.save:
             if name is None:
                 name = self.hru_definition
             plt.savefig(f'{name}_hru_as_ts.png', dpi=300, bbox_inches=bbox_inches)
@@ -442,9 +450,16 @@ class MakeHRUs(object):
     def plot_hru_evolution(self, hru_name, make_gif=False):
         """
         plots how the hru evolved during the years
-        :param hru_name: str, name of hru to be plotted
-        :param make_gif: bool, if True, a gif file will be created from evolution plots
-        :return: plots the hru.
+
+        Parameters
+        ----------
+            hru_name : str,
+                name of hru to be plotted
+            make_gif : bool
+                if True, a gif file will be created from evolution plots
+
+        Returns
+        -------
         """
         for yr in self.index.keys():
             y = str(yr)[2:] + '_'
@@ -474,11 +489,14 @@ class MakeHRUs(object):
         plot_shapefile(shp_file, show_all_together)
         return
 
-    def plot_hru(self, hru_name, bbox=None, save=False):
+    def plot_hru(self, hru_name, bbox=None):
         """
-        plot only one hru from `hru_geoms`. The value of each key in hru_geoms is a list with three shapes
-        :usage
-          self.plot_an_hru(self.hru_names[0], bbox=True)
+        plot only one hru from `hru_geoms`.
+        The value of each key in hru_geoms is a list with three shapes
+
+        Examples
+        --------
+          >>> self.plot_an_hru(self.hru_names[0], bbox=True)
         """
         shape_list = self.hru_geoms[hru_name]
 
@@ -511,7 +529,7 @@ class MakeHRUs(object):
                 axs.set_ylim([bbox[1], bbox[3]])
                 axs.set_xlim([bbox[0], bbox[2]])
 
-        if save:
+        if self.save:
             plt.savefig('plots/' + hru_name + '.png')
         plt.show()
         return
@@ -520,7 +538,6 @@ class MakeHRUs(object):
                  year:int,
                  n_merge:int=0,
                  title:bool=False,
-                 save:bool=False,
                  name:str=None,
                  show:bool = True,
                  **kwargs):
@@ -530,14 +547,18 @@ class MakeHRUs(object):
         Draws a pie chart showing relative area of HRUs for a particular year.
         Since the hrus can change with time, selecting one year is based on supposition
         that area of hrus remain constant during the whole year.
-        Arguments:
-            year : int, the year for which area of hrus will be used.
-            n_merge : number of hrus to merge
+
+        Parameters
+        ----------
+            year : int,
+                the year for which area of hrus will be used.
+            n_merge :
+                number of hrus to merge
             title :
-            save :
             name :
             show :
-            kwargs : Following keyword arguments are allowed
+            kwargs :
+                Following keyword arguments are allowed
                 shadow
                 strartangle
                 autopct
@@ -582,4 +603,4 @@ class MakeHRUs(object):
                    labels=labels_n,
                    explode=tuple(explode),
                    autopct=autopct, shadow=shadow, startangle=startangle, textprops=textprops,
-                   title=title, name=name, save=save, show=show)
+                   title=title, name=name, save=self.save, show=show)

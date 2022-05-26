@@ -476,12 +476,15 @@ class _NormalizedGate(Layer):
 
 class _MCLSTMCell(Layer):
     """
-    m_inp = tf.range(50, dtype=tf.float32)
-    m_inp = tf.reshape(m_inp, (5, 10, 1))
-    aux_inp = tf.range(150, dtype=tf.float32)
-    aux_inp = tf.reshape(aux_inp, (5, 10, 3))
-    cell = _MCLSTMCell(1, 3, 8)
-    m_out_, ct_ = cell(m_inp, aux_inp)
+
+    Examples
+    --------
+        m_inp = tf.range(50, dtype=tf.float32)
+        m_inp = tf.reshape(m_inp, (5, 10, 1))
+        aux_inp = tf.range(150, dtype=tf.float32)
+        aux_inp = tf.reshape(aux_inp, (5, 10, 3))
+        cell = _MCLSTMCell(1, 3, 8)
+        m_out_, ct_ = cell(m_inp, aux_inp)
     """
     def __init__(
             self,
