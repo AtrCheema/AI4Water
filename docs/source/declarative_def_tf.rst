@@ -1,7 +1,7 @@
+.. _dec_def_tf:
+
 declarative model definition for tensorflow
 *******************************************
-
-
 
 We can construct a normal layered model using keras layers by placing the layers in a dictionary. The keys in the
 dictionary must be a keras layer and optionally can have an identifier separated by an underscore `_` in order to 

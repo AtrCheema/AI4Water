@@ -23,6 +23,9 @@ class HARHNModel(Model):
         dev = torch.device("cpu")
         if use_cuda and torch.cuda.is_available():
             dev = torch.device("cuda")
+        else:
+            # so that use_cuda is not set incorrectly to learner
+            use_cuda = False
 
         self.dev = dev
 

@@ -84,7 +84,8 @@ class Model(MODEL, BaseModel):
                 patience=self.config['patience'],
                 path=self.path,
                 use_cuda=False,
-                wandb_config=self.config['wandb_config']
+                wandb_config=self.config['wandb_config'],
+                verbosity=self.verbosity
             )
 
         if self.category == "DL":
@@ -460,6 +461,9 @@ class Model(MODEL, BaseModel):
         return self.call_250(*args, **kwargs)
 
     def call_270(self, *args, **kwargs):
+        return self.call_250(*args, **kwargs)
+
+    def call_290(self, *args, **kwargs):
         return self.call_250(*args, **kwargs)
 
     def call_280(self, *args, **kwargs):

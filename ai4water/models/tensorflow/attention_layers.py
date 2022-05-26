@@ -1,4 +1,4 @@
-__all__ = ["attn_layers"]
+__all__ = ["attn_layers", "SelfAttention", "AttentionLSTM"]
 
 
 from tensorflow.python.ops import math_ops
@@ -26,117 +26,94 @@ concatenate = tf.keras.layers.concatenate
 # https://lilianweng.github.io/lil-log/2018/06/24/attention-attention.html
 # Raffel, SeqWeightedSelfAttention and HierarchicalAttention appear to be very much similar.
 
-class AttentionRaffel(Layer):
-    """
-    Keras Layer that implements an Attention mechanism for temporal data.
-    Supports Masking.
-    Follows the work of Raffel et al., 2015 https://arxiv.org/pdf/1512.08756.pdf
-    # Input shape
-        3D tensor with shape: `(samples, steps, features)`.
-    # Output shape
-        2D tensor with shape: `(samples, features)`.
-    :param kwargs:
-    Just put it on top of an RNN Layer (GRU/LSTM/SimpleRNN) with return_sequences=True.
-    The dimensions are inferred based on the output shape of the RNN.
-    Example:
-        model.add(LSTM(64, return_sequences=True))
-        model.add(Attention())
-    """
-    def __init__(self, step_dim,
-                 W_regularizer=None, b_regularizer=None,
-                 W_constraint=None, b_constraint=None,
-                 bias=True, **kwargs):
-        self.supports_masking = True
-        self.init = initializers.get('glorot_uniform')
-
-        self.W_regularizer = regularizers.get(W_regularizer)
-        self.b_regularizer = regularizers.get(b_regularizer)
-
-        self.W_constraint = constraints.get(W_constraint)
-        self.b_constraint = constraints.get(b_constraint)
-
-        self.bias = bias
-        self.step_dim = step_dim
-        self.features_dim = 0
-        super(AttentionRaffel, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-
-        self.W = self.add_weight(shape=(input_shape[-1], ),
-                                 initializer=self.init,
-                                 name='{}_W'.format(self.name),
-                                 regularizer=self.W_regularizer,
-                                 constraint=self.W_constraint)
-        self.features_dim = input_shape[-1]
-
-        if self.bias:
-            self.b = self.add_weight(shape=(input_shape[1],),
-                                     initializer='zero',
-                                     name='{}_b'.format(self.name),
-                                     regularizer=self.b_regularizer,
-                                     constraint=self.b_constraint)
-        else:
-            self.b = None
-
-        self.built = True
-
-    def compute_mask(self, input, input_mask=None):
-        return None
-
-    def __call__(self, x, mask=None):
-        # TODO different result when using call()
-        if not self.built:
-            self._maybe_build(x)
-
-        features_dim = self.features_dim
-        step_dim = self.step_dim
-
-        eij = K.reshape(K.dot(K.reshape(x, (-1, features_dim)),
-                        K.reshape(self.W, (features_dim, 1))), (-1, step_dim))
-
-        if self.bias:
-            eij += self.b
-
-        eij = tf.tanh(eij, name="AttentionRaffel_tanh")
-
-        a = math_ops.exp(eij, name="AttentionRaffel_exp")
-
-        if mask is not None:
-            a *= K.cast(mask, K.floatx())
-
-        a = tf.divide(a, K.cast(math_ops.reduce_sum(a, axis=1, keepdims=True,
-                                                    name="AttentionRaffel_sum") + K.epsilon(), K.floatx()),
-                      name="AttentionRaffel_a")
-
-        a = array_ops.expand_dims(a, axis=-1, name="AttentionRaffel_expand_dims")
-        weighted_input = x * a
-        return K.sum(weighted_input, axis=1)
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0],  self.features_dim
-
 
 class SelfAttention(Layer):
+    """
+    SelfAttention is originally proposed by Cheng et al., 2016 [1]_
+    Here using the implementation of Philipperemy from
+    [2]_ with modification
+    that `attn_units` and `attn_activation` attributes can be changed.
+    The default values of these attributes are same as used by the auther.
+    However, there is another implementation of SelfAttention at [3]_
+    but the author have cited a different paper i.e. Zheng et al., 2018 [4]_ and
+    named it as additive attention.
+    A useful discussion about this (in this class) implementation can be found at [5]_
 
-    def __init__(self, attn_units=128, attn_activation='tanh', context='', **kwargs):
-        self.attn_units = attn_units
-        self.attn_activation = attn_activation
-        self.context = context
+    Examples
+    --------
+    >>> from ai4water.models.tensorflow import SelfAttention
+    >>> from tensorflow.keras.layers import Input, LSTM, Dense
+    >>> from tensorflow.keras.models import Model
+    >>> import numpy as np
+    >>> inp = Input(shape=(10, 1))
+    >>> lstm = LSTM(2, return_sequences=True)(inp)
+    >>> sa, _ = SelfAttention()(lstm)
+    >>> out = Dense(1)(sa)
+    ...
+    >>> model = Model(inputs=inp, outputs=out)
+    >>> model.compile(loss="mse")
+    ...
+    >>> print(model.summary())
+    ...
+    >>> x = np.random.random((100, 10, 1))
+    >>> y = np.random.random((100, 1))
+    >>> h = model.fit(x=x, y=y)
+
+    # using with ai4water's Model
+    >>> from ai4water import Model
+    >>> seq_len = 20
+    >>> model = Model(
+    ...    model = {"layers": {
+    ...         "Input_1": {"shape": (seq_len, 1)},
+    ...         "LSTM_1": {"config": {"units": 16, "return_sequences": True}, "inputs": "Input_1"},
+    ...         "SelfAttention_1": {"config": {},
+    ...                             "outputs": ["attention_vector1", "attention_weights1"]},
+    ...         "Dense": {"config": {"units": 1}, "inputs": "attention_vector1"}
+    ...     }})
+
+    References
+    ----------
+    .. [1] https://arxiv.org/pdf/1601.06733.pdf
+    .. [2] https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention/attention.py
+    .. [3] https://github.com/CyberZHG/keras-self-attention/blob/master/keras_self_attention/seq_self_attention.py
+    .. [4] https://arxiv.org/pdf/1806.01264.pdf
+    .. [5] https://github.com/philipperemy/keras-attention-mechanism/issues/14
+    """
+    def __init__(
+            self,
+            units:int = 128,
+            activation:str = 'tanh',
+            return_attention_weights:bool = True,
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+            units : int, optional (default=128)
+                number of units for attention mechanism
+            activation : str, optional (default="tanh")
+                activation function to use in attention mechanism
+            return_attention_weights : bool, optional (default=True)
+                if True, then it returns two outputs, first is attention vector
+                of shape (batch_size, units) and second is of shape (batch_size, time_steps)
+                If False, then returns only attention vector.
+            **kwargs :
+                any additional keyword arguments for keras Layer.
+        """
+        self.units = units
+        self.attn_activation = activation
+        self.return_attention_weights = return_attention_weights
         super().__init__(**kwargs)
 
-    def __call__(self, hidden_states):
+    def build(self, input_shape):
+        hidden_size = int(input_shape[-1])
+        self.d1 = Dense(hidden_size, use_bias=False)
+        self.act = Activation('softmax')
+        self.d2 = Dense(self.units, use_bias=False, activation=self.attn_activation)
+        return
+
+    def call(self, hidden_states, *args, **kwargs):
         """
-        SelfAttention is originally proposed by Cheng et al., 2016 https://arxiv.org/pdf/1601.06733.pdf
-        Here using the implementation of Philipperemy from
-        https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention/attention.py with modification
-        that `attn_units` and `attn_activation` attributes can be changed. The default values of these attributes are same
-        as used by the auther. However, there is another implementation of SelfAttention at
-        https://github.com/CyberZHG/keras-self-attention/blob/master/keras_self_attention/seq_self_attention.py
-        but the author have cited a different paper i.e. Zheng et al., 2018 https://arxiv.org/pdf/1806.01264.pdf and
-        named it as additive attention.
-        A useful discussion about this (in this class) implementation can be found at
-        https://github.com/philipperemy/keras-attention-mechanism/issues/14
         Many-to-one attention mechanism for Keras.
         @param hidden_states: 3D tensor with shape (batch_size, time_steps, input_dim).
         @return: 2D tensor with shape (batch_size, 128)
@@ -148,16 +125,19 @@ class SelfAttention(Layer):
         #              hidden_states            dot               W            =>           score_first_part
         # (batch_size, time_steps, hidden_size) dot (hidden_size, hidden_size) => (batch_size, time_steps, hidden_size)
         # W is the trainable weight matrix of attention Luong's multiplicative style score
-        score_first_part = Dense(hidden_size, use_bias=False, name='attention_score_vec' + self.context)(hidden_states)
+        score_first_part = self.d1(hidden_states)
         #            score_first_part           dot        last_hidden_state     => attention_weights
         # (batch_size, time_steps, hidden_size) dot   (batch_size, hidden_size)  => (batch_size, time_steps)
-        h_t = Lambda(lambda x: x[:, -1, :], output_shape=(hidden_size,), name='last_hidden_state' + self.context)(hidden_states)
-        score = dot([score_first_part, h_t], [2, 1], name='attention_score' + self.context)
-        attention_weights = Activation('softmax', name='attention_weight' + self.context)(score)
+        h_t = Lambda(lambda x: x[:, -1, :], output_shape=(hidden_size,))(hidden_states)
+        score = dot([score_first_part, h_t], [2, 1])
+        attention_weights =self.act(score)
         # (batch_size, time_steps, hidden_size) dot (batch_size, time_steps) => (batch_size, hidden_size)
-        context_vector = dot([hidden_states, attention_weights], [1, 1], name='context_vector' + self.context)
-        pre_activation = concatenate([context_vector, h_t], name='attention_output' + self.context)
-        attention_vector = Dense(self.attn_units, use_bias=False, activation=self.attn_activation, name='attention_vector' + self.context)(pre_activation)
+        context_vector = dot([hidden_states, attention_weights], [1, 1])
+        pre_activation = concatenate([context_vector, h_t])
+        attention_vector = self.d2(pre_activation)
+
+        if self.return_attention_weights:
+            return attention_vector, attention_weights
         return attention_vector
 
 
@@ -944,11 +924,13 @@ class ChannelAttention(layers.Layer):
 
 class SpatialAttention(layers.Layer):
     """Code adopted from https://github.com/zhangkaifang/CBAM-TensorFlow2.0 .
-    The time step (spatial) attention module generates a concatenated feature descriptor [F'Tavg;F'Tmax]∈R2×T by
-    applying average pooling and max pooling along the feature axis, followed by a standard convolution layer.[1].
+    The time step (spatial) attention module generates a concatenated feature
+    descriptor [F'Tavg;F'Tmax]∈R2×T by applying average pooling and max pooling
+    along the feature axis, followed by a standard convolution layer.[6].
 
-    Cheng, Y., Liu, Z., & Morimoto, Y. (2020). Attention-Based SeriesNet: An Attention-Based Hybrid Neural Network Model
-    for Conditional Time Series Forecasting. Information, 11(6), 305.
+    .. [6] Cheng, Y., Liu, Z., & Morimoto, Y. (2020). Attention-Based SeriesNet:
+        An Attention-Based Hybrid Neural Network Model
+        for Conditional Time Series Forecasting. Information, 11(6), 305.
     """
     def __init__(self, conv_dim,  kernel_size=7, **kwargs):
 
@@ -971,9 +953,111 @@ class SpatialAttention(layers.Layer):
 
         return out
 
+
+class AttentionLSTM(Layer):
+    """
+    This layer combines Self Attention [7] mechanism with LSTM. It uses one separate
+    LSTM+SelfAttention block for each input feature. The output from each
+    LSTM+SelfAttention block is concatenated and returned. The layer expects
+    same input dimension as by LSTM i.e. (batch_size, time_steps, input_features).
+    For usage see example [8]
+
+    References
+    ----------
+    .. [7] https://ai4water.readthedocs.io/en/dev/models/layers.html#selfattention
+
+    .. [8] https://ai4water.readthedocs.io/en/dev/auto_examples/attention_lstm.html#
+    """
+    def __init__(
+            self,
+            num_inputs: int,
+            lstm_units: int,
+            attn_units: int = 128,
+            attn_activation: str = "tanh",
+            lstm_kwargs:dict = None,
+            **kwargs
+    ):
+        """
+        Parameters
+        ----------
+            num_inputs: int
+                number of inputs
+            lstm_units : int
+                number of units in LSTM layers
+            attn_units : int, optional (default=128)
+                number of units in SelfAttention layers
+            attn_activation : str, optional (default="tanh")
+                activation function in SelfAttention layers
+            lstm_kwargs : dict, optional (default=None)
+                any keyword arguments for LSTM layer.
+
+        Example
+        -------
+        >>> import numpy as np
+        >>> from tensorflow.keras.models import Model
+        >>> from tensorflow.keras.layers import Input, Dense
+        >>> from ai4water.models.tensorflow import AttentionLSTM
+        >>> seq_len = 20
+        >>> n_inputs = 2
+        >>> inp = Input(shape=(10, n_inputs))
+        >>> outs = AttentionLSTM(n_inputs, 16)(inp)
+        >>> outs = Dense(1)(outs)
+        ...
+        >>> model = Model(inputs=inp, outputs=outs)
+        >>> model.compile(loss="mse")
+        ...
+        >>> print(model.summary())
+        ... # define input
+        >>> x = np.random.random((100, seq_len, num_inputs))
+        >>> y = np.random.random((100, 1))
+        >>> h = model.fit(x=x, y=y)
+
+        # using with ai4water's Modle
+
+        >>> from ai4water import Model
+        >>> model = Model(
+        ...    model = {"layers": {
+        ...        "Input_1": {"shape": (seq_len, num_inputs)},
+        ...        "AttentionLSTM": {"num_inputs": num_inputs, "lstm_units": 16},
+        ...        "Dense": 1 }})
+        >>> model.fit(x=x, y=y)
+
+        """
+        super(AttentionLSTM, self).__init__(**kwargs)
+        self.num_inputs = num_inputs
+        self.lstm_units = lstm_units
+        self.attn_units = attn_units
+        self.attn_activation = attn_activation
+
+        if lstm_kwargs is None:
+            lstm_kwargs = {}
+
+        assert isinstance(lstm_kwargs, dict)
+        self.lstm_kwargs = lstm_kwargs
+
+        self.lstms = []
+        self.sas = []
+        for i in range(self.num_inputs):
+            self.lstms.append(tf.keras.layers.LSTM(self.lstm_units, return_sequences=True, **self.lstm_kwargs))
+            self.sas.append(SelfAttention(self.attn_units, self.attn_activation))
+
+    def __call__(self, inputs, *args, **kwargs):
+
+        assert self.num_inputs == inputs.shape[-1], f"""
+        num_inputs {self.num_inputs} does not match with input features.
+        Inputs are of shape {inputs.shape}"""
+
+        outs = []
+        for i in range(inputs.shape[-1]):
+            lstm = self.lstms[i](tf.expand_dims(inputs[..., i], axis=-1))
+            out, _ = self.sas[i](lstm)
+            outs.append(out)
+
+        return tf.concat(outs, axis=-1)
+
+
 class attn_layers(object):
 
-    AttentionRaffel = AttentionRaffel
     SelfAttention = SelfAttention
     SeqSelfAttention = SeqSelfAttention
     SnailAttention = SnailAttention
@@ -982,3 +1066,4 @@ class attn_layers(object):
     HierarchicalAttention = HierarchicalAttention
     SpatialAttention = SpatialAttention
     ChannelAttention = ChannelAttention
+    AttentionLSTM = AttentionLSTM

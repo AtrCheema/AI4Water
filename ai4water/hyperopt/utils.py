@@ -310,11 +310,11 @@ def save_skopt_results(skopt_results, opt_path):
 
     sr_res = SerializeSKOptResults(skopt_results)
 
-    try:  # adding .hpo extension so that no other file/folder exists with same name
-        fname = os.path.join(opt_path, os.path.basename(opt_path) + ".hpo")
-        dump(skopt_results, fname)
-    except PicklingError:
-        print("could not pickle results")
+    # try:  # adding .hpo extension so that no other file/folder exists with same name
+    #     fname = os.path.join(opt_path, os.path.basename(opt_path) + ".hpo")
+    #     dump(skopt_results, fname)
+    # except PicklingError:
+    #     print("could not pickle results")
 
     try:
         with open(fname + '.json', 'w') as fp:
@@ -947,26 +947,3 @@ def space_from_list(v: list, k: str):
         else:
             raise NotImplementedError
     return s
-
-
-def plot_edf(y, num_points=100):
-    """
-    Plots the objective value empirical distribution function on hyperparameter
-    optimization. Implementation is taken from optuna.
-    """
-    x = np.linspace(np.min(y), np.max(y), num_points)
-
-    y_values = np.sum(y[:, np.newaxis] <= x, axis=0) / y.size
-
-    _, ax = plt.subplots()
-    ax.grid()
-    ax = plot(x,
-              y_values,
-              '-',
-              show=False,
-              title="Empirical Distribution Function Plot",
-              ylabel="Cumulative Probability",
-              xlabel="Objective Value",
-              ax=ax)
-
-    return ax

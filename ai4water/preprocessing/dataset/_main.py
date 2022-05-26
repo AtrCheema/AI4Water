@@ -156,6 +156,7 @@ class DataSet(_DataSet):
                     to a directory, it is supposed that each file in the directory refers to one example.
                 - ai4water dataset : name of any of dataset name from ai4water.datasets
                 - name of .h5 file
+
             input_features : Union[list, dict, str, None]
                 features to use as input. If `data` is pandas dataframe
                 then this is list of column names from `data` to be used as input.
@@ -193,8 +194,8 @@ class DataSet(_DataSet):
                 must not be given. If indices are given for validation, then indices
                 for training must also be given and  val_fraction must not be given.
                 Therefore, the possible keys in indices dictionary are follwoing 
-                    - 'training'
-                    - 'training' and 'validation'
+                    - ``training``
+                    - ``training`` and ``validation``
             intervals :
                 tuple of tuples where each tuple consits of two integers, marking
                 the start and end of interval. An interval here means indices
@@ -204,6 +205,7 @@ class DataSet(_DataSet):
                 rows in input data during data_preparation.
                 For further usage see `examples/using_intervals`
             shuffle : bool
+                whether to shuffle the samples or not
             allow_nan_labels : bool
                 whether to allow examples with nan labels or not.
                 if it is > 0, and if target values contain Nans, those examples
@@ -277,6 +279,7 @@ class DataSet(_DataSet):
                 random seed for reproducibility
             verbosity : int
             mode : str
+                either ``regression`` or ``classification``
             category : str
             save : bool
                 whether to save the data in an h5 file or not.

@@ -1,6 +1,7 @@
-import unittest
+
 import os
 import site
+import unittest
 
 import pandas as pd
 
@@ -10,8 +11,8 @@ site.addsitedir(ai4_dir)
 import warnings
 warnings.filterwarnings("ignore")
 
-
 from ai4water.datasets import busan_beach
+from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import dateandtime_now
 from ai4water.hyperopt import Categorical, Integer, Real
 from ai4water.experiments import MLRegressionExperiments, TransformationExperiments
@@ -43,6 +44,24 @@ class TestExperiments(unittest.TestCase):
                                                  cutoff_val=0.01, show=False)
         comparisons.taylor_plot(show=False)
         self.assertGreater(len(best_models), 1), len(best_models)
+        return
+
+    def test_with_xy(self):
+
+        comparisons = MLRegressionExperiments(
+            input_features=input_features, output_features=outputs,
+            nan_filler={'method': 'SimpleImputer', 'imputer_args': {'strategy': 'mean'},
+                        'features': input_features},
+            verbosity=0
+        )
+
+        ds = DataSet(df, input_features=input_features, output_features=outputs)
+        x,y = ds.training_data()
+        comparisons.fit(x=x, y=y,
+                        validation_data=ds.validation_data(),
+                        include=['GaussianProcessRegressor', 'XGBRFRegressor']
+                        )
+
         return
 
     def test_optimize(self):

@@ -17,7 +17,7 @@ except ImportError:
 from .nn_tools import NN
 from .backend import sklearn_models
 from .utils.utils import make_model
-from .postprocessing import ProcessResults
+from .postprocessing import ProcessPredictions
 from .preprocessing.transformations import Transformations
 from .utils.utils import maybe_three_outputs, get_version_info
 from .models.tensorflow.custom_training import train_step, test_step
@@ -47,28 +47,30 @@ class BaseModel(NN):
 
     """ Model class that implements logic of AI4Water. """
 
-    def __init__(self,
-                 model: Union[dict, str, Callable] = None,
-                 x_transformation: Union[str, dict, list] = None,
-                 y_transformation:Union[str, dict, list] = None,
-                 lr: float = 0.001,
-                 optimizer='Adam',
-                 loss: Union[str, Callable] = 'mse',
-                 quantiles=None,
-                 epochs: int = 14,
-                 min_val_loss: float = 0.0001,
-                 patience: int = 100,
-                 save_model: bool = True,
-                 monitor: Union[str, list] = None,
-                 val_metric: str = None,
-                 cross_validator: dict = None,
-                 wandb_config: dict = None,
-                 seed: int = 313,
-                 prefix: str = None,
-                 path: str = None,
-                 verbosity: int = 1,
-                 accept_additional_args: bool = False,
-                 **kwargs):
+    def __init__(
+            self,
+            model: Union[dict, str, Callable] = None,
+            x_transformation: Union[str, dict, list] = None,
+            y_transformation:Union[str, dict, list] = None,
+            lr: float = 0.001,
+            optimizer='Adam',
+            loss: Union[str, Callable] = 'mse',
+            quantiles=None,
+            epochs: int = 14,
+            min_val_loss: float = 0.0001,
+            patience: int = 100,
+            save_model: bool = True,
+            monitor: Union[str, list] = None,
+            val_metric: str = None,
+            cross_validator: dict = None,
+            wandb_config: dict = None,
+            seed: int = 313,
+            prefix: str = None,
+            path: str = None,
+            verbosity: int = 1,
+            accept_additional_args: bool = False,
+            **kwargs
+    ):
         """
         The Model class can take a large number of possible arguments depending
         upon the machine learning model/algorithm used. Not all the arguments
@@ -412,7 +414,7 @@ class BaseModel(NN):
     def is_binary(self):
         if hasattr(self, 'dh_'):
             return self.dh_.is_binary
-        raise NotImplementedError
+        return None
 
     @property
     def is_multiclass(self)->bool:
@@ -425,7 +427,7 @@ class BaseModel(NN):
 
     @property
     def classes_(self):
-        if hasattr(self, 'dh_'):
+        if self.mode == "classification" and  hasattr(self, 'dh_'):
             return self.dh_.classes
         elif self.category == "ML" and self.mode == "classification":
             return self._model.classes_
@@ -443,7 +445,7 @@ class BaseModel(NN):
             if self.dh_.data is None:
                 return None
             return self.dh_.is_multilabel
-        raise NotImplementedError
+        return None
 
     def _get_dummy_input_shape(self):
         raise NotImplementedError
@@ -633,10 +635,12 @@ class BaseModel(NN):
 
     def get_val_data(self, validation_data=None):
         """Finds out if there is validation_data"""
+        user_defined = True
         if validation_data is None:
             # when validation data is not given in kwargs and validation_data method is overwritten
             try:
                 validation_data = self.validation_data()
+                user_defined = False
             # when x,y is user defined then validation_data() can give this error
             except DataNotFound:
                 validation_data = None
@@ -649,7 +653,7 @@ class BaseModel(NN):
             elif hasattr(x, '__len__') and len(x)==0:
                 return None
             else:  # x,y is numpy array
-                if self.is_binary:
+                if not user_defined and self.is_binary:
                     if y.shape[1] > self.output_shape[1]:
                         y = np.argmax(y, 1).reshape(-1,1)
 
@@ -1013,7 +1017,7 @@ class BaseModel(NN):
                  callbacks=None,
                  **kwargs):
 
-        visualizer = ProcessResults(path=self.path)
+        visualizer = ProcessPredictions(mode=self.mode, path=self.path, show=bool(self.verbosity))
         self.is_training = True
 
         source = 'training'
@@ -1023,7 +1027,8 @@ class BaseModel(NN):
         inputs, outputs, _, _, user_defined_x = self._fetch_data(source, x, y, data)
 
         num_examples = _find_num_examples(inputs)
-        self._maybe_reduce_nquantiles(num_examples)
+        if num_examples:  # for tf.data, we can't find num_examples
+            self._maybe_reduce_nquantiles(num_examples)
 
         # apply preprocessing/feature engineering if required.
         inputs = self._fit_transform_x(inputs)
@@ -1061,7 +1066,7 @@ class BaseModel(NN):
             history = self._fit(inputs, outputs, callbacks=callbacks, **kwargs)
 
             if self.verbosity >= 0:
-                visualizer.plot_loss(history.history, show=self.verbosity)
+                visualizer.plot_loss(history.history)
 
             self.load_best_weights()
         else:
@@ -1274,27 +1279,40 @@ class BaseModel(NN):
 
         return cv_scores
 
-    def fit_on_all_training_data(self, data=None):
-        """Fits the model on training+validation data"""
+    def fit_on_all_training_data(self, data=None, **kwargs):
+        """trains the model on training+validation data"""
         x_train, y_train = self.training_data(data=data)
         x_val, y_val = self.validation_data()
-        if not isinstance(x_train, np.ndarray):
-            raise NotImplementedError
 
-        x, y = x_train, y_train
-        # if not validation data is available then use only training data
-        if x_val is not None:
-            if hasattr(x_val, '__len__') and len(x_val)>0:
-                x = np.concatenate([x_train, x_val])
+        if isinstance(x_train, list):
+            x = []
+            for val in range(len(x_train)):
+                if x_val is not None:
+                    _val = np.concatenate([x_train[val], x_val[val]])
+                    x.append(_val)
+                else:
+                    _val = x_train[val]
+
+            y = y_train
+            if hasattr(y_val, '__len__') and len(y_val) > 0:
                 y = np.concatenate([y_train, y_val])
+
+        elif isinstance(x_train, np.ndarray):
+            x, y = x_train, y_train
+            # if not validation data is available then use only training data
+            if x_val is not None:
+                if hasattr(x_val, '__len__') and len(x_val)>0:
+                    x = np.concatenate([x_train, x_val])
+                    y = np.concatenate([y_train, y_val])
+        else:
+            raise NotImplementedError
 
         if self.is_binary:
             if len(y) != y.size: # when sigmoid is used for binary
                 # convert the output to 1d
                 y = np.argmax(y, 1).reshape(-1, 1)
 
-        return self.fit(x=x, y=y)
-
+        return self.fit(x=x, y=y, **kwargs)
 
     def _maybe_change_residual_threshold(self, outputs) -> None:
         # https://stackoverflow.com/a/64396757/5982232
@@ -1365,9 +1383,7 @@ class BaseModel(NN):
                 outputs/true data corresponding to `x`
             data:
                 Raw unprepared data which will be fed to [DataSet][ai4water.preprocessing.DataSet]
-                to prepare x and y. If it is is a string then it will determine,
-                which data type to use. Allowed string values are `training`, `test` and
-                `validation`. If `x` and `y` are given, this argument will have no meaning.
+                to prepare x and y. If `x` and `y` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
                 evaluate. It can also be a list of metrics to evaluate. Any metric
@@ -1391,8 +1407,8 @@ class BaseModel(NN):
             by `evaluate` method of underlying model. Otherwise the model is evaluated
             for given metric or group of metrics and the result is returned
 
-        Example
-        -------
+        Examples
+        --------
             >>> from ai4water import Model
             >>> from ai4water.datasets import busan_beach
             >>> model = Model(model={"layers": {"Dense": 1}})
@@ -1400,14 +1416,12 @@ class BaseModel(NN):
 
             for evaluation on test data
 
-            >>> model.evaluate()
+            >>> model.evaluate(data=busan_beach())
             ...
-            ... #for evaluation on training data
-            >>> model.evaluate(data='training')
 
             evaluate on any metric from SeqMetrics_ library
 
-            >>> model.evaluate(metrics='pbias')
+            >>> model.evaluate(data=busan_beach(), metrics='pbias')
             ...
             ... # to evaluate on custom data, the user can provide its own x and y
             >>> new_inputs = np.random.random((10, 13))
@@ -1431,6 +1445,36 @@ class BaseModel(NN):
             https://seqmetrics.readthedocs.io/en/latest/cls.html#classificationmetrics
         """
         return self.call_evaluate(x=x, y=y, data=data, metrics=metrics, **kwargs)
+
+    def evaluate_on_training_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on training data.
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> model = Model(model={"layers": {"Dense": 1}})
+            >>> model.fit(data=busan_beach())
+            ... # for evaluation on training data
+            >>> model.evaluate_on_training_data(data=busan_beach())
+        """
+        x, y = self.training_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
+
+    def evaluate_on_validation_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on validation data."""
+        x, y = self.validation_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
+
+    def evaluate_on_test_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on test data."""
+        x, y = self.test_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
+
+    def evaluate_on_all_data(self, data, metrics=None, **kwargs):
+        """evaluates the model on all i.e. training+validation+test data."""
+        x, y = self.all_data(data=data)
+        return self.call_evaluate(x=x, y=y, metrics=metrics, **kwargs)
 
     def call_evaluate(self, x=None,y=None, data='test', metrics=None, **kwargs):
 
@@ -1478,13 +1522,13 @@ class BaseModel(NN):
 
     def _manual_eval(self, x, y, metrics):
         """manual evaluation"""
-        p = self.predict(x=x, return_true=False, process_results=False)
+        t, p = self.predict(x=x, y=y, return_true=True, process_results=False)
 
         if self.mode == "regression":
 
-            errs = RegressionMetrics(y, p)
+            errs = RegressionMetrics(t, p)
         else:
-            errs = ClassificationMetrics(y, p, multiclass=self.is_multiclass)
+            errs = ClassificationMetrics(t, p, multiclass=self.is_multiclass)
 
         if isinstance(metrics, str):
 
@@ -1499,7 +1543,7 @@ class BaseModel(NN):
                 results[m] = getattr(errs, m)()
 
         elif callable(metrics):
-            results = metrics(x, y)
+            results = metrics(x, t)
         else:
             raise ValueError(f"unknown metrics type {metrics}")
 
@@ -1513,6 +1557,7 @@ class BaseModel(NN):
             process_results: bool = True,
             metrics: str = "minimal",
             return_true: bool = False,
+            plots:Union[str, list] = None,
             **kwargs
     ):
         """
@@ -1525,14 +1570,6 @@ class BaseModel(NN):
             y:
                 Used for pos-processing etc. if given it will overrite `data`
             data:
-                It can either be a string indicating which data to use. In this
-                case, possible values are
-
-                - ``training``
-                - ``test``
-                - ``validation``
-
-                By default, ``test`` data is used for predictions.
                 It can also be unprepared/raw data which will be given to
                 :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x,y values.
@@ -1545,6 +1582,8 @@ class BaseModel(NN):
             return_true: bool
                 whether to return the true values along with predicted values
                 or not. Default is False, so that this method behaves sklearn type.
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             kwargs : any keyword argument for ``predict`` method.
 
         Returns:
@@ -1559,23 +1598,19 @@ class BaseModel(NN):
         >>> from ai4water.datasets import busan_beach
         >>> model = Model(model="XGBRegressor")
         >>> model.fit(data=busan_beach())
-        >>> pred = model.predict()
-
-        make predictions on training data
-
-        >>> pred = model.predict(data="training")
+        >>> pred = model.predict(data=busan_beach())
 
         get true values
 
-        >>> true, pred = model.predict(return_true=True)
+        >>> true, pred = model.predict(data=busan_beach(), return_true=True)
 
         postprocessing of results
 
-        >>> pred = model.predict(process_results=True)
+        >>> pred = model.predict(data=busan_beach(), process_results=True)
 
         calculate all metrics during postprocessing
 
-        >>> pred = model.predict(process_results=True, metrics="all")
+        >>> pred = model.predict(data=busan_beach(), process_results=True, metrics="all")
 
         using your own data
 
@@ -1585,13 +1620,15 @@ class BaseModel(NN):
 
         assert metrics in ("minimal", "all", "hydro_metrics")
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 data=data,
-                                 process_results=process_results,
-                                 metrics=metrics,
-                                 return_true=return_true,
-                                 **kwargs)
+        return self.call_predict(
+            x=x,
+            y=y,
+            data=data,
+            process_results=process_results,
+            metrics=metrics,
+            return_true=return_true,
+            plots=plots,
+            **kwargs)
 
     def predict_on_training_data(
             self,
@@ -1599,6 +1636,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """makes prediction on training data.
@@ -1613,20 +1651,23 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
-        ds = DataSet(data, **self.data_config)
 
-        x, y = ds.training_data()
+        x, y = self.training_data(data=data)
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
     def predict_on_validation_data(
             self,
@@ -1634,6 +1675,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """makes prediction on validation data.
@@ -1648,20 +1690,23 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
-        ds = DataSet(data, **self.data_config)
 
-        x, y = ds.validation_data()
+        x, y = self.validation_data(data=data)
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
     def predict_on_test_data(
             self,
@@ -1669,6 +1714,7 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """makes prediction on test data.
@@ -1683,20 +1729,23 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
-        ds = DataSet(data, **self.data_config)
 
-        x, y = ds.test_data()
+        x, y = self.test_data(data=data)
 
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
     def predict_on_all_data(
             self,
@@ -1704,13 +1753,11 @@ class BaseModel(NN):
             process_results=True,
             return_true=False,
             metrics="minimal",
+            plots: Union[str, list] = None,
             **kwargs
     ):
         """
-        This function first generates x,y pairs from ``data`` and then makes prediction on it.
-        The ``data`` is not divided into training,test sets. Moreover if target data contains
-        missing values, then predictions for that will also be made using corresponding input
-        data.
+        It makes prediction on training+validation+test data.
 
         Parameters
         ----------
@@ -1722,36 +1769,35 @@ class BaseModel(NN):
                 If true, the returned value will be tuple, first is true and second is predicted array
             metrics : str, optional
                 the metrics to calculate during post-processing
+            plots : optional (default=None)
+                The kind of of plots to draw. Only valid if post_process is True
             **kwargs :
                 any keyword argument for .predict method.
         """
-        data_config = self.data_config
 
-        data_config['train_fraction'] = 1.0
-        data_config['val_fraction'] = 0.0
-        data_config['allow_nan_labels'] = 2
-        data_config['indices'] = None
+        x, y = self.all_data(data=data)
 
-        ds = DataSet(data, **data_config)
+        return self.call_predict(
+            x=x,
+            y=y,
+            process_results=process_results,
+            return_true=return_true,
+            metrics=metrics,
+            plots=plots,
+            **kwargs
+        )
 
-        x, y = ds.training_data()
-
-        return self.call_predict(x=x,
-                                 y=y,
-                                 process_results=process_results,
-                                 return_true=return_true,
-                                 metrics=metrics,
-                                 **kwargs
-                                 )
-
-    def call_predict(self,
-                     x=None,
-                     y=None,
-                     data='test',
-                     process_results=True,
-                     metrics="minimal",
-                     return_true: bool = False,
-                     **kwargs):
+    def call_predict(
+            self,
+            x=None,
+            y=None,
+            data='test',
+            process_results=True,
+            metrics="minimal",
+            return_true: bool = False,
+            plots=None,
+            **kwargs
+    ):
 
         source = 'test'
         if isinstance(data, str) and data in ['training', 'validation', 'test']:
@@ -1838,13 +1884,15 @@ class BaseModel(NN):
             process_results = False
 
         # initialize post-processes
-        pp = ProcessResults(
+        pp = ProcessPredictions(
+            mode = self.mode,
             path=self.path,
             forecast_len=self.forecast_len,
             output_features=self.output_features,
             is_multiclass=self.is_multiclass,
-            verbosity=self.verbosity,
-            config=self.config
+            is_multilabel=self.is_multilabel,
+            plots=plots,
+            show=bool(self.verbosity),
         )
 
         if self.quantiles is None:
@@ -1856,25 +1904,12 @@ class BaseModel(NN):
             if process_results: # if mode has not been inferred yet, try to infer it
                 if self.mode is None:  # because metrics cannot be calculated with wrong mode
                     if len(self.classes_) == 0:
-                        self.config['mode'] = "regression"
+                        pp.mode = "regression"
 
-                if self.mode == 'regression':
-                    pp.process_rgr_results(true_outputs,
-                                                predicted,
-                                                metrics=metrics,
-                                                prefix=prefix + '_',
-                                                index=dt_index,
-                                                user_defined_data=user_defined_data)
-                else:
-                    pp.process_cls_results(true_outputs,
-                                               predicted,
-                                               metrics=metrics,
-                                               prefix=prefix,
-                                               index=dt_index,
-                                               user_defined_data=user_defined_data)
+                pp(true_outputs, predicted, metrics, prefix, dt_index,  inputs)
+                if self.mode == 'classification':
 
                     if self.category == 'ML':  # todo, also plot for DL
-                        pp.confusion_matrx(true_outputs, predicted)
                         # if model does not have predict_proba method, we can't plot following
                         if hasattr(self._model, 'predict_proba'):
                             # if data is user defined, we don't know whether it is binary or not
@@ -2231,7 +2266,9 @@ class BaseModel(NN):
                 weights are updated from model.w_path directory. For neural
                 network based models, the best weights are updated if more
                 than one weight file is present in model.w_path.
-        Returns:
+
+        Returns
+        -------
             None
         """
         if weight_file is None:
@@ -2949,6 +2986,33 @@ class BaseModel(NN):
         """This method should return x,y pairs of validation data"""
         return self.__fetch('test', data, key)
 
+    def all_data(self, x=None, y=None, data=None)->tuple:
+        """it returns all i.e. training+validation+test data"""
+
+        train_x, train_y = self.training_data(x=x, y=y, data=data)
+        val_x, val_y = self.validation_data(x=x, y=y, data=data)
+        test_x, test_y = self.test_data(x=x, y=y, data=data)
+
+        x = []
+        y = []
+
+        if isinstance(train_x, list):
+            for val in range(len(train_x)):
+                x_val = np.concatenate([train_x[val], val_x[val], test_x[val]])
+                x.append(x_val)
+        else:
+            for _x in [train_x, val_x, test_x]:
+                if _x is not None:
+                    x.append(_x)
+            x = np.concatenate(x)
+
+        for _y in [train_y, val_y, test_y]:
+            if _y is not None:
+                y.append(_y)
+
+        y = np.concatenate(y)
+        return x, y
+
     def __fetch(self, source, data=None, key=None):
         """if data is string, then it must either be `trianing`, `validation` or
         `test` or name of a valid dataset. Otherwise data is supposed to be raw
@@ -3009,20 +3073,20 @@ class BaseModel(NN):
 
 def _reduce_nquantiles_in_config(config:Union[str, list, dict], num_exs:int):
 
-    if isinstance(config, str) and config == 'quantile':
+    if isinstance(config, str) and config in ['quantile', 'quantile_normal']:
         config = {'method': 'quantile', 'n_quantiles': num_exs}
 
-    elif isinstance(config, dict) and config['method'] == 'quantile':
+    elif isinstance(config, dict) and config['method'] in ['quantile', 'quantile_normal']:
         config['n_quantiles'] = min(config.get('n_quantiles', num_exs), num_exs)
 
     elif isinstance(config, list):
 
         for idx, transformer in enumerate(config):
 
-            if isinstance(transformer, str) and transformer == 'quantile':
+            if isinstance(transformer, str) and transformer in ['quantile', 'quantile_normal']:
                 config[idx] = {'method': 'quantile', 'n_quantiles': num_exs}
 
-            elif isinstance(transformer, dict) and transformer['method'] == 'quantile':
+            elif isinstance(transformer, dict) and transformer['method'] in ['quantile', 'quantile_normal']:
                 transformer['n_quantiles'] = min(transformer.get('n_quantiles', num_exs), num_exs)
                 config[idx] = transformer
 
@@ -3054,7 +3118,7 @@ def fill_val(metric_name, default="min", default_min=99999999):
     return 0.0
 
 
-def _find_num_examples(inputs)->int:
+def _find_num_examples(inputs)->Union[int, None]:
     """find number of examples in inputs"""
     if isinstance(inputs, (pd.DataFrame, np.ndarray)):
         return len(inputs)
@@ -3062,4 +3126,5 @@ def _find_num_examples(inputs)->int:
         return len(inputs[0])
     elif hasattr(inputs, '__len__'):
         return len(inputs)
-    raise NotImplementedError(f"Can not find number of examples in input data of type {type(inputs)}")
+
+    return None

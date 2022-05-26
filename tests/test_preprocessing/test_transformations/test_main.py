@@ -174,7 +174,6 @@ def run_log_methods(method="log", index=None, insert_nans=True, insert_zeros=Fal
     _, _, dfo3 = run_method3(method=method, data=df3.copy())
 
     if assert_equality:
-        #assert np.allclose(df3, dfo1, equal_nan=True)
         assert np.allclose(df3, dfo2, equal_nan=True)
         assert np.allclose(df3, dfo3, equal_nan=True)
     return
@@ -481,12 +480,17 @@ class test_Scalers(unittest.TestCase):
         return
 
     def test_from_config_1d(self):
-        for method in ["quantile", "robust",
-                       "power", "box-cox", "center", "zscore", "scale"
+        for method in ["quantile", "robust", "quantile_normal",
+                       "power", "box-cox", "center", "zscore", "scale",
+            "yeo-johnson"
                        ]:
             kwargs = {}
             if method=="quantile":
                 kwargs['n_quantiles'] = 5
+
+            if method == "yeo-johnson":
+                kwargs['pre_center'] = True
+                kwargs['rescale'] = True
 
             t = Transformation(method, treat_negatives=True, replace_zeros=True,
                                **kwargs)
@@ -500,12 +504,16 @@ class test_Scalers(unittest.TestCase):
 
     def test_from_config_2d(self):
 
-        for method in ["quantile", "robust",
+        for method in ["quantile", "robust", "quantile_normal",
                        "power", "box-cox", "center", "zscore", "scale"
                        ]:
             kwargs = {}
             if method=="quantile":
                 kwargs['n_quantiles'] = 5
+
+            if method == "yeo-johnson":
+                kwargs['pre_center'] = True
+                kwargs['rescale'] = True
 
             t = Transformation(method, features=['a', 'b'],
                                treat_negatives=True, replace_zeros=True, **kwargs)

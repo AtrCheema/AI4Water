@@ -168,6 +168,46 @@ class NN(AttributeStore):
             setattr(self, f'{layer.name}_attentions', layer.attention_components)
         return
 
+    def get_self_attention_weights(self, inputs, **kwargs)->dict:
+        """returns Softmax activations which is used inside SelfAttention layer.
+
+        :raises ValueError
+            if not SelfAttention layer is found.
+        """
+        return self.get_intermediate_output("SelfAttention", inputs, keep=1, **kwargs)
+
+    def get_attention_lstm_weights(self, inputs, **kwargs)->dict:
+        """returns Softmax activations which is inside SelfAttention layer.
+        This function should be called only when AttentionLSTM layer is used.
+        """
+        return self.get_intermediate_output("self_attention", inputs, keep=1, **kwargs)
+
+    def get_intermediate_output(self, layer_name, inputs, keep=None, **kwargs)->dict:
+        """keep is only useful when the intermediate layer returns more than 1 output"""
+        new_outs = {}
+        for lyr in self.layers:
+            if layer_name in lyr.name:
+                int_outputs = lyr.output
+                if keep is not None:
+                    assert isinstance(int_outputs, (list, tuple))
+                    int_outputs = int_outputs[keep]
+                new_outs[lyr.name] = int_outputs
+
+        if len(new_outs)==0:
+            raise ValueError(f"No {layer_name} layer found in Model")
+
+        new_model = tf.keras.models.Model(self.inputs, new_outs)
+        weights = new_model.predict(x=inputs, **kwargs)
+
+        if isinstance(weights, list):
+            # tensorflow 1 still returns list even if no is dictionary
+            weights_dict = {}
+            for _name, weight in zip(new_outs.keys(), weights):
+                weights_dict[_name] = weight
+            return weights_dict
+
+        return weights
+
 
 def check_act_fn(config: dict):
     """ it is possible that the config file does not have activation argument or activation is None"""

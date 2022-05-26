@@ -38,9 +38,14 @@ from .datasets import RiverTempSpain
 from .datasets import RiverIsotope
 from .datasets import EtpPcpSamoylov
 from .datasets import SWECanada
-from .datasets import MtropicsLaos
-from .datasets import MtropcsThailand
-from .datasets import MtropicsVietnam
+from .mtropics import MtropicsLaos
+from .mtropics import MtropcsThailand
+from .mtropics import MtropicsVietnam
+from .mtropics import ecoli_mekong_laos
+from .mtropics import ecoli_houay_pano
+from .mtropics import ecoli_mekong_2016
+from .mtropics import ecoli_mekong
+from .datasets import Quadica
 
 
 def busan_beach(inputs: list = None,

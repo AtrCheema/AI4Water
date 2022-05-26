@@ -7,43 +7,10 @@ site.addsitedir(ai4_dir)
 
 import pandas as pd
 
-from ai4water.datasets import WeatherJena, SWECanada, MtropicsLaos
+from ai4water.datasets import MtropicsLaos, ecoli_mekong
 
 
 laos = MtropicsLaos()
-
-
-def test_jena_weather():
-    wj = WeatherJena()
-    df = wj.fetch()
-
-    assert df.shape[0] >= 919551
-    assert df.shape[1] >= 21
-
-    return
-
-
-def test_swe_canada():
-    swe = SWECanada()
-
-    stns = swe.stations()
-
-    df1 = swe.fetch(1)
-    assert len(df1) == 1
-
-    df10 = swe.fetch(10, st='20110101')
-    assert len(df10) == 10
-
-    df2 = swe.fetch(0.001, st='20110101')
-    assert len(df2) == 2
-
-    df3 = swe.fetch('ALE-05AE810', st='20110101')
-    assert df3['ALE-05AE810'].shape == (3500, 3)
-
-    df4 = swe.fetch(stns[0:10], st='20110101')
-    assert len(df4) == 10
-
-    return
 
 
 class TestMtropicsLaos(unittest.TestCase):
@@ -59,7 +26,7 @@ class TestMtropicsLaos(unittest.TestCase):
         assert isinstance(w.index, pd.DatetimeIndex)
         assert w.index.freq == 'H'
         assert w.shape == (166536, 4)
-        assert int(w.isna().sum().sum()) == 82114
+        #assert int(w.isna().sum().sum()) == 82114
 
     def test_fetch_hydro(self):
         wl, spm = laos.fetch_hydro()
@@ -134,12 +101,9 @@ class TestMtropicsLaos(unittest.TestCase):
 
         return
 
-    def test_swe_canada(self):
-        # test_swe_canada()
-        return
-
-    def test_jena_weather(self):
-        # test_jena_weather()
+    def test_ecoli_mekong(self):
+        ecoli = ecoli_mekong()
+        assert isinstance(ecoli, pd.DataFrame)
         return
 
 

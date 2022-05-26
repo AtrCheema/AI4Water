@@ -2,6 +2,7 @@
 from typing import Union, Callable
 
 from ai4water.backend import os, np, pd, plt, plotly
+from ai4water.backend import easy_mpl as em
 
 from .plotting_tools import save_or_show, to_1d_array
 
@@ -321,3 +322,39 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
     if height is not None:
         fig.set_figheight(height)
     return fig, ax
+
+
+def plot_edf(
+        y:np.ndarray,
+        num_points=100,
+        xlabel="Objective Value",
+        ax:plt.Axes = None,
+        **kwargs)->plt.Axes:
+    """
+    Plots the objective value empirical distribution function on hyperparameter
+    optimization. Implementation is taken from optuna.
+    """
+    x = np.linspace(np.min(y), np.max(y), num_points)
+
+    y_values = np.sum(y[:, np.newaxis] <= x, axis=0) / y.size
+
+    y_values = y_values.reshape(-1,)
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    ax.grid()
+    
+    ax = em.plot(
+        x,
+        y_values,
+        '-',
+        show=False,
+        title="Empirical Distribution Function Plot",
+        ylabel="Cumulative Probability",
+        xlabel=xlabel,
+        ax=ax,
+        **kwargs
+    )
+
+    return ax

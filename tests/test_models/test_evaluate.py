@@ -31,11 +31,22 @@ class TestEvaluate(unittest.TestCase):
         model.fit(data=beach_data, epochs=1)
         eval_scores = model.evaluate(data='training')
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
+
+        eval_scores = model.evaluate_on_training_data(data=beach_data)
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
     def test_basic_on_validation_data(self):
         model.fit(data=beach_data, epochs=1)
         eval_scores = model.evaluate(data='validation')
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        eval_scores = model.evaluate_on_validation_data(data=beach_data)
+        assert isinstance(eval_scores, list) and len(eval_scores) == 2
+        return
+
+    def test_basic_on_all(self):
+        model.fit(data=beach_data, epochs=1)
+        eval_scores = model.evaluate_on_all_data(data=beach_data)
         assert isinstance(eval_scores, list) and len(eval_scores) == 2
         return
 
