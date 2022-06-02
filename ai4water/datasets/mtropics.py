@@ -540,9 +540,11 @@ class MtropicsLaos(Datasets):
 
         Returns
         -------
+        pd.DataFrame
             a dataframe of shape `(inputs+target, st:en)`
 
-        Example:
+        Example
+        -------
             >>> from ai4water.datasets import MtropicsLaos
             >>> laos = MtropicsLaos()
             >>> df = laos.make_classification()
@@ -610,6 +612,7 @@ class MtropicsLaos(Datasets):
 
         Returns
         -------
+        pd.DataFrame
             a dataframe of shape (inputs+target, st - en)
 
         Example
@@ -811,7 +814,7 @@ def ecoli_mekong(
         overwrite=False
 )->pd.DataFrame:
     """
-    E. coli data from Mekong river (Houay Pano) area from 2011 to 2021 [1]_.
+    E. coli data from Mekong river (Houay Pano) area from 2011 to 2021 Boithias et al., 2022 [1]_.
 
     Parameters
     ----------
@@ -823,16 +826,16 @@ def ecoli_mekong(
             names of features to use. use ``all`` to get all features. By default
             following input features are selected
 
-                ``station_name`` name of station/catchment where the observation was made
-                ``T`` temperature
-                ``EC`` electrical conductance
-                ``DOpercent`` dissolved oxygen concentration
-                ``DO`` dissolved oxygen saturation
-                ``pH`` pH
-                ``ORP`` oxidation-reduction potential
-                ``Turbidity`` turbidity
-                ``TSS`` total suspended sediment concentration
-                ``E-coli_4dilutions`` Eschrechia coli concentration
+                - ``station_name`` name of station/catchment where the observation was made
+                - ``T`` temperature
+                - ``EC`` electrical conductance
+                - ``DOpercent`` dissolved oxygen concentration
+                - ``DO`` dissolved oxygen saturation
+                - ``pH`` pH
+                - ``ORP`` oxidation-reduction potential
+                - ``Turbidity`` turbidity
+                - ``TSS`` total suspended sediment concentration
+                - ``E-coli_4dilutions`` Eschrechia coli concentration
 
         overwrite : bool
             whether to overwrite the downloaded file or not

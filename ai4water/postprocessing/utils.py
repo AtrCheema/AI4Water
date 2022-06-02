@@ -1,4 +1,3 @@
-
 from typing import Union
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
@@ -23,8 +22,9 @@ plot_precision_recall_curve = sklearn.metrics.plot_precision_recall_curve
 Metrics = {
     'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(t, p, **kwargs),
     'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p,
-        multiclass=multiclass, **kwargs)
+                                                                                     multiclass=multiclass, **kwargs)
 }
+
 
 # TODO add Murphy's plot as shown in MLAir
 # prediction_distribution aka actual_plot of PDPbox
@@ -50,14 +50,14 @@ class ProcessPredictions(Plot):
             self,
             mode: str,
             forecast_len: int = None,
-            output_features: Union[list, str]=None,
-            is_multiclass:bool = None,
-            is_binary:bool = None,
-            is_multilabel:bool = None,
+            output_features: Union[list, str] = None,
+            is_multiclass: bool = None,
+            is_binary: bool = None,
+            is_multilabel: bool = None,
             wandb_config: dict = None,
-            path:str = None,
+            path: str = None,
             dpi: int = 300,
-            show = 1,
+            show=1,
             save: bool = True,
             plots: Union[list, str] = None,
     ):
@@ -192,7 +192,7 @@ class ProcessPredictions(Plot):
             ax = axis[idx]
             ax.plot(val, '--o', label=legends.get(metric_name, metric_name))
             ax.legend(fontsize=14)
-            if idx >= len(errors)-1:
+            if idx >= len(errors) - 1:
                 ax.set_xlabel("Horizons", fontsize=14)
             ax.set_ylabel(legends.get(metric_name, metric_name), fontsize=14)
             idx += 1
@@ -217,7 +217,7 @@ class ProcessPredictions(Plot):
         """
 
         for plot in self.plots:
-            if plot=="murphy":
+            if plot == "murphy":
                 self.murphy_plot(true, predicted, prefix, where, inputs)
             else:
                 getattr(self, f"{plot}_plot")(true, predicted, prefix, where)
@@ -238,7 +238,7 @@ class ProcessPredictions(Plot):
             predicted = predicted.values
 
         error = np.abs(true - predicted)
-        
+
         plot_edf(error, xlabel="Absolute Error")
         return self.save_or_show(fname=f"{prefix}_error_dist", where=where)
 
@@ -249,7 +249,7 @@ class ProcessPredictions(Plot):
                        reference_model="LinearRegression",
                        plot_type="diff",
                        inputs=inputs,
-                       show = False,
+                       show=False,
                        **kwargs)
 
         return self.save_or_show(fname=f"{prefix}_murphy", where=where)
@@ -259,14 +259,14 @@ class ProcessPredictions(Plot):
         fdc_plot(predicted, true, show=False, **kwargs)
 
         return self.save_or_show(fname=f"{prefix}_fdc",
-                          where=where)
+                                 where=where)
 
     def residual_plot(self, true, predicted, prefix, where, **kwargs):
 
         fig, axis = plt.subplots(2)
 
         x = predicted.values
-        y = true.values-predicted.values
+        y = true.values - predicted.values
 
         ep.hist(y, show=False, ax=axis[0])
 
@@ -277,7 +277,7 @@ class ProcessPredictions(Plot):
         plt.suptitle("Residual")
 
         return self.save_or_show(fname=f"{prefix}_residual",
-                          where=where)
+                                 where=where)
 
     def errors_plot(self, true, predicted, prefix, where, **kwargs):
 
@@ -305,15 +305,15 @@ class ProcessPredictions(Plot):
         annotation_key = metric_names.get(annotate_with, annotate_with)
 
         ep.regplot(true,
-                predicted,
-                title="Regression Plot",
-                annotation_key=annotation_key,
-                annotation_val=annotation_val,
-                show=False
-                )
+                   predicted,
+                   title="Regression Plot",
+                   annotation_key=annotation_key,
+                   annotation_val=annotation_val,
+                   show=False
+                   )
 
         return self.save_or_show(fname=f"{target_name}_regression",
-                          where=where)
+                                 where=where)
 
     def prediction_plot(self, true, predicted, prefix, where):
         mpl.rcParams.update(mpl.rcParamsDefault)
@@ -343,9 +343,9 @@ class ProcessPredictions(Plot):
         if len(true) > 1000:  # because the data is very large, so better to use small marker size
             ms = 2
 
-        axis.plot(predicted, style, color='r',  label='Prediction')
+        axis.plot(predicted, style, color='r', label='Prediction')
 
-        axis.plot(true, style, color='b', marker='o', fillstyle='none',  markersize=ms, label='True')
+        axis.plot(true, style, color='b', marker='o', fillstyle='none', markersize=ms, label='True')
 
         axis.legend(loc="best", fontsize=22, markerscale=4)
 
@@ -455,8 +455,8 @@ class ProcessPredictions(Plot):
 
             plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True",
                      color='navy')
-            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1,),
-                             predicted[st:en, -q].reshape(-1,), alpha=0.2,
+            plt.fill_between(np.arange(st, en), predicted[st:en, q].reshape(-1, ),
+                             predicted[st:en, -q].reshape(-1, ), alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
             self.save_or_show(save, fname='q' + st_q + '_' + en_q, where='results')
@@ -476,8 +476,8 @@ class ProcessPredictions(Plot):
             plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True",
                      color='navy')
             plt.fill_between(np.arange(st, en),
-                             predicted[st:en, q].reshape(-1,),
-                             predicted[st:en, q + 1].reshape(-1,),
+                             predicted[st:en, q].reshape(-1, ),
+                             predicted[st:en, q + 1].reshape(-1, ),
                              alpha=0.2,
                              color='g', edgecolor=None, label=st_q + '_' + en_q)
             plt.legend(loc="best")
@@ -498,8 +498,8 @@ class ProcessPredictions(Plot):
 
         plt.plot(np.arange(st, en), true_outputs[st:en, 0], label="True", color='navy')
         plt.fill_between(np.arange(st, en),
-                         predicted[st:en, min_q].reshape(-1,),
-                         predicted[st:en, max_q].reshape(-1,),
+                         predicted[st:en, min_q].reshape(-1, ),
+                         predicted[st:en, max_q].reshape(-1, ),
                          alpha=0.2,
                          color='g', edgecolor=None, label=q_name + ' %')
         plt.legend(loc="best")
@@ -509,7 +509,8 @@ class ProcessPredictions(Plot):
     def roc_curve(self, estimator, x, y):
 
         if hasattr(estimator, '_model'):
-            if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x, np.ndarray):
+            if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x,
+                                                                                                          np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
 
         plot_roc_curve(estimator, x, y.reshape(-1, ))
@@ -528,7 +529,8 @@ class ProcessPredictions(Plot):
     def precision_recall_curve(self, estimator, x, y):
 
         if hasattr(estimator, '_model'):
-            if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x, np.ndarray):
+            if estimator._model.__class__.__name__ in ["XGBClassifier", "XGBRFClassifier"] and isinstance(x,
+                                                                                                          np.ndarray):
                 x = pd.DataFrame(x, columns=estimator.input_features)
         plot_precision_recall_curve(estimator, x, y.reshape(-1, ))
         self.save_or_show(fname="plot_precision_recall_curve")
@@ -547,7 +549,7 @@ class ProcessPredictions(Plot):
         """
         predicted, true are arrays of shape (examples, outs, forecast_len).
         """
-        #if user_defined_data:
+        # if user_defined_data:
         if self.output_features is None:
             # when data is user_defined, we don't know what out_cols, and forecast_len are
             if predicted.size == len(predicted):
@@ -572,7 +574,7 @@ class ProcessPredictions(Plot):
                 for cols in out_cols.values():
                     _out_cols = _out_cols + cols
                 out_cols = _out_cols
-                if len(out_cols)>1 and not isinstance(predicted, np.ndarray):
+                if len(out_cols) > 1 and not isinstance(predicted, np.ndarray):
                     raise NotImplementedError("""
                     can not process results with more than 1 output arrays""")
 
@@ -596,7 +598,7 @@ class ProcessPredictions(Plot):
                 df = pd.concat([t, p], axis=1)
                 df = df.sort_index()
                 fname = f"{prefix}_{out}_{h}"
-                df.to_csv(os.path.join(fpath, fname+".csv"), index_label='index')
+                df.to_csv(os.path.join(fpath, fname + ".csv"), index_label='index')
 
                 self.plot_results(t, p, prefix=fname, where=out, inputs=inputs)
 
@@ -631,7 +633,7 @@ class ProcessPredictions(Plot):
         """post-processes classification results."""
 
         if self.is_multiclass is None and self.is_binary is None and self.is_multilabel is None:
-            if self.n_classes(true)==2:
+            if self.n_classes(true) == 2:
                 self.is_binary = True
             else:
                 self.is_multiclass = True
@@ -647,7 +649,7 @@ class ProcessPredictions(Plot):
     def process_multilabel(self, true, predicted, metrics, prefix, index):
 
         for label in range(true.shape[1]):
-            if self.n_classes(true[:, label])==2:
+            if self.n_classes(true[:, label]) == 2:
                 self.process_binary(true[:, label], predicted[:, label], metrics, f"{prefix}_{label}", index)
             else:
                 self.process_multiclass(true[:, label], predicted[:, label], metrics, f"{prefix}_{label}", index)
@@ -686,12 +688,12 @@ class ProcessPredictions(Plot):
         if predicted.ndim == 1:
             predicted = predicted.reshape(-1, 1)
         elif predicted.size != len(predicted):
-            predicted = np.argmax(predicted, axis=1).reshape(-1,1)
+            predicted = np.argmax(predicted, axis=1).reshape(-1, 1)
 
         if true.ndim == 1:
             true = true.reshape(-1, 1)
         elif true.size != len(true):
-            true = np.argmax(true, axis=1).reshape(-1,1)
+            true = np.argmax(true, axis=1).reshape(-1, 1)
 
         self.confusion_matrx(true, predicted)
 
@@ -708,7 +710,7 @@ class ProcessPredictions(Plot):
 
         fname = os.path.join(fpath, f"{prefix}_.csv")
         array = np.concatenate([true.reshape(-1, 1), predicted.reshape(-1, 1)], axis=1)
-        pd.DataFrame(array, columns=['true', 'predicted'],  index=index).to_csv(fname)
+        pd.DataFrame(array, columns=['true', 'predicted'], index=index).to_csv(fname)
 
         return
 
@@ -768,8 +770,8 @@ def choose_n_imp_exs(x: np.ndarray, n: int, y=None):
     if y is None:
         idx = np.random.randint(0, len(x), n)
     else:
-        st = np.argsort(y, axis=0)[0:st].reshape(-1,)
-        en = np.argsort(y, axis=0)[-en:].reshape(-1,)
+        st = np.argsort(y, axis=0)[0:st].reshape(-1, )
+        en = np.argsort(y, axis=0)[-en:].reshape(-1, )
         idx = np.hstack([st, en])
 
     x = x[idx]
@@ -779,10 +781,10 @@ def choose_n_imp_exs(x: np.ndarray, n: int, y=None):
 
 def _wandb_scatter(true: np.ndarray, predicted: np.ndarray, name: str) -> None:
     """Adds a scatter plot on wandb."""
-    data = [[x, y] for (x, y) in zip(true.reshape(-1,), predicted.reshape(-1,))]
+    data = [[x, y] for (x, y) in zip(true.reshape(-1, ), predicted.reshape(-1, ))]
     table = wandb.Table(data=data, columns=["true", "predicted"])
     wandb.log({
         "scatter_plot": wandb.plot.scatter(table, "true", "predicted",
                                            title=name)
-               })
+    })
     return

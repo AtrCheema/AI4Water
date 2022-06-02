@@ -13,6 +13,7 @@ scikit-learn
 scikit-optimize
 plotly
 tensorflow==2.7
+protobuf==3.19.1
 torch
 seaborn
 easy_mpl

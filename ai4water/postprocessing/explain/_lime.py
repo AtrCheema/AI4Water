@@ -13,6 +13,7 @@ class LimeExplainer(ExplainerMixin):
 
     Example:
         >>> from ai4water import Model
+        >>> from ai4water.postprocessing import LimeExplainer
         >>> from ai4water.datasets import busan_beach
         >>> model = Model(model="GradientBoostingRegressor")
         >>> model.fit(data=busan_beach())

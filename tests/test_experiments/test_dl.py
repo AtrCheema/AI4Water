@@ -15,31 +15,31 @@ data = busan_beach()
 class TestDLExeriments(unittest.TestCase):
 
 
-    # def test_rgr_dry_run(self):
-    #
-    #     exp = DLRegressionExperiments(
-    #         input_features = data.columns.tolist()[0:-1],
-    #         output_features = data.columns.tolist()[-1:],
-    #         epochs=50,
-    #         ts_args={"lookback": 9}
-    #     )
-    #
-    #     exp.fit(data=data, include=["TFT",
-    #                                 "TCN",
-    #                                 "CNNLSTM",
-    #                                 "LSTMAutoEncoder"])
-    #
-    #     exp.loss_comparison(save=False, show=False)
-    #     exp.compare_errors('r2', save=False, show=False)
-    #
-    #     return
+    def test_rgr_dry_run(self):
+
+        exp = DLRegressionExperiments(
+            input_features = data.columns.tolist()[0:-1],
+            output_features = data.columns.tolist()[-1:],
+            epochs=5,
+            ts_args={"lookback": 9}
+        )
+
+        exp.fit(data=data, include=["TFT",
+                                    "TCN",
+                                    "CNNLSTM",
+                                    "LSTMAutoEncoder"])
+
+        exp.loss_comparison(save=False, show=False)
+        exp.compare_errors('r2', save=False, show=False)
+
+        return
 
     def test_rgr_optimize(self):
 
         exp = DLRegressionExperiments(
             input_features = data.columns.tolist()[0:-1],
             output_features = data.columns.tolist()[-1:],
-            epochs=50,
+            epochs=5,
             ts_args={"lookback": 5}
         )
 

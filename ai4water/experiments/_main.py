@@ -1,4 +1,3 @@
-
 import json
 import math
 from typing import Union, Tuple, List
@@ -17,10 +16,10 @@ bar_chart = easy_mpl.bar_chart
 taylor_plot = easy_mpl.taylor_plot
 dumbbell_plot = easy_mpl.dumbbell_plot
 
-
 if tf is not None:
     if 230 <= int(''.join(tf.__version__.split('.')[0:2]).ljust(3, '0')) < 250:
         from ai4water.functional import Model
+
         print(f"""
         Switching to functional API due to tensorflow version {tf.__version__} 
         for experiments""")
@@ -40,29 +39,30 @@ SEP = os.sep
 # in order to unify the use of metrics
 Metrics = {
     'regression': lambda t, p, multiclass=False, **kwargs: RegressionMetrics(t, p, **kwargs),
-    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p, 
-        multiclass=multiclass, **kwargs)
+    'classification': lambda t, p, multiclass=False, **kwargs: ClassificationMetrics(t, p,
+                                                                                     multiclass=multiclass, **kwargs)
 }
 
 Monitor = {
     'regression': ['r2', 'corr_coeff', 'mse', 'rmse', 'r2_score',
-                'nse', 'kge', 'mape', 'pbias', 'bias', 'mae', 'nrmse',
-                'mase'],
+                   'nse', 'kge', 'mape', 'pbias', 'bias', 'mae', 'nrmse',
+                   'mase'],
 
     'classification': ['accuracy', 'precision', 'recall', 'mse']
 }
+
 
 class Experiments(object):
     """
     Base class for all the experiments.
 
     All the expriments must be subclasses of this class.
-    The core idea of ``Experiments`` is based upon ``model``. An experiment 
-    consists of one or more models. The models differ from each other in their 
-    structure/idea/concept/configuration. When :py:meth:`ai4water.experiments.Experiments.fit` 
-    is called, each ``model`` is built and trained. The user can customize, building 
-    and training process by subclassing this class and customizing 
-    :py:meth:`ai4water.experiments.Experiments._build` and 
+    The core idea of ``Experiments`` is based upon ``model``. An experiment
+    consists of one or more models. The models differ from each other in their
+    structure/idea/concept/configuration. When :py:meth:`ai4water.experiments.Experiments.fit`
+    is called, each ``model`` is built and trained. The user can customize, building
+    and training process by subclassing this class and customizing
+    :py:meth:`ai4water.experiments.Experiments._build` and
     :py:meth:`ai4water.experiments.Experiments._fit` methods.
 
     Attributes
@@ -86,6 +86,7 @@ class Experiments(object):
     - fit_with_tpot
 
     """
+
     def __init__(
             self,
             cases: dict = None,
@@ -125,7 +126,7 @@ class Experiments(object):
 
         if cases is None:
             cases = {}
-        self.cases = {'model_'+key if not key.startswith('model_') else key: val for key, val in cases.items()}
+        self.cases = {'model_' + key if not key.startswith('model_') else key: val for key, val in cases.items()}
         self.models = self.models + list(self.cases.keys())
 
         self.exp_path = os.path.join(os.getcwd(), "results", self.exp_name)
@@ -133,7 +134,7 @@ class Experiments(object):
             os.makedirs(self.exp_path)
 
         self.update_config(models=self.models, exp_path=self.exp_path,
-            exp_name=self.exp_name, cases=self.cases)
+                           exp_name=self.exp_name, cases=self.cases)
 
         if monitor is None:
             self.monitor = Monitor[self.mode]
@@ -191,7 +192,7 @@ class Experiments(object):
             x=None,
             y=None,
             data=None,
-            validation_data:tuple = None,
+            validation_data: tuple = None,
             run_type: str = "dry_run",
             opt_method: str = "bayes",
             num_iterations: int = 12,
@@ -352,21 +353,21 @@ class Experiments(object):
                         getattr(self, model_type)()
 
                     opt_dir = os.path.join(os.getcwd(),
-                        f"results{SEP}{self.exp_name}{SEP}{model_name}")
+                                           f"results{SEP}{self.exp_name}{SEP}{model_name}")
 
-                    if self.verbosity > 0: 
+                    if self.verbosity > 0:
                         print(f"optimizing  {model_type} using {opt_method} method")
 
                     self.optimizer = HyperOpt(
                         opt_method,
                         objective_fn=objective_fn,
-                        param_space=self.param_space, 
+                        param_space=self.param_space,
                         opt_path=opt_dir,
                         num_iterations=num_iterations,  # number of iterations
                         x0=self.x0,
                         verbosity=self.verbosity,
                         **hpo_kws
-                        )
+                    )
 
                     self.opt_results = self.optimizer.fit()
 
@@ -416,8 +417,8 @@ class Experiments(object):
 
             train_results, test_results = self.build_from_config(
                 data,
-                mod_path, 
-                mod_weights, 
+                mod_path,
+                mod_weights,
                 **kwargs)
 
             if mod.startswith('1_'):
@@ -446,7 +447,7 @@ class Experiments(object):
             predict=True,
             model={_model: self.optimizer.best_paras()},
             title=f"{self.exp_name}{SEP}{model_type}{SEP}best"
-            )
+        )
 
         self._populate_results(model_type, train_results, test_results)
         return
@@ -464,7 +465,7 @@ class Experiments(object):
             'train': {
                 'true': {
                     'std': np.std(train_results[0])},
-                'simulation':{
+                'simulation': {
                     'std': np.std(train_results[1])}},
 
             'test': {
@@ -498,7 +499,7 @@ class Experiments(object):
             exclude: Union[None, list] = None,
             figsize: tuple = (9, 7),
             **kwargs
-    )->plt.Figure:
+    ) -> plt.Figure:
         """
         Compares the models using taylor_plot_.
 
@@ -613,8 +614,8 @@ Available cases are {self.models} and you wanted to include
             metric_name: str,
             plot_type: str = 'dumbell',
             save: bool = True,
-            name : str = '',
-            dpi : int = 200,
+            name: str = '',
+            dpi: int = 200,
             **kwargs
     ) -> pd.DataFrame:
         """
@@ -850,7 +851,7 @@ Available cases are {self.models} and you wanted to include
             figsize : tuple
                 size of the figure
             **kwargs :
-                any other keyword arguments to be passed to the 
+                any other keyword arguments to be passed to the
                 `plot <https://easy-mpl.readthedocs.io/en/latest/plots.html#easy_mpl.plot>`_
         Returns
         -------
@@ -1139,10 +1140,10 @@ Available cases are {self.models} and you wanted to include
 
         if cutoff_type is not None:
             assert cutoff_val is not None
-            if cutoff_type=="greater":
-                df = df.loc[df[sort_by]>cutoff_val]
+            if cutoff_type == "greater":
+                df = df.loc[df[sort_by] > cutoff_val]
             else:
-                df = df.loc[df[sort_by]<cutoff_val]
+                df = df.loc[df[sort_by] < cutoff_val]
 
         return df
 
@@ -1226,7 +1227,7 @@ Available cases are {self.models} and you wanted to include
 
         if isinstance(models, int):
 
-            assert len(self.metrics)>1, f"""
+            assert len(self.metrics) > 1, f"""
             you must first run .fit() method in order to choose top {models} models"""
 
             # sort the models w.r.t their performance
@@ -1272,7 +1273,7 @@ Available cases are {self.models} and you wanted to include
             json.dump(jsonize(tpot_config), fp, indent=True)
 
         tpot = tpot_caller(
-            verbosity=self.verbosity+1,
+            verbosity=self.verbosity + 1,
             scoring=scoring,
             config_dict=tpot_config,
             **tpot_args
@@ -1298,7 +1299,6 @@ Available cases are {self.models} and you wanted to include
                                         mode=mode)
 
         for idx, data_name in enumerate(['training', 'test']):
-
             x_data, y_data = getattr(dh, f"{data_name}_data")(key=str(idx))
 
             pred = tpot.fitted_pipeline_.predict(x_data)
@@ -1306,8 +1306,8 @@ Available cases are {self.models} and you wanted to include
 
             # todo, perform inverse transform and deindexification
             visualizer(
-                pd.DataFrame(y_data.reshape(-1,)),
-                pd.DataFrame(pred.reshape(-1,)),
+                pd.DataFrame(y_data.reshape(-1, )),
+                pd.DataFrame(pred.reshape(-1, )),
             )
         # save the python code of fitted pipeline
         tpot.export(os.path.join(self.exp_path, "tpot_fitted_pipeline.py"))
@@ -1365,7 +1365,7 @@ Available cases are {self.models} and you wanted to include
 
         suggested_paras = jsonize(suggested_paras)
 
-        verbosity = max(self.verbosity-1, 0)
+        verbosity = max(self.verbosity - 1, 0)
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
@@ -1392,7 +1392,7 @@ Available cases are {self.models} and you wanted to include
         if cross_validate:
             if validation_data is None:
                 return self.model_.cross_val_score(data=data,
-                    scoring = self.model_.config['val_metric'])
+                                                   scoring=self.model_.config['val_metric'])
             else:
                 return self.model._cross_val_score(
                     x=x, y=y  # todo, combine validation data here with x,y
@@ -1404,7 +1404,7 @@ Available cases are {self.models} and you wanted to include
             self,
             validation_data=None,
             data="validation"
-    )->float:
+    ) -> float:
         """Evaluates the model"""
 
         if validation_data is None:
@@ -1420,8 +1420,8 @@ Available cases are {self.models} and you wanted to include
             )
 
         metrics = Metrics[self.mode](t, p,
-            remove_zero=True, remove_neg=True,
-            multiclass=self.model_.is_multiclass)
+                                     remove_zero=True, remove_neg=True,
+                                     multiclass=self.model_.is_multiclass)
 
         test_metrics = {}
         for metric in self.monitor:
@@ -1434,7 +1434,7 @@ Available cases are {self.models} and you wanted to include
         if self.model_.config['val_metric'] in [
             'r2', 'nse', 'kge', 'r2_mod', 'r2_adj', 'r2_score', 'accuracy', 'f1_score']:
             val_score = 1.0 - val_score
-        
+
         if not math.isfinite(val_score):
             val_score = 9999  # TODO, find a better way to handle this
 
@@ -1510,7 +1510,7 @@ class TransformationExperiments(Experiments):
                  x0=None,
                  cases: dict = None,
                  exp_name: str = None,
-                 num_samples: int = 5, 
+                 num_samples: int = 5,
                  verbosity: int = 1,
                  **model_kws):
         self.param_space = param_space
@@ -1540,7 +1540,7 @@ be used to build ai4water's Model class.
 
         suggested_paras = jsonize(suggested_paras)
 
-        verbosity = max(self.verbosity-1, 0)
+        verbosity = max(self.verbosity - 1, 0)
         if 'verbosity' in self.model_kws:
             verbosity = self.model_kws.pop('verbosity')
 
@@ -1555,7 +1555,6 @@ be used to build ai4water's Model class.
         return
 
     def build_from_config(self, data, config_path, weight_file, **kwargs):
-
         model = Model.from_config_file(config_path=config_path)
         weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
@@ -1586,10 +1585,9 @@ def sort_array(array):
     return [np.min(results[:i]) for i in iters]
 
 
-def consider_exclude(exclude: Union[str, list], 
-        models, 
-        models_to_filter: Union[list, dict] = None):
-
+def consider_exclude(exclude: Union[str, list],
+                     models,
+                     models_to_filter: Union[list, dict] = None):
     if isinstance(exclude, str):
         exclude = [exclude]
 
@@ -1611,14 +1609,12 @@ def consider_exclude(exclude: Union[str, list],
 
 
 def load_json_file(fpath):
-
     with open(fpath, 'r') as fp:
         result = json.load(fp)
     return result
 
 
 def save_json_file(fpath, obj):
-
     with open(fpath, 'w') as fp:
         json.dump(jsonize(obj), fp, sort_keys=True, indent=4)
 
@@ -1629,15 +1625,13 @@ def shred_model_name(model_name):
     return key
 
 
-
 def verify_data(
         x=None,
         y=None,
         data=None,
         validation_data=None,
         label="validation"
-)->Tuple[dict, dict]:
-
+) -> Tuple[dict, dict]:
     def num_examples(samples):
         if isinstance(samples, list):
             assert len(set(len(sample) for sample in samples)) == 1
@@ -1668,8 +1662,8 @@ def verify_data(
         assert isinstance(data, pd.DataFrame), f"data must be dataframe, but it is {type(data)}"
 
     if validation_data is not None:
-
-        assert isinstance(validation_data, (tuple, list)), f"{label} data must be of type tuple but it is {type(validation_data)}"
+        assert isinstance(validation_data,
+                          (tuple, list)), f"{label} data must be of type tuple but it is {type(validation_data)}"
         assert len(validation_data) == 2, f"{label}_data tuple must have length 2 but it has {len(validation_data)}"
         assert isinstance(validation_data[1], np.ndarray), f"second value in {label}_data must be ndarray"
         assert num_examples(validation_data[0]) == num_examples(validation_data[1])

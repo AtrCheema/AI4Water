@@ -1,9 +1,7 @@
-
 __all__ = ["ACTIVATION_LAYERS", "ACTIVATION_FNS", "LOSSES", "LAYERS", "OPTIMIZERS", "tcn"]
 
 # it is supposed that tf is available
 from .backend import get_attributes, tf
-
 
 try:
     import tcn
@@ -21,6 +19,7 @@ if tf is not None:
     from ai4water.models.tensorflow import NBeats
     import ai4water.models.tensorflow.attention_layers as attns
     from ai4water.models.tensorflow import TemporalFusionTransformer
+
     keras = tf.keras
     LOSSES.update({
         'nse': tf_losses.tf_nse,
@@ -34,8 +33,9 @@ if tf is not None:
     LAYERS.update({"TemporalFusionTransformer": TemporalFusionTransformer})
     LAYERS.update({"TFT": TemporalFusionTransformer})
     LAYERS.update(get_attributes(aus=tf.keras, what='layers', case_sensitive=True))
-    
+
     from .models.tensorflow.private_layers import PrivateLayers
+
     # add private layers to dictionary
     LAYERS.update(get_attributes(aus=PrivateLayers, what='layers', case_sensitive=True))
 
@@ -44,7 +44,6 @@ if NBeats is not None:
 
 if attns is not None:
     LAYERS.update(get_attributes(aus=attns, what='attn_layers', case_sensitive=True))
-
 
 ACTIVATION_LAYERS = {
     # https://ai.stanford.edu/%7Eamaas/papers/relu_hybrid_icml2013_final.pdf

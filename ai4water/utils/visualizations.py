@@ -1,4 +1,3 @@
-
 from typing import Union, Callable
 
 from ai4water.backend import os, np, pd, plt, plotly
@@ -159,7 +158,7 @@ def murphy_diagram(
 
     n = len(y)
     _min, _max = np.nanmin(np.hstack([y, f1, f2])), np.nanmax(np.hstack([y, f1, f2]))
-    tmp = _min-0.2*(_max-_min), _max+0.2*(_max-_min)
+    tmp = _min - 0.2 * (_max - _min), _max + 0.2 * (_max - _min)
 
     theta = np.linspace(tmp[0], tmp[1], 501)
 
@@ -173,8 +172,7 @@ def murphy_diagram(
     min2 = np.minimum(f2, y)
 
     for j in range(n):
-
-        s1[:, j] = abs(y[j]-theta) * (max1[j] > theta) * (min1[j] <= theta)
+        s1[:, j] = abs(y[j] - theta) * (max1[j] > theta) * (min1[j] <= theta)
         s2[:, j] = abs(y[j] - theta) * (max2[j] > theta) * (min2[j] <= theta)
 
     # grab the axes
@@ -208,10 +206,9 @@ def last_nonzero(arr, axis, invalid_val=-1):
 
 
 def _plot_diff(theta, s1, s2, n, ax, line_color="black", fill_color="lightgray"):
+    se = np.std(s1 - s2) / np.sqrt(n)
 
-    se = np.std(s1-s2)/np.sqrt(n)
-
-    diff = np.mean(s1-s2, axis=1)
+    diff = np.mean(s1 - s2, axis=1)
 
     upper = diff + 1.96 * se
     lower = diff - 1.96 * se
@@ -272,9 +269,9 @@ def fdc_plot(
     obs = to_1d_array(obs)
 
     sort_obs = np.sort(sim)[::-1]
-    exceedence_obs = np.arange(1., len(sort_obs)+1) / len(sort_obs)
+    exceedence_obs = np.arange(1., len(sort_obs) + 1) / len(sort_obs)
     sort_sim = np.sort(obs)[::-1]
-    exceedence_sim = np.arange(1., len(sort_sim)+1) / len(sort_sim)
+    exceedence_sim = np.arange(1., len(sort_sim) + 1) / len(sort_sim)
 
     if ax is None:
         ax = plt.gca()
@@ -297,7 +294,6 @@ def fdc_plot(
 
 
 def _plot_scores(theta, s1ave, s2ave, ax, line_colors):
-
     ax.plot(theta, s1ave, color=line_colors[0])
     ax.plot(theta, s2ave, color=line_colors[1])
 
@@ -313,6 +309,7 @@ def _data_for_time(s1, s2):
 def _data_for_theta(s1, s2):
     return np.mean(s1, axis=1), np.mean(s2, axis=1)
 
+
 def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
     """Initializes the fig for subplots"""
     plt.close('all')
@@ -325,11 +322,11 @@ def init_subplots(width=None, height=None, nrows=1, ncols=1, **kwargs):
 
 
 def plot_edf(
-        y:np.ndarray,
+        y: np.ndarray,
         num_points=100,
         xlabel="Objective Value",
-        ax:plt.Axes = None,
-        **kwargs)->plt.Axes:
+        ax: plt.Axes = None,
+        **kwargs) -> plt.Axes:
     """
     Plots the objective value empirical distribution function on hyperparameter
     optimization. Implementation is taken from optuna.
@@ -338,13 +335,13 @@ def plot_edf(
 
     y_values = np.sum(y[:, np.newaxis] <= x, axis=0) / y.size
 
-    y_values = y_values.reshape(-1,)
+    y_values = y_values.reshape(-1, )
 
     if ax is None:
         _, ax = plt.subplots()
 
     ax.grid()
-    
+
     ax = em.plot(
         x,
         y_values,

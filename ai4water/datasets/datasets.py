@@ -630,10 +630,13 @@ class SWECanada(Datasets):
         """
         Fetches time series data from selected stations.
 
-        Arguments:
-            station_id : station/stations to be retrieved. In None, then data
-                          from all stations will be returned.
-            features : Names of features to be retrieved. Following features
+        Parameters
+        ----------
+            station_id :
+                station/stations to be retrieved. In None, then data
+                from all stations will be returned.
+            features :
+                Names of features to be retrieved. Following features
                 are allowed:
 
                     - ``snw`` snow water equivalent kg/m3
@@ -641,15 +644,21 @@ class SWECanada(Datasets):
                     - ``den`` snowpack bulk density kg/m3
 
                 If None, then all three features will be retrieved.
-            q_flags : If None, then no qflags will be returned. Following q_flag
+            q_flags :
+                If None, then no qflags will be returned. Following q_flag
                 values are available.
-                    - 'data_flag_snw'
-                    - 'data_flag_snd'
-                    - 'qc_flag_snw'
-                    - 'qc_flag_snd'
-            st : start of data to be retrieved
-            en : end of data to be retrived.
-        returns:
+                    - ``data_flag_snw``
+                    - ``data_flag_snd``
+                    - ``qc_flag_snw``
+                    - ``qc_flag_snd``
+            st :
+                start of data to be retrieved
+            en :
+                end of data to be retrived.
+
+        Returns
+        -------
+        dict
             a dictionary of dataframes of shape (st:en, features + q_flags) whose
             length is equal to length of stations being considered.
         """
