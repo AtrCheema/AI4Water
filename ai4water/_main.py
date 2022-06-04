@@ -2873,6 +2873,154 @@ class BaseModel(NN):
 
         return results
 
+    def shap_values(
+            self,
+            data,
+            feature_name=None,
+            example_number=None,
+            layer=None
+    )->np.ndarray:
+        """
+        returns shap values
+
+        Parameters
+        ----------
+            data :
+            feature_name :
+            example_number :
+            layer :
+
+        Returns
+        -------
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model="RandomForestRegressor")
+            >>> model.fit(data=data)
+            >>> model.shap_values(data=data)
+
+        """
+
+        from .postprocessing.explain import explain_model_with_shap
+
+        explainer = explain_model_with_shap(
+            self,
+            total_data=data,
+            features_to_explain=feature_name,
+            examples_to_explain=example_number,
+            layer=layer,
+        )
+
+        return explainer.shap_values
+
+    def explain_example(
+            self,
+            data,
+            example_num:int,
+            method="shap"
+    ):
+        """explains a single exmaple either using shap or lime
+
+        Parameters
+        ----------
+            data :
+                the data to use
+            example_num :
+                the example/sample number/index to explain
+            method :
+                either ``shap`` or ``lime``
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model="RandomForestRegressor")
+            >>> model.fit(data=data)
+            >>> model.explain(data=data, example_num=2)
+
+        """
+
+        assert method in ("shap", "lime")
+
+        if method == "shap":
+            from .postprocessing.explain import explain_model_with_shap
+
+            explainer = explain_model_with_shap(
+                self,
+                total_data=data,
+                examples_to_explain=example_num)
+        else:
+            from .postprocessing.explain import explain_model_with_lime
+
+            explainer = explain_model_with_lime(
+                self,
+                total_data=data,
+                examples_to_explain=example_num)
+
+        return explainer
+
+    def partial_dependence_plot(
+            self,
+            data,
+            feature_name=None,
+            num_points=100,
+    ):
+        """Shows partial depedence plot for a feature.
+
+        Parameters
+        ----------
+            data :
+                the data to use
+            feature_name : str/list
+                name/names of features. If only one feature is given, 1 dimensional
+                partial dependence plot is plotted. You can also provide a list of
+                two feature names, in which case 2d interaction plot will be plotted.
+            num_points : int
+                number of points. It is used to define grid.
+
+        Returns
+        -------
+            an instance of :py:class:`ai4water.postprocessing.PartialDependencePlot`
+
+        Examples
+        --------
+            >>> from ai4water import Model
+            >>> from ai4water.datasets import busan_beach
+            >>> data = busan_beach()
+            >>> model = Model(model="RandomForestRegressor")
+            >>> model.fit(data=data)
+            >>> model.partial_dependence_plot(data=data, feature_name="tide_cm")
+
+        """
+
+        from .postprocessing.explain import PartialDependencePlot
+
+        pdp = PartialDependencePlot(
+            self.predict,
+            data=data,
+            feature_names=self.input_features,
+            num_points=num_points
+        )
+
+        if isinstance(feature_name, str):
+            pdp.plot_1d(feature=feature_name)
+        else:
+            assert isinstance(feature_name, list)
+            assert len(feature_name) == 2
+            pdp.plot_interaction(features=feature_name)
+
+        return pdp
+
+    def feature_interaction(self, feature_1, feature_2, plot_type="heatmap"):
+        raise NotImplementedError
+
+    def prediction_distribution(self, feature_name):
+        raise NotImplementedError
+
     def _transform(self, data, name_in_config):
         """transforms the data using the transformer which has already been fit"""
 

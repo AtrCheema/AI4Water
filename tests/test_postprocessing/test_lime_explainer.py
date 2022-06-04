@@ -224,14 +224,14 @@ class TestLimeExplainer(unittest.TestCase):
         model = make_reg_model()
         assert model.mode == "regression"
 
-        model.explain(examples_to_explain=2)
+        model.explain(total_data=reg_data.dropna().iloc[0:30],examples_to_explain=2)
         return
 
     def test_ai4water(self):
         model = make_class_model(train_fraction=0.9)
         self.assertEqual(model.mode, "classification")
         model.fit()
-        model.explain()
+        model.explain(total_data=class_data.dropna().iloc[0:30])
         return
 
     def test_custom_colors(self):
@@ -267,14 +267,15 @@ class TestLimeExplainer(unittest.TestCase):
                   ]:
 
             model = get_fitted_model(m, busan_beach(inputs=['wat_temp_c', 'tide_cm']))
-            exp = explain_model_with_lime(model, examples_to_explain=2)
+            exp = explain_model_with_lime(
+                model, total_data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
             assert isinstance(exp, LimeExplainer)
         return
 
     def test_ai4water_mlp(self):
         model = make_mlp_model()
 
-        exp = explain_model_with_lime(model, examples_to_explain=2)
+        exp = explain_model_with_lime(model, total_data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
         assert isinstance(exp, LimeExplainer)
         return
 
@@ -282,7 +283,7 @@ class TestLimeExplainer(unittest.TestCase):
         time.sleep(1)
         m = lstm_model()
 
-        exp = explain_model_with_lime(m, examples_to_explain=2)
+        exp = explain_model_with_lime(m, total_data=busan_beach(inputs=['wat_temp_c', 'tide_cm']))
         assert isinstance(exp, LimeExplainer)
         return
 

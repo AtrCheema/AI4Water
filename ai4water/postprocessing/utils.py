@@ -739,12 +739,10 @@ class ProcessPredictions(Plot):
 def choose_examples(x, examples_to_use, y=None):
     """Chooses exampels from x and y"""
     if isinstance(examples_to_use, int):
-        if len(x) == examples_to_use:
-            # since using all the examples, don't randomize them
-            x, index = x, np.arange(examples_to_use)
-        else:
-            # randomly chose x values from test_x
-            x, index = choose_n_imp_exs(x, examples_to_use, y)
+        x = x[examples_to_use]
+        x = np.expand_dims(x, 0)  # dimension must not decrease
+        index = np.array([examples_to_use])
+
     elif isinstance(examples_to_use, float):
         assert examples_to_use < 1.0
         # randomly choose x fraction from test_x

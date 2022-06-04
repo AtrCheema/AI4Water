@@ -615,7 +615,7 @@ def process_config_dict(config_dict: dict, update_initial_guess=True):
     return config_dict, opt_paras
 
 
-def update_model_config(config: dict, suggestions):
+def update_model_config(config: dict, suggestions:dict)->dict:
     """returns the updated config if config contains any parameter from suggestions."""
     cc = copy.deepcopy(config)
 

@@ -2,6 +2,7 @@ import time
 import unittest
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from ai4water import Model
 from ai4water.datasets import busan_beach
@@ -75,6 +76,9 @@ class TestPDP(unittest.TestCase):
 
         ax = pdp.plot_interaction(["tide_cm", "wat_temp_c"])
         assert isinstance(ax, plt.Axes)
+
+        model.partial_dependence_plot(data=pd.DataFrame(x, columns=model.input_features),
+                                      feature_name='tide_cm')
 
         return
 
