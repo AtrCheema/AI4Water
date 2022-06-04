@@ -40,7 +40,7 @@ class ShapExplainer(ExplainerMixin):
     - force_plot_all
 
     Examples:
-        >>> from ai4water.postprocessing.explain import ShapExplainer
+        >>> from ai4water.postprocessing import ShapExplainer
         >>> from sklearn.model_selection import train_test_split
         >>> from sklearn import linear_model
         >>> import shap

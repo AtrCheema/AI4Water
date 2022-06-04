@@ -3,6 +3,9 @@ from typing import Union
 
 from ai4water.backend import np, pd, plt, os, lime
 
+if lime is not None:
+    from lime import lime_tabular
+
 from ._explain import ExplainerMixin
 
 

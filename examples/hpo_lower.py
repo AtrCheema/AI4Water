@@ -211,6 +211,7 @@ def objective_fn(
         prefix=None,
         return_model=False,
         seed:int=None,
+        epochs:int=100,
         **suggestions)->Union[float, Model]:
     """This function must build, train and evaluate the ML model.
     The output of this function will be minimized by optimization algorithm.
@@ -228,6 +229,8 @@ def objective_fn(
         be None and we will use the value from SEEDS. After optimization,
         we will again call the objective function but this time with fixed
         seed.
+    epochs : int, optional
+        the number of epochs for which to train the model
     suggestions : dict
         a dictionary with values of hyperparameters at the iteration when
         this objective function is called. The objective function will be
@@ -249,7 +252,7 @@ def objective_fn(
         prefix=prefix or PREFIX,
         train_fraction=1.0,
         split_random=True,
-        epochs=100,
+        epochs=epochs,
         ts_args={"lookback": 14},
         input_features=data.columns.tolist()[0:-1],
         output_features=data.columns.tolist()[-1:],
@@ -325,4 +328,5 @@ print(f"optimized parameters are \n{optimizer.best_paras()} at {best_iteration} 
 model = objective_fn(prefix=f"{PREFIX}{SEP}best",
                      seed=seed_on_best_iter,
                      return_model=True,
+                     epochs=200,
                      **optimizer.best_paras())

@@ -1,6 +1,4 @@
-
 __all__ = ["DLRegressionExperiments"]
-
 
 from ai4water import Model
 from ai4water.backend import os
@@ -42,9 +40,10 @@ class DLRegressionExperiments(Experiments):
     >>> exp.fit(data=data)
 
     """
+
     def __init__(
             self,
-            input_features:list,
+            input_features: list,
             param_space=None,
             x0=None,
             cases: dict = None,
@@ -73,7 +72,7 @@ class DLRegressionExperiments(Experiments):
         self.spaces = dl_space(num_samples=num_samples)
 
     @property
-    def input_shape(self)->tuple:
+    def input_shape(self) -> tuple:
         features = len(self.input_features)
         shape = features,
         if "ts_args" in self.model_kws:
@@ -85,7 +84,7 @@ class DLRegressionExperiments(Experiments):
     @property
     def lookback_space(self):
         return self._lookback_space
-    
+
     @lookback_space.setter
     def lookback_space(self, space):
         self._lookback_space = space
@@ -93,7 +92,7 @@ class DLRegressionExperiments(Experiments):
     @property
     def batch_size_space(self):
         return self._batch_size_space
-    
+
     @batch_size_space.setter
     def batch_size_space(self, bs_space):
         self._batch_size_space = bs_space
@@ -101,7 +100,7 @@ class DLRegressionExperiments(Experiments):
     @property
     def lr_space(self):
         return self._lr_space
-    
+
     @lr_space.setter
     def lr_space(self, lr_space):
         self._lr_space = lr_space
@@ -188,7 +187,7 @@ class DLRegressionExperiments(Experiments):
         for arg in ['batch_size', 'lr']:
             if arg in kwargs:
                 _kwargs[arg] = kwargs.pop(arg)
-        config =  {'model': CNN(input_shape=self.input_shape, **kwargs)}
+        config = {'model': CNN(input_shape=self.input_shape, **kwargs)}
         config.update(_kwargs)
 
         return config
