@@ -12,7 +12,18 @@ LOSSES = {}
 LAYERS = {}
 
 if tcn is not None:
-    LAYERS.update({"TCN": tcn.TCN if tcn is not None else None})
+    LAYERS.update({"TCN": tcn.TCN})
+
+
+try:
+    import atten_lstm
+except ModuleNotFoundError:
+    atten_lstm = None
+
+if atten_lstm is not None:
+    from atten_lstm import SelfAttention, AttentionLSTM
+    LAYERS.update({"SelfAttention": SelfAttention})
+    LAYERS.update({"AttentionLSTM": AttentionLSTM})
 
 if tf is not None:
     import ai4water.utils.tf_losses as tf_losses
