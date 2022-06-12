@@ -789,6 +789,9 @@ Available cases are {self.models} and you wanted to include
         fig.set_figheight(kwargs.get('fig_height', 8))
         fig.set_figwidth(kwargs.get('fig_width', 8))
 
+        labels = [model.split('model_')[1] for model in models.index.tolist()]
+        models.index = labels
+
         bar_chart(ax=axis[0],
                   labels=models.index.tolist(),
                   values=models['train'],
@@ -1295,7 +1298,7 @@ Available cases are {self.models} and you wanted to include
         else:
             mode = "classification"
         visualizer = ProcessPredictions(path=self.exp_path,
-                                        show=self.verbosity,
+                                        show=bool(self.verbosity),
                                         mode=mode)
 
         for idx, data_name in enumerate(['training', 'test']):
@@ -1408,7 +1411,7 @@ Available cases are {self.models} and you wanted to include
         """Evaluates the model"""
 
         if validation_data is None:
-            t, p = self.model_.predict(
+            t, p = self.model_.predict_on_validation_data(
                 data=data,
                 return_true=True,
                 process_results=False)
@@ -1454,7 +1457,7 @@ Available cases are {self.models} and you wanted to include
         if validation_data is None:
             test_true, test_pred = self.model_.predict(data=data, return_true=True)
 
-            train_true, train_pred = self.model_.predict(data='training', return_true=True)
+            train_true, train_pred = self.model_.predict_on_training_data(data=data, return_true=True)
         else:
             test_true, test_pred = self.model_.predict(*validation_data, return_true=True)
             train_true, train_pred = self.model_.predict(x=x, y=y, return_true=True)

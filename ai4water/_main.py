@@ -1382,7 +1382,7 @@ class BaseModel(NN):
             y:
                 outputs/true data corresponding to `x`
             data:
-                Raw unprepared data which will be fed to [DataSet][ai4water.preprocessing.DataSet]
+                Raw unprepared data which will be fed to :py:class:`ai4water.preprocessing.DataSet`
                 to prepare x and y. If `x` and `y` are given, this argument will have no meaning.
             metrics:
                 the metrics to evaluate. It can a string indicating the metric to
@@ -2077,7 +2077,7 @@ class BaseModel(NN):
         return Interpret(self)
 
     def explain(self, *args, **kwargs):
-        """Calls the [explain_model][ai4water.postprocessing.explain.explain_model] function
+        """Calls the :py:meth:ai4water.postprocessing.explain.explain_model` function
          to explain the model.
          """
         from ai4water.postprocessing.explain import explain_model

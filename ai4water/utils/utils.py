@@ -42,7 +42,9 @@ ERROR_LABELS = {
     'msle': 'MSLE',
     'nrmse': 'Normalized RMSE',
     'mape': 'MAPE',
-    'r2_score': "$R^{2}$ Score"
+    'r2_score': "$R^{2}$ Score",
+    'mae': 'MAE',
+    'mase': 'MASE'
 }
 
 def reset_seed(seed: Union[int, None], os=None, random=None, np=None, tf=None, torch=None):
