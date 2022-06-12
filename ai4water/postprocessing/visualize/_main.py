@@ -125,18 +125,17 @@ class Visualize(Plots):
             data='training',
             x=None,
             y=None,
-            examples_to_use=None,
-            show: bool = False,
+            examples_to_use=None
     ):
 
         if self.model.category == "DL":
-            self.activations(layer_name, data, x, examples_to_use, show=show)
+            self.activations(layer_name, data, x, examples_to_use)
             self.activation_gradients(layer_name, x=x, y=y,
-                                      examples_to_use=examples_to_use, show=show)
-            self.weights(layer_name, show=show)
-            self.weight_gradients(layer_name, data=data, x=x, y=y, show=show)
+                                      examples_to_use=examples_to_use)
+            self.weights(layer_name)
+            self.weight_gradients(layer_name, data=data, x=x, y=y)
         else:
-            self.decision_tree(show=show)
+            self.decision_tree()
             self.decision_tree_leaves(data=data)
 
         return
@@ -200,8 +199,7 @@ class Visualize(Plots):
             layer_names=None,
             data: str = 'training',
             x=None,
-            examples_to_use: Union[int, list, np.ndarray, range] = None,
-            show: bool = False
+            examples_to_use: Union[int, list, np.ndarray, range] = None
     ):
         """Plots outputs of any layer of neural network.
 
@@ -212,7 +210,6 @@ class Visualize(Plots):
                 it will plot outputs of all layers
             examples_to_use : If integer, it will be the number of examples to use.
                 If array like, it will be the indices of examples to use.
-            show :
         """
         activations = self.get_activations(x=x, data=data)
 
@@ -237,17 +234,16 @@ class Visualize(Plots):
                 if isinstance(activation, np.ndarray):
 
                     if activation.ndim == 2 and examples_to_use is None:
-                        examples_to_use = len(activation)
+                        examples_to_use = len(activation)-1
 
-                    self._plot_activations(activation, lyr_name, examples_to_use,
-                                           show)
+                    self._plot_activations(activation, lyr_name, examples_to_use)
 
                 elif isinstance(activation, tuple):
                     for act in activation:
-                        self._plot_activations(act, lyr_name, show)
+                        self._plot_activations(act, lyr_name)
         return
 
-    def _plot_activations(self, activation, lyr_name, examples_to_use=24, show=False):
+    def _plot_activations(self, activation, lyr_name, examples_to_use=24):
 
         if examples_to_use is None:
             indices = range(len(activation))
@@ -261,7 +257,7 @@ class Visualize(Plots):
             if activation.ndim == 3:
 
                 self.features_2d(activation,
-                                 show=show,
+                                 show=self.show,
                                  name=lyr_name + "_outputs",
                                  sup_title="Activations",
                                  n_rows=6,
@@ -272,23 +268,23 @@ class Visualize(Plots):
             else:
                 self._imshow(activation, f"{lyr_name} Activations",
                              fname=lyr_name,
-                             show=show,
+                             show=self.show,
                              ylabel="Examples", xlabel="LSTM units",
                              cmap=random.choice(CMAPS))
 
         elif np.ndim(activation) == 2 and activation.shape[1] > 1:
             if "lstm" in lyr_name.lower():
                 kwargs['xlabel'] = "LSTM units"
-            self._imshow(activation, lyr_name + " Activations", show=show,
+            self._imshow(activation, lyr_name + " Activations", show=self.show,
                          fname=lyr_name, **kwargs)
 
         elif np.ndim(activation) == 3:
             if "input" in lyr_name.lower():
                 kwargs['xticklabels'] = self.model.input_features
-            self._imshow_3d(activation, lyr_name, save=show, **kwargs, where='')
+            self._imshow_3d(activation, lyr_name, save=self.show, **kwargs, where='')
         elif np.ndim(activation) == 2:  # this is now 1d
             # shape= (?, 1)
-            self.plot1d(activation, label=lyr_name + ' Outputs', show=show,
+            self.plot1d(activation, label=lyr_name + ' Outputs', show=self.show,
                         fname=lyr_name + '_outputs')
         else:
             print("ignoring activations for {} because it has shape {}, {}".format(lyr_name, activation.shape,
@@ -307,14 +303,12 @@ class Visualize(Plots):
 
     def weights(
             self,
-            layer_names: Union[str, list] = None,
-            show: bool = False
+            layer_names: Union[str, list] = None
     ):
         """Plots the weights of a specific layer or all layers.
 
         Arguments:
             layer_names : The layer whose weights are to be viewed.
-            show :
         """
 
         weights = self.get_weights()
@@ -344,18 +338,18 @@ class Visualize(Plots):
 
                     if np.ndim(weight) == 2 and weight.shape[1] > 1:
 
-                        self._imshow(weight, title, show=show, fname=fname,
+                        self._imshow(weight, title, show=self.show, fname=fname,
                                      rnn_args=rnn_args)
 
                     elif len(weight) > 1 and np.ndim(weight) < 3:
-                        self.plot1d(weight, title, show, fname, rnn_args=rnn_args)
+                        self.plot1d(weight, title, self.show, fname, rnn_args=rnn_args)
 
                     elif "conv" in _name.lower() and np.ndim(weight) == 3:
                         _name = _name.replace("/", "_")
                         _name = _name.replace(":", "_")
 
                         self.features_2d(data=weight,
-                                         save=show,
+                                         save=self.show,
                                          name=_name,
                                          slices=64,
                                          slice_dim=2,
@@ -401,7 +395,6 @@ class Visualize(Plots):
             y=None,
             examples_to_use=None,
             plot_type="2D",
-            show: bool = False
     ):
         """Plots the gradients o activations/outputs of layers
 
@@ -414,22 +407,19 @@ class Visualize(Plots):
             examples_to_use : the examples from the data to use. If None, then all
                 examples will be used, which is equal to the length of data.
             plot_type :
-            show :
         """
         if plot_type == "2D":
             return self.activation_gradients_2D(layer_names, data, x, y,
-                                                examples_to_use, show)
+                                                examples_to_use)
 
-        return self.activation_gradients_1D(layer_names, data, x, y, examples_to_use,
-                                            show)
+        return self.activation_gradients_1D(layer_names, data, x, y, examples_to_use)
 
     def activation_gradients_2D(self,
                                 layer_names=None,
                                 data='training',
                                 x=None,
                                 y=None,
-                                examples_to_use=24,
-                                show=True
+                                examples_to_use=24
                                 ):
         """Plots activations of intermediate layers except input and output
 
@@ -439,22 +429,20 @@ class Visualize(Plots):
             x :
             y :
             examples_to_use : if integer, it will be the number of examples to use.
-                If array like, it will be index of examples to use.
-            show :
+                If array like, it will be index of examples to use
         """
 
         gradients = self.get_activation_gradients(layer_names=layer_names,
                                                   data=data, x=x, y=y)
 
-        return self._plot_act_grads(gradients, examples_to_use, show=show)
+        return self._plot_act_grads(gradients, examples_to_use)
 
     def activation_gradients_1D(self,
                                 layer_names,
                                 data='training',
                                 x=None,
                                 y=None,
-                                examples_to_use=None,
-                                show=False):
+                                examples_to_use=None):
         """Plots gradients of layer outputs as 1D
 
         Arguments:
@@ -463,7 +451,6 @@ class Visualize(Plots):
             data :
             x :
             y :
-            show :
         """
         gradients = self.get_activation_gradients(layer_names=layer_names,
                                                   data=data, x=x, y=y)
@@ -481,11 +468,11 @@ class Visualize(Plots):
                     if "LSTM" in lyr_name:
                         example = example.T
 
-                    self.features_1d(example, name=_fname, title=_title, show=show,
+                    self.features_1d(example, name=_fname, title=_title,
                                      xlabel="Lookback steps", ylabel="Gradients")
         return
 
-    def _plot_act_grads(self, gradients, examples_to_use=24, show=True):
+    def _plot_act_grads(self, gradients, examples_to_use=24):
 
         if self.verbosity > 0:
             print("Plotting gradients of activations of layersr")
@@ -502,14 +489,14 @@ class Visualize(Plots):
             if "LSTM" in lyr_name.upper() and np.ndim(gradient) in (2, 3):
 
                 if gradient.ndim == 2:
-                    self._imshow(gradient, fname=fname, label=title, show=show,
+                    self._imshow(gradient, fname=fname, label=title, show=self.show,
                                  xlabel="LSTM units")
                 else:
 
                     self.features_2d(gradient,
                                      name=fname,
                                      title=indices,
-                                     show=show,
+                                     show=self.show,
                                      n_rows=6,
                                      sup_title=title,
                                      sup_xlabel="LSTM units",
@@ -518,25 +505,25 @@ class Visualize(Plots):
             elif np.ndim(gradient) == 2:
                 if gradient.shape[1] > 1:
                     # (?, ?)
-                    self._imshow(gradient, title, show, fname)
+                    self._imshow(gradient, title, self.show, fname)
                 elif gradient.shape[1] == 1:
                     # (? , 1)
-                    self.plot1d(np.squeeze(gradient), title, show, fname)
+                    self.plot1d(np.squeeze(gradient), title, self.show, fname)
 
             elif np.ndim(gradient) == 3 and gradient.shape[1] == 1:
                 if gradient.shape[2] == 1:
                     # (?, 1, 1)
-                    self.plot1d(np.squeeze(gradient), title, show, fname)
+                    self.plot1d(np.squeeze(gradient), title, self.show, fname)
                 else:
                     # (?, 1, ?)
-                    self._imshow(np.squeeze(gradient), title, show, fname)
+                    self._imshow(np.squeeze(gradient), title, self.show, fname)
             elif np.ndim(gradient) == 3:
                 if gradient.shape[2] == 1:
                     # (?, ?, 1)
-                    self._imshow(np.squeeze(gradient), title, show, fname)
+                    self._imshow(np.squeeze(gradient), title, self.show, fname)
                 elif gradient.shape[2] > 1:
                     # (?, ?, ?)
-                    self._imshow_3d(gradient, lyr_name, show)
+                    self._imshow_3d(gradient, lyr_name, self.show)
             else:
                 print("ignoring activation gradients for {} because it has shape {} {}".format(lyr_name, gradient.shape,
                                                                                                np.ndim(gradient)))
@@ -570,7 +557,6 @@ class Visualize(Plots):
             data='training',
             x=None,
             y=None,
-            show: bool = False,
     ):
         """Plots gradient of all trainable weights
 
@@ -579,7 +565,6 @@ class Visualize(Plots):
             data :  the data to use to calculate gradients of weights
             x : alternative to data
             y : alternative to data
-            show : whether to show the plot or not.
         """
         gradients = self.get_weight_gradients(data=data, x=x, y=y)
 
@@ -609,15 +594,14 @@ class Visualize(Plots):
                                     'gate_names_str': "(input, forget, cell, output)"}
 
                         if np.ndim(gradient) == 3:
-                            self.rnn_histogram(gradient, name=fname, title=title,
-                                               show=show)
+                            self.rnn_histogram(gradient, name=fname, title=title)
 
                     if np.ndim(gradient) == 2 and gradient.shape[1] > 1:
-                        self._imshow(gradient, title, show=show, fname=fname,
+                        self._imshow(gradient, title, show=self.show, fname=fname,
                                      rnn_args=rnn_args)
 
                     elif len(gradient) and np.ndim(gradient) < 3:
-                        self.plot1d(gradient, title, show=show, fname=fname,
+                        self.plot1d(gradient, title, show=self.show, fname=fname,
                                     rnn_args=rnn_args)
                     else:
                         print(f"""ignoring weight gradients for {lyr_name} because it has
@@ -666,13 +650,13 @@ class Visualize(Plots):
 
         return lstm_weights
 
-    def rnn_weights_histograms(self, layer_name, show=False):
+    def rnn_weights_histograms(self, layer_name):
 
         weights = self.get_weights()
         rnn_weights = self.get_rnn_weights(weights, layer_name)
 
         for k, w in rnn_weights.items():
-            self.rnn_histogram(w, name=k + "_weight_histogram", show=show)
+            self.rnn_histogram(w, name=k + "_weight_histogram")
 
         return
 
@@ -681,18 +665,17 @@ class Visualize(Plots):
                                  data='training',
                                  x=None,
                                  y=None,
-                                 show=False
                                  ):
 
         gradients = self.get_weight_gradients(data=data, x=x, y=y)
 
         rnn_weights = self.get_rnn_weights(gradients)
         for k, w in rnn_weights.items():
-            self.rnn_histogram(w, name=k + "_weight_grads_histogram", show=show)
+            self.rnn_histogram(w, name=k + "_weight_grads_histogram")
 
         return
 
-    def rnn_histogram(self, data, save=True, name='', show=False, **kwargs):
+    def rnn_histogram(self, data, save=True, name='', **kwargs):
 
         if save:
             save = os.path.join(self.vis_path, name + "0D.png")
@@ -703,7 +686,7 @@ class Visualize(Plots):
             warnings.warn("install see-rnn to plot rnn_histogram plot", UserWarning)
         else:
             rnn_histogram(data, RNN_INFO["LSTM"], bins=400, savepath=save,
-                          show=show, **kwargs)
+                          show=self.show, **kwargs)
 
         return
 
@@ -725,7 +708,7 @@ class Visualize(Plots):
                 elif model_name.startswith("Cat"):
 
                     gv_object = self.model._model.plot_tree(0, **kwargs)
-                    if show:
+                    if self.show:
                         gv_object.view()
                     gv_object.save(filename="decision_tree", directory=self.path)
 
@@ -738,7 +721,7 @@ class Visualize(Plots):
                               ax=axis, **kwargs)
 
                 plt.savefig(fname, dpi=500)
-                if show:
+                if self.show:
                     plt.show()
             else:
                 print(f"decision tree can not be plotted for {model_name}")
