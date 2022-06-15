@@ -6,9 +6,11 @@ other files of ai4water.
 """
 __all__ = ["np", "os", "plt", "mpl", "pd", "random", "scipy", "stats",
            "easy_mpl", "SeqMetrics",
-           "sklearn", "skopt", "hyperopt", "xr", "fiona", "netCDF4",
+           "sklearn",
+           "skopt", "hyperopt", "hp", "optuna",
+           "xr", "fiona", "netCDF4",
            "sns", "imageio", "shapefile", "tf", "torch", "keras",
-           "requests", "optuna", "plotly", "h5py", "lime",
+           "requests", "plotly", "h5py", "lime",
            "xgboost_models", "catboost_models", "lightgbm_models", "sklearn_models",
            "get_attributes"]
 
@@ -184,6 +186,11 @@ try:
     import hyperopt
 except (ModuleNotFoundError, ImportError):
     hyperopt = None
+
+if hyperopt is None:
+    hp = None
+else:
+    from hyperopt import hp
 
 try:
     import xarray as xr

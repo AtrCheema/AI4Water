@@ -5,7 +5,7 @@ from typing import Union
 
 from SeqMetrics import RegressionMetrics, ClassificationMetrics
 
-from .utils.utils import rank_folders, TrainTestSplit
+from .utils.utils import clear_weights, TrainTestSplit
 from .utils.utils import dateandtime_now, jsonize, MATRIC_TYPES, update_model_config
 
 
@@ -130,7 +130,7 @@ class ModelOptimizerMixIn(object):
 
         optimizer.fit()
 
-        rank_folders(opt_dir=optimizer.opt_path)
+        clear_weights(optimizer.opt_path, optimizer.results)
 
         return optimizer
 

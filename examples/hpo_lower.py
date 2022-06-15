@@ -89,7 +89,7 @@ def objective_fn(
 num_samples=10
 space = [
 # maximum number of trees that can be built
-Integer(low=100, high=5000, name='iterations', num_samples=num_samples),
+Integer(low=10, high=100, name='iterations', num_samples=num_samples),
 # Used for reducing the gradient step.
 Real(low=0.0001, high=0.5, prior='log', name='learning_rate', num_samples=num_samples),
 # Coefficient at the L2 regularization term of the cost function.
@@ -99,7 +99,7 @@ Real(low=0.1, high=10, name='model_size_reg', num_samples=num_samples),
 # percentage of features to use at each split selection, when features are selected over again at random.
 Real(low=0.1, high=0.95, name='rsm', num_samples=num_samples),
 # number of splits for numerical features
-Integer(low=32, high=1032, name='border_count', num_samples=num_samples),
+Integer(low=32, high=103, name='border_count', num_samples=num_samples),
 # The quantization mode for numerical features.  The quantization mode for numerical features.
 Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
                         'MaxLogSum', 'MinEntropy', 'GreedyLogSum'], name='feature_border_type')
@@ -110,7 +110,7 @@ Categorical(categories=['Median', 'Uniform', 'UniformAndQuantiles',
 #-------------------------------
 # this step is optional but it is always better to
 # provide a good initial guess to the optimization algorithm
-x0 = [200, 0.01, 1.0, 1.0, 0.2, 64, "Uniform"]
+x0 = [10, 0.01, 1.0, 1.0, 0.2, 64, "Uniform"]
 
 #############################################
 # 4) run optimization algorithm

@@ -802,6 +802,23 @@ def find_best_weight(w_path: str, best: str = "min", ext: str = ".hdf5",
     return best_weight
 
 
+def add_folder(opt_dir: str, results: dict)->Union[dict, None]:
+
+    folders = [file for file in os.listdir(opt_dir) if os.path.isdir(os.path.join(opt_dir, file))]
+    num_folders = len(folders)
+    results_with_folders = results.copy()
+
+    if num_folders != len(results):
+        warnings.warn(f"{num_folders} is not equal to {len(results)} so can not perform ranking")
+        return
+
+    for idx, (k, v) in enumerate(results.items()):
+        v['folder'] = folders[idx]
+        results_with_folders[k] = v
+
+    return results_with_folders
+
+
 def remove_all_but_best_weights(w_path, best: str = "min", ext: str = ".hdf5"):
     """removes all the weights from a folder except the best weigtht"""
     best_weights = None
@@ -816,50 +833,49 @@ def remove_all_but_best_weights(w_path, best: str = "min", ext: str = ".hdf5"):
     return best_weights
 
 
-def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True):
+def clear_weights(
+        opt_dir:str,
+        results: dict,
+        keep:int = None,
+        rename:bool = True,
+        write:bool = True
+):
     """Optimization will save weights of all the trained models, not all of them
-    are useful. Here removing weights of all except top 3. The number of models
+    are useful. Here removing weights of all except top 10%. The number of models
     whose weights to be retained can be set by `keep` para.
     """
-    fname = 'sorted.json'
+
+    if 'folder' not in list(results.items())[0]:
+        results = add_folder(opt_dir, results)
+
     if results is None:
-        results = make_hpo_results(opt_dir)
-        fname = 'sorted_folders.json'
+        return
+
+    if keep is None:
+        keep = int(len(results) * 0.1)
+
+    keep = max(keep, 3)
+
+    fname = 'sorted.json'
 
     results = OrderedDict(sorted(results.items()))
 
-    idx = 0
     best_results = {}
 
-    for v in results.values():
-        if 'folder' in v:
-            folder = v['folder']
-            _path = os.path.join(opt_dir, folder)
-            w_path = os.path.join(_path, 'weights')
+    for idx, v in enumerate(results.values()):
+        folder = v['folder']
+        _path = os.path.join(opt_dir, folder)
+        w_path = os.path.join(_path, 'weights')
 
-            if idx > keep-1:
-                if os.path.exists(w_path):
-                    rmtree(w_path)
-            else:
-                best_weights = remove_all_but_best_weights(w_path)
-                best_results[folder] = {'path': _path, 'weights': best_weights}
-
-            idx += 1
+        if idx > keep-1:
+            if os.path.exists(w_path):
+                rmtree(w_path)
+        else:
+            best_weights = remove_all_but_best_weights(w_path)
+            best_results[folder] = {'path': _path, 'weights': best_weights}
 
     if rename:
-        # append ranking of models to folder_names
-        idx = 0
-        for v in results.values():
-            if 'folder' in v:
-                folder = v['folder']
-                old_path = os.path.join(opt_dir, folder)
-                new_path = os.path.join(opt_dir, str(idx+1) + "_" + folder)
-                os.rename(old_path, new_path)
-
-                if folder in best_results:
-                    best_results[folder] = {'path': new_path, 'weights': best_results[folder]}
-
-                idx += 1
+        rank_folders(opt_dir, results, best_results)
 
     results = {k: Jsonize(v)() for k, v in results.items()}
 
@@ -871,22 +887,17 @@ def clear_weights(opt_dir, results: dict = None, keep=3, rename=True, write=True
     return best_results
 
 
-def rank_folders(opt_dir):
-
-    results = make_hpo_results(opt_dir)
-
-    results = OrderedDict(sorted(results.items()))
-
+def rank_folders(opt_dir, results, best_results):
     # append ranking of models to folder_names
-    idx = 0
-    for v in results.values():
-        if 'folder' in v:
-            folder = v['folder']
-            old_path = os.path.join(opt_dir, folder)
-            new_path = os.path.join(opt_dir, str(idx + 1) + "_" + folder)
-            os.rename(old_path, new_path)
 
-            idx += 1
+    for idx, v in enumerate(results.values()):
+        folder = v['folder']
+        old_path = os.path.join(opt_dir, folder)
+        new_path = os.path.join(opt_dir, str(idx + 1) + "_" + folder)
+        os.rename(old_path, new_path)
+
+        if folder in best_results:
+            best_results[folder] = {'path': new_path, 'weights': best_results[folder]}
     return
 
 

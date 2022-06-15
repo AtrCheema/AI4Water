@@ -355,7 +355,7 @@ class Experiments(object):
                     opt_dir = os.path.join(os.getcwd(),
                                            f"results{SEP}{self.exp_name}{SEP}{model_name}")
 
-                    if self.verbosity > 0:
+                    if self.verbosity > 1:
                         print(f"optimizing  {model_type} using {opt_method} method")
 
                     self.optimizer = HyperOpt(
@@ -407,10 +407,14 @@ class Experiments(object):
             **kwargs
     ):
         """Evaluate the best models."""
-        best_models = clear_weights(opt_dir, rename=False, write=False)
-        # TODO for ML, best_models is empty
-        if len(best_models) < 1:
+        with open(os.path.join(opt_dir, "iterations.json"), 'r') as fp:
+            results = json.load(fp)
+
+        best_models = clear_weights(opt_dir, results, rename=False, write=False)
+        # TODO for ML, best_models can be empty
+        if best_models is None or len(best_models) < 1:
             return self.train_best(x, y, data, validation_data, model_type)
+
         for mod, props in best_models.items():
             mod_path = os.path.join(props['path'], "config.json")
             mod_weights = props['weights']

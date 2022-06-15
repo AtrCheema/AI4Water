@@ -3,12 +3,8 @@ from typing import Union
 
 from ai4water.utils.utils import Jsonize
 from ai4water.backend import np, skopt, optuna
-from ai4water.backend import hyperopt as hp
+from ai4water.backend import hp
 
-if hp is not None:
-    space_eval = hp.space_eval
-else:
-    hp = None
 
 _Real = skopt.space.Real
 _Integer = skopt.space.Integer

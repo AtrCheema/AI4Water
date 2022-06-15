@@ -5,10 +5,8 @@ import warnings
 from typing import Union
 from collections import OrderedDict
 
-from ai4water.utils.utils import JsonEncoder
 from .utils import plot_convergences
 from .utils import get_one_tpe_x_iter
-from ai4water.utils.utils import Jsonize, dateandtime_now
 from .utils import to_skopt_as_dict
 from .utils import post_process_skopt_results
 from .utils import to_skopt_space
@@ -16,6 +14,10 @@ from .utils import save_skopt_results
 from ._space import Categorical, Real, Integer
 from .utils import sort_x_iters, x_iter_for_tpe
 from .utils import loss_histogram, plot_hyperparameters
+
+from ai4water.utils.utils import JsonEncoder
+from ai4water.utils.utils import clear_weights
+from ai4water.utils.utils import Jsonize, dateandtime_now
 from ai4water.utils.visualizations import plot_edf
 from ai4water.backend import hyperopt as _hyperopt
 from ai4water.backend import np, pd, plt, os, sklearn, optuna, plotly, skopt, easy_mpl
@@ -786,9 +788,10 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         this argument is set to True during initiatiation of HyperOpt.""")
             err = round(err, 8)
 
-            self.results[err + idx] = sort_x_iters(para, self.original_para_order())
+            self.results[f'{round(err, 8)}_{idx}'] = sort_x_iters(para, self.original_para_order())
 
         if self._process_results:
+            clear_weights(self.opt_path, self.results)
             self.process_results()
 
         if self.eval_on_best:
