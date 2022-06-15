@@ -97,9 +97,9 @@ class ModelOptimizerMixIn(object):
                 val_score = getattr(metrics, val_metric)()
             else:
                 if xy:
-                    val_score = _model.cross_val_score(*data)
+                    val_score = _model.cross_val_score(*data)[0]
                 else:
-                    val_score = _model.cross_val_score(data=data)
+                    val_score = _model.cross_val_score(data=data)[0]
 
             
 

@@ -194,6 +194,7 @@
 # https://www.tr32db.uni-koeln.de/search/view.php?dataID=1761
 
 import glob
+import warnings
 import zipfile
 import shutil
 from typing import Union
@@ -207,6 +208,7 @@ except (ModuleNotFoundError, OSError):
 
 from ai4water.backend import os, random, np, pd
 from ai4water.backend import netCDF4
+from ai4water.backend import xr
 from .download_pangaea import PanDataSet
 from .download_zenodo import download_from_zenodo
 from .utils import download, download_all_http_directory
@@ -505,8 +507,11 @@ class WeatherJena(Datasets):
     def __init__(self, obs_loc='roof'):
         """
         The ETP data is collected at three different locations i.e. roof, soil and saale(hall).
-        Arguments:
-            obs_loc str: location of observation.
+
+        Parameters
+        ----------
+            obs_loc : str, optional (default=roof)
+                location of observation.
         """
 
         if obs_loc not in ['roof', 'soil', 'saale']:
@@ -520,23 +525,47 @@ class WeatherJena(Datasets):
         if not os.path.exists(sub_dir):
             os.makedirs(sub_dir)
 
-        download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
-        unzip_all_in_dir(sub_dir, 'zip')
+        if xr is None:
+            warnings.warn("""
+            loading data from csv files is slow. 
+            Try installing xarray and netcdf for faster loading
+            """)
+            download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
+            unzip_all_in_dir(sub_dir, 'zip')
+        else:
+            nc_path = os.path.join(sub_dir, "data.nc")
+            if not os.path.exists(nc_path):
+                download_all_http_directory(self.url, sub_dir, match_name=self.obs_loc)
+                unzip_all_in_dir(sub_dir, 'zip')
+                print("converting data to netcdf file. This will happen only once.")
+                df = self._read_as_df()
+                ndf = pd.DataFrame()
+                for _col in df.columns:
+                    col = _col.replace("/", "_")
+                    ndf[col] = df[_col].copy()
+
+                ndf = ndf.reset_index()
+                ndf.to_xarray().to_netcdf(nc_path)
+
+    @property
+    def dynamic_features(self)->list:
+        """returns names of features availabel"""
+        return self.fetch().columns.tolist()
 
     def fetch(
             self,
-            st: str = None,
-            en: str = None
+            st: Union[str, int, pd.DatetimeIndex] = None,
+            en: Union[str, int, pd.DatetimeIndex] = None
     ) -> pd.DataFrame:
         """
         Fetches the time series data between given period as pandas dataframe.
 
         Parameters
         ----------
-            st :
+            st : Optional
                 start of data to be fetched. If None, the data from start (2003-01-01)
                 will be retuned
-            en :
+            en : Optional
                 end of data to be fetched. If None, the data from till (2021-12-31)
                 end be retuned.
 
@@ -550,7 +579,31 @@ class WeatherJena(Datasets):
             >>> from ai4water.datasets import WeatherJena
             >>> dataset = WeatherJena()
             >>> df = dataset.fetch()
+            ... # get data between specific period
+            >>> df = dataset.fetch("20110101", "20201231")
         """
+
+        sub_dir = os.path.join(self.ds_dir, self.obs_loc)
+
+        if xr is None:
+            df = self._read_as_df()
+        else:
+            nc_path = os.path.join(sub_dir, "data.nc")
+            df = xr.load_dataset(nc_path).to_dataframe()
+            if 'Date Time' in df:
+                df.index = pd.to_datetime(df.pop('Date Time'))
+
+        if isinstance(st, int):
+            if en is None:
+                en = len(df)
+            assert isinstance(en, int)
+            return df.iloc[st:en]
+        elif st is not None:
+            return df.loc[st:en]
+
+        return df
+
+    def _read_as_df(self)->pd.DataFrame:
 
         sub_dir = os.path.join(self.ds_dir, self.obs_loc)
         all_files = glob.glob(f"{sub_dir}/*.csv")
@@ -562,14 +615,7 @@ class WeatherJena(Datasets):
             f_df.index = pd.DatetimeIndex(f_df.index)
             df = pd.concat([df, f_df])  # todo, such concatenation is slow.
 
-        df = df.sort_index()
-
-        if st is None:
-            st = df.index[0]
-        if en is None:
-            en = df.index[-1]
-
-        return df[st:en]
+        return df.sort_index()
 
 
 class SWECanada(Datasets):

@@ -70,6 +70,7 @@ def download_all_http_directory(url, outpath=None, filetypes=".zip", match_name=
                 continue
             download(basic_url + l["href"], _outpath)
             print(r.status_code, l["href"], )
+    return
 
 
 def download(url, out=None):

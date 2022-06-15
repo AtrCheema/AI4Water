@@ -190,10 +190,21 @@ class Camels(Datasets):
         --------
         >>> dataset = CAMELS_AUS()
         >>> # get data of 10% of stations
-        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)
+        >>> df = dataset.fetch(stations=0.1, as_dataframe=True)  # returns a multiindex dataframe
+        ...  # fetch data of 5 (randomly selected) stations
+        >>> df = dataset.fetch(stations=5, as_dataframe=True)
+        ... # fetch data of 3 selected stations
+        >>> df = dataset.fetch(stations=['912101A','912105A','915011A'], as_dataframe=True)
+        ... # fetch data of a single stations
+        >>> df = dataset.fetch(stations='318076', as_dataframe=True)
         ... # get both static and dynamic features as dictionary
         >>> data = dataset.fetch(1, static_features="all", as_dataframe=True)  # -> dict
         >>> data['dynamic']
+        ... # get only selected dynamic features
+        >>> df = dataset.fetch(stations='318076',
+        ...     dynamic_features=['streamflow_MLd', 'solarrad_AWAP'], as_dataframe=True)
+        ... # fetch data between selected periods
+        >>> df = dataset.fetch(stations='318076', st="20010101", en="20101231", as_dataframe=True)
 
         """
         if isinstance(stations, int):
@@ -392,21 +403,37 @@ class Camels(Datasets):
         """
         Fetches attributes for one station.
 
-        Arguments:
-            station : station id/gauge id for which the data is to be fetched.
-            dynamic_features:
-            static_features:
-            as_ts : whether static attributes are to be converted into a time
+        Parameters
+        -----------
+            station :
+                station id/gauge id for which the data is to be fetched.
+            dynamic_features : str/list, optional
+                names of dynamic features/attributes to fetch
+            static_features :
+                names of static features/attributes to be fetches
+            as_ts : bool
+                whether static attributes are to be converted into a time
                 series or not. If yes then the returned time series will be of
                 same length as that of dynamic attribtues.
-            st : starting point from which the data to be fetched. By default
+            st : str,optional
+                starting point from which the data to be fetched. By default
                 the data will be fetched from where it is available.
-            en : end point of data to be fetched. By default the dat will be fetched
+            en : str, optional
+                end point of data to be fetched. By default the dat will be fetched
 
-        Return: DataFrame
+        Returns
+        -------
+        pd.DataFrame
             dataframe if as_ts is True else it returns a dictionary of static and
-                dynamic attributes for a station/gauge_id
-            """
+            dynamic attributes for a station/gauge_id
+
+        Examples
+        --------
+            >>> from ai4water.datasets import CAMELS_AUS
+            >>> dataset = CAMELS_AUS()
+            >>> dataset.fetch_station_attributes('912101A')
+
+        """
         st, en = self._check_length(st, en)
 
         station_df = pd.DataFrame()
