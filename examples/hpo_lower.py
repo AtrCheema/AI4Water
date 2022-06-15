@@ -51,7 +51,7 @@ def objective_fn(
     global ITER
 
     # build model
-    model = Model(model={"CatBoostRegressor": suggestions},
+    _model = Model(model={"CatBoostRegressor": suggestions},
                   prefix=prefix or PREFIX,
                   train_fraction=1.0,
                   split_random=True,
@@ -59,10 +59,10 @@ def objective_fn(
                   )
 
     # train model
-    model.fit(data=data)
+    _model.fit(data=data)
 
     # evaluate model
-    t, p = model.predict(data='validation', return_true=True, process_results=False)
+    t, p = _model.predict(data='validation', return_true=True, process_results=False)
     val_score = RegressionMetrics(t, p).r2_score()
 
     if not math.isfinite(val_score):
@@ -140,6 +140,12 @@ print(f"optimized parameters are \n{optimizer.best_paras()}")
 ###########################################
 # postprocessing of results
 #---------------------------------------------
+# save hyperparameters at each iteration
+
+optimizer.save_iterations_as_xy()
+
+#%%
+# save convergence plot
 
 optimizer._plot_convergence(save=False)
 
@@ -195,7 +201,7 @@ print(tf.__version__, np.__version__)
 
 ##############################################
 
-PREFIX = f"hpo_nn{dateandtime_now()}"
+PREFIX = f"hpo_nn_{dateandtime_now()}"
 ITER = 0
 num_iterations = 15
 
@@ -208,11 +214,14 @@ SEEDS_USED = []
 
 
 def objective_fn(
-        prefix=None,
-        return_model=False,
-        seed:int=None,
-        epochs:int=100,
-        **suggestions)->Union[float, Model]:
+        prefix: str = None,
+        return_model: bool = False,
+        seed:int = None,
+        epochs:int = 100,
+        verbosity: int = 0,
+        predict : bool = False,
+        **suggestions
+)->Union[float, Model]:
     """This function must build, train and evaluate the ML model.
     The output of this function will be minimized by optimization algorithm.
 
@@ -221,7 +230,7 @@ def objective_fn(
     prefix : str
         prefix to save the results. This argument will only be used after
         the optimization is complete
-    return_model : bool
+    return_model : bool, optional (default=False)
         if True, then objective function will return the built model. This
         argument will only be used after the optimization is complete
     seed : int, optional
@@ -231,11 +240,19 @@ def objective_fn(
         seed.
     epochs : int, optional
         the number of epochs for which to train the model
+    verbosity : int, optional (default=1)
+        determines the amount of information to be printed
+    predict : bool, optional (default=False)
+        whether to make predictions on training and validation data or not.
     suggestions : dict
         a dictionary with values of hyperparameters at the iteration when
         this objective function is called. The objective function will be
         called as many times as the number of iterations in optimization
         algorithm.
+
+    Returns
+    -------
+    float or Model
     """
     suggestions = jsonize(suggestions)
     global ITER
@@ -256,7 +273,7 @@ def objective_fn(
         ts_args={"lookback": 14},
         input_features=data.columns.tolist()[0:-1],
         output_features=data.columns.tolist()[-1:],
-        verbosity=0)
+        verbosity=verbosity)
 
     # ai4water's Model class does not fix numpy seed
     # below we fix all the seeds including numpy but this seed it itself randomly generated
@@ -269,8 +286,12 @@ def objective_fn(
     # train model
     _model.fit(data=data)
 
+    if predict:
+        _model.predict_on_training_data(data=data)
+        _model.predict_on_validation_data(data=data)
+
     # evaluate model
-    t, p = _model.predict(data='validation', return_true=True, process_results=False)
+    t, p = _model.predict_on_validation_data(data=data, return_true=True, process_results=False)
     val_score = RegressionMetrics(t, p).mse()
 
     # here we are evaluating model with respect to mse, therefore
@@ -324,9 +345,10 @@ print(f"optimized parameters are \n{optimizer.best_paras()} at {best_iteration} 
 
 # we can now again call the objective function with best/optimium parameters
 
-
 model = objective_fn(prefix=f"{PREFIX}{SEP}best",
                      seed=seed_on_best_iter,
                      return_model=True,
                      epochs=200,
+                     verbosity=1,
+                     predict=True,
                      **optimizer.best_paras())
