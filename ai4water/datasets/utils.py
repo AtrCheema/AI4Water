@@ -1,10 +1,13 @@
 import os
 import ssl
+from typing import Union
 
 import tempfile
 import sys, shutil
 import urllib.request as ulib
 import urllib.parse as urlparse
+
+import pandas as pd
 
 try:
     import requests
@@ -203,3 +206,31 @@ def sanity_check(dataset_name, path):
                     if not os.path.exists(os.path.join(data_path, file)):
                         raise FileNotFoundError(f"File {file} must exist inside {data_path}")
     return
+
+
+def check_st_en(
+        df:pd.DataFrame,
+        st:Union[int, str, pd.DatetimeIndex]=None,
+        en:Union[int, str, pd.DatetimeIndex]=None
+)->pd.DataFrame:
+    """slices the dataframe based upon st and en"""
+    if isinstance(st, int):
+        if en is None:
+            en = len(df)
+        else:
+            assert isinstance(en, int)
+        df = df.iloc[st:en]
+
+    elif isinstance(st, (str, pd.DatetimeIndex)):
+        if en is None:
+            en = df.index[-1]
+        df = df.loc[st:en]
+
+    elif isinstance(en, int):
+        st = 0 # st must be none here
+        df = df.iloc[st:en]
+    elif isinstance(en, (str, pd.DatetimeIndex)):
+        st = df.index[0]
+        df = df.loc[st:en]
+
+    return df

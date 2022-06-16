@@ -463,10 +463,8 @@ class LamaH(Camels):
     paper: https://essd.copernicus.org/preprints/essd-2021-72/
     """
     url = "https://zenodo.org/record/4609826#.YFNp59zt02w"
-    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp'
-                   ]
-    time_steps = ['daily', 'hourly'
-                  ]
+    _data_types = ['total_upstrm', 'diff_upstrm_all', 'diff_upstrm_lowimp']
+    time_steps = ['daily', 'hourly']
 
     static_attribute_categories = ['']
 
@@ -477,10 +475,19 @@ class LamaH(Camels):
                  ):
 
         """
-        Arguments:
-            time_step : possible values are `daily` or `hourly`
-            data_type : possible values are `total_upstrm`, `diff_upstrm_all`
-                or 'diff_upstrm_lowimp'
+        Parameters
+        ----------
+            time_step :
+                possible values are ``daily`` or ``hourly``
+            data_type :
+                possible values are ``total_upstrm``, ``diff_upstrm_all``
+                or `diff_upstrm_lowimp`
+
+        Examples
+        --------
+            >>> from ai4water.datasets import LamaH
+            >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
+            >>> df = dataset.fetch(3, as_dataframe=True)
         """
 
         assert time_step in self.time_steps, f"invalid time_step {time_step} given"
@@ -573,7 +580,19 @@ class LamaH(Camels):
             stn_id: Union[str, list],
             features=None
     ) -> pd.DataFrame:
+        """
+        static features of LamaH
 
+        Examples
+        --------
+            >>> from ai4water.datasets import LamaH
+            >>> dataset = LamaH(time_step='daily', data_type='total_upstrm')
+            >>> df = dataset.fetch_static_features('99')  # (1, 61)
+            ...  # get list of all static features
+            >>> dataset.static_features
+            >>> dataset.fetch_static_features('99',
+            >>> features=['area_calc', 'elev_mean', 'agr_fra', 'sand_fra'])  # (1, 4)
+        """
         fname = os.path.join(self.data_type_dir,
                              f'1_attributes{SEP}Catchment_attributes.csv')
 

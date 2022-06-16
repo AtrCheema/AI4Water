@@ -1247,7 +1247,7 @@ def prepare_data(
     Returns
     -------
         x : numpy array of shape (examples, lookback, ins) consisting of
-        input examples
+            input examples
         prev_y : numpy array consisting of previous outputs
         y : numpy array consisting of target values
 

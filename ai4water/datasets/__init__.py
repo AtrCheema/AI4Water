@@ -46,6 +46,8 @@ from .mtropics import ecoli_houay_pano
 from .mtropics import ecoli_mekong_2016
 from .mtropics import ecoli_mekong
 from .datasets import Quadica
+from .datasets import RRAlpileCatchments
+from .datasets import RRLuleaSweden
 
 
 def busan_beach(inputs: list = None,
