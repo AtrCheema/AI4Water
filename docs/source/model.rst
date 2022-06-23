@@ -54,6 +54,9 @@ for  :doc:`declarative_def_torch` .
 
 Model subclassing
 ======================
+Model subclassing is different from functional API in the way the model (neural network)
+is constructed. To understand the difference between model-subclassing API and functional
+API see :ref:`sub_vs_func`
 
 .. automodule:: ai4water.main.Model
         :members:
