@@ -27,9 +27,9 @@ class Interpret(Plot):
             if hasattr(model, 'interpret') and not model.__class__.__name__ == "Model":
                 model.interpret()
             else:
-
-                if hasattr(model, 'TemporalFusionTransformer_attentions'):
-                    atten_components = self.tft_attention_components()
+                pass
+                #if hasattr(model, 'TemporalFusionTransformer_attentions'):
+                #    atten_components = self.tft_attention_components()
 
         elif self.model.category == 'ML':
             use_xgb = False
@@ -249,13 +249,18 @@ class Interpret(Plot):
 
     def tft_attention_components(
             self,
+            x = None,
             data='test'
     ):
         """
         Gets attention components of tft layer from ai4water's Model.
 
-        Arguments:
-            data : the data to use to calculate attention components
+        Parameters
+        ----------
+            x :
+                the input data to the model
+            data :
+                the data to use to calculate attention components
 
         Returns
         -------
@@ -272,7 +277,8 @@ class Interpret(Plot):
 
         maybe_create_path(self.model.path)
 
-        x, _, = getattr(self.model, f'{data}_data')()
+        if x is None:
+            x, _, = getattr(self.model, f'{data}_data')()
 
         if len(x) == 0 and data == "test":
             warnings.warn("No test data found. using validation data instead",

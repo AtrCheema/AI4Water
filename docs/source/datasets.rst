@@ -4,7 +4,7 @@ datasets
 Busan Beach data
 ================
 .. automodule:: ai4water.datasets
-   :members: fdc_plot
+   :members: busan_beach
 
 Ecoli Mekong River
 ==================

@@ -48,6 +48,7 @@ def make_and_run(input_model, data, _layers=None, lookback=12,
     _ = model.predict(x=x,y=y)
     model.predict_on_validation_data(data=data)
     model.predict_on_all_data(data=data)
+    weights = model.get_attention_weights(x=x)
 
     return pred_y
 
