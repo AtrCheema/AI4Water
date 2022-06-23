@@ -3139,16 +3139,26 @@ class BaseModel(NN):
 
         if isinstance(train_x, list):
             for val in range(len(train_x)):
-                x_val = np.concatenate([train_x[val], val_x[val], test_x[val]])
+
+                # if val data is not available
+                if hasattr(val_x[val], '__len__') and len(val_x[val])==0:
+                    x_val = np.concatenate([train_x[val], test_x[val]])
+
+                # if test data is not available
+                elif hasattr(test_x[val], '__len__') and len(test_x[val])==0:
+                    x_val = np.concatenate([train_x[val], val_x[val]])
+                # supposing all three data are available
+                else:
+                    x_val = np.concatenate([train_x[val], val_x[val], test_x[val]])
                 x.append(x_val)
         else:
             for _x in [train_x, val_x, test_x]:
-                if _x is not None:
+                if _x is not None and (hasattr(_x, '__len__') and len(_x)>0):
                     x.append(_x)
             x = np.concatenate(x)
 
         for _y in [train_y, val_y, test_y]:
-            if _y is not None:
+            if _y is not None and (hasattr(_y, '__len__') and len(_y)>0):
                 y.append(_y)
 
         y = np.concatenate(y)
