@@ -843,7 +843,8 @@ class HYSETS(Camels):
             as_dataframe: bool = False,
             **kwargs
     ):
-
+        """returns attributes of multiple stations
+        """
         stations = check_attributes(stations, self.stations())
         stations = [int(stn) for stn in stations]
 
@@ -969,7 +970,7 @@ class HYSETS(Camels):
             en=None,
             as_ts=False
     ) -> pd.DataFrame:
-
+        """returns static atttributes of a station"""
         return self._fetch_static_features(stn_id, features, st, en, as_ts)
 
     def read_static_data(self):
@@ -982,8 +983,9 @@ class HYSETS(Camels):
 class CAMELS_US(Camels):
     """
     Downloads and processes CAMELS dataset of 671 catchments named as CAMELS
-    from https://ral.ucar.edu/solutions/products/camels
-    https://doi.org/10.5194/hess-19-209-2015
+    from https://ral.ucar.edu/solutions/products/camels following Newman et al., 2015 [1]_
+
+    .. [1]_ https://doi.org/10.5194/hess-19-209-2015
     """
     DATASETS = ['CAMELS_US']
     url = "https://ral.ucar.edu/sites/default/files/public/product-tool/camels-catchment-attributes-and-meteorology-for-large-sample-studies-dataset-downloads/basin_timeseries_v1p2_metForcing_obsFlow.zip"
@@ -1114,7 +1116,16 @@ class CAMELS_US(Camels):
             stn_id: Union[str, list],
             features: Union[str, list] = None
     ):
-
+        """
+        Examples
+        --------
+            >>> from ai4water.datasets import CAMELS_US
+            >>> camels = CAMELS_US()
+            >>> camels.fetch_static_features('11532500')
+            >>> camels.static_features
+            >>> camels.fetch_static_features('11528700',
+            >>> features=['area_gages2', 'geol_porostiy', 'soil_conductivity', 'elev_mean'])
+        """
         attributes = check_attributes(features, self.static_features)
 
         static_fpath = os.path.join(self.ds_dir, 'static_features.csv')
@@ -1736,7 +1747,7 @@ class CAMELS_CL(Camels):
                  ):
         """
         Arguments:
-            path: path where the CAMELS-AUS dataset has been downloaded. This path must
+            path: path where the CAMELS-CL dataset has been downloaded. This path must
                   contain five zip files and one xlsx file.
         """
         self.ds_dir = path
@@ -1844,7 +1855,18 @@ class CAMELS_CL(Camels):
             stn_id,
             features=None
     ):
+        """
 
+        Examples
+        --------
+            >>> from ai4water.datasets import CAMELS_CL
+            >>> camels = CAMELS_CL()
+            >>> camels.fetch_static_features('11315001')
+            >>> camels.static_features
+            >>> camels.fetch_static_features('2110002',
+            >>> features=['slope_mean', 'q_mean', 'elev_med', 'area'])
+
+        """
         attributes = check_attributes(features, self.static_features)
 
         if isinstance(stn_id, str):
@@ -1856,8 +1878,30 @@ class CAMELS_CL(Camels):
 class HYPE(Camels):
     """
     Downloads and preprocesses HYPE [1]_ dataset from Lindstroem et al., 2010 [2]_.
-    This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily
+    This is a rainfall-runoff dataset of 564 stations from 1985 to 2019 at daily,
     monthly and yearly time steps.
+
+    Examples
+    --------
+        >>> from ai4water.datasets import HYPE
+        >>> dataset = HYPE()
+        ... # get data of 5% of stations
+        >>> df = dataset.fetch(stations=0.05, as_dataframe=True)  # returns a multiindex dataframe
+        ... # fetch data of 5 (randomly selected) stations
+        >>> df = dataset.fetch(stations=5, as_dataframe=True)
+        # fetch data of 3 selected stations
+        >>> df = dataset.fetch(stations=['564','563','562'], as_dataframe=True)
+        ... # fetch data of a single stations
+        >>> df = dataset.fetch(stations='500', as_dataframe=True)
+        ...
+        # get only selected dynamic features
+        >>> df = dataset.fetch(stations='501',
+        ...    dynamic_features=['AET_mm', 'Prec_mm',  'Streamflow_mm'], as_dataframe=True)
+        # fetch data between selected periods
+        >>> df = dataset.fetch(stations='225', st="20010101", en="20101231", as_dataframe=True)
+        ... # get data at monthly time step
+        >>> dataset = HYPE(time_step="month")
+        >>> df = dataset.fetch(stations='500', as_dataframe=True)
 
     .. [1] https://zenodo.org/record/4029572
     .. [2] https://doi.org/10.2166/nh.2010.007
@@ -1879,6 +1923,14 @@ class HYPE(Camels):
     ]
 
     def __init__(self, time_step: str = 'daily', **kwargs):
+        """
+        Parameters
+        ----------
+            time_step : str
+                one of ``daily``, ``month`` or ``year``
+            **kwargs
+                key word arguments
+        """
         assert time_step in ['daily', 'month', 'year']
         self.time_step = time_step
         self.ds_dir = None
@@ -1948,6 +2000,7 @@ class HYPE(Camels):
         return stns_dfs
 
     def fetch_static_features(self, stn_id, features=None):
+        """static data for HYPE is not available."""
         raise ValueError(f'No static feature for {self.name}')
 
     @property

@@ -52,7 +52,7 @@ API in ai4water, you can do as following
     >>> model = Model(model=MLP())
     >>> isinstance(model, tf.keras.Model)  # -> False
     .. # However, model._mdoel is tensorflow Model
-    >> isinstance(model._model, tf.keras.Model)  # -> True
+    >>> isinstance(model._model, tf.keras.Model)  # -> True
 
 It should be noted that the front-end/user-end is almost exactly same whether you are using functional API
 or model-subclassing.

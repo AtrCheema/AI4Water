@@ -708,6 +708,7 @@ class SWECanada(Datasets):
             a dictionary of dataframes of shape (st:en, features + q_flags) whose
             length is equal to length of stations being considered.
         """
+        # todo, q_flags not working
 
         if station_id is None:
             station_id = self.stations()
@@ -808,10 +809,24 @@ class RRLuleaSweden(Datasets):
     )->pd.DataFrame:
         """fetches flow data
 
+        Parameters
+        ----------
+            st : optional
+                start of data to be fetched. By default the data starts from
+                2016-06-16 20:50:00
+            en : optional
+                end of data to be fetched. By default the end is 2019-09-15 18:35:00
+
         Returns
         -------
         pd.DataFrame
             a dataframe of shape (37_618, 3)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import RRLuleaSweden
+            >>> dataset = RRLuleaSweden()
+            >>> flow = dataset.fetch_flow()
         """
         fname = os.path.join(self.ds_dir, "flow_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
@@ -825,11 +840,27 @@ class RRLuleaSweden(Datasets):
     )->pd.DataFrame:
         """fetches precipitation data
 
+        Parameters
+        ----------
+            st : optional
+                start of data to be fetched. By default the data starts from
+                2016-06-16 19:48:00
+            en : optional
+                end of data to be fetched. By default the end is 2019-10-26 23:59:00
+
         Returns
         -------
         pd.DataFrame
             a dataframe of shape (967_080, 1)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import RRLuleaSweden
+            >>> dataset = RRLuleaSweden()
+            >>> pcp = dataset.fetch_pcp()
+
         """
+
         fname = os.path.join(self.ds_dir, "prec_2016_2019.csv")
         df = pd.read_csv(fname, sep=";")
         df.index = pd.to_datetime(df.pop("time"))
@@ -976,16 +1007,31 @@ class Quadica(Datasets):
         return check_st_en(wrtds, st, en)
 
     def fetch_metadata(self)->pd.DataFrame:
-        """fetches the metadata"""
+        """fetches the metadata about the stations as dataframe.
+        Each row represents metadata about one station and each column
+        represents one feature.
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (1386, 60)
+        """
         fname = os.path.join(self.ds_dir, "quadica", "metadata.csv")
-        return pd.read_csv(fname)
+        return pd.read_csv(fname,encoding='cp1252')
 
     def fetch_pet(
             self,
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
-        """average monthly  potential evapotranspiration
+        """average monthly  potential evapotranspiration starting from 1950-01 to 2018-09
+
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_pet() # -> (828, 1388)
         """
         fname = os.path.join(self.ds_dir, "quadica", "pet_monthly.csv")
         pet = pd.read_csv(fname)
@@ -996,7 +1042,14 @@ class Quadica(Datasets):
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
-        """monthly median average temperatures"""
+        """monthly median average temperatures starting from 1950-01 to 2018-09
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_tavg() # -> (828, 1388)
+        """
 
         fname = os.path.join(self.ds_dir, "quadica", "tavg_monthly.csv")
         pet = pd.read_csv(fname)
@@ -1007,7 +1060,19 @@ class Quadica(Datasets):
             st: Union[str, int, pd.DatetimeIndex] = None,
             en: Union[str, int, pd.DatetimeIndex] = None,
     )->pd.DataFrame:
-        """ sums of precipitation"""
+        """ sums of precipitation starting from 1950-01 to 2018-09
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (828, 1388)
+
+        Examples
+        --------
+            >>> from ai4water.datasets import Quadica
+            >>> dataset = Quadica()
+            >>> df = dataset.fetch_precip() # -> (828, 1388)
+        """
 
         fname = os.path.join(self.ds_dir, "quadica", "pre_monthly.csv")
         pet = pd.read_csv(fname)
@@ -1017,7 +1082,13 @@ class Quadica(Datasets):
             self,
     )->pd.DataFrame:
         """Monthly medians over the whole time series of water quality variables
-        and discharge"""
+        and discharge
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (16629, 18)
+        """
         fname = os.path.join(self.ds_dir, "quadica", "c_months.csv")
         return pd.read_csv(fname)
 
@@ -1025,7 +1096,13 @@ class Quadica(Datasets):
             self,
     )->pd.DataFrame:
         """Annual medians over the whole time series of water quality variables
-        and discharge"""
+        and discharge
+
+        Returns
+        -------
+        pd.DataFrame
+            a dataframe of shape (24393, 18)
+        """
         fname = os.path.join(self.ds_dir, "quadica", "c_annual.csv")
         return pd.read_csv(fname)
 
