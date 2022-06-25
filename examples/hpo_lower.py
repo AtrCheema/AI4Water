@@ -212,6 +212,7 @@ SEEDS = np.random.randint(0, 1000, num_iterations)
 # to keep track of seed being used at every optimization iteration
 SEEDS_USED = []
 
+MONITOR = {"mse": [], "nse": [], "r2": [], "pbias": []}
 
 def objective_fn(
         prefix: str = None,
@@ -292,7 +293,12 @@ def objective_fn(
 
     # evaluate model
     t, p = _model.predict_on_validation_data(data=data, return_true=True, process_results=False)
-    val_score = RegressionMetrics(t, p).mse()
+    metrics = RegressionMetrics(t, p)
+    val_score = metrics.mse()
+
+    for key in MONITOR.keys():
+        val = getattr(metrics, key)()
+        MONITOR[key].append(val)
 
     # here we are evaluating model with respect to mse, therefore
     # we don't need to subtract it from 1.0
@@ -342,6 +348,16 @@ seed_on_best_iter = SEEDS_USED[int(best_iteration)]
 print(f"optimized parameters are \n{optimizer.best_paras()} at {best_iteration} with seed {seed_on_best_iter}")
 
 ##################################################
+
+for key in MONITOR.keys():
+    print(key, np.nanmin(MONITOR[key]), np.nanargmin(MONITOR[key]))
+
+#%%
+
+for key in MONITOR.keys():
+    print(key, np.nanmax(MONITOR[key]), np.nanargmax(MONITOR[key]))
+
+#%%
 
 # we can now again call the objective function with best/optimium parameters
 

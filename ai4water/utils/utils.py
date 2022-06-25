@@ -844,6 +844,9 @@ def clear_weights(
     are useful. Here removing weights of all except top 10%. The number of models
     whose weights to be retained can be set by `keep` para.
     """
+    # each value of results is a dictionary which will have 'folders' key/value
+    # pair added to it, original results dictionary should not be modified.
+    results = {k:v.copy() for k,v in results.items()}
 
     if 'folder' not in list(results.items())[0]:
         results = add_folder(opt_dir, results)

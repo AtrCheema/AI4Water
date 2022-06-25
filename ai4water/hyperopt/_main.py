@@ -304,7 +304,7 @@ class HyperOpt(object):
         Parameters
         ----------
             algorithm : str
-                must be one of "random", "grid" "bayes", "bayes_rf", and "tpe", defining which
+                must be one of ``random``, ``grid``, ``bayes``, ``bayes_rf``, and ``tpe``, defining which
                 optimization algorithm to use.
             objective_fn : callable
                 Any callable function whose returned value is to be minimized.
@@ -935,6 +935,7 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
             return self.results
 
     def func_vals(self):
+        """returns the value of objective function at each iteration."""
         if self.backend == 'hyperopt':
             return [self.trials.results[i]['loss'] for i in range(self.num_iterations)]
         elif self.backend == 'optuna':
@@ -981,7 +982,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         return
 
     def _plot_parallel_coords(self, save=True, **kwargs):
-        # parallel coordinates of hyperparameters
+        """ parallel coordinates of hyperparameters
+        """
         d = self.xy_of_iterations()
 
         data = pd.DataFrame([list(v.values()) for v in d.values()],
@@ -1007,10 +1009,14 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
                         bbox_inches='tight')
         return
 
-    def _plot_convergence(self, save=True):
+    def _plot_convergence(self, original=False, save=True, **kwargs):
         plt.close('all')
-        # todo, should include an option to plot original evaluations instead of only minimum
-        plot_convergence([self.skopt_results()])
+        if original:
+            easy_mpl.plot(self.func_vals(), '--.',
+                 xlabel="Number of calls $n$",
+                 yalbel=r"$\min f(x)$ after $n$ calls", **kwargs)
+        else:
+            plot_convergence([self.skopt_results()], **kwargs)
         if save:
             fname = os.path.join(self.opt_path, "convergence.png")
             plt.savefig(fname, dpi=300, bbox_inches='tight')
