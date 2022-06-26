@@ -2648,7 +2648,8 @@ class BaseModel(NN):
 
     def permutation_importance(
             self,
-            data="test",
+            data = None,
+            data_type: str = "test",
             x=None,
             y=None,
             scoring: Union[str, Callable] = "r2",
@@ -2662,9 +2663,13 @@ class BaseModel(NN):
 
         Parameters
         ----------
-            data:
+            data :
+                Raw unprepared data from which x,y paris of training and test
+                data are prepared.
+            data_type : str
                 one of `training`, `test` or `validation`. By default test data is
-                used based upon recommendations of Christoph Molnar's book_
+                used based upon recommendations of Christoph Molnar's book_. Only
+                valid if ``data`` argument is given.
             x:
                 inputs for the model. alternative to data
             y:
@@ -2695,16 +2700,17 @@ class BaseModel(NN):
             >>> from ai4water.datasets import busan_beach
             >>> model = Model(model="XGBRegressor")
             >>> model.fit(data=busan_beach())
-            >>> perm_imp = model.permutation_importance("validation", plot_type="boxplot")
+            >>> perm_imp = model.permutation_importance(data=busan_beach(),
+            ...  data_type="validation", plot_type="boxplot")
             >>> perm_imp.importances
 
         .. _book:
             https://christophm.github.io/interpretable-ml-book/feature-importance.html#feature-importance-data
         """
-        assert data in ("training", "validation", "test")
+        assert data_type in ("training", "validation", "test")
 
         if x is None:
-            data = getattr(self, f"{data}_data")()
+            data = getattr(self, f"{data_type}_data")(data=data)
             x, y = data
 
         from .postprocessing.explain import PermutationImportance
@@ -2869,8 +2875,6 @@ class BaseModel(NN):
     def shap_values(
             self,
             data,
-            feature_name=None,
-            example_number=None,
             layer=None
     )->np.ndarray:
         """
@@ -2879,8 +2883,7 @@ class BaseModel(NN):
         Parameters
         ----------
             data :
-            feature_name :
-            example_number :
+                raw unprepared data from which training and test data are extracted.
             layer :
 
         Returns
@@ -2902,8 +2905,6 @@ class BaseModel(NN):
         explainer = explain_model_with_shap(
             self,
             total_data=data,
-            features_to_explain=feature_name,
-            examples_to_explain=example_number,
             layer=layer,
         )
 
@@ -2958,7 +2959,9 @@ class BaseModel(NN):
 
     def partial_dependence_plot(
             self,
-            data,
+            x=None,
+            data=None,
+            data_type="all",
             feature_name=None,
             num_points=100,
     ):
@@ -2966,8 +2969,14 @@ class BaseModel(NN):
 
         Parameters
         ----------
+            x :
+                the input data to use. If not given, then ``data`` must be given.
             data :
-                the data to use
+                raw unprepared data from which x,y paris are to be made. If
+                given, ``x`` must not be given.
+            data_type : str
+                the kind of the data to be used. It is only valid when
+                ``data`` is given.
             feature_name : str/list
                 name/names of features. If only one feature is given, 1 dimensional
                 partial dependence plot is plotted. You can also provide a list of
@@ -2986,15 +2995,20 @@ class BaseModel(NN):
             >>> data = busan_beach()
             >>> model = Model(model="RandomForestRegressor")
             >>> model.fit(data=data)
+            >>> model.partial_dependence_plot(x=data.iloc[:, 0:-1], feature_name="tide_cm")
+            ...
             >>> model.partial_dependence_plot(data=data, feature_name="tide_cm")
 
         """
+        if x is None:
+            assert data is not None, f"either x or data must be given"
+            x, _ = getattr(self, f"{data_type}_data")(data=data)
 
         from .postprocessing.explain import PartialDependencePlot
 
         pdp = PartialDependencePlot(
             self.predict,
-            data=data,
+            data=x,
             feature_names=self.input_features,
             num_points=num_points
         )

@@ -168,7 +168,7 @@ def explain_model_with_shap(
         train_data=None,
         total_data=None,
         features_to_explain: Union[str, list] = None,
-        examples_to_explain: Union[int, float, list] = 20,
+        examples_to_explain: Union[int, float, list] = 0,
         explainer=None,
         layer: Union[str, int] = None,
         plot_name="summary",
@@ -246,6 +246,8 @@ def explain_model_with_shap(
         layer = layer or 2
     explainer = explainer or _explainer
 
+    if examples_to_explain is None:
+        examples_to_explain = 0
 
     data_to_explain, index = choose_examples(data_to_explain, examples_to_explain, test_y)
 
