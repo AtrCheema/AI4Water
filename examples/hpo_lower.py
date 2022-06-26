@@ -22,16 +22,20 @@ from SeqMetrics import RegressionMetrics
 
 from ai4water.functional import Model
 from ai4water.datasets import busan_beach
+from ai4water.models import LSTM
 from ai4water.utils.utils import jsonize, dateandtime_now
 from ai4water.hyperopt import HyperOpt, Categorical, Real, Integer
 
 data = busan_beach()
 
 SEP = os.sep
-PREFIX = f"hpo_{dateandtime_now()}"
-ITER = 0
 
 # sphinx_gallery_thumbnail_number = 2
+
+#%%
+
+PREFIX = f"hpo_{dateandtime_now()}"
+ITER = 0
 
 ##############################################
 
@@ -203,7 +207,7 @@ print(tf.__version__, np.__version__)
 
 PREFIX = f"hpo_nn_{dateandtime_now()}"
 ITER = 0
-num_iterations = 15
+num_iterations = 30
 
 # these seeds are randomly generated but we keep track of the seed
 # used at each iteration, so that when we rebuilt the model with optimized
@@ -212,7 +216,10 @@ SEEDS = np.random.randint(0, 1000, num_iterations)
 # to keep track of seed being used at every optimization iteration
 SEEDS_USED = []
 
-MONITOR = {"mse": [], "nse": [], "r2": [], "pbias": []}
+# It is always a good practice to monitor more than 1 performance metric,
+# even though our objective function will not be based upon these
+# performance metrics.
+MONITOR = {"mse": [], "nse": [], "r2": [], "pbias": [], "nrmse": []}
 
 def objective_fn(
         prefix: str = None,
@@ -260,11 +267,9 @@ def objective_fn(
 
     # build model
     _model = Model(
-        model={"layers": {
-        "LSTM": {"units": suggestions['units']},
-        "Activation": suggestions["activation"],
-        "Dense": 1
-    }},
+        model=LSTM(units=suggestions['units'],
+                   activation=suggestions['activation'],
+                   dropout=0.2),
         batch_size=suggestions["batch_size"],
         lr=suggestions["lr"],
         prefix=prefix or PREFIX,
@@ -305,9 +310,14 @@ def objective_fn(
     if not math.isfinite(val_score):
         val_score = 9999
 
+    print(f"{ITER} {val_score} {seed}")
+
     ITER += 1
 
-    print(f"{ITER} {val_score} {seed}")
+    if predict:
+        _model.predict_on_training_data(data=data)
+        _model.predict_on_validation_data(data=data)
+        _model.predict_on_all_data(data=data)
 
     if return_model:
         return _model
@@ -317,14 +327,14 @@ def objective_fn(
 
 # parameter space
 param_space = [
-    Integer(16, 50, name="units"),
+    Integer(10, 20, name="units"),
     Categorical(["relu", "elu", "tanh"], name="activation"),
     Real(0.00001, 0.01, name="lr"),
     Categorical([4, 8, 12, 16, 24], name="batch_size")
 ]
 
 # initial values
-x0 = [32, "relu", 0.001, 8]
+x0 = [16, "relu", 0.001, 8]
 
 # initialize the HyperOpt class and call fit method on it
 optimizer = HyperOpt(
@@ -333,7 +343,6 @@ optimizer = HyperOpt(
     param_space=param_space,
     x0=x0,
     num_iterations=num_iterations,
-    process_results=False,
     opt_path=f"results{SEP}{PREFIX}"
 )
 
@@ -348,13 +357,15 @@ seed_on_best_iter = SEEDS_USED[int(best_iteration)]
 print(f"optimized parameters are \n{optimizer.best_paras()} at {best_iteration} with seed {seed_on_best_iter}")
 
 ##################################################
+# we are interested in the minimum value of following metrics
 
-for key in MONITOR.keys():
+for key in ['mse', 'nrmse', 'pbias']:
     print(key, np.nanmin(MONITOR[key]), np.nanargmin(MONITOR[key]))
 
 #%%
+# we are interested in the maximum value of following metrics
 
-for key in MONITOR.keys():
+for key in ['r2', 'nse']:
     print(key, np.nanmax(MONITOR[key]), np.nanargmax(MONITOR[key]))
 
 #%%

@@ -623,8 +623,8 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
         # returns best parameters either as dictionary or as list
         if self.use_skopt_gpmin:
             d = self.xy_of_iterations()
-            k = list(dict(sorted(d.items())).keys())[0]
-            paras = d[k]
+            best_iter = np.nanargmin(np.array(list(d.keys()), dtype=np.float64))
+            paras = np.array(list(d.values()))[best_iter]
         elif self.backend == 'hyperopt':
             d = get_one_tpe_x_iter(self.trials.best_trial['misc']['vals'], self.hp_space())
             if as_list:
@@ -972,11 +972,11 @@ Backend must be one of hyperopt, optuna or sklearn but is is {x}"""
 
         return paras
 
-    def _plot_edf(self, save=True):
-        # empirical CDF of objective function
+    def _plot_edf(self, save=True, **kwargs):
+        """empirical CDF of objective function"""
         plt.close("all")
         y = np.array(list(self.xy_of_iterations().keys())).astype("float64")
-        plot_edf(y)
+        plot_edf(y, **kwargs)
         if save:
             plt.savefig(os.path.join(self.opt_path, "edf"))
         return

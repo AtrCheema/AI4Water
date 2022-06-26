@@ -9,7 +9,7 @@ from ai4water.hyperopt import HyperOpt
 from ai4water.preprocessing import DataSet
 from ai4water.utils.utils import jsonize, ERROR_LABELS
 from ai4water.postprocessing import ProcessPredictions
-from ai4water.utils.utils import clear_weights, dateandtime_now, dict_to_file
+from ai4water.utils.utils import find_best_weight, dateandtime_now, dict_to_file
 
 plot = easy_mpl.plot
 bar_chart = easy_mpl.bar_chart
@@ -407,26 +407,23 @@ class Experiments(object):
             **kwargs
     ):
         """Evaluate the best models."""
-        with open(os.path.join(opt_dir, "iterations.json"), 'r') as fp:
-            results = json.load(fp)
 
-        best_models = clear_weights(opt_dir, results, rename=False, write=False)
+        folders = [path for path in os.listdir(opt_dir) if os.path.isdir(os.path.join(opt_dir, path)) and path.startswith('1_')]
         # TODO for ML, best_models can be empty
-        if best_models is None or len(best_models) < 1:
+        if len(folders) < 1:
             return self.train_best(x, y, data, validation_data, model_type)
 
-        for mod, props in best_models.items():
-            mod_path = os.path.join(props['path'], "config.json")
-            mod_weights = props['weights']
+        for mod_path in folders:
+            config_path = os.path.join(opt_dir, mod_path, "config.json")
+            best_weights = find_best_weight(os.path.join(opt_dir, mod_path, "weights"))
 
             train_results, test_results = self.build_from_config(
                 data,
-                mod_path,
-                mod_weights,
+                config_path,
+                best_weights,
                 **kwargs)
 
-            if mod.startswith('1_'):
-                self._populate_results(model_type, train_results, test_results)
+            self._populate_results(model_type, train_results, test_results)
         return
 
     def train_best(
@@ -481,6 +478,8 @@ class Experiments(object):
         # save performance metrics of train and test
         metrics = Metrics[self.mode](train_results[0],
                                      train_results[1],
+                                     replace_nan=True,
+                                     replace_inf=True,
                                      multiclass=self.model_.is_multiclass)
         train_metrics = {}
         for metric in self.monitor:
@@ -488,6 +487,8 @@ class Experiments(object):
 
         metrics = Metrics[self.mode](test_results[0],
                                      test_results[1],
+                                     replace_nan=True,
+                                     replace_inf=True,
                                      multiclass=self.model_.is_multiclass)
         test_metrics = {}
         for metric in self.monitor:
@@ -1427,7 +1428,10 @@ Available cases are {self.models} and you wanted to include
             )
 
         metrics = Metrics[self.mode](t, p,
-                                     remove_zero=True, remove_neg=True,
+                                     remove_zero=True,
+                                     remove_neg=True,
+                                     replace_nan=True,
+                                     replace_inf=True,
                                      multiclass=self.model_.is_multiclass)
 
         test_metrics = {}
@@ -1563,6 +1567,7 @@ be used to build ai4water's Model class.
 
     def build_from_config(self, data, config_path, weight_file, **kwargs):
         model = Model.from_config_file(config_path=config_path)
+        assert weight_file is not None, f"{config_path}"
         weight_file = os.path.join(model.w_path, weight_file)
         model.update_weights(weight_file=weight_file)
 
